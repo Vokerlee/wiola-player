@@ -49,7 +49,7 @@ public:
     {
     }
 
-    std::size_t render(std::span<float> interleaved) override
+    std::size_t render(std::span<float> interleaved) noexcept override
     {
         const std::size_t num_written{std::min(num_samples_, interleaved.size())};
 

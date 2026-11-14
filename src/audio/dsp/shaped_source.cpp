@@ -20,6 +20,8 @@
 
 #include <audio/dsp/shaped_source.hpp>
 
+#include <algorithm>
+
 namespace wiola::audio {
 
 ShapedSource::ShapedSource(Source& source, Chain& chain) noexcept
@@ -28,9 +30,9 @@ ShapedSource::ShapedSource(Source& source, Chain& chain) noexcept
 {
 }
 
-std::size_t ShapedSource::render(std::span<float> interleaved)
+std::size_t ShapedSource::render(std::span<float> interleaved) noexcept
 {
-    const std::size_t num_rendered{source_.render(interleaved)};
+    const std::size_t num_rendered{std::min(source_.render(interleaved), interleaved.size())};
 
     chain_.process(interleaved.first(num_rendered));
 

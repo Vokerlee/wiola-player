@@ -53,7 +53,7 @@ public:
     {
     }
 
-    std::size_t render(std::span<float> interleaved) override
+    std::size_t render(std::span<float> interleaved) noexcept override
     {
         const wiola::pcm::Frames num_frames{static_cast<std::size_t>(
             static_cast<double>(spec_.frames_per(interleaved.size()).count()) * fill_fraction_

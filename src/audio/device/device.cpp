@@ -49,7 +49,7 @@ Device::~Device()
 
 void Device::render(std::span<float> output) noexcept
 {
-    const std::size_t num_rendered{source_.render(output)};
+    const std::size_t num_rendered{std::min(source_.render(output), output.size())};
 
     frames_played_.fetch_add(spec_.frames_per(num_rendered).count(), std::memory_order_relaxed);
 

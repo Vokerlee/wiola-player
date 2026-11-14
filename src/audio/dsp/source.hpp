@@ -36,8 +36,11 @@ public:
 
     virtual ~Source() = default;
 
-    /// Fills whole frames and returns how many samples were written. Short means no more to give.
-    virtual std::size_t render(std::span<float> interleaved) = 0;
+    /// Fills whole frames and returns how many samples were written, never more than the span.
+    /// Short means no more to give. This is a bounded, nonthrowing, real-time callback contract:
+    /// no allocation, locks, file I/O, or destruction may be reachable from it. Decoder reads stay
+    /// on the separate worker-owned codec interface.
+    virtual std::size_t render(std::span<float> interleaved) noexcept = 0;
 
     /// The format the frames are in. Fixed for the source's lifetime.
     [[nodiscard]] virtual pcm::StreamSpec spec() const noexcept = 0;

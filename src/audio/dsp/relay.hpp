@@ -63,7 +63,7 @@ public:
     /// What it is pointed at gives, and nothing when it is pointed at nothing: a device asking a
     /// relay with no track is asking for what is not there, and hears the silence it fills a
     /// short answer with.
-    std::size_t render(std::span<float> interleaved) override;
+    std::size_t render(std::span<float> interleaved) noexcept override;
 
     [[nodiscard]] pcm::StreamSpec spec() const noexcept override;
 

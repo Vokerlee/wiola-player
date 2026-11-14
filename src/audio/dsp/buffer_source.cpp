@@ -30,7 +30,7 @@ BufferSource::BufferSource(pcm::StreamSpec spec, pcm::PcmQueue::Consumer buffer)
 {
 }
 
-std::size_t BufferSource::render(std::span<float> interleaved)
+std::size_t BufferSource::render(std::span<float> interleaved) noexcept
 {
     return buffer_.pop(interleaved);
 }

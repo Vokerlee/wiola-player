@@ -42,7 +42,7 @@ bool Relay::pointed() const noexcept
     return source_.load(std::memory_order_acquire) != nullptr;
 }
 
-std::size_t Relay::render(std::span<float> interleaved)
+std::size_t Relay::render(std::span<float> interleaved) noexcept
 {
     Source* source{source_.load(std::memory_order_acquire)};
 

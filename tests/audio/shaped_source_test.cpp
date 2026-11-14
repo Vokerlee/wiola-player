@@ -54,7 +54,7 @@ public:
     {
     }
 
-    std::size_t render(std::span<float> interleaved) override
+    std::size_t render(std::span<float> interleaved) noexcept override
     {
         const std::size_t num_rendered{std::min(num_samples_, interleaved.size())};
 
@@ -167,6 +167,26 @@ TEST(ShapedSource, AnswersAsASource)
 
     EXPECT_EQ(source.render(block), block.size());
     EXPECT_EQ(source.spec(), stereo);
+}
+
+class OverreportingSource final : public Source {
+public:
+    std::size_t render(std::span<float> interleaved) noexcept override
+    {
+        return interleaved.size() + 1;
+    }
+
+    [[nodiscard]] StreamSpec spec() const noexcept override { return stereo; }
+};
+
+TEST(ShapedSource, RejectsAnImpossibleCountFromTheInnerSource)
+{
+    OverreportingSource inner;
+    Chain chain;
+    ShapedSource source{inner, chain};
+    std::array<float, 4> block{};
+
+    EXPECT_EQ(source.render(block), block.size());
 }
 
 } // namespace
