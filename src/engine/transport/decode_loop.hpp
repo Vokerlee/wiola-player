@@ -22,6 +22,7 @@
 
 #include "playhead.hpp"
 #include "seek_operation.hpp"
+#include "transport_wait.hpp"
 #include <audio/device/output.hpp>
 #include <audio/device/output_connection.hpp>
 #include <codec/decode/decoder.hpp>
@@ -50,7 +51,8 @@ public:
     /// the output it reads what has been heard from, and the playback it follows. All of them
     /// outlive it.
     DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, Playback& playback, Playhead::Applier applier) noexcept;
+        audio::Output& output, Playback& playback, Playhead::Applier applier,
+        TransportWait& wait) noexcept;
 
     NO_COPY_SEMANTIC(DecodeLoop);
     NO_MOVE_SEMANTIC(DecodeLoop);
@@ -85,6 +87,7 @@ private:
     const audio::Output& output_;
     Playback& playback_;
     Playhead::Applier applier_;
+    TransportWait& wait_;
 
     /// What the output was last asked for. This thread's, and seeded by `begin` before there is
     /// a thread at all.

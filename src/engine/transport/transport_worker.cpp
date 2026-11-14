@@ -25,9 +25,11 @@
 namespace wiola::engine {
 
 TransportWorker::TransportWorker(std::unique_ptr<codec::Decoder> source,
-    pcm::PcmQueue::Producer buffer, audio::Output& output, ThreadFactory launch) noexcept
+    pcm::PcmQueue::Producer buffer, audio::Output& output, ThreadFactory launch,
+    std::chrono::milliseconds poll_interval) noexcept
     : head_{source->spec().num_channels}
-    , loop_{std::move(source), std::move(buffer), output, playback_, head_.applier()}
+    , wait_{poll_interval}
+    , loop_{std::move(source), std::move(buffer), output, playback_, head_.applier(), wait_}
     , launch_{std::move(launch)}
 {
     if (!launch_)
@@ -71,22 +73,28 @@ bool TransportWorker::start()
 
 bool TransportWorker::pause() noexcept
 {
-    return playback_.pause();
+    const bool accepted{playback_.pause()};
+    wait_.notify();
+    return accepted;
 }
 
 bool TransportWorker::resume() noexcept
 {
-    return playback_.resume();
+    const bool accepted{playback_.resume()};
+    wait_.notify();
+    return accepted;
 }
 
 void TransportWorker::stop() noexcept
 {
     playback_.finish(Playback::TerminalReason::stopped);
+    wait_.notify();
 }
 
 void TransportWorker::seek(pcm::Frames target) noexcept
 {
     head_.request_seek(target);
+    wait_.notify();
 }
 
 void TransportWorker::wait()
