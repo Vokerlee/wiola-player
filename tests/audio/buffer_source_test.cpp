@@ -20,7 +20,7 @@
 
 #include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/source.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
 
@@ -36,7 +36,7 @@ namespace {
 using wiola::audio::BufferSource;
 using namespace wiola::units;
 using wiola::audio::Source;
-using wiola::lockfree::SPSCRingBuffer;
+using wiola::pcm::PcmQueue;
 using wiola::pcm::StreamSpec;
 
 constexpr StreamSpec stereo{.sample_rate = 48_kHz, .num_channels = 2};
@@ -53,7 +53,7 @@ auto counted(std::size_t count)
 
 TEST(BufferSource, ReportsTheSpecItWasGiven)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     BufferSource source{stereo, buffer.consumer()};
 
     EXPECT_EQ(source.spec(), stereo);
@@ -61,7 +61,7 @@ TEST(BufferSource, ReportsTheSpecItWasGiven)
 
 TEST(BufferSource, GivesNothingFromAnEmptyBuffer)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     BufferSource source{stereo, buffer.consumer()};
 
     std::array<float, 8> block{};
@@ -73,7 +73,7 @@ TEST(BufferSource, GivesNothingFromAnEmptyBuffer)
 
 TEST(BufferSource, GivesWhatWasPushedInOrder)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     auto producer{buffer.producer()};
     BufferSource source{stereo, buffer.consumer()};
 
@@ -92,7 +92,7 @@ TEST(BufferSource, GivesWhatWasPushedInOrder)
 /// underrun.
 TEST(BufferSource, IsShortWhenTheBufferHoldsLess)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     auto producer{buffer.producer()};
     BufferSource source{stereo, buffer.consumer()};
 
@@ -109,7 +109,7 @@ TEST(BufferSource, IsShortWhenTheBufferHoldsLess)
 
 TEST(BufferSource, TakesOnlyWhatWasAskedFor)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     auto producer{buffer.producer()};
     BufferSource source{stereo, buffer.consumer()};
 
@@ -124,7 +124,7 @@ TEST(BufferSource, TakesOnlyWhatWasAskedFor)
 
 TEST(BufferSource, AnswersAsASource)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     auto producer{buffer.producer()};
     BufferSource buffered{stereo, buffer.consumer()};
     Source& source{buffered};
@@ -140,7 +140,7 @@ TEST(BufferSource, AnswersAsASource)
 
 TEST(BufferSource, AcceptsNothingToFill)
 {
-    SPSCRingBuffer<float> buffer{64};
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
     auto producer{buffer.producer()};
     BufferSource source{stereo, buffer.consumer()};
 
@@ -149,6 +149,23 @@ TEST(BufferSource, AcceptsNothingToFill)
 
     EXPECT_EQ(source.render(std::span<float>{}), 0U);
     EXPECT_EQ(buffer.size_approx(), pushed.size());
+}
+
+TEST(BufferSource, LeavesAnOddTrailingSampleUntouched)
+{
+    PcmQueue buffer{stereo, wiola::pcm::Frames{64}};
+    auto producer{buffer.producer()};
+    BufferSource source{stereo, buffer.consumer()};
+    const auto pushed{counted(8)};
+    ASSERT_EQ(producer.push(pushed), pushed.size());
+
+    std::array<float, 5> block{};
+    block.fill(42.0F);
+
+    EXPECT_EQ(source.render(block), 4U);
+    EXPECT_EQ(block[3], 3.0F);
+    EXPECT_EQ(block[4], 42.0F);
+    EXPECT_EQ(buffer.size_approx(), 4U);
 }
 
 } // namespace

@@ -24,7 +24,7 @@
 #include <codec/decode/decoder.hpp>
 #include <engine/transport/player.hpp>
 #include <fakes/output.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 #include <utils/units.hpp>
 
 #include <chrono>
@@ -38,14 +38,15 @@ namespace wiola::testing {
 /// is still playing wants an output of its own instead.
 struct Rig {
     explicit Rig(std::unique_ptr<codec::Decoder> source)
-        : buffer{source->spec().samples_per(units::Time{std::chrono::milliseconds{250}})}
+        : buffer{source->spec(),
+              *source->spec().checked_frames_at(units::Time{std::chrono::milliseconds{250}})}
         , decoded{source->spec(), buffer.consumer()}
         , output{decoded}
         , player{std::move(source), buffer.producer(), output}
     {
     }
 
-    lockfree::SPSCRingBuffer<float> buffer;
+    pcm::PcmQueue buffer;
     audio::BufferSource decoded;
     FakeOutput output;
     engine::Player player;

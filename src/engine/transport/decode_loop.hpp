@@ -26,7 +26,7 @@
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 
 #include <memory>
 
@@ -48,9 +48,9 @@ public:
     /// Takes the source it plays, the ends of the buffer, output and playhead it works through,
     /// the output it reads what has been heard from, and the playback it follows. All of them
     /// outlive it.
-    DecodeLoop(std::unique_ptr<codec::Decoder> source,
-        lockfree::SPSCRingBuffer<float>::Producer buffer, audio::Output::Control control,
-        const audio::Output& output, Playback& playback, Playhead::Applier applier) noexcept;
+    DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+        audio::Output::Control control, const audio::Output& output, Playback& playback,
+        Playhead::Applier applier) noexcept;
 
     NO_COPY_SEMANTIC(DecodeLoop);
     NO_MOVE_SEMANTIC(DecodeLoop);
@@ -80,7 +80,7 @@ private:
     [[nodiscard]] bool played_out() const noexcept;
 
     std::unique_ptr<codec::Decoder> source_;
-    lockfree::SPSCRingBuffer<float>::Producer buffer_;
+    pcm::PcmQueue::Producer buffer_;
     audio::Output::Control control_;
     const audio::Output& output_;
     Playback& playback_;

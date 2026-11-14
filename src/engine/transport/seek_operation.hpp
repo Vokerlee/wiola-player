@@ -24,7 +24,7 @@
 #include <audio/device/output.hpp>
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 
 namespace wiola::engine {
 
@@ -38,7 +38,7 @@ namespace wiola::engine {
  */
 class SeekOperation {
 public:
-    SeekOperation(codec::Decoder& source, lockfree::SPSCRingBuffer<float>::Producer& buffer,
+    SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& buffer,
         audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
         bool& output_started) noexcept;
 
@@ -58,7 +58,7 @@ private:
     void prime();
 
     codec::Decoder& source_;
-    lockfree::SPSCRingBuffer<float>::Producer& buffer_;
+    pcm::PcmQueue::Producer& buffer_;
     audio::Output::Control& control_;
     const audio::Output& output_;
     Playhead::Applier& applier_;

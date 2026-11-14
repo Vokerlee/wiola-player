@@ -28,7 +28,7 @@
 #include <audio/dsp/chain.hpp>
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 
 #include <fakes/decoder.hpp>
@@ -208,7 +208,7 @@ TEST(Player, SeekBeyondTheEndIsIgnored)
 {
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};
     wiola::testing::FakeDecoder* moved{source.get()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -228,7 +228,7 @@ TEST(Player, IgnoresNonFiniteAndUnrepresentableSeekTimes)
 {
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};
     wiola::testing::FakeDecoder* moved{source.get()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
     const std::array positions{units::Time{std::numeric_limits<double>::quiet_NaN()},
@@ -252,7 +252,7 @@ TEST(Player, ClampsANegativeSeekToTheBeginning)
 {
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};
     wiola::testing::FakeDecoder* moved{source.get()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -272,7 +272,7 @@ TEST(Player, FailedSeekBeforeStartKeepsThePreservedBeginning)
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
     wiola::testing::FakeDecoder* moved{source.get()};
     moved->refuse_seeks();
-    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -293,7 +293,7 @@ TEST(Player, FailedSeekDoesNotPublishTheRequestedPosition)
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
     wiola::testing::FakeDecoder* moved{source.get()};
     moved->refuse_seeks();
-    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -320,7 +320,7 @@ TEST(Player, NewerSeekSurvivesFailureOfAnOlderOne)
     moved->refuse_next_seek();
     wiola::testing::Gate seeking;
     moved->block_seeks_on(seeking);
-    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -560,8 +560,8 @@ TEST(Player, SeeksWhileTheLastOfItIsStillBeingPlayed)
     const ShortSource* moved{source.get()};
 
     const StreamSpec spec{source->spec()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{
-        spec.samples_per(units::Time{std::chrono::milliseconds{250}})};
+    wiola::pcm::PcmQueue buffer{spec,
+        *spec.checked_frames_at(units::Time{std::chrono::milliseconds{250}})};
 
     // An output that plays nothing holds the player in that gap for as long as the test needs.
     wiola::testing::FakeOutput output;
@@ -650,8 +650,8 @@ TEST(Player, RunsOnAnyOutput)
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{
-        spec.samples_per(units::Time{std::chrono::milliseconds{250}})};
+    wiola::pcm::PcmQueue buffer{spec,
+        *spec.checked_frames_at(units::Time{std::chrono::milliseconds{250}})};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -673,8 +673,8 @@ TEST(Player, FollowsTheOutputRatherThanTheDecoder)
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{
-        spec.samples_per(units::Time{std::chrono::milliseconds{250}})};
+    wiola::pcm::PcmQueue buffer{spec,
+        *spec.checked_frames_at(units::Time{std::chrono::milliseconds{250}})};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -727,8 +727,8 @@ TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{
-        spec.samples_per(units::Time{std::chrono::milliseconds{250}})};
+    wiola::pcm::PcmQueue buffer{spec,
+        *spec.checked_frames_at(units::Time{std::chrono::milliseconds{250}})};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -763,8 +763,8 @@ TEST(Player, ReportsAFaultWhenTheOutputWillNotStartAgain)
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{
-        spec.samples_per(units::Time{std::chrono::milliseconds{250}})};
+    wiola::pcm::PcmQueue buffer{spec,
+        *spec.checked_frames_at(units::Time{std::chrono::milliseconds{250}})};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
@@ -794,8 +794,8 @@ TEST(Player, ReportsAFaultWhenTheDeviceStopsOnItsOwn)
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
-    wiola::lockfree::SPSCRingBuffer<float> buffer{
-        spec.samples_per(units::Time{std::chrono::milliseconds{250}})};
+    wiola::pcm::PcmQueue buffer{spec,
+        *spec.checked_frames_at(units::Time{std::chrono::milliseconds{250}})};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
 
