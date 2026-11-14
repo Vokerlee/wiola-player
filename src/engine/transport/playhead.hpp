@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <pcm/stream_spec.hpp>
+#include "playback_epoch.hpp"
 
 #include <core/handle.hpp>
 #include <core/macros.hpp>
@@ -38,6 +38,8 @@ namespace wiola::engine {
  */
 class Playhead {
 public:
+    explicit Playhead(std::size_t num_channels = 2) noexcept;
+
     /// A seek to carry out, read as one so that a request arriving after it stays outstanding.
     struct Claim {
         std::size_t requested{0};
@@ -78,6 +80,9 @@ public:
         /// Samples handed to the output since playback last began somewhere.
         [[nodiscard]] std::size_t num_pushed() const noexcept;
 
+        /// Whether the output has consumed all complete frames submitted in this epoch.
+        [[nodiscard]] bool drained(pcm::Frames frames_played) const noexcept;
+
     private:
         friend class Playhead;
 
@@ -106,15 +111,14 @@ private:
     void begin_at(pcm::Frames frame_index, pcm::Frames frames_played, const Claim& claim) noexcept;
     void push(std::size_t num_samples) noexcept;
     [[nodiscard]] std::size_t num_pushed() const noexcept;
+    [[nodiscard]] bool drained(pcm::Frames frames_played) const noexcept;
 
     core::Claimable applier_taken_;
 
     std::atomic<std::size_t> seeks_requested_{0};
     std::atomic<std::size_t> seeks_applied_{0};
     std::atomic<std::size_t> seek_target_{0};
-    std::atomic<std::size_t> base_{0};
-    std::atomic<std::size_t> frames_at_begin_{0};
-    std::size_t num_pushed_{0};
+    PlaybackEpoch epoch_;
 };
 
 inline bool Playhead::Applier::seek_outstanding() const noexcept
@@ -143,6 +147,11 @@ inline void Playhead::Applier::push(std::size_t num_samples) noexcept
 inline std::size_t Playhead::Applier::num_pushed() const noexcept
 {
     return owner() ? owner()->num_pushed() : 0;
+}
+
+inline bool Playhead::Applier::drained(pcm::Frames frames_played) const noexcept
+{
+    return owner() && owner()->drained(frames_played);
 }
 
 inline Playhead::Applier Playhead::applier() noexcept
