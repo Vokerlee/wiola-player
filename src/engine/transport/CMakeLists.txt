@@ -9,5 +9,6 @@ wiola_add_library(
         playhead.cpp
         seek_mailbox.cpp
         seek_operation.cpp
+        transport_worker.cpp
     LIBS wiola_audio_device wiola_codec_decode
 )

@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include "decode_loop.hpp"
-#include "playhead.hpp"
+#include "transport_worker.hpp"
 #include <audio/device/output.hpp>
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
@@ -31,19 +30,15 @@
 #include <utils/units.hpp>
 
 #include <memory>
-#include <thread>
 
 namespace wiola::engine {
 
 /**
  * Plays one decoder, feeding it to a device from a thread of its own.
  *
- * Decoding may stall on a disk for as long as it likes, while the device wakes on a deadline and
- * must be answered at once. The two cannot share a thread, so the decoding happens here and the
- * caller's thread is left free to do something else - to notice a keypress, or to draw.
- *
- * The player owns its source and outlives nothing with it: the thread that reads the source is
- * stopped before the source is destroyed, which is a promise no caller can be asked to keep.
+ * Decoding and output startup may stall on a file or device, while the device callback wakes on
+ * a deadline. The transport worker owns those operations, leaving the caller free to draw or ask
+ * for another command. The worker is joined before the source is destroyed.
  */
 class Player final {
 public:
@@ -58,69 +53,46 @@ public:
     /// Stops playback and waits for the thread, so a player is never destroyed while it runs.
     ~Player();
 
-    /// Begins playing, from the beginning of the source or from wherever `seek` was last asked
-    /// for while nothing was playing. A player that has already finished is wound back, so
-    /// playing a track again is this same call. False when no device could be started, or when
-    /// playback is already under way.
+    /// Accepts playback from the beginning or from a pending seek. A finished player is wound back
+    /// by the worker. False when already active or no thread could be launched. Output startup
+    /// failure is eventual and reported as `faulted` rather than as request acceptance.
     [[nodiscard]] bool start();
 
     /// Silences playback, keeping the position and everything already decoded, so that resuming
-    /// is immediate. The device is silenced by the decoding thread rather than here, so a caller
-    /// is never held up by one. False when there was nothing playing to silence.
+    /// is immediate. False when there was nothing playing to silence.
     [[nodiscard]] bool pause() noexcept;
 
-    /// Plays on from where `pause` left off, again by way of the decoding thread. False unless
-    /// the player is paused. Resuming is not a way to begin, and an output that will not start
-    /// again ends playback rather than being reported here: `state()` reads as stopped.
+    /// Plays on from where `pause` left off. False unless the player is paused. An output that
+    /// will not start again ends playback as `faulted` on the worker rather than being reported
+    /// as command refusal here.
     [[nodiscard]] bool resume() noexcept;
 
     /// Ends playback at once, without playing out what is already buffered. Does nothing if
     /// playback has already finished, and may be called from any thread.
     void stop() noexcept;
 
-    /// Moves playback to `position`, measured from the start of the source. Takes effect on the
-    /// decoding thread rather than at once, and a position beyond the end is ignored. Whether
-    /// sound is being produced is unchanged: seeking while paused stays paused, and seeking a
-    /// player that has stopped or finished waits for the next `start` rather than being lost.
+    /// Moves playback to `position`, measured from the start of the source. The worker applies it.
+    /// A position beyond the end is ignored. Paused seeks stay paused, and a stopped or finished
+    /// player holds the request for its next start.
     void seek(units::Time position) noexcept;
 
     /// Blocks until playback has ended.
     void wait();
 
-    /// What playback is doing.
     [[nodiscard]] Playback::State state() const noexcept;
-
-    /// Whether a track is playing. Says nothing about whether the device agrees; when the
-    /// two disagree the output has failed underneath us.
     [[nodiscard]] bool playing() const noexcept;
-
-    /// Whether playback is over, however it ended. `state()` says which.
     [[nodiscard]] bool finished() const noexcept;
-
-    /// How long the source runs, from its beginning to its end.
     [[nodiscard]] units::Time total_time() const noexcept;
 
-    /// How far playback has reached, measured from the start of the source. Follows what is
-    /// being heard rather than what has been decoded, so it moves with the device. A seek that
-    /// has been asked for but not yet applied reads as the place it asked for.
+    /// Follows what is being heard rather than what has been decoded. A pending seek reports its
+    /// target until the worker commits or recovers it.
     [[nodiscard]] units::Time time_played() const noexcept;
 
 private:
-    Playback playback_;
-    Playhead head_;
-
-    /// Read from, never driven: starting and stopping it is the decoding loop's.
     audio::Output& output_;
-
-    /// The source's own, taken once. What a track is does not change while it is loaded, and
-    /// asking the source would mean reaching into what the loop below owns.
     pcm::StreamSpec spec_;
     pcm::Frames num_frames_;
-
-    /// The audio path, whole. Nothing above this line can reach into it.
-    DecodeLoop loop_;
-
-    std::jthread thread_;
+    TransportWorker worker_;
 };
 
 } // namespace wiola::engine

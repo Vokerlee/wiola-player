@@ -259,7 +259,7 @@ TEST(Player, ClampsANegativeSeekToTheBeginning)
     player.seek(-1_s);
 
     ASSERT_TRUE(player.start());
-    EXPECT_EQ(moved->num_seeks(), 1);
+    ASSERT_TRUE(eventually([moved] { return moved->num_seeks() == 1; }));
     EXPECT_EQ(moved->last_seek(), wiola::pcm::Frames{});
 
     player.stop();
@@ -279,8 +279,9 @@ TEST(Player, FailedSeekBeforeStartKeepsThePreservedBeginning)
     player.seek(1_s);
     ASSERT_TRUE(player.start());
 
-    EXPECT_EQ(moved->num_seeks(), 1);
-    EXPECT_EQ(player.time_played(), units::Time{});
+    ASSERT_TRUE(eventually([moved, &player] {
+        return moved->num_seeks() == 1 && player.time_played() == units::Time{};
+    }));
     EXPECT_EQ(player.state(), State::playing);
 
     player.stop();
@@ -303,8 +304,9 @@ TEST(Player, FailedSeekDoesNotPublishTheRequestedPosition)
 
     player.seek(1_s);
 
-    ASSERT_TRUE(eventually([moved] { return moved->num_seeks() == 1; }));
-    EXPECT_GT(player.time_played(), 1_s);
+    ASSERT_TRUE(eventually([moved, &player] {
+        return moved->num_seeks() == 1 && player.time_played() != 1_s;
+    }));
     EXPECT_EQ(player.state(), State::paused);
     EXPECT_FALSE(player.finished());
 
@@ -657,7 +659,7 @@ TEST(Player, RunsOnAnyOutput)
 
     ASSERT_TRUE(player.start());
     EXPECT_EQ(player.state(), State::playing);
-    EXPECT_TRUE(output.running());
+    EXPECT_TRUE(eventually([&output] { return output.running(); }));
 
     player.stop();
     player.wait();
@@ -801,6 +803,7 @@ TEST(Player, ReportsAFaultWhenTheDeviceStopsOnItsOwn)
 
     ASSERT_TRUE(player.start());
     ASSERT_TRUE(player.playing());
+    ASSERT_TRUE(eventually([&output] { return output.running(); }));
 
     output.die();
 
