@@ -7,6 +7,8 @@ wiola_add_library(
         chain.cpp
         clip.cpp
         equalizer.cpp
+        equalizer_parameters.cpp
+        equalizer_processor.cpp
         relay.cpp
         shaped_source.cpp
         volume.cpp

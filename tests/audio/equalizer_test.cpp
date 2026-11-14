@@ -26,11 +26,14 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -347,4 +350,55 @@ TEST(Equalizer, AcceptsNothingToDo)
     equalizer.process(std::span<float>{});
 
     EXPECT_FLOAT_EQ(equalizer.preamp(), -6.0F);
+}
+
+TEST(Equalizer, PreparesUpdatedPreampBeforeProcessing)
+{
+    Equalizer equalizer{stereo};
+
+    equalizer.set_band_gain(5, 6.0F);
+
+    EXPECT_FLOAT_EQ(equalizer.preamp(), -6.0F);
+}
+
+TEST(Equalizer, IgnoresANonFiniteGain)
+{
+    Equalizer equalizer{stereo};
+
+    equalizer.set_band_gain(5, std::numeric_limits<float>::quiet_NaN());
+
+    EXPECT_FLOAT_EQ(equalizer.band_gain(5), 0.0F);
+    EXPECT_FLOAT_EQ(equalizer.preamp(), 0.0F);
+}
+
+TEST(Equalizer, PublishesCoherentBanksDuringRapidUpdates)
+{
+    Equalizer equalizer{stereo};
+    std::atomic<bool> start{false};
+    std::atomic<bool> done{false};
+    bool finite{true};
+
+    std::thread writer{[&] {
+        start.wait(false, std::memory_order_acquire);
+        for (std::size_t iteration = 0; iteration < 2000; ++iteration) {
+            for (std::size_t band = 0; band < equalizer.layout().count; ++band)
+                equalizer.set_band_gain(band, iteration % 2 == 0 ? 6.0F : -6.0F);
+        }
+        done.store(true, std::memory_order_release);
+        done.notify_one();
+    }};
+
+    start.store(true, std::memory_order_release);
+    start.notify_one();
+    while (!done.load(std::memory_order_acquire)) {
+        std::array<float, 256> block{};
+        block.fill(0.125F);
+        equalizer.process(block);
+        finite = finite && std::all_of(block.begin(), block.end(), [](float sample) {
+            return std::isfinite(sample);
+        });
+    }
+    writer.join();
+
+    EXPECT_TRUE(finite);
 }
