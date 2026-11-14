@@ -24,110 +24,63 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 #include <vector>
 
 namespace wiola::engine {
 
-/**
- * The tracks to be played, in the order they are to be played in, and where in that playback has
- * reached.
- *
- * It holds names and a place, and plays nothing itself: what a track sounds like, and whether it
- * can be opened at all, is settled elsewhere. That is what makes it answerable on its own.
- *
- * Shuffling is an order, not a choice made afresh each time a track ends, so that going back is
- * going back to what was heard rather than to somewhere new.
- */
+/// Queue entries in insertion order, a stable playback order, and an optional current selection.
 class Playlist {
 public:
-    /// What to do when the last track of the order runs out.
     enum class Repeat {
-        /// Nothing: playback has reached the end.
         none,
-
-        /// The track that just played, again.
         track,
-
-        /// The first track of the order, again.
         all,
     };
 
-    /// Replaces everything with `tracks`, and stands at the first of them.
+    /// Replaces everything and selects the first entry. New identities are always assigned.
     void set(std::vector<Track> tracks);
 
-    /// Puts `track` at the end. A list that was empty stands at it.
+    /// Appends an entry with a fresh identity; an empty list selects it.
     void add(Track track);
 
-    /// Takes the track that was put at `index` out. It stands afterwards at whatever followed
-    /// the one removed, or at the last of what is left. False when there is no such track.
     bool remove(std::size_t index);
-
-    /// Empties it, leaving it standing nowhere.
     void clear() noexcept;
 
     [[nodiscard]] bool empty() const noexcept;
-
-    /// How many times what is queued has changed: tracks added or taken out, an order drawn, or
-    /// something found out about a track. For a listener's window, which redraws many times a
-    /// second and should not rebuild a list nobody has touched.
     [[nodiscard]] std::size_t revision() const noexcept;
-
-    /// Every track, in the order they were given. Shuffling changes what plays next, not what
-    /// this says: a listener looking at their list wants to see the list they made.
     [[nodiscard]] const std::vector<Track>& tracks() const noexcept;
 
-    /// The track it stands at, or one with nothing in it when it stands nowhere.
-    [[nodiscard]] const Track& current() const noexcept;
+    /// The selected entry, or nullptr when there is no selection.
+    [[nodiscard]] const Track* current() const noexcept;
 
-    /// Says what has been found out about the track put at `index`, keeping where it is. False
-    /// when there is no such track.
-    bool describe(std::size_t index, Track track);
+    /// Updates only metadata for `id`, leaving identity and location untouched.
+    bool describe(QueueEntryId id, TrackMetadata metadata);
 
-    /// Where it stands, counted along the list as it was given, or nothing when it stands
-    /// nowhere. Shuffling changes what comes next, not what a track is called or where it was
-    /// put.
     [[nodiscard]] std::optional<std::size_t> position() const noexcept;
+    [[nodiscard]] std::optional<std::size_t> index_of(QueueEntryId id) const noexcept;
 
-    /// Stands at the track that was put at `index`. False when there is no such track.
     bool go_to(std::size_t index) noexcept;
-
-    /// Stands at the next track of the order, or wherever `repeat` says instead. False when
-    /// there is nowhere to go, which is what the end of playback is.
     bool next() noexcept;
-
-    /// Stands at the one before, by the same rules.
     bool previous() noexcept;
 
     void set_repeat(Repeat repeat) noexcept;
     [[nodiscard]] Repeat repeat() const noexcept;
 
-    /// Puts the tracks in an order drawn from `seed`, keeping the one it stands at. The same
-    /// seed gives the same order, so what a listener heard can be played again.
+    /// Draws a deterministic playback order while preserving the selected entry.
     void shuffle(std::uint_fast32_t seed);
-
-    /// Puts them back in the order they were given, keeping the one it stands at.
     void unshuffle();
-
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    /// Where in `order_` the track put at `index` now sits.
     [[nodiscard]] std::size_t place_of(std::size_t index) const noexcept;
+    void identify(Track& track);
 
     std::vector<Track> tracks_;
-
-    /// The order they are played in, as places in `tracks_`.
     std::vector<std::size_t> order_;
-
-    /// Where in `order_` it stands, or nothing when it stands nowhere.
     std::optional<std::size_t> place_;
-
-    /// Counted rather than compared: what changed is not worth working out, only that something
-    /// did.
     std::size_t revision_{0};
-
+    QueueEntryId next_id_{1};
     Repeat repeat_{Repeat::none};
     bool shuffled_{false};
 };

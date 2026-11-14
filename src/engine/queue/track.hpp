@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief A track in a queue: where it is, and what is known about it.
+ * @brief Stable queue identity, immutable location, and mutable track metadata.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -22,35 +22,55 @@
 
 #include <utils/units.hpp>
 
+#include <compare>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 
 namespace wiola::engine {
 
-/**
- * One track of a queue: the file it is, and whatever is known about it.
- *
- * What is known is filled in as it is found out, and a listener is shown a queue long before any
- * of it has been. So a track with nothing known is a track with a name and no more - the file's
- * own - rather than a row that has to wait for something.
- */
-struct Track {
-    /// Where the file is. The only thing known from the start, and the only thing needed to play
-    /// it.
-    std::filesystem::path path;
+struct QueueEntryId {
+    std::uint64_t value{0};
 
-    /// What to call it: what its tags say, or the file's own name until they have been read.
+    [[nodiscard]] constexpr bool valid() const noexcept { return value != 0; }
+
+    auto operator<=>(const QueueEntryId&) const = default;
+};
+
+/// Facts learned after queueing, separate from the resource they describe.
+struct TrackMetadata {
     std::string title;
-
     std::string artist;
     std::string album;
-
-    /// How long it runs, or nothing while that is not known. Some formats say so in a header and
-    /// some only by being read through, which is not worth doing to fill in a column.
     units::Time duration;
+};
 
-    /// The file's own name, without the extension, for a track nothing else is known about.
+/// One queue entry. Identity and location are assigned once and cannot be replaced by metadata.
+class Track {
+public:
+    /// Creates an unassigned entry; Playlist assigns its stable identity when queueing it.
     [[nodiscard]] static Track of(std::filesystem::path path);
+
+    [[nodiscard]] constexpr QueueEntryId id() const noexcept { return id_; }
+
+    [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
+
+    [[nodiscard]] const TrackMetadata& metadata() const noexcept { return metadata_; }
+
+    [[nodiscard]] const std::string& title() const noexcept { return metadata_.title; }
+
+    [[nodiscard]] const std::string& artist() const noexcept { return metadata_.artist; }
+
+    [[nodiscard]] const std::string& album() const noexcept { return metadata_.album; }
+
+    [[nodiscard]] constexpr units::Time duration() const noexcept { return metadata_.duration; }
+
+private:
+    QueueEntryId id_{};
+    std::filesystem::path path_;
+    TrackMetadata metadata_;
+
+    friend class Playlist;
 };
 
 } // namespace wiola::engine

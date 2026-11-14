@@ -60,13 +60,18 @@ TEST(TagReader, ReadsWithTheSuppliedCollaborator)
         return tags;
     }};
 
-    reader.start({"first.wav", "second.wav"});
+    reader.start({
+        {.id = wiola::engine::QueueEntryId{1}, .path = "first.wav" },
+        {.id = wiola::engine::QueueEntryId{2}, .path = "second.wav"}
+    });
 
     const std::vector<TagReader::Reading> readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 2U);
+    EXPECT_EQ(readings[0].id, wiola::engine::QueueEntryId{1});
     EXPECT_EQ(readings[0].path, std::filesystem::path{"first.wav"});
     EXPECT_EQ(readings[0].tags.artist, "first");
+    EXPECT_EQ(readings[1].id, wiola::engine::QueueEntryId{2});
     EXPECT_EQ(readings[1].path, std::filesystem::path{"second.wav"});
     EXPECT_EQ(readings[1].tags.artist, "second");
     EXPECT_TRUE(reader.take().empty());
@@ -82,7 +87,9 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
         return tags;
     }};
 
-    reader.start({"track.wav"});
+    reader.start({
+        {.id = wiola::engine::QueueEntryId{7}, .path = "track.wav"}
+    });
     reading.wait_until_entered();
 
     EXPECT_TRUE(reader.busy());

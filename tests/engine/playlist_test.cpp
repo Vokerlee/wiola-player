@@ -47,7 +47,8 @@ std::vector<Track> three()
 /// The file a track is, which is what a test says it stands at.
 const std::filesystem::path& path_of(const Playlist& playlist)
 {
-    return playlist.current().path;
+    static const std::filesystem::path none;
+    return playlist.current() != nullptr ? playlist.current()->path() : none;
 }
 
 } // namespace
@@ -249,9 +250,10 @@ TEST(Playlist, NamesATrackAfterItsFileUntilItIsToldOtherwise)
 
     playlist.add(Track::of(std::filesystem::path{"/music/first.wav"}));
 
-    EXPECT_EQ(playlist.current().title, "first") << "a name is not an extension";
-    EXPECT_TRUE(playlist.current().artist.empty());
-    EXPECT_EQ(playlist.current().duration, wiola::units::Time{});
+    ASSERT_NE(playlist.current(), nullptr);
+    EXPECT_EQ(playlist.current()->title(), "first") << "a name is not an extension";
+    EXPECT_TRUE(playlist.current()->artist().empty());
+    EXPECT_EQ(playlist.current()->duration(), wiola::units::Time{});
 }
 
 /// What is found out about a track later replaces what was assumed, and moves nothing.
@@ -261,21 +263,22 @@ TEST(Playlist, TakesWhatIsFoundOutAboutATrack)
     playlist.set(three());
 
     ASSERT_TRUE(playlist.go_to(1));
+    const wiola::engine::QueueEntryId selected{playlist.current()->id()};
 
-    Track told{Track::of(std::filesystem::path{"second.wav"})};
+    wiola::engine::TrackMetadata told;
     told.title = "Together Forever";
     told.artist = "Rick Astley";
     told.album = "Whenever You Need Somebody";
     told.duration = wiola::units::Time{std::chrono::seconds{205}};
 
-    EXPECT_TRUE(playlist.describe(1, std::move(told)));
+    EXPECT_TRUE(playlist.describe(selected, std::move(told)));
 
-    EXPECT_EQ(playlist.current().title, "Together Forever");
-    EXPECT_EQ(playlist.current().artist, "Rick Astley");
+    EXPECT_EQ(playlist.current()->title(), "Together Forever");
+    EXPECT_EQ(playlist.current()->artist(), "Rick Astley");
     EXPECT_EQ(playlist.position(), 1U) << "saying what a track is moved the list";
     EXPECT_EQ(playlist.tracks().size(), 3U);
 
-    EXPECT_FALSE(playlist.describe(3, Track{}));
+    EXPECT_FALSE(playlist.describe(wiola::engine::QueueEntryId{}, {}));
 }
 
 /// A window redrawing ten times a second needs to know that something changed without working
@@ -294,7 +297,7 @@ TEST(Playlist, CountsEveryChangeToWhatIsQueued)
     const std::size_t added{playlist.revision()};
     EXPECT_NE(added, filled);
 
-    ASSERT_TRUE(playlist.describe(0, Track::of(std::filesystem::path{"first.wav"})));
+    ASSERT_TRUE(playlist.describe(playlist.tracks().front().id(), {}));
     const std::size_t described{playlist.revision()};
     EXPECT_NE(described, added) << "what was found out about a track went unnoticed";
 
@@ -318,8 +321,8 @@ TEST(Playlist, TakesATrackOut)
     EXPECT_TRUE(playlist.remove(1));
 
     ASSERT_EQ(playlist.tracks().size(), 2U);
-    EXPECT_EQ(playlist.tracks().front().path, std::filesystem::path{"first.wav"});
-    EXPECT_EQ(playlist.tracks().back().path, std::filesystem::path{"third.wav"});
+    EXPECT_EQ(playlist.tracks().front().path(), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(playlist.tracks().back().path(), std::filesystem::path{"third.wav"});
 
     EXPECT_FALSE(playlist.remove(2));
 }
@@ -408,4 +411,42 @@ TEST(Playlist, StandsNowhereOnceCleared)
     EXPECT_TRUE(playlist.empty());
     EXPECT_FALSE(playlist.position().has_value());
     EXPECT_TRUE(path_of(playlist).empty());
+}
+
+TEST(Playlist, MakesNoSelectionExplicit)
+{
+    const Playlist playlist;
+
+    EXPECT_EQ(playlist.current(), nullptr);
+}
+
+TEST(Playlist, GivesDuplicatePathsIndependentIdentities)
+{
+    Playlist playlist;
+    playlist.set({Track::of("same.wav"), Track::of("same.wav")});
+    const wiola::engine::QueueEntryId removed{playlist.tracks()[0].id()};
+    const wiola::engine::QueueEntryId kept{playlist.tracks()[1].id()};
+
+    EXPECT_NE(removed, kept);
+    ASSERT_TRUE(playlist.remove(0));
+
+    wiola::engine::TrackMetadata metadata;
+    metadata.title = "Only the remaining entry";
+    EXPECT_FALSE(playlist.describe(removed, metadata));
+    ASSERT_TRUE(playlist.describe(kept, metadata));
+    EXPECT_EQ(playlist.tracks().front().title(), "Only the remaining entry");
+    EXPECT_EQ(playlist.tracks().front().path(), std::filesystem::path{"same.wav"});
+}
+
+TEST(Playlist, DoesNotReuseIdentitiesAfterClear)
+{
+    Playlist playlist;
+    playlist.add(Track::of("before.wav"));
+    const wiola::engine::QueueEntryId before{playlist.tracks().front().id()};
+
+    playlist.clear();
+    playlist.add(Track::of("after.wav"));
+
+    EXPECT_NE(playlist.tracks().front().id(), before);
+    EXPECT_FALSE(playlist.describe(before, {}));
 }

@@ -85,13 +85,12 @@ codec::OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 
     playlist_.set(std::move(queued));
 
-    // The paths are still whole here: asking after handing them over would ask about nothing.
-    begin_reading_tags(std::move(tracks));
+    begin_reading_tags(playlist_.tracks());
 
     if (playlist_.empty())
         return last_result_;
 
-    return begin_reading(playlist_.current().path, Waiting::install);
+    return begin_reading(playlist_.current()->path(), Waiting::install);
 }
 
 bool Session::next_track()
@@ -121,16 +120,16 @@ bool Session::previous_track()
 void Session::add(std::vector<std::filesystem::path> tracks)
 {
     const bool was_empty{playlist_.empty()};
+    const std::size_t first_new{playlist_.tracks().size()};
 
     for (const std::filesystem::path& track : tracks)
         playlist_.add(Track::of(track));
 
-    // The paths are still whole here: asking after handing them over would ask about nothing.
-    begin_reading_tags(std::move(tracks));
+    begin_reading_tags(std::span<const Track>{playlist_.tracks()}.subspan(first_new));
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
-        static_cast<void>(begin_reading(playlist_.current().path, Waiting::install));
+        static_cast<void>(begin_reading(playlist_.current()->path(), Waiting::install));
 }
 
 bool Session::remove(std::size_t index)
@@ -205,7 +204,7 @@ codec::OpenResult Session::begin_reading(const std::filesystem::path& path, Wait
 
 codec::OpenResult Session::read_current_track(bool playing)
 {
-    return begin_reading(playlist_.current().path, playing ? Waiting::play : Waiting::install);
+    return begin_reading(playlist_.current()->path(), playing ? Waiting::play : Waiting::install);
 }
 
 void Session::catch_up()
@@ -215,32 +214,28 @@ void Session::catch_up()
     advance_if_ended();
 }
 
-void Session::begin_reading_tags(std::vector<std::filesystem::path> paths)
+void Session::begin_reading_tags(std::span<const Track> tracks)
 {
-    tags_->start(std::move(paths));
+    std::vector<TagReader::Request> requests;
+    requests.reserve(tracks.size());
+
+    for (const Track& track : tracks)
+        requests.push_back(TagReader::Request{.id = track.id(), .path = track.path()});
+
+    tags_->start(std::move(requests));
 }
 
 void Session::take_up_finished_tags()
 {
     for (const TagReader::Reading& reading : tags_->take()) {
-        const std::vector<Track>& queued{playlist_.tracks()};
+        TrackMetadata metadata{
+            .title = reading.tags.title.empty() ? reading.path.stem().string() : reading.tags.title,
+            .artist = reading.tags.artist,
+            .album = reading.tags.album,
+            .duration = reading.tags.duration,
+        };
 
-        // A file may be queued more than once, and what it says is true of every row it is in.
-        for (std::size_t index = 0; index < queued.size(); ++index) {
-            if (queued[index].path != reading.path)
-                continue;
-
-            Track told{queued[index]};
-
-            if (!reading.tags.title.empty())
-                told.title = reading.tags.title;
-
-            told.artist = reading.tags.artist;
-            told.album = reading.tags.album;
-            told.duration = reading.tags.duration;
-
-            static_cast<void>(playlist_.describe(index, std::move(told)));
-        }
+        static_cast<void>(playlist_.describe(reading.id, std::move(metadata)));
     }
 }
 

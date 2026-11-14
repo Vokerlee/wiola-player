@@ -104,7 +104,7 @@ void PlaylistControl::save()
     // The file is what is kept: what is known about a track is found out again, and may have
     // changed since.
     for (const engine::Track& track : session_.playlist().tracks())
-        names.append(QString::fromStdString(track.path.string()));
+        names.append(QString::fromStdString(track.path().string()));
 
     settings_.setValue(tracks_key, names);
     settings_.setValue(standing_key, static_cast<int>(session_.playlist().position().value_or(0)));
