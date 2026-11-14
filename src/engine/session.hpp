@@ -29,7 +29,7 @@
 #include <engine/buffering_config.hpp>
 #include <engine/load/load_coordinator.hpp>
 #include <engine/load/loader.hpp>
-#include <engine/load/tag_reader.hpp>
+#include <engine/load/metadata_coordinator.hpp>
 #include <engine/output_session.hpp>
 #include <engine/playback_pipeline.hpp>
 #include <engine/queue/playlist.hpp>
@@ -154,9 +154,6 @@ private:
     /// Puts on whatever has finished being read, and plays it if that is what it was read for.
     void take_up_finished_read();
 
-    /// Starts reading the selected entries' tags with their stable queue identities.
-    void begin_reading_tags(std::span<const Track> tracks);
-
     /// Puts what has been read about queued tracks into the queue.
     void take_up_finished_tags();
 
@@ -181,7 +178,7 @@ private:
     audio::Volume volume_;
     audio::ProcessingChain chain_;
     std::unique_ptr<Loader> loader_;
-    std::unique_ptr<TagReader> tags_;
+    MetadataCoordinator metadata_;
     Playlist playlist_;
 
     LoadCoordinator loads_;

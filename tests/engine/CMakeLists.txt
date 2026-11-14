@@ -10,6 +10,11 @@ wiola_add_test(
     SOURCES tag_reader_test.cpp
     LIBS wiola_engine
 )
+wiola_add_test(
+    engine_metadata_coordinator_test
+    SOURCES metadata_coordinator_test.cpp
+    LIBS wiola_engine
+)
 wiola_add_test(engine_playback_test SOURCES playback_test.cpp LIBS wiola_engine)
 wiola_add_test(engine_playhead_test SOURCES playhead_test.cpp LIBS wiola_engine)
 wiola_add_test(

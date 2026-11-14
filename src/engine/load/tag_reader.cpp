@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Reads what queued files say about themselves, off the thread that queued them.
+ * @brief Bounded, generation-aware background tag reading.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -20,6 +20,9 @@
 
 #include "tag_reader.hpp"
 
+#include <algorithm>
+#include <new>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::engine {
@@ -29,9 +32,13 @@ TagReader::TagReader()
 {
 }
 
-TagReader::TagReader(MetadataReader read)
+TagReader::TagReader(MetadataReader read, std::size_t max_pending, std::size_t max_completed)
     : reader_{std::move(read)}
+    , max_pending_{max_pending}
+    , max_completed_{max_completed}
 {
+    if (max_pending_ == 0 || max_completed_ == 0)
+        throw std::invalid_argument{"metadata capacities must be positive"};
 }
 
 TagReader::~TagReader()
@@ -39,6 +46,7 @@ TagReader::~TagReader()
     if (thread_.joinable()) {
         thread_.request_stop();
         waiting_.notify_all();
+        collected_.notify_all();
         thread_.join();
     }
 }
@@ -50,6 +58,10 @@ void TagReader::start(std::vector<Request> requests)
 
     {
         const std::lock_guard asked{mutex_};
+
+        if (requests.size() > max_pending_ - std::min(asked_.size(), max_pending_))
+            throw std::length_error{"metadata pending capacity exceeded"};
+
         for (Request& request : requests)
             asked_.push_back(std::move(request));
     }
@@ -60,10 +72,29 @@ void TagReader::start(std::vector<Request> requests)
     waiting_.notify_one();
 }
 
+void TagReader::cancel_before(std::uint64_t generation)
+{
+    {
+        const std::lock_guard asked{mutex_};
+        latest_generation_ = std::max(latest_generation_, generation);
+        std::erase_if(asked_,
+            [generation](const Request& request) { return request.generation < generation; });
+        std::erase_if(read_,
+            [generation](const Reading& reading) { return reading.generation < generation; });
+    }
+
+    collected_.notify_all();
+}
+
 std::vector<TagReader::Reading> TagReader::take()
 {
-    const std::lock_guard asked{mutex_};
-    return std::exchange(read_, {});
+    std::vector<Reading> readings;
+    {
+        const std::lock_guard asked{mutex_};
+        readings = std::exchange(read_, {});
+    }
+    collected_.notify_one();
+    return readings;
 }
 
 bool TagReader::busy() const noexcept
@@ -89,14 +120,35 @@ void TagReader::work(const std::stop_token& stop)
             reading_ = true;
         }
 
-        codec::Tags tags{reader_(request.path)};
+        codec::Tags tags;
+        bool failed{false};
+
+        try {
+            tags = reader_(request.path);
+        } catch (const std::bad_alloc&) {
+            // Allocation failure is fatal: no reliable error object or queue storage can be made.
+            throw;
+        } catch (...) {
+            failed = true;
+        }
 
         {
-            const std::lock_guard asked{mutex_};
+            std::unique_lock asked{mutex_};
             reading_ = false;
-            read_.push_back(
-                Reading{.id = request.id, .path = std::move(request.path), .tags = std::move(tags)}
-            );
+
+            if (request.generation < latest_generation_)
+                continue;
+
+            collected_.wait(asked, stop, [this] { return read_.size() < max_completed_; });
+
+            if (stop.stop_requested())
+                return;
+
+            read_.push_back(Reading{.generation = request.generation,
+                .id = request.id,
+                .path = std::move(request.path),
+                .tags = std::move(tags),
+                .failed = failed});
         }
     }
 }

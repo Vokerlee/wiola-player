@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -110,4 +111,23 @@ TEST(TagReader, IgnoresAnEmptyBatch)
 
     EXPECT_FALSE(reader.busy());
     EXPECT_TRUE(reader.take().empty());
+}
+
+TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
+{
+    TagReader reader{[](const std::filesystem::path& path) -> Tags {
+        if (path == "broken.wav")
+            throw std::runtime_error{"broken metadata"};
+        return Tags{};
+    }};
+
+    reader.start({
+        {.id = wiola::engine::QueueEntryId{1}, .path = "broken.wav" },
+        {.id = wiola::engine::QueueEntryId{2}, .path = "working.wav"}
+    });
+
+    const auto readings{wait_for(reader)};
+    ASSERT_EQ(readings.size(), 2U);
+    EXPECT_TRUE(readings[0].failed);
+    EXPECT_FALSE(readings[1].failed);
 }
