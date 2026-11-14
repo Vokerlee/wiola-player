@@ -29,8 +29,8 @@ PlaybackEpoch::PlaybackEpoch(std::size_t num_channels) noexcept
 
 void PlaybackEpoch::begin(pcm::Frames source_start, pcm::Frames output_baseline) noexcept
 {
-    source_start_.store(source_start.count(), std::memory_order_relaxed);
-    output_baseline_.store(output_baseline.count(), std::memory_order_relaxed);
+    source_start_ = source_start.count();
+    output_baseline_ = output_baseline.count();
     submitted_ = pcm::Frames{};
     partial_samples_ = 0;
 }
@@ -59,12 +59,12 @@ bool PlaybackEpoch::drained(pcm::Frames frames_played) const noexcept
 
 pcm::Frames PlaybackEpoch::position(pcm::Frames frames_played) const noexcept
 {
-    return pcm::Frames{source_start_.load(std::memory_order_acquire)} + consumed(frames_played);
+    return pcm::Frames{source_start_} + consumed(frames_played);
 }
 
 pcm::Frames PlaybackEpoch::consumed(pcm::Frames frames_played) const noexcept
 {
-    const pcm::Frames baseline{output_baseline_.load(std::memory_order_acquire)};
+    const pcm::Frames baseline{output_baseline_};
 
     return frames_played > baseline ? frames_played - baseline : pcm::Frames{};
 }

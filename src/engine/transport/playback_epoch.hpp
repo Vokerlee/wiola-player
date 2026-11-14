@@ -22,7 +22,6 @@
 
 #include <pcm/stream_spec.hpp>
 
-#include <atomic>
 #include <cstddef>
 
 namespace wiola::engine {
@@ -60,8 +59,8 @@ private:
     [[nodiscard]] pcm::Frames consumed(pcm::Frames frames_played) const noexcept;
 
     std::size_t num_channels_;
-    std::atomic<std::size_t> source_start_{0};
-    std::atomic<std::size_t> output_baseline_{0};
+    std::size_t source_start_{0};
+    std::size_t output_baseline_{0};
     pcm::Frames submitted_{};
     std::size_t partial_samples_{0};
 };

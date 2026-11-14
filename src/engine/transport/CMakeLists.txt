@@ -7,5 +7,6 @@ wiola_add_library(
         playback_epoch.cpp
         player.cpp
         playhead.cpp
+        seek_mailbox.cpp
     LIBS wiola_audio_device wiola_codec_decode
 )

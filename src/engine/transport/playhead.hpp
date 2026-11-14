@@ -20,12 +20,11 @@
 
 #pragma once
 
-#include "playback_epoch.hpp"
+#include "seek_mailbox.hpp"
 
 #include <core/handle.hpp>
 #include <core/macros.hpp>
 
-#include <atomic>
 #include <cstddef>
 
 namespace wiola::engine {
@@ -41,19 +40,14 @@ public:
     explicit Playhead(std::size_t num_channels = 2) noexcept;
 
     /// A seek to carry out, read as one so that a request arriving after it stays outstanding.
-    struct Claim {
-        std::size_t requested{0};
-        pcm::Frames target{};
-        bool outstanding{false};
-    };
+    using Claim = SeekMailbox::Claim;
 
     /**
      * The end that carries seeks out and counts what has been handed to the output: the
      * decoding thread's.
      *
-     * Kept apart from the rest because what it touches is not all atomic - two threads counting
-     * pushes race on a plain number - while asking and reading are safe for anyone, and the
-     * thread that draws a seek bar needs both.
+     * Seek requests and position reads are serialized by the mailbox. Submission remains
+     * worker-only, which is why there is one applier and two threads cannot count pushes.
      *
      * Moving it hands that work to another thread. What is moved from, and any applier taken
      * after the first, does nothing: it claims no seek and counts no push.
@@ -93,14 +87,14 @@ public:
     /// every one taken after is inert.
     [[nodiscard]] Applier applier() noexcept;
 
-    /// Asks for playback to move to `frame_index`. Any thread: this only says where to go.
+    /// Asks for playback to move to `frame_index`. Any thread: writers are serialized.
     void request_seek(pcm::Frames frame_index) noexcept;
 
     /// Whether a seek has been asked for and not yet carried out. Any thread.
     [[nodiscard]] bool seek_outstanding() const noexcept;
 
-    /// Where playback is, given what the output says it has played. Any thread, and read as one
-    /// so that a reader never pairs a place with a count from before playback began there.
+    /// Where playback is, given what the output says it has played. Any thread, with the request
+    /// target, acknowledgement, and completed epoch read coherently.
     [[nodiscard]] pcm::Frames position(pcm::Frames frames_played) const noexcept;
 
 private:
@@ -114,11 +108,7 @@ private:
     [[nodiscard]] bool drained(pcm::Frames frames_played) const noexcept;
 
     core::Claimable applier_taken_;
-
-    std::atomic<std::size_t> seeks_requested_{0};
-    std::atomic<std::size_t> seeks_applied_{0};
-    std::atomic<std::size_t> seek_target_{0};
-    PlaybackEpoch epoch_;
+    SeekMailbox seeks_;
 };
 
 inline bool Playhead::Applier::seek_outstanding() const noexcept
