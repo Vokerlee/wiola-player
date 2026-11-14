@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Turns a path into a decoder, off the thread that asked for it.
+ * @brief Opens identified load requests on a worker.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -22,6 +22,7 @@
 
 #include <codec/decode/open.hpp>
 #include <core/macros.hpp>
+#include <engine/load/load_request.hpp>
 
 #include <condition_variable>
 #include <cstddef>
@@ -33,58 +34,34 @@
 
 namespace wiola::engine {
 
-/// Opens one path, supplied by the composition root or a test.
 using DecoderOpener = std::function<codec::Opened(const std::filesystem::path&)>;
 
-/**
- * Opens files on a thread of its own.
- *
- * Opening one is not the quick thing it looks like: a stream that does not say how long it is
- * has to be read through to find out, which for a large track is seconds. A listener's thread
- * cannot wait for that and still draw, so it asks here and comes back for the answer.
- *
- * Asking and collecting are for the one thread that does them - the reading happens elsewhere,
- * and nothing of the file crosses back until it is whole.
- */
+/// Latest-request-wins decoder opening with request identity retained in every completion.
 class Loader {
 public:
     Loader();
-
-    /// Opens with `open` instead of the concrete codec function.
     explicit Loader(DecoderOpener open);
 
     NO_COPY_SEMANTIC(Loader);
     NO_MOVE_SEMANTIC(Loader);
 
-    /// Waits for a file being opened, since what reads it would outlive what it reads into.
     ~Loader();
 
-    /// Begins opening `path`. One already being opened is left to finish and its answer dropped:
-    /// a listener who picks another file has said which one they meant.
-    void start(const std::filesystem::path& path);
-
-    /// Whether a file is being opened, or is waiting to be.
+    /// Replaces any queued request; an in-progress third-party open finishes physically.
+    void start(LoadRequest request);
     [[nodiscard]] bool busy() const noexcept;
-
-    /// The finished load, once. Nothing while one is still being opened, and nothing twice.
-    [[nodiscard]] std::optional<codec::Opened> take();
+    [[nodiscard]] std::optional<LoadCompletion> take();
 
 private:
     void work(const std::stop_token& stop);
 
     DecoderOpener open_;
-
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
-
-    std::optional<std::filesystem::path> asked_;
-    std::optional<codec::Opened> done_;
-
-    /// How many loads have been asked for. An answer is kept only if nothing was asked for after
-    /// the question it answers.
+    std::optional<LoadRequest> asked_;
+    std::optional<LoadCompletion> done_;
     std::size_t num_asked_{0};
     bool opening_{false};
-
     std::jthread thread_;
 };
 

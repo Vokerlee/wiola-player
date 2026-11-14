@@ -27,6 +27,7 @@
 #include <codec/decode/open.hpp>
 #include <core/macros.hpp>
 #include <engine/buffering_config.hpp>
+#include <engine/load/load_coordinator.hpp>
 #include <engine/load/loader.hpp>
 #include <engine/load/tag_reader.hpp>
 #include <engine/output_session.hpp>
@@ -147,17 +148,8 @@ public:
     [[nodiscard]] audio::Equalizer& equalizer() noexcept { return equalizer_; }
 
 private:
-    /// What a finished read is for.
-    enum class Waiting {
-        /// Put it on, and leave it as a track ready to be played.
-        install,
-
-        /// Put it on and play it: what a track ending, or a listener skipping, asks for.
-        play,
-    };
-
-    /// Starts reading `path`, and says what is to be done with it once it has been read.
-    codec::OpenResult begin_reading(const std::filesystem::path& path, Waiting waiting);
+    /// Starts an identified load with the requested transport intent.
+    codec::OpenResult begin_reading(const Track& track, LoadIntent intent);
 
     /// Puts on whatever has finished being read, and plays it if that is what it was read for.
     void take_up_finished_read();
@@ -192,12 +184,8 @@ private:
     std::unique_ptr<TagReader> tags_;
     Playlist playlist_;
 
-    /// What is being read, and what was read: the second becomes the first once a file has
-    /// opened and taken the place of whatever was playing.
-    std::filesystem::path opening_;
+    LoadCoordinator loads_;
     std::filesystem::path track_;
-
-    Waiting waiting_{Waiting::install};
 
     /// A track that has been read and not yet put on, with the name it goes by.
     std::unique_ptr<codec::Decoder> ready_;

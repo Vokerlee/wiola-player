@@ -26,16 +26,22 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
 #include <thread>
+#include <utility>
 
 namespace {
 
 using wiola::codec::Opened;
 using wiola::codec::OpenResult;
+using wiola::engine::LoadCompletion;
 using wiola::engine::Loader;
+using wiola::engine::LoadIntent;
+using wiola::engine::LoadRequest;
+using wiola::engine::QueueEntryId;
 using wiola::pcm::Frames;
 using wiola::testing::FakeDecoder;
 using wiola::testing::Gate;
@@ -46,8 +52,15 @@ Opened success(std::size_t num_frames = 64)
         .result = OpenResult::opened};
 }
 
-/// Waits for whatever was asked for, the way a caller that draws comes back for it.
-std::optional<Opened> wait_for(Loader& loader)
+LoadRequest request(std::filesystem::path path, std::uint64_t generation = 1)
+{
+    return LoadRequest{.generation = generation,
+        .entry = QueueEntryId{generation},
+        .path = std::move(path),
+        .intent = LoadIntent::install};
+}
+
+std::optional<LoadCompletion> wait_for(Loader& loader)
 {
     while (loader.busy())
         std::this_thread::yield();
@@ -69,14 +82,16 @@ TEST(Loader, OpensAFileAndHandsItOver)
 {
     Loader loader{[](const std::filesystem::path&) { return success(); }};
 
-    loader.start("track.wav");
+    loader.start(request("track.wav", 7));
 
-    const std::optional<Opened> opened{wait_for(loader)};
+    const std::optional<LoadCompletion> completed{wait_for(loader)};
 
-    ASSERT_TRUE(opened.has_value());
-    EXPECT_EQ(opened->result, OpenResult::opened);
-    ASSERT_NE(opened->decoder, nullptr);
-    EXPECT_EQ(opened->decoder->num_frames(), Frames{64});
+    ASSERT_TRUE(completed.has_value());
+    EXPECT_EQ(completed->request.generation, 7U);
+    EXPECT_EQ(completed->request.entry, QueueEntryId{7});
+    EXPECT_EQ(completed->opened.result, OpenResult::opened);
+    ASSERT_NE(completed->opened.decoder, nullptr);
+    EXPECT_EQ(completed->opened.decoder->num_frames(), Frames{64});
 }
 
 TEST(Loader, SaysWhyAFileWouldNotOpen)
@@ -85,22 +100,20 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
         return Opened{.decoder = nullptr, .result = OpenResult::unreadable};
     }};
 
-    loader.start("missing.wav");
+    loader.start(request("missing.wav"));
 
-    const std::optional<Opened> opened{wait_for(loader)};
+    const std::optional<LoadCompletion> completed{wait_for(loader)};
 
-    ASSERT_TRUE(opened.has_value());
-    EXPECT_EQ(opened->result, OpenResult::unreadable);
-    EXPECT_EQ(opened->decoder, nullptr);
+    ASSERT_TRUE(completed.has_value());
+    EXPECT_EQ(completed->opened.result, OpenResult::unreadable);
+    EXPECT_EQ(completed->opened.decoder, nullptr);
 }
 
-/// The answer is handed over once: a caller that comes back again gets nothing, rather than the
-/// same track twice.
 TEST(Loader, HandsTheAnswerOverOnlyOnce)
 {
     Loader loader{[](const std::filesystem::path&) { return success(); }};
 
-    loader.start("track.wav");
+    loader.start(request("track.wav"));
 
     ASSERT_TRUE(wait_for(loader).has_value());
     EXPECT_FALSE(loader.take().has_value());
@@ -114,7 +127,7 @@ TEST(Loader, HoldsALoadUntilItsOpenerReturns)
         return success();
     }};
 
-    loader.start("track.wav");
+    loader.start(request("track.wav"));
     opening.wait_until_entered();
 
     EXPECT_TRUE(loader.busy());
@@ -125,8 +138,6 @@ TEST(Loader, HoldsALoadUntilItsOpenerReturns)
     EXPECT_TRUE(wait_for(loader).has_value());
 }
 
-/// A listener who picks another file has said which one they meant, so the first answer is
-/// dropped rather than played.
 TEST(Loader, KeepsOnlyTheFileAskedForLast)
 {
     Gate first_open;
@@ -140,17 +151,18 @@ TEST(Loader, KeepsOnlyTheFileAskedForLast)
         return success(20);
     }};
 
-    loader.start(first);
+    loader.start(request(first, 1));
     first_open.wait_until_entered();
-    loader.start("last.wav");
+    loader.start(request("last.wav", 2));
     first_open.release();
 
-    const std::optional<Opened> opened{wait_for(loader)};
+    const std::optional<LoadCompletion> completed{wait_for(loader)};
 
-    ASSERT_TRUE(opened.has_value());
-    EXPECT_EQ(opened->result, OpenResult::opened);
-    ASSERT_NE(opened->decoder, nullptr);
-    EXPECT_EQ(opened->decoder->num_frames(), Frames{20});
+    ASSERT_TRUE(completed.has_value());
+    EXPECT_EQ(completed->request.generation, 2U);
+    EXPECT_EQ(completed->opened.result, OpenResult::opened);
+    ASSERT_NE(completed->opened.decoder, nullptr);
+    EXPECT_EQ(completed->opened.decoder->num_frames(), Frames{20});
     EXPECT_FALSE(loader.take().has_value());
 }
 
@@ -158,16 +170,14 @@ TEST(Loader, TakesAnotherFileAfterOneIsDone)
 {
     Loader loader{[](const std::filesystem::path&) { return success(); }};
 
-    loader.start("first.wav");
+    loader.start(request("first.wav", 1));
     ASSERT_TRUE(wait_for(loader).has_value());
 
-    loader.start("again.wav");
+    loader.start(request("again.wav", 2));
 
     EXPECT_TRUE(wait_for(loader).has_value());
 }
 
-/// Nothing of a file crosses back until it is whole, so a loader thrown away mid-read is not a
-/// decoder half-built.
 TEST(Loader, CanBeThrownAwayWhileItIsReading)
 {
     Gate opening;
@@ -181,6 +191,6 @@ TEST(Loader, CanBeThrownAwayWhileItIsReading)
         return success();
     }};
 
-    loader.start("track.wav");
+    loader.start(request("track.wav"));
     opening.wait_until_entered();
 }
