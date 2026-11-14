@@ -20,8 +20,6 @@
 
 #include "seek_bar.hpp"
 
-#include "tuning.hpp"
-
 #include <QMouseEvent>
 #include <QPainter>
 
@@ -29,10 +27,17 @@
 
 namespace wiola::gui {
 
+namespace {
+
+constexpr int bar_height{12};
+constexpr int edge_width{2};
+
+} // namespace
+
 SeekBar::SeekBar(QWidget* parent)
     : QWidget{parent}
 {
-    setFixedHeight(tuning::seek_bar_height);
+    setFixedHeight(bar_height);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setCursor(Qt::PointingHandCursor);
 }
@@ -71,8 +76,8 @@ void SeekBar::paintEvent(QPaintEvent* /*event*/)
     // The edge of the filled part is the position, and is what a drag takes hold of, so it is
     // drawn rather than left as wherever two colors happen to meet.
     if (isEnabled()) {
-        painter.fillRect(QRect{track.left() + played - tuning::seek_bar_edge_width / 2, track.top(),
-                             tuning::seek_bar_edge_width, track.height()},
+        painter.fillRect(QRect{track.left() + played - edge_width / 2, track.top(), edge_width,
+                             track.height()},
             colors.color(QPalette::WindowText));
     }
 }

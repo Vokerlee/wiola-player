@@ -21,7 +21,7 @@
 #include "main_window.hpp"
 
 #include "clock.hpp"
-#include "tuning.hpp"
+#include "player_view_metrics.hpp"
 
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
@@ -37,6 +37,8 @@
 namespace wiola::gui {
 
 namespace {
+
+constexpr PlayerViewMetrics metrics;
 
 /// What to say about a file that would not open.
 QString as_status(codec::OpenResult result)
@@ -66,7 +68,7 @@ MainWindow::MainWindow()
     , equalizer_{session_.equalizer(), settings_}
 {
     setWindowTitle("Wiola Player");
-    setMinimumWidth(tuning::window_width);
+    setMinimumWidth(metrics.window_width);
 
     // Every widget is given this window as its parent, so Qt owns them and destroys them with it.
     open_button_ = new QPushButton{this};
@@ -87,7 +89,7 @@ MainWindow::MainWindow()
 
     show_play_button(false);
 
-    play_button_->setFixedWidth(tuning::play_button_width);
+    play_button_->setFixedWidth(metrics.play_button_width);
     repeat_button_ = new QPushButton{"Repeat: off", this};
     shuffle_button_ = new QPushButton{"Shuffle", this};
     add_button_ = new QPushButton{"Add", this};
@@ -113,20 +115,20 @@ MainWindow::MainWindow()
 
     boost_button_->setCheckable(true);
     boost_button_->setChecked(volume_.boosted());
-    boost_button_->setFixedWidth(tuning::boost_button_width);
+    boost_button_->setFixedWidth(metrics.boost_button_width);
     boost_button_->setToolTip("Past full volume");
 
-    volume_value_->setFixedWidth(tuning::volume_value_width);
+    volume_value_->setFixedWidth(metrics.volume_value_width);
 
     volume_slider_->setRange(0, volume_.max_position());
     volume_slider_->setValue(position);
 
     show_volume();
-    volume_slider_->setFixedWidth(tuning::volume_slider_width);
+    volume_slider_->setFixedWidth(metrics.volume_slider_width);
     volume_slider_->setToolTip("Volume");
 
     QFont title{track_label_->font()};
-    title.setPointSize(title.pointSize() + tuning::track_name_point_size_step);
+    title.setPointSize(title.pointSize() + metrics.track_name_point_size_step);
     title.setBold(true);
     track_label_->setFont(title);
 
@@ -201,7 +203,7 @@ MainWindow::MainWindow()
     connect(position_bar_, &SeekBar::dragged, this, &MainWindow::refresh);
 
     connect(refresh_timer_, &QTimer::timeout, this, &MainWindow::refresh);
-    refresh_timer_->start(tuning::engine_poll_interval);
+    refresh_timer_->start(metrics.refresh_interval);
 
     if (const std::size_t gone{playlist_.restore()}; gone != 0)
         show_status(QString{"%1 queued track(s) are no longer where they were"}.arg(gone));
@@ -338,7 +340,7 @@ void MainWindow::show_button(QPushButton& button, QStyle::StandardPixmap icon, c
     // reader is left with.
     button.setAccessibleName(says);
 
-    button.setFixedWidth(tuning::icon_button_width);
+    button.setFixedWidth(metrics.icon_button_width);
 }
 
 void MainWindow::show_play_button(bool pausing)

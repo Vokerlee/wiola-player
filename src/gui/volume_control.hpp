@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "volume_scale.hpp"
+
 #include <audio/dsp/volume.hpp>
 
 #include <QSettings>
@@ -55,6 +57,7 @@ private:
 
     audio::Volume& volume_;
     QSettings& settings_;
+    VolumeScale scale_;
     int position_;
     bool boosted_{false};
 };
