@@ -265,7 +265,15 @@ TEST(SPSCRingBuffer, LeavesAReadRegionAlreadyHandedOutAlone)
     EXPECT_EQ(region.first[0], 1);
     consumer.commit_read(2);
 
-    EXPECT_EQ(consumer.acquire_read().size(), 0u);
+    const auto discarded = consumer.acquire_read();
+    EXPECT_EQ(discarded.size(), 0u);
+    consumer.commit_read(0);
+
+    // The delayed discard cannot replay the consumed prefix or move the read index backwards.
+    ASSERT_EQ(producer.push(std::array{5, 6}), 2u);
+    std::array<int, 2> next{};
+    EXPECT_EQ(consumer.pop(next), 2u);
+    EXPECT_EQ(next, (std::array{5, 6}));
 }
 
 TEST(SPSCRingBuffer, TakesAndGivesBackOneValue)
@@ -480,6 +488,44 @@ TEST(SPSCRingBuffer, OffersNothingToAWriterOfAFullBuffer)
     EXPECT_TRUE(region.second.empty());
 }
 
+#ifndef NDEBUG
+TEST(SPSCRingBufferDeathTest, RejectsAWriteCommitWithoutAReservation)
+{
+    wiola::lockfree::SPSCRingBuffer<float> buffer{4};
+    auto producer{buffer.producer()};
+
+    EXPECT_DEATH(producer.commit_write(0), "");
+}
+
+TEST(SPSCRingBufferDeathTest, RejectsAWriteCommitPastItsReservation)
+{
+    wiola::lockfree::SPSCRingBuffer<float> buffer{4};
+    auto producer{buffer.producer()};
+    const auto region = producer.acquire_write();
+
+    EXPECT_DEATH(producer.commit_write(region.size() + 1), "");
+}
+
+TEST(SPSCRingBufferDeathTest, RejectsAReadCommitWithoutAReservation)
+{
+    wiola::lockfree::SPSCRingBuffer<float> buffer{4};
+    auto consumer{buffer.consumer()};
+
+    EXPECT_DEATH(consumer.commit_read(0), "");
+}
+
+TEST(SPSCRingBufferDeathTest, RejectsAReadCommitPastItsReservation)
+{
+    wiola::lockfree::SPSCRingBuffer<float> buffer{4};
+    auto producer{buffer.producer()};
+    auto consumer{buffer.consumer()};
+    ASSERT_EQ(producer.push(std::array{1.0F, 2.0F}), 2U);
+    const auto region = consumer.acquire_read();
+
+    EXPECT_DEATH(consumer.commit_read(region.size() + 1), "");
+}
+#endif
+
 /// What the buffer is for: one thread writing while another reads, with every element arriving
 /// once and in the order it was written.
 TEST(SPSCRingBuffer, CarriesEveryElementBetweenTwoThreads)
@@ -527,6 +573,7 @@ TEST(SPSCRingBuffer, CarriesEveryElementBetweenTwoThreadsInRegions)
             const auto region = producer.acquire_write();
 
             if (region.size() == 0) {
+                producer.commit_write(0);
                 std::this_thread::yield();
                 continue;
             }
@@ -551,6 +598,7 @@ TEST(SPSCRingBuffer, CarriesEveryElementBetweenTwoThreadsInRegions)
         const auto region = consumer.acquire_read();
 
         if (region.size() == 0) {
+            consumer.commit_read(0);
             ASSERT_LT(std::chrono::steady_clock::now(), deadline) << "stalled at " << expected;
             std::this_thread::yield();
             continue;

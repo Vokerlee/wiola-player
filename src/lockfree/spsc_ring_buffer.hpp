@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <atomic>
 #include <bit>
+#include <cassert>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -43,10 +44,19 @@ concept RingElement = std::is_trivially_copyable_v<T> && std::is_trivially_destr
 /**
  * Bounded ring buffer for exactly one producer thread and one consumer thread.
  *
+ * Claim endpoints on the setup thread before starting either worker. The buffer outlives both
+ * endpoints, and moving an endpoint transfers it to its worker. There is one active endpoint of
+ * each kind; a second claim is inert, and claiming is not itself thread-safe.
+ *
  * Every operation is wait-free: no locks, no allocation, no unbounded retry loop, so the
  * consumer side is safe to call from an audio callback. Capacity is rounded up to a power
  * of two. Indices are free-running and only masked on access, which keeps "full" and
  * "empty" distinguishable without wasting a slot.
+ *
+ * An acquired region stays valid until its matching commit. Do not acquire another region on the
+ * same endpoint or use its copying operation before that commit. A commit accepts at most the
+ * acquired element count; violations fail a debug check. Discard is acknowledged by the consumer
+ * when it next acquires or pops, and an already acquired read region is not revoked.
  */
 template<RingElement T>
 class SPSCRingBuffer {
@@ -174,11 +184,15 @@ private:
     // producer and consumer never invalidate each other's line on their own bookkeeping.
     alignas(core::hardware_destructive_interference_size) std::atomic<std::size_t> write_{0};
     std::size_t producer_read_cache_{0};
+    std::size_t write_reserved_{0};
+    bool write_outstanding_{false};
     std::atomic<std::size_t> discard_to_{0};
 
     alignas(core::hardware_destructive_interference_size) std::atomic<std::size_t> read_{0};
     std::size_t consumer_write_cache_{0};
     std::size_t applied_discard_{0};
+    std::size_t read_reserved_{0};
+    bool read_outstanding_{false};
 };
 
 template<RingElement T>
@@ -292,6 +306,7 @@ std::size_t SPSCRingBuffer<T>::capacity() const noexcept
 template<RingElement T>
 std::size_t SPSCRingBuffer<T>::push(std::span<const T> src) noexcept
 {
+    assert(!write_outstanding_);
     const std::size_t w = write_.load(std::memory_order_relaxed);
     std::size_t num_free_slots = capacity() - (w - producer_read_cache_);
 
@@ -309,6 +324,7 @@ std::size_t SPSCRingBuffer<T>::push(std::span<const T> src) noexcept
 template<RingElement T>
 std::size_t SPSCRingBuffer<T>::pop(std::span<T> dst) noexcept
 {
+    assert(!read_outstanding_);
     const std::size_t r = apply_discard();
     std::size_t ready = consumer_write_cache_ - r;
 
@@ -344,45 +360,59 @@ std::optional<T> SPSCRingBuffer<T>::try_pop() noexcept
 template<RingElement T>
 auto SPSCRingBuffer<T>::acquire_write() noexcept -> WriteRegion
 {
+    assert(!write_outstanding_);
     const std::size_t w = write_.load(std::memory_order_relaxed);
     producer_read_cache_ = read_.load(std::memory_order_acquire);
 
     const std::size_t num_free_slots = capacity() - (w - producer_read_cache_);
     const std::size_t offset = w & mask_;
     const std::size_t head = std::min(num_free_slots, capacity() - offset);
-
-    return {
+    const WriteRegion region{
         std::span{storage_.get() + offset, head                 },
         std::span{storage_.get(),          num_free_slots - head}
     };
+    write_reserved_ = region.size();
+    write_outstanding_ = true;
+
+    return region;
 }
 
 template<RingElement T>
 void SPSCRingBuffer<T>::commit_write(std::size_t num_elements) noexcept
 {
+    assert(write_outstanding_ && num_elements <= write_reserved_);
     write_.store(write_.load(std::memory_order_relaxed) + num_elements, std::memory_order_release);
+    write_reserved_ = 0;
+    write_outstanding_ = false;
 }
 
 template<RingElement T>
 auto SPSCRingBuffer<T>::acquire_read() noexcept -> ReadRegion
 {
+    assert(!read_outstanding_);
     const std::size_t r = apply_discard();
     consumer_write_cache_ = write_.load(std::memory_order_acquire);
 
     const std::size_t ready = consumer_write_cache_ - r;
     const std::size_t offset = r & mask_;
     const std::size_t head = std::min(ready, capacity() - offset);
-
-    return {
+    const ReadRegion region{
         std::span<const T>{storage_.get() + offset, head        },
         std::span<const T>{storage_.get(),          ready - head}
     };
+    read_reserved_ = region.size();
+    read_outstanding_ = true;
+
+    return region;
 }
 
 template<RingElement T>
 void SPSCRingBuffer<T>::commit_read(std::size_t num_elements) noexcept
 {
+    assert(read_outstanding_ && num_elements <= read_reserved_);
     read_.store(read_.load(std::memory_order_relaxed) + num_elements, std::memory_order_release);
+    read_reserved_ = 0;
+    read_outstanding_ = false;
 }
 
 template<RingElement T>

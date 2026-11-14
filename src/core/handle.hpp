@@ -30,7 +30,8 @@ namespace wiola::core {
  *
  * Some of what an object can do belongs to one thread at a time: driving a device, carrying seeks
  * out, filling a buffer. Rather than say so in a comment, the object hands that end out once, and
- * this is what remembers that it has.
+ * this is what remembers that it has. Claim and release on the setup/owner thread before or after
+ * worker execution, not concurrently from workers themselves.
  */
 class Claimable {
 public:
