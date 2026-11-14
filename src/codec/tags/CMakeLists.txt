@@ -1,4 +1,4 @@
-wiola_add_library(wiola_codec_tags SOURCES tags.cpp LIBS tag)
+wiola_add_library(wiola_codec_tags SOURCES tags.cpp LIBS tag wiola_media)
 
 # taglib says where its own headers are only for a build that installs it.
 target_include_directories(

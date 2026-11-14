@@ -21,6 +21,7 @@
 #pragma once
 
 #include <core/macros.hpp>
+#include <media/media.hpp>
 #include <pcm/stream_spec.hpp>
 
 #include <cstddef>
@@ -52,8 +53,8 @@ public:
 
     virtual ~Decoder() = default;
 
-    /// Fills whole frames and returns how many samples were written. Short means end of file.
-    std::size_t render(std::span<float> output);
+    /// Fills whole frames and returns samples written or a typed read error.
+    media::Result<std::size_t> render(std::span<float> output);
 
     [[nodiscard]] pcm::StreamSpec spec() const noexcept { return spec_; }
 
@@ -67,10 +68,8 @@ public:
 
     [[nodiscard]] bool exhausted() const noexcept { return num_frames_left() == pcm::Frames{}; }
 
-    /// Moves so that the next render starts at `frame_index`, counted from the beginning of the
-    /// stream. Seeking to `num_frames()` leaves nothing to read. False when the stream will not
-    /// move, in which case the position is where it was.
-    bool seek(pcm::Frames frame_index);
+    /// Moves to a frame or reports an invalid target/backend failure without changing position.
+    media::Result<void> seek(pcm::Frames frame_index);
 
 protected:
     Decoder(pcm::StreamSpec spec, pcm::Frames num_frames) noexcept

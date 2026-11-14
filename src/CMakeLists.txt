@@ -3,6 +3,7 @@ add_subdirectory(cli)
 add_subdirectory(codec)
 add_subdirectory(engine)
 add_subdirectory(gui)
+add_subdirectory(media)
 
 add_executable(wiola-player main.cpp)
 target_link_libraries(

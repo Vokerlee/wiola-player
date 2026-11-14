@@ -143,7 +143,14 @@ void DecodeLoop::run()
         // Only once the last block has gone over in full, so that what would not fit is handed
         // over rather than decoded again.
         if (!exhausted && num_handed == num_decoded) {
-            num_decoded = source_->render(block_);
+            auto decoded{source_->render(block_)};
+
+            if (!decoded) {
+                playback_.finish(Playback::TerminalReason::faulted);
+                break;
+            }
+
+            num_decoded = *decoded;
             num_handed = 0;
             exhausted = num_decoded == 0;
         }

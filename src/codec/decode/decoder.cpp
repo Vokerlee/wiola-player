@@ -24,7 +24,7 @@
 
 namespace wiola::codec {
 
-std::size_t Decoder::render(std::span<float> output)
+media::Result<std::size_t> Decoder::render(std::span<float> output)
 {
     const pcm::Frames num_frames_wanted{
         std::min(spec_.frames_per(output.size()), num_frames_left())};
@@ -38,17 +38,22 @@ std::size_t Decoder::render(std::span<float> output)
     return spec_.samples_per(num_frames_decoded);
 }
 
-bool Decoder::seek(pcm::Frames frame_index)
+media::Result<void> Decoder::seek(pcm::Frames frame_index)
 {
     if (frame_index > num_frames_)
-        return false;
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::invalid_seek,
+                         .detail = "seek target is past the end"}
+        };
 
     if (!seek_frame(frame_index))
-        return false;
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::seek_failed,
+                         .detail = "decoder rejected the seek"}
+        };
 
     num_frames_read_ = frame_index;
-
-    return true;
+    return {};
 }
 
 } // namespace wiola::codec

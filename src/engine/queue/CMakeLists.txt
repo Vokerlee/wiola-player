@@ -2,4 +2,5 @@
 wiola_add_library(
     wiola_engine_queue
     SOURCES playback_order.cpp playlist.cpp track.cpp
+    LIBS wiola_media
 )

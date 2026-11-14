@@ -87,12 +87,12 @@ void SeekOperation::quiesce() noexcept
 void SeekOperation::prime()
 {
     while (buffer_.space_approx() >= block_.size()) {
-        const std::size_t num_decoded{source_.render(block_)};
+        const auto decoded{source_.render(block_)};
 
-        if (num_decoded == 0)
+        if (!decoded || *decoded == 0)
             break;
 
-        applier_.push(buffer_.push(std::span{block_}.first(num_decoded)));
+        applier_.push(buffer_.push(std::span{block_}.first(*decoded)));
     }
 }
 

@@ -42,16 +42,16 @@ namespace {
 constexpr PlayerViewMetrics metrics;
 
 /// What to say about a file that would not open.
-QString as_status(codec::OpenResult result)
+QString as_status(engine::OpenResult result)
 {
     switch (result) {
-    case codec::OpenResult::unsupported:
+    case engine::OpenResult::unsupported:
         return QString{"unsupported format"};
 
-    case codec::OpenResult::damaged:
+    case engine::OpenResult::damaged:
         return QString{"that file is damaged"};
 
-    case codec::OpenResult::unreadable:
+    case engine::OpenResult::unreadable:
         return QString{"cannot read that file"};
 
     default:
@@ -385,14 +385,14 @@ void MainWindow::take_up_load()
 {
     session_.catch_up();
 
-    const codec::OpenResult result{session_.open_result()};
+    const engine::OpenResult result{session_.open_result()};
 
     // Said once: a window that repeated itself every turn would overwrite whatever else it has
     // to say.
-    if (result != said_ && result != codec::OpenResult::loading) {
+    if (result != said_ && result != engine::OpenResult::loading) {
         said_ = result;
 
-        const bool opened{result == codec::OpenResult::opened};
+        const bool opened{result == engine::OpenResult::opened};
 
         show_status(opened ? QString{} : as_status(result));
 

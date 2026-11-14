@@ -58,7 +58,10 @@ Opened open_file(const std::filesystem::path& path)
     const FileHead head{FileHead::read(path)};
 
     if (head.empty())
-        return Opened{.decoder = nullptr, .result = OpenResult::unreadable};
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::unreadable,
+                         .detail = "file header could not be read"}
+        };
 
     const std::string extension{lowercased_extension(path)};
     bool claimed{false};
@@ -73,14 +76,17 @@ Opened open_file(const std::filesystem::path& path)
             claimed = claimed || reason == Match::signature;
 
             if (std::unique_ptr<Decoder> decoder{format.open(path)})
-                return Opened{.decoder = std::move(decoder), .result = OpenResult::opened};
+                return decoder;
         }
     }
 
     // A file carrying a format's signature is that format, so a reader refusing it is damage
     // rather than a format nothing here reads.
-    return Opened{.decoder = nullptr,
-        .result = claimed ? OpenResult::damaged : OpenResult::unsupported};
+    return media::unexpected{
+        media::Error{.category = claimed ? media::ErrorCategory::damaged
+                                         : media::ErrorCategory::unsupported,
+                     .detail = claimed ? "recognized media is damaged" : "no reader supports this media"}
+    };
 }
 
 } // namespace wiola::codec

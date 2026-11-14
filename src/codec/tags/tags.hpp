@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief What a file says about the track it holds.
+ * @brief Common track metadata and artwork read from a file.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -20,46 +20,25 @@
 
 #pragma once
 
-#include <utils/units.hpp>
+#include <media/media.hpp>
 
-#include <cstddef>
 #include <filesystem>
-#include <string>
-#include <vector>
 
 namespace wiola::codec {
 
-/**
- * What a file says about the track it holds.
- *
- * Every part of it is what a file claims, not what has been checked: a title is whatever bytes
- * were in the tag, and a picture is whatever bytes were where a picture goes. Nothing here has
- * been decoded, and nothing here can be trusted further than being shown.
- */
+/// Unverified file claims, with absent duration represented explicitly rather than as zero.
 struct Tags {
-    std::string title;
-    std::string artist;
-    std::string album;
-
-    /// The picture as the file stored it, and the kind it claims to be. Left empty when there is
-    /// none, or when what was there made no sense.
-    std::vector<std::byte> art;
-    std::string art_type;
-
-    /// How long the track runs, as the file's own header says. Zero when the header does not
-    /// say: working it out means reading the whole file, which is not worth a column.
-    units::Time duration;
+    media::TrackMetadata track;
+    media::Artwork artwork;
 
     [[nodiscard]] bool empty() const noexcept
     {
-        return title.empty() && artist.empty() && album.empty() && art.empty() &&
-            duration == units::Time{};
+        return track.title.empty() && track.artist.empty() && track.album.empty() &&
+            artwork.empty() && !track.duration.has_value();
     }
 };
 
-/// Reads what `path` says about itself, without decoding any of it. Anything that cannot be made
-/// sense of is left out rather than guessed at, so a file that says nothing, a file full of
-/// nonsense and a file that is not there all answer the same way: with nothing.
+/// Reads file claims without decoding the stream; unavailable fields remain absent.
 [[nodiscard]] Tags read_tags(const std::filesystem::path& path);
 
 } // namespace wiola::codec

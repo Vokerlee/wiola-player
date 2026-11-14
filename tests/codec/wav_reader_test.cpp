@@ -50,8 +50,8 @@ std::size_t drain(WavReader& reader)
     std::array<float, 1024> block{};
     std::size_t total{0};
 
-    for (std::size_t num_rendered{reader.render(block)}; num_rendered > 0;
-        num_rendered = reader.render(block))
+    for (std::size_t num_rendered{reader.render(block).value()}; num_rendered > 0;
+        num_rendered = reader.render(block).value())
         total += num_rendered;
 
     return total;
@@ -66,7 +66,7 @@ std::vector<float> read_frames(WavReader& reader, std::size_t num_frames)
     std::array<float, 1024> block{};
 
     while (samples.size() < num_frames * num_channels) {
-        const std::size_t num_rendered{reader.render(block)};
+        const std::size_t num_rendered{reader.render(block).value()};
 
         if (num_rendered == 0)
             break;
@@ -110,7 +110,7 @@ TEST(WavReader, RendersFloatSamplesInRange)
     ASSERT_NE(reader, nullptr);
 
     std::array<float, 256> block{};
-    EXPECT_EQ(reader->render(block), block.size());
+    EXPECT_EQ(reader->render(block).value(), block.size());
 
     EXPECT_TRUE(std::ranges::any_of(block, [](float v) { return v != 0.0F; }));
     EXPECT_TRUE(std::ranges::all_of(block, [](float v) { return v >= -1.0F && v <= 1.0F; }));
@@ -125,7 +125,7 @@ TEST(WavReader, StopsWhenTheDataChunkRunsOut)
     EXPECT_EQ(reader->num_frames_left(), Frames{0});
 
     std::array<float, 16> block{};
-    EXPECT_EQ(reader->render(block), 0u);
+    EXPECT_EQ(reader->render(block).value(), 0u);
 }
 
 TEST(WavReader, RejectsWhatIsNotWav)
@@ -170,7 +170,7 @@ TEST(WavReader, SeekMovesThePosition)
     EXPECT_TRUE(reader->exhausted());
 
     std::array<float, 16> block{};
-    EXPECT_EQ(reader->render(block), 0u);
+    EXPECT_EQ(reader->render(block).value(), 0u);
 }
 
 TEST(WavReader, SeekRewinds)

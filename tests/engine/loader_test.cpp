@@ -37,7 +37,6 @@
 namespace {
 
 using wiola::codec::Opened;
-using wiola::codec::OpenResult;
 using wiola::engine::LoadCompletion;
 using wiola::engine::Loader;
 using wiola::engine::LoadIntent;
@@ -49,8 +48,7 @@ using wiola::testing::Gate;
 
 Opened success(std::size_t num_frames = 64)
 {
-    return Opened{.decoder = std::make_unique<FakeDecoder>(Frames{num_frames}),
-        .result = OpenResult::opened};
+    return Opened{std::make_unique<FakeDecoder>(Frames{num_frames})};
 }
 
 LoadRequest request(std::filesystem::path path, std::uint64_t generation = 1)
@@ -90,15 +88,17 @@ TEST(Loader, OpensAFileAndHandsItOver)
     ASSERT_TRUE(completed.has_value());
     EXPECT_EQ(completed->request.generation, 7U);
     EXPECT_EQ(completed->request.entry, QueueEntryId{7});
-    EXPECT_EQ(completed->opened.result, OpenResult::opened);
-    ASSERT_NE(completed->opened.decoder, nullptr);
-    EXPECT_EQ(completed->opened.decoder->num_frames(), Frames{64});
+    ASSERT_TRUE(completed->opened.has_value());
+    ASSERT_NE(*completed->opened, nullptr);
+    EXPECT_EQ((*completed->opened)->num_frames(), Frames{64});
 }
 
 TEST(Loader, SaysWhyAFileWouldNotOpen)
 {
     Loader loader{[](const std::filesystem::path&) {
-        return Opened{.decoder = nullptr, .result = OpenResult::unreadable};
+        return Opened{wiola::media::unexpected{
+            wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable,
+                .detail = "missing"}}};
     }};
 
     loader.start(request("missing.wav"));
@@ -106,8 +106,8 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
     const std::optional<LoadCompletion> completed{wait_for(loader)};
 
     ASSERT_TRUE(completed.has_value());
-    EXPECT_EQ(completed->opened.result, OpenResult::unreadable);
-    EXPECT_EQ(completed->opened.decoder, nullptr);
+    ASSERT_FALSE(completed->opened.has_value());
+    EXPECT_EQ(completed->opened.error().category, wiola::media::ErrorCategory::unreadable);
 }
 
 TEST(Loader, HandsTheAnswerOverOnlyOnce)
@@ -161,9 +161,9 @@ TEST(Loader, KeepsOnlyTheFileAskedForLast)
 
     ASSERT_TRUE(completed.has_value());
     EXPECT_EQ(completed->request.generation, 2U);
-    EXPECT_EQ(completed->opened.result, OpenResult::opened);
-    ASSERT_NE(completed->opened.decoder, nullptr);
-    EXPECT_EQ(completed->opened.decoder->num_frames(), Frames{20});
+    ASSERT_TRUE(completed->opened.has_value());
+    ASSERT_NE(*completed->opened, nullptr);
+    EXPECT_EQ((*completed->opened)->num_frames(), Frames{20});
     EXPECT_FALSE(loader.take().has_value());
 }
 
@@ -207,10 +207,11 @@ TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
     loader.start(request("broken.wav"));
     const auto failed{wait_for(loader)};
     ASSERT_TRUE(failed.has_value());
-    EXPECT_EQ(failed->opened.result, OpenResult::unreadable);
+    ASSERT_FALSE(failed->opened.has_value());
+    EXPECT_EQ(failed->opened.error().category, wiola::media::ErrorCategory::unreadable);
 
     loader.start(request("working.wav", 2));
     const auto recovered{wait_for(loader)};
     ASSERT_TRUE(recovered.has_value());
-    EXPECT_EQ(recovered->opened.result, OpenResult::opened);
+    EXPECT_TRUE(recovered->opened.has_value());
 }

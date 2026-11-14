@@ -47,8 +47,8 @@ std::size_t drain(wiola::codec::Decoder& source)
     std::array<float, 1024> block{};
     std::size_t total{0};
 
-    for (std::size_t num_rendered{source.render(block)}; num_rendered > 0;
-        num_rendered = source.render(block))
+    for (std::size_t num_rendered{source.render(block).value()}; num_rendered > 0;
+        num_rendered = source.render(block).value())
         total += num_rendered;
 
     return total;
@@ -59,7 +59,7 @@ std::size_t drain(wiola::codec::Decoder& source)
 TEST(OpenFile, OpensEveryFormatItSupports)
 {
     for (const char* name : {"tone.wav", "tone.flac", "tone.mp3"}) {
-        const auto decoder = wiola::codec::open_file(fixture(name)).decoder;
+        const auto decoder = std::move(wiola::codec::open_file(fixture(name)).value());
 
         ASSERT_NE(decoder, nullptr) << name;
         EXPECT_EQ(decoder->spec().sample_rate, wiola::units::Frequency{44100}) << name;
@@ -76,7 +76,7 @@ TEST(OpenFile, BelievesTheContentOverTheExtension)
     std::filesystem::copy_file(fixture("tone.flac"), misnamed,
         std::filesystem::copy_options::overwrite_existing);
 
-    const auto decoder = wiola::codec::open_file(misnamed).decoder;
+    const auto decoder = std::move(wiola::codec::open_file(misnamed).value());
 
     ASSERT_NE(decoder, nullptr);
     EXPECT_EQ(decoder->spec().num_channels, 2u);
@@ -90,7 +90,7 @@ TEST(OpenFile, ReachesAFormatThatCannotAnnounceItself)
     std::filesystem::copy_file(fixture("tone.mp3"), misnamed,
         std::filesystem::copy_options::overwrite_existing);
 
-    const auto decoder = wiola::codec::open_file(misnamed).decoder;
+    const auto decoder = std::move(wiola::codec::open_file(misnamed).value());
 
     ASSERT_NE(decoder, nullptr);
     EXPECT_GT(decoder->num_frames(), Frames{0});
@@ -104,7 +104,7 @@ TEST(OpenFile, GivesNothingWhenNoReaderAccepts)
     const wiola::codec::Opened opened{wiola::codec::open_file(junk)};
 
     EXPECT_FALSE(opened);
-    EXPECT_EQ(opened.decoder, nullptr);
+    EXPECT_EQ(opened.error().category, wiola::media::ErrorCategory::unsupported);
 }
 
 /// Nothing here reads a file like that one, which is not the same as being unable to read it.
@@ -113,20 +113,22 @@ TEST(OpenFile, SaysWhenNothingReadsTheFormat)
     const std::filesystem::path junk{std::filesystem::temp_directory_path() / "wiola_junk.wav"};
     std::ofstream{junk, std::ios::binary} << "not audio at all, by any reader";
 
-    EXPECT_EQ(wiola::codec::open_file(junk).result, wiola::codec::OpenResult::unsupported);
+    EXPECT_EQ(wiola::codec::open_file(junk).error().category,
+        wiola::media::ErrorCategory::unsupported);
 }
 
 TEST(OpenFile, SaysWhenThereIsNothingToRead)
 {
-    EXPECT_EQ(wiola::codec::open_file("/nonexistent/wiola.ogg").result,
-        wiola::codec::OpenResult::unreadable);
-    EXPECT_EQ(wiola::codec::open_file(std::filesystem::temp_directory_path()).result,
-        wiola::codec::OpenResult::unreadable);
+    EXPECT_EQ(wiola::codec::open_file("/nonexistent/wiola.ogg").error().category,
+        wiola::media::ErrorCategory::unreadable);
+    EXPECT_EQ(wiola::codec::open_file(std::filesystem::temp_directory_path()).error().category,
+        wiola::media::ErrorCategory::unreadable);
 
     const std::filesystem::path empty{std::filesystem::temp_directory_path() / "wiola_empty.wav"};
     std::ofstream{empty, std::ios::binary};
 
-    EXPECT_EQ(wiola::codec::open_file(empty).result, wiola::codec::OpenResult::unreadable);
+    EXPECT_EQ(wiola::codec::open_file(empty).error().category,
+        wiola::media::ErrorCategory::unreadable);
 }
 
 /// A file carrying a format's signature is that format, so its reader refusing it is damage.
@@ -136,7 +138,8 @@ TEST(OpenFile, SaysWhenAFileOfAKnownFormatIsDamaged)
     std::ofstream{broken, std::ios::binary} << std::string{"RIFF\x20\0\0\0WAVE", 12}
                                             << "not the chunks a wav needs";
 
-    EXPECT_EQ(wiola::codec::open_file(broken).result, wiola::codec::OpenResult::damaged);
+    EXPECT_EQ(wiola::codec::open_file(broken).error().category,
+        wiola::media::ErrorCategory::damaged);
 }
 
 /// Being opened is what a decoder answers with, not a flag beside it.
@@ -148,12 +151,13 @@ TEST(OpenFile, IsTrueOnlyWhenItGaveADecoder)
 
 TEST(Decoder, PlaysThroughTheInterface)
 {
-    const std::unique_ptr<Decoder> decoder{wiola::codec::open_file(fixture("tone.flac")).decoder};
+    const std::unique_ptr<Decoder> decoder{
+        std::move(wiola::codec::open_file(fixture("tone.flac")).value())};
 
     ASSERT_NE(decoder, nullptr);
 
     std::array<float, 256> block{};
-    const std::size_t num_rendered{decoder->render(block)};
+    const std::size_t num_rendered{decoder->render(block).value()};
 
     EXPECT_GT(num_rendered, 0u);
     EXPECT_LE(num_rendered, block.size());

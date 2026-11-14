@@ -145,7 +145,7 @@ private:
     engine::Session session_;
 
     /// What the window has already said about a load, so that it says it once.
-    codec::OpenResult said_{codec::OpenResult::opened};
+    engine::OpenResult said_{engine::OpenResult::opened};
 
     /// What it has already said about playback going wrong, for the same reason.
     bool said_fault_{false};

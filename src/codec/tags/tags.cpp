@@ -57,8 +57,8 @@ void read_picture(Tags& tags, const TagLib::FileRef& file)
 
     const auto* bytes = reinterpret_cast<const std::byte*>(data.data());
 
-    tags.art.assign(bytes, bytes + data.size());
-    tags.art_type = as_utf8(picture.value("mimeType").toString());
+    tags.artwork.data.assign(bytes, bytes + data.size());
+    tags.artwork.mime_type = as_utf8(picture.value("mimeType").toString());
 }
 
 } // namespace
@@ -75,12 +75,13 @@ Tags read_tags(const std::filesystem::path& path)
 
     Tags tags;
 
-    tags.title = as_utf8(file.tag()->title());
-    tags.artist = as_utf8(file.tag()->artist());
-    tags.album = as_utf8(file.tag()->album());
+    tags.track.title = as_utf8(file.tag()->title());
+    tags.track.artist = as_utf8(file.tag()->artist());
+    tags.track.album = as_utf8(file.tag()->album());
 
     if (const TagLib::AudioProperties* properties = file.audioProperties())
-        tags.duration = units::Time{std::chrono::milliseconds{properties->lengthInMilliseconds()}};
+        tags.track.duration =
+            units::Time{std::chrono::milliseconds{properties->lengthInMilliseconds()}};
 
     read_picture(tags, file);
 

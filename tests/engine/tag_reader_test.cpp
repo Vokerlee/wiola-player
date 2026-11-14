@@ -57,7 +57,7 @@ TEST(TagReader, ReadsWithTheSuppliedCollaborator)
 {
     TagReader reader{[](const std::filesystem::path& path) {
         Tags tags;
-        tags.artist = path.stem().string();
+        tags.track.artist = path.stem().string();
         return tags;
     }};
 
@@ -71,10 +71,10 @@ TEST(TagReader, ReadsWithTheSuppliedCollaborator)
     ASSERT_EQ(readings.size(), 2U);
     EXPECT_EQ(readings[0].id, wiola::engine::QueueEntryId{1});
     EXPECT_EQ(readings[0].path, std::filesystem::path{"first.wav"});
-    EXPECT_EQ(readings[0].tags.artist, "first");
+    EXPECT_EQ(readings[0].tags.track.artist, "first");
     EXPECT_EQ(readings[1].id, wiola::engine::QueueEntryId{2});
     EXPECT_EQ(readings[1].path, std::filesystem::path{"second.wav"});
-    EXPECT_EQ(readings[1].tags.artist, "second");
+    EXPECT_EQ(readings[1].tags.track.artist, "second");
     EXPECT_TRUE(reader.take().empty());
 }
 
@@ -84,7 +84,7 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
     TagReader reader{[&reading](const std::filesystem::path&) {
         reading.wait();
         Tags tags;
-        tags.title = "released";
+        tags.track.title = "released";
         return tags;
     }};
 
@@ -100,7 +100,7 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
 
     const std::vector<TagReader::Reading> readings{wait_for(reader)};
     ASSERT_EQ(readings.size(), 1U);
-    EXPECT_EQ(readings.front().tags.title, "released");
+    EXPECT_EQ(readings.front().tags.track.title, "released");
 }
 
 TEST(TagReader, IgnoresAnEmptyBatch)
