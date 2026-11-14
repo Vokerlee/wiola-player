@@ -113,7 +113,7 @@ bool Player::playing() const noexcept
 
 void Player::stop() noexcept
 {
-    playback_.finish(Playback::State::stopped);
+    playback_.finish(Playback::TerminalReason::stopped);
 }
 
 Playback::State Player::state() const noexcept

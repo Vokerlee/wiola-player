@@ -64,6 +64,25 @@ public:
         faulted,
     };
 
+    /// Why playback became terminal, separate from the nonterminal states a command can request.
+    enum class TerminalReason {
+        ended,
+        stopped,
+        faulted,
+    };
+
+    /**
+     * Transition table:
+     *
+     *     operation        accepted from                 result
+     *     begin            idle or any terminal state    playing
+     *     pause            playing                       paused
+     *     resume           paused                        playing
+     *     finish(reason)   any nonterminal state         state corresponding to reason
+     *
+     * Calls from other states return false where applicable and otherwise change nothing. Loading
+     * and queue selection belong to Session, not to this active-transport state.
+     */
     [[nodiscard]] State state() const noexcept;
 
     /// Whether a track is playing. Says nothing about whether a device agrees.
@@ -83,11 +102,10 @@ public:
     /// Paused to playing. False unless playback is paused: resuming is not a way to begin.
     bool resume() noexcept;
 
-    /// Settles on `reason`, which must be `ended`, `stopped` or `faulted`. The first final state
-    /// stays,
-    /// whichever thread reached it: a listener's stop is not undone by the source running out a
-    /// moment later, nor the other way about.
-    void finish(State reason) noexcept;
+    /// Settles on the terminal state for `reason`. The first final state stays, whichever thread
+    /// reached it: a listener's stop is not undone by the source running out a moment later, nor
+    /// the other way about.
+    void finish(TerminalReason reason) noexcept;
 
 private:
     std::atomic<State> state_{State::idle};

@@ -20,6 +20,8 @@
 
 #include <engine/transport/playback.hpp>
 
+#include <utility>
+
 namespace wiola::engine {
 
 namespace {
@@ -29,6 +31,20 @@ bool settled(Playback::State state) noexcept
 {
     return state == Playback::State::ended || state == Playback::State::stopped ||
         state == Playback::State::faulted;
+}
+
+Playback::State state_for(Playback::TerminalReason reason) noexcept
+{
+    switch (reason) {
+    case Playback::TerminalReason::ended:
+        return Playback::State::ended;
+    case Playback::TerminalReason::stopped:
+        return Playback::State::stopped;
+    case Playback::TerminalReason::faulted:
+        return Playback::State::faulted;
+    }
+
+    std::unreachable();
 }
 
 } // namespace
@@ -78,12 +94,13 @@ bool Playback::resume() noexcept
         std::memory_order_relaxed);
 }
 
-void Playback::finish(State reason) noexcept
+void Playback::finish(TerminalReason reason) noexcept
 {
+    const State terminal{state_for(reason)};
     State current{state_.load(std::memory_order_relaxed)};
 
     while (!settled(current) &&
-        !state_.compare_exchange_weak(current, reason, std::memory_order_acq_rel,
+        !state_.compare_exchange_weak(current, terminal, std::memory_order_acq_rel,
             std::memory_order_relaxed)) { }
 }
 
