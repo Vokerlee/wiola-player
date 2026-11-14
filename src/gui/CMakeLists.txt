@@ -8,6 +8,7 @@ wiola_add_library(
         main_window.cpp
         playlist_control.cpp
         playlist_view.cpp
+        player_settings.cpp
         seek_bar.cpp
         volume_control.cpp
     LIBS wiola_codec wiola_engine

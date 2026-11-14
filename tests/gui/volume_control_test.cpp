@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui/player_settings.hpp>
 #include <gui/volume_control.hpp>
 #include <gui/volume_scale.hpp>
 
@@ -48,6 +49,16 @@ protected:
 
     void SetUp() override { settings.clear(); }
 
+    int restore(Control& control)
+    {
+        const wiola::gui::PlayerSettings restored{
+            wiola::gui::QtSettingsAdapter{settings}.read(control.scale(), {})};
+        control.apply_restored(restored.volume_position, restored.boosted);
+        return control.position();
+    }
+
+    int restore(Control&& control) { return restore(control); }
+
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "volume"};
     Volume volume;
 };
@@ -56,7 +67,7 @@ TEST_F(VolumeControl, StartsAtFullVolume)
 {
     Control control{volume, settings};
 
-    EXPECT_EQ(control.restore(), scale.full_position);
+    EXPECT_EQ(restore(control), scale.full_position);
     EXPECT_EQ(control.position(), scale.full_position);
     EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
 }
@@ -102,7 +113,7 @@ TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
     Volume next;
     Control later{next, settings};
 
-    EXPECT_EQ(later.restore(), 70);
+    EXPECT_EQ(restore(later), 70);
     EXPECT_FLOAT_EQ(next.gain(), 0.49F);
 }
 
@@ -115,7 +126,8 @@ TEST_F(VolumeControl, AppliesWhatItRestores)
 
     EXPECT_FLOAT_EQ(next.gain(), 1.0F);
 
-    Control{next, settings}.restore();
+    Control control{next, settings};
+    restore(control);
 
     EXPECT_FLOAT_EQ(next.gain(), 0.25F);
 }
@@ -127,18 +139,18 @@ TEST_F(VolumeControl, IgnoresAStoredValueThatIsNotAPosition)
 
     Control control{volume, settings};
 
-    EXPECT_EQ(control.restore(), scale.full_position);
+    EXPECT_EQ(restore(control), scale.full_position);
 }
 
 TEST_F(VolumeControl, BringsAStoredPositionBackIntoRange)
 {
     settings.setValue("volume", 9999);
 
-    EXPECT_EQ(Control(volume, settings).restore(), scale.full_position);
+    EXPECT_EQ(restore(Control(volume, settings)), scale.full_position);
 
     settings.setValue("volume", -20);
 
-    EXPECT_EQ(Control(volume, settings).restore(), 0);
+    EXPECT_EQ(restore(Control(volume, settings)), 0);
 }
 
 /// Full volume is where the slider stops until the listener asks for more.
@@ -210,7 +222,7 @@ TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
     Volume next;
     Control later{next, settings};
 
-    EXPECT_EQ(later.restore(), 120);
+    EXPECT_EQ(restore(later), 120);
     EXPECT_TRUE(later.boosted());
     EXPECT_FLOAT_EQ(next.gain(), 1.2F);
 }

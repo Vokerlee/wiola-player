@@ -34,10 +34,8 @@ class VolumeControl {
 public:
     VolumeControl(audio::Volume& volume, QSettings& settings) noexcept;
 
-    /// The position a previous run left, applied. Full volume when there is none, or when what is
-    /// stored is not a position. Nothing is written back, so a run that is only started and closed
-    /// leaves the file as it found it.
-    int restore();
+    /// Applies startup values without writing them back. The domain clamps the position as usual.
+    void apply_restored(int position, bool boosted) noexcept;
 
     void set_position(int percent);
 
@@ -47,6 +45,8 @@ public:
 
     [[nodiscard]] int position() const noexcept;
     [[nodiscard]] bool boosted() const noexcept;
+
+    [[nodiscard]] const VolumeScale& scale() const noexcept { return scale_; }
 
     /// The furthest the slider goes, which is what `boosted` decides.
     [[nodiscard]] int max_position() const noexcept;

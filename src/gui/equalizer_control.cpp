@@ -33,16 +33,6 @@ QString band_key(std::size_t index)
     return QString{"equalizer/band/%1"}.arg(index);
 }
 
-/// The decibels stored under `key`, or `fallback` when there are none or they read as anything
-/// but a number.
-float stored_db(const QSettings& settings, const QString& key, float fallback)
-{
-    bool numeric{false};
-    const float db{settings.value(key, fallback).toFloat(&numeric)};
-
-    return numeric ? db : fallback;
-}
-
 } // namespace
 
 EqualizerControl::EqualizerControl(audio::Equalizer& equalizer, QSettings& settings) noexcept
@@ -51,15 +41,14 @@ EqualizerControl::EqualizerControl(audio::Equalizer& equalizer, QSettings& setti
 {
 }
 
-void EqualizerControl::restore()
+void EqualizerControl::apply_restored(bool enabled, std::span<const float> gains) noexcept
 {
-    // Applied straight to the equalizer: what came out of the file does not need putting back.
-    equalizer_.set_enabled(settings_.value(enabled_key, true).toBool());
+    equalizer_.set_enabled(enabled);
 
     // Every band the layout names, not only those this format can carry: a band left out now is
     // still set for the track that can.
     for (std::size_t index = 0; index < equalizer_.layout().count; ++index)
-        equalizer_.set_band_gain(index, stored_db(settings_, band_key(index), 0.0F));
+        equalizer_.set_band_gain(index, index < gains.size() ? gains[index] : 0.0F);
 }
 
 void EqualizerControl::set_enabled(bool enabled)
