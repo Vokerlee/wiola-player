@@ -31,6 +31,7 @@
 #include <lockfree/spsc_ring_buffer.hpp>
 #include <pcm/stream_spec.hpp>
 
+#include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 
 #include <gtest/gtest.h>
@@ -42,6 +43,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <numbers>
@@ -204,20 +206,64 @@ TEST(Player, SeekMovesTheSource)
 
 TEST(Player, SeekBeyondTheEndIsIgnored)
 {
-    auto source = wiola::testing::open_fixture();
-    ASSERT_NE(source, nullptr);
+    auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};
+    const wiola::testing::FakeDecoder* moved{source.get()};
+    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::testing::FakeOutput output;
+    Player player{std::move(source), buffer.producer(), output};
 
-    Rig rig{std::move(source)};
-    Player& player{rig.player};
-
-    ASSERT_TRUE(player.start());
-
-    ASSERT_TRUE(player.pause());
     player.seek(3600_s);
 
-    // The request is refused by the decoder, so playback is left where it was rather than ended.
-    std::this_thread::sleep_for(100ms);
+    EXPECT_EQ(player.time_played(), units::Time{});
+
+    ASSERT_TRUE(player.start());
+    EXPECT_EQ(moved->num_seeks(), 0);
     EXPECT_FALSE(player.finished());
+
+    player.stop();
+    player.wait();
+}
+
+TEST(Player, IgnoresNonFiniteAndUnrepresentableSeekTimes)
+{
+    auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};
+    const wiola::testing::FakeDecoder* moved{source.get()};
+    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::testing::FakeOutput output;
+    Player player{std::move(source), buffer.producer(), output};
+    const std::array positions{units::Time{std::numeric_limits<double>::quiet_NaN()},
+        units::Time{std::numeric_limits<double>::infinity()},
+        units::Time{-std::numeric_limits<double>::infinity()},
+        units::Time{std::numeric_limits<double>::max()}};
+
+    for (const units::Time position : positions) {
+        player.seek(position);
+        EXPECT_EQ(player.time_played(), units::Time{});
+    }
+
+    ASSERT_TRUE(player.start());
+    EXPECT_EQ(moved->num_seeks(), 0);
+
+    player.stop();
+    player.wait();
+}
+
+TEST(Player, ClampsANegativeSeekToTheBeginning)
+{
+    auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};
+    const wiola::testing::FakeDecoder* moved{source.get()};
+    wiola::lockfree::SPSCRingBuffer<float> buffer{1024};
+    wiola::testing::FakeOutput output;
+    Player player{std::move(source), buffer.producer(), output};
+
+    player.seek(-1_s);
+
+    ASSERT_TRUE(player.start());
+    EXPECT_EQ(moved->num_seeks(), 1);
+    EXPECT_EQ(moved->last_seek(), wiola::pcm::Frames{});
+
+    player.stop();
+    player.wait();
 }
 
 TEST(Player, TimePlayedStartsAtTheBeginning)

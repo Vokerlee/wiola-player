@@ -47,8 +47,9 @@ namespace wiola::engine {
 /// Declared in the order they are wired, so that each is built before whoever reads it and torn
 /// down after.
 struct Session::Pipeline {
-    Pipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output)
-        : buffer{source->spec().samples_per(tuning::buffer_duration)}
+    Pipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
+        std::size_t buffer_capacity)
+        : buffer{buffer_capacity}
         , decoded{source->spec(), buffer.consumer()}
         , player{std::move(source), buffer.producer(), output}
     {
@@ -324,6 +325,17 @@ bool Session::install_read_track()
 
     std::unique_ptr<codec::Decoder> source{std::move(ready_)};
     const pcm::StreamSpec spec{source->spec()};
+    using Buffer = lockfree::SPSCRingBuffer<float>;
+
+    const std::optional<std::size_t> minimum{spec.checked_samples_per(tuning::buffer_duration)};
+    const std::optional<std::size_t> capacity{
+        minimum ? Buffer::checked_capacity(*minimum) : std::nullopt};
+
+    if (!capacity) {
+        ready_track_.clear();
+        last_result_ = codec::OpenResult::damaged;
+        return false;
+    }
 
     // Nothing to play, before there is nothing to play from: a device asking after this hears
     // silence rather than reading a track that has been let go. The player's end stops the device
@@ -342,7 +354,7 @@ bool Session::install_read_track()
         out_ = std::make_unique<Out>(spec, chain_, make_output_);
     }
 
-    pipeline_ = std::make_unique<Pipeline>(std::move(source), *out_->output);
+    pipeline_ = std::make_unique<Pipeline>(std::move(source), *out_->output, *capacity);
     out_->relay.point_at(pipeline_->decoded);
 
     track_ = ready_track_;

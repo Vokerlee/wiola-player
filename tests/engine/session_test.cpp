@@ -28,6 +28,7 @@
 #include <pcm/stream_spec.hpp>
 
 #include <engine/queue/track.hpp>
+#include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <utils/units.hpp>
 
@@ -136,6 +137,32 @@ TEST(Session, LoadsATrack)
     EXPECT_EQ(fixture.num_outputs, 1U);
     EXPECT_NEAR(fixture.session.total_time().get<units::Sec>(), wiola::testing::source_seconds,
         0.01);
+}
+
+TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
+{
+    std::size_t num_outputs{0};
+    Session session{[&num_outputs](wiola::audio::Source&) {
+                        ++num_outputs;
+                        return std::make_unique<wiola::testing::FakeOutput>();
+                    },
+        [](const std::filesystem::path&) {
+            auto decoder{std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
+                wiola::pcm::StreamSpec{.sample_rate = units::Frequency{48000.0},
+                    .num_channels = 0})};
+            return wiola::codec::Opened{.decoder = std::move(decoder),
+                .result = OpenResult::opened};
+        },
+        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+
+    EXPECT_EQ(session.open({"invalid.wav"}), OpenResult::loading);
+    while (session.reading())
+        std::this_thread::yield();
+    session.catch_up();
+
+    EXPECT_EQ(session.open_result(), OpenResult::damaged);
+    EXPECT_FALSE(session.loaded());
+    EXPECT_EQ(num_outputs, 0U);
 }
 
 TEST(Session, RefusesAFileItCannotRead)

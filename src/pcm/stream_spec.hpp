@@ -22,7 +22,11 @@
 
 #include <utils/units.hpp>
 
+#include <cassert>
+#include <cmath>
 #include <cstddef>
+#include <limits>
+#include <optional>
 
 namespace wiola::pcm {
 
@@ -81,31 +85,80 @@ struct StreamSpec {
 
     [[nodiscard]] constexpr bool valid() const noexcept
     {
-        return sample_rate > units::Frequency{} && num_channels > 0;
+        return std::isfinite(sample_rate.hz()) && sample_rate > units::Frequency{} &&
+            num_channels > 0;
     }
 
+    /// Internal arithmetic for a stream whose validity and representable result are established.
     [[nodiscard]] constexpr std::size_t samples_per(Frames num_frames) const noexcept
     {
+        assert(num_channels > 0);
+        assert(num_frames.count() <= std::numeric_limits<std::size_t>::max() / num_channels);
         return num_frames.count() * num_channels;
     }
 
     [[nodiscard]] constexpr Frames frames_per(std::size_t num_samples) const noexcept
     {
+        assert(num_channels > 0);
         return Frames{num_samples / num_channels};
+    }
+
+    /// Checked external conversion: no multiplication overflow or invalid stream arithmetic.
+    [[nodiscard]] constexpr std::optional<std::size_t>
+    checked_samples_per(Frames num_frames) const noexcept
+    {
+        if (!valid() || num_frames.count() > std::numeric_limits<std::size_t>::max() / num_channels)
+            return std::nullopt;
+
+        return samples_per(num_frames);
     }
 
     /// How long `num_frames` take to play.
     [[nodiscard]] constexpr units::Time time_per(Frames num_frames) const noexcept
     {
+        assert(valid());
         return units::Time{static_cast<double>(num_frames.count()) / sample_rate.get<units::Hz>()};
+    }
+
+    /// Checked conversion of an external position or duration to a whole frame count.
+    [[nodiscard]] constexpr std::optional<Frames>
+    checked_frames_at(units::Time position) const noexcept
+    {
+        if (!valid() || !std::isfinite(position.seconds()) || position < units::Time{})
+            return std::nullopt;
+
+        const double frames{position * sample_rate};
+        if (!position_is_representable(frames))
+            return std::nullopt;
+
+        return Frames{static_cast<std::size_t>(frames)};
+    }
+
+    /// Checked conversion of a duration to a sample capacity.
+    [[nodiscard]] constexpr std::optional<std::size_t>
+    checked_samples_per(units::Time duration) const noexcept
+    {
+        const std::optional<Frames> frames{checked_frames_at(duration)};
+
+        return frames ? checked_samples_per(*frames) : std::nullopt;
     }
 
     [[nodiscard]] constexpr std::size_t samples_per(units::Time duration) const noexcept
     {
-        return samples_per(Frames{static_cast<std::size_t>(duration * sample_rate)});
+        const double frames{duration * sample_rate};
+        assert(valid());
+        assert(position_is_representable(frames));
+        return samples_per(Frames{static_cast<std::size_t>(frames)});
     }
 
     friend constexpr bool operator==(const StreamSpec&, const StreamSpec&) = default;
+
+private:
+    [[nodiscard]] static constexpr bool position_is_representable(double frames) noexcept
+    {
+        return std::isfinite(frames) && frames >= 0.0 &&
+            frames < static_cast<double>(std::numeric_limits<std::size_t>::max());
+    }
 };
 
 } // namespace wiola::pcm

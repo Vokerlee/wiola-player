@@ -26,6 +26,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <limits>
 #include <optional>
 #include <span>
 #include <stop_token>
@@ -60,6 +61,19 @@ TEST(SPSCRingBuffer, RoundsCapacityUpToPowerOfTwo)
     EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{5}.capacity(), 8u);
     EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{8}.capacity(), 8u);
     EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{1}.capacity(), 2u);
+}
+
+TEST(SPSCRingBuffer, RejectsCapacityWhoseRoundingWouldOverflow)
+{
+    using Buffer = wiola::lockfree::SPSCRingBuffer<float>;
+    constexpr std::size_t digits{std::numeric_limits<std::size_t>::digits};
+    constexpr std::size_t largest_power_of_two{std::size_t{1} << (digits - 1)};
+
+    static_assert(Buffer::checked_capacity(5) == 8);
+    static_assert(Buffer::checked_capacity(1) == 2);
+    static_assert(Buffer::checked_capacity(largest_power_of_two) == largest_power_of_two);
+    static_assert(!Buffer::checked_capacity(largest_power_of_two + 1).has_value());
+    static_assert(!Buffer::checked_capacity(std::numeric_limits<std::size_t>::max()).has_value());
 }
 
 TEST(SPSCRingBuffer, PopsWhatWasPushed)

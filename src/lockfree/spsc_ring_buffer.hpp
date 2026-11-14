@@ -28,6 +28,7 @@
 #include <atomic>
 #include <bit>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <span>
@@ -66,6 +67,10 @@ public:
     using ReadRegion = Region<const T>;
 
     explicit SPSCRingBuffer(std::size_t minimum_capacity);
+
+    /// The rounded capacity, or nothing when power-of-two rounding is not representable.
+    [[nodiscard]] static constexpr std::optional<std::size_t>
+    checked_capacity(std::size_t minimum_capacity) noexcept;
 
     NO_COPY_SEMANTIC(SPSCRingBuffer);
     NO_MOVE_SEMANTIC(SPSCRingBuffer);
@@ -181,6 +186,19 @@ template<typename U>
 std::size_t SPSCRingBuffer<T>::Region<U>::size() const noexcept
 {
     return first.size() + second.size();
+}
+
+template<RingElement T>
+constexpr std::optional<std::size_t>
+SPSCRingBuffer<T>::checked_capacity(std::size_t minimum_capacity) noexcept
+{
+    constexpr std::size_t largest_power_of_two{
+        std::size_t{1} << (std::numeric_limits<std::size_t>::digits - 1)};
+
+    if (minimum_capacity > largest_power_of_two)
+        return std::nullopt;
+
+    return std::bit_ceil(std::max<std::size_t>(minimum_capacity, 2));
 }
 
 template<RingElement T>
