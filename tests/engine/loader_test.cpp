@@ -20,23 +20,34 @@
 
 #include <engine/load/loader.hpp>
 
-#include <fixtures/wav.hpp>
+#include <fakes/decoder.hpp>
 
 #include <codec/decode/open.hpp>
 
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <thread>
 
 namespace {
 
+using wiola::codec::Opened;
 using wiola::codec::OpenResult;
 using wiola::engine::Loader;
+using wiola::pcm::Frames;
+using wiola::testing::FakeDecoder;
+using wiola::testing::Gate;
+
+Opened success(std::size_t num_frames = 64)
+{
+    return Opened{.decoder = std::make_unique<FakeDecoder>(Frames{num_frames}),
+        .result = OpenResult::opened};
+}
 
 /// Waits for whatever was asked for, the way a caller that draws comes back for it.
-std::optional<wiola::codec::Opened> wait_for(Loader& loader)
+std::optional<Opened> wait_for(Loader& loader)
 {
     while (loader.busy())
         std::this_thread::yield();
@@ -56,25 +67,27 @@ TEST(Loader, HasNothingBeforeItIsAsked)
 
 TEST(Loader, OpensAFileAndHandsItOver)
 {
-    Loader loader;
+    Loader loader{[](const std::filesystem::path&) { return success(); }};
 
-    loader.start(wiola::testing::write_wav("wiola_loader.wav"));
+    loader.start("track.wav");
 
-    const std::optional<wiola::codec::Opened> opened{wait_for(loader)};
+    const std::optional<Opened> opened{wait_for(loader)};
 
     ASSERT_TRUE(opened.has_value());
     EXPECT_EQ(opened->result, OpenResult::opened);
     ASSERT_NE(opened->decoder, nullptr);
-    EXPECT_GT(opened->decoder->num_frames(), wiola::pcm::Frames{});
+    EXPECT_EQ(opened->decoder->num_frames(), Frames{64});
 }
 
 TEST(Loader, SaysWhyAFileWouldNotOpen)
 {
-    Loader loader;
+    Loader loader{[](const std::filesystem::path&) {
+        return Opened{.decoder = nullptr, .result = OpenResult::unreadable};
+    }};
 
-    loader.start(std::filesystem::path{"no-such-track.wav"});
+    loader.start("missing.wav");
 
-    const std::optional<wiola::codec::Opened> opened{wait_for(loader)};
+    const std::optional<Opened> opened{wait_for(loader)};
 
     ASSERT_TRUE(opened.has_value());
     EXPECT_EQ(opened->result, OpenResult::unreadable);
@@ -85,43 +98,70 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
 /// same track twice.
 TEST(Loader, HandsTheAnswerOverOnlyOnce)
 {
-    Loader loader;
+    Loader loader{[](const std::filesystem::path&) { return success(); }};
 
-    loader.start(wiola::testing::write_wav("wiola_loader.wav"));
+    loader.start("track.wav");
 
     ASSERT_TRUE(wait_for(loader).has_value());
     EXPECT_FALSE(loader.take().has_value());
+}
+
+TEST(Loader, HoldsALoadUntilItsOpenerReturns)
+{
+    Gate opening;
+    Loader loader{[&opening](const std::filesystem::path&) {
+        opening.wait();
+        return success();
+    }};
+
+    loader.start("track.wav");
+    opening.wait_until_entered();
+
+    EXPECT_TRUE(loader.busy());
+    EXPECT_FALSE(loader.take().has_value());
+
+    opening.release();
+
+    EXPECT_TRUE(wait_for(loader).has_value());
 }
 
 /// A listener who picks another file has said which one they meant, so the first answer is
 /// dropped rather than played.
 TEST(Loader, KeepsOnlyTheFileAskedForLast)
 {
-    Loader loader;
+    Gate first_open;
+    const std::filesystem::path first{"first.wav"};
+    Loader loader{[&first_open, &first](const std::filesystem::path& path) {
+        if (path == first) {
+            first_open.wait();
+            return success(10);
+        }
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_loader_first.wav")};
-    const std::filesystem::path last{wiola::testing::write_wav("wiola_loader_last.wav")};
+        return success(20);
+    }};
 
     loader.start(first);
-    loader.start(last);
+    first_open.wait_until_entered();
+    loader.start("last.wav");
+    first_open.release();
 
-    const std::optional<wiola::codec::Opened> opened{wait_for(loader)};
+    const std::optional<Opened> opened{wait_for(loader)};
 
     ASSERT_TRUE(opened.has_value());
     EXPECT_EQ(opened->result, OpenResult::opened);
-
-    // Only one answer is kept, whichever of the two the reading reached first.
+    ASSERT_NE(opened->decoder, nullptr);
+    EXPECT_EQ(opened->decoder->num_frames(), Frames{20});
     EXPECT_FALSE(loader.take().has_value());
 }
 
 TEST(Loader, TakesAnotherFileAfterOneIsDone)
 {
-    Loader loader;
+    Loader loader{[](const std::filesystem::path&) { return success(); }};
 
-    loader.start(wiola::testing::write_wav("wiola_loader.wav"));
+    loader.start("first.wav");
     ASSERT_TRUE(wait_for(loader).has_value());
 
-    loader.start(wiola::testing::write_wav("wiola_loader_again.wav"));
+    loader.start("again.wav");
 
     EXPECT_TRUE(wait_for(loader).has_value());
 }
@@ -130,7 +170,17 @@ TEST(Loader, TakesAnotherFileAfterOneIsDone)
 /// decoder half-built.
 TEST(Loader, CanBeThrownAwayWhileItIsReading)
 {
-    Loader loader;
+    Gate opening;
+    std::jthread releaser{[&opening] {
+        opening.wait_until_entered();
+        opening.release();
+    }};
 
-    loader.start(wiola::testing::write_wav("wiola_loader.wav"));
+    Loader loader{[&opening](const std::filesystem::path&) {
+        opening.wait();
+        return success();
+    }};
+
+    loader.start("track.wav");
+    opening.wait_until_entered();
 }

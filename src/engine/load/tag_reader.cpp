@@ -24,6 +24,16 @@
 
 namespace wiola::engine {
 
+TagReader::TagReader()
+    : TagReader{codec::read_tags}
+{
+}
+
+TagReader::TagReader(MetadataReader read)
+    : reader_{std::move(read)}
+{
+}
+
 TagReader::~TagReader()
 {
     if (thread_.joinable()) {
@@ -84,7 +94,7 @@ void TagReader::work(const std::stop_token& stop)
         }
 
         // Held by nothing while the file is read, which is the whole point of being here.
-        codec::Tags tags{codec::read_tags(path)};
+        codec::Tags tags{reader_(path)};
 
         {
             const std::lock_guard asked{mutex_};

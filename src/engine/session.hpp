@@ -28,6 +28,8 @@
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
 #include <core/macros.hpp>
+#include <engine/load/loader.hpp>
+#include <engine/load/tag_reader.hpp>
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <utils/units.hpp>
@@ -38,9 +40,6 @@
 #include <vector>
 
 namespace wiola::engine {
-
-class Loader;
-class TagReader;
 
 /**
  * Builds what a track is played through, and keeps it built while it plays.
@@ -59,6 +58,9 @@ public:
 
     /// Plays through whatever `make_output` builds, which is asked once per track.
     explicit Session(OutputFactory make_output);
+
+    /// Uses the supplied media collaborators, for deterministic engine tests.
+    Session(OutputFactory make_output, DecoderOpener open_decoder, MetadataReader read_metadata);
 
     NO_COPY_SEMANTIC(Session);
     NO_MOVE_SEMANTIC(Session);
