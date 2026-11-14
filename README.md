@@ -1,4 +1,4 @@
-[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fwiolus.github.io%2Fwiola-player%2Fcoverage%2Fbadge.json)](https://wiolus.github.io/wiola-player/coverage/)
+[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fvokerlee.github.io%2Fwiola-player%2Fcoverage%2Fbadge.json)](https://vokerlee.github.io/wiola-player/coverage/)
 
 # Wiola Player
 
@@ -10,8 +10,8 @@ equalizer. On Windows it is a single executable: nothing to install, no DLLs to 
 ## Run it on Windows
 
 1. Download
-   [`wiola-player.exe`](https://github.com/Wiolus/wiola-player/releases/latest/download/wiola-player.exe)
-   from the [latest release](https://github.com/Wiolus/wiola-player/releases/latest).
+   [`wiola-player.exe`](https://github.com/Vokerlee/wiola-player/releases/latest/download/wiola-player.exe)
+   from the [latest release](https://github.com/Vokerlee/wiola-player/releases/latest).
 2. Double-click it.
 3. Press **Open** and pick a track.
 
