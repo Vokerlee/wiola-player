@@ -24,6 +24,11 @@ wiola_add_test(
     DATA "${PROJECT_SOURCE_DIR}/tests/codec/data"
 )
 wiola_add_test(
+    engine_pipeline_ownership_test
+    SOURCES pipeline_ownership_test.cpp
+    LIBS wiola_engine
+)
+wiola_add_test(
     engine_session_test
     SOURCES session_test.cpp
     LIBS wiola_engine

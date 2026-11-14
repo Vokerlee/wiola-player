@@ -43,39 +43,6 @@
 
 namespace wiola::engine {
 
-/// Declared in the order they are wired, so that each is built before whoever reads it and torn
-/// down after.
-struct Session::Pipeline {
-    Pipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
-        pcm::Frames buffer_frames, TransportConfig transport)
-        : buffer{source->spec(), buffer_frames}
-        , decoded{source->spec(), buffer.consumer()}
-        , player{std::move(source), buffer.producer(), output, transport}
-    {
-    }
-
-    pcm::PcmQueue buffer;
-    audio::BufferSource decoded;
-    Player player;
-};
-
-/// Built for a format and kept for as long as tracks come in it, so that a track change is a
-/// device stopping and starting rather than one closing and another opening.
-struct Session::Out {
-    Out(pcm::StreamSpec spec, audio::ProcessingChain& chain, const OutputFactory& make_output)
-        : spec{spec}
-        , relay{spec}
-        , shaped{relay, chain}
-        , output{make_output(shaped)}
-    {
-    }
-
-    pcm::StreamSpec spec;
-    audio::Relay relay;
-    audio::ShapedSource shaped;
-    std::unique_ptr<audio::Output> output;
-};
-
 Session::Session()
     : Session{[](audio::Source& source) { return std::make_unique<audio::Device>(source); }}
 {
@@ -100,7 +67,7 @@ Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
 },
     loader_{std::make_unique<Loader>(std::move(open_decoder))},
     tags_{std::make_unique<TagReader>(std::move(read_metadata))},
-    make_output_{std::move(make_output)}, transport_{transport}, buffering_{buffering}
+    out_{chain_, std::move(make_output)}, transport_{transport}, buffering_{buffering}
 {
     if (!transport_.valid() || !buffering_.valid())
         throw std::invalid_argument{"invalid engine configuration"};
@@ -341,23 +308,16 @@ bool Session::install_read_track()
 
     // Disconnect first. Resetting the pipeline then stops its player and waits for its output
     // connection to quiesce before the old buffer source or decoder can be destroyed.
-    if (out_)
-        out_->relay.point_at_nothing();
-
+    out_.disconnect();
     pipeline_.reset();
 
     chain_.configure(spec);
+    out_.open(spec);
 
-    // A device is opened for one format. Another of the same needs no more than the one that is
-    // already open.
-    if (!out_ || out_->spec != spec) {
-        out_.reset();
-        out_ = std::make_unique<Out>(spec, chain_, make_output_);
-    }
-
-    pipeline_ =
-        std::make_unique<Pipeline>(std::move(source), *out_->output, *buffer_frames, transport_);
-    out_->relay.point_at(pipeline_->decoded);
+    auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), out_.output(),
+        *buffer_frames, transport_)};
+    pipeline_ = std::move(pipeline);
+    out_.connect(pipeline_->decoded());
 
     track_ = ready_track_;
     ready_track_.clear();
@@ -394,11 +354,11 @@ bool Session::play_or_pause()
     // which also covers playing a track that has already finished.
     switch (state()) {
     case Playback::State::playing:
-        return pipeline_->player.pause();
+        return pipeline_->player().pause();
     case Playback::State::paused:
-        return pipeline_->player.resume();
+        return pipeline_->player().resume();
     default:
-        return pipeline_->player.start();
+        return pipeline_->player().start();
     }
 }
 
@@ -407,36 +367,36 @@ void Session::stop() noexcept
     if (!loaded())
         return;
 
-    pipeline_->player.stop();
+    pipeline_->player().stop();
 
     // Stopping is not pausing: the next play begins at the start of the track.
-    pipeline_->player.seek(units::Time{});
+    pipeline_->player().seek(units::Time{});
 }
 
 void Session::seek(units::Time position) noexcept
 {
     if (loaded())
-        pipeline_->player.seek(position);
+        pipeline_->player().seek(position);
 }
 
 Playback::State Session::state() const noexcept
 {
-    return loaded() ? pipeline_->player.state() : Playback::State::idle;
+    return loaded() ? pipeline_->player().state() : Playback::State::idle;
 }
 
 bool Session::playing() const noexcept
 {
-    return loaded() && pipeline_->player.playing();
+    return loaded() && pipeline_->player().playing();
 }
 
 units::Time Session::time_played() const noexcept
 {
-    return loaded() ? pipeline_->player.time_played() : units::Time{};
+    return loaded() ? pipeline_->player().time_played() : units::Time{};
 }
 
 units::Time Session::total_time() const noexcept
 {
-    return loaded() ? pipeline_->player.total_time() : units::Time{};
+    return loaded() ? pipeline_->player().total_time() : units::Time{};
 }
 
 } // namespace wiola::engine

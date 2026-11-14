@@ -20,10 +20,8 @@
 
 #pragma once
 
-#include <audio/device/output.hpp>
 #include <audio/dsp/equalizer.hpp>
 #include <audio/dsp/processing_chain.hpp>
-#include <audio/dsp/source.hpp>
 #include <audio/dsp/volume.hpp>
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
@@ -31,13 +29,14 @@
 #include <engine/buffering_config.hpp>
 #include <engine/load/loader.hpp>
 #include <engine/load/tag_reader.hpp>
+#include <engine/output_session.hpp>
+#include <engine/playback_pipeline.hpp>
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
 #include <utils/units.hpp>
 
 #include <filesystem>
-#include <functional>
 #include <memory>
 #include <vector>
 
@@ -50,9 +49,6 @@ namespace wiola::engine {
  * one replaces them. The chain outlives them all: a setting belongs to the listener rather than
  * to what is playing.
  */
-/// Builds the output a track is played through, from what that track plays.
-using OutputFactory = std::function<std::unique_ptr<audio::Output>(audio::Source&)>;
-
 class Session {
 public:
     /// Plays through the system output.
@@ -150,12 +146,6 @@ public:
     [[nodiscard]] audio::Equalizer& equalizer() noexcept { return equalizer_; }
 
 private:
-    struct Pipeline;
-
-    /// What a track is played through, for as long as one format lasts: the device, what it
-    /// pulls, and the relay that each track in turn is put behind.
-    struct Out;
-
     /// What a finished read is for.
     enum class Waiting {
         /// Put it on, and leave it as a track ready to be played.
@@ -213,13 +203,11 @@ private:
     std::unique_ptr<codec::Decoder> ready_;
     std::filesystem::path ready_track_;
     codec::OpenResult last_result_{codec::OpenResult::opened};
-    OutputFactory make_output_;
+    /// The output outlives its pipeline so transport is joined before the output is disconnected.
+    OutputSession out_;
     TransportConfig transport_;
     BufferingConfig buffering_;
-    /// Declared before the pipeline, so that a player is let go while what it drives is still
-    /// there to be given back.
-    std::unique_ptr<Out> out_;
-    std::unique_ptr<Pipeline> pipeline_;
+    std::unique_ptr<PlaybackPipeline> pipeline_;
 };
 
 } // namespace wiola::engine
