@@ -333,9 +333,8 @@ bool Session::install_read_track()
         return false;
     }
 
-    // Nothing to play, before there is nothing to play from: a device asking after this hears
-    // silence rather than reading a track that has been let go. The player's end stops the device
-    // anyway, but that is an ordering to keep, and this is not.
+    // Disconnect first. Resetting the pipeline then stops its player and waits for its output
+    // connection to quiesce before the old buffer source or decoder can be destroyed.
     if (out_)
         out_->relay.point_at_nothing();
 

@@ -38,8 +38,7 @@ Player::Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer b
     , output_{output}
     , spec_{source->spec()}
     , num_frames_{source->num_frames()}
-    , loop_{std::move(source), std::move(buffer), output.control(), output, playback_,
-          head_.applier()}
+    , loop_{std::move(source), std::move(buffer), output, playback_, head_.applier()}
 {
 }
 

@@ -68,7 +68,9 @@ public:
         /// Begins playing what the output pulls. False when there is none to be had.
         [[nodiscard]] bool start() noexcept;
 
-        /// Halts playing. Starting again is the caller's to ask for.
+        /// Halts playing and waits for an active callback to return. Once this returns, no callback
+        /// is using the source, which may then be replaced or destroyed. Starting again is the
+        /// caller's to ask for.
         void stop() noexcept;
 
     private:
