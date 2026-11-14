@@ -26,6 +26,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
+#include <optional>
 #include <span>
 
 namespace wiola::engine {
@@ -73,9 +75,15 @@ bool Player::start()
 
 void Player::seek(units::Time position) noexcept
 {
-    const double frames{spec_.sample_rate * std::max(position, units::Time{})};
+    if (!std::isfinite(position.seconds()))
+        return;
 
-    head_.request_seek(pcm::Frames{static_cast<std::size_t>(frames)});
+    const std::optional<pcm::Frames> target{
+        spec_.checked_frames_at(std::max(position, units::Time{}))};
+
+    // A position outside the source is not a request: playback and its reported position stay put.
+    if (target && *target <= num_frames_)
+        head_.request_seek(*target);
 }
 
 bool Player::pause() noexcept

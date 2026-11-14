@@ -23,6 +23,12 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <limits>
+#include <optional>
+
 namespace {
 
 using wiola::pcm::Frames;
@@ -79,6 +85,65 @@ TEST(StreamSpec, RejectsEmptyStreams)
 {
     EXPECT_FALSE((StreamSpec{.sample_rate = 0_Hz, .num_channels = 2}).valid());
     EXPECT_FALSE((StreamSpec{.sample_rate = 48_kHz, .num_channels = 0}).valid());
+}
+
+TEST(StreamSpec, RejectsNonFiniteRates)
+{
+    const std::array rates{Frequency{std::numeric_limits<double>::quiet_NaN()},
+        Frequency{std::numeric_limits<double>::infinity()}};
+
+    for (const Frequency rate : rates) {
+        const StreamSpec spec{.sample_rate = rate, .num_channels = 2};
+
+        EXPECT_FALSE(spec.valid());
+        EXPECT_FALSE(spec.checked_frames_at(1_s).has_value());
+        EXPECT_FALSE(spec.checked_samples_per(Frames{1}).has_value());
+    }
+}
+
+TEST(StreamSpec, RejectsNonFiniteAndNegativeTimes)
+{
+    constexpr StreamSpec spec{};
+    const std::array times{Time{std::numeric_limits<double>::quiet_NaN()},
+        Time{std::numeric_limits<double>::infinity()},
+        Time{-std::numeric_limits<double>::infinity()}, Time{-1.0}};
+
+    for (const Time time : times) {
+        EXPECT_FALSE(spec.checked_frames_at(time).has_value());
+        EXPECT_FALSE(spec.checked_samples_per(time).has_value());
+    }
+}
+
+TEST(StreamSpec, DetectsFrameToSampleOverflow)
+{
+    constexpr StreamSpec stereo{};
+    constexpr std::size_t largest{std::numeric_limits<std::size_t>::max()};
+
+    EXPECT_EQ(stereo.checked_samples_per(Frames{largest / 2}), largest - 1);
+    EXPECT_FALSE(stereo.checked_samples_per(Frames{largest}).has_value());
+
+    const StreamSpec many_channels{.sample_rate = 48_kHz, .num_channels = largest};
+    EXPECT_FALSE(many_channels.checked_samples_per(Frames{2}).has_value());
+}
+
+TEST(StreamSpec, DetectsDurationConversionOverflow)
+{
+    constexpr StreamSpec spec{};
+    EXPECT_FALSE(spec.checked_frames_at(Time{std::numeric_limits<double>::max()}).has_value());
+
+    const StreamSpec extreme_rate{.sample_rate = Frequency{std::numeric_limits<double>::max()},
+        .num_channels = 2};
+    EXPECT_FALSE(extreme_rate.checked_frames_at(1_s).has_value());
+    EXPECT_FALSE(extreme_rate.checked_samples_per(1_s).has_value());
+}
+
+TEST(StreamSpec, ChecksDurationConversionBeforeMultiplyingChannels)
+{
+    const StreamSpec spec{.sample_rate = 48_kHz,
+        .num_channels = std::numeric_limits<std::size_t>::max()};
+
+    EXPECT_FALSE(spec.checked_samples_per(1_s).has_value());
+    EXPECT_EQ(spec.checked_samples_per(Time{}), 0U);
 }
 
 TEST(StreamSpec, ComparesMemberwise)
