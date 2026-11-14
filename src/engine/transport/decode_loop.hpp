@@ -21,6 +21,7 @@
 #pragma once
 
 #include "playhead.hpp"
+#include "seek_operation.hpp"
 #include <audio/device/output.hpp>
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
@@ -65,9 +66,6 @@ public:
     void run();
 
 private:
-    /// Fills the buffer as far as it will go, so the first callbacks find frames waiting.
-    void prime();
-
     /// Carries out a requested seek, marking what was decoded for the old place as stale.
     void apply_seek();
 
@@ -91,6 +89,7 @@ private:
     /// What the output was last asked for. This thread's, and seeded by `begin` before there is
     /// a thread at all.
     bool output_started_{false};
+    SeekOperation seek_;
 };
 
 } // namespace wiola::engine

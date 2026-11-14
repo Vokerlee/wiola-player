@@ -8,5 +8,6 @@ wiola_add_library(
         player.cpp
         playhead.cpp
         seek_mailbox.cpp
+        seek_operation.cpp
     LIBS wiola_audio_device wiola_codec_decode
 )

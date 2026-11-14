@@ -22,9 +22,6 @@
 
 #include <engine/tuning.hpp>
 
-#include <pcm/stream_spec.hpp>
-
-#include <algorithm>
 #include <array>
 #include <chrono>
 #include <span>
@@ -42,29 +39,13 @@ DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source,
     , output_{output}
     , playback_{playback}
     , applier_{std::move(applier)}
+    , seek_{*source_, buffer_, control_, output_, applier_, output_started_}
 {
 }
 
 bool DecodeLoop::begin(bool rewind)
 {
-    // A seek asked for while nothing was decoding has no thread to take it up, so it waits here
-    // instead of being thrown away: a listener who moves the slider before pressing play means
-    // to begin there.
-    const Playhead::Claim claim{applier_.claim()};
-    const pcm::Frames start_frame{
-        claim.outstanding ? std::min(claim.target, source_->num_frames()) : pcm::Frames{}};
-
-    // A source that has never played is already at the beginning with nothing buffered.
-    if (rewind || claim.outstanding) {
-        buffer_.mark_discard();
-        source_->seek(start_frame);
-    }
-
-    // Measured from what the output has counted so far, since a count it keeps itself is one
-    // nothing else may wind back.
-    applier_.begin_at(start_frame, output_.frames_played(), claim);
-
-    prime();
+    static_cast<void>(seek_.begin(rewind));
 
     if (!control_.start())
         return false;
@@ -74,35 +55,9 @@ bool DecodeLoop::begin(bool rewind)
     return true;
 }
 
-void DecodeLoop::prime()
-{
-    std::array<float, tuning::decode_chunk_samples> block{};
-
-    while (buffer_.space_approx() >= block.size()) {
-        const std::size_t num_decoded{source_->render(block)};
-
-        if (num_decoded == 0)
-            break;
-
-        applier_.push(buffer_.push(std::span{block}.first(num_decoded)));
-    }
-}
-
 void DecodeLoop::apply_seek()
 {
-    const Playhead::Claim claim{applier_.claim()};
-
-    // What is buffered belongs to the old position. Marking it stale is all the decoding side
-    // can do: the space comes free when the output has stepped over it.
-    stop_output();
-    buffer_.mark_discard();
-
-    source_->seek(claim.target);
-
-    // The output is stopped, so what it has counted stands still while it is read.
-    applier_.begin_at(claim.target, output_.frames_played(), claim);
-
-    prime();
+    static_cast<void>(seek_.apply());
 
     // Whatever was asked for while the seek was being carried out.
     follow_playback();
