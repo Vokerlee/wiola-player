@@ -28,6 +28,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <filesystem>
 
 namespace {
@@ -161,11 +162,13 @@ TEST_F(VolumeControl, LiftsPastWhatArrivedWhenBoosted)
 
     control.set_boosted(true);
 
-    EXPECT_EQ(control.max_position(), tuning::boosted_volume);
+    const int boosted{
+        static_cast<int>(std::lround(volume.policy().max_boost * tuning::full_volume))};
+    EXPECT_EQ(control.max_position(), boosted);
 
-    control.set_position(tuning::boosted_volume);
+    control.set_position(boosted);
 
-    EXPECT_EQ(control.position(), tuning::boosted_volume);
+    EXPECT_EQ(control.position(), boosted);
     EXPECT_FLOAT_EQ(volume.gain(), 1.4F);
 }
 

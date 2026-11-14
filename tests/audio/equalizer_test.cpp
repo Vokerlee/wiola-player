@@ -29,12 +29,15 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <limits>
+#include <stdexcept>
 #include <vector>
 
 namespace {
 
 using wiola::audio::BandLayout;
 using wiola::audio::Equalizer;
+using wiola::audio::EqualizerConfig;
 using wiola::pcm::Frames;
 using wiola::pcm::StreamSpec;
 using namespace wiola::units;
@@ -89,6 +92,49 @@ void run_once(Equalizer& equalizer)
     std::array<float, 2> block{};
 
     equalizer.process(block);
+}
+
+TEST(EqualizerConfig, RejectsInvalidLayouts)
+{
+    std::vector<BandLayout> layouts(8);
+    layouts[0].count = 0;
+    layouts[1].count = BandLayout::max_count + 1;
+    layouts[2].first = Frequency{};
+    layouts[3].first = Frequency{std::numeric_limits<double>::quiet_NaN()};
+    layouts[4].ratio = 1.0;
+    layouts[5].ratio = std::numeric_limits<double>::quiet_NaN();
+    layouts[6].quality = 0.0;
+    layouts[7].quality = std::numeric_limits<double>::quiet_NaN();
+
+    for (const BandLayout& layout : layouts) {
+        EXPECT_FALSE(layout.valid());
+        EXPECT_THROW(Equalizer(stereo, layout), std::invalid_argument);
+    }
+}
+
+TEST(EqualizerConfig, RejectsUnsafeProcessingBounds)
+{
+    std::array<EqualizerConfig, 4> configs{};
+    configs[0].highest_band_share = 0.0;
+    configs[1].highest_band_share = 0.5;
+    configs[2].max_band_gain_db = std::numeric_limits<float>::quiet_NaN();
+    configs[3].max_band_gain_db = 0.0F;
+
+    for (const EqualizerConfig& config : configs) {
+        EXPECT_FALSE(config.valid());
+        EXPECT_THROW(Equalizer(stereo, config), std::invalid_argument);
+    }
+}
+
+TEST(EqualizerConfig, OwnsTheGainLimitItExposes)
+{
+    EqualizerConfig config;
+    config.max_band_gain_db = 6.0F;
+    Equalizer equalizer{stereo, config};
+
+    equalizer.set_band_gain(2, 12.0F);
+
+    EXPECT_FLOAT_EQ(equalizer.band_gain(2), 6.0F);
 }
 
 } // namespace

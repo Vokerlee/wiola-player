@@ -236,7 +236,7 @@ TEST(Chain, KeepsBoostedSamplesInRange)
     std::vector<float> block(stereo.samples_per(Frames{512}));
 
     shaping.equalizer.set_band_gain(5, 12.0F);
-    shaping.volume.set_gain(wiola::audio::tuning::max_volume_boost);
+    shaping.volume.set_gain(shaping.volume.policy().max_boost);
 
     for (int i = 0; i < 20; ++i) {
         source.render(block);
