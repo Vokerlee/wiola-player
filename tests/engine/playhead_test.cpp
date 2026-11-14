@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <thread>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -375,6 +376,42 @@ TEST(PlaybackEpoch, CountsOnlyCompleteFramesAcrossPartialSubmissions)
     EXPECT_FALSE(epoch.drained(Frames{21}));
     EXPECT_TRUE(epoch.drained(Frames{22}));
     EXPECT_EQ(epoch.position(Frames{22}), Frames{102});
+}
+
+TEST(Playhead, SerializesConcurrentSeekProducers)
+{
+    constexpr std::size_t num_writers{4};
+    constexpr std::size_t seeks_per_writer{25000};
+    Playhead head;
+    auto applier{head.applier()};
+    std::atomic<std::size_t> writers_done{0};
+    std::vector<std::jthread> writers;
+    writers.reserve(num_writers);
+
+    for (std::size_t writer = 0; writer < num_writers; ++writer) {
+        writers.emplace_back([writer, &head, &writers_done] {
+            for (std::size_t i = 0; i < seeks_per_writer; ++i)
+                head.request_seek(Frames{writer * seeks_per_writer + i + 1});
+
+            writers_done.fetch_add(1);
+        });
+    }
+
+    const auto deadline = std::chrono::steady_clock::now() + patience;
+    while (writers_done.load() != num_writers || head.seek_outstanding()) {
+        ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+        const Playhead::Claim claim{applier.claim()};
+
+        if (claim.outstanding)
+            applier.begin_at(claim.target, Frames{}, claim);
+        else
+            std::this_thread::yield();
+    }
+
+    const Frames reported{head.position(Frames{})};
+    EXPECT_GT(reported, Frames{});
+    EXPECT_LE(reported, Frames{num_writers * seeks_per_writer});
+    EXPECT_FALSE(head.seek_outstanding());
 }
 
 } // namespace

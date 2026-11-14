@@ -23,78 +23,49 @@
 namespace wiola::engine {
 
 Playhead::Playhead(std::size_t num_channels) noexcept
-    : epoch_{num_channels}
+    : seeks_{num_channels}
 {
 }
 
 void Playhead::request_seek(pcm::Frames frame_index) noexcept
 {
-    seek_target_.store(frame_index.count(), std::memory_order_relaxed);
-    seeks_requested_.fetch_add(1, std::memory_order_release);
+    seeks_.request(frame_index);
 }
 
 bool Playhead::seek_outstanding() const noexcept
 {
-    return seeks_requested_.load(std::memory_order_acquire) !=
-        seeks_applied_.load(std::memory_order_relaxed);
+    return seeks_.outstanding();
 }
 
 Playhead::Claim Playhead::claim() const noexcept
 {
-    const std::size_t requested{seeks_requested_.load(std::memory_order_acquire)};
-
-    return Claim{
-        .requested = requested,
-        .target = pcm::Frames{seek_target_.load(std::memory_order_relaxed)},
-        .outstanding = requested != seeks_applied_.load(std::memory_order_relaxed),
-    };
+    return seeks_.claim();
 }
 
 void Playhead::begin_at(pcm::Frames frame_index, pcm::Frames frames_played,
     const Claim& claim) noexcept
 {
-    epoch_.begin(frame_index, frames_played);
-
-    // Carried out only now that the place asked for is the place reported, and only after both
-    // of the numbers a reader pairs with it are in place.
-    seeks_applied_.store(claim.requested, std::memory_order_release);
+    seeks_.begin(frame_index, frames_played, claim);
 }
 
 void Playhead::push(std::size_t num_samples) noexcept
 {
-    epoch_.submit(num_samples);
+    seeks_.submit(num_samples);
 }
 
 std::size_t Playhead::num_pushed() const noexcept
 {
-    return epoch_.num_pushed();
+    return seeks_.num_pushed();
 }
 
 bool Playhead::drained(pcm::Frames frames_played) const noexcept
 {
-    return epoch_.drained(frames_played);
+    return seeks_.drained(frames_played);
 }
 
 pcm::Frames Playhead::position(pcm::Frames frames_played) const noexcept
 {
-    while (true) {
-        // Read before the counts, never after: a place asked for is stored before the count that
-        // describes it, so a target read afterwards may belong to a request this read has not
-        // counted. Reporting that one is reporting a place playback has not been sent to yet,
-        // and the next read - which does count it - then falls back behind it.
-        const pcm::Frames target{seek_target_.load(std::memory_order_acquire)};
-        const std::size_t applied{seeks_applied_.load(std::memory_order_acquire)};
-
-        // A place asked for is where playback is until it is reached.
-        if (seeks_requested_.load(std::memory_order_acquire) != applied)
-            return target;
-
-        // A seek carried out while the epoch was being read leaves its fields from either side of
-        // it, so the read is taken again rather than reported. The writer settles within one seek,
-        // so this goes round at most as often as playback is moved.
-        if (seeks_applied_.load(std::memory_order_acquire) == applied)
-            return epoch_.position(frames_played);
-    }
+    return seeks_.position(frames_played);
 }
 
 } // namespace wiola::engine
