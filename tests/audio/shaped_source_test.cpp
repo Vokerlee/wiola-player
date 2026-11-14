@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/chain.hpp>
+#include <audio/dsp/processing_chain.hpp>
 
 #include <audio/dsp/shaped_source.hpp>
 #include <audio/dsp/source.hpp>
@@ -35,7 +35,7 @@
 
 namespace {
 
-using wiola::audio::Chain;
+using wiola::audio::ProcessingChain;
 using namespace wiola::units;
 using wiola::audio::ShapedSource;
 using wiola::audio::Source;
@@ -94,7 +94,7 @@ TEST(ShapedSource, LeavesSamplesAloneWhileNothingIsAsked)
         EXPECT_FLOAT_EQ(sample, 0.5F);
 }
 
-TEST(ShapedSource, AppliesTheChain)
+TEST(ShapedSource, AppliesTheProcessingChain)
 {
     FixedSource inner{stereo, 0.8F, 8};
     wiola::testing::Shaping shaping{stereo};
@@ -182,7 +182,7 @@ public:
 TEST(ShapedSource, RejectsAnImpossibleCountFromTheInnerSource)
 {
     OverreportingSource inner;
-    Chain chain;
+    ProcessingChain chain;
     ShapedSource source{inner, chain};
     std::array<float, 4> block{};
 

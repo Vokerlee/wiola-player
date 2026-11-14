@@ -24,7 +24,7 @@
 
 namespace wiola::audio {
 
-ShapedSource::ShapedSource(Source& source, Chain& chain) noexcept
+ShapedSource::ShapedSource(Source& source, ProcessingChain& chain) noexcept
     : source_{source}
     , chain_{chain}
 {

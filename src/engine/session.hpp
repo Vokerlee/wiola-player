@@ -21,8 +21,8 @@
 #pragma once
 
 #include <audio/device/output.hpp>
-#include <audio/dsp/chain.hpp>
 #include <audio/dsp/equalizer.hpp>
+#include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/source.hpp>
 #include <audio/dsp/volume.hpp>
 #include <codec/decode/decoder.hpp>
@@ -197,7 +197,7 @@ private:
     /// they are put into the chain, not here.
     audio::Equalizer equalizer_{pcm::StreamSpec{}};
     audio::Volume volume_;
-    audio::Chain chain_;
+    audio::ProcessingChain chain_;
     std::unique_ptr<Loader> loader_;
     std::unique_ptr<TagReader> tags_;
     Playlist playlist_;

@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief The ceiling an output takes.
+ * @brief Fixed processing topology and final output sanitizing.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -18,18 +18,29 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/clip.hpp>
-
-#include <algorithm>
+#include <audio/dsp/processing_chain.hpp>
 
 namespace wiola::audio {
 
-void Clip::configure(pcm::StreamSpec /*spec*/) noexcept { }
-
-void Clip::process(std::span<float> samples) noexcept
+ProcessingChain::ProcessingChain(std::initializer_list<std::reference_wrapper<Stage>> stages)
 {
-    for (float& sample : samples)
-        sample = std::clamp(sample, -1.0F, 1.0F);
+    stages_.reserve(stages.size());
+    for (const auto stage : stages)
+        stages_.push_back(&stage.get());
+}
+
+void ProcessingChain::configure(pcm::StreamSpec spec)
+{
+    for (Stage* stage : stages_)
+        stage->configure(spec);
+}
+
+void ProcessingChain::process(std::span<float> samples) noexcept
+{
+    for (Stage* stage : stages_)
+        stage->process(samples);
+
+    sanitizer_.process(samples);
 }
 
 } // namespace wiola::audio

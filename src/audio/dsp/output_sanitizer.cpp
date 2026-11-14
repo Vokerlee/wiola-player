@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief The ceiling an output takes.
+ * @brief Final finite full-scale output policy.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -18,23 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <audio/dsp/output_sanitizer.hpp>
 
-#include <audio/dsp/stage.hpp>
-#include <pcm/stream_spec.hpp>
-
-#include <span>
+#include <algorithm>
+#include <cmath>
 
 namespace wiola::audio {
 
-/// Holds every sample to what an output takes. Past full scale there is nothing to hear, so what
-/// reaches past it is flattened rather than wrapped.
-class Clip final : public Stage {
-public:
-    /// Nothing here follows the stream, so this is what it costs to say so.
-    void configure(pcm::StreamSpec spec) noexcept override;
+void OutputSanitizer::configure(pcm::StreamSpec /*spec*/) noexcept { }
 
-    void process(std::span<float> samples) noexcept override;
-};
+void OutputSanitizer::process(std::span<float> samples) noexcept
+{
+    for (float& sample : samples)
+        sample = std::isfinite(sample) ? std::clamp(sample, -1.0F, 1.0F) : 0.0F;
+}
 
 } // namespace wiola::audio

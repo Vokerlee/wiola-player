@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <audio/dsp/chain.hpp>
+#include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/source.hpp>
 #include <pcm/stream_spec.hpp>
 
@@ -32,7 +32,7 @@ namespace wiola::audio {
 /// What another source gives, shaped on its way out. Both outlive it.
 class ShapedSource final : public Source {
 public:
-    ShapedSource(Source& source, Chain& chain) noexcept;
+    ShapedSource(Source& source, ProcessingChain& chain) noexcept;
 
     std::size_t render(std::span<float> interleaved) noexcept override;
 
@@ -40,7 +40,7 @@ public:
 
 private:
     Source& source_;
-    Chain& chain_;
+    ProcessingChain& chain_;
 };
 
 } // namespace wiola::audio

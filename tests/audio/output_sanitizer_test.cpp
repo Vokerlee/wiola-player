@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/clip.hpp>
+#include <audio/dsp/output_sanitizer.hpp>
 
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
@@ -31,7 +31,7 @@
 
 namespace {
 
-using wiola::audio::Clip;
+using wiola::audio::OutputSanitizer;
 using wiola::pcm::StreamSpec;
 using namespace wiola::units;
 
@@ -39,23 +39,23 @@ constexpr StreamSpec stereo{.sample_rate = 48_kHz, .num_channels = 2};
 
 } // namespace
 
-TEST(Clip, LeavesWhatAnOutputTakesAlone)
+TEST(OutputSanitizer, LeavesWhatAnOutputTakesAlone)
 {
-    Clip clip;
+    OutputSanitizer sanitizer;
     std::array block{1.0F, -1.0F, 0.5F, -0.25F, 0.0F};
     const auto untouched = block;
 
-    clip.process(block);
+    sanitizer.process(block);
 
     EXPECT_EQ(block, untouched);
 }
 
-TEST(Clip, FlattensWhatReachesPastFullScale)
+TEST(OutputSanitizer, FlattensWhatReachesPastFullScale)
 {
-    Clip clip;
+    OutputSanitizer sanitizer;
     std::array block{1.5F, -1.5F, 4.0F, -9.0F};
 
-    clip.process(block);
+    sanitizer.process(block);
 
     EXPECT_FLOAT_EQ(block[0], 1.0F);
     EXPECT_FLOAT_EQ(block[1], -1.0F);
@@ -63,39 +63,37 @@ TEST(Clip, FlattensWhatReachesPastFullScale)
     EXPECT_FLOAT_EQ(block[3], -1.0F);
 }
 
-/// A stream carries whatever it carries; an infinity in one is still held to the ceiling.
-TEST(Clip, FlattensAnInfinity)
+TEST(OutputSanitizer, TurnsNonFiniteSamplesIntoSilence)
 {
-    Clip clip;
-    std::array block{std::numeric_limits<float>::infinity(),
-        -std::numeric_limits<float>::infinity()};
+    OutputSanitizer sanitizer;
+    std::array block{std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity()};
 
-    clip.process(block);
+    sanitizer.process(block);
 
-    EXPECT_FLOAT_EQ(block[0], 1.0F);
-    EXPECT_FLOAT_EQ(block[1], -1.0F);
+    EXPECT_EQ(block, (std::array{0.0F, 0.0F, 0.0F}));
 }
 
-TEST(Clip, AcceptsNothingToDo)
+TEST(OutputSanitizer, AcceptsNothingToDo)
 {
-    Clip clip;
+    OutputSanitizer sanitizer;
 
-    clip.process(std::span<float>{});
+    sanitizer.process(std::span<float>{});
 
     std::array block{2.0F};
-    clip.process(block);
+    sanitizer.process(block);
 
     EXPECT_FLOAT_EQ(block[0], 1.0F);
 }
 
 /// Nothing here follows the stream, so being told about one changes nothing.
-TEST(Clip, IsUnchangedByTheFormat)
+TEST(OutputSanitizer, IsUnchangedByTheFormat)
 {
-    Clip clip;
-    clip.configure(stereo);
+    OutputSanitizer sanitizer;
+    sanitizer.configure(stereo);
 
     std::array block{2.0F, -2.0F};
-    clip.process(block);
+    sanitizer.process(block);
 
     EXPECT_FLOAT_EQ(block[0], 1.0F);
     EXPECT_FLOAT_EQ(block[1], -1.0F);
