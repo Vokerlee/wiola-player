@@ -78,6 +78,8 @@ public:
 
     void refuse_seeks() noexcept { refusing_seeks_.store(true); }
 
+    void refuse_next_seek() noexcept { refuse_next_seek_.store(true); }
+
     [[nodiscard]] int num_reads() const noexcept { return num_reads_.load(); }
 
     [[nodiscard]] int num_seeks() const noexcept { return num_seeks_.load(); }
@@ -104,13 +106,15 @@ protected:
         if (seek_gate_ != nullptr)
             seek_gate_->wait();
 
-        return !refusing_seeks_.load();
+        const bool refused{refusing_seeks_.load() || refuse_next_seek_.exchange(false)};
+        return !refused;
     }
 
 private:
     Gate* read_gate_{nullptr};
     Gate* seek_gate_{nullptr};
     std::atomic<bool> refusing_seeks_{false};
+    std::atomic<bool> refuse_next_seek_{false};
     std::atomic<int> num_reads_{0};
     std::atomic<int> num_seeks_{0};
     std::atomic<std::size_t> last_seek_{0};
