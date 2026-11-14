@@ -32,7 +32,7 @@
 #include <audio/dsp/shaped_source.hpp>
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 
 #include <memory>
@@ -48,14 +48,14 @@ namespace wiola::engine {
 /// down after.
 struct Session::Pipeline {
     Pipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
-        std::size_t buffer_capacity)
-        : buffer{buffer_capacity}
+        pcm::Frames buffer_frames)
+        : buffer{source->spec(), buffer_frames}
         , decoded{source->spec(), buffer.consumer()}
         , player{std::move(source), buffer.producer(), output}
     {
     }
 
-    lockfree::SPSCRingBuffer<float> buffer;
+    pcm::PcmQueue buffer;
     audio::BufferSource decoded;
     Player player;
 };
@@ -325,13 +325,9 @@ bool Session::install_read_track()
 
     std::unique_ptr<codec::Decoder> source{std::move(ready_)};
     const pcm::StreamSpec spec{source->spec()};
-    using Buffer = lockfree::SPSCRingBuffer<float>;
+    const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(tuning::buffer_duration)};
 
-    const std::optional<std::size_t> minimum{spec.checked_samples_per(tuning::buffer_duration)};
-    const std::optional<std::size_t> capacity{
-        minimum ? Buffer::checked_capacity(*minimum) : std::nullopt};
-
-    if (!capacity) {
+    if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames)) {
         ready_track_.clear();
         last_result_ = codec::OpenResult::damaged;
         return false;
@@ -354,7 +350,7 @@ bool Session::install_read_track()
         out_ = std::make_unique<Out>(spec, chain_, make_output_);
     }
 
-    pipeline_ = std::make_unique<Pipeline>(std::move(source), *out_->output, *capacity);
+    pipeline_ = std::make_unique<Pipeline>(std::move(source), *out_->output, *buffer_frames);
     out_->relay.point_at(pipeline_->decoded);
 
     track_ = ready_track_;

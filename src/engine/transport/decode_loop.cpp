@@ -30,9 +30,9 @@
 
 namespace wiola::engine {
 
-DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source,
-    lockfree::SPSCRingBuffer<float>::Producer buffer, audio::Output::Control control,
-    const audio::Output& output, Playback& playback, Playhead::Applier applier) noexcept
+DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+    audio::Output::Control control, const audio::Output& output, Playback& playback,
+    Playhead::Applier applier) noexcept
     : source_{std::move(source)}
     , buffer_{std::move(buffer)}
     , control_{std::move(control)}

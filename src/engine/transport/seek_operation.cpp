@@ -27,9 +27,9 @@
 
 namespace wiola::engine {
 
-SeekOperation::SeekOperation(codec::Decoder& source,
-    lockfree::SPSCRingBuffer<float>::Producer& buffer, audio::Output::Control& control,
-    const audio::Output& output, Playhead::Applier& applier, bool& output_started) noexcept
+SeekOperation::SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& buffer,
+    audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
+    bool& output_started) noexcept
     : source_{source}
     , buffer_{buffer}
     , control_{control}

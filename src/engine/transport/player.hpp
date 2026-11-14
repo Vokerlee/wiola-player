@@ -26,7 +26,7 @@
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
 
@@ -49,7 +49,7 @@ class Player final {
 public:
     /// Takes the source it plays, which must not be null, the buffer it decodes into, and the
     /// output that buffer is played through. Both outlive the player.
-    Player(std::unique_ptr<codec::Decoder> source, lockfree::SPSCRingBuffer<float>::Producer buffer,
+    Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
         audio::Output& output);
 
     NO_COPY_SEMANTIC(Player);

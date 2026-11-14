@@ -32,8 +32,8 @@
 
 namespace wiola::engine {
 
-Player::Player(std::unique_ptr<codec::Decoder> source,
-    lockfree::SPSCRingBuffer<float>::Producer buffer, audio::Output& output)
+Player::Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+    audio::Output& output)
     : head_{source->spec().num_channels}
     , output_{output}
     , spec_{source->spec()}
