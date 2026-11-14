@@ -220,7 +220,7 @@ bool DecodeLoop::played_out() const noexcept
     if (!output_started_)
         return false;
 
-    return output_.frames_played() >= source_->spec().frames_per(applier_.num_pushed());
+    return applier_.drained(output_.frames_played());
 }
 
 } // namespace wiola::engine

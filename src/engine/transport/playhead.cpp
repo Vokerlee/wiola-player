@@ -22,6 +22,11 @@
 
 namespace wiola::engine {
 
+Playhead::Playhead(std::size_t num_channels) noexcept
+    : epoch_{num_channels}
+{
+}
+
 void Playhead::request_seek(pcm::Frames frame_index) noexcept
 {
     seek_target_.store(frame_index.count(), std::memory_order_relaxed);
@@ -48,9 +53,7 @@ Playhead::Claim Playhead::claim() const noexcept
 void Playhead::begin_at(pcm::Frames frame_index, pcm::Frames frames_played,
     const Claim& claim) noexcept
 {
-    base_.store(frame_index.count(), std::memory_order_relaxed);
-    frames_at_begin_.store(frames_played.count(), std::memory_order_relaxed);
-    num_pushed_ = 0;
+    epoch_.begin(frame_index, frames_played);
 
     // Carried out only now that the place asked for is the place reported, and only after both
     // of the numbers a reader pairs with it are in place.
@@ -59,12 +62,17 @@ void Playhead::begin_at(pcm::Frames frame_index, pcm::Frames frames_played,
 
 void Playhead::push(std::size_t num_samples) noexcept
 {
-    num_pushed_ += num_samples;
+    epoch_.submit(num_samples);
 }
 
 std::size_t Playhead::num_pushed() const noexcept
 {
-    return num_pushed_;
+    return epoch_.num_pushed();
+}
+
+bool Playhead::drained(pcm::Frames frames_played) const noexcept
+{
+    return epoch_.drained(frames_played);
 }
 
 pcm::Frames Playhead::position(pcm::Frames frames_played) const noexcept
@@ -81,14 +89,11 @@ pcm::Frames Playhead::position(pcm::Frames frames_played) const noexcept
         if (seeks_requested_.load(std::memory_order_acquire) != applied)
             return target;
 
-        const pcm::Frames base{base_.load(std::memory_order_acquire)};
-        const pcm::Frames at_begin{frames_at_begin_.load(std::memory_order_acquire)};
-
-        // A seek carried out while those two were being read leaves them from either side of it,
-        // so the read is taken again rather than reported. The writer settles within one seek, so
-        // this goes round at most as often as playback is moved.
+        // A seek carried out while the epoch was being read leaves its fields from either side of
+        // it, so the read is taken again rather than reported. The writer settles within one seek,
+        // so this goes round at most as often as playback is moved.
         if (seeks_applied_.load(std::memory_order_acquire) == applied)
-            return base + (frames_played - at_begin);
+            return epoch_.position(frames_played);
     }
 }
 

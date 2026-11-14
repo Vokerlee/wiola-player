@@ -317,4 +317,64 @@ TEST(Playhead, NeverReportsAPlaceItHasLeft)
     asking.store(false);
 }
 
+TEST(Playhead, RepeatedPlaybackDoesNotDrainFromThePreviousEpoch)
+{
+    Playhead head;
+    auto applier{head.applier()};
+
+    applier.begin_at(Frames{}, Frames{100}, applier.claim());
+    applier.push(16);
+
+    EXPECT_FALSE(applier.drained(Frames{100}));
+    EXPECT_FALSE(applier.drained(Frames{107}));
+    EXPECT_TRUE(applier.drained(Frames{108}));
+}
+
+TEST(Playhead, SeekNearTheEndWaitsForItsOwnSubmittedFrames)
+{
+    Playhead head;
+    auto applier{head.applier()};
+
+    applier.begin_at(Frames{900}, Frames{40}, applier.claim());
+    applier.push(6);
+
+    EXPECT_FALSE(applier.drained(Frames{40}));
+    EXPECT_FALSE(applier.drained(Frames{42}));
+    EXPECT_TRUE(applier.drained(Frames{43}));
+    EXPECT_EQ(head.position(Frames{43}), Frames{903});
+}
+
+TEST(Playhead, SecondTrackSharingAnOutputStartsFromTheCurrentCounter)
+{
+    Playhead head;
+    auto applier{head.applier()};
+
+    applier.begin_at(Frames{}, Frames{}, applier.claim());
+    applier.push(20);
+    applier.begin_at(Frames{}, Frames{10}, applier.claim());
+    applier.push(8);
+
+    EXPECT_FALSE(applier.drained(Frames{10}));
+    EXPECT_FALSE(applier.drained(Frames{13}));
+    EXPECT_TRUE(applier.drained(Frames{14}));
+}
+
+TEST(PlaybackEpoch, CountsOnlyCompleteFramesAcrossPartialSubmissions)
+{
+    wiola::engine::PlaybackEpoch epoch{3};
+    epoch.begin(Frames{100}, Frames{20});
+
+    epoch.submit(2);
+    EXPECT_EQ(epoch.submitted(), Frames{});
+    EXPECT_EQ(epoch.num_pushed(), 2U);
+    EXPECT_EQ(epoch.position(Frames{20}), Frames{100});
+
+    epoch.submit(4);
+    EXPECT_EQ(epoch.submitted(), Frames{2});
+    EXPECT_EQ(epoch.num_pushed(), 6U);
+    EXPECT_FALSE(epoch.drained(Frames{21}));
+    EXPECT_TRUE(epoch.drained(Frames{22}));
+    EXPECT_EQ(epoch.position(Frames{22}), Frames{102});
+}
+
 } // namespace
