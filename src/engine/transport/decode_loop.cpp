@@ -31,15 +31,14 @@
 namespace wiola::engine {
 
 DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-    audio::Output::Control control, const audio::Output& output, Playback& playback,
-    Playhead::Applier applier) noexcept
+    audio::Output& output, Playback& playback, Playhead::Applier applier) noexcept
     : source_{std::move(source)}
     , buffer_{std::move(buffer)}
-    , control_{std::move(control)}
+    , connection_{output}
     , output_{output}
     , playback_{playback}
     , applier_{std::move(applier)}
-    , seek_{*source_, buffer_, control_, output_, applier_, output_started_}
+    , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_}
 {
 }
 
@@ -47,7 +46,7 @@ bool DecodeLoop::begin(bool rewind)
 {
     static_cast<void>(seek_.begin(rewind));
 
-    if (!control_.start())
+    if (!connection_.control().start())
         return false;
 
     output_started_ = true;
@@ -68,7 +67,7 @@ void DecodeLoop::stop_output() noexcept
     if (!output_started_)
         return;
 
-    control_.stop();
+    connection_.control().stop();
     output_started_ = false;
 }
 
@@ -84,7 +83,7 @@ void DecodeLoop::follow_playback()
         return;
     }
 
-    if (control_.start()) {
+    if (connection_.control().start()) {
         output_started_ = true;
         return;
     }

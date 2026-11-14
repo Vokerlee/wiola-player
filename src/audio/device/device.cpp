@@ -91,6 +91,8 @@ bool Device::start() noexcept
 
 void Device::stop() noexcept
 {
+    // miniaudio's stop waits for the data callback to return, satisfying Output's source-lifetime
+    // guarantee rather than merely asking the backend to stop at some later time.
     if (running())
         ma_device_stop(&backend_->handle);
 }

@@ -19,17 +19,36 @@
  */
 
 #include <audio/device/output.hpp>
+#include <audio/device/output_connection.hpp>
+#include <audio/dsp/source.hpp>
 
 #include <fakes/output.hpp>
 
 #include <gtest/gtest.h>
 
+#include <semaphore>
+#include <thread>
 #include <utility>
 
 namespace {
 
 using wiola::audio::Output;
 using wiola::testing::FakeOutput;
+
+class BlockingSource final : public wiola::audio::Source {
+public:
+    std::size_t render(std::span<float>) override
+    {
+        entered.release();
+        release.acquire();
+        return 0;
+    }
+
+    [[nodiscard]] wiola::pcm::StreamSpec spec() const noexcept override { return {}; }
+
+    std::binary_semaphore entered{0};
+    std::binary_semaphore release{0};
+};
 
 } // namespace
 
@@ -45,6 +64,28 @@ TEST(OutputControl, StartsAndStopsWhatItWasTakenFrom)
     control.stop();
 
     EXPECT_FALSE(output.running());
+    EXPECT_EQ(output.num_stops(), 1);
+}
+
+TEST(OutputConnection, StopWaitsForTheSourceCallbackToReturn)
+{
+    BlockingSource source;
+    FakeOutput output{source};
+    wiola::audio::OutputConnection connection{output};
+
+    ASSERT_TRUE(connection.control().start());
+    source.entered.acquire();
+
+    std::binary_semaphore stopped{0};
+    std::jthread stopping{[&] {
+        connection.stop();
+        stopped.release();
+    }};
+
+    EXPECT_FALSE(stopped.try_acquire()) << "stop returned while the source callback was blocked";
+    source.release.release();
+    stopped.acquire();
+
     EXPECT_EQ(output.num_stops(), 1);
 }
 

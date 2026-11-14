@@ -19,5 +19,9 @@ wiola_add_test(
     LIBS wiola_audio_dsp
 )
 wiola_add_test(audio_tone_test SOURCES tone_test.cpp LIBS wiola_audio_dsp)
-wiola_add_test(audio_output_test SOURCES output_test.cpp)
+wiola_add_test(
+    audio_output_test
+    SOURCES output_test.cpp
+    LIBS wiola_audio_device
+)
 wiola_add_test(audio_device_test SOURCES device_test.cpp LIBS wiola_audio)
