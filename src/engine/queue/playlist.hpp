@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief What is to be played, and where in it playback has reached.
+ * @brief Queue entry storage, metadata, and one coherent current selection.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <engine/queue/playback_order.hpp>
 #include <engine/queue/track.hpp>
 
 #include <cstddef>
@@ -29,32 +30,21 @@
 
 namespace wiola::engine {
 
-/// Queue entries in insertion order, a stable playback order, and an optional current selection.
+/// Owns queue entries while PlaybackOrder owns permutation, cursor, and repeat decisions.
 class Playlist {
 public:
-    enum class Repeat {
-        none,
-        track,
-        all,
-    };
+    using Repeat = PlaybackOrder::Repeat;
 
-    /// Replaces everything and selects the first entry. New identities are always assigned.
     void set(std::vector<Track> tracks);
-
-    /// Appends an entry with a fresh identity; an empty list selects it.
     void add(Track track);
-
     bool remove(std::size_t index);
     void clear() noexcept;
 
     [[nodiscard]] bool empty() const noexcept;
     [[nodiscard]] std::size_t revision() const noexcept;
     [[nodiscard]] const std::vector<Track>& tracks() const noexcept;
-
-    /// The selected entry, or nullptr when there is no selection.
     [[nodiscard]] const Track* current() const noexcept;
 
-    /// Updates only metadata for `id`, leaving identity and location untouched.
     bool describe(QueueEntryId id, TrackMetadata metadata);
 
     [[nodiscard]] std::optional<std::size_t> position() const noexcept;
@@ -67,22 +57,17 @@ public:
     void set_repeat(Repeat repeat) noexcept;
     [[nodiscard]] Repeat repeat() const noexcept;
 
-    /// Draws a deterministic playback order while preserving the selected entry.
     void shuffle(std::uint_fast32_t seed);
-    void unshuffle();
+    void unshuffle() noexcept;
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    [[nodiscard]] std::size_t place_of(std::size_t index) const noexcept;
     void identify(Track& track);
 
     std::vector<Track> tracks_;
-    std::vector<std::size_t> order_;
-    std::optional<std::size_t> place_;
+    PlaybackOrder order_;
     std::size_t revision_{0};
     QueueEntryId next_id_{1};
-    Repeat repeat_{Repeat::none};
-    bool shuffled_{false};
 };
 
 } // namespace wiola::engine

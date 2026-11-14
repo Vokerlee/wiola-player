@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief What is to be played, and where in it playback has reached.
+ * @brief Queue entry storage, metadata, and one coherent current selection.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -21,8 +21,6 @@
 #include <engine/queue/playlist.hpp>
 
 #include <algorithm>
-#include <numeric>
-#include <random>
 #include <utility>
 
 namespace wiola::engine {
@@ -35,10 +33,7 @@ void Playlist::set(std::vector<Track> tracks)
     for (Track& track : tracks_)
         identify(track);
 
-    order_.resize(tracks_.size());
-    std::iota(order_.begin(), order_.end(), std::size_t{0});
-    shuffled_ = false;
-    place_ = tracks_.empty() ? std::nullopt : std::optional<std::size_t>{0};
+    order_.reset(tracks_.size());
 }
 
 void Playlist::add(Track track)
@@ -46,44 +41,16 @@ void Playlist::add(Track track)
     ++revision_;
     identify(track);
     tracks_.push_back(std::move(track));
-
-    // A track added to a shuffled list goes at the end of the order rather than into the middle.
-    order_.push_back(tracks_.size() - 1);
-
-    if (!place_.has_value())
-        place_ = 0;
+    order_.add();
 }
 
 bool Playlist::remove(std::size_t index)
 {
-    if (index >= tracks_.size())
+    if (!order_.remove(index))
         return false;
 
     ++revision_;
-    const std::optional<std::size_t> standing{position()};
     tracks_.erase(tracks_.begin() + static_cast<std::ptrdiff_t>(index));
-    order_.erase(std::ranges::find(order_, index));
-
-    for (std::size_t& place : order_)
-        if (place > index)
-            --place;
-
-    if (tracks_.empty()) {
-        place_.reset();
-        return true;
-    }
-
-    if (!standing.has_value()) {
-        place_ = 0;
-        return true;
-    }
-
-    if (*standing == index) {
-        place_ = place_of(std::min(index, tracks_.size() - 1));
-        return true;
-    }
-
-    place_ = place_of(*standing > index ? *standing - 1 : *standing);
     return true;
 }
 
@@ -92,8 +59,6 @@ void Playlist::clear() noexcept
     ++revision_;
     tracks_.clear();
     order_.clear();
-    place_.reset();
-    shuffled_ = false;
 }
 
 bool Playlist::empty() const noexcept
@@ -113,7 +78,8 @@ const std::vector<Track>& Playlist::tracks() const noexcept
 
 const Track* Playlist::current() const noexcept
 {
-    return place_.has_value() ? &tracks_[order_[*place_]] : nullptr;
+    const auto selected{order_.position()};
+    return selected ? &tracks_[*selected] : nullptr;
 }
 
 bool Playlist::describe(QueueEntryId id, TrackMetadata metadata)
@@ -130,10 +96,7 @@ bool Playlist::describe(QueueEntryId id, TrackMetadata metadata)
 
 std::optional<std::size_t> Playlist::position() const noexcept
 {
-    if (!place_.has_value())
-        return std::nullopt;
-
-    return order_[*place_];
+    return order_.position();
 }
 
 std::optional<std::size_t> Playlist::index_of(QueueEntryId id) const noexcept
@@ -148,95 +111,44 @@ std::optional<std::size_t> Playlist::index_of(QueueEntryId id) const noexcept
 
 bool Playlist::go_to(std::size_t index) noexcept
 {
-    if (index >= tracks_.size())
-        return false;
-
-    place_ = place_of(index);
-    return true;
+    return order_.go_to(index);
 }
 
 bool Playlist::next() noexcept
 {
-    if (!place_.has_value())
-        return false;
-
-    if (repeat_ == Repeat::track)
-        return true;
-
-    if (*place_ + 1 < order_.size()) {
-        place_ = *place_ + 1;
-        return true;
-    }
-
-    if (repeat_ != Repeat::all)
-        return false;
-
-    place_ = 0;
-    return true;
+    return order_.next();
 }
 
 bool Playlist::previous() noexcept
 {
-    if (!place_.has_value())
-        return false;
-
-    if (repeat_ == Repeat::track)
-        return true;
-
-    if (*place_ > 0) {
-        place_ = *place_ - 1;
-        return true;
-    }
-
-    if (repeat_ != Repeat::all)
-        return false;
-
-    place_ = order_.size() - 1;
-    return true;
+    return order_.previous();
 }
 
 void Playlist::set_repeat(Repeat repeat) noexcept
 {
-    repeat_ = repeat;
+    order_.set_repeat(repeat);
 }
 
 Playlist::Repeat Playlist::repeat() const noexcept
 {
-    return repeat_;
+    return order_.repeat();
 }
 
 void Playlist::shuffle(std::uint_fast32_t seed)
 {
     ++revision_;
-    const std::optional<std::size_t> standing{position()};
-    std::mt19937 random{seed};
-    std::ranges::shuffle(order_, random);
-    shuffled_ = true;
-
-    if (standing.has_value())
-        place_ = place_of(*standing);
+    order_.shuffle(seed);
 }
 
-void Playlist::unshuffle()
+void Playlist::unshuffle() noexcept
 {
     ++revision_;
-    const std::optional<std::size_t> standing{position()};
-    std::iota(order_.begin(), order_.end(), std::size_t{0});
-    shuffled_ = false;
-
-    if (standing.has_value())
-        place_ = place_of(*standing);
+    order_.unshuffle();
 }
 
 bool Playlist::shuffled() const noexcept
 {
-    return shuffled_;
-}
-
-std::size_t Playlist::place_of(std::size_t index) const noexcept
-{
-    const auto found = std::ranges::find(order_, index);
-    return static_cast<std::size_t>(std::distance(order_.begin(), found));
+    return order_.shuffled();
 }
 
 void Playlist::identify(Track& track)
