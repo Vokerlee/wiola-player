@@ -136,7 +136,7 @@ void DecodeLoop::follow_playback()
 
     // An output that will not start is a fault rather than a pause, and leaves nothing to play
     // through.
-    playback_.finish(Playback::State::faulted);
+    playback_.finish(Playback::TerminalReason::faulted);
 }
 
 void DecodeLoop::run()
@@ -161,7 +161,7 @@ void DecodeLoop::run()
         // Waiting on one that has gone away is how playback looks like it is still going with
         // nothing coming out of it.
         if (output_started_ && !output_.running()) {
-            playback_.finish(Playback::State::faulted);
+            playback_.finish(Playback::TerminalReason::faulted);
             break;
         }
 
@@ -210,7 +210,7 @@ void DecodeLoop::run()
     }
 
     stop_output();
-    playback_.finish(Playback::State::ended);
+    playback_.finish(Playback::TerminalReason::ended);
 }
 
 bool DecodeLoop::played_out() const noexcept

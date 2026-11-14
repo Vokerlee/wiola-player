@@ -29,6 +29,7 @@
 namespace {
 
 using State = wiola::engine::Playback::State;
+using TerminalReason = wiola::engine::Playback::TerminalReason;
 using wiola::engine::Playback;
 
 } // namespace
@@ -69,7 +70,7 @@ TEST(Playback, BeginsAgainAfterPlaybackHasFinished)
     Playback playback;
 
     ASSERT_TRUE(playback.begin());
-    playback.finish(State::ended);
+    playback.finish(TerminalReason::ended);
 
     EXPECT_TRUE(playback.begin());
     EXPECT_EQ(playback.state(), State::playing);
@@ -112,7 +113,7 @@ TEST(Playback, FinishesFromPaused)
     ASSERT_TRUE(playback.begin());
     ASSERT_TRUE(playback.pause());
 
-    playback.finish(State::ended);
+    playback.finish(TerminalReason::ended);
 
     EXPECT_EQ(playback.state(), State::ended);
     EXPECT_TRUE(playback.finished());
@@ -125,8 +126,8 @@ TEST(Playback, KeepsTheFinalStateItReachedFirst)
 
     ASSERT_TRUE(playback.begin());
 
-    playback.finish(State::stopped);
-    playback.finish(State::ended);
+    playback.finish(TerminalReason::stopped);
+    playback.finish(TerminalReason::ended);
 
     EXPECT_EQ(playback.state(), State::stopped);
 }
@@ -138,7 +139,7 @@ TEST(Playback, RefusesToPauseOrResumeWhatHasFinished)
     Playback playback;
 
     ASSERT_TRUE(playback.begin());
-    playback.finish(State::ended);
+    playback.finish(TerminalReason::ended);
 
     EXPECT_FALSE(playback.pause());
     EXPECT_EQ(playback.state(), State::ended);
@@ -155,13 +156,13 @@ TEST(Playback, KeepsAFaultAsFinal)
 
     ASSERT_TRUE(playback.begin());
 
-    playback.finish(State::faulted);
+    playback.finish(TerminalReason::faulted);
 
     EXPECT_EQ(playback.state(), State::faulted);
     EXPECT_TRUE(playback.finished());
     EXPECT_FALSE(playback.playing());
 
-    playback.finish(State::ended);
+    playback.finish(TerminalReason::ended);
     EXPECT_EQ(playback.state(), State::faulted);
 
     EXPECT_FALSE(playback.pause());
@@ -176,7 +177,7 @@ TEST(Playback, BeginsAgainAfterAFault)
     Playback playback;
 
     ASSERT_TRUE(playback.begin());
-    playback.finish(State::faulted);
+    playback.finish(TerminalReason::faulted);
 
     EXPECT_TRUE(playback.begin());
     EXPECT_EQ(playback.state(), State::playing);
@@ -206,7 +207,7 @@ TEST(Playback, NeverLeavesAFinalStateBehind)
         for (int spin = 0; spin < round; ++spin)
             std::this_thread::yield();
 
-        playback.finish(State::ended);
+        playback.finish(TerminalReason::ended);
 
         // The listener is still asking; none of it may take.
         for (int check = 0; check < num_checks; ++check) {
@@ -234,7 +235,7 @@ TEST(Playback, SettlesOnOneFinalStateWhenBothAreAskedAtOnce)
         const std::jthread decoder{[&playback, &go] {
             while (!go.load(std::memory_order_acquire)) { }
 
-            playback.finish(State::ended);
+            playback.finish(TerminalReason::ended);
         }};
 
         go.store(true, std::memory_order_release);
@@ -242,7 +243,7 @@ TEST(Playback, SettlesOnOneFinalStateWhenBothAreAskedAtOnce)
         for (int spin = 0; spin < round % 4; ++spin)
             std::this_thread::yield();
 
-        playback.finish(State::stopped);
+        playback.finish(TerminalReason::stopped);
 
         const State settled{playback.state()};
         ASSERT_TRUE(settled == State::ended || settled == State::stopped) << "at round " << round;
