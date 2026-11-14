@@ -20,16 +20,29 @@
 
 #include "transport_worker.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::engine {
 
+namespace {
+
+const TransportConfig& validated(const TransportConfig& config)
+{
+    if (!config.valid())
+        throw std::invalid_argument{"invalid transport configuration"};
+
+    return config;
+}
+
+} // namespace
+
 TransportWorker::TransportWorker(std::unique_ptr<codec::Decoder> source,
     pcm::PcmQueue::Producer buffer, audio::Output& output, ThreadFactory launch,
-    std::chrono::milliseconds poll_interval) noexcept
+    TransportConfig config)
     : head_{source->spec().num_channels}
-    , wait_{poll_interval}
-    , loop_{std::move(source), std::move(buffer), output, playback_, head_.applier(), wait_}
+    , wait_{validated(config).poll_interval}
+    , loop_{std::move(source), std::move(buffer), output, playback_, head_.applier(), wait_, config}
     , launch_{std::move(launch)}
 {
     if (!launch_)

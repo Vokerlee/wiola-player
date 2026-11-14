@@ -20,22 +20,20 @@
 
 #include "seek_operation.hpp"
 
-#include <engine/tuning.hpp>
-
-#include <array>
 #include <span>
 
 namespace wiola::engine {
 
 SeekOperation::SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& buffer,
     audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
-    bool& output_started) noexcept
+    bool& output_started, std::vector<float>& block) noexcept
     : source_{source}
     , buffer_{buffer}
     , control_{control}
     , output_{output}
     , applier_{applier}
     , output_started_{output_started}
+    , block_{block}
 {
 }
 
@@ -88,15 +86,13 @@ void SeekOperation::quiesce() noexcept
 
 void SeekOperation::prime()
 {
-    std::array<float, tuning::decode_chunk_samples> block{};
-
-    while (buffer_.space_approx() >= block.size()) {
-        const std::size_t num_decoded{source_.render(block)};
+    while (buffer_.space_approx() >= block_.size()) {
+        const std::size_t num_decoded{source_.render(block_)};
 
         if (num_decoded == 0)
             break;
 
-        applier_.push(buffer_.push(std::span{block}.first(num_decoded)));
+        applier_.push(buffer_.push(std::span{block_}.first(num_decoded)));
     }
 }
 

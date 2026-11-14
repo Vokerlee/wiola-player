@@ -28,9 +28,11 @@
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
+#include <engine/transport/transport_config.hpp>
 #include <pcm/pcm_queue.hpp>
 
 #include <memory>
+#include <vector>
 
 namespace wiola::engine {
 
@@ -42,17 +44,16 @@ namespace wiola::engine {
  * out. Whoever holds one of these has no way to reach any of them, which is what keeps a
  * listener's thread out of a device that this one is driving.
  *
- * `begin` is the caller's, before there is a thread. Everything after it belongs to the thread
- * that runs `run`.
+ * `begin` and everything after it belong to the transport worker thread.
  */
 class DecodeLoop {
 public:
     /// Takes the source it plays, the ends of the buffer, output and playhead it works through,
     /// the output it reads what has been heard from, and the playback it follows. All of them
-    /// outlive it.
+    /// outlive it. Decode storage is allocated from the owned configuration at construction.
     DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, Playback& playback, Playhead::Applier applier,
-        TransportWait& wait) noexcept;
+        audio::Output& output, Playback& playback, Playhead::Applier applier, TransportWait& wait,
+        const TransportConfig& config);
 
     NO_COPY_SEMANTIC(DecodeLoop);
     NO_MOVE_SEMANTIC(DecodeLoop);
@@ -88,6 +89,7 @@ private:
     Playback& playback_;
     Playhead::Applier applier_;
     TransportWait& wait_;
+    std::vector<float> block_;
 
     /// What the output was last asked for. This thread's, and seeded by `begin` before there is
     /// a thread at all.

@@ -110,8 +110,9 @@ TEST(TransportWorker, StopInterruptsALongOutputProgressPoll)
     auto source{std::make_unique<FakeDecoder>()};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     FakeOutput output;
-    TransportWorker worker{std::move(source), buffer.producer(), output, {},
-        std::chrono::milliseconds{5000}};
+    wiola::engine::TransportConfig config;
+    config.poll_interval = std::chrono::milliseconds{5000};
+    TransportWorker worker{std::move(source), buffer.producer(), output, {}, config};
 
     ASSERT_TRUE(worker.start());
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
@@ -126,6 +127,43 @@ TEST(TransportWorker, StopInterruptsALongOutputProgressPoll)
 
     EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds{1});
     EXPECT_EQ(worker.state(), State::stopped);
+}
+
+TEST(TransportWorker, UsesItsOwnDecodeChunkConfiguration)
+{
+    for (const std::size_t chunk_frames : {1U, 4U}) {
+        auto source{std::make_unique<FakeDecoder>()};
+        FakeDecoder* played{source.get()};
+        wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+        FakeOutput output;
+        wiola::engine::TransportConfig config;
+        config.decode_chunk = Frames{chunk_frames};
+        TransportWorker worker{std::move(source), buffer.producer(), output, {}, config};
+
+        ASSERT_TRUE(worker.start());
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        while (played->num_reads() == 0) {
+            ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+            std::this_thread::yield();
+        }
+
+        worker.stop();
+        worker.wait();
+        EXPECT_EQ(played->last_render_samples(), chunk_frames * 2);
+    }
+}
+
+TEST(TransportWorker, RejectsAnInvalidConfigurationBeforeStarting)
+{
+    auto source{std::make_unique<FakeDecoder>()};
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    FakeOutput output;
+    wiola::engine::TransportConfig config;
+    config.decode_chunk = Frames{};
+
+    EXPECT_THROW((TransportWorker{std::move(source), buffer.producer(), output, {}, config}),
+        std::invalid_argument);
+    EXPECT_EQ(output.num_starts(), 0);
 }
 
 } // namespace

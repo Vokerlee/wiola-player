@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
@@ -49,7 +48,7 @@ private:
     std::chrono::milliseconds poll_interval_;
     std::mutex mutex_;
     std::condition_variable changed_;
-    std::atomic<std::size_t> published_{0};
+    std::size_t published_{0};
     std::size_t observed_{0};
 };
 

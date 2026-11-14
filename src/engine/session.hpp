@@ -28,10 +28,12 @@
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
 #include <core/macros.hpp>
+#include <engine/buffering_config.hpp>
 #include <engine/load/loader.hpp>
 #include <engine/load/tag_reader.hpp>
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
+#include <engine/transport/transport_config.hpp>
 #include <utils/units.hpp>
 
 #include <filesystem>
@@ -61,6 +63,10 @@ public:
 
     /// Uses the supplied media collaborators, for deterministic engine tests.
     Session(OutputFactory make_output, DecoderOpener open_decoder, MetadataReader read_metadata);
+
+    /// Uses independently owned transport and buffering policies.
+    Session(OutputFactory make_output, DecoderOpener open_decoder, MetadataReader read_metadata,
+        TransportConfig transport, BufferingConfig buffering);
 
     NO_COPY_SEMANTIC(Session);
     NO_MOVE_SEMANTIC(Session);
@@ -208,6 +214,8 @@ private:
     std::filesystem::path ready_track_;
     codec::OpenResult last_result_{codec::OpenResult::opened};
     OutputFactory make_output_;
+    TransportConfig transport_;
+    BufferingConfig buffering_;
     /// Declared before the pipeline, so that a player is let go while what it drives is still
     /// there to be given back.
     std::unique_ptr<Out> out_;

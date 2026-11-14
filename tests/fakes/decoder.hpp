@@ -82,6 +82,11 @@ public:
 
     [[nodiscard]] int num_reads() const noexcept { return num_reads_.load(); }
 
+    [[nodiscard]] std::size_t last_render_samples() const noexcept
+    {
+        return last_render_samples_.load();
+    }
+
     [[nodiscard]] int num_seeks() const noexcept { return num_seeks_.load(); }
 
     [[nodiscard]] pcm::Frames last_seek() const noexcept { return pcm::Frames{last_seek_.load()}; }
@@ -93,6 +98,7 @@ protected:
             read_gate_->wait();
 
         num_reads_.fetch_add(1);
+        last_render_samples_.store(spec().samples_per(num_frames));
         std::fill_n(output.begin(), spec().samples_per(num_frames), 0.0F);
 
         return num_frames.count();
@@ -118,6 +124,7 @@ private:
     std::atomic<int> num_reads_{0};
     std::atomic<int> num_seeks_{0};
     std::atomic<std::size_t> last_seek_{0};
+    std::atomic<std::size_t> last_render_samples_{0};
 };
 
 } // namespace wiola::testing

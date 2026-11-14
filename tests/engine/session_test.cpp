@@ -39,11 +39,13 @@
 #include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 namespace {
 
 using namespace std::chrono_literals;
+using namespace wiola::units::literals;
 using wiola::codec::OpenResult;
 using wiola::pcm::Frames;
 using State = wiola::engine::Playback::State;
@@ -163,6 +165,32 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
     EXPECT_EQ(session.open_result(), OpenResult::damaged);
     EXPECT_FALSE(session.loaded());
     EXPECT_EQ(num_outputs, 0U);
+}
+
+TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
+{
+    const auto loads_with = [](units::Time duration) {
+        Session session{
+            [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+            [](const std::filesystem::path&) {
+                return wiola::codec::Opened{.decoder =
+                                                std::make_unique<wiola::testing::FakeDecoder>(),
+                    .result = OpenResult::opened};
+            },
+            [](const std::filesystem::path&) { return wiola::codec::Tags{}; },
+            wiola::engine::TransportConfig{}, wiola::engine::BufferingConfig{.duration = duration}};
+
+        session.open({"track.wav"});
+        while (session.reading())
+            std::this_thread::yield();
+        session.catch_up();
+
+        return session.loaded();
+    };
+
+    EXPECT_TRUE(loads_with(10_ms));
+    EXPECT_TRUE(loads_with(20_ms));
+    EXPECT_THROW(loads_with(units::Time{}), std::invalid_argument);
 }
 
 TEST(Session, RefusesAFileItCannotRead)
