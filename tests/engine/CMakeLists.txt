@@ -1,5 +1,15 @@
 wiola_add_test(engine_playlist_test SOURCES playlist_test.cpp LIBS wiola_engine)
+wiola_add_test(
+    engine_fake_decoder_test
+    SOURCES fake_decoder_test.cpp
+    LIBS wiola_engine
+)
 wiola_add_test(engine_loader_test SOURCES loader_test.cpp LIBS wiola_engine)
+wiola_add_test(
+    engine_tag_reader_test
+    SOURCES tag_reader_test.cpp
+    LIBS wiola_engine
+)
 wiola_add_test(engine_playback_test SOURCES playback_test.cpp LIBS wiola_engine)
 wiola_add_test(engine_playhead_test SOURCES playhead_test.cpp LIBS wiola_engine)
 wiola_add_test(

@@ -26,11 +26,15 @@
 #include <condition_variable>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <vector>
 
 namespace wiola::engine {
+
+/// Reads one path's metadata, supplied by the composition root or a test.
+using MetadataReader = std::function<codec::Tags(const std::filesystem::path&)>;
 
 /**
  * Reads what files say about themselves, on a thread of its own.
@@ -50,7 +54,10 @@ public:
         codec::Tags tags;
     };
 
-    TagReader() = default;
+    TagReader();
+
+    /// Reads with `read` instead of the concrete codec function.
+    explicit TagReader(MetadataReader read);
 
     NO_COPY_SEMANTIC(TagReader);
     NO_MOVE_SEMANTIC(TagReader);
@@ -69,6 +76,8 @@ public:
 
 private:
     void work(const std::stop_token& stop);
+
+    MetadataReader reader_;
 
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;

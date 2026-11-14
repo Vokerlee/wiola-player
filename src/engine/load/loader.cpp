@@ -24,6 +24,16 @@
 
 namespace wiola::engine {
 
+Loader::Loader()
+    : Loader{codec::open_file}
+{
+}
+
+Loader::Loader(DecoderOpener open)
+    : open_{std::move(open)}
+{
+}
+
 Loader::~Loader()
 {
     if (thread_.joinable()) {
@@ -83,7 +93,7 @@ void Loader::work(const std::stop_token& stop)
         }
 
         // Held by nothing while the file is read, which is the whole point of being here.
-        codec::Opened opened{codec::open_file(path)};
+        codec::Opened opened{open_(path)};
 
         {
             const std::lock_guard asked{mutex_};

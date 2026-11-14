@@ -82,9 +82,15 @@ Session::Session()
 }
 
 Session::Session(OutputFactory make_output)
+    : Session{std::move(make_output), codec::open_file, codec::read_tags}
+{
+}
+
+Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
+    MetadataReader read_metadata)
     // In the order they are declared, which is the order they are built in whatever this says.
-    : loader_{std::make_unique<Loader>()}
-    , tags_{std::make_unique<TagReader>()}
+    : loader_{std::make_unique<Loader>(std::move(open_decoder))}
+    , tags_{std::make_unique<TagReader>(std::move(read_metadata))}
     , make_output_{std::move(make_output)}
 {
     // The bands first, then how loud, so that what a listener asks for last is the last thing

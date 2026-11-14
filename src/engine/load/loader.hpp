@@ -26,11 +26,15 @@
 #include <condition_variable>
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <thread>
 
 namespace wiola::engine {
+
+/// Opens one path, supplied by the composition root or a test.
+using DecoderOpener = std::function<codec::Opened(const std::filesystem::path&)>;
 
 /**
  * Opens files on a thread of its own.
@@ -44,7 +48,10 @@ namespace wiola::engine {
  */
 class Loader {
 public:
-    Loader() = default;
+    Loader();
+
+    /// Opens with `open` instead of the concrete codec function.
+    explicit Loader(DecoderOpener open);
 
     NO_COPY_SEMANTIC(Loader);
     NO_MOVE_SEMANTIC(Loader);
@@ -64,6 +71,8 @@ public:
 
 private:
     void work(const std::stop_token& stop);
+
+    DecoderOpener open_;
 
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
