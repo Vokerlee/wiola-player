@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Interface every audio file reader implements.
+ * @brief Backend-neutral audio decoding with explicit progress and terminal outcomes.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -24,21 +24,51 @@
 
 namespace wiola::codec {
 
-media::Result<std::size_t> Decoder::render(std::span<float> output)
+media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
-    const pcm::Frames num_frames_wanted{
-        std::min(spec_.frames_per(output.size()), num_frames_left())};
+    if (output.size() % spec_.num_channels != 0)
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::read_failed,
+                         .detail = "decoder output does not contain whole frames"}
+        };
 
-    if (num_frames_wanted == pcm::Frames{})
-        return 0;
+    const pcm::Frames wanted{std::min(spec_.frames_per(output.size()), num_frames_left())};
 
-    const pcm::Frames num_frames_decoded{decode(output, num_frames_wanted)};
-    num_frames_read_ += num_frames_decoded;
+    if (wanted == pcm::Frames{})
+        return DecodeOutcome{.frames = {}, .end_of_stream = exhausted()};
 
-    return spec_.samples_per(num_frames_decoded);
+    auto decoded{decode(output, wanted)};
+
+    if (!decoded)
+        return media::unexpected{decoded.error()};
+
+    if (*decoded > wanted)
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::damaged,
+                         .detail = "decoder reported more frames than requested"}
+        };
+
+    if (*decoded == pcm::Frames{})
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::damaged,
+                         .detail = "decoder stopped before the declared end"}
+        };
+
+    num_frames_read_ += *decoded;
+    return DecodeOutcome{.frames = *decoded, .end_of_stream = exhausted()};
 }
 
-media::Result<void> Decoder::seek(pcm::Frames frame_index)
+media::Result<std::size_t> AudioDecoder::render(std::span<float> output)
+{
+    auto decoded{read(output)};
+
+    if (!decoded)
+        return media::unexpected{decoded.error()};
+
+    return spec_.samples_per(decoded->frames);
+}
+
+media::Result<void> AudioDecoder::seek(pcm::Frames frame_index)
 {
     if (frame_index > num_frames_)
         return media::unexpected{

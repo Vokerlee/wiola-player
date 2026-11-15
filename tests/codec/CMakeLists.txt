@@ -32,6 +32,12 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 wiola_add_test(
+    codec_audio_decoder_test
+    SOURCES audio_decoder_test.cpp
+    LIBS wiola_codec
+    DATA "${fixtures}"
+)
+wiola_add_test(
     codec_decoder_test
     SOURCES decoder_test.cpp
     LIBS wiola_codec

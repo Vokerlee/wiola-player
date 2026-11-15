@@ -498,7 +498,7 @@ TEST(Player, KeepsASeekAskedForAfterStopping)
 class SlowSource final : public wiola::codec::Decoder {
 public:
     SlowSource()
-        : Decoder{
+        : wiola::codec::AudioDecoder{
               wiola::pcm::StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{44100 * 4}
     }
@@ -506,11 +506,12 @@ public:
     }
 
 protected:
-    std::size_t decode(std::span<float> output, wiola::pcm::Frames num_frames) override
+    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+        wiola::pcm::Frames num_frames) override
     {
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
 
-        return num_frames.count();
+        return num_frames;
     }
 
     bool seek_frame(wiola::pcm::Frames /*frame_index*/) override
@@ -526,7 +527,7 @@ protected:
 class ShortSource final : public wiola::codec::Decoder {
 public:
     ShortSource()
-        : Decoder{
+        : wiola::codec::AudioDecoder{
               wiola::pcm::StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{4410}
     }
@@ -536,11 +537,12 @@ public:
     [[nodiscard]] int num_seeks() const noexcept { return num_seeks_.load(); }
 
 protected:
-    std::size_t decode(std::span<float> output, wiola::pcm::Frames num_frames) override
+    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+        wiola::pcm::Frames num_frames) override
     {
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
 
-        return num_frames.count();
+        return num_frames;
     }
 
     bool seek_frame(wiola::pcm::Frames /*frame_index*/) override
