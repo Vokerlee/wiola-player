@@ -29,7 +29,11 @@ TransportWait::TransportWait(std::chrono::milliseconds poll_interval) noexcept
 
 void TransportWait::notify() noexcept
 {
-    published_.fetch_add(1, std::memory_order_release);
+    {
+        const std::lock_guard lock{mutex_};
+        ++published_;
+    }
+
     changed_.notify_one();
 }
 
@@ -38,9 +42,8 @@ void TransportWait::wait()
     std::unique_lock lock{mutex_};
     const std::size_t observed{observed_};
 
-    changed_.wait_for(lock, poll_interval_,
-        [this, observed] { return published_.load(std::memory_order_acquire) != observed; });
-    observed_ = published_.load(std::memory_order_acquire);
+    changed_.wait_for(lock, poll_interval_, [this, observed] { return published_ != observed; });
+    observed_ = published_;
 }
 
 } // namespace wiola::engine

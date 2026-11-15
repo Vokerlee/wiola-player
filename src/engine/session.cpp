@@ -24,8 +24,6 @@
 #include <engine/load/tag_reader.hpp>
 #include <engine/transport/player.hpp>
 
-#include "tuning.hpp"
-
 #include <audio/device/device.hpp>
 #include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/relay.hpp>
@@ -38,6 +36,7 @@
 #include <memory>
 #include <optional>
 #include <random>
+#include <stdexcept>
 #include <vector>
 
 #include <utility>
@@ -48,10 +47,10 @@ namespace wiola::engine {
 /// down after.
 struct Session::Pipeline {
     Pipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
-        pcm::Frames buffer_frames)
+        pcm::Frames buffer_frames, TransportConfig transport)
         : buffer{source->spec(), buffer_frames}
         , decoded{source->spec(), buffer.consumer()}
-        , player{std::move(source), buffer.producer(), output}
+        , player{std::move(source), buffer.producer(), output, transport}
     {
     }
 
@@ -89,11 +88,22 @@ Session::Session(OutputFactory make_output)
 
 Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
     MetadataReader read_metadata)
+    : Session{std::move(make_output), std::move(open_decoder), std::move(read_metadata), {}, {}}
+{
+}
+
+Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
+    MetadataReader read_metadata, TransportConfig transport, BufferingConfig buffering)
     // In the order they are declared, which is the order they are built in whatever this says.
     : loader_{std::make_unique<Loader>(std::move(open_decoder))}
     , tags_{std::make_unique<TagReader>(std::move(read_metadata))}
     , make_output_{std::move(make_output)}
+    , transport_{transport}
+    , buffering_{buffering}
 {
+    if (!transport_.valid() || !buffering_.valid())
+        throw std::invalid_argument{"invalid engine configuration"};
+
     // The bands first, then how loud, so that what a listener asks for last is the last thing
     // done to the sound.
     chain_.add(equalizer_);
@@ -325,7 +335,7 @@ bool Session::install_read_track()
 
     std::unique_ptr<codec::Decoder> source{std::move(ready_)};
     const pcm::StreamSpec spec{source->spec()};
-    const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(tuning::buffer_duration)};
+    const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(buffering_.duration)};
 
     if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames)) {
         ready_track_.clear();
@@ -349,7 +359,8 @@ bool Session::install_read_track()
         out_ = std::make_unique<Out>(spec, chain_, make_output_);
     }
 
-    pipeline_ = std::make_unique<Pipeline>(std::move(source), *out_->output, *buffer_frames);
+    pipeline_ =
+        std::make_unique<Pipeline>(std::move(source), *out_->output, *buffer_frames, transport_);
     out_->relay.point_at(pipeline_->decoded);
 
     track_ = ready_track_;

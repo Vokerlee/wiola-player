@@ -27,12 +27,10 @@
 #include <audio/device/output.hpp>
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
-#include <engine/tuning.hpp>
-#include <pcm/pcm_queue.hpp>
-
-#include <chrono>
+#include <engine/transport/transport_config.hpp>
 #include <functional>
 #include <memory>
+#include <pcm/pcm_queue.hpp>
 #include <thread>
 
 namespace wiola::engine {
@@ -50,8 +48,7 @@ public:
     using ThreadFactory = std::function<std::jthread(std::function<void()>)>;
 
     TransportWorker(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, ThreadFactory launch = {},
-        std::chrono::milliseconds poll_interval = tuning::decode_poll_interval) noexcept;
+        audio::Output& output, ThreadFactory launch = {}, TransportConfig config = {});
 
     NO_COPY_SEMANTIC(TransportWorker);
     NO_MOVE_SEMANTIC(TransportWorker);

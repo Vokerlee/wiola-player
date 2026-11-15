@@ -20,17 +20,30 @@
 
 #include "decode_loop.hpp"
 
-#include <engine/tuning.hpp>
-
-#include <array>
+#include <optional>
 #include <span>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::engine {
 
+namespace {
+
+std::vector<float> decode_block(pcm::StreamSpec spec, const TransportConfig& config)
+{
+    const std::optional<std::size_t> size{spec.checked_samples_per(config.decode_chunk)};
+
+    if (!config.valid() || !size)
+        throw std::invalid_argument{"invalid decode block configuration"};
+
+    return std::vector<float>(*size);
+}
+
+} // namespace
+
 DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-    audio::Output& output, Playback& playback, Playhead::Applier applier,
-    TransportWait& wait) noexcept
+    audio::Output& output, Playback& playback, Playhead::Applier applier, TransportWait& wait,
+    const TransportConfig& config)
     : source_{std::move(source)}
     , buffer_{std::move(buffer)}
     , connection_{output}
@@ -38,7 +51,8 @@ DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Pr
     , playback_{playback}
     , applier_{std::move(applier)}
     , wait_{wait}
-    , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_}
+    , block_{decode_block(source_->spec(), config)}
+    , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_, block_}
 {
 }
 
@@ -95,8 +109,6 @@ void DecodeLoop::follow_playback()
 
 void DecodeLoop::run()
 {
-    std::array<float, tuning::decode_chunk_samples> block{};
-
     // What the last decode left, and how much of it has gone into the buffer. A block that would
     // not fit is kept here rather than waited out, so nothing below is ever held up by more than
     // one decode.
@@ -131,7 +143,7 @@ void DecodeLoop::run()
         // Only once the last block has gone over in full, so that what would not fit is handed
         // over rather than decoded again.
         if (!exhausted && num_handed == num_decoded) {
-            num_decoded = source_->render(block);
+            num_decoded = source_->render(block_);
             num_handed = 0;
             exhausted = num_decoded == 0;
         }
@@ -147,7 +159,7 @@ void DecodeLoop::run()
         }
 
         const std::size_t num_left{num_decoded - num_handed};
-        const std::size_t num_taken{buffer_.push(std::span{block}.subspan(num_handed, num_left))};
+        const std::size_t num_taken{buffer_.push(std::span{block_}.subspan(num_handed, num_left))};
 
         // Both waits retain a bounded output-progress poll and wake immediately for commands.
         if (num_taken == 0) {

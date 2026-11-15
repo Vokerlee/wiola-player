@@ -26,6 +26,8 @@
 #include <core/macros.hpp>
 #include <pcm/pcm_queue.hpp>
 
+#include <vector>
+
 namespace wiola::engine {
 
 /**
@@ -40,7 +42,7 @@ class SeekOperation {
 public:
     SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& buffer,
         audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
-        bool& output_started) noexcept;
+        bool& output_started, std::vector<float>& block) noexcept;
 
     NO_COPY_SEMANTIC(SeekOperation);
     NO_MOVE_SEMANTIC(SeekOperation);
@@ -63,6 +65,7 @@ private:
     const audio::Output& output_;
     Playhead::Applier& applier_;
     bool& output_started_;
+    std::vector<float>& block_;
 };
 
 } // namespace wiola::engine

@@ -45,7 +45,7 @@ public:
     /// Takes the source it plays, which must not be null, the buffer it decodes into, and the
     /// output that buffer is played through. Both outlive the player.
     Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output);
+        audio::Output& output, TransportConfig config = {});
 
     NO_COPY_SEMANTIC(Player);
     NO_MOVE_SEMANTIC(Player);

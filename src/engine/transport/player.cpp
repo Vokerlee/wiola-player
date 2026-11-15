@@ -27,11 +27,11 @@
 namespace wiola::engine {
 
 Player::Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-    audio::Output& output)
+    audio::Output& output, TransportConfig config)
     : output_{output}
     , spec_{source->spec()}
     , num_frames_{source->num_frames()}
-    , worker_{std::move(source), std::move(buffer), output}
+    , worker_{std::move(source), std::move(buffer), output, {}, config}
 {
 }
 
