@@ -7,6 +7,7 @@ wiola_add_library(
         equalizer_panel.cpp
         main_window.cpp
         playlist_control.cpp
+        playlist_model.cpp
         playlist_view.cpp
         player_settings.cpp
         seek_bar.cpp
