@@ -37,7 +37,7 @@ using wiola::testing::FakeOutput;
 
 class BlockingSource final : public wiola::audio::Source {
 public:
-    std::size_t render(std::span<float>) override
+    std::size_t render(std::span<float>) noexcept override
     {
         entered.release();
         release.acquire();

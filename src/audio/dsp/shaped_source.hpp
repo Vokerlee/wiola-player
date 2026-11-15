@@ -34,7 +34,7 @@ class ShapedSource final : public Source {
 public:
     ShapedSource(Source& source, Chain& chain) noexcept;
 
-    std::size_t render(std::span<float> interleaved) override;
+    std::size_t render(std::span<float> interleaved) noexcept override;
 
     [[nodiscard]] pcm::StreamSpec spec() const noexcept override;
 

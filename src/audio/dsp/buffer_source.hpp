@@ -34,7 +34,7 @@ class BufferSource final : public Source {
 public:
     BufferSource(pcm::StreamSpec spec, pcm::PcmQueue::Consumer buffer) noexcept;
 
-    std::size_t render(std::span<float> interleaved) override;
+    std::size_t render(std::span<float> interleaved) noexcept override;
 
     [[nodiscard]] pcm::StreamSpec spec() const noexcept override;
 
