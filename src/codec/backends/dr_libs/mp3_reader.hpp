@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Reader for PCM audio stored in a RIFF/WAVE file.
+ * @brief Reader for MP3 files.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "format.hpp"
+#include <codec/decode/format.hpp>
 
 #include <codec/decode/decoder.hpp>
 #include <pcm/stream_spec.hpp>
@@ -32,27 +32,21 @@
 
 namespace wiola::codec {
 
-/**
- * Decodes RIFF/WAVE to float frames.
- *
- * WAVE is a container, not one encoding: samples may be 8- to 32-bit integers, IEEE floats,
- * A-law, mu-law or ADPCM. Every one of those is accepted, and metadata chunks placed among the
- * audio are stepped over rather than mistaken for samples.
- */
-class WavReader final : public Decoder {
+/// Decodes MP3 to float frames.
+class Mp3Reader final : public Decoder {
 public:
     /// How this format is recognized and opened.
     [[nodiscard]] static const Format& format();
 
-    /// Opens `path`. Null when the file is missing or is not WAVE.
-    [[nodiscard]] static std::unique_ptr<WavReader> open(const std::filesystem::path& path);
+    /// Opens `path`. Null when the file is missing or is not MP3.
+    [[nodiscard]] static std::unique_ptr<Mp3Reader> open(const std::filesystem::path& path);
 
-    ~WavReader() override;
+    ~Mp3Reader() override;
 
 private:
     struct Handle;
 
-    WavReader(pcm::StreamSpec spec, pcm::Frames num_frames,
+    Mp3Reader(pcm::StreamSpec spec, pcm::Frames num_frames,
         std::unique_ptr<Handle> handle) noexcept;
 
     media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) override;

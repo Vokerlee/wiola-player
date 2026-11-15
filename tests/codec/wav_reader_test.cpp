@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/decode/wav_reader.hpp>
+#include <codec/backends/dr_libs/wav_reader.hpp>
 
 #include <pcm/stream_spec.hpp>
 

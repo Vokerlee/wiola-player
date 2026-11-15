@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/decode/stream_callbacks.hpp>
+#include <codec/backends/dr_libs/stream_callbacks.hpp>
 
 #include <media/byte_stream.hpp>
 

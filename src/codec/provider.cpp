@@ -20,7 +20,7 @@
 
 #include <codec/provider.hpp>
 
-#include <codec/tags/tags.hpp>
+#include <codec/backends/taglib/tags.hpp>
 #include <media/local_file_stream.hpp>
 
 #include <utility>

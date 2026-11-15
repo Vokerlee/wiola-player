@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <codec/tags/tags.hpp>
+#include <codec/backends/taglib/tags.hpp>
 #include <core/macros.hpp>
 #include <engine/queue/track.hpp>
 #include <media/provider.hpp>

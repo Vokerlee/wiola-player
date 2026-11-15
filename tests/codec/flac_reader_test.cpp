@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/decode/flac_reader.hpp>
+#include <codec/backends/dr_libs/flac_reader.hpp>
 
 #include <pcm/stream_spec.hpp>
 

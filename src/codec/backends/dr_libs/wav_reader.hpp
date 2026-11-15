@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Reader for FLAC files.
+ * @brief Reader for PCM audio stored in a RIFF/WAVE file.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "format.hpp"
+#include <codec/decode/format.hpp>
 
 #include <codec/decode/decoder.hpp>
 #include <pcm/stream_spec.hpp>
@@ -32,21 +32,27 @@
 
 namespace wiola::codec {
 
-/// Decodes FLAC to float frames.
-class FlacReader final : public Decoder {
+/**
+ * Decodes RIFF/WAVE to float frames.
+ *
+ * WAVE is a container, not one encoding: samples may be 8- to 32-bit integers, IEEE floats,
+ * A-law, mu-law or ADPCM. Every one of those is accepted, and metadata chunks placed among the
+ * audio are stepped over rather than mistaken for samples.
+ */
+class WavReader final : public Decoder {
 public:
     /// How this format is recognized and opened.
     [[nodiscard]] static const Format& format();
 
-    /// Opens `path`. Null when the file is missing or is not FLAC.
-    [[nodiscard]] static std::unique_ptr<FlacReader> open(const std::filesystem::path& path);
+    /// Opens `path`. Null when the file is missing or is not WAVE.
+    [[nodiscard]] static std::unique_ptr<WavReader> open(const std::filesystem::path& path);
 
-    ~FlacReader() override;
+    ~WavReader() override;
 
 private:
     struct Handle;
 
-    FlacReader(pcm::StreamSpec spec, pcm::Frames num_frames,
+    WavReader(pcm::StreamSpec spec, pcm::Frames num_frames,
         std::unique_ptr<Handle> handle) noexcept;
 
     media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) override;

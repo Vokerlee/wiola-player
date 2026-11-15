@@ -20,9 +20,9 @@
 
 #include <codec/decode/registry.hpp>
 
-#include "flac_reader.hpp"
-#include "mp3_reader.hpp"
-#include "wav_reader.hpp"
+#include <codec/backends/dr_libs/flac_reader.hpp>
+#include <codec/backends/dr_libs/mp3_reader.hpp>
+#include <codec/backends/dr_libs/wav_reader.hpp>
 
 #include <media/local_file_stream.hpp>
 
