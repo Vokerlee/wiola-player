@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Reader for MP3 files.
+ * @brief Reader for FLAC files.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "format.hpp"
+#include <codec/decode/format.hpp>
 
 #include <codec/decode/decoder.hpp>
 #include <pcm/stream_spec.hpp>
@@ -32,21 +32,21 @@
 
 namespace wiola::codec {
 
-/// Decodes MP3 to float frames.
-class Mp3Reader final : public Decoder {
+/// Decodes FLAC to float frames.
+class FlacReader final : public Decoder {
 public:
     /// How this format is recognized and opened.
     [[nodiscard]] static const Format& format();
 
-    /// Opens `path`. Null when the file is missing or is not MP3.
-    [[nodiscard]] static std::unique_ptr<Mp3Reader> open(const std::filesystem::path& path);
+    /// Opens `path`. Null when the file is missing or is not FLAC.
+    [[nodiscard]] static std::unique_ptr<FlacReader> open(const std::filesystem::path& path);
 
-    ~Mp3Reader() override;
+    ~FlacReader() override;
 
 private:
     struct Handle;
 
-    Mp3Reader(pcm::StreamSpec spec, pcm::Frames num_frames,
+    FlacReader(pcm::StreamSpec spec, pcm::Frames num_frames,
         std::unique_ptr<Handle> handle) noexcept;
 
     media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) override;

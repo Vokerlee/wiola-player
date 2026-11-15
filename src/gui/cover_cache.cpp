@@ -20,7 +20,7 @@
 
 #include "cover_cache.hpp"
 
-#include <codec/tags/tags.hpp>
+#include <codec/backends/taglib/tags.hpp>
 
 #include <QStyle>
 

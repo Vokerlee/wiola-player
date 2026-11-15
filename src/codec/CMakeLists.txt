@@ -1,5 +1,5 @@
+add_subdirectory(backends)
 add_subdirectory(decode)
-add_subdirectory(tags)
 
 wiola_add_library(
     wiola_codec_provider
