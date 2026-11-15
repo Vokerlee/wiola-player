@@ -1,0 +1,62 @@
+/**
+ * @file
+ * @brief Stream-specific output ownership and source connection.
+ * @author Roman Glaz
+ * @copyright © 2026, <vokerlee@gmail.com>
+ *
+ * Wiola is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Wiola is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include <audio/device/output.hpp>
+#include <audio/dsp/processing_chain.hpp>
+#include <audio/dsp/relay.hpp>
+#include <audio/dsp/shaped_source.hpp>
+#include <core/macros.hpp>
+#include <pcm/stream_spec.hpp>
+
+#include <functional>
+#include <memory>
+
+namespace wiola::engine {
+
+using OutputFactory = std::function<std::unique_ptr<audio::Output>(audio::Source&)>;
+
+/// Reuses an output for matching stream specs and explicitly disconnects sources before teardown.
+class OutputSession {
+public:
+    OutputSession(audio::ProcessingChain& chain, OutputFactory make_output) noexcept;
+    ~OutputSession();
+
+    NO_COPY_SEMANTIC(OutputSession);
+    NO_MOVE_SEMANTIC(OutputSession);
+
+    /// Opens a new output only when `spec` differs from the one already open.
+    void open(pcm::StreamSpec spec);
+    void disconnect() noexcept;
+    void connect(audio::Source& source) noexcept;
+
+    [[nodiscard]] bool open_for(pcm::StreamSpec spec) const noexcept;
+    [[nodiscard]] audio::Output& output() const noexcept;
+
+private:
+    struct Stream;
+
+    audio::ProcessingChain& chain_;
+    OutputFactory make_output_;
+    std::unique_ptr<Stream> stream_;
+};
+
+} // namespace wiola::engine

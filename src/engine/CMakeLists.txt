@@ -5,7 +5,7 @@ add_subdirectory(transport)
 # What wires the other three together, and the only part that needs all of them.
 wiola_add_library(
     wiola_engine_session
-    SOURCES session.cpp
+    SOURCES output_session.cpp playback_pipeline.cpp session.cpp
     LIBS
         wiola_audio
         wiola_codec
