@@ -60,6 +60,18 @@ MediaBackendRegistry::MediaBackendRegistry(std::vector<Format> backends, std::si
         throw std::invalid_argument{"media backend attempt limit must be positive"};
 }
 
+std::vector<std::string> MediaBackendRegistry::playback_extensions() const
+{
+    std::vector<std::string> extensions;
+    for (const Format& backend : backends_) {
+        if (!backend.capabilities.playback)
+            continue;
+        for (const std::string_view extension : backend.extensions)
+            extensions.emplace_back(extension);
+    }
+    return extensions;
+}
+
 Opened MediaBackendRegistry::open(const std::filesystem::path& path) const
 {
     const media::FileFacts facts{.path = path, .extension = lowercased_extension(path)};

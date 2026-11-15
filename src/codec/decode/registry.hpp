@@ -24,6 +24,7 @@
 #include <codec/decode/open.hpp>
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace wiola::codec {
@@ -37,6 +38,8 @@ public:
     Opened open(const std::filesystem::path& path) const;
 
     [[nodiscard]] const std::vector<Format>& backends() const noexcept { return backends_; }
+
+    [[nodiscard]] std::vector<std::string> playback_extensions() const;
 
 private:
     std::vector<Format> backends_;

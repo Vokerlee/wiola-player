@@ -23,9 +23,11 @@
 #include "clock.hpp"
 #include "player_settings.hpp"
 #include "player_view_metrics.hpp"
+#include "qt_path_adapter.hpp"
 
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
+#include <codec/decode/registry.hpp>
 
 #include <QFileDialog>
 #include <QFont>
@@ -227,7 +229,7 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
     if (tracks.empty())
         return;
 
-    const QString first{QString::fromStdString(tracks.front().filename().string())};
+    const QString first{QtPathAdapter::to_qt(tracks.front().filename())};
 
     said_ = session_.open(std::move(tracks));
 
@@ -242,14 +244,19 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
 
 std::vector<std::filesystem::path> MainWindow::ask_for_tracks()
 {
-    const QStringList chosen{QFileDialog::getOpenFileNames(this, "Choose tracks", QString{},
-        "Audio (*.wav *.wave *.flac *.mp3 *.mp2 *.mpga);;All files (*)")};
+    QStringList patterns;
+    for (const std::string& extension : codec::MediaBackendRegistry{}.playback_extensions())
+        patterns.append(QString::fromStdString("*" + extension));
+
+    const QString filter{QString{"Audio (%1);;All files (*)"}.arg(patterns.join(' '))};
+    const QStringList chosen{
+        QFileDialog::getOpenFileNames(this, "Choose tracks", QString{}, filter)};
 
     std::vector<std::filesystem::path> tracks;
     tracks.reserve(static_cast<std::size_t>(chosen.size()));
 
     for (const QString& name : chosen)
-        tracks.emplace_back(name.toStdString());
+        tracks.push_back(QtPathAdapter::from_qt(name));
 
     return tracks;
 }
@@ -408,8 +415,8 @@ void MainWindow::take_up_load()
         named_ = session_.track();
         named_place_ = session_.playlist().position();
 
-        const QString name{named_.empty() ? QString{"no track"}
-                                          : QString::fromStdString(named_.filename().string())};
+        const QString name{
+            named_.empty() ? QString{"no track"} : QtPathAdapter::to_qt(named_.filename())};
 
         setWindowTitle(named_.empty() ? QString{"Wiola Player"} : name);
         track_label_->setText(name);
