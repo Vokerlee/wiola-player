@@ -24,6 +24,12 @@
 
 namespace wiola::engine {
 
+MetadataCoordinator::MetadataCoordinator(std::shared_ptr<media::MediaProvider> provider,
+    std::size_t max_pending, std::size_t max_completed)
+    : reader_{std::move(provider), max_pending, max_completed}
+{
+}
+
 MetadataCoordinator::MetadataCoordinator(MetadataReader reader, std::size_t max_pending,
     std::size_t max_completed)
     : reader_{std::move(reader), max_pending, max_completed}
