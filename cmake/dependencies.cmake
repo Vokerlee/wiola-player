@@ -3,7 +3,12 @@
 
 include(FetchContent)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+# Dependency option() calls must honor the scoped normal variables set below.
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
+if(WIOLA_BUILD_GUI)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets)
+endif()
 
 set(MINIAUDIO_NO_LIBVORBIS ON)
 set(MINIAUDIO_NO_LIBOPUS ON)
@@ -35,6 +40,10 @@ FetchContent_Declare(
 # What a file says about itself, which every player needs and none should parse for itself: a
 # tag is a stranger's bytes, and this is the library everyone else's fuzzing has already been
 # through.
+set(wiola_saved_build_testing "${BUILD_TESTING}")
+set(wiola_saved_build_examples "${BUILD_EXAMPLES}")
+set(wiola_saved_build_bindings "${BUILD_BINDINGS}")
+set(wiola_saved_with_zlib "${WITH_ZLIB}")
 set(BUILD_TESTING OFF)
 set(BUILD_EXAMPLES OFF)
 set(BUILD_BINDINGS OFF)
@@ -47,7 +56,15 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(miniaudio cli11 dr_libs taglib)
+FetchContent_MakeAvailable(miniaudio dr_libs taglib)
+if(WIOLA_BUILD_CLI)
+    FetchContent_MakeAvailable(cli11)
+endif()
+
+set(BUILD_TESTING "${wiola_saved_build_testing}")
+set(BUILD_EXAMPLES "${wiola_saved_build_examples}")
+set(BUILD_BINDINGS "${wiola_saved_build_bindings}")
+set(WITH_ZLIB "${wiola_saved_with_zlib}")
 
 # Taglib's headers sit in a directory each and include one another by bare name, and it says
 # where they are only for a build that installs it. A build that fetches it has to say instead.

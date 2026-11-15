@@ -7,6 +7,17 @@
             "binaryDir": "${sourceDir}/build"
         },
         {
+            "name": "linux-headless",
+            "displayName": "Headless engine and media libraries without Qt",
+            "inherits": "linux",
+            "binaryDir": "${sourceDir}/build-headless",
+            "cacheVariables": {
+                "WIOLA_BUILD_GUI": "OFF",
+                "WIOLA_BUILD_CLI": "OFF",
+                "ENABLE_UNIT_TESTS": "OFF"
+            }
+        },
+        {
             "name": "windows",
             "displayName": "Windows, cross-compiled with MinGW-w64",
             "binaryDir": "${sourceDir}/build-win",
@@ -77,6 +88,10 @@
         {
             "name": "linux",
             "configurePreset": "linux"
+        },
+        {
+            "name": "linux-headless",
+            "configurePreset": "linux-headless"
         },
         {
             "name": "windows",
