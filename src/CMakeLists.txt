@@ -1,10 +1,18 @@
 add_subdirectory(app)
 add_subdirectory(audio)
-add_subdirectory(cli)
+if(WIOLA_BUILD_CLI)
+    add_subdirectory(cli)
+endif()
 add_subdirectory(codec)
 add_subdirectory(engine)
-add_subdirectory(gui)
+if(WIOLA_BUILD_GUI)
+    add_subdirectory(gui)
+endif()
 add_subdirectory(media)
+
+if(NOT WIOLA_BUILD_GUI)
+    return()
+endif()
 
 add_executable(wiola-player main.cpp)
 target_link_libraries(
