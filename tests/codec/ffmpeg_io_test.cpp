@@ -197,7 +197,7 @@ TEST(FfmpegInspection, RejectsNoAudioAndUnsupportedAudioSeparatelyFromDamage)
     ASSERT_FALSE(unsupported);
     EXPECT_EQ(no_audio.error().category, wiola::media::ErrorCategory::unsupported);
     EXPECT_EQ(unsupported.error().category, wiola::media::ErrorCategory::unsupported);
-    EXPECT_EQ(unsupported.error().detail, "no supported mono/stereo audio stream");
+    EXPECT_EQ(unsupported.error().detail, "no supported audio stream or channel layout");
 }
 
 TEST(FfmpegInspection, ChoosesTheDefaultPlayableAudioStream)
