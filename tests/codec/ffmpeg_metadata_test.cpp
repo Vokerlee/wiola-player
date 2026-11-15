@@ -10,7 +10,12 @@
 
 #include <gtest/gtest.h>
 
+extern "C" {
+#include <libavformat/avformat.h>
+}
+
 #include <array>
+#include <cstdint>
 #include <filesystem>
 
 namespace {
@@ -45,6 +50,35 @@ TEST(FfmpegMetadata, ExistingPlaybackDoesNotDependOnFallbackMetadata)
     ASSERT_TRUE(decoder);
     std::array<float, 8> samples{};
     EXPECT_GT((*decoder)->render(samples).value(), 0U);
+}
+
+TEST(FfmpegMetadata, DropsOverLimitTextWithoutDiscardingOtherFields)
+{
+    auto metadata{wiola::codec::ffmpeg::read_metadata(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
+        "large-metadata.ogg")};
+
+    ASSERT_TRUE(metadata);
+    EXPECT_TRUE(metadata->track.title.empty());
+    EXPECT_EQ(metadata->track.artist, "Исполнитель");
+}
+
+TEST(FfmpegMetadata, RejectsOversizedArtworkBeforeCopyingItsPayload)
+{
+    AVFormatContext* format{avformat_alloc_context()};
+    ASSERT_NE(format, nullptr);
+    AVStream* stream{avformat_new_stream(format, nullptr)};
+    ASSERT_NE(stream, nullptr);
+    stream->disposition = AV_DISPOSITION_ATTACHED_PIC;
+    std::uint8_t marker{0};
+    stream->attached_pic.data = &marker;
+    stream->attached_pic.size = static_cast<int>(wiola::media::max_encoded_artwork_bytes + 1);
+
+    auto artwork{wiola::codec::ffmpeg::read_artwork(*stream)};
+
+    EXPECT_TRUE(artwork.empty());
+    stream->attached_pic.data = nullptr;
+    stream->attached_pic.size = 0;
+    avformat_free_context(format);
 }
 
 } // namespace
