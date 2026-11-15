@@ -42,7 +42,11 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = {}, .end_of_stream = true};
     }
 
-    bool seek_frame(wiola::pcm::Frames) override { return true; }
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+    }
 };
 
 std::filesystem::path fake_file()

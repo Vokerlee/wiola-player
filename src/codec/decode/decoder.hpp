@@ -48,6 +48,12 @@ struct DecodeOutcome {
     bool end_of_stream{false};
 };
 
+struct SeekOutcome {
+    pcm::Frames target;
+    pcm::Frames achieved;
+    bool exact{true};
+};
+
 /**
  * Turns an audio stream into interleaved float frames on a worker-owned, blocking contract.
  *
@@ -99,8 +105,8 @@ public:
 
     [[nodiscard]] bool exhausted() const noexcept { return exhausted_; }
 
-    /// Moves to a frame or reports an invalid target/backend failure without changing position.
-    media::Result<void> seek(pcm::Frames frame_index);
+    /// Reports the achieved frame, or a failure that leaves the decoded position unchanged.
+    media::Result<SeekOutcome> seek(pcm::Frames frame_index);
 
 protected:
     AudioDecoder(pcm::StreamSpec spec, pcm::Frames num_frames) noexcept
@@ -117,8 +123,8 @@ protected:
     virtual media::Result<DecodeOutcome> decode(std::span<float> output,
         pcm::Frames num_frames) = 0;
 
-    /// Moves the stream itself to frame_index. Exact-length targets are validated by the base.
-    virtual bool seek_frame(pcm::Frames frame_index) = 0;
+    /// Moves transactionally and reports where decoding will resume.
+    virtual media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) = 0;
 
 private:
     DecoderStreamInfo stream_info_;

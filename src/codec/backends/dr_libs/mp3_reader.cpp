@@ -92,9 +92,15 @@ media::Result<DecodeOutcome> Mp3Reader::decode(std::span<float> output, pcm::Fra
             num_frames.count(), output.data()))}};
 }
 
-bool Mp3Reader::seek_frame(pcm::Frames frame_index)
+media::Result<SeekOutcome> Mp3Reader::seek_frame(pcm::Frames frame_index)
 {
-    return drmp3_seek_to_pcm_frame(&handle_->mp3, frame_index.count()) == DRMP3_TRUE;
+    if (drmp3_seek_to_pcm_frame(&handle_->mp3, frame_index.count()) != DRMP3_TRUE)
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::seek_failed,
+                         .detail = "MP3 seek failed"}
+        };
+
+    return SeekOutcome{.target = frame_index, .achieved = frame_index};
 }
 
 const Format& Mp3Reader::format()

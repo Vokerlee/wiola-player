@@ -92,9 +92,15 @@ media::Result<DecodeOutcome> WavReader::decode(std::span<float> output, pcm::Fra
             num_frames.count(), output.data()))}};
 }
 
-bool WavReader::seek_frame(pcm::Frames frame_index)
+media::Result<SeekOutcome> WavReader::seek_frame(pcm::Frames frame_index)
 {
-    return drwav_seek_to_pcm_frame(&handle_->wav, frame_index.count()) == DRWAV_TRUE;
+    if (drwav_seek_to_pcm_frame(&handle_->wav, frame_index.count()) != DRWAV_TRUE)
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::seek_failed,
+                         .detail = "WAV seek failed"}
+        };
+
+    return SeekOutcome{.target = frame_index, .achieved = frame_index};
 }
 
 const Format& WavReader::format()

@@ -51,8 +51,16 @@ bool SeekOperation::begin(bool rewind)
 
     const bool within_exact_length{source_.length_accuracy() != codec::LengthAccuracy::exact ||
         target <= source_.num_frames()};
-    const bool sought{!move || (within_exact_length && source_.seek(target))};
-    applier_.begin_at(sought ? target : current_frame(), output_.frames_played(), claim);
+    bool sought{!move};
+    pcm::Frames achieved{current_frame()};
+    if (move && within_exact_length) {
+        auto result{source_.seek(target)};
+        if (result) {
+            sought = true;
+            achieved = result->achieved;
+        }
+    }
+    applier_.begin_at(achieved, output_.frames_played(), claim);
     prime();
 
     return sought;
@@ -68,8 +76,16 @@ bool SeekOperation::apply()
 
     const bool within_exact_length{source_.length_accuracy() != codec::LengthAccuracy::exact ||
         claim.target <= source_.num_frames()};
-    const bool sought{claim.outstanding && within_exact_length && source_.seek(claim.target)};
-    applier_.begin_at(sought ? claim.target : current_frame(), output_.frames_played(), claim);
+    pcm::Frames achieved{current_frame()};
+    bool sought{false};
+    if (claim.outstanding && within_exact_length) {
+        auto result{source_.seek(claim.target)};
+        if (result) {
+            sought = true;
+            achieved = result->achieved;
+        }
+    }
+    applier_.begin_at(achieved, output_.frames_played(), claim);
     prime();
 
     return sought;

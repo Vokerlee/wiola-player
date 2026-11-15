@@ -84,7 +84,7 @@ media::Result<std::size_t> AudioDecoder::render(std::span<float> output)
     return spec().samples_per(decoded->frames);
 }
 
-media::Result<void> AudioDecoder::seek(pcm::Frames frame_index)
+media::Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
 {
     if (!seekable())
         return media::unexpected{
@@ -98,15 +98,19 @@ media::Result<void> AudioDecoder::seek(pcm::Frames frame_index)
                          .detail = "seek target is past the end"}
         };
 
-    if (!seek_frame(frame_index))
+    auto sought{seek_frame(frame_index)};
+    if (!sought)
+        return media::unexpected{sought.error()};
+
+    if (sought->target != frame_index)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::seek_failed,
-                         .detail = "decoder rejected the seek"}
+                         .detail = "decoder changed the seek target"}
         };
 
-    position_ = frame_index;
+    position_ = sought->achieved;
     exhausted_ = length_accuracy() == LengthAccuracy::exact && position_ == num_frames();
-    return {};
+    return sought;
 }
 
 } // namespace wiola::codec
