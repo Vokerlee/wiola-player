@@ -68,7 +68,7 @@ class FakeDecoder final : public codec::Decoder {
 public:
     explicit FakeDecoder(pcm::Frames num_frames = pcm::Frames{4096},
         pcm::StreamSpec spec = {}) noexcept
-        : Decoder{spec, num_frames}
+        : codec::AudioDecoder{spec, num_frames}
     {
     }
 
@@ -92,7 +92,7 @@ public:
     [[nodiscard]] pcm::Frames last_seek() const noexcept { return pcm::Frames{last_seek_.load()}; }
 
 protected:
-    std::size_t decode(std::span<float> output, pcm::Frames num_frames) override
+    media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) override
     {
         if (read_gate_ != nullptr)
             read_gate_->wait();
@@ -101,7 +101,7 @@ protected:
         last_render_samples_.store(spec().samples_per(num_frames));
         std::fill_n(output.begin(), spec().samples_per(num_frames), 0.0F);
 
-        return num_frames.count();
+        return num_frames;
     }
 
     bool seek_frame(pcm::Frames frame_index) override

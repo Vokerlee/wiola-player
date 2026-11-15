@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Interface every audio file reader implements.
+ * @brief Backend-neutral audio decoding with explicit progress and terminal outcomes.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -29,36 +29,34 @@
 
 namespace wiola::codec {
 
+struct DecodeOutcome {
+    pcm::Frames frames;
+    bool end_of_stream{false};
+};
+
 /**
- * Turns a file into float frames.
+ * Turns an audio stream into interleaved float frames on a worker-owned, blocking contract.
  *
- * Samples are interleaved - one per channel per frame, in channel order - which is the layout a
- * device callback takes. A format that decodes its channels separately interleaves them on the
- * way out, so nothing above this class ever meets another layout.
- *
- * Only the shape of the stream and the next frames are exposed. Nothing here knows about
- * playback; a decoder is equally usable for transcoding or analysis.
- *
- * A subclass supplies one function, `decode`, and receives the counting, the clamping and the
- * end-of-stream question already answered.
- *
- * Reading a file blocks for as long as the file takes, so a decoder is not something a device
- * may pull from. What is handed to an output is filled by a decoder on another thread, never the
- * decoder itself.
+ * A successful short read reports progress but does not by itself mean EOF. EOF is explicit, and
+ * a backend/read failure is distinct from both. The current local-file readers expose exact frame
+ * lengths and support seeking; failed seeks leave the decoded position unchanged.
  */
-class Decoder {
+class AudioDecoder {
 public:
-    NO_COPY_SEMANTIC(Decoder);
-    NO_MOVE_SEMANTIC(Decoder);
+    NO_COPY_SEMANTIC(AudioDecoder);
+    NO_MOVE_SEMANTIC(AudioDecoder);
 
-    virtual ~Decoder() = default;
+    virtual ~AudioDecoder() = default;
 
-    /// Fills whole frames and returns samples written or a typed read error.
+    /// Writes only whole frames and reports frames written, EOF, or a typed failure.
+    media::Result<DecodeOutcome> read(std::span<float> output);
+
+    /// Compatibility sample-count view for audio-source consumers during migration.
     media::Result<std::size_t> render(std::span<float> output);
 
     [[nodiscard]] pcm::StreamSpec spec() const noexcept { return spec_; }
 
-    /// Total frames in the stream, and how many are still unread.
+    /// Exact total frames in the current local-file stream, and how many are still unread.
     [[nodiscard]] pcm::Frames num_frames() const noexcept { return num_frames_; }
 
     [[nodiscard]] pcm::Frames num_frames_left() const noexcept
@@ -72,17 +70,16 @@ public:
     media::Result<void> seek(pcm::Frames frame_index);
 
 protected:
-    Decoder(pcm::StreamSpec spec, pcm::Frames num_frames) noexcept
+    AudioDecoder(pcm::StreamSpec spec, pcm::Frames num_frames) noexcept
         : spec_{spec}
         , num_frames_{num_frames}
     {
     }
 
-    /// Writes at most `num_frames` whole frames into `output`, and returns how many it wrote.
-    /// Never asked for more frames than remain, nor for more than `output` can hold.
-    virtual std::size_t decode(std::span<float> output, pcm::Frames num_frames) = 0;
+    /// Writes at most num_frames whole frames; zero before the declared end is damage.
+    virtual media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) = 0;
 
-    /// Moves the stream itself to `frame_index`. Never asked for a frame past the end.
+    /// Moves the stream itself to frame_index. Never asked for a frame past the end.
     virtual bool seek_frame(pcm::Frames frame_index) = 0;
 
 private:
@@ -90,5 +87,7 @@ private:
     pcm::Frames num_frames_;
     pcm::Frames num_frames_read_{};
 };
+
+using Decoder = AudioDecoder;
 
 } // namespace wiola::codec

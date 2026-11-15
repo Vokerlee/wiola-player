@@ -85,10 +85,10 @@ std::unique_ptr<Mp3Reader> Mp3Reader::open(const std::filesystem::path& path)
     };
 }
 
-std::size_t Mp3Reader::decode(std::span<float> output, pcm::Frames num_frames)
+media::Result<pcm::Frames> Mp3Reader::decode(std::span<float> output, pcm::Frames num_frames)
 {
-    return static_cast<std::size_t>(drmp3_read_pcm_frames_f32(&handle_->mp3, num_frames.count(),
-        output.data()));
+    return pcm::Frames{static_cast<std::size_t>(drmp3_read_pcm_frames_f32(&handle_->mp3,
+        num_frames.count(), output.data()))};
 }
 
 bool Mp3Reader::seek_frame(pcm::Frames frame_index)
