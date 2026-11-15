@@ -131,3 +131,21 @@ TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
     EXPECT_TRUE(readings[0].failed);
     EXPECT_FALSE(readings[1].failed);
 }
+
+TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)
+{
+    TagReader reader{[](const std::filesystem::path&) {
+                         Tags tags;
+                         tags.artwork.data.resize(5);
+                         return tags;
+                     },
+        1, 1, 4};
+
+    reader.start({
+        {.id = wiola::engine::QueueEntryId{9}, .path = "large-cover.wav"}
+    });
+    const auto readings{wait_for(reader)};
+
+    ASSERT_EQ(readings.size(), 1U);
+    EXPECT_TRUE(readings.front().tags.artwork.empty());
+}

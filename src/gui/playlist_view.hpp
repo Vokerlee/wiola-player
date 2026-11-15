@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "cover_cache.hpp"
+#include "artwork_cache.hpp"
 
 #include <engine/queue/playlist.hpp>
 
@@ -68,7 +68,7 @@ private:
     /// Puts `track` in the row at `at`, picture and all, marked when it is the one playing.
     void show_track(int at, const engine::Track& track, bool playing);
 
-    CoverCache covers_;
+    ArtworkCache covers_;
 
     /// What is drawn now, so that redrawing is only done when it would show something else.
     std::optional<std::size_t> revision_shown_;

@@ -52,7 +52,7 @@ void read_picture(Tags& tags, const TagLib::FileRef& file)
     const TagLib::VariantMap& picture{pictures.front()};
     const TagLib::ByteVector data{picture.value("data").toByteVector()};
 
-    if (data.isEmpty())
+    if (data.isEmpty() || static_cast<std::size_t>(data.size()) > media::max_encoded_artwork_bytes)
         return;
 
     const auto* bytes = reinterpret_cast<const std::byte*>(data.data());

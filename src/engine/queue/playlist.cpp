@@ -94,6 +94,18 @@ bool Playlist::describe(QueueEntryId id, TrackMetadata metadata)
     return true;
 }
 
+bool Playlist::illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork> artwork)
+{
+    const auto index{index_of(id)};
+
+    if (!index)
+        return false;
+
+    ++revision_;
+    tracks_[*index].artwork_ = std::move(artwork);
+    return true;
+}
+
 std::optional<std::size_t> Playlist::position() const noexcept
 {
     return order_.position();

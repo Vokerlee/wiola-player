@@ -123,22 +123,16 @@ void PlaylistView::show_playlist(const engine::Playlist& playlist)
     revision_shown_ = revision;
     current_shown_ = current;
 
-    covers_.begin_turn();
     setRowCount(static_cast<int>(playlist.tracks().size()));
 
     for (std::size_t index = 0; index < playlist.tracks().size(); ++index)
         show_track(static_cast<int>(index), playlist.tracks()[index], current == index);
-
-    // Some pictures were left for another turn, so there has to be another turn: without this a
-    // queue longer than a few tracks would keep its stubs until something else changed it.
-    if (covers_.ran_out())
-        revision_shown_.reset();
 }
 
 void PlaylistView::show_track(int at, const engine::Track& track, bool playing)
 {
     auto* picture = new QLabel{this};
-    picture->setPixmap(covers_.cover_of(track.path()));
+    picture->setPixmap(covers_.cover_of(track.id().value, track.artwork()));
     picture->setAlignment(Qt::AlignCenter);
 
     setCellWidget(at, Column::cover, picture);

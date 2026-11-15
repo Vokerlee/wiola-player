@@ -2,7 +2,7 @@ wiola_add_library(
     wiola_gui
     SOURCES
         clock.cpp
-        cover_cache.cpp
+        artwork_cache.cpp
         equalizer_control.cpp
         equalizer_panel.cpp
         main_window.cpp
