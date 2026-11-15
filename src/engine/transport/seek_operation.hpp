@@ -54,6 +54,8 @@ public:
     /// Quiesces output, applies the latest claimed seek, and primes the resulting epoch.
     [[nodiscard]] bool apply();
 
+    [[nodiscard]] bool priming_failed() const noexcept { return priming_failed_; }
+
 private:
     [[nodiscard]] pcm::Frames current_frame() const noexcept;
     void quiesce() noexcept;
@@ -66,6 +68,7 @@ private:
     Playhead::Applier& applier_;
     bool& output_started_;
     std::vector<float>& block_;
+    bool priming_failed_{false};
 };
 
 } // namespace wiola::engine

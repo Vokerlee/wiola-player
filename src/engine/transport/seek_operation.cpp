@@ -39,6 +39,7 @@ SeekOperation::SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& bu
 
 bool SeekOperation::begin(bool rewind)
 {
+    priming_failed_ = false;
     const Playhead::Claim claim{applier_.claim()};
     const pcm::Frames target{claim.outstanding ? claim.target : pcm::Frames{}};
     const bool move{rewind || claim.outstanding};
@@ -57,6 +58,7 @@ bool SeekOperation::begin(bool rewind)
 
 bool SeekOperation::apply()
 {
+    priming_failed_ = false;
     const Playhead::Claim claim{applier_.claim()};
 
     quiesce();
@@ -89,7 +91,12 @@ void SeekOperation::prime()
     while (buffer_.space_approx() >= block_.size()) {
         const auto decoded{source_.read(block_)};
 
-        if (!decoded || decoded->frames == pcm::Frames{})
+        if (!decoded) {
+            priming_failed_ = true;
+            break;
+        }
+
+        if (decoded->frames == pcm::Frames{})
             break;
 
         const std::size_t samples{source_.spec().samples_per(decoded->frames)};
