@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/output_session.hpp>
+#include <engine/pipeline/output_session.hpp>
 
 #include <stdexcept>
 #include <utility>

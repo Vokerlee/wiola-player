@@ -1,3 +1,5 @@
+add_subdirectory(pipeline)
+
 wiola_add_test(engine_playlist_test SOURCES playlist_test.cpp LIBS wiola_engine)
 wiola_add_test(
     engine_fake_decoder_test
@@ -27,16 +29,6 @@ wiola_add_test(
     SOURCES player_test.cpp
     LIBS wiola_codec wiola_engine
     DATA "${PROJECT_SOURCE_DIR}/tests/codec/data"
-)
-wiola_add_test(
-    engine_pipeline_ownership_test
-    SOURCES pipeline_ownership_test.cpp
-    LIBS wiola_engine
-)
-wiola_add_test(
-    engine_playback_service_test
-    SOURCES playback_service_test.cpp
-    LIBS wiola_engine
 )
 wiola_add_test(
     engine_session_test

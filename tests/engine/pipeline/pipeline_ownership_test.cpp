@@ -19,8 +19,8 @@
  */
 
 #include <audio/dsp/processing_chain.hpp>
-#include <engine/output_session.hpp>
-#include <engine/playback_pipeline.hpp>
+#include <engine/pipeline/output_session.hpp>
+#include <engine/pipeline/playback_pipeline.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <pcm/stream_spec.hpp>
