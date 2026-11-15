@@ -36,8 +36,6 @@ TagReader::TagReader(MetadataReader read)
 
 TagReader::~TagReader()
 {
-    // Stop prevents further queued reads, but cannot physically interrupt TagLib. The join waits
-    // for an in-progress call while no queue mutex is held by the reader.
     if (thread_.joinable()) {
         thread_.request_stop();
         waiting_.notify_all();
@@ -45,16 +43,15 @@ TagReader::~TagReader()
     }
 }
 
-void TagReader::start(std::vector<std::filesystem::path> paths)
+void TagReader::start(std::vector<Request> requests)
 {
-    if (paths.empty())
+    if (requests.empty())
         return;
 
     {
         const std::lock_guard asked{mutex_};
-
-        for (std::filesystem::path& path : paths)
-            asked_.push_back(std::move(path));
+        for (Request& request : requests)
+            asked_.push_back(std::move(request));
     }
 
     if (!thread_.joinable())
@@ -66,43 +63,40 @@ void TagReader::start(std::vector<std::filesystem::path> paths)
 std::vector<TagReader::Reading> TagReader::take()
 {
     const std::lock_guard asked{mutex_};
-
     return std::exchange(read_, {});
 }
 
 bool TagReader::busy() const noexcept
 {
     const std::lock_guard asked{mutex_};
-
     return !asked_.empty() || reading_;
 }
 
 void TagReader::work(const std::stop_token& stop)
 {
     while (true) {
-        std::filesystem::path path;
+        Request request;
 
         {
             std::unique_lock asked{mutex_};
-
             waiting_.wait(asked, stop, [this] { return !asked_.empty(); });
 
             if (stop.stop_requested())
                 return;
 
-            path = std::move(asked_.front());
+            request = std::move(asked_.front());
             asked_.pop_front();
             reading_ = true;
         }
 
-        // Held by nothing while the file is read, which is the whole point of being here.
-        codec::Tags tags{reader_(path)};
+        codec::Tags tags{reader_(request.path)};
 
         {
             const std::lock_guard asked{mutex_};
-
             reading_ = false;
-            read_.push_back(Reading{.path = std::move(path), .tags = std::move(tags)});
+            read_.push_back(
+                Reading{.id = request.id, .path = std::move(request.path), .tags = std::move(tags)}
+            );
         }
     }
 }

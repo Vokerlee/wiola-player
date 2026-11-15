@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief A track in a queue: where it is, and what is known about it.
+ * @brief Stable queue identity, immutable location, and mutable track metadata.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -26,9 +26,10 @@ namespace wiola::engine {
 
 Track Track::of(std::filesystem::path path)
 {
-    std::string name{path.stem().string()};
-
-    return Track{.path = std::move(path), .title = std::move(name)};
+    Track track;
+    track.path_ = std::move(path);
+    track.metadata_.title = track.path_.stem().string();
+    return track;
 }
 
 } // namespace wiola::engine

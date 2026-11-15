@@ -38,6 +38,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <span>
 #include <vector>
 
 namespace wiola::engine {
@@ -161,9 +162,8 @@ private:
     /// Puts on whatever has finished being read, and plays it if that is what it was read for.
     void take_up_finished_read();
 
-    /// Starts reading what `paths` say about themselves - their tags - which is taken up as it
-    /// comes back.
-    void begin_reading_tags(std::vector<std::filesystem::path> paths);
+    /// Starts reading the selected entries' tags with their stable queue identities.
+    void begin_reading_tags(std::span<const Track> tracks);
 
     /// Puts what has been read about queued tracks into the queue.
     void take_up_finished_tags();

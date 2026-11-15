@@ -138,16 +138,17 @@ void PlaylistView::show_playlist(const engine::Playlist& playlist)
 void PlaylistView::show_track(int at, const engine::Track& track, bool playing)
 {
     auto* picture = new QLabel{this};
-    picture->setPixmap(covers_.cover_of(track.path));
+    picture->setPixmap(covers_.cover_of(track.path()));
     picture->setAlignment(Qt::AlignCenter);
 
     setCellWidget(at, Column::cover, picture);
-    setItem(at, Column::title, new QTableWidgetItem{QString::fromStdString(track.title)});
-    setItem(at, Column::artist, new QTableWidgetItem{QString::fromStdString(track.artist)});
-    setItem(at, Column::album, new QTableWidgetItem{QString::fromStdString(track.album)});
+    setItem(at, Column::title, new QTableWidgetItem{QString::fromStdString(track.title())});
+    setItem(at, Column::artist, new QTableWidgetItem{QString::fromStdString(track.artist())});
+    setItem(at, Column::album, new QTableWidgetItem{QString::fromStdString(track.album())});
 
     // A length that has not been read yet is left blank rather than shown as no time at all.
-    const QString length{track.duration == units::Time{} ? QString{} : as_clock(track.duration)};
+    const QString length{
+        track.duration() == units::Time{} ? QString{} : as_clock(track.duration())};
 
     setItem(at, Column::length, new QTableWidgetItem{length});
 

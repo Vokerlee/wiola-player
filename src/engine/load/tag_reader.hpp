@@ -22,6 +22,7 @@
 
 #include <codec/tags/tags.hpp>
 #include <core/macros.hpp>
+#include <engine/queue/track.hpp>
 
 #include <condition_variable>
 #include <deque>
@@ -33,59 +34,43 @@
 
 namespace wiola::engine {
 
-/// Reads one path's metadata, supplied by the composition root or a test.
 using MetadataReader = std::function<codec::Tags(const std::filesystem::path&)>;
 
-/**
- * Reads what files say about themselves, on a thread of its own.
- *
- * A queue of a hundred tracks is a hundred files to open, and a listener who has just dropped
- * them in is watching. Each is quick, and a hundred of them are not, so they are read here and
- * collected afterwards.
- *
- * Asking and collecting are for the one thread that does them; the reading is elsewhere. What
- * has been read is answered once, in whatever order the files came back.
- */
+/// Background tag reads retain queue identity independently of paths and row positions.
 class TagReader {
 public:
-    /// What a file turned out to say.
+    struct Request {
+        QueueEntryId id;
+        std::filesystem::path path;
+    };
+
     struct Reading {
+        QueueEntryId id;
         std::filesystem::path path;
         codec::Tags tags;
     };
 
     TagReader();
-
-    /// Reads with `read` instead of the concrete codec function.
     explicit TagReader(MetadataReader read);
 
     NO_COPY_SEMANTIC(TagReader);
     NO_MOVE_SEMANTIC(TagReader);
 
-    /// Waits for the file being read, since what reads it would outlive what it reads into.
     ~TagReader();
 
-    /// Begins reading `paths`, after whatever was asked for before them.
-    void start(std::vector<std::filesystem::path> paths);
-
-    /// Everything read since the last time this was asked, and nothing twice.
+    void start(std::vector<Request> requests);
     [[nodiscard]] std::vector<Reading> take();
-
-    /// Whether anything is still to be read.
     [[nodiscard]] bool busy() const noexcept;
 
 private:
     void work(const std::stop_token& stop);
 
     MetadataReader reader_;
-
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
-
-    std::deque<std::filesystem::path> asked_;
+    std::deque<Request> asked_;
     std::vector<Reading> read_;
     bool reading_{false};
-
     std::jthread thread_;
 };
 
