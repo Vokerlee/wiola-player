@@ -241,8 +241,12 @@ void Session::take_up_finished_tags()
             .duration = reading.tags.track.duration,
         };
 
-        for (const QueueEntryId entry : reading.entries)
+        auto artwork{std::make_shared<const media::Artwork>(std::move(reading.tags.artwork))};
+
+        for (const QueueEntryId entry : reading.entries) {
             static_cast<void>(playlist_.describe(entry, metadata));
+            static_cast<void>(playlist_.illustrate(entry, artwork));
+        }
     }
 }
 

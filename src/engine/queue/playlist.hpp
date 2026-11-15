@@ -46,6 +46,7 @@ public:
     [[nodiscard]] const Track* current() const noexcept;
 
     bool describe(QueueEntryId id, TrackMetadata metadata);
+    bool illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork> artwork);
 
     [[nodiscard]] std::optional<std::size_t> position() const noexcept;
     [[nodiscard]] std::optional<std::size_t> index_of(QueueEntryId id) const noexcept;

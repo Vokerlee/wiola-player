@@ -59,7 +59,8 @@ public:
     explicit TagReader(std::shared_ptr<media::MediaProvider> provider,
         std::size_t max_pending = 256, std::size_t max_completed = 256);
     explicit TagReader(MetadataReader read, std::size_t max_pending = 256,
-        std::size_t max_completed = 256);
+        std::size_t max_completed = 256,
+        std::size_t max_completed_artwork_bytes = 64 * 1024 * 1024);
 
     NO_COPY_SEMANTIC(TagReader);
     NO_MOVE_SEMANTIC(TagReader);
@@ -77,11 +78,13 @@ private:
     MetadataReader reader_;
     const std::size_t max_pending_;
     const std::size_t max_completed_;
+    const std::size_t max_completed_artwork_bytes_;
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
     std::condition_variable_any collected_;
     std::deque<Request> asked_;
     std::vector<Reading> read_;
+    std::size_t completed_artwork_bytes_{0};
     std::uint64_t latest_generation_{0};
     bool reading_{false};
     std::jthread thread_;

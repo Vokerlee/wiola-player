@@ -26,6 +26,7 @@
 #include <compare>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 
 namespace wiola::engine {
@@ -64,10 +65,16 @@ public:
         return metadata_.duration;
     }
 
+    [[nodiscard]] const std::shared_ptr<const media::Artwork>& artwork() const noexcept
+    {
+        return artwork_;
+    }
+
 private:
     QueueEntryId id_{};
     std::filesystem::path path_;
     TrackMetadata metadata_;
+    std::shared_ptr<const media::Artwork> artwork_;
 
     friend class Playlist;
 };

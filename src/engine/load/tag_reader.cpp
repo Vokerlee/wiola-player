@@ -49,12 +49,14 @@ TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t
 {
 }
 
-TagReader::TagReader(MetadataReader read, std::size_t max_pending, std::size_t max_completed)
+TagReader::TagReader(MetadataReader read, std::size_t max_pending, std::size_t max_completed,
+    std::size_t max_completed_artwork_bytes)
     : reader_{std::move(read)}
     , max_pending_{max_pending}
     , max_completed_{max_completed}
+    , max_completed_artwork_bytes_{max_completed_artwork_bytes}
 {
-    if (max_pending_ == 0 || max_completed_ == 0)
+    if (max_pending_ == 0 || max_completed_ == 0 || max_completed_artwork_bytes_ == 0)
         throw std::invalid_argument{"metadata capacities must be positive"};
 }
 
@@ -98,6 +100,9 @@ void TagReader::cancel_before(std::uint64_t generation)
             [generation](const Request& request) { return request.generation < generation; });
         std::erase_if(read_,
             [generation](const Reading& reading) { return reading.generation < generation; });
+        completed_artwork_bytes_ = 0;
+        for (const Reading& reading : read_)
+            completed_artwork_bytes_ += reading.tags.artwork.data.size();
     }
 
     collected_.notify_all();
@@ -109,6 +114,7 @@ std::vector<TagReader::Reading> TagReader::take()
     {
         const std::lock_guard asked{mutex_};
         readings = std::exchange(read_, {});
+        completed_artwork_bytes_ = 0;
     }
     collected_.notify_one();
     return readings;
@@ -149,6 +155,11 @@ void TagReader::work(const std::stop_token& stop)
             failed = true;
         }
 
+        if (tags.artwork.data.size() > max_completed_artwork_bytes_)
+            tags.artwork = {};
+
+        const std::size_t artwork_bytes{tags.artwork.data.size()};
+
         {
             std::unique_lock asked{mutex_};
             reading_ = false;
@@ -156,11 +167,15 @@ void TagReader::work(const std::stop_token& stop)
             if (request.generation < latest_generation_)
                 continue;
 
-            collected_.wait(asked, stop, [this] { return read_.size() < max_completed_; });
+            collected_.wait(asked, stop, [this, artwork_bytes] {
+                return read_.size() < max_completed_ &&
+                    artwork_bytes <= max_completed_artwork_bytes_ - completed_artwork_bytes_;
+            });
 
             if (stop.stop_requested())
                 return;
 
+            completed_artwork_bytes_ += artwork_bytes;
             read_.push_back(Reading{.generation = request.generation,
                 .id = request.id,
                 .path = std::move(request.path),

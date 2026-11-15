@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Thumbnail and work limits owned by the artwork cache.
+ * @brief Thumbnail, decoded-byte, and item limits owned by the artwork cache.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -24,15 +24,14 @@
 
 namespace wiola::gui {
 
-/// Thumbnail size, per-turn work limit, and item bound for one artwork cache.
 struct ArtworkCachePolicy {
     int cover_size{20};
-    std::size_t reads_per_turn{4};
     std::size_t covers_kept{512};
+    std::size_t cached_bytes{16 * 1024 * 1024};
 
     [[nodiscard]] bool valid() const noexcept
     {
-        return cover_size > 0 && reads_per_turn > 0 && covers_kept > 0;
+        return cover_size > 0 && covers_kept > 0 && cached_bytes > 0;
     }
 };
 

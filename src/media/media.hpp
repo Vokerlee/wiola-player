@@ -32,6 +32,8 @@
 
 namespace wiola::media {
 
+inline constexpr std::size_t max_encoded_artwork_bytes{8 * 1024 * 1024};
+
 struct Artwork {
     std::vector<std::byte> data;
     std::string mime_type;
