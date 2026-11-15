@@ -35,9 +35,10 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float>, wiola::pcm::Frames) override
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float>,
+        wiola::pcm::Frames) override
     {
-        return wiola::pcm::Frames{1};
+        return wiola::codec::DecodeOutcome{.frames = wiola::pcm::Frames{1}};
     }
 
     bool seek_frame(wiola::pcm::Frames) override { return true; }
@@ -51,10 +52,11 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float>, wiola::pcm::Frames) override
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float>,
+        wiola::pcm::Frames) override
     {
-        if (num_frames_read() == wiola::pcm::Frames{})
-            return wiola::pcm::Frames{2};
+        if (position_frames() == wiola::pcm::Frames{})
+            return wiola::codec::DecodeOutcome{.frames = wiola::pcm::Frames{2}};
 
         return wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::damaged,
@@ -63,9 +65,30 @@ protected:
     }
 
     bool seek_frame(wiola::pcm::Frames) override { return true; }
+};
 
-private:
-    wiola::pcm::Frames num_frames_read() const { return num_frames() - num_frames_left(); }
+class EstimatedDecoder final : public wiola::codec::AudioDecoder {
+public:
+    EstimatedDecoder()
+        : AudioDecoder{
+              wiola::codec::DecoderStreamInfo{.spec = {},
+                                              .length = wiola::pcm::Frames{2},
+                                              .length_accuracy = wiola::codec::LengthAccuracy::estimated}
+    }
+    {
+    }
+
+protected:
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float>,
+        wiola::pcm::Frames wanted) override
+    {
+        if (position_frames() == wiola::pcm::Frames{4})
+            return wiola::codec::DecodeOutcome{.frames = {}, .end_of_stream = true};
+
+        return wiola::codec::DecodeOutcome{.frames = wanted};
+    }
+
+    bool seek_frame(wiola::pcm::Frames) override { return true; }
 };
 
 TEST(AudioDecoder, AShortReadIsProgressRatherThanEndOfFile)
@@ -100,6 +123,31 @@ TEST(AudioDecoder, ACorruptTailIsAFailureRatherThanEndOfFile)
     ASSERT_FALSE(tail);
     EXPECT_EQ(tail.error().category, wiola::media::ErrorCategory::damaged);
     EXPECT_EQ(decoder.num_frames_left(), wiola::pcm::Frames{2});
+}
+
+TEST(AudioDecoder, EstimatedLengthDoesNotClampOutputOrCauseFalseDamage)
+{
+    EstimatedDecoder decoder;
+    std::array<float, 4> output{};
+
+    auto first{decoder.read(output)};
+    ASSERT_TRUE(first);
+    EXPECT_EQ(first->frames, wiola::pcm::Frames{2});
+    EXPECT_FALSE(first->end_of_stream);
+    EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{2});
+
+    auto beyond_estimate{decoder.read(output)};
+    ASSERT_TRUE(beyond_estimate);
+    EXPECT_EQ(beyond_estimate->frames, wiola::pcm::Frames{2});
+    EXPECT_FALSE(beyond_estimate->end_of_stream);
+    EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{4});
+    EXPECT_EQ(decoder.num_frames_left(), wiola::pcm::Frames{});
+
+    auto end{decoder.read(output)};
+    ASSERT_TRUE(end);
+    EXPECT_EQ(end->frames, wiola::pcm::Frames{});
+    EXPECT_TRUE(end->end_of_stream);
+    EXPECT_TRUE(decoder.exhausted());
 }
 
 TEST(AudioDecoder, EveryBackendReportsWholeFrameProgressAndExplicitEnd)

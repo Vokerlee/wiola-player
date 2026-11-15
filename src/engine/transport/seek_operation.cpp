@@ -49,7 +49,9 @@ bool SeekOperation::begin(bool rewind)
     if (move)
         buffer_.mark_discard();
 
-    const bool sought{!move || (target <= source_.num_frames() && source_.seek(target))};
+    const bool within_exact_length{source_.length_accuracy() != codec::LengthAccuracy::exact ||
+        target <= source_.num_frames()};
+    const bool sought{!move || (within_exact_length && source_.seek(target))};
     applier_.begin_at(sought ? target : current_frame(), output_.frames_played(), claim);
     prime();
 
@@ -64,8 +66,9 @@ bool SeekOperation::apply()
     quiesce();
     buffer_.mark_discard();
 
-    const bool sought{
-        claim.outstanding && claim.target <= source_.num_frames() && source_.seek(claim.target)};
+    const bool within_exact_length{source_.length_accuracy() != codec::LengthAccuracy::exact ||
+        claim.target <= source_.num_frames()};
+    const bool sought{claim.outstanding && within_exact_length && source_.seek(claim.target)};
     applier_.begin_at(sought ? claim.target : current_frame(), output_.frames_played(), claim);
     prime();
 
@@ -74,7 +77,7 @@ bool SeekOperation::apply()
 
 pcm::Frames SeekOperation::current_frame() const noexcept
 {
-    return source_.num_frames() - source_.num_frames_left();
+    return source_.position_frames();
 }
 
 void SeekOperation::quiesce() noexcept

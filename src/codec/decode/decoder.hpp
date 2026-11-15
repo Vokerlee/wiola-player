@@ -25,9 +25,23 @@
 #include <pcm/stream_spec.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <span>
 
 namespace wiola::codec {
+
+enum class LengthAccuracy {
+    exact,
+    estimated,
+    unknown,
+};
+
+struct DecoderStreamInfo {
+    pcm::StreamSpec spec;
+    std::optional<pcm::Frames> length;
+    LengthAccuracy length_accuracy{LengthAccuracy::unknown};
+    bool seekable{true};
+};
 
 struct DecodeOutcome {
     pcm::Frames frames;
@@ -38,8 +52,8 @@ struct DecodeOutcome {
  * Turns an audio stream into interleaved float frames on a worker-owned, blocking contract.
  *
  * A successful short read reports progress but does not by itself mean EOF. EOF is explicit, and
- * a backend/read failure is distinct from both. The current local-file readers expose exact frame
- * lengths and support seeking; failed seeks leave the decoded position unchanged.
+ * a backend/read failure is distinct from both. Exact lengths bound reads; estimated and unknown
+ * lengths do not. Failed seeks leave the decoded position unchanged.
  */
 class AudioDecoder {
 public:
@@ -54,38 +68,62 @@ public:
     /// Sample-count convenience view for callers that do not need terminal status.
     media::Result<std::size_t> render(std::span<float> output);
 
-    [[nodiscard]] pcm::StreamSpec spec() const noexcept { return spec_; }
+    [[nodiscard]] const DecoderStreamInfo& stream_info() const noexcept { return stream_info_; }
 
-    /// Exact total frames in the current local-file stream, and how many are still unread.
-    [[nodiscard]] pcm::Frames num_frames() const noexcept { return num_frames_; }
+    [[nodiscard]] pcm::StreamSpec spec() const noexcept { return stream_info_.spec; }
+
+    [[nodiscard]] std::optional<pcm::Frames> duration_frames() const noexcept
+    {
+        return stream_info_.length;
+    }
+
+    [[nodiscard]] LengthAccuracy length_accuracy() const noexcept
+    {
+        return stream_info_.length_accuracy;
+    }
+
+    [[nodiscard]] bool seekable() const noexcept { return stream_info_.seekable; }
+
+    [[nodiscard]] pcm::Frames position_frames() const noexcept { return position_; }
+
+    [[nodiscard]] pcm::Frames num_frames() const noexcept
+    {
+        return stream_info_.length.value_or(pcm::Frames{});
+    }
 
     [[nodiscard]] pcm::Frames num_frames_left() const noexcept
     {
-        return num_frames_ - num_frames_read_;
+        const pcm::Frames length{num_frames()};
+        return position_ < length ? length - position_ : pcm::Frames{};
     }
 
-    [[nodiscard]] bool exhausted() const noexcept { return num_frames_left() == pcm::Frames{}; }
+    [[nodiscard]] bool exhausted() const noexcept { return exhausted_; }
 
     /// Moves to a frame or reports an invalid target/backend failure without changing position.
     media::Result<void> seek(pcm::Frames frame_index);
 
 protected:
     AudioDecoder(pcm::StreamSpec spec, pcm::Frames num_frames) noexcept
-        : spec_{spec}
-        , num_frames_{num_frames}
+        : stream_info_{.spec = spec, .length = num_frames, .length_accuracy = LengthAccuracy::exact}
     {
     }
 
-    /// Writes at most num_frames whole frames; zero before the declared end is damage.
-    virtual media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) = 0;
+    explicit AudioDecoder(DecoderStreamInfo stream_info) noexcept
+        : stream_info_{stream_info}
+    {
+    }
 
-    /// Moves the stream itself to frame_index. Never asked for a frame past the end.
+    /// Writes at most num_frames whole frames and reports actual exhaustion independently.
+    virtual media::Result<DecodeOutcome> decode(std::span<float> output,
+        pcm::Frames num_frames) = 0;
+
+    /// Moves the stream itself to frame_index. Exact-length targets are validated by the base.
     virtual bool seek_frame(pcm::Frames frame_index) = 0;
 
 private:
-    pcm::StreamSpec spec_;
-    pcm::Frames num_frames_;
-    pcm::Frames num_frames_read_{};
+    DecoderStreamInfo stream_info_;
+    pcm::Frames position_{};
+    bool exhausted_{false};
 };
 
 using Decoder = AudioDecoder;

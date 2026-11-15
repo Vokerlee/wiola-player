@@ -86,10 +86,11 @@ std::unique_ptr<FlacReader> FlacReader::open(const std::filesystem::path& path)
     };
 }
 
-media::Result<pcm::Frames> FlacReader::decode(std::span<float> output, pcm::Frames num_frames)
+media::Result<DecodeOutcome> FlacReader::decode(std::span<float> output, pcm::Frames num_frames)
 {
-    return pcm::Frames{static_cast<std::size_t>(drflac_read_pcm_frames_f32(handle_->flac,
-        num_frames.count(), output.data()))};
+    return DecodeOutcome{
+        .frames = pcm::Frames{static_cast<std::size_t>(drflac_read_pcm_frames_f32(handle_->flac,
+            num_frames.count(), output.data()))}};
 }
 
 bool FlacReader::seek_frame(pcm::Frames frame_index)
