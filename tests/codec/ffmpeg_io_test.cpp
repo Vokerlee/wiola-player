@@ -164,4 +164,58 @@ TEST(FfmpegInput, RejectsSizesOutsideFfmpegOffsets)
     EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::seek_failed);
 }
 
+wiola::media::Result<wiola::codec::ffmpeg::FfmpegStreamFacts> inspect_fixture(const char* name)
+{
+    auto stream{
+        wiola::media::LocalFileStream::open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+    if (!stream)
+        return wiola::media::unexpected{stream.error()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(*stream))};
+    if (!input)
+        return wiola::media::unexpected{input.error()};
+    return (*input)->inspect();
+}
+
+TEST(FfmpegInspection, SelectsExactStereoPcmFacts)
+{
+    auto facts{inspect_fixture("tone.wav")};
+
+    ASSERT_TRUE(facts);
+    EXPECT_EQ(facts->output.spec.sample_rate, wiola::units::Frequency{44100.0});
+    EXPECT_EQ(facts->output.spec.num_channels, 2U);
+    EXPECT_EQ(facts->output.length, wiola::pcm::Frames{11025});
+    EXPECT_EQ(facts->output.length_accuracy, wiola::codec::LengthAccuracy::exact);
+    EXPECT_TRUE(facts->output.seekable);
+}
+
+TEST(FfmpegInspection, RejectsNoAudioAndUnsupportedAudioSeparatelyFromDamage)
+{
+    auto no_audio{inspect_fixture("no-audio.mp4")};
+    auto unsupported{inspect_fixture("unsupported-speex.ogg")};
+
+    ASSERT_FALSE(no_audio);
+    ASSERT_FALSE(unsupported);
+    EXPECT_EQ(no_audio.error().category, wiola::media::ErrorCategory::unsupported);
+    EXPECT_EQ(unsupported.error().category, wiola::media::ErrorCategory::unsupported);
+    EXPECT_EQ(unsupported.error().detail, "no supported mono/stereo audio stream");
+}
+
+TEST(FfmpegInspection, ChoosesTheDefaultPlayableAudioStream)
+{
+    auto facts{inspect_fixture("multi-audio.m4a")};
+
+    ASSERT_TRUE(facts);
+    EXPECT_EQ(facts->stream_index, 0U);
+    EXPECT_EQ(facts->output.spec.num_channels, 2U);
+}
+
+TEST(FfmpegInspection, NeverSelectsAttachedArtworkAsAudio)
+{
+    auto facts{inspect_fixture("attached-art.m4a")};
+
+    ASSERT_TRUE(facts);
+    EXPECT_EQ(facts->stream_index, 0U);
+    EXPECT_EQ(facts->output.spec.num_channels, 2U);
+}
+
 } // namespace

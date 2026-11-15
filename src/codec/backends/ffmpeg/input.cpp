@@ -30,6 +30,31 @@ media::Error failure(media::ErrorCategory category, const char* detail)
     return media::Error{.category = category, .detail = detail};
 }
 
+bool has_exact_sample_count(AVCodecID codec)
+{
+    switch (codec) {
+    case AV_CODEC_ID_ALAC:
+    case AV_CODEC_ID_FLAC:
+    case AV_CODEC_ID_PCM_ALAW:
+    case AV_CODEC_ID_PCM_MULAW:
+    case AV_CODEC_ID_PCM_S8:
+    case AV_CODEC_ID_PCM_U8:
+    case AV_CODEC_ID_PCM_S16LE:
+    case AV_CODEC_ID_PCM_S16BE:
+    case AV_CODEC_ID_PCM_S24LE:
+    case AV_CODEC_ID_PCM_S24BE:
+    case AV_CODEC_ID_PCM_S32LE:
+    case AV_CODEC_ID_PCM_S32BE:
+    case AV_CODEC_ID_PCM_F32LE:
+    case AV_CODEC_ID_PCM_F32BE:
+    case AV_CODEC_ID_PCM_F64LE:
+    case AV_CODEC_ID_PCM_F64BE:
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 FfmpegInput::FfmpegInput(std::unique_ptr<media::ByteStream> stream) noexcept
@@ -123,6 +148,66 @@ FfmpegInput::~FfmpegInput()
         av_freep(&context->buffer);
         avio_context_free(&context);
     }
+}
+
+media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
+{
+    if (avformat_find_stream_info(format_, nullptr) < 0) {
+        if (io_error_)
+            return media::unexpected{*io_error_};
+        return media::unexpected{
+            failure(media::ErrorCategory::damaged, "FFmpeg stream inspection failed")};
+    }
+
+    AVStream* selected{nullptr};
+    bool saw_audio{false};
+    for (unsigned int index{0}; index < format_->nb_streams; ++index) {
+        AVStream* candidate{format_->streams[index]};
+        const AVCodecParameters* parameters{candidate->codecpar};
+        if (parameters->codec_type != AVMEDIA_TYPE_AUDIO)
+            continue;
+        saw_audio = true;
+        if (!avcodec_find_decoder(parameters->codec_id) || parameters->ch_layout.nb_channels <= 0 ||
+            parameters->ch_layout.nb_channels > 2 || parameters->sample_rate <= 0)
+            continue;
+        if (!selected ||
+            (!(selected->disposition & AV_DISPOSITION_DEFAULT) &&
+                (candidate->disposition & AV_DISPOSITION_DEFAULT)))
+            selected = candidate;
+    }
+
+    if (!selected)
+        return media::unexpected{failure(media::ErrorCategory::unsupported,
+            saw_audio ? "no supported mono/stereo audio stream"
+                      : "input contains no audio stream")};
+
+    const AVCodecParameters* parameters{selected->codecpar};
+    pcm::StreamSpec spec{.sample_rate = units::Frequency{parameters->codec_id == AV_CODEC_ID_OPUS
+                                 ? 48000.0
+                                 : static_cast<double>(parameters->sample_rate)},
+        .num_channels = static_cast<std::size_t>(parameters->ch_layout.nb_channels)};
+    std::optional<pcm::Frames> length;
+    AVRational time_base{selected->time_base};
+    std::int64_t duration{selected->duration};
+    if (duration == AV_NOPTS_VALUE && format_->duration != AV_NOPTS_VALUE) {
+        duration = format_->duration;
+        time_base = AV_TIME_BASE_Q;
+    }
+    if (duration != AV_NOPTS_VALUE && duration >= 0 && av_q2d(time_base) > 0.0) {
+        const double seconds{static_cast<double>(duration) * av_q2d(time_base)};
+        length = spec.checked_frames_at(units::Time{seconds});
+    }
+
+    return FfmpegStreamFacts{
+        .stream_index = static_cast<std::size_t>(selected->index),
+        .output = DecoderStreamInfo{.spec = spec,
+                                    .length = length,
+                                    .length_accuracy = length
+                ? (has_exact_sample_count(parameters->codec_id) ? LengthAccuracy::exact
+                                                                : LengthAccuracy::estimated)
+                : LengthAccuracy::unknown,
+                                    .seekable = format_->pb->seekable != 0}
+    };
 }
 
 int FfmpegInput::read(void* opaque, unsigned char* output, int size) noexcept
