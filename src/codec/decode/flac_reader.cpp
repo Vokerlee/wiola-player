@@ -20,7 +20,9 @@
 
 #include "flac_reader.hpp"
 
-#include "file_stream.hpp"
+#include "stream_callbacks.hpp"
+
+#include <media/local_file_stream.hpp>
 
 #define DR_FLAC_IMPLEMENTATION
 #include <dr_flac.h>
@@ -31,7 +33,7 @@
 namespace wiola::codec {
 
 struct FlacReader::Handle {
-    std::unique_ptr<FileStream> stream;
+    std::unique_ptr<media::ByteStream> stream;
     drflac* flac{nullptr};
 
     ~Handle()
@@ -43,8 +45,8 @@ struct FlacReader::Handle {
 
 namespace {
 
-using Callbacks =
-    StreamCallbacks<drflac_seek_origin, DRFLAC_SEEK_SET, DRFLAC_SEEK_CUR, drflac_int64>;
+using Callbacks = StreamCallbacks<drflac_seek_origin, DRFLAC_SEEK_SET, DRFLAC_SEEK_CUR,
+    DRFLAC_SEEK_END, drflac_int64, int>;
 
 } // namespace
 
@@ -60,10 +62,12 @@ FlacReader::~FlacReader() = default;
 std::unique_ptr<FlacReader> FlacReader::open(const std::filesystem::path& path)
 {
     auto handle = std::make_unique<Handle>();
-    handle->stream = FileStream::open(path);
+    auto stream = media::LocalFileStream::open(path);
 
-    if (!handle->stream)
+    if (!stream)
         return nullptr;
+
+    handle->stream = std::move(*stream);
 
     handle->flac = drflac_open(Callbacks::read, Callbacks::seek, Callbacks::tell,
         handle->stream.get(), nullptr);

@@ -20,7 +20,9 @@
 
 #include "wav_reader.hpp"
 
-#include "file_stream.hpp"
+#include "stream_callbacks.hpp"
+
+#include <media/local_file_stream.hpp>
 
 #define DR_WAV_IMPLEMENTATION
 #include <dr_wav.h>
@@ -31,7 +33,7 @@
 namespace wiola::codec {
 
 struct WavReader::Handle {
-    std::unique_ptr<FileStream> stream;
+    std::unique_ptr<media::ByteStream> stream;
     drwav wav{};
     bool open{false};
 
@@ -44,7 +46,8 @@ struct WavReader::Handle {
 
 namespace {
 
-using Callbacks = StreamCallbacks<drwav_seek_origin, DRWAV_SEEK_SET, DRWAV_SEEK_CUR, drwav_int64>;
+using Callbacks = StreamCallbacks<drwav_seek_origin, DRWAV_SEEK_SET, DRWAV_SEEK_CUR, DRWAV_SEEK_END,
+    drwav_int64, int>;
 
 } // namespace
 
@@ -60,10 +63,12 @@ WavReader::~WavReader() = default;
 std::unique_ptr<WavReader> WavReader::open(const std::filesystem::path& path)
 {
     auto handle = std::make_unique<Handle>();
-    handle->stream = FileStream::open(path);
+    auto stream = media::LocalFileStream::open(path);
 
-    if (!handle->stream)
+    if (!stream)
         return nullptr;
+
+    handle->stream = std::move(*stream);
 
     if (drwav_init(&handle->wav, Callbacks::read, Callbacks::seek, Callbacks::tell,
             handle->stream.get(), nullptr) == DRWAV_FALSE)

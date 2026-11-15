@@ -25,6 +25,8 @@
 #include "mp3_reader.hpp"
 #include "wav_reader.hpp"
 
+#include <media/local_file_stream.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -55,22 +57,30 @@ std::string lowercased_extension(const std::filesystem::path& path)
 
 Opened open_file(const std::filesystem::path& path)
 {
-    const FileHead head{FileHead::read(path)};
+    const media::FileFacts facts{.path = path, .extension = lowercased_extension(path)};
+    auto probe{media::LocalFileStream::open(facts.path)};
 
-    if (head.empty())
+    if (!probe)
+        return media::unexpected{probe.error()};
+
+    auto head{FileHead::read(**probe)};
+
+    if (!head)
+        return media::unexpected{head.error()};
+
+    if (head->empty())
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::unreadable,
-                         .detail = "file header could not be read"}
+                         .detail = "file header is empty"}
         };
 
-    const std::string extension{lowercased_extension(path)};
     bool claimed{false};
 
     // A file is a format if that format's reader accepts it. Everything known about the file only
     // decides who is asked first, which is why the weakest reason still gets its turn.
     for (const Match reason : reasons) {
         for (const Format& format : formats()) {
-            if (match_of(format, head, extension) != reason)
+            if (match_of(format, *head, facts.extension) != reason)
                 continue;
 
             claimed = claimed || reason == Match::signature;
