@@ -147,8 +147,7 @@ void PlaylistView::show_track(int at, const engine::Track& track, bool playing)
     setItem(at, Column::album, new QTableWidgetItem{QString::fromStdString(track.album())});
 
     // A length that has not been read yet is left blank rather than shown as no time at all.
-    const QString length{
-        track.duration() == units::Time{} ? QString{} : as_clock(track.duration())};
+    const QString length{track.duration() ? as_clock(*track.duration()) : QString{}};
 
     setItem(at, Column::length, new QTableWidgetItem{length});
 

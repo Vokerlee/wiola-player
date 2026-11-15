@@ -253,7 +253,7 @@ TEST(Playlist, NamesATrackAfterItsFileUntilItIsToldOtherwise)
     ASSERT_NE(playlist.current(), nullptr);
     EXPECT_EQ(playlist.current()->title(), "first") << "a name is not an extension";
     EXPECT_TRUE(playlist.current()->artist().empty());
-    EXPECT_EQ(playlist.current()->duration(), wiola::units::Time{});
+    EXPECT_FALSE(playlist.current()->duration().has_value());
 }
 
 /// What is found out about a track later replaces what was assumed, and moves nothing.

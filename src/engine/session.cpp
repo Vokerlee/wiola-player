@@ -74,7 +74,7 @@ Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
 
 Session::~Session() = default;
 
-codec::OpenResult Session::open(std::vector<std::filesystem::path> tracks)
+OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 {
     std::vector<Track> queued;
     queued.reserve(tracks.size());
@@ -191,19 +191,19 @@ bool Session::shuffled() const noexcept
     return playlist_.shuffled();
 }
 
-codec::OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
+OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
 {
     // Whatever was read and not put on was read for a track nobody is waiting for any more.
     ready_.reset();
     ready_track_.clear();
 
     loader_->start(loads_.begin(track.id(), track.path(), intent));
-    last_result_ = codec::OpenResult::loading;
+    last_result_ = OpenResult::loading;
 
     return last_result_;
 }
 
-codec::OpenResult Session::read_current_track(bool playing)
+OpenResult Session::read_current_track(bool playing)
 {
     const Track* current{playlist_.current()};
 
@@ -224,10 +224,11 @@ void Session::take_up_finished_tags()
 {
     for (const MetadataCoordinator::Reading& reading : metadata_.take()) {
         TrackMetadata metadata{
-            .title = reading.tags.title.empty() ? reading.path.stem().string() : reading.tags.title,
-            .artist = reading.tags.artist,
-            .album = reading.tags.album,
-            .duration = reading.tags.duration,
+            .title = reading.tags.track.title.empty() ? reading.path.stem().string()
+                                                      : reading.tags.track.title,
+            .artist = reading.tags.track.artist,
+            .album = reading.tags.track.album,
+            .duration = reading.tags.track.duration,
         };
 
         for (const QueueEntryId entry : reading.entries)
@@ -247,13 +248,13 @@ void Session::take_up_finished_read()
     if (!opened) {
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
-        last_result_ = opened.result;
+        last_result_ = open_failed(opened.error().category);
         return;
     }
 
-    ready_ = std::move(opened.decoder);
+    ready_ = std::move(*opened);
     ready_track_ = completed->request.path;
-    last_result_ = codec::OpenResult::opened;
+    last_result_ = OpenResult::opened;
 
     const bool play{completed->request.intent == LoadIntent::play};
 
@@ -294,7 +295,7 @@ bool Session::install_read_track()
 
     if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames)) {
         ready_track_.clear();
-        last_result_ = codec::OpenResult::damaged;
+        last_result_ = OpenResult::damaged;
         return false;
     }
 
@@ -322,7 +323,7 @@ bool Session::reading() const noexcept
     return loader_->busy();
 }
 
-codec::OpenResult Session::open_result() const noexcept
+OpenResult Session::open_result() const noexcept
 {
     return last_result_;
 }

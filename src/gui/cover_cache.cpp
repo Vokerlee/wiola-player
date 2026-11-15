@@ -71,9 +71,9 @@ const QPixmap& CoverCache::cover_of(const std::filesystem::path& path)
     const codec::Tags tags{codec::read_tags(path)};
     QPixmap art;
 
-    if (!tags.art.empty())
-        art.loadFromData(reinterpret_cast<const uchar*>(tags.art.data()),
-            static_cast<unsigned int>(tags.art.size()));
+    if (!tags.artwork.empty())
+        art.loadFromData(reinterpret_cast<const uchar*>(tags.artwork.data.data()),
+            static_cast<unsigned int>(tags.artwork.data.size()));
 
     QPixmap cover{art.isNull() ? stub_
                                : art.scaled(policy_.cover_size, policy_.cover_size,

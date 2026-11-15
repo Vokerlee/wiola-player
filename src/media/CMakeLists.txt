@@ -1,0 +1,2 @@
+add_library(wiola_media INTERFACE)
+target_link_libraries(wiola_media INTERFACE wiola_core)

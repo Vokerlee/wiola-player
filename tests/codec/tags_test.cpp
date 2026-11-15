@@ -101,18 +101,19 @@ TEST(Tags, SaysOnlyHowLongAFileWithNoTagsRuns)
 {
     const wiola::codec::Tags tags{read_tags(data() / "tone.wav")};
 
-    EXPECT_TRUE(tags.title.empty());
-    EXPECT_TRUE(tags.artist.empty());
-    EXPECT_TRUE(tags.album.empty());
-    EXPECT_TRUE(tags.art.empty());
-    EXPECT_GT(tags.duration, wiola::units::Time{});
+    EXPECT_TRUE(tags.track.title.empty());
+    EXPECT_TRUE(tags.track.artist.empty());
+    EXPECT_TRUE(tags.track.album.empty());
+    EXPECT_TRUE(tags.artwork.empty());
+    ASSERT_TRUE(tags.track.duration.has_value());
+    EXPECT_GT(*tags.track.duration, wiola::units::Time{});
 }
 
 TEST(Tags, ReadsWhatAnMp3SaysAboutItself)
 {
     const std::filesystem::path track{tagged_copy("wiola_tagged.mp3", "Together Forever")};
 
-    EXPECT_EQ(read_tags(track).title, "Together Forever");
+    EXPECT_EQ(read_tags(track).track.title, "Together Forever");
 }
 
 /// A tag is read from what a file starts with, not from what it is called.
@@ -120,7 +121,7 @@ TEST(Tags, ReadsATagFromAFileNamedAnythingAtAll)
 {
     const std::filesystem::path track{tagged_copy("wiola_tagged.whatever", "Together Forever")};
 
-    EXPECT_EQ(read_tags(track).title, "Together Forever");
+    EXPECT_EQ(read_tags(track).track.title, "Together Forever");
 }
 
 TEST(Tags, SaysNothingAboutAFlacWithNothingInItsBlocks)
@@ -128,7 +129,7 @@ TEST(Tags, SaysNothingAboutAFlacWithNothingInItsBlocks)
     const wiola::codec::Tags tags{read_tags(data() / "tone.flac")};
 
     // Whatever this file happens to carry, reading it must answer rather than fail.
-    EXPECT_TRUE(tags.title.empty() || !tags.title.empty());
+    EXPECT_TRUE(tags.track.title.empty() || !tags.track.title.empty());
 }
 
 /// The picture a track carries is what the queue draws beside it, so it is worth knowing that
@@ -161,7 +162,7 @@ TEST(Tags, ReadsThePictureATrackCarries)
 
     const wiola::codec::Tags tags{read_tags(track)};
 
-    EXPECT_EQ(tags.art_type, "image/png");
-    ASSERT_EQ(tags.art.size(), static_cast<std::size_t>(drawn.size()));
-    EXPECT_EQ(static_cast<unsigned char>(tags.art.front()), 0x89U);
+    EXPECT_EQ(tags.artwork.mime_type, "image/png");
+    ASSERT_EQ(tags.artwork.data.size(), static_cast<std::size_t>(drawn.size()));
+    EXPECT_EQ(static_cast<unsigned char>(tags.artwork.data.front()), 0x89U);
 }

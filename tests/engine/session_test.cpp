@@ -46,7 +46,7 @@ namespace {
 
 using namespace std::chrono_literals;
 using namespace wiola::units::literals;
-using wiola::codec::OpenResult;
+using wiola::engine::OpenResult;
 using wiola::pcm::Frames;
 using State = wiola::engine::Playback::State;
 using wiola::engine::Session;
@@ -152,8 +152,7 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
             auto decoder{std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
                 wiola::pcm::StreamSpec{.sample_rate = units::Frequency{48000.0},
                     .num_channels = 0})};
-            return wiola::codec::Opened{.decoder = std::move(decoder),
-                .result = OpenResult::opened};
+            return wiola::codec::Opened{std::move(decoder)};
         },
         [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
 
@@ -173,9 +172,7 @@ TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
         Session session{
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
             [](const std::filesystem::path&) {
-                return wiola::codec::Opened{.decoder =
-                                                std::make_unique<wiola::testing::FakeDecoder>(),
-                    .result = OpenResult::opened};
+                return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
             },
             [](const std::filesystem::path&) { return wiola::codec::Tags{}; },
             wiola::engine::TransportConfig{}, wiola::engine::BufferingConfig{.duration = duration}};
@@ -494,8 +491,8 @@ TEST(Session, TakesUpWhatEveryAddedTrackSays)
     EXPECT_TRUE(poll_until(fixture.session, [&fixture] {
         const std::vector<wiola::engine::Track>& queued{fixture.session.playlist().tracks()};
 
-        return queued.size() == 2 && queued.front().duration() != units::Time{} &&
-            queued.back().duration() != units::Time{};
+        return queued.size() == 2 && queued.front().duration().has_value() &&
+            queued.back().duration().has_value();
     })) << "a track that was added was never read";
 }
 
@@ -566,12 +563,13 @@ TEST(Session, TakesUpWhatQueuedTracksSayAboutThemselves)
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] {
-        return fixture.session.playlist().tracks().front().duration() != units::Time{};
+        return fixture.session.playlist().tracks().front().duration().has_value();
     })) << "how long the track runs was never found out";
 
     const wiola::engine::Track& described{fixture.session.playlist().tracks().front()};
 
-    EXPECT_GT(described.duration(), units::Time{});
+    ASSERT_TRUE(described.duration().has_value());
+    EXPECT_GT(*described.duration(), units::Time{});
     EXPECT_FALSE(described.title().empty());
 }
 
@@ -590,8 +588,8 @@ TEST(Session, TakesUpWhatEveryTrackOfAnOpenedListSays)
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] {
         const std::vector<wiola::engine::Track>& queued{fixture.session.playlist().tracks()};
 
-        return queued.size() == 2 && queued.front().duration() != units::Time{} &&
-            queued.back().duration() != units::Time{};
+        return queued.size() == 2 && queued.front().duration().has_value() &&
+            queued.back().duration().has_value();
     })) << "a track of the list was never read";
 }
 
@@ -686,8 +684,7 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [&opening](const std::filesystem::path&) {
             opening.wait();
-            return wiola::codec::Opened{.decoder = std::make_unique<wiola::testing::FakeDecoder>(),
-                .result = OpenResult::opened};
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
 
@@ -712,8 +709,7 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
         [&opening, &second](const std::filesystem::path& path) {
             if (path == second)
                 opening.wait();
-            return wiola::codec::Opened{.decoder = std::make_unique<wiola::testing::FakeDecoder>(),
-                .result = OpenResult::opened};
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
 

@@ -30,6 +30,7 @@
 #include <engine/load/load_coordinator.hpp>
 #include <engine/load/loader.hpp>
 #include <engine/load/metadata_coordinator.hpp>
+#include <engine/open_result.hpp>
 #include <engine/output_session.hpp>
 #include <engine/playback_pipeline.hpp>
 #include <engine/queue/playlist.hpp>
@@ -76,7 +77,7 @@ public:
     /// this returns `loading` and whatever is playing keeps playing; `catch_up` is what finishes
     /// the job. A file that will not open leaves the track that was playing alone, and says why
     /// through `open_result`.
-    codec::OpenResult open(std::vector<std::filesystem::path> tracks);
+    OpenResult open(std::vector<std::filesystem::path> tracks);
 
     /// Stands at the next track of the list and reads it, keeping whether something was playing.
     /// False when there is nowhere to go.
@@ -120,7 +121,7 @@ public:
     [[nodiscard]] bool reading() const noexcept;
 
     /// How the last open went, which is `loading` until the file has been read.
-    [[nodiscard]] codec::OpenResult open_result() const noexcept;
+    [[nodiscard]] OpenResult open_result() const noexcept;
 
     [[nodiscard]] bool loaded() const noexcept;
 
@@ -149,7 +150,7 @@ public:
 
 private:
     /// Starts an identified load with the requested transport intent.
-    codec::OpenResult begin_reading(const Track& track, LoadIntent intent);
+    OpenResult begin_reading(const Track& track, LoadIntent intent);
 
     /// Puts on whatever has finished being read, and plays it if that is what it was read for.
     void take_up_finished_read();
@@ -158,7 +159,7 @@ private:
     void take_up_finished_tags();
 
     /// Reads whatever the list now stands at, playing it if something was playing.
-    codec::OpenResult read_current_track(bool playing);
+    OpenResult read_current_track(bool playing);
 
     /// Whether a track has been read and is waiting to go on.
     [[nodiscard]] bool read_waiting() const noexcept;
@@ -187,7 +188,7 @@ private:
     /// A track that has been read and not yet put on, with the name it goes by.
     std::unique_ptr<codec::Decoder> ready_;
     std::filesystem::path ready_track_;
-    codec::OpenResult last_result_{codec::OpenResult::opened};
+    OpenResult last_result_{OpenResult::opened};
     /// The output outlives its pipeline so transport is joined before the output is disconnected.
     OutputSession out_;
     TransportConfig transport_;

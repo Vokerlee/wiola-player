@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Picks a reader for a file.
+ * @brief Typed decoder opening with no asynchronous application state.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -21,42 +21,17 @@
 #pragma once
 
 #include <codec/decode/decoder.hpp>
+#include <media/media.hpp>
 
 #include <filesystem>
 #include <memory>
 
 namespace wiola::codec {
 
-/// How opening a file went.
-enum class OpenResult {
-    opened,
+/// Exactly a decoder or a media error; contradictory decoder/status pairs are unrepresentable.
+using Opened = media::Result<std::unique_ptr<Decoder>>;
 
-    /// Still being read. Whatever was playing keeps playing until it is.
-    loading,
-
-    /// Nothing could be read from it: it is missing, unreadable or empty.
-    unreadable,
-
-    /// Nothing here reads a file like this one.
-    unsupported,
-
-    /// A format claimed it by its signature, and its own reader refused it.
-    damaged,
-};
-
-/// A decoder, or why there is none.
-struct Opened {
-    std::unique_ptr<Decoder> decoder;
-    OpenResult result{OpenResult::opened};
-
-    [[nodiscard]] explicit operator bool() const noexcept { return decoder != nullptr; }
-};
-
-/// Opens `path` with whichever reader accepts it.
-///
-/// Whether a file can be decoded is settled by handing it to a reader, so the extension only
-/// decides which one is asked first. A misnamed file therefore still plays, at the cost of an
-/// attempt.
-Opened open_file(const std::filesystem::path& path);
+/// Opens path with whichever reader accepts it, using the extension only to order attempts.
+[[nodiscard]] Opened open_file(const std::filesystem::path& path);
 
 } // namespace wiola::codec

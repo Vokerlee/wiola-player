@@ -46,8 +46,8 @@ std::size_t drain(Mp3Reader& reader)
     std::array<float, 1024> block{};
     std::size_t total{0};
 
-    for (std::size_t num_rendered{reader.render(block)}; num_rendered > 0;
-        num_rendered = reader.render(block))
+    for (std::size_t num_rendered{reader.render(block).value()}; num_rendered > 0;
+        num_rendered = reader.render(block).value())
         total += num_rendered;
 
     return total;
@@ -62,7 +62,7 @@ std::vector<float> read_frames(Mp3Reader& reader, std::size_t num_frames)
     std::array<float, 1024> block{};
 
     while (samples.size() < num_frames * num_channels) {
-        const std::size_t num_rendered{reader.render(block)};
+        const std::size_t num_rendered{reader.render(block).value()};
 
         if (num_rendered == 0)
             break;
@@ -131,7 +131,7 @@ TEST(Mp3Reader, SeekMovesThePosition)
     EXPECT_TRUE(reader->exhausted());
 
     std::array<float, 16> block{};
-    EXPECT_EQ(reader->render(block), 0u);
+    EXPECT_EQ(reader->render(block).value(), 0u);
 }
 
 TEST(Mp3Reader, SeekRewinds)

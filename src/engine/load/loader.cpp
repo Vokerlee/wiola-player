@@ -89,14 +89,19 @@ void Loader::work(const std::stop_token& stop)
             opening_ = true;
         }
 
-        codec::Opened opened;
+        codec::Opened opened{
+            media::unexpected{media::Error{.category = media::ErrorCategory::unreadable,
+                .detail = "decoder was not opened"}}};
 
         try {
             opened = open_(request.path);
         } catch (const std::bad_alloc&) {
             throw;
         } catch (...) {
-            opened.result = codec::OpenResult::unreadable;
+            opened = media::unexpected{
+                media::Error{.category = media::ErrorCategory::unreadable,
+                             .detail = "decoder opener failed"}
+            };
         }
 
         {

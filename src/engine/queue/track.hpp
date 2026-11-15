@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <media/media.hpp>
 #include <utils/units.hpp>
 
 #include <compare>
@@ -38,12 +39,7 @@ struct QueueEntryId {
 };
 
 /// Facts learned after queueing, separate from the resource they describe.
-struct TrackMetadata {
-    std::string title;
-    std::string artist;
-    std::string album;
-    units::Time duration;
-};
+using TrackMetadata = media::TrackMetadata;
 
 /// One queue entry. Identity and location are assigned once and cannot be replaced by metadata.
 class Track {
@@ -63,7 +59,10 @@ public:
 
     [[nodiscard]] const std::string& album() const noexcept { return metadata_.album; }
 
-    [[nodiscard]] constexpr units::Time duration() const noexcept { return metadata_.duration; }
+    [[nodiscard]] constexpr std::optional<units::Time> duration() const noexcept
+    {
+        return metadata_.duration;
+    }
 
 private:
     QueueEntryId id_{};
