@@ -24,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
@@ -33,7 +34,9 @@
 namespace {
 
 using wiola::engine::Playlist;
+using wiola::engine::QueueEntryId;
 using wiola::engine::Track;
+using wiola::engine::TrackMetadata;
 using Repeat = wiola::engine::Playlist::Repeat;
 
 /// Three tracks, named so that a test can say which one it is standing at.
@@ -449,4 +452,44 @@ TEST(Playlist, DoesNotReuseIdentitiesAfterClear)
 
     EXPECT_NE(playlist.tracks().front().id(), before);
     EXPECT_FALSE(playlist.describe(before, {}));
+}
+
+TEST(Playlist, AppliesOneMetadataBatchWithoutRepeatedQueueRevisions)
+{
+    Playlist playlist;
+    std::vector<Track> tracks;
+    for (std::size_t index = 0; index < 1000; ++index)
+        tracks.push_back(Track::of("track" + std::to_string(index) + ".wav"));
+    playlist.set(std::move(tracks));
+
+    std::vector<QueueEntryId> entries;
+    for (const Track& track : playlist.tracks())
+        entries.push_back(track.id());
+
+    const std::size_t revision{playlist.revision()};
+    const std::size_t metadata_revision{playlist.metadata_revision()};
+    playlist.apply_metadata(entries,
+        TrackMetadata{.title = "known", .artist = {}, .album = {}, .duration = {}},
+        std::make_shared<const wiola::media::Artwork>());
+
+    EXPECT_EQ(playlist.revision(), revision + 1);
+    EXPECT_EQ(playlist.metadata_revision(), metadata_revision + 1);
+    for (const Track& track : playlist.tracks())
+        EXPECT_EQ(track.title(), "known");
+}
+
+TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
+{
+    Playlist playlist;
+    playlist.set({Track::of("first.wav"), Track::of("second.wav")});
+    const QueueEntryId removed{playlist.tracks()[0].id()};
+    const QueueEntryId surviving{playlist.tracks()[1].id()};
+
+    ASSERT_TRUE(playlist.remove(0));
+    playlist.apply_metadata(std::array{removed, surviving},
+        TrackMetadata{.title = "updated", .artist = {}, .album = {}, .duration = {}}, {});
+
+    ASSERT_EQ(playlist.tracks().size(), 1U);
+    EXPECT_EQ(playlist.tracks()[0].id(), surviving);
+    EXPECT_EQ(playlist.tracks()[0].title(), "updated");
 }
