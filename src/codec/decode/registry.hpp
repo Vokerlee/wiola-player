@@ -24,6 +24,7 @@
 #include <codec/decode/open.hpp>
 
 #include <cstddef>
+#include <stop_token>
 #include <string>
 #include <vector>
 
@@ -32,17 +33,17 @@ namespace wiola::codec {
 class MediaBackendRegistry {
 public:
     MediaBackendRegistry();
-    explicit MediaBackendRegistry(std::vector<Format> backends, std::size_t max_attempts = 16);
+    explicit MediaBackendRegistry(std::vector<Backend> backends, std::size_t max_attempts = 16);
 
-    /// Uses signatures/extensions only to order bounded reader-acceptance probes.
-    Opened open(const std::filesystem::path& path) const;
+    /// Uses signatures/extensions only to order bounded, cancellable backend-acceptance probes.
+    Opened open(const std::filesystem::path& path, std::stop_token cancelled = {}) const;
 
-    [[nodiscard]] const std::vector<Format>& backends() const noexcept { return backends_; }
+    [[nodiscard]] const std::vector<Backend>& backends() const noexcept { return backends_; }
 
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
 
 private:
-    std::vector<Format> backends_;
+    std::vector<Backend> backends_;
     std::size_t max_attempts_;
 };
 

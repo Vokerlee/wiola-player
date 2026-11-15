@@ -32,6 +32,7 @@ enum class ErrorCategory {
     read_failed,
     seek_failed,
     invalid_seek,
+    cancelled,
 };
 
 struct Error {
