@@ -51,7 +51,7 @@ public:
     /// Writes only whole frames and reports frames written, EOF, or a typed failure.
     media::Result<DecodeOutcome> read(std::span<float> output);
 
-    /// Compatibility sample-count view for audio-source consumers during migration.
+    /// Sample-count convenience view for callers that do not need terminal status.
     media::Result<std::size_t> render(std::span<float> output);
 
     [[nodiscard]] pcm::StreamSpec spec() const noexcept { return spec_; }

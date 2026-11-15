@@ -31,7 +31,4 @@ namespace wiola::codec {
 /// Exactly a decoder or a media error; contradictory decoder/status pairs are unrepresentable.
 using Opened = media::Result<std::unique_ptr<Decoder>>;
 
-/// Opens path with whichever reader accepts it, using the extension only to order attempts.
-[[nodiscard]] Opened open_file(const std::filesystem::path& path);
-
 } // namespace wiola::codec

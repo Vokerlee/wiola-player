@@ -52,6 +52,47 @@ jobs:
       - run: cmake --build --preset ${{ matrix.preset }} -j
       - run: ctest --preset ${{ matrix.preset }} ${{ matrix.ctest_args }}
 
+  headless:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: headless
+          build-dir: build-headless
+      - run: cmake --preset linux-headless
+      - run: cmake --build --preset linux-headless -j
+
+  windows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: windows
+          build-dir: build-win-release
+          packages: mingw-w64 llvm ninja-build curl
+      - uses: actions/cache@v4
+        id: qt-mingw
+        with:
+          path: .qt-mingw
+          key: qt-mingw-${{ hashFiles('scripts/build-qt-mingw.sh', 'cmake/mingw-w64.cmake') }}
+      - if: steps.qt-mingw.outputs.cache-hit != 'true'
+        run: ./scripts/build-qt-mingw.sh "$GITHUB_WORKSPACE/.qt-mingw"
+      - run: cmake --preset windows-release
+        env:
+          QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
+      - run: cmake --build --preset windows-release -j
+        env:
+          QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
+      - name: Check static Windows imports
+        run: |
+          imports="$(llvm-objdump -p build-win-release/bin/wiola-player.exe)"
+          if grep -Eiq 'Qt6.*\.dll|libgcc.*\.dll|libstdc\+\+.*\.dll|libwinpthread.*\.dll' <<< "$imports"; then
+            echo "Unexpected non-system runtime import" >&2
+            exit 1
+          fi
+
   coverage:
     runs-on: ubuntu-24.04
     steps:
