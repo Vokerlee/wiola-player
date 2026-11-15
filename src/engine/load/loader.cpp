@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Turns a path into a decoder, off the thread that asked for it.
+ * @brief Opens identified load requests on a worker.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -36,8 +36,6 @@ Loader::Loader(DecoderOpener open)
 
 Loader::~Loader()
 {
-    // Stop is logical cancellation for queued work. A third-party open already in progress cannot
-    // be interrupted, so the join waits for that call without holding the loader's mutex.
     if (thread_.joinable()) {
         thread_.request_stop();
         waiting_.notify_all();
@@ -45,12 +43,11 @@ Loader::~Loader()
     }
 }
 
-void Loader::start(const std::filesystem::path& path)
+void Loader::start(LoadRequest request)
 {
     {
         const std::lock_guard asked{mutex_};
-
-        asked_ = path;
+        asked_ = std::move(request);
         done_.reset();
         ++num_asked_;
     }
@@ -64,48 +61,41 @@ void Loader::start(const std::filesystem::path& path)
 bool Loader::busy() const noexcept
 {
     const std::lock_guard asked{mutex_};
-
     return asked_.has_value() || opening_;
 }
 
-std::optional<codec::Opened> Loader::take()
+std::optional<LoadCompletion> Loader::take()
 {
     const std::lock_guard asked{mutex_};
-
     return std::exchange(done_, std::nullopt);
 }
 
 void Loader::work(const std::stop_token& stop)
 {
     while (true) {
-        std::filesystem::path path;
+        LoadRequest request;
         std::size_t asked_when{0};
 
         {
             std::unique_lock asked{mutex_};
-
             waiting_.wait(asked, stop, [this] { return asked_.has_value(); });
 
             if (stop.stop_requested())
                 return;
 
-            path = *std::exchange(asked_, std::nullopt);
+            request = *std::exchange(asked_, std::nullopt);
             asked_when = num_asked_;
             opening_ = true;
         }
 
-        // Held by nothing while the file is read, which is the whole point of being here.
-        codec::Opened opened{open_(path)};
+        codec::Opened opened{open_(request.path)};
 
         {
             const std::lock_guard asked{mutex_};
-
             opening_ = false;
 
-            // Another file was asked for while this one was being read, so this answer is to a
-            // question nobody is waiting for.
             if (asked_when == num_asked_)
-                done_ = std::move(opened);
+                done_ = LoadCompletion{.request = std::move(request), .opened = std::move(opened)};
         }
     }
 }

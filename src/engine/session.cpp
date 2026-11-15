@@ -90,7 +90,7 @@ codec::OpenResult Session::open(std::vector<std::filesystem::path> tracks)
     if (playlist_.empty())
         return last_result_;
 
-    return begin_reading(playlist_.current()->path(), Waiting::install);
+    return begin_reading(*playlist_.current(), LoadIntent::install);
 }
 
 bool Session::next_track()
@@ -129,11 +129,14 @@ void Session::add(std::vector<std::filesystem::path> tracks)
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
-        static_cast<void>(begin_reading(playlist_.current()->path(), Waiting::install));
+        static_cast<void>(begin_reading(*playlist_.current(), LoadIntent::install));
 }
 
 bool Session::remove(std::size_t index)
 {
+    if (index < playlist_.tracks().size())
+        loads_.invalidate_if(playlist_.tracks()[index].id());
+
     return playlist_.remove(index);
 }
 
@@ -188,15 +191,13 @@ bool Session::shuffled() const noexcept
     return playlist_.shuffled();
 }
 
-codec::OpenResult Session::begin_reading(const std::filesystem::path& path, Waiting waiting)
+codec::OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
 {
     // Whatever was read and not put on was read for a track nobody is waiting for any more.
     ready_.reset();
     ready_track_.clear();
 
-    loader_->start(path);
-    opening_ = path;
-    waiting_ = waiting;
+    loader_->start(loads_.begin(track.id(), track.path(), intent));
     last_result_ = codec::OpenResult::loading;
 
     return last_result_;
@@ -204,7 +205,12 @@ codec::OpenResult Session::begin_reading(const std::filesystem::path& path, Wait
 
 codec::OpenResult Session::read_current_track(bool playing)
 {
-    return begin_reading(playlist_.current()->path(), playing ? Waiting::play : Waiting::install);
+    const Track* current{playlist_.current()};
+
+    if (!current)
+        return last_result_;
+
+    return begin_reading(*current, playing ? LoadIntent::play : LoadIntent::install);
 }
 
 void Session::catch_up()
@@ -241,24 +247,25 @@ void Session::take_up_finished_tags()
 
 void Session::take_up_finished_read()
 {
-    std::optional<codec::Opened> opened{loader_->take()};
+    std::optional<LoadCompletion> completed{loader_->take()};
 
-    if (!opened.has_value())
+    if (!completed || !loads_.accept(*completed))
         return;
 
-    if (!*opened) {
+    codec::Opened& opened{completed->opened};
+
+    if (!opened) {
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
-        last_result_ = opened->result;
-
+        last_result_ = opened.result;
         return;
     }
 
-    ready_ = std::move(opened->decoder);
-    ready_track_ = opening_;
+    ready_ = std::move(opened.decoder);
+    ready_track_ = completed->request.path;
     last_result_ = codec::OpenResult::opened;
 
-    const bool play{waiting_ == Waiting::play};
+    const bool play{completed->request.intent == LoadIntent::play};
 
     if (install_read_track() && play)
         static_cast<void>(play_or_pause());
@@ -359,6 +366,10 @@ bool Session::play_or_pause()
 
 void Session::stop() noexcept
 {
+    loads_.invalidate();
+    ready_.reset();
+    ready_track_.clear();
+
     if (!loaded())
         return;
 

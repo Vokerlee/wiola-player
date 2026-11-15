@@ -678,3 +678,57 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
 
     EXPECT_FALSE(fixture.session.playing());
 }
+
+TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
+{
+    wiola::testing::Gate opening;
+    Session session{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [&opening](const std::filesystem::path&) {
+            opening.wait();
+            return wiola::codec::Opened{.decoder = std::make_unique<wiola::testing::FakeDecoder>(),
+                .result = OpenResult::opened};
+        },
+        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+
+    session.open({"late.wav"});
+    opening.wait_until_entered();
+    session.clear();
+    opening.release();
+
+    ASSERT_TRUE(poll_until(session, [&session] { return !session.reading(); }));
+    session.catch_up();
+
+    EXPECT_FALSE(session.loaded());
+    EXPECT_EQ(session.state(), State::idle);
+}
+
+TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
+{
+    wiola::testing::Gate opening;
+    const std::filesystem::path second{"second.wav"};
+    Session session{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [&opening, &second](const std::filesystem::path& path) {
+            if (path == second)
+                opening.wait();
+            return wiola::codec::Opened{.decoder = std::make_unique<wiola::testing::FakeDecoder>(),
+                .result = OpenResult::opened};
+        },
+        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+
+    session.open({"first.wav", second});
+    ASSERT_TRUE(poll_until(session, [&session] { return session.loaded(); }));
+    ASSERT_TRUE(session.play_or_pause());
+    ASSERT_TRUE(session.next_track());
+    opening.wait_until_entered();
+
+    session.stop();
+    opening.release();
+    ASSERT_TRUE(poll_until(session, [&session] { return !session.reading(); }));
+    session.catch_up();
+
+    EXPECT_EQ(session.track(), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(session.state(), State::stopped);
+    EXPECT_FALSE(session.playing());
+}
