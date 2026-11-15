@@ -92,6 +92,12 @@ Backend backend()
     static const std::array tta_markers{
         Marker{0, "TTA1"}
     };
+    static const std::array asf_markers{
+        Marker{0, "\x30\x26\xb2\x75"}
+    };
+    static const std::array ebml_markers{
+        Marker{0, "\x1a\x45\xdf\xa3"}
+    };
     static constexpr std::array<std::string_view, 3> ogg_extensions{".ogg", ".oga", ".opus"};
     static constexpr std::array<std::string_view, 2> mp4_extensions{".m4a", ".mp4"};
     static constexpr std::array<std::string_view, 1> adts_extensions{".aac"};
@@ -104,19 +110,23 @@ Backend backend()
     static constexpr std::array<std::string_view, 1> wavpack_extensions{".wv"};
     static constexpr std::array<std::string_view, 1> ape_extensions{".ape"};
     static constexpr std::array<std::string_view, 1> tta_extensions{".tta"};
+    static constexpr std::array<std::string_view, 1> asf_extensions{".wma"};
+    static constexpr std::array<std::string_view, 2> ebml_extensions{".mka", ".webm"};
     static const std::array formats{
-        Format{"Ogg Vorbis/Opus",     ogg_markers,               ogg_extensions,     {}},
-        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers,               mp4_extensions,     {}},
-        Format{"ADTS AAC-LC",         std::span<const Marker>{}, adts_extensions,    {}},
-        Format{"AIFF PCM",            aiff_markers,              aiff_extensions,    {}},
-        Format{"AIFC PCM",            aifc_markers,              aifc_extensions,    {}},
-        Format{"AU PCM",              au_markers,                au_extensions,      {}},
-        Format{"CAF PCM",             caf_markers,               caf_extensions,     {}},
-        Format{"Wave64 PCM",          w64_markers,               w64_extensions,     {}},
-        Format{"RF64 PCM",            rf64_markers,              rf64_extensions,    {}},
-        Format{"WavPack",             wavpack_markers,           wavpack_extensions, {}},
-        Format{"Monkey's Audio",      ape_markers,               ape_extensions,     {}},
-        Format{"TTA",                 tta_markers,               tta_extensions,     {}}
+        Format{"Ogg Vorbis/Opus",           ogg_markers,               ogg_extensions,     {}},
+        Format{"MP4/M4A AAC-LC/ALAC",       mp4_markers,               mp4_extensions,     {}},
+        Format{"ADTS AAC-LC",               std::span<const Marker>{}, adts_extensions,    {}},
+        Format{"AIFF PCM",                  aiff_markers,              aiff_extensions,    {}},
+        Format{"AIFC PCM",                  aifc_markers,              aifc_extensions,    {}},
+        Format{"AU PCM",                    au_markers,                au_extensions,      {}},
+        Format{"CAF PCM",                   caf_markers,               caf_extensions,     {}},
+        Format{"Wave64 PCM",                w64_markers,               w64_extensions,     {}},
+        Format{"RF64 PCM",                  rf64_markers,              rf64_extensions,    {}},
+        Format{"WavPack",                   wavpack_markers,           wavpack_extensions, {}},
+        Format{"Monkey's Audio",            ape_markers,               ape_extensions,     {}},
+        Format{"TTA",                       tta_markers,               tta_extensions,     {}},
+        Format{"ASF WMAv2",                 asf_markers,               asf_extensions,     {}},
+        Format{"Matroska/WebM Vorbis/Opus", ebml_markers,              ebml_extensions,    {}}
     };
     return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
                        auto decoder{FfmpegDecoder::open(path)};
@@ -162,13 +172,17 @@ media::Result<std::unique_ptr<FfmpegDecoder>> FfmpegDecoder::open(const std::fil
 }
 
 media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
-    std::optional<pcm::Frames> preroll, std::int64_t timestamp_offset)
+    std::optional<pcm::Frames> preroll, std::int64_t timestamp_offset,
+    std::optional<std::int64_t> sequential_start)
 {
     const pcm::Frames reference{preroll.value_or(position_frames())};
-    auto start{preroll ? frame_position(frame, *input_->format(), stream_index_,
-                             static_cast<int>(spec().sample_rate.hz()))
-                       : std::nullopt};
-    if (start)
+    std::optional<std::int64_t> start;
+    if (preroll && sequential_start)
+        start = *sequential_start;
+    else if (preroll)
+        start = frame_position(frame, *input_->format(), stream_index_,
+            static_cast<int>(spec().sample_rate.hz()));
+    if (start && !sequential_start)
         *start -= timestamp_offset;
 
     if (start) {
@@ -240,6 +254,7 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
         return media::unexpected{first.error()};
     if (first->end_of_stream)
         return media::unexpected{seek_error("seek target is beyond actual audio")};
+    const int initial_frame_samples{first->frame->nb_samples};
     const auto initial_position{frame_position(*first->frame, *input_->format(), stream_index_,
         static_cast<int>(spec().sample_rate.hz()))};
     if (initial_position && *initial_position > 0)
@@ -265,6 +280,7 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
     packets_->reset_after_seek();
     converter_->reset();
     source_ended_ = false;
+    std::optional<std::int64_t> sequential_position;
 
     if (length_accuracy() == LengthAccuracy::exact && target == num_frames())
         return target;
@@ -275,11 +291,28 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
             return media::unexpected{event.error()};
         if (event->end_of_stream)
             return media::unexpected{seek_error("seek target is beyond actual audio")};
-        if (event->frame->best_effort_timestamp == AV_NOPTS_VALUE && target != pcm::Frames{})
+        if (sequential_position && *sequential_position == 0 &&
+            event->frame->nb_samples > initial_frame_samples)
+            sequential_position = initial_frame_samples - event->frame->nb_samples;
+        if (!sequential_position && event->frame->best_effort_timestamp == AV_NOPTS_VALUE &&
+            target != pcm::Frames{})
             return media::unexpected{seek_error("stream lacks sample-accurate seek timestamps")};
-        auto trimmed{trim_frame(*event->frame, target, timestamp_offset)};
+        const auto position{frame_position(*event->frame, *input_->format(), stream_index_,
+            static_cast<int>(spec().sample_rate.hz()))};
+        if (!sequential_position && position && *position > seek_sample) {
+            if (av_seek_frame(input_->format(), static_cast<int>(stream_index_), origin,
+                    AVSEEK_FLAG_BACKWARD) < 0)
+                return media::unexpected{seek_error("FFmpeg demuxer rejected the seek restart")};
+            packets_->reset_after_seek();
+            converter_->reset();
+            sequential_position = 0;
+            continue;
+        }
+        auto trimmed{trim_frame(*event->frame, target, timestamp_offset, sequential_position)};
         if (!trimmed)
             return media::unexpected{trimmed.error()};
+        if (sequential_position)
+            *sequential_position += event->frame->nb_samples;
         if (*trimmed && converter_->pending())
             return target;
     }
