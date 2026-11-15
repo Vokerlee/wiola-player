@@ -20,8 +20,8 @@
 
 #pragma once
 
+#include <audio/dsp/equalizer_config.hpp>
 #include <audio/dsp/stage.hpp>
-#include <audio/dsp/tuning.hpp>
 #include <core/macros.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
@@ -33,29 +33,6 @@
 namespace wiola::audio {
 
 /**
- * Where the bands sit: `count` centers from `first`, each `ratio` times the one before it.
- *
- * A ratio of two is one band per octave, which is the default: ten of them from 31.25 Hz.
- */
-struct BandLayout {
-    units::Frequency first{tuning::first_band_center};
-    std::size_t count{tuning::num_layout_bands};
-    double ratio{tuning::band_ratio};
-    double quality{tuning::band_quality};
-
-    /// Where band `index` sits. Indices past `count` continue the series.
-    [[nodiscard]] constexpr units::Frequency center(std::size_t index) const noexcept
-    {
-        units::Frequency value{first};
-
-        for (std::size_t i = 0; i < index; ++i)
-            value = value * ratio;
-
-        return value;
-    }
-};
-
-/**
  * Lifts and cuts bands of the spectrum, cutting beforehand to make room for what they add.
  *
  * `process` is called from the thread that feeds the device: it does not allocate, lock or block.
@@ -65,6 +42,7 @@ struct BandLayout {
 class Equalizer final : public Stage {
 public:
     explicit Equalizer(pcm::StreamSpec spec, BandLayout layout = {});
+    Equalizer(pcm::StreamSpec spec, EqualizerConfig config);
 
     NO_COPY_SEMANTIC(Equalizer);
     NO_MOVE_SEMANTIC(Equalizer);
@@ -74,6 +52,9 @@ public:
     /// Takes the format the samples are in. Settings are kept. Not to be called while the output
     /// is running: it rebuilds what `process` reads.
     void configure(pcm::StreamSpec spec) override;
+
+    /// The immutable policy this equalizer was built with.
+    [[nodiscard]] const EqualizerConfig& config() const noexcept { return config_; }
 
     /// Where the bands sit, whether or not the format can carry them all. A gain is kept for
     /// every one it names.
@@ -110,8 +91,8 @@ private:
     /// Gives every band the coefficients its gain now asks for.
     void retune() noexcept;
 
+    EqualizerConfig config_;
     pcm::StreamSpec spec_{};
-    BandLayout layout_{};
     std::size_t num_bands_{0};
     std::unique_ptr<Bands> bands_;
 };

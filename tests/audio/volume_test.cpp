@@ -20,7 +20,7 @@
 
 #include <audio/dsp/volume.hpp>
 
-#include <audio/dsp/tuning.hpp>
+#include <audio/dsp/volume_policy.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
 
@@ -29,6 +29,7 @@
 #include <array>
 #include <limits>
 #include <span>
+#include <stdexcept>
 
 namespace {
 
@@ -41,6 +42,25 @@ constexpr StreamSpec stereo{.sample_rate = 48_kHz, .num_channels = 2};
 auto samples()
 {
     return std::array{1.0F, -0.5F, 0.25F, 0.0F};
+}
+
+TEST(Volume, UsesItsOwnBoostPolicy)
+{
+    wiola::audio::VolumePolicy policy;
+    policy.max_boost = 2.0F;
+    Volume volume{policy};
+
+    volume.set_gain(4.0F);
+
+    EXPECT_FLOAT_EQ(volume.gain(), 2.0F);
+}
+
+TEST(Volume, RejectsAnInvalidBoostPolicy)
+{
+    wiola::audio::VolumePolicy policy;
+    policy.max_boost = std::numeric_limits<float>::quiet_NaN();
+
+    EXPECT_THROW(Volume{policy}, std::invalid_argument);
 }
 
 } // namespace
@@ -110,7 +130,7 @@ TEST(Volume, RefusesMoreThanTheMostItMayLift)
 
     volume.set_gain(4.0F);
 
-    EXPECT_FLOAT_EQ(volume.gain(), wiola::audio::tuning::max_volume_boost);
+    EXPECT_FLOAT_EQ(volume.gain(), volume.policy().max_boost);
 }
 
 TEST(Volume, TakesAnythingBelowZeroAsSilence)

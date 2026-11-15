@@ -22,7 +22,6 @@
 
 #include "tuning.hpp"
 
-#include <audio/dsp/tuning.hpp>
 #include <utils/units.hpp>
 
 #include <QVBoxLayout>
@@ -65,8 +64,10 @@ int as_steps(float db)
     return static_cast<int>(std::lround(db * tuning::gain_steps_per_db));
 }
 
-constexpr int band_limit{
-    static_cast<int>(audio::tuning::max_band_gain_db) * tuning::gain_steps_per_db};
+int band_limit(const EqualizerControl& equalizer) noexcept
+{
+    return static_cast<int>(equalizer.max_band_gain()) * tuning::gain_steps_per_db;
+}
 
 } // namespace
 
@@ -106,11 +107,12 @@ void EqualizerPanel::rebuild_bands()
     bands_row_->addWidget(bands_);
 
     auto* row = new QHBoxLayout{bands_};
+    const int limit{band_limit(equalizer_)};
 
     for (std::size_t i = 0; i < equalizer_.num_bands(); ++i) {
         auto* slider = new QSlider{Qt::Vertical, bands_};
 
-        slider->setRange(-band_limit, band_limit);
+        slider->setRange(-limit, limit);
         slider->setSingleStep(tuning::gain_step);
         slider->setValue(as_steps(equalizer_.band_gain(i)));
         slider->setFixedHeight(tuning::band_slider_height);

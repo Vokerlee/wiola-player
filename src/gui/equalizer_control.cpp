@@ -84,6 +84,11 @@ float EqualizerControl::preamp() const noexcept
     return equalizer_.preamp();
 }
 
+float EqualizerControl::max_band_gain() const noexcept
+{
+    return equalizer_.config().max_band_gain_db;
+}
+
 float EqualizerControl::band_gain(std::size_t index) const noexcept
 {
     return equalizer_.band_gain(index);

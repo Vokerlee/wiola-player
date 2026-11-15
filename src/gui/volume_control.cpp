@@ -101,7 +101,9 @@ bool VolumeControl::boosted() const noexcept
 
 int VolumeControl::max_position() const noexcept
 {
-    return boosted_ ? tuning::boosted_volume : tuning::full_volume;
+    return boosted_
+        ? static_cast<int>(std::lround(volume_.policy().max_boost * tuning::full_volume))
+        : tuning::full_volume;
 }
 
 } // namespace wiola::gui

@@ -21,13 +21,13 @@
 #include <audio/dsp/equalizer.hpp>
 
 #include <audio/dsp/biquad.hpp>
-#include <audio/dsp/tuning.hpp>
 
 #include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 namespace wiola::audio {
@@ -49,6 +49,19 @@ struct Equalizer::Bands {
 
 namespace {
 
+EqualizerConfig config_for(BandLayout layout) noexcept
+{
+    EqualizerConfig config;
+    config.layout = layout;
+    return config;
+}
+
+void validate(const EqualizerConfig& config)
+{
+    if (!config.valid())
+        throw std::invalid_argument{"invalid equalizer configuration"};
+}
+
 /// `db` as a factor to multiply a sample by.
 float amplitude(float db) noexcept
 {
@@ -64,10 +77,16 @@ void apply_gain(std::span<float> samples, float gain) noexcept
 } // namespace
 
 Equalizer::Equalizer(pcm::StreamSpec spec, BandLayout layout)
-    : layout_{layout}
+    : Equalizer{spec, config_for(layout)}
+{
+}
+
+Equalizer::Equalizer(pcm::StreamSpec spec, EqualizerConfig config)
+    : config_{config}
     , bands_{std::make_unique<Bands>()}
 {
-    bands_->gains = std::vector<std::atomic<float>>(layout_.count);
+    validate(config_);
+    bands_->gains = std::vector<std::atomic<float>>(config_.layout.count);
 
     configure(spec);
 }
@@ -79,10 +98,10 @@ void Equalizer::configure(pcm::StreamSpec spec)
     spec_ = spec;
     num_bands_ = 0;
 
-    const units::Frequency highest{spec.sample_rate * tuning::highest_band_share};
+    const units::Frequency highest{spec.sample_rate * config_.highest_band_share};
 
     // The series ascends, so the first center that does not fit ends it.
-    while (num_bands_ < layout_.count && layout_.center(num_bands_) <= highest)
+    while (num_bands_ < config_.layout.count && config_.layout.center(num_bands_) <= highest)
         ++num_bands_;
 
     bands_->filters.clear();
@@ -90,7 +109,7 @@ void Equalizer::configure(pcm::StreamSpec spec)
 
     for (std::size_t i = 0; i < num_bands_; ++i)
         bands_->filters[i].configure(BiquadCoefficients::peaking(spec_, band_center(i),
-                                         layout_.quality, 0.0),
+                                         config_.layout.quality, 0.0),
             spec_.num_channels);
 
     retune();
@@ -107,7 +126,7 @@ void Equalizer::retune() noexcept
 
         // Kept, not rebuilt: the sound carries on through a gain the listener has just moved.
         bands_->filters[i].retune(BiquadCoefficients::peaking(spec_, band_center(i),
-            layout_.quality, gain));
+            config_.layout.quality, gain));
 
         lifted = std::max(lifted, gain);
         bands_->shaping = bands_->shaping || gain != 0.0F;
@@ -121,7 +140,7 @@ void Equalizer::retune() noexcept
 
 const BandLayout& Equalizer::layout() const noexcept
 {
-    return layout_;
+    return config_.layout;
 }
 
 std::size_t Equalizer::num_bands() const noexcept
@@ -131,7 +150,7 @@ std::size_t Equalizer::num_bands() const noexcept
 
 units::Frequency Equalizer::band_center(std::size_t index) const noexcept
 {
-    return layout_.center(index);
+    return config_.layout.center(index);
 }
 
 void Equalizer::set_band_gain(std::size_t index, float db) noexcept
@@ -139,7 +158,7 @@ void Equalizer::set_band_gain(std::size_t index, float db) noexcept
     if (index >= bands_->gains.size())
         return;
 
-    const auto limit = static_cast<float>(tuning::max_band_gain_db);
+    const float limit{config_.max_band_gain_db};
 
     bands_->gains[index].store(std::clamp(db, -limit, limit), std::memory_order_relaxed);
     bands_->changed.store(true, std::memory_order_release);

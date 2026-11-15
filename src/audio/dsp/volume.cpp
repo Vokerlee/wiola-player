@@ -20,16 +20,22 @@
 
 #include <audio/dsp/volume.hpp>
 
-#include <audio/dsp/tuning.hpp>
-
 #include <algorithm>
+#include <stdexcept>
 
 namespace wiola::audio {
+
+Volume::Volume(VolumePolicy policy)
+    : policy_{policy}
+{
+    if (!policy_.valid())
+        throw std::invalid_argument{"invalid volume policy"};
+}
 
 void Volume::set_gain(float gain) noexcept
 {
     // A bound rather than a clamp, so that a value that is not a number falls to silence.
-    const float bounded{gain >= 0.0F ? std::min(gain, tuning::max_volume_boost) : 0.0F};
+    const float bounded{gain >= 0.0F ? std::min(gain, policy_.max_boost) : 0.0F};
 
     gain_.store(bounded, std::memory_order_relaxed);
 }

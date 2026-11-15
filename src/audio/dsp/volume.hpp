@@ -21,6 +21,7 @@
 #pragma once
 
 #include <audio/dsp/stage.hpp>
+#include <audio/dsp/volume_policy.hpp>
 #include <pcm/stream_spec.hpp>
 
 #include <atomic>
@@ -29,9 +30,14 @@
 namespace wiola::audio {
 
 /// One gain over everything: 0 is silence, 1 the samples as they arrived, and up to
-/// `max_volume_boost` more than arrived.
+/// the policy's `max_boost` more than arrived.
 class Volume final : public Stage {
 public:
+    explicit Volume(VolumePolicy policy = {});
+
+    /// The immutable gain bounds this volume was built with.
+    [[nodiscard]] const VolumePolicy& policy() const noexcept { return policy_; }
+
     /// Clamped to that range, and anything that is not a number is taken as silence.
     void set_gain(float gain) noexcept;
 
@@ -43,6 +49,7 @@ public:
     void process(std::span<float> samples) noexcept override;
 
 private:
+    VolumePolicy policy_;
     std::atomic<float> gain_{1.0F};
 };
 

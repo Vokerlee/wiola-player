@@ -19,7 +19,6 @@
  */
 
 #include <audio/dsp/equalizer.hpp>
-#include <audio/dsp/tuning.hpp>
 #include <gui/equalizer_control.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
@@ -99,7 +98,7 @@ TEST_F(EqualizerControl, KeepsWhetherItRuns)
 TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 {
     Control control{equalizer, settings};
-    const auto limit = static_cast<float>(wiola::audio::tuning::max_band_gain_db);
+    const float limit{control.max_band_gain()};
 
     control.set_band_gain(0, 99.0F);
 
