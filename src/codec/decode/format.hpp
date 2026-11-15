@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <codec/decode/decoder.hpp>
+#include <codec/decode/open.hpp>
 #include <media/byte_stream.hpp>
 
 #include <array>
@@ -29,14 +29,17 @@
 #include <functional>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace wiola::codec {
 
 /// A byte pattern a format writes at a fixed distance from the start of every file it produces.
 struct Marker {
     std::size_t offset;
-    std::string_view bytes;
+    std::string bytes;
 };
 
 /// The first bytes of a file, as many as it had.
@@ -71,16 +74,25 @@ struct BackendCapabilities {
 };
 
 struct Format {
-    std::string_view name;
+    using OpenFunction = std::function<Opened(const std::filesystem::path&)>;
 
-    /// Every marker must be present for the file to be this format. Empty means the format has
-    /// no signature to check, and so can never be ruled out by looking.
-    std::span<const Marker> markers;
+    Format(std::string name, std::span<const Marker> markers,
+        std::span<const std::string_view> extensions, OpenFunction open,
+        BackendCapabilities capabilities = {})
+        : name{std::move(name)}
+        , markers{markers.begin(), markers.end()}
+        , open{std::move(open)}
+        , capabilities{capabilities}
+    {
+        this->extensions.reserve(extensions.size());
+        for (const std::string_view extension : extensions)
+            this->extensions.emplace_back(extension);
+    }
 
-    /// Names this format is commonly given. A hint about what to try first, never a verdict.
-    std::span<const std::string_view> extensions;
-
-    std::function<std::unique_ptr<Decoder>(const std::filesystem::path&)> open;
+    std::string name;
+    std::vector<Marker> markers;
+    std::vector<std::string> extensions;
+    OpenFunction open;
     BackendCapabilities capabilities{};
 };
 

@@ -59,13 +59,13 @@ FlacReader::FlacReader(pcm::StreamSpec spec, pcm::Frames num_frames,
 
 FlacReader::~FlacReader() = default;
 
-std::unique_ptr<FlacReader> FlacReader::open(const std::filesystem::path& path)
+media::Result<std::unique_ptr<FlacReader>> FlacReader::open(const std::filesystem::path& path)
 {
     auto handle = std::make_unique<Handle>();
     auto stream = media::LocalFileStream::open(path);
 
     if (!stream)
-        return nullptr;
+        return media::unexpected{stream.error()};
 
     handle->stream = std::move(*stream);
 
@@ -73,7 +73,10 @@ std::unique_ptr<FlacReader> FlacReader::open(const std::filesystem::path& path)
         handle->stream.get(), nullptr);
 
     if (handle->flac == nullptr)
-        return nullptr;
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::not_mine,
+                         .detail = "FLAC reader rejected input"}
+        };
 
     const drflac* flac{handle->flac};
 
@@ -106,14 +109,17 @@ media::Result<SeekOutcome> FlacReader::seek_frame(pcm::Frames frame_index)
 
 const Format& FlacReader::format()
 {
-    static constexpr std::array markers{
+    static const std::array markers{
         Marker{0, "fLaC"}
     };
 
     static constexpr std::array<std::string_view, 1> extensions{".flac"};
     static const Format format{"FLAC", markers, extensions,
-        [](const std::filesystem::path& path) -> std::unique_ptr<Decoder> {
-            return FlacReader::open(path);
+        [](const std::filesystem::path& path) -> Opened {
+            auto reader{FlacReader::open(path)};
+            if (!reader)
+                return media::unexpected{reader.error()};
+            return std::unique_ptr<Decoder>{std::move(*reader)};
         }};
 
     return format;

@@ -60,19 +60,22 @@ Mp3Reader::Mp3Reader(pcm::StreamSpec spec, pcm::Frames num_frames,
 
 Mp3Reader::~Mp3Reader() = default;
 
-std::unique_ptr<Mp3Reader> Mp3Reader::open(const std::filesystem::path& path)
+media::Result<std::unique_ptr<Mp3Reader>> Mp3Reader::open(const std::filesystem::path& path)
 {
     auto handle = std::make_unique<Handle>();
     auto stream = media::LocalFileStream::open(path);
 
     if (!stream)
-        return nullptr;
+        return media::unexpected{stream.error()};
 
     handle->stream = std::move(*stream);
 
     if (drmp3_init(&handle->mp3, Callbacks::read, Callbacks::seek, Callbacks::tell, nullptr,
             handle->stream.get(), nullptr) == DRMP3_FALSE)
-        return nullptr;
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::not_mine,
+                         .detail = "MPEG reader rejected input"}
+        };
 
     handle->open = true;
 
@@ -109,8 +112,11 @@ const Format& Mp3Reader::format()
     // enough that it identifies nothing. MP3 is recognized by being tried, not by being seen.
     static constexpr std::array<std::string_view, 3> extensions{".mp3", ".mp2", ".mpga"};
     static const Format format{"MP3", {}, extensions,
-        [](const std::filesystem::path& path) -> std::unique_ptr<Decoder> {
-            return Mp3Reader::open(path);
+        [](const std::filesystem::path& path) -> Opened {
+            auto reader{Mp3Reader::open(path)};
+            if (!reader)
+                return media::unexpected{reader.error()};
+            return std::unique_ptr<Decoder>{std::move(*reader)};
         }};
 
     return format;

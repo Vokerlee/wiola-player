@@ -60,19 +60,22 @@ WavReader::WavReader(pcm::StreamSpec spec, pcm::Frames num_frames,
 
 WavReader::~WavReader() = default;
 
-std::unique_ptr<WavReader> WavReader::open(const std::filesystem::path& path)
+media::Result<std::unique_ptr<WavReader>> WavReader::open(const std::filesystem::path& path)
 {
     auto handle = std::make_unique<Handle>();
     auto stream = media::LocalFileStream::open(path);
 
     if (!stream)
-        return nullptr;
+        return media::unexpected{stream.error()};
 
     handle->stream = std::move(*stream);
 
     if (drwav_init(&handle->wav, Callbacks::read, Callbacks::seek, Callbacks::tell,
             handle->stream.get(), nullptr) == DRWAV_FALSE)
-        return nullptr;
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::not_mine,
+                         .detail = "WAV reader rejected input"}
+        };
 
     handle->open = true;
 
@@ -105,15 +108,18 @@ media::Result<SeekOutcome> WavReader::seek_frame(pcm::Frames frame_index)
 
 const Format& WavReader::format()
 {
-    static constexpr std::array markers{
+    static const std::array markers{
         Marker{0, "RIFF"},
         Marker{8, "WAVE"}
     };
 
     static constexpr std::array<std::string_view, 2> extensions{".wav", ".wave"};
     static const Format format{"WAV", markers, extensions,
-        [](const std::filesystem::path& path) -> std::unique_ptr<Decoder> {
-            return WavReader::open(path);
+        [](const std::filesystem::path& path) -> Opened {
+            auto reader{WavReader::open(path)};
+            if (!reader)
+                return media::unexpected{reader.error()};
+            return std::unique_ptr<Decoder>{std::move(*reader)};
         }};
 
     return format;

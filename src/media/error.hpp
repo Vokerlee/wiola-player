@@ -26,6 +26,7 @@ namespace wiola::media {
 
 enum class ErrorCategory {
     unreadable,
+    not_mine,
     unsupported,
     damaged,
     read_failed,

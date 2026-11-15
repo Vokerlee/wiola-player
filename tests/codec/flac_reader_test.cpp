@@ -87,21 +87,21 @@ TEST(FlacReader, ReadsFormatAndSamples)
 {
     const auto reader = FlacReader::open(fixture("tone.flac"));
 
-    ASSERT_NE(reader, nullptr);
-    EXPECT_EQ(reader->spec().sample_rate, wiola::units::Frequency{44100});
-    EXPECT_EQ(reader->spec().num_channels, 2u);
-    EXPECT_EQ(reader->num_frames(), tone_num_frames);
-    EXPECT_EQ(drain(*reader), reader->spec().samples_per(tone_num_frames));
-    EXPECT_TRUE(reader->exhausted());
+    ASSERT_TRUE(reader);
+    EXPECT_EQ((*reader)->spec().sample_rate, wiola::units::Frequency{44100});
+    EXPECT_EQ((*reader)->spec().num_channels, 2u);
+    EXPECT_EQ((*reader)->num_frames(), tone_num_frames);
+    EXPECT_EQ(drain(**reader), (*reader)->spec().samples_per(tone_num_frames));
+    EXPECT_TRUE((*reader)->exhausted());
 }
 
 TEST(FlacReader, RendersFloatSamplesInRange)
 {
     auto reader = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
     std::array<float, 256> block{};
-    EXPECT_EQ(reader->render(block).value(), block.size());
+    EXPECT_EQ((*reader)->render(block).value(), block.size());
 
     EXPECT_TRUE(std::ranges::any_of(block, [](float v) { return v != 0.0F; }));
     EXPECT_TRUE(std::ranges::all_of(block, [](float v) { return v >= -1.0F && v <= 1.0F; }));
@@ -110,19 +110,19 @@ TEST(FlacReader, RendersFloatSamplesInRange)
 TEST(FlacReader, StopsAtTheEndOfTheStream)
 {
     auto reader = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    EXPECT_EQ(drain(*reader), reader->spec().samples_per(tone_num_frames));
-    EXPECT_EQ(reader->num_frames_left(), Frames{0});
+    EXPECT_EQ(drain(**reader), (*reader)->spec().samples_per(tone_num_frames));
+    EXPECT_EQ((*reader)->num_frames_left(), Frames{0});
 
     std::array<float, 16> block{};
-    EXPECT_EQ(reader->render(block).value(), 0u);
+    EXPECT_EQ((*reader)->render(block).value(), 0u);
 }
 
 TEST(FlacReader, RejectsWhatIsNotFlac)
 {
-    EXPECT_EQ(FlacReader::open(fixture("tone.mp3")), nullptr);
-    EXPECT_EQ(FlacReader::open("/nonexistent/wiola.flac"), nullptr);
+    EXPECT_FALSE(FlacReader::open(fixture("tone.mp3")));
+    EXPECT_FALSE(FlacReader::open("/nonexistent/wiola.flac"));
 }
 
 /// Seeking must land on the very sample that reading all the way there would have reached.
@@ -133,15 +133,15 @@ TEST(FlacReader, SeekLandsWhereReadingWouldHave)
     constexpr std::size_t num_compared{64};
 
     auto straight = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(straight, nullptr);
-    const std::vector<float> expected{read_frames(*straight, target + num_compared)};
+    ASSERT_TRUE(straight);
+    const std::vector<float> expected{read_frames(**straight, target + num_compared)};
 
     auto sought = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(sought, nullptr);
-    ASSERT_TRUE(sought->seek(Frames{target}));
+    ASSERT_TRUE(sought);
+    ASSERT_TRUE((*sought)->seek(Frames{target}));
 
-    const std::size_t num_channels{sought->spec().num_channels};
-    const std::vector<float> actual{read_frames(*sought, num_compared)};
+    const std::size_t num_channels{(*sought)->spec().num_channels};
+    const std::vector<float> actual{read_frames(**sought, num_compared)};
 
     ASSERT_EQ(actual.size(), num_compared * num_channels);
     EXPECT_TRUE(std::equal(actual.begin(), actual.end(), expected.begin() + target * num_channels));
@@ -150,40 +150,40 @@ TEST(FlacReader, SeekLandsWhereReadingWouldHave)
 TEST(FlacReader, SeekMovesThePosition)
 {
     auto reader = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    ASSERT_TRUE(reader->seek(Frames{4000}));
-    EXPECT_EQ(reader->num_frames_left(), reader->num_frames() - Frames{4000});
-    EXPECT_FALSE(reader->exhausted());
+    ASSERT_TRUE((*reader)->seek(Frames{4000}));
+    EXPECT_EQ((*reader)->num_frames_left(), (*reader)->num_frames() - Frames{4000});
+    EXPECT_FALSE((*reader)->exhausted());
 
-    ASSERT_TRUE(reader->seek(reader->num_frames()));
-    EXPECT_EQ(reader->num_frames_left(), Frames{0});
-    EXPECT_TRUE(reader->exhausted());
+    ASSERT_TRUE((*reader)->seek((*reader)->num_frames()));
+    EXPECT_EQ((*reader)->num_frames_left(), Frames{0});
+    EXPECT_TRUE((*reader)->exhausted());
 
     std::array<float, 16> block{};
-    EXPECT_EQ(reader->render(block).value(), 0u);
+    EXPECT_EQ((*reader)->render(block).value(), 0u);
 }
 
 TEST(FlacReader, SeekRewinds)
 {
     auto reader = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    const std::vector<float> first{read_frames(*reader, 64)};
+    const std::vector<float> first{read_frames(**reader, 64)};
 
-    ASSERT_TRUE(reader->seek(Frames{0}));
-    EXPECT_EQ(reader->num_frames_left(), reader->num_frames());
-    EXPECT_EQ(read_frames(*reader, 64), first);
+    ASSERT_TRUE((*reader)->seek(Frames{0}));
+    EXPECT_EQ((*reader)->num_frames_left(), (*reader)->num_frames());
+    EXPECT_EQ(read_frames(**reader, 64), first);
 }
 
 TEST(FlacReader, RefusesToSeekPastTheEnd)
 {
     auto reader = FlacReader::open(fixture("tone.flac"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    ASSERT_TRUE(reader->seek(Frames{4000}));
-    EXPECT_FALSE(reader->seek(reader->num_frames() + Frames{1}));
+    ASSERT_TRUE((*reader)->seek(Frames{4000}));
+    EXPECT_FALSE((*reader)->seek((*reader)->num_frames() + Frames{1}));
 
     // A refused seek leaves the position alone.
-    EXPECT_EQ(reader->num_frames_left(), reader->num_frames() - Frames{4000});
+    EXPECT_EQ((*reader)->num_frames_left(), (*reader)->num_frames() - Frames{4000});
 }
