@@ -20,14 +20,21 @@
 
 #pragma once
 
+#include <codec/decode/registry.hpp>
 #include <media/provider.hpp>
 
 namespace wiola::codec {
 
 class LocalMediaProvider final : public media::MediaProvider {
 public:
+    LocalMediaProvider();
+    explicit LocalMediaProvider(MediaBackendRegistry registry);
+
     media::Result<std::unique_ptr<media::MediaAsset>>
     open(const std::filesystem::path& path) override;
+
+private:
+    MediaBackendRegistry registry_;
 };
 
 } // namespace wiola::codec

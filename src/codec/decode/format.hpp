@@ -65,6 +65,11 @@ private:
  * A decoder knows none of this. Recognition is data here rather than code, so a format is added
  * by describing it, and a format that describes itself badly cannot mislead the ones that do not.
  */
+struct BackendCapabilities {
+    bool playback{true};
+    bool metadata{true};
+};
+
 struct Format {
     std::string_view name;
 
@@ -76,6 +81,7 @@ struct Format {
     std::span<const std::string_view> extensions;
 
     std::function<std::unique_ptr<Decoder>(const std::filesystem::path&)> open;
+    BackendCapabilities capabilities{};
 };
 
 /// Why a format is worth trying, best reason first. Ordering the attempts is the whole of format

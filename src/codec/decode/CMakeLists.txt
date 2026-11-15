@@ -6,6 +6,7 @@ wiola_add_library(
         format.cpp
         mp3_reader.cpp
         open.cpp
+        registry.cpp
         wav_reader.cpp
     LIBS wiola_media
 )
