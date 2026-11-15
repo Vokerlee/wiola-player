@@ -84,3 +84,26 @@ TEST(PlaybackService, ExposesAudioControlsAsValues)
 }
 
 } // namespace
+
+TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
+{
+    PlaybackService service{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [](const std::filesystem::path&) -> wiola::codec::Opened {
+            std::unique_ptr<wiola::codec::Decoder> decoder{
+                std::make_unique<wiola::testing::FakeDecoder>()};
+            return decoder;
+        },
+        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+
+    service.open({"headless.wav"});
+    while (service.reading())
+        std::this_thread::yield();
+
+    const auto snapshot{service.pump()};
+    EXPECT_TRUE(snapshot.loaded);
+    EXPECT_EQ(snapshot.open_result, wiola::engine::OpenResult::opened);
+    EXPECT_EQ(snapshot.track, std::filesystem::path{"headless.wav"});
+    EXPECT_EQ(snapshot.queue_position, 0U);
+    EXPECT_EQ(snapshot.total_time, service.total_time());
+}

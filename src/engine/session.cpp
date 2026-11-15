@@ -421,4 +421,19 @@ units::Time Session::total_time() const noexcept
     return loaded() ? pipeline_->player().total_time() : units::Time{};
 }
 
+PlaybackSnapshot Session::snapshot() const noexcept
+{
+    return {.state = state(),
+        .open_result = open_result(),
+        .track = track(),
+        .queue_position = playlist_.position(),
+        .structural_revision = playlist_.structural_revision(),
+        .metadata_revision = playlist_.metadata_revision(),
+        .selection_revision = playlist_.selection_revision(),
+        .time_played = time_played(),
+        .total_time = total_time(),
+        .loaded = loaded(),
+        .playing = playing()};
+}
+
 } // namespace wiola::engine

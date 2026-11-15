@@ -108,6 +108,7 @@ MainWindow::MainWindow()
     total_label_ = new QLabel{this};
     status_label_ = new QLabel{this};
     volume_slider_ = new QSlider{Qt::Horizontal, this};
+    pump_timer_ = new QTimer{this};
     refresh_timer_ = new QTimer{this};
 
     const PlayerSettings restored{
@@ -205,6 +206,8 @@ MainWindow::MainWindow()
     // The clock follows the drag rather than waiting for the next poll.
     connect(position_bar_, &SeekBar::dragged, this, &MainWindow::refresh);
 
+    connect(pump_timer_, &QTimer::timeout, this, &MainWindow::take_up_load);
+    pump_timer_->start(metrics.refresh_interval);
     connect(refresh_timer_, &QTimer::timeout, this, &MainWindow::refresh);
     refresh_timer_->start(metrics.refresh_interval);
 
@@ -384,7 +387,6 @@ void MainWindow::show_list_buttons()
 void MainWindow::take_up_load()
 {
     session_.catch_up();
-
     const engine::OpenResult result{session_.open_result()};
 
     // Said once: a window that repeated itself every turn would overwrite whatever else it has
@@ -493,8 +495,6 @@ void MainWindow::show_status(const QString& message)
 
 void MainWindow::refresh()
 {
-    take_up_load();
-
     play_button_->setEnabled(loaded());
     stop_button_->setEnabled(loaded());
     position_bar_->setEnabled(loaded());

@@ -33,6 +33,7 @@
 #include <engine/open_result.hpp>
 #include <engine/output_session.hpp>
 #include <engine/playback_pipeline.hpp>
+#include <engine/playback_snapshot.hpp>
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
@@ -119,6 +120,7 @@ public:
     /// being read, and takes up the next one when the last has run out. For the thread that
     /// opens tracks, as often as it likes - a caller that draws should call it as it draws.
     void catch_up();
+    [[nodiscard]] PlaybackSnapshot snapshot() const noexcept;
 
     /// Whether a file is still being read.
     [[nodiscard]] bool reading() const noexcept;
