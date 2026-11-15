@@ -10,5 +10,6 @@ wiola_add_library(
         seek_mailbox.cpp
         seek_operation.cpp
         transport_worker.cpp
+        transport_wait.cpp
     LIBS wiola_audio_device wiola_codec_decode
 )

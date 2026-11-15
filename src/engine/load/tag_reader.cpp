@@ -36,6 +36,8 @@ TagReader::TagReader(MetadataReader read)
 
 TagReader::~TagReader()
 {
+    // Stop prevents further queued reads, but cannot physically interrupt TagLib. The join waits
+    // for an in-progress call while no queue mutex is held by the reader.
     if (thread_.joinable()) {
         thread_.request_stop();
         waiting_.notify_all();

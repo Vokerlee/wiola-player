@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -91,6 +92,40 @@ TEST(TransportWorker, ThreadLaunchFailureLeavesNoRunningOutput)
     EXPECT_EQ(worker.state(), State::faulted);
     EXPECT_EQ(output.num_starts(), 0);
     EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWait, NotificationBeforeWaitingIsNotLost)
+{
+    wiola::engine::TransportWait waiting{std::chrono::milliseconds{5000}};
+    waiting.notify();
+
+    const auto before = std::chrono::steady_clock::now();
+    waiting.wait();
+
+    EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::milliseconds{100});
+}
+
+TEST(TransportWorker, StopInterruptsALongOutputProgressPoll)
+{
+    auto source{std::make_unique<FakeDecoder>()};
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    FakeOutput output;
+    TransportWorker worker{std::move(source), buffer.producer(), output, {},
+        std::chrono::milliseconds{5000}};
+
+    ASSERT_TRUE(worker.start());
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+    while (!output.running()) {
+        ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+        std::this_thread::yield();
+    }
+
+    const auto before = std::chrono::steady_clock::now();
+    worker.stop();
+    worker.wait();
+
+    EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds{1});
+    EXPECT_EQ(worker.state(), State::stopped);
 }
 
 } // namespace

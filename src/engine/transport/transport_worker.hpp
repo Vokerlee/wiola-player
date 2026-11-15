@@ -23,11 +23,14 @@
 #include "decode_loop.hpp"
 #include "playback.hpp"
 #include "playhead.hpp"
+#include "transport_wait.hpp"
 #include <audio/device/output.hpp>
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
+#include <engine/tuning.hpp>
 #include <pcm/pcm_queue.hpp>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <thread>
@@ -47,7 +50,8 @@ public:
     using ThreadFactory = std::function<std::jthread(std::function<void()>)>;
 
     TransportWorker(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, ThreadFactory launch = {}) noexcept;
+        audio::Output& output, ThreadFactory launch = {},
+        std::chrono::milliseconds poll_interval = tuning::decode_poll_interval) noexcept;
 
     NO_COPY_SEMANTIC(TransportWorker);
     NO_MOVE_SEMANTIC(TransportWorker);
@@ -74,6 +78,7 @@ private:
 
     Playback playback_;
     Playhead head_;
+    TransportWait wait_;
     DecodeLoop loop_;
     ThreadFactory launch_;
     std::jthread thread_;

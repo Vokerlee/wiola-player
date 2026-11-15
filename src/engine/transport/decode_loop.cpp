@@ -23,21 +23,21 @@
 #include <engine/tuning.hpp>
 
 #include <array>
-#include <chrono>
 #include <span>
-#include <thread>
 #include <utility>
 
 namespace wiola::engine {
 
 DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
-    audio::Output& output, Playback& playback, Playhead::Applier applier) noexcept
+    audio::Output& output, Playback& playback, Playhead::Applier applier,
+    TransportWait& wait) noexcept
     : source_{std::move(source)}
     , buffer_{std::move(buffer)}
     , connection_{output}
     , output_{output}
     , playback_{playback}
     , applier_{std::move(applier)}
+    , wait_{wait}
     , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_}
 {
 }
@@ -142,17 +142,16 @@ void DecodeLoop::run()
             if (played_out())
                 break;
 
-            std::this_thread::sleep_for(tuning::decode_poll_interval);
+            wait_.wait();
             continue;
         }
 
         const std::size_t num_left{num_decoded - num_handed};
         const std::size_t num_taken{buffer_.push(std::span{block}.subspan(num_handed, num_left))};
 
-        // A full buffer is a wait on the device rather than on the source, and the one above is
-        // the same wait: both are answered by the poll interval and by nothing else.
+        // Both waits retain a bounded output-progress poll and wake immediately for commands.
         if (num_taken == 0) {
-            std::this_thread::sleep_for(tuning::decode_poll_interval);
+            wait_.wait();
             continue;
         }
 

@@ -36,6 +36,8 @@ Loader::Loader(DecoderOpener open)
 
 Loader::~Loader()
 {
+    // Stop is logical cancellation for queued work. A third-party open already in progress cannot
+    // be interrupted, so the join waits for that call without holding the loader's mutex.
     if (thread_.joinable()) {
         thread_.request_stop();
         waiting_.notify_all();
