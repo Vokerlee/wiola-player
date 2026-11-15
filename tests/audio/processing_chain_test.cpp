@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/chain.hpp>
+#include <audio/dsp/processing_chain.hpp>
 
 #include <audio/dsp/stage.hpp>
 #include <fakes/tone.hpp>
@@ -31,13 +31,14 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <span>
 #include <string>
 #include <vector>
 
 namespace {
 
-using wiola::audio::Chain;
+using wiola::audio::ProcessingChain;
 using wiola::audio::Stage;
 using wiola::pcm::Frames;
 using wiola::pcm::StreamSpec;
@@ -85,9 +86,9 @@ private:
 
 } // namespace
 
-TEST(Chain, LeavesSamplesAloneWithNoSteps)
+TEST(ProcessingChain, LeavesSamplesAloneWithNoSteps)
 {
-    Chain chain;
+    ProcessingChain chain;
     auto buffer{samples()};
 
     chain.process(buffer);
@@ -95,17 +96,16 @@ TEST(Chain, LeavesSamplesAloneWithNoSteps)
     EXPECT_EQ(buffer, samples());
 }
 
-TEST(Chain, RunsStepsInTheOrderTheyWereAdded)
+TEST(ProcessingChain, RunsStepsInTheOrderTheyWereAdded)
 {
     std::vector<std::string> ran;
     Marking first{ran, "first", 1.0F};
     Marking second{ran, "second", 1.0F};
     Marking third{ran, "third", 1.0F};
 
-    Chain chain;
-    chain.add(first);
-    chain.add(second);
-    chain.add(third);
+    ProcessingChain chain{
+        {first, second, third}
+    };
 
     auto buffer{samples()};
     chain.process(buffer);
@@ -113,15 +113,15 @@ TEST(Chain, RunsStepsInTheOrderTheyWereAdded)
     EXPECT_EQ(ran, (std::vector<std::string>{"first", "second", "third"}));
 }
 
-TEST(Chain, RunsEveryStepOverTheSamples)
+TEST(ProcessingChain, RunsEveryStepOverTheSamples)
 {
     std::vector<std::string> ran;
     Marking first{ran, "half", 0.5F};
     Marking second{ran, "half again", 0.5F};
 
-    Chain chain;
-    chain.add(first);
-    chain.add(second);
+    ProcessingChain chain{
+        {first, second}
+    };
 
     std::array block{0.8F, 0.4F};
     chain.process(block);
@@ -130,15 +130,15 @@ TEST(Chain, RunsEveryStepOverTheSamples)
     EXPECT_FLOAT_EQ(block[1], 0.1F);
 }
 
-TEST(Chain, TellsEveryStepAboutTheFormat)
+TEST(ProcessingChain, TellsEveryStepAboutTheFormat)
 {
     std::vector<std::string> ran;
     Marking first{ran, "first", 1.0F};
     Marking second{ran, "second", 1.0F};
 
-    Chain chain;
-    chain.add(first);
-    chain.add(second);
+    ProcessingChain chain{
+        {first, second}
+    };
 
     chain.configure(stereo);
 
@@ -151,13 +151,12 @@ TEST(Chain, TellsEveryStepAboutTheFormat)
 /// The ceiling is the chain's own, kept after every step whatever the steps did. A step is never
 /// asked whether it lifted, so a step that lifts and does not say so cannot hand over more than
 /// an output takes.
-TEST(Chain, HoldsTheCeilingWhateverTheStepsDid)
+TEST(ProcessingChain, HoldsTheCeilingWhateverTheStepsDid)
 {
     std::vector<std::string> ran;
     Marking loud{ran, "loud", 4.0F};
 
-    Chain chain;
-    chain.add(loud);
+    ProcessingChain chain{{loud}};
 
     std::array block{0.8F, -0.8F, 0.1F};
     chain.process(block);
@@ -168,9 +167,9 @@ TEST(Chain, HoldsTheCeilingWhateverTheStepsDid)
 }
 
 /// What arrives past full scale is held to it too, whether or not anything in the chain lifted.
-TEST(Chain, HoldsTheCeilingOnWhatArrivedPastIt)
+TEST(ProcessingChain, HoldsTheCeilingOnWhatArrivedPastIt)
 {
-    Chain chain;
+    ProcessingChain chain;
     std::array block{2.0F, -3.0F, 0.5F};
 
     chain.process(block);
@@ -180,13 +179,12 @@ TEST(Chain, HoldsTheCeilingOnWhatArrivedPastIt)
     EXPECT_FLOAT_EQ(block[2], 0.5F);
 }
 
-TEST(Chain, AcceptsNothingToDo)
+TEST(ProcessingChain, AcceptsNothingToDo)
 {
     std::vector<std::string> ran;
     Marking half{ran, "half", 0.5F};
 
-    Chain chain;
-    chain.add(half);
+    ProcessingChain chain{{half}};
     chain.process(std::span<float>{});
 
     // Nothing to do is not something to recover from: what comes after is shaped as it would
@@ -199,7 +197,7 @@ TEST(Chain, AcceptsNothingToDo)
 }
 
 /// The bands first, then how loud: what a listener asks for last is the last thing done.
-TEST(Chain, ShapesThenSetsHowLoud)
+TEST(ProcessingChain, ShapesThenSetsHowLoud)
 {
     wiola::testing::Shaping shaping{stereo};
     auto buffer{samples()};
@@ -213,7 +211,7 @@ TEST(Chain, ShapesThenSetsHowLoud)
     EXPECT_FLOAT_EQ(buffer[1], -0.25F);
 }
 
-TEST(Chain, TakesANewFormatWithoutForgettingTheSetting)
+TEST(ProcessingChain, TakesANewFormatWithoutForgettingTheSetting)
 {
     wiola::testing::Shaping shaping{stereo};
 
@@ -229,7 +227,7 @@ TEST(Chain, TakesANewFormatWithoutForgettingTheSetting)
 }
 
 /// A boosted band can ask for more than an output takes, and is not allowed to hand it over.
-TEST(Chain, KeepsBoostedSamplesInRange)
+TEST(ProcessingChain, KeepsBoostedSamplesInRange)
 {
     wiola::testing::Shaping shaping{stereo};
     wiola::testing::SineSource source{stereo, 1_kHz, 0.95F};
@@ -245,4 +243,15 @@ TEST(Chain, KeepsBoostedSamplesInRange)
         for (const float sample : block)
             ASSERT_LE(std::abs(sample), 1.0F);
     }
+}
+
+TEST(ProcessingChain, SanitizesNonFiniteOutput)
+{
+    ProcessingChain chain;
+    std::array block{std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::infinity(), 0.25F};
+
+    chain.process(block);
+
+    EXPECT_EQ(block, (std::array{0.0F, 0.0F, 0.25F}));
 }

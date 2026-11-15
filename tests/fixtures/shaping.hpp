@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <audio/dsp/chain.hpp>
 #include <audio/dsp/equalizer.hpp>
+#include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/volume.hpp>
 #include <pcm/stream_spec.hpp>
 
@@ -30,18 +30,20 @@ namespace wiola::testing {
 /// The steps a session puts a track through, in the same order, with each of them to hand: the
 /// bands first, then how loud, so that what a listener asks for last is done last.
 struct Shaping {
-    explicit Shaping(pcm::StreamSpec spec, audio::BandLayout layout = {})
+    explicit Shaping(pcm::StreamSpec spec,
+        audio::BandLayout layout =
+            {
+    })
         : equalizer{spec, layout}
+        , chain{{equalizer, volume}}
     {
-        chain.add(equalizer);
-        chain.add(volume);
     }
 
     /// Declared before the chain that runs them, so the chain is let go while the steps it
     /// points at are still there.
     audio::Equalizer equalizer;
     audio::Volume volume;
-    audio::Chain chain;
+    audio::ProcessingChain chain;
 };
 
 } // namespace wiola::testing

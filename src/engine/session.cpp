@@ -62,7 +62,7 @@ struct Session::Pipeline {
 /// Built for a format and kept for as long as tracks come in it, so that a track change is a
 /// device stopping and starting rather than one closing and another opening.
 struct Session::Out {
-    Out(pcm::StreamSpec spec, audio::Chain& chain, const OutputFactory& make_output)
+    Out(pcm::StreamSpec spec, audio::ProcessingChain& chain, const OutputFactory& make_output)
         : spec{spec}
         , relay{spec}
         , shaped{relay, chain}
@@ -95,19 +95,15 @@ Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
 Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
     MetadataReader read_metadata, TransportConfig transport, BufferingConfig buffering)
     // In the order they are declared, which is the order they are built in whatever this says.
-    : loader_{std::make_unique<Loader>(std::move(open_decoder))}
-    , tags_{std::make_unique<TagReader>(std::move(read_metadata))}
-    , make_output_{std::move(make_output)}
-    , transport_{transport}
-    , buffering_{buffering}
+    : chain_{
+          {equalizer_, volume_}
+},
+    loader_{std::make_unique<Loader>(std::move(open_decoder))},
+    tags_{std::make_unique<TagReader>(std::move(read_metadata))},
+    make_output_{std::move(make_output)}, transport_{transport}, buffering_{buffering}
 {
     if (!transport_.valid() || !buffering_.valid())
         throw std::invalid_argument{"invalid engine configuration"};
-
-    // The bands first, then how loud, so that what a listener asks for last is the last thing
-    // done to the sound.
-    chain_.add(equalizer_);
-    chain_.add(volume_);
 }
 
 Session::~Session() = default;

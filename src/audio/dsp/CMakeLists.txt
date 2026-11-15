@@ -4,11 +4,11 @@ wiola_add_library(
     SOURCES
         biquad.cpp
         buffer_source.cpp
-        chain.cpp
-        clip.cpp
         equalizer.cpp
         equalizer_parameters.cpp
         equalizer_processor.cpp
+        output_sanitizer.cpp
+        processing_chain.cpp
         relay.cpp
         shaped_source.cpp
         volume.cpp

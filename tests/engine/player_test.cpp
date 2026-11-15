@@ -25,7 +25,7 @@
 
 #include <audio/device/output.hpp>
 #include <audio/dsp/buffer_source.hpp>
-#include <audio/dsp/chain.hpp>
+#include <audio/dsp/processing_chain.hpp>
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
 #include <pcm/pcm_queue.hpp>
@@ -56,7 +56,7 @@ namespace {
 
 using namespace std::chrono_literals;
 using namespace wiola::units::literals;
-using wiola::audio::Chain;
+using wiola::audio::ProcessingChain;
 using wiola::engine::Player;
 using wiola::pcm::StreamSpec;
 using wiola::testing::Rig;
