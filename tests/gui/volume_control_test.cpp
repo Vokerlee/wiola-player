@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/tuning.hpp>
 #include <gui/volume_control.hpp>
+#include <gui/volume_scale.hpp>
 
 #include <audio/dsp/volume.hpp>
 
@@ -35,7 +35,7 @@ namespace {
 
 using wiola::audio::Volume;
 using Control = wiola::gui::VolumeControl;
-namespace tuning = wiola::gui::tuning;
+constexpr wiola::gui::VolumeScale scale;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.
 class VolumeControl : public testing::Test {
@@ -56,8 +56,8 @@ TEST_F(VolumeControl, StartsAtFullVolume)
 {
     Control control{volume, settings};
 
-    EXPECT_EQ(control.restore(), tuning::full_volume);
-    EXPECT_EQ(control.position(), tuning::full_volume);
+    EXPECT_EQ(control.restore(), scale.full_position);
+    EXPECT_EQ(control.position(), scale.full_position);
     EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
 }
 
@@ -90,7 +90,7 @@ TEST_F(VolumeControl, ClampsAPositionOffTheTravel)
     EXPECT_FLOAT_EQ(volume.gain(), 0.0F);
 
     control.set_position(500);
-    EXPECT_EQ(control.position(), tuning::full_volume);
+    EXPECT_EQ(control.position(), scale.full_position);
     EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
 }
 
@@ -127,14 +127,14 @@ TEST_F(VolumeControl, IgnoresAStoredValueThatIsNotAPosition)
 
     Control control{volume, settings};
 
-    EXPECT_EQ(control.restore(), tuning::full_volume);
+    EXPECT_EQ(control.restore(), scale.full_position);
 }
 
 TEST_F(VolumeControl, BringsAStoredPositionBackIntoRange)
 {
     settings.setValue("volume", 9999);
 
-    EXPECT_EQ(Control(volume, settings).restore(), tuning::full_volume);
+    EXPECT_EQ(Control(volume, settings).restore(), scale.full_position);
 
     settings.setValue("volume", -20);
 
@@ -147,11 +147,11 @@ TEST_F(VolumeControl, StopsAtFullUntilBoosted)
     Control control{volume, settings};
 
     EXPECT_FALSE(control.boosted());
-    EXPECT_EQ(control.max_position(), tuning::full_volume);
+    EXPECT_EQ(control.max_position(), scale.full_position);
 
     control.set_position(130);
 
-    EXPECT_EQ(control.position(), tuning::full_volume);
+    EXPECT_EQ(control.position(), scale.full_position);
     EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
 }
 
@@ -163,7 +163,7 @@ TEST_F(VolumeControl, LiftsPastWhatArrivedWhenBoosted)
     control.set_boosted(true);
 
     const int boosted{
-        static_cast<int>(std::lround(volume.policy().max_boost * tuning::full_volume))};
+        static_cast<int>(std::lround(volume.policy().max_boost * scale.full_position))};
     EXPECT_EQ(control.max_position(), boosted);
 
     control.set_position(boosted);
@@ -182,7 +182,7 @@ TEST_F(VolumeControl, LeavesTheTravelBelowFullAlone)
 
     EXPECT_FLOAT_EQ(volume.gain(), 0.25F);
 
-    control.set_position(tuning::full_volume);
+    control.set_position(scale.full_position);
 
     EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
 }
@@ -196,7 +196,7 @@ TEST_F(VolumeControl, BringsAPositionBackWhenBoostIsTurnedOff)
     control.set_position(130);
     control.set_boosted(false);
 
-    EXPECT_EQ(control.position(), tuning::full_volume);
+    EXPECT_EQ(control.position(), scale.full_position);
     EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
 }
 

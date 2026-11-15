@@ -20,21 +20,24 @@
 
 #include "cover_cache.hpp"
 
-#include "tuning.hpp"
-
 #include <codec/tags/tags.hpp>
 
 #include <QStyle>
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::gui {
 
-CoverCache::CoverCache(const QWidget& styled, int size)
-    : stub_{styled.style()->standardIcon(QStyle::SP_FileIcon).pixmap(size, size)}
-    , size_{size}
+CoverCache::CoverCache(const QWidget& styled, ArtworkCachePolicy policy)
+    : stub_{styled.style()
+              ->standardIcon(QStyle::SP_FileIcon)
+              .pixmap(policy.cover_size, policy.cover_size)}
+    , policy_{policy}
 {
+    if (!policy_.valid())
+        throw std::invalid_argument{"invalid artwork cache policy"};
 }
 
 void CoverCache::begin_turn() noexcept
@@ -52,7 +55,7 @@ const QPixmap& CoverCache::cover_of(const std::filesystem::path& path)
 
     // The rest of the queue waits for another turn: a window is drawn ten times a second, so a
     // long queue fills in within a moment without any one turn stopping to read files.
-    if (read_this_turn_ >= tuning::covers_read_per_turn) {
+    if (read_this_turn_ >= policy_.reads_per_turn) {
         ran_out_ = true;
 
         return stub_;
@@ -62,8 +65,8 @@ const QPixmap& CoverCache::cover_of(const std::filesystem::path& path)
 
     // Kept from growing without end. Half of them go rather than all: dropping the lot would
     // leave a queue longer than this reading every cover it holds again each time it filled.
-    if (covers_.size() >= tuning::covers_kept)
-        forget_oldest(std::max<std::size_t>(tuning::covers_kept / 2, 1));
+    if (covers_.size() >= policy_.covers_kept)
+        forget_oldest(std::max<std::size_t>(policy_.covers_kept / 2, 1));
 
     const codec::Tags tags{codec::read_tags(path)};
     QPixmap art;
@@ -72,9 +75,9 @@ const QPixmap& CoverCache::cover_of(const std::filesystem::path& path)
         art.loadFromData(reinterpret_cast<const uchar*>(tags.art.data()),
             static_cast<unsigned int>(tags.art.size()));
 
-    QPixmap cover{art.isNull()
-            ? stub_
-            : art.scaled(size_, size_, Qt::KeepAspectRatio, Qt::SmoothTransformation)};
+    QPixmap cover{art.isNull() ? stub_
+                               : art.scaled(policy_.cover_size, policy_.cover_size,
+                                     Qt::KeepAspectRatio, Qt::SmoothTransformation)};
 
     const auto held = covers_.emplace(key, std::move(cover)).first;
 

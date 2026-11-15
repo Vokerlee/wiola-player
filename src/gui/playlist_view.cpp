@@ -21,7 +21,6 @@
 #include "playlist_view.hpp"
 
 #include "clock.hpp"
-#include "tuning.hpp"
 
 #include <QFont>
 #include <QHeaderView>
@@ -36,6 +35,18 @@
 namespace wiola::gui {
 
 namespace {
+
+struct PlaylistViewMetrics {
+    ArtworkCachePolicy artwork{};
+    int playlist_height{120};
+    int row_padding{4};
+    int artist_column_width{120};
+    int album_column_width{120};
+    int length_column_width{60};
+    int playing_row_tint{40};
+};
+
+constexpr PlaylistViewMetrics metrics;
 
 /// Which column shows what.
 enum Column {
@@ -67,12 +78,12 @@ public:
 
 PlaylistView::PlaylistView(QWidget* parent)
     : QTableWidget{parent}
-    , covers_{*this, tuning::cover_size}
+    , covers_{*this, metrics.artwork}
 {
     setColumnCount(Column::num_columns);
     setHorizontalHeaderLabels({QString{}, "Title", "Artist", "Album", "Length"});
 
-    setMinimumHeight(tuning::playlist_height);
+    setMinimumHeight(metrics.playlist_height);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setSelectionBehavior(QAbstractItemView::SelectRows);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -82,7 +93,7 @@ PlaylistView::PlaylistView(QWidget* parent)
     setToolTip("Double-click a track to play it; Delete takes it out of the queue");
 
     verticalHeader()->setVisible(false);
-    verticalHeader()->setDefaultSectionSize(tuning::cover_size + tuning::row_padding);
+    verticalHeader()->setDefaultSectionSize(metrics.artwork.cover_size + metrics.row_padding);
 
     horizontalHeader()->setSectionResizeMode(Column::cover, QHeaderView::Fixed);
     horizontalHeader()->setSectionResizeMode(Column::title, QHeaderView::Stretch);
@@ -90,10 +101,10 @@ PlaylistView::PlaylistView(QWidget* parent)
     horizontalHeader()->setSectionResizeMode(Column::album, QHeaderView::Interactive);
     horizontalHeader()->setSectionResizeMode(Column::length, QHeaderView::Fixed);
 
-    setColumnWidth(Column::cover, tuning::cover_size + tuning::row_padding);
-    setColumnWidth(Column::artist, tuning::artist_column_width);
-    setColumnWidth(Column::album, tuning::album_column_width);
-    setColumnWidth(Column::length, tuning::length_column_width);
+    setColumnWidth(Column::cover, metrics.artwork.cover_size + metrics.row_padding);
+    setColumnWidth(Column::artist, metrics.artist_column_width);
+    setColumnWidth(Column::album, metrics.album_column_width);
+    setColumnWidth(Column::length, metrics.length_column_width);
 
     setItemDelegate(new WithoutTheFocusBox{this});
 
@@ -146,7 +157,7 @@ void PlaylistView::show_track(int at, const engine::Track& track, bool playing)
     // What is playing is marked, not selected: which rows are picked out is the listener's to
     // say, and a program that keeps choosing for them is a program they are fighting.
     QColor marked{palette().highlight().color()};
-    marked.setAlpha(tuning::playing_row_tint);
+    marked.setAlpha(metrics.playing_row_tint);
 
     QFont bold{font()};
     bold.setBold(true);

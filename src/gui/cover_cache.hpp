@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "artwork_cache_policy.hpp"
+
 #include <QPixmap>
 #include <QWidget>
 
@@ -41,8 +43,8 @@ namespace wiola::gui {
  */
 class CoverCache {
 public:
-    /// Takes the widget whose style draws the stub, and how many pixels a side a thumbnail is.
-    CoverCache(const QWidget& styled, int size);
+    /// Takes the widget whose style draws the stub, and this cache's artwork policy.
+    CoverCache(const QWidget& styled, ArtworkCachePolicy policy = {});
 
     /// A turn of drawing begins, and with it the few files this one may read.
     void begin_turn() noexcept;
@@ -59,7 +61,7 @@ private:
     void forget_oldest(std::size_t count);
 
     QPixmap stub_;
-    int size_;
+    ArtworkCachePolicy policy_;
 
     std::map<std::string, QPixmap> covers_;
 

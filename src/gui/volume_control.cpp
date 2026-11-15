@@ -20,8 +20,6 @@
 
 #include "volume_control.hpp"
 
-#include "tuning.hpp"
-
 #include <algorithm>
 #include <cmath>
 
@@ -33,21 +31,12 @@ namespace {
 constexpr auto position_key{"volume"};
 constexpr auto boosted_key{"volume/boosted"};
 
-/// The gain a position asks for. The curve is what keeps the audible range off the bottom of the
-/// slider's travel; past full there is nothing left to spread, so the rest is what it says.
-float gain_of(int percent) noexcept
-{
-    const double position{static_cast<double>(percent) / tuning::full_volume};
-
-    return static_cast<float>(position > 1.0 ? position : std::pow(position, tuning::volume_curve));
-}
-
 } // namespace
 
 VolumeControl::VolumeControl(audio::Volume& volume, QSettings& settings) noexcept
     : volume_{volume}
     , settings_{settings}
-    , position_{tuning::full_volume}
+    , position_{scale_.full_position}
 {
 }
 
@@ -59,9 +48,9 @@ int VolumeControl::restore()
     // one still to be read.
     boosted_ = settings_.value(boosted_key, false).toBool();
 
-    const int stored{settings_.value(position_key, tuning::full_volume).toInt(&numeric)};
+    const int stored{settings_.value(position_key, scale_.full_position).toInt(&numeric)};
 
-    apply_position(numeric ? stored : tuning::full_volume);
+    apply_position(numeric ? stored : scale_.full_position);
 
     return position_;
 }
@@ -77,7 +66,7 @@ void VolumeControl::apply_position(int percent)
 {
     position_ = std::clamp(percent, 0, max_position());
 
-    volume_.set_gain(gain_of(position_));
+    volume_.set_gain(scale_.gain_of(position_));
 }
 
 void VolumeControl::set_boosted(bool boosted)
@@ -102,8 +91,8 @@ bool VolumeControl::boosted() const noexcept
 int VolumeControl::max_position() const noexcept
 {
     return boosted_
-        ? static_cast<int>(std::lround(volume_.policy().max_boost * tuning::full_volume))
-        : tuning::full_volume;
+        ? static_cast<int>(std::lround(volume_.policy().max_boost * scale_.full_position))
+        : scale_.full_position;
 }
 
 } // namespace wiola::gui
