@@ -60,6 +60,9 @@ bool DecodeLoop::begin(bool rewind)
 {
     static_cast<void>(seek_.begin(rewind));
 
+    if (seek_.priming_failed())
+        return false;
+
     if (!connection_.control().start())
         return false;
 
@@ -71,6 +74,9 @@ bool DecodeLoop::begin(bool rewind)
 void DecodeLoop::apply_seek()
 {
     static_cast<void>(seek_.apply());
+
+    if (seek_.priming_failed())
+        playback_.finish(Playback::TerminalReason::faulted);
 
     // Whatever was asked for while the seek was being carried out.
     follow_playback();
@@ -155,7 +161,7 @@ void DecodeLoop::run()
             exhausted = decoded->end_of_stream;
         }
 
-        if (exhausted) {
+        if (exhausted && num_handed == num_decoded) {
             // Reaching the end of the source leaves what is buffered still to be heard; being
             // stopped does not, and being paused is neither - it waits to be resumed.
             if (played_out())

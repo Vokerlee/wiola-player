@@ -77,6 +77,63 @@ bool eventually(Predicate predicate, std::chrono::milliseconds limit = 5s)
     return predicate();
 }
 
+class FinalBlockSource final : public wiola::codec::Decoder {
+public:
+    FinalBlockSource()
+        : wiola::codec::AudioDecoder{
+              StreamSpec{units::Frequency{44100.0}, 2},
+              wiola::pcm::Frames{8}
+    }
+    {
+    }
+
+    [[nodiscard]] int num_reads() const noexcept { return num_reads_.load(); }
+
+protected:
+    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+        wiola::pcm::Frames num_frames) override
+    {
+        ++num_reads_;
+        std::fill_n(output.begin(), num_frames.count() * 2, 0.25F);
+        return num_frames;
+    }
+
+    bool seek_frame(wiola::pcm::Frames) override { return true; }
+
+private:
+    std::atomic<int> num_reads_{0};
+};
+
+class FailFirstReadSource final : public wiola::codec::Decoder {
+public:
+    FailFirstReadSource()
+        : wiola::codec::AudioDecoder{
+              StreamSpec{units::Frequency{44100.0}, 2},
+              wiola::pcm::Frames{8}
+    }
+    {
+    }
+
+protected:
+    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+        wiola::pcm::Frames num_frames) override
+    {
+        if (num_reads_++ == 0)
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::read_failed,
+                                    .detail = "priming failed"}
+            };
+
+        std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
+        return num_frames;
+    }
+
+    bool seek_frame(wiola::pcm::Frames) override { return true; }
+
+private:
+    int num_reads_{0};
+};
+
 } // namespace
 
 TEST(Player, PlaysToTheEndOnItsOwn)
@@ -99,6 +156,51 @@ TEST(Player, PlaysToTheEndOnItsOwn)
 }
 
 /// The point of the thread: the caller is free while the audio is still going.
+TEST(Player, DrainsFramesReturnedTogetherWithEndOfStream)
+{
+    auto source{std::make_unique<FinalBlockSource>()};
+    const FinalBlockSource* decoded{source.get()};
+    const StreamSpec spec{source->spec()};
+    wiola::pcm::PcmQueue buffer{spec, wiola::pcm::Frames{4}};
+    auto consumer{buffer.consumer()};
+    wiola::testing::FakeOutput output;
+    wiola::engine::TransportConfig config;
+    config.decode_chunk = wiola::pcm::Frames{4};
+    Player player{std::move(source), buffer.producer(), output, config};
+    std::array<float, 8> played{};
+
+    ASSERT_TRUE(player.start());
+    ASSERT_TRUE(eventually([decoded] { return decoded->num_reads() == 2; }));
+    ASSERT_EQ(consumer.pop(played), played.size());
+    output.play(wiola::pcm::Frames{4});
+    ASSERT_TRUE(eventually([&buffer] { return buffer.size_approx() == 8; }));
+    EXPECT_FALSE(player.finished());
+
+    ASSERT_EQ(consumer.pop(played), played.size());
+    output.play(wiola::pcm::Frames{4});
+    player.wait();
+    EXPECT_EQ(player.state(), State::ended);
+    EXPECT_EQ(output.frames_played(), wiola::pcm::Frames{8});
+    EXPECT_EQ(player.time_played(), units::Time{8.0 / 44100.0});
+}
+
+TEST(Player, PrimingReadFailureFaultsInsteadOfBeingRetriedAsNormalPlayback)
+{
+    auto source{std::make_unique<FailFirstReadSource>()};
+    const StreamSpec spec{source->spec()};
+    wiola::pcm::PcmQueue buffer{spec, wiola::pcm::Frames{8}};
+    wiola::testing::FakeOutput output;
+    wiola::engine::TransportConfig config;
+    config.decode_chunk = wiola::pcm::Frames{8};
+    Player player{std::move(source), buffer.producer(), output, config};
+
+    ASSERT_TRUE(player.start());
+    player.wait();
+
+    EXPECT_EQ(player.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 0);
+}
+
 TEST(Player, StartReturnsBeforePlaybackEnds)
 {
     auto source = wiola::testing::open_fixture();
