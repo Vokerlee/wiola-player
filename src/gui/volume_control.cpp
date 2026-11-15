@@ -40,19 +40,10 @@ VolumeControl::VolumeControl(audio::Volume& volume, QSettings& settings) noexcep
 {
 }
 
-int VolumeControl::restore()
+void VolumeControl::apply_restored(int position, bool boosted) noexcept
 {
-    bool numeric{false};
-
-    // Taken rather than set: setting it would store the position this run began with, over the
-    // one still to be read.
-    boosted_ = settings_.value(boosted_key, false).toBool();
-
-    const int stored{settings_.value(position_key, scale_.full_position).toInt(&numeric)};
-
-    apply_position(numeric ? stored : scale_.full_position);
-
-    return position_;
+    boosted_ = boosted;
+    apply_position(position);
 }
 
 void VolumeControl::set_position(int percent)

@@ -20,6 +20,7 @@
 
 #include <audio/dsp/equalizer.hpp>
 #include <gui/equalizer_control.hpp>
+#include <gui/player_settings.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
 
@@ -30,6 +31,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <limits>
 
 namespace {
 
@@ -51,6 +53,13 @@ protected:
 
     void SetUp() override { settings.clear(); }
 
+    void restore(Control& control)
+    {
+        const wiola::gui::PlayerSettings restored{
+            wiola::gui::QtSettingsAdapter{settings}.read({}, equalizer.config())};
+        control.apply_restored(restored.equalizer_enabled, restored.band_gains);
+    }
+
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "equalizer"};
     Equalizer equalizer{stereo};
 };
@@ -59,7 +68,7 @@ TEST_F(EqualizerControl, StartsFlatAndOn)
 {
     Control control{equalizer, settings};
 
-    control.restore();
+    restore(control);
 
     EXPECT_TRUE(control.enabled());
     EXPECT_FLOAT_EQ(control.preamp(), 0.0F);
@@ -75,7 +84,7 @@ TEST_F(EqualizerControl, GivesBackWhatTheLastRunLeft)
     Equalizer next{stereo};
     Control later{next, settings};
 
-    later.restore();
+    restore(later);
 
     EXPECT_FLOAT_EQ(later.band_gain(2), 6.0F);
 }
@@ -89,7 +98,7 @@ TEST_F(EqualizerControl, KeepsWhetherItRuns)
     Equalizer next{stereo};
     Control later{next, settings};
 
-    later.restore();
+    restore(later);
 
     EXPECT_FALSE(later.enabled());
 }
@@ -107,7 +116,7 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
     Equalizer next{stereo};
     Control later{next, settings};
 
-    later.restore();
+    restore(later);
 
     EXPECT_FLOAT_EQ(later.band_gain(0), limit);
 }
@@ -128,7 +137,7 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
     Equalizer wide{stereo};
     Control later{wide, settings};
 
-    later.restore();
+    restore(later);
 
     ASSERT_GT(wide.num_bands(), beyond);
     EXPECT_FLOAT_EQ(later.band_gain(beyond), 5.0F);
@@ -141,7 +150,7 @@ TEST_F(EqualizerControl, IgnoresAStoredValueThatIsNotAGain)
 
     Control control{equalizer, settings};
 
-    control.restore();
+    restore(control);
 
     EXPECT_FLOAT_EQ(control.band_gain(1), 0.0F);
 }
@@ -156,11 +165,21 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
     Equalizer next{stereo};
     Control later{next, settings};
 
-    later.restore();
+    restore(later);
 
     for (std::size_t index = 0; index < equalizer.layout().count; ++index)
         EXPECT_FLOAT_EQ(later.band_gain(index), static_cast<float>(index) - 5.0F)
             << "band " << index;
+}
+
+TEST_F(EqualizerControl, IgnoresANonFiniteStoredGain)
+{
+    settings.setValue("equalizer/band/1", std::numeric_limits<float>::infinity());
+    Control control{equalizer, settings};
+
+    restore(control);
+
+    EXPECT_FLOAT_EQ(control.band_gain(1), 0.0F);
 }
 
 } // namespace

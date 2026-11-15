@@ -21,6 +21,7 @@
 #include "main_window.hpp"
 
 #include "clock.hpp"
+#include "player_settings.hpp"
 #include "player_view_metrics.hpp"
 
 #include <codec/decode/decoder.hpp>
@@ -109,9 +110,11 @@ MainWindow::MainWindow()
     volume_slider_ = new QSlider{Qt::Horizontal, this};
     refresh_timer_ = new QTimer{this};
 
-    const int position{volume_.restore()};
-
-    equalizer_.restore();
+    const PlayerSettings restored{
+        QtSettingsAdapter{settings_}.read(volume_.scale(), session_.equalizer().config())};
+    volume_.apply_restored(restored.volume_position, restored.boosted);
+    equalizer_.apply_restored(restored.equalizer_enabled, restored.band_gains);
+    const int position{volume_.position()};
 
     boost_button_->setCheckable(true);
     boost_button_->setChecked(volume_.boosted());

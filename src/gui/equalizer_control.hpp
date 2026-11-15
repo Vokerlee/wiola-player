@@ -26,6 +26,7 @@
 #include <QSettings>
 
 #include <cstddef>
+#include <span>
 
 namespace wiola::gui {
 
@@ -35,9 +36,9 @@ class EqualizerControl {
 public:
     EqualizerControl(audio::Equalizer& equalizer, QSettings& settings) noexcept;
 
-    /// Applies what a previous run left, for every band the layout names. Nothing is written
-    /// back, so a run that is only started and closed leaves the file as it found it.
-    void restore();
+    /// Applies startup values for every layout band without writing them back. Missing gains are
+    /// flat, and the domain applies its own gain bounds.
+    void apply_restored(bool enabled, std::span<const float> gains) noexcept;
 
     void set_enabled(bool enabled);
     void set_band_gain(std::size_t index, float db);
