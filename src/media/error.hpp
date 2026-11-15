@@ -33,6 +33,7 @@ enum class ErrorCategory {
     seek_failed,
     invalid_seek,
     cancelled,
+    limit_exceeded,
 };
 
 struct Error {

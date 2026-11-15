@@ -43,6 +43,8 @@ public:
 
     [[nodiscard]] media::Result<FfmpegStreamFacts> inspect();
 
+    [[nodiscard]] const std::optional<media::Error>& io_error() const noexcept { return io_error_; }
+
 private:
     explicit FfmpegInput(std::unique_ptr<media::ByteStream> stream) noexcept;
 

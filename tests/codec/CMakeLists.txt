@@ -19,6 +19,12 @@ if(WIOLA_ENABLE_FFMPEG)
         LIBS wiola_codec_ffmpeg wiola_ffmpeg
         DATA "${fixtures}"
     )
+    wiola_add_test(
+        codec_ffmpeg_packet_decoder_test
+        SOURCES ffmpeg_packet_decoder_test.cpp
+        LIBS wiola_codec_ffmpeg wiola_ffmpeg
+        DATA "${fixtures}"
+    )
 endif()
 
 wiola_add_test(
