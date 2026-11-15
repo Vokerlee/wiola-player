@@ -21,6 +21,9 @@
 #include <codec/provider.hpp>
 
 #include <codec/backends/taglib/tags.hpp>
+#ifdef WIOLA_ENABLE_FFMPEG
+#include <codec/backends/ffmpeg/metadata.hpp>
+#endif
 #include <media/local_file_stream.hpp>
 
 #include <utility>
@@ -52,7 +55,26 @@ public:
             .seekable = (*decoder)->seekable()};
     }
 
-    media::Result<media::Metadata> read_metadata() override { return read_tags(path_); }
+    media::Result<media::Metadata> read_metadata() override
+    {
+        media::Metadata metadata{read_tags(path_)};
+#ifdef WIOLA_ENABLE_FFMPEG
+        auto fallback{ffmpeg::read_metadata(path_)};
+        if (fallback) {
+            if (metadata.track.title.empty())
+                metadata.track.title = std::move(fallback->track.title);
+            if (metadata.track.artist.empty())
+                metadata.track.artist = std::move(fallback->track.artist);
+            if (metadata.track.album.empty())
+                metadata.track.album = std::move(fallback->track.album);
+            if (!metadata.track.duration)
+                metadata.track.duration = fallback->track.duration;
+            if (metadata.artwork.empty())
+                metadata.artwork = std::move(fallback->artwork);
+        }
+#endif
+        return metadata;
+    }
 
     media::Result<std::unique_ptr<Decoder>> create_decoder() override
     {
