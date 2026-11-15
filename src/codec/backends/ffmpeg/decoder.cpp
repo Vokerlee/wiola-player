@@ -7,6 +7,10 @@
 
 #include "decoder.hpp"
 
+#include "input.hpp"
+#include "packet_decoder.hpp"
+#include "pcm_converter.hpp"
+
 #include <media/local_file_stream.hpp>
 
 extern "C" {
@@ -14,6 +18,8 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <limits>
 
@@ -26,7 +32,44 @@ media::Error seek_error(const char* detail)
     return media::Error{.category = media::ErrorCategory::seek_failed, .detail = detail};
 }
 
+std::optional<std::int64_t> frame_position(const AVFrame& frame, const AVFormatContext& input,
+    std::size_t stream_index, int sample_rate)
+{
+    if (frame.best_effort_timestamp == AV_NOPTS_VALUE)
+        return std::nullopt;
+    const AVStream* stream{input.streams[stream_index]};
+    const AVRational frame_rate{1, sample_rate};
+    std::int64_t position{av_rescale_q(frame.best_effort_timestamp, stream->time_base, frame_rate)};
+    const std::int64_t encoded_origin{
+        stream->start_time != AV_NOPTS_VALUE ? stream->start_time : input.start_time};
+    if (encoded_origin != AV_NOPTS_VALUE) {
+        const AVRational origin_base{
+            input.start_time == encoded_origin && stream->start_time == AV_NOPTS_VALUE
+                ? AV_TIME_BASE_Q
+                : stream->time_base};
+        position -= av_rescale_q(encoded_origin, origin_base, frame_rate);
+    }
+    return position;
+}
+
 } // namespace
+
+Backend backend()
+{
+    static const std::array markers{
+        Marker{0, "OggS"}
+    };
+    static constexpr std::array<std::string_view, 3> extensions{".ogg", ".oga", ".opus"};
+    static const std::array formats{
+        Format{"Ogg Vorbis/Opus", markers, extensions, {}}
+    };
+    return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
+                       auto decoder{FfmpegDecoder::open(path)};
+                       if (!decoder)
+                           return media::unexpected{decoder.error()};
+                       return std::unique_ptr<Decoder>{std::move(*decoder)};
+                   }};
+}
 
 FfmpegDecoder::FfmpegDecoder(std::filesystem::path path, std::size_t stream_index,
     DecoderStreamInfo info, std::unique_ptr<FfmpegInput> input,
@@ -39,6 +82,8 @@ FfmpegDecoder::FfmpegDecoder(std::filesystem::path path, std::size_t stream_inde
     , converter_{std::make_unique<PcmConverter>(info.spec)}
 {
 }
+
+FfmpegDecoder::~FfmpegDecoder() = default;
 
 media::Result<std::unique_ptr<FfmpegDecoder>> FfmpegDecoder::open(const std::filesystem::path& path)
 {
@@ -62,27 +107,14 @@ media::Result<std::unique_ptr<FfmpegDecoder>> FfmpegDecoder::open(const std::fil
 }
 
 media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
-    std::optional<pcm::Frames> preroll)
+    std::optional<pcm::Frames> preroll, std::int64_t timestamp_offset)
 {
     const pcm::Frames reference{preroll.value_or(position_frames())};
-    const AVStream* stream{input_->format()->streams[stream_index_]};
-    std::optional<std::int64_t> start;
-    if (frame.best_effort_timestamp != AV_NOPTS_VALUE) {
-        const AVRational frame_rate{1, static_cast<int>(spec().sample_rate.hz())};
-        std::int64_t position{
-            av_rescale_q(frame.best_effort_timestamp, stream->time_base, frame_rate)};
-        const std::int64_t encoded_origin{stream->start_time != AV_NOPTS_VALUE
-                ? stream->start_time
-                : input_->format()->start_time};
-        if (encoded_origin != AV_NOPTS_VALUE) {
-            const AVRational origin_base{input_->format()->start_time == encoded_origin &&
-                        stream->start_time == AV_NOPTS_VALUE
-                    ? AV_TIME_BASE_Q
-                    : stream->time_base};
-            position -= av_rescale_q(encoded_origin, origin_base, frame_rate);
-        }
-        start = position;
-    }
+    auto start{preroll ? frame_position(frame, *input_->format(), stream_index_,
+                             static_cast<int>(spec().sample_rate.hz()))
+                       : std::nullopt};
+    if (start)
+        *start -= timestamp_offset;
 
     if (start) {
         const std::int64_t end{*start + frame.nb_samples};
@@ -95,8 +127,8 @@ media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
         return media::unexpected{submitted.error()};
 
     if (start && *start < static_cast<std::int64_t>(reference.count())) {
-        const auto discard{
-            static_cast<std::uint64_t>(reference.count()) - static_cast<std::uint64_t>(*start)};
+        const auto audible_start{static_cast<std::uint64_t>(std::max<std::int64_t>(*start, 0))};
+        const auto discard{static_cast<std::uint64_t>(reference.count()) - audible_start};
         if (discard <= std::numeric_limits<std::size_t>::max())
             converter_->discard_first(pcm::Frames{static_cast<std::size_t>(discard)});
     }
@@ -147,12 +179,25 @@ media::Result<DecodeOutcome> FfmpegDecoder::decode(std::span<float> output, pcm:
 
 media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
 {
+    std::int64_t timestamp_offset{0};
+    auto first{packets_->next_frame()};
+    if (!first)
+        return media::unexpected{first.error()};
+    if (first->end_of_stream)
+        return media::unexpected{seek_error("seek target is beyond actual audio")};
+    const auto initial_position{frame_position(*first->frame, *input_->format(), stream_index_,
+        static_cast<int>(spec().sample_rate.hz()))};
+    if (initial_position && *initial_position > 0)
+        timestamp_offset = *initial_position;
+
     AVStream* stream{input_->format()->streams[stream_index_]};
     const AVRational output_rate{1, static_cast<int>(spec().sample_rate.hz())};
-    if (target.count() > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()))
+    if (target.count() > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) ||
+        timestamp_offset >
+            std::numeric_limits<std::int64_t>::max() - static_cast<std::int64_t>(target.count()))
         return media::unexpected{seek_error("seek frame exceeds FFmpeg timestamps")};
-    std::int64_t timestamp{
-        av_rescale_q(static_cast<std::int64_t>(target.count()), output_rate, stream->time_base)};
+    const std::int64_t seek_sample{static_cast<std::int64_t>(target.count()) + timestamp_offset};
+    std::int64_t timestamp{av_rescale_q(seek_sample, output_rate, stream->time_base)};
     const std::int64_t origin{stream->start_time != AV_NOPTS_VALUE ? stream->start_time : 0};
     if ((origin > 0 && timestamp > std::numeric_limits<std::int64_t>::max() - origin) ||
         (origin < 0 && timestamp < std::numeric_limits<std::int64_t>::min() - origin))
@@ -177,7 +222,7 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
             return media::unexpected{seek_error("seek target is beyond actual audio")};
         if (event->frame->best_effort_timestamp == AV_NOPTS_VALUE && target != pcm::Frames{})
             return media::unexpected{seek_error("stream lacks sample-accurate seek timestamps")};
-        auto trimmed{trim_frame(*event->frame, target)};
+        auto trimmed{trim_frame(*event->frame, target, timestamp_offset)};
         if (!trimmed)
             return media::unexpected{trimmed.error()};
         if (*trimmed && converter_->pending())

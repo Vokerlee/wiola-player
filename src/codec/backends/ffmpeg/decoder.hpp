@@ -7,22 +7,29 @@
 
 #pragma once
 
-#include "input.hpp"
-#include "packet_decoder.hpp"
-#include "pcm_converter.hpp"
-
 #include <codec/decode/decoder.hpp>
+#include <codec/decode/format.hpp>
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
 
+struct AVFrame;
+
 namespace wiola::codec::ffmpeg {
+
+class FfmpegInput;
+class PacketDecoder;
+class PcmConverter;
+
+[[nodiscard]] Backend backend();
 
 class FfmpegDecoder final : public Decoder {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<FfmpegDecoder>>
     open(const std::filesystem::path& path);
+    ~FfmpegDecoder() override;
 
 private:
     FfmpegDecoder(std::filesystem::path path, std::size_t stream_index, DecoderStreamInfo info,
@@ -32,7 +39,7 @@ private:
     media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) override;
     [[nodiscard]] media::Result<pcm::Frames> stage_seek(pcm::Frames target);
     [[nodiscard]] media::Result<bool> trim_frame(const AVFrame& frame,
-        std::optional<pcm::Frames> preroll = {});
+        std::optional<pcm::Frames> preroll = {}, std::int64_t timestamp_offset = 0);
 
     std::filesystem::path path_;
     std::size_t stream_index_;
