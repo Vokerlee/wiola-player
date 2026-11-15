@@ -59,6 +59,9 @@ public:
     [[nodiscard]] float equalizer_band(std::size_t index) const noexcept;
     [[nodiscard]] std::size_t num_equalizer_bands() const noexcept;
 
+    /// Drains completions and advances playback; schedulers and headless callers share this pump.
+    PlaybackSnapshot pump();
+    [[nodiscard]] PlaybackSnapshot snapshot() const noexcept;
     void catch_up();
     [[nodiscard]] bool reading() const noexcept;
     [[nodiscard]] bool loaded() const noexcept;

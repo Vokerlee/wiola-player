@@ -190,6 +190,7 @@ private:
     QLabel* elapsed_label_{nullptr};
     QLabel* total_label_{nullptr};
     QLabel* status_label_{nullptr};
+    QTimer* pump_timer_{nullptr};
     QTimer* refresh_timer_{nullptr};
 };
 

@@ -136,6 +136,17 @@ std::size_t PlaybackService::num_equalizer_bands() const noexcept
     return session_.equalizer().num_bands();
 }
 
+PlaybackSnapshot PlaybackService::pump()
+{
+    session_.catch_up();
+    return session_.snapshot();
+}
+
+PlaybackSnapshot PlaybackService::snapshot() const noexcept
+{
+    return session_.snapshot();
+}
+
 void PlaybackService::catch_up()
 {
     session_.catch_up();
