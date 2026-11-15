@@ -30,6 +30,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 
@@ -193,4 +194,23 @@ TEST(Loader, CanBeThrownAwayWhileItIsReading)
 
     loader.start(request("track.wav"));
     opening.wait_until_entered();
+}
+
+TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
+{
+    Loader loader{[](const std::filesystem::path& path) -> Opened {
+        if (path == "broken.wav")
+            throw std::runtime_error{"broken decoder"};
+        return success();
+    }};
+
+    loader.start(request("broken.wav"));
+    const auto failed{wait_for(loader)};
+    ASSERT_TRUE(failed.has_value());
+    EXPECT_EQ(failed->opened.result, OpenResult::unreadable);
+
+    loader.start(request("working.wav", 2));
+    const auto recovered{wait_for(loader)};
+    ASSERT_TRUE(recovered.has_value());
+    EXPECT_EQ(recovered->opened.result, OpenResult::opened);
 }

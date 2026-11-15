@@ -65,8 +65,7 @@ Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
     : chain_{
           {equalizer_, volume_}
 },
-    loader_{std::make_unique<Loader>(std::move(open_decoder))},
-    tags_{std::make_unique<TagReader>(std::move(read_metadata))},
+    loader_{std::make_unique<Loader>(std::move(open_decoder))}, metadata_{std::move(read_metadata)},
     out_{chain_, std::move(make_output)}, transport_{transport}, buffering_{buffering}
 {
     if (!transport_.valid() || !buffering_.valid())
@@ -85,7 +84,7 @@ codec::OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 
     playlist_.set(std::move(queued));
 
-    begin_reading_tags(playlist_.tracks());
+    metadata_.replace(playlist_.tracks());
 
     if (playlist_.empty())
         return last_result_;
@@ -125,7 +124,7 @@ void Session::add(std::vector<std::filesystem::path> tracks)
     for (const std::filesystem::path& track : tracks)
         playlist_.add(Track::of(track));
 
-    begin_reading_tags(std::span<const Track>{playlist_.tracks()}.subspan(first_new));
+    metadata_.append(std::span<const Track>{playlist_.tracks()}.subspan(first_new));
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
@@ -142,6 +141,7 @@ bool Session::remove(std::size_t index)
 
 void Session::clear()
 {
+    metadata_.cancel();
     playlist_.clear();
     stop();
 }
@@ -220,20 +220,9 @@ void Session::catch_up()
     advance_if_ended();
 }
 
-void Session::begin_reading_tags(std::span<const Track> tracks)
-{
-    std::vector<TagReader::Request> requests;
-    requests.reserve(tracks.size());
-
-    for (const Track& track : tracks)
-        requests.push_back(TagReader::Request{.id = track.id(), .path = track.path()});
-
-    tags_->start(std::move(requests));
-}
-
 void Session::take_up_finished_tags()
 {
-    for (const TagReader::Reading& reading : tags_->take()) {
+    for (const MetadataCoordinator::Reading& reading : metadata_.take()) {
         TrackMetadata metadata{
             .title = reading.tags.title.empty() ? reading.path.stem().string() : reading.tags.title,
             .artist = reading.tags.artist,
@@ -241,7 +230,8 @@ void Session::take_up_finished_tags()
             .duration = reading.tags.duration,
         };
 
-        static_cast<void>(playlist_.describe(reading.id, std::move(metadata)));
+        for (const QueueEntryId entry : reading.entries)
+            static_cast<void>(playlist_.describe(entry, metadata));
     }
 }
 

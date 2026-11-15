@@ -20,6 +20,7 @@
 
 #include "loader.hpp"
 
+#include <new>
 #include <utility>
 
 namespace wiola::engine {
@@ -88,7 +89,15 @@ void Loader::work(const std::stop_token& stop)
             opening_ = true;
         }
 
-        codec::Opened opened{open_(request.path)};
+        codec::Opened opened;
+
+        try {
+            opened = open_(request.path);
+        } catch (const std::bad_alloc&) {
+            throw;
+        } catch (...) {
+            opened.result = codec::OpenResult::unreadable;
+        }
 
         {
             const std::lock_guard asked{mutex_};

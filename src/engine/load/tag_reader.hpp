@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Reads what queued files say about themselves, off the thread that queued them.
+ * @brief Bounded, generation-aware background tag reading.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -25,6 +25,7 @@
 #include <engine/queue/track.hpp>
 
 #include <condition_variable>
+#include <cstdint>
 #include <deque>
 #include <filesystem>
 #include <functional>
@@ -36,22 +37,26 @@ namespace wiola::engine {
 
 using MetadataReader = std::function<codec::Tags(const std::filesystem::path&)>;
 
-/// Background tag reads retain queue identity independently of paths and row positions.
+/// Bounded tag worker. Oversized batches are rejected before any partial batch is accepted.
 class TagReader {
 public:
     struct Request {
+        std::uint64_t generation{0};
         QueueEntryId id;
         std::filesystem::path path;
     };
 
     struct Reading {
+        std::uint64_t generation{0};
         QueueEntryId id;
         std::filesystem::path path;
         codec::Tags tags;
+        bool failed{false};
     };
 
     TagReader();
-    explicit TagReader(MetadataReader read);
+    explicit TagReader(MetadataReader read, std::size_t max_pending = 256,
+        std::size_t max_completed = 256);
 
     NO_COPY_SEMANTIC(TagReader);
     NO_MOVE_SEMANTIC(TagReader);
@@ -59,6 +64,7 @@ public:
     ~TagReader();
 
     void start(std::vector<Request> requests);
+    void cancel_before(std::uint64_t generation);
     [[nodiscard]] std::vector<Reading> take();
     [[nodiscard]] bool busy() const noexcept;
 
@@ -66,10 +72,14 @@ private:
     void work(const std::stop_token& stop);
 
     MetadataReader reader_;
+    const std::size_t max_pending_;
+    const std::size_t max_completed_;
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
+    std::condition_variable_any collected_;
     std::deque<Request> asked_;
     std::vector<Reading> read_;
+    std::uint64_t latest_generation_{0};
     bool reading_{false};
     std::jthread thread_;
 };
