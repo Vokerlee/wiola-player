@@ -20,25 +20,19 @@
 
 #pragma once
 
-#include <audio/dsp/equalizer_config.hpp>
+#include <audio/dsp/equalizer_parameters.hpp>
+#include <audio/dsp/equalizer_processor.hpp>
 #include <audio/dsp/stage.hpp>
 #include <core/macros.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
 
 #include <cstddef>
-#include <memory>
 #include <span>
 
 namespace wiola::audio {
 
-/**
- * Lifts and cuts bands of the spectrum, cutting beforehand to make room for what they add.
- *
- * `process` is called from the thread that feeds the device: it does not allocate, lock or block.
- * Settings are written from another thread and take effect on the next call, never partway
- * through one.
- */
+/// Combines listener-owned equalizer settings with their processing-thread filter state.
 class Equalizer final : public Stage {
 public:
     explicit Equalizer(pcm::StreamSpec spec, BandLayout layout = {});
@@ -47,54 +41,31 @@ public:
     NO_COPY_SEMANTIC(Equalizer);
     NO_MOVE_SEMANTIC(Equalizer);
 
-    ~Equalizer();
-
-    /// Takes the format the samples are in. Settings are kept. Not to be called while the output
-    /// is running: it rebuilds what `process` reads.
+    /// The output must be stopped while configuring for another stream.
     void configure(pcm::StreamSpec spec) override;
 
-    /// The immutable policy this equalizer was built with.
-    [[nodiscard]] const EqualizerConfig& config() const noexcept { return config_; }
+    [[nodiscard]] const EqualizerConfig& config() const noexcept { return parameters_.config(); }
 
-    /// Where the bands sit, whether or not the format can carry them all. A gain is kept for
-    /// every one it names.
-    [[nodiscard]] const BandLayout& layout() const noexcept;
+    [[nodiscard]] const BandLayout& layout() const noexcept { return parameters_.layout(); }
 
-    /// How many bands the format can carry, counting up from the lowest. At most `count`: a band
-    /// too close to half the sample rate cannot be given its width, and is left out.
-    [[nodiscard]] std::size_t num_bands() const noexcept;
+    [[nodiscard]] std::size_t num_bands() const noexcept { return parameters_.num_bands(); }
 
-    /// Where band `index` sits. Indices at `num_bands()` and beyond have no band.
     [[nodiscard]] units::Frequency band_center(std::size_t index) const noexcept;
 
-    /// Lift or cut at band `index`, in decibels, clamped to what a band is allowed. An index
-    /// with no band is remembered but does nothing.
     void set_band_gain(std::size_t index, float db) noexcept;
-
     [[nodiscard]] float band_gain(std::size_t index) const noexcept;
 
-    /// The cut taken before the bands, in decibels, making room for what they add. Worked out
-    /// from the band gains: what is lifted most is what has to be made room for.
-    [[nodiscard]] float preamp() const noexcept;
+    [[nodiscard]] float preamp() const noexcept { return parameters_.preamp(); }
 
-    /// Whether the bands and the preamp run at all.
     void set_enabled(bool enabled) noexcept;
 
-    [[nodiscard]] bool enabled() const noexcept;
+    [[nodiscard]] bool enabled() const noexcept { return parameters_.enabled(); }
 
-    /// Applies the current settings to whole frames of `samples`, in place.
     void process(std::span<float> samples) noexcept override;
 
 private:
-    struct Bands;
-
-    /// Gives every band the coefficients its gain now asks for.
-    void retune() noexcept;
-
-    EqualizerConfig config_;
-    pcm::StreamSpec spec_{};
-    std::size_t num_bands_{0};
-    std::unique_ptr<Bands> bands_;
+    EqualizerParameters parameters_;
+    EqualizerProcessor processor_;
 };
 
 } // namespace wiola::audio
