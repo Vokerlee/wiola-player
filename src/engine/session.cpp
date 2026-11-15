@@ -365,6 +365,21 @@ bool Session::play_or_pause()
     }
 }
 
+bool Session::play() noexcept
+{
+    return loaded() && pipeline_->player().start();
+}
+
+bool Session::pause() noexcept
+{
+    return loaded() && state() == Playback::State::playing && pipeline_->player().pause();
+}
+
+bool Session::resume() noexcept
+{
+    return loaded() && state() == Playback::State::paused && pipeline_->player().resume();
+}
+
 void Session::stop() noexcept
 {
     loads_.invalidate();

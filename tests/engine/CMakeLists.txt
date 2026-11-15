@@ -34,6 +34,11 @@ wiola_add_test(
     LIBS wiola_engine
 )
 wiola_add_test(
+    engine_playback_service_test
+    SOURCES playback_service_test.cpp
+    LIBS wiola_engine
+)
+wiola_add_test(
     engine_session_test
     SOURCES session_test.cpp
     LIBS wiola_engine
