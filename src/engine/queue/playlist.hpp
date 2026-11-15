@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Queue entry storage, metadata, and one coherent current selection.
+ * @brief Queue entry storage, indexed metadata, and one coherent current selection.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -25,7 +25,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace wiola::engine {
@@ -42,11 +44,20 @@ public:
 
     [[nodiscard]] bool empty() const noexcept;
     [[nodiscard]] std::size_t revision() const noexcept;
+
+    [[nodiscard]] std::size_t structural_revision() const noexcept { return structural_revision_; }
+
+    [[nodiscard]] std::size_t metadata_revision() const noexcept { return metadata_revision_; }
+
+    [[nodiscard]] std::size_t selection_revision() const noexcept { return selection_revision_; }
+
     [[nodiscard]] const std::vector<Track>& tracks() const noexcept;
     [[nodiscard]] const Track* current() const noexcept;
 
     bool describe(QueueEntryId id, TrackMetadata metadata);
     bool illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork> artwork);
+    void apply_metadata(std::span<const QueueEntryId> entries, const TrackMetadata& metadata,
+        std::shared_ptr<const media::Artwork> artwork);
 
     [[nodiscard]] std::optional<std::size_t> position() const noexcept;
     [[nodiscard]] std::optional<std::size_t> index_of(QueueEntryId id) const noexcept;
@@ -64,10 +75,15 @@ public:
 
 private:
     void identify(Track& track);
+    void reindex() noexcept;
 
     std::vector<Track> tracks_;
+    std::map<QueueEntryId, std::size_t> indices_;
     PlaybackOrder order_;
     std::size_t revision_{0};
+    std::size_t structural_revision_{0};
+    std::size_t metadata_revision_{0};
+    std::size_t selection_revision_{0};
     QueueEntryId next_id_{1};
 };
 
