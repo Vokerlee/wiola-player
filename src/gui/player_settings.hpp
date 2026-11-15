@@ -25,6 +25,8 @@
 
 #include <QSettings>
 
+#include <filesystem>
+#include <optional>
 #include <vector>
 
 namespace wiola::gui {
@@ -37,6 +39,13 @@ struct PlayerSettings {
     std::vector<float> band_gains;
 };
 
+struct PlaylistSettings {
+    std::vector<std::filesystem::path> tracks;
+    std::optional<std::filesystem::path> selected;
+    int repeat{0};
+    bool shuffled{false};
+};
+
 /// Converts Qt's string-keyed storage into typed values, with defaults for invalid old data.
 class QtSettingsAdapter {
 public:
@@ -45,6 +54,8 @@ public:
     /// Reads slider positions, switches, and per-band decibel gains for the supplied policies.
     [[nodiscard]] PlayerSettings read(const VolumeScale& volume,
         const audio::EqualizerConfig& equalizer) const;
+    [[nodiscard]] PlaylistSettings read_playlist() const;
+    void write_playlist(const PlaylistSettings& settings);
 
 private:
     QSettings& settings_;

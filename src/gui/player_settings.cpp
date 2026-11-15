@@ -20,7 +20,10 @@
 
 #include "player_settings.hpp"
 
+#include "qt_path_adapter.hpp"
+
 #include <QString>
+#include <QStringList>
 
 #include <cmath>
 #include <cstddef>
@@ -42,7 +45,6 @@ float stored_gain(const QSettings& settings, std::size_t index) noexcept
 {
     bool numeric{false};
     const float gain{settings.value(band_key(index), 0.0F).toFloat(&numeric)};
-
     return numeric && std::isfinite(gain) ? gain : 0.0F;
 }
 
@@ -70,6 +72,35 @@ PlayerSettings QtSettingsAdapter::read(const VolumeScale& volume,
         settings.band_gains.push_back(stored_gain(settings_, index));
 
     return settings;
+}
+
+PlaylistSettings QtSettingsAdapter::read_playlist() const
+{
+    PlaylistSettings settings;
+    const QStringList tracks{settings_.value("queue").toStringList()};
+    settings.tracks.reserve(static_cast<std::size_t>(tracks.size()));
+    for (const QString& track : tracks)
+        settings.tracks.push_back(QtPathAdapter::from_qt(track));
+
+    const QString selected{settings_.value("queue/path").toString()};
+    if (!selected.isEmpty())
+        settings.selected = QtPathAdapter::from_qt(selected);
+    settings.repeat = settings_.value("queue/repeat", 0).toInt();
+    settings.shuffled = settings_.value("queue/shuffled", false).toBool();
+    return settings;
+}
+
+void QtSettingsAdapter::write_playlist(const PlaylistSettings& settings)
+{
+    QStringList tracks;
+    for (const std::filesystem::path& track : settings.tracks)
+        tracks.append(QtPathAdapter::to_qt(track));
+
+    settings_.setValue("queue", tracks);
+    settings_.setValue("queue/path",
+        settings.selected ? QtPathAdapter::to_qt(*settings.selected) : QString{});
+    settings_.setValue("queue/repeat", settings.repeat);
+    settings_.setValue("queue/shuffled", settings.shuffled);
 }
 
 } // namespace wiola::gui

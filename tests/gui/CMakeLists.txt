@@ -9,6 +9,11 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
+    gui_qt_path_adapter_test
+    SOURCES qt_path_adapter_test.cpp
+    LIBS wiola_gui
+)
+wiola_add_test(
     gui_volume_control_test
     SOURCES volume_control_test.cpp
     LIBS wiola_gui

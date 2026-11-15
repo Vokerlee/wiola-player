@@ -20,10 +20,9 @@
 
 #include "playlist_control.hpp"
 
-#include <QString>
-#include <QStringList>
+#include "player_settings.hpp"
 
-#include <filesystem>
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -31,14 +30,6 @@ namespace wiola::gui {
 
 namespace {
 
-/// Under which names the queue is kept.
-constexpr auto tracks_key{"queue"};
-constexpr auto standing_key{"queue/at"};
-constexpr auto repeat_key{"queue/repeat"};
-constexpr auto shuffled_key{"queue/shuffled"};
-
-/// `stored` as a repeat, or none when it is not one: what a settings file holds is whatever was
-/// last written there, which a newer or older run may not agree about.
 engine::Playlist::Repeat repeat_of(int stored) noexcept
 {
     using Repeat = engine::Playlist::Repeat;
@@ -46,10 +37,8 @@ engine::Playlist::Repeat repeat_of(int stored) noexcept
     switch (stored) {
     case static_cast<int>(Repeat::track):
         return Repeat::track;
-
     case static_cast<int>(Repeat::all):
         return Repeat::all;
-
     default:
         return Repeat::none;
     }
@@ -65,33 +54,33 @@ PlaylistControl::PlaylistControl(engine::Session& session, QSettings& settings) 
 
 std::size_t PlaylistControl::restore()
 {
-    const QStringList stored{settings_.value(tracks_key).toStringList()};
-
+    PlaylistSettings stored{QtSettingsAdapter{settings_}.read_playlist()};
     std::vector<std::filesystem::path> tracks;
     std::size_t gone{0};
 
-    for (const QString& name : stored) {
-        std::filesystem::path track{name.toStdString()};
-
-        // A queue that cannot be played is worse than a shorter one.
+    for (const std::filesystem::path& track : stored.tracks) {
         if (std::filesystem::exists(track))
-            tracks.push_back(std::move(track));
+            tracks.push_back(track);
         else
             ++gone;
     }
 
-    session_.set_repeat(repeat_of(settings_.value(repeat_key, 0).toInt()));
+    session_.set_repeat(repeat_of(stored.repeat));
 
     if (tracks.empty())
         return gone;
 
-    const auto standing = static_cast<std::size_t>(settings_.value(standing_key, 0).toInt());
+    session_.add(tracks);
 
-    session_.add(std::move(tracks));
-    static_cast<void>(session_.play_track(standing));
+    if (stored.selected) {
+        const auto selected{std::ranges::find(tracks, *stored.selected)};
+        if (selected != tracks.end())
+            static_cast<void>(session_.play_track(
+                static_cast<std::size_t>(std::distance(tracks.begin(), selected))
+            ));
+    }
 
-    // The order a shuffle drew is not kept: what is put back is that a listener asked for one.
-    if (settings_.value(shuffled_key, false).toBool())
+    if (stored.shuffled)
         session_.shuffle(true);
 
     return gone;
@@ -99,17 +88,18 @@ std::size_t PlaylistControl::restore()
 
 void PlaylistControl::save()
 {
-    QStringList names;
+    PlaylistSettings settings{.tracks = {},
+        .selected = {},
+        .repeat = static_cast<int>(session_.repeat()),
+        .shuffled = session_.shuffled()};
 
-    // The file is what is kept: what is known about a track is found out again, and may have
-    // changed since.
     for (const engine::Track& track : session_.playlist().tracks())
-        names.append(QString::fromStdString(track.path().string()));
+        settings.tracks.push_back(track.path());
 
-    settings_.setValue(tracks_key, names);
-    settings_.setValue(standing_key, static_cast<int>(session_.playlist().position().value_or(0)));
-    settings_.setValue(repeat_key, static_cast<int>(session_.repeat()));
-    settings_.setValue(shuffled_key, session_.shuffled());
+    if (const engine::Track* current = session_.playlist().current())
+        settings.selected = current->path();
+
+    QtSettingsAdapter{settings_}.write_playlist(settings);
 }
 
 } // namespace wiola::gui
