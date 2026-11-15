@@ -67,6 +67,7 @@ struct FileFacts {
 struct MediaInfo {
     pcm::StreamSpec spec;
     std::optional<units::Time> duration;
+    bool seekable{false};
 };
 
 } // namespace wiola::media

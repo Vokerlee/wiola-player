@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 
 namespace wiola::gui {
 
@@ -491,8 +492,9 @@ void MainWindow::set_boosted(bool boosted)
 
 void MainWindow::seek_to(double fraction)
 {
-    if (loaded())
-        session_.seek(session_.total_time() * fraction);
+    const auto total{session_.total_time()};
+    if (loaded() && session_.seekable() && total)
+        session_.seek(*total * fraction);
 }
 
 void MainWindow::show_status(const QString& message)
@@ -504,7 +506,7 @@ void MainWindow::refresh()
 {
     play_button_->setEnabled(loaded());
     stop_button_->setEnabled(loaded());
-    position_bar_->setEnabled(loaded());
+    position_bar_->setEnabled(loaded() && session_.seekable() && session_.total_time().has_value());
     previous_button_->setEnabled(loaded());
     next_button_->setEnabled(loaded());
 
@@ -519,23 +521,23 @@ void MainWindow::refresh()
         return;
     }
 
-    const units::Time total{session_.total_time()};
+    const std::optional<units::Time> total{session_.total_time()};
 
     // While the edge is being dragged it is a place being chosen, and that is the time worth
     // showing: a listener aiming for somewhere needs to see where they are aiming.
-    const units::Time shown{
-        position_bar_->dragging() ? total * position_bar_->fraction() : session_.time_played()};
+    const units::Time shown{position_bar_->dragging() && total ? *total * position_bar_->fraction()
+                                                               : session_.time_played()};
 
     show_play_button(session_.playing());
 
     elapsed_label_->setText(as_clock(shown));
-    total_label_->setText(as_clock(total));
+    total_label_->setText(total ? as_clock(*total) : QString{"--:--"});
 
-    if (total == units::Time{})
+    if (!total || *total == units::Time{})
         return;
 
     // A drag in progress is left alone by the bar itself.
-    position_bar_->set_fraction(shown.get<units::Sec>() / total.get<units::Sec>());
+    position_bar_->set_fraction(shown.get<units::Sec>() / total->get<units::Sec>());
 }
 
 } // namespace wiola::gui

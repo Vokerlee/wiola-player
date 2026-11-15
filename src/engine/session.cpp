@@ -416,9 +416,14 @@ units::Time Session::time_played() const noexcept
     return loaded() ? pipeline_->player().time_played() : units::Time{};
 }
 
-units::Time Session::total_time() const noexcept
+std::optional<units::Time> Session::total_time() const noexcept
 {
-    return loaded() ? pipeline_->player().total_time() : units::Time{};
+    return loaded() ? pipeline_->player().total_time() : std::nullopt;
+}
+
+bool Session::seekable() const noexcept
+{
+    return loaded() && pipeline_->player().seekable();
 }
 
 PlaybackSnapshot Session::snapshot() const noexcept
@@ -433,7 +438,8 @@ PlaybackSnapshot Session::snapshot() const noexcept
         .time_played = time_played(),
         .total_time = total_time(),
         .loaded = loaded(),
-        .playing = playing()};
+        .playing = playing(),
+        .seekable = seekable()};
 }
 
 } // namespace wiola::engine
