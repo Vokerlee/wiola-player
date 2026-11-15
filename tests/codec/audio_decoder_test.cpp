@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/decode/open.hpp>
+#include <codec/decode/registry.hpp>
 
 #include <gtest/gtest.h>
 
@@ -105,7 +105,9 @@ TEST(AudioDecoder, ACorruptTailIsAFailureRatherThanEndOfFile)
 TEST(AudioDecoder, EveryBackendReportsWholeFrameProgressAndExplicitEnd)
 {
     for (const char* name : {"tone.wav", "tone.flac", "tone.mp3"}) {
-        auto decoder{wiola::codec::open_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        auto decoder{wiola::codec::MediaBackendRegistry{}.open(
+            std::filesystem::path{WIOLA_TEST_DATA_DIR} / name
+        )};
         ASSERT_TRUE(decoder) << name;
 
         std::array<float, 1000> output{};
