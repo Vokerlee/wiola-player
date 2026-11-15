@@ -20,7 +20,6 @@
 
 #include <codec/provider.hpp>
 
-#include <codec/decode/open.hpp>
 #include <codec/tags/tags.hpp>
 #include <media/local_file_stream.hpp>
 
@@ -32,14 +31,15 @@ namespace {
 
 class LocalMediaAsset final : public media::MediaAsset {
 public:
-    explicit LocalMediaAsset(std::filesystem::path path)
+    LocalMediaAsset(std::filesystem::path path, MediaBackendRegistry registry)
         : path_{std::move(path)}
+        , registry_{std::move(registry)}
     {
     }
 
     media::Result<media::MediaInfo> inspect() override
     {
-        auto decoder{open_file(path_)};
+        auto decoder{registry_.open(path_)};
 
         if (!decoder)
             return media::unexpected{decoder.error()};
@@ -52,13 +52,24 @@ public:
 
     media::Result<media::Metadata> read_metadata() override { return read_tags(path_); }
 
-    media::Result<std::unique_ptr<Decoder>> create_decoder() override { return open_file(path_); }
+    media::Result<std::unique_ptr<Decoder>> create_decoder() override
+    {
+        return registry_.open(path_);
+    }
 
 private:
     std::filesystem::path path_;
+    MediaBackendRegistry registry_;
 };
 
 } // namespace
+
+LocalMediaProvider::LocalMediaProvider() = default;
+
+LocalMediaProvider::LocalMediaProvider(MediaBackendRegistry registry)
+    : registry_{std::move(registry)}
+{
+}
 
 media::Result<std::unique_ptr<media::MediaAsset>>
 LocalMediaProvider::open(const std::filesystem::path& path)
@@ -68,7 +79,7 @@ LocalMediaProvider::open(const std::filesystem::path& path)
     if (!stream)
         return media::unexpected{stream.error()};
 
-    std::unique_ptr<media::MediaAsset> asset{std::make_unique<LocalMediaAsset>(path)};
+    std::unique_ptr<media::MediaAsset> asset{std::make_unique<LocalMediaAsset>(path, registry_)};
     return asset;
 }
 
