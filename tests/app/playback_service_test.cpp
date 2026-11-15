@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/playback_service.hpp>
+#include <app/playback_service.hpp>
 
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>

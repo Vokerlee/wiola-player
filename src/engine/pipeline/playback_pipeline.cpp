@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/playback_pipeline.hpp>
+#include <engine/pipeline/playback_pipeline.hpp>
 
 #include <utility>
 

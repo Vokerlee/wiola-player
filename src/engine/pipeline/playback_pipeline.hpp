@@ -39,8 +39,10 @@ public:
     PlaybackPipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
         pcm::Frames buffer_frames, TransportConfig transport = {});
 
-    NO_COPY_SEMANTIC(PlaybackPipeline);
-    NO_MOVE_SEMANTIC(PlaybackPipeline);
+    PlaybackPipeline(const PlaybackPipeline&) = delete;
+    PlaybackPipeline& operator=(const PlaybackPipeline&) = delete;
+    PlaybackPipeline(PlaybackPipeline&&) = delete;
+    PlaybackPipeline& operator=(PlaybackPipeline&&) = delete;
 
     [[nodiscard]] audio::BufferSource& decoded() noexcept { return decoded_; }
 

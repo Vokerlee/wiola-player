@@ -40,8 +40,10 @@ public:
     OutputSession(audio::ProcessingChain& chain, OutputFactory make_output) noexcept;
     ~OutputSession();
 
-    NO_COPY_SEMANTIC(OutputSession);
-    NO_MOVE_SEMANTIC(OutputSession);
+    OutputSession(const OutputSession&) = delete;
+    OutputSession& operator=(const OutputSession&) = delete;
+    OutputSession(OutputSession&&) = delete;
+    OutputSession& operator=(OutputSession&&) = delete;
 
     /// Opens a new output only when `spec` differs from the one already open.
     void open(pcm::StreamSpec spec);

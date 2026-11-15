@@ -32,6 +32,7 @@ function(wiola_add_test name)
     gtest_discover_tests(${name})
 endfunction()
 
+add_subdirectory(app)
 add_subdirectory(audio)
 add_subdirectory(cli)
 add_subdirectory(codec)
