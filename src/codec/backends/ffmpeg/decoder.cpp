@@ -56,12 +56,17 @@ std::optional<std::int64_t> frame_position(const AVFrame& frame, const AVFormatC
 
 Backend backend()
 {
-    static const std::array markers{
+    static const std::array ogg_markers{
         Marker{0, "OggS"}
     };
-    static constexpr std::array<std::string_view, 3> extensions{".ogg", ".oga", ".opus"};
+    static const std::array mp4_markers{
+        Marker{4, "ftyp"}
+    };
+    static constexpr std::array<std::string_view, 3> ogg_extensions{".ogg", ".oga", ".opus"};
+    static constexpr std::array<std::string_view, 2> mp4_extensions{".m4a", ".mp4"};
     static const std::array formats{
-        Format{"Ogg Vorbis/Opus", markers, extensions, {}}
+        Format{"Ogg Vorbis/Opus",     ogg_markers, ogg_extensions, {}},
+        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers, mp4_extensions, {}}
     };
     return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
                        auto decoder{FfmpegDecoder::open(path)};

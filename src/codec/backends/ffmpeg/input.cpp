@@ -16,6 +16,7 @@ extern "C" {
 #include <cerrno>
 #include <cstdio>
 #include <limits>
+#include <string_view>
 
 namespace wiola::codec::ffmpeg {
 
@@ -198,13 +199,16 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
         length = spec.checked_frames_at(units::Time{seconds});
     }
 
+    const bool exact_mp4_aac{parameters->codec_id == AV_CODEC_ID_AAC &&
+        selected->duration != AV_NOPTS_VALUE &&
+        std::string_view{format_->iformat->name} == "mov,mp4,m4a,3gp,3g2,mj2"};
+    const bool exact_length{has_exact_sample_count(parameters->codec_id) || exact_mp4_aac};
     return FfmpegStreamFacts{
         .stream_index = static_cast<std::size_t>(selected->index),
         .output = DecoderStreamInfo{.spec = spec,
                                     .length = length,
                                     .length_accuracy = length
-                ? (has_exact_sample_count(parameters->codec_id) ? LengthAccuracy::exact
-                                                                : LengthAccuracy::estimated)
+                ? (exact_length ? LengthAccuracy::exact : LengthAccuracy::estimated)
                 : LengthAccuracy::unknown,
                                     .seekable = format_->pb->seekable != 0}
     };

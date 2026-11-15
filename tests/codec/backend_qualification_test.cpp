@@ -34,8 +34,8 @@ TEST(BackendQualification, AdvertisesOnlyTheCurrentlyVerifiedPlaybackSet)
 
 #ifdef WIOLA_ENABLE_FFMPEG
     EXPECT_EQ(extensions,
-        (std::vector<std::string>{".flac", ".mp2", ".mp3", ".mpga", ".oga", ".ogg", ".opus", ".wav",
-            ".wave"}));
+        (std::vector<std::string>{".flac", ".m4a", ".mp2", ".mp3", ".mp4", ".mpga", ".oga", ".ogg",
+            ".opus", ".wav", ".wave"}));
     ASSERT_EQ(registry.backends().size(), 4U);
 #else
     EXPECT_EQ(extensions,
@@ -46,7 +46,7 @@ TEST(BackendQualification, AdvertisesOnlyTheCurrentlyVerifiedPlaybackSet)
         EXPECT_TRUE(backend.capabilities.playback);
         EXPECT_TRUE(backend.capabilities.metadata);
         EXPECT_TRUE(backend.open);
-        ASSERT_EQ(backend.formats.size(), 1U);
+        ASSERT_EQ(backend.formats.size(), backend.name == "FFmpeg" ? 2U : 1U);
         EXPECT_FALSE(backend.formats.front().extensions.empty());
     }
 }
