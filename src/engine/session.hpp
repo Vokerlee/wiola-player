@@ -135,6 +135,9 @@ public:
     /// Starts, pauses or resumes, whichever playback is due. False when the output could not
     /// be opened, and when there is nothing loaded.
     bool play_or_pause();
+    bool play() noexcept;
+    bool pause() noexcept;
+    bool resume() noexcept;
 
     /// Ends playback and returns to the beginning of the track.
     void stop() noexcept;
@@ -149,7 +152,11 @@ public:
 
     [[nodiscard]] audio::Volume& volume() noexcept { return volume_; }
 
+    [[nodiscard]] const audio::Volume& volume() const noexcept { return volume_; }
+
     [[nodiscard]] audio::Equalizer& equalizer() noexcept { return equalizer_; }
+
+    [[nodiscard]] const audio::Equalizer& equalizer() const noexcept { return equalizer_; }
 
 private:
     /// Starts an identified load with the requested transport intent.
