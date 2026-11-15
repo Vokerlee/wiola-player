@@ -152,6 +152,7 @@ public:
     [[nodiscard]] units::Time time_played() const noexcept;
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
     [[nodiscard]] bool seekable() const noexcept;
+    [[nodiscard]] std::vector<std::string> playback_extensions() const;
 
     [[nodiscard]] audio::Volume& volume() noexcept { return volume_; }
 
@@ -191,6 +192,7 @@ private:
     audio::Equalizer equalizer_{pcm::StreamSpec{}};
     audio::Volume volume_;
     audio::ProcessingChain chain_;
+    std::shared_ptr<media::MediaProvider> provider_;
     std::unique_ptr<Loader> loader_;
     MetadataCoordinator metadata_;
     Playlist playlist_;

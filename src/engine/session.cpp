@@ -58,8 +58,8 @@ Session::Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider
     : chain_{
           {equalizer_, volume_}
 },
-    loader_{std::make_unique<Loader>(provider)}, metadata_{std::move(provider)},
-    out_{chain_, std::move(make_output)}
+    provider_{provider}, loader_{std::make_unique<Loader>(provider)},
+    metadata_{std::move(provider)}, out_{chain_, std::move(make_output)}
 {
 }
 
@@ -424,6 +424,11 @@ std::optional<units::Time> Session::total_time() const noexcept
 bool Session::seekable() const noexcept
 {
     return loaded() && pipeline_->player().seekable();
+}
+
+std::vector<std::string> Session::playback_extensions() const
+{
+    return provider_ ? provider_->playback_extensions() : std::vector<std::string>{};
 }
 
 PlaybackSnapshot Session::snapshot() const noexcept

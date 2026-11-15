@@ -200,4 +200,16 @@ TEST(MediaBackendRegistry, CancellationIsObservableBeforeBackendOpening)
     EXPECT_EQ(attempts, 0);
 }
 
+TEST(MediaBackendRegistry, CapabilityViewDeduplicatesAndExcludesMetadataOnlyBackends)
+{
+    int attempts{0};
+    auto metadata_only{fake_backend(attempts)};
+    metadata_only.capabilities.playback = false;
+    const wiola::codec::MediaBackendRegistry registry{
+        {fake_backend(attempts), fake_backend(attempts), metadata_only}
+    };
+
+    EXPECT_EQ(registry.playback_extensions(), std::vector<std::string>{".fake"});
+}
+
 } // namespace

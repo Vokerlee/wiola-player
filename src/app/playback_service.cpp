@@ -192,6 +192,11 @@ bool PlaybackService::seekable() const noexcept
     return session_.seekable();
 }
 
+std::vector<std::string> PlaybackService::playback_extensions() const
+{
+    return session_.playback_extensions();
+}
+
 const Playlist& PlaybackService::playlist() const noexcept
 {
     return session_.playlist();

@@ -33,6 +33,8 @@ public:
     media::Result<std::unique_ptr<media::MediaAsset>>
     open(const std::filesystem::path& path) override;
 
+    [[nodiscard]] std::vector<std::string> playback_extensions() const override;
+
 private:
     MediaBackendRegistry registry_;
 };

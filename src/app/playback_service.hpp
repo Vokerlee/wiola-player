@@ -71,6 +71,7 @@ public:
     [[nodiscard]] units::Time time_played() const noexcept;
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
     [[nodiscard]] bool seekable() const noexcept;
+    [[nodiscard]] std::vector<std::string> playback_extensions() const;
     [[nodiscard]] const Playlist& playlist() const noexcept;
     [[nodiscard]] const std::filesystem::path& track() const noexcept;
 
