@@ -64,9 +64,11 @@ Backend backend()
     };
     static constexpr std::array<std::string_view, 3> ogg_extensions{".ogg", ".oga", ".opus"};
     static constexpr std::array<std::string_view, 2> mp4_extensions{".m4a", ".mp4"};
+    static constexpr std::array<std::string_view, 1> adts_extensions{".aac"};
     static const std::array formats{
-        Format{"Ogg Vorbis/Opus",     ogg_markers, ogg_extensions, {}},
-        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers, mp4_extensions, {}}
+        Format{"Ogg Vorbis/Opus",     ogg_markers,               ogg_extensions,  {}},
+        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers,               mp4_extensions,  {}},
+        Format{"ADTS AAC-LC",         std::span<const Marker>{}, adts_extensions, {}}
     };
     return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
                        auto decoder{FfmpegDecoder::open(path)};
