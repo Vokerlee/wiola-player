@@ -84,6 +84,17 @@ media::Result<FfmpegFrameEvent> PacketDecoder::error(media::Error error)
     return media::unexpected{std::move(error)};
 }
 
+void PacketDecoder::reset_after_seek() noexcept
+{
+    avcodec_flush_buffers(codec_);
+    av_packet_unref(packet_);
+    av_frame_unref(frame_);
+    packet_pending_ = false;
+    demux_ended_ = false;
+    drain_sent_ = false;
+    ended_ = false;
+}
+
 media::Result<FfmpegFrameEvent> PacketDecoder::next_frame()
 {
     if (ended_)

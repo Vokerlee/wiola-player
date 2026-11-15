@@ -37,6 +37,7 @@ public:
     PacketDecoder& operator=(PacketDecoder&&) = delete;
 
     [[nodiscard]] media::Result<FfmpegFrameEvent> next_frame();
+    void reset_after_seek() noexcept;
 
     [[nodiscard]] AVCodecContext* codec() const noexcept { return codec_; }
 

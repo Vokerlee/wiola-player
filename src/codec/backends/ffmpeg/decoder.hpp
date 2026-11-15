@@ -15,6 +15,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 
 namespace wiola::codec::ffmpeg {
 
@@ -24,15 +25,20 @@ public:
     open(const std::filesystem::path& path);
 
 private:
-    FfmpegDecoder(DecoderStreamInfo info, std::unique_ptr<FfmpegInput> input,
-        std::unique_ptr<PacketDecoder> packets) noexcept;
+    FfmpegDecoder(std::filesystem::path path, std::size_t stream_index, DecoderStreamInfo info,
+        std::unique_ptr<FfmpegInput> input, std::unique_ptr<PacketDecoder> packets) noexcept;
 
     media::Result<DecodeOutcome> decode(std::span<float> output, pcm::Frames num_frames) override;
     media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) override;
+    [[nodiscard]] media::Result<pcm::Frames> stage_seek(pcm::Frames target);
+    [[nodiscard]] media::Result<bool> trim_frame(const AVFrame& frame,
+        std::optional<pcm::Frames> preroll = {});
 
+    std::filesystem::path path_;
+    std::size_t stream_index_;
     std::unique_ptr<FfmpegInput> input_;
     std::unique_ptr<PacketDecoder> packets_;
-    PcmConverter converter_;
+    std::unique_ptr<PcmConverter> converter_;
     bool source_ended_{false};
 };
 
