@@ -1,2 +1,1 @@
-add_library(wiola_media INTERFACE)
-target_link_libraries(wiola_media INTERFACE wiola_core)
+wiola_add_library(wiola_media SOURCES local_file_stream.cpp)

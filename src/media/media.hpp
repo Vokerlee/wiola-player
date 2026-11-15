@@ -25,6 +25,7 @@
 #include <utils/units.hpp>
 
 #include <cstddef>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
@@ -43,6 +44,11 @@ struct TrackMetadata {
     std::string artist;
     std::string album;
     std::optional<units::Time> duration;
+};
+
+struct FileFacts {
+    std::filesystem::path path;
+    std::string extension;
 };
 
 struct MediaInfo {

@@ -20,6 +20,8 @@
 
 #include <codec/decode/format.hpp>
 
+#include <media/local_file_stream.hpp>
+
 #include <gtest/gtest.h>
 
 #include <filesystem>
@@ -31,6 +33,17 @@ namespace {
 using wiola::codec::FileHead;
 using wiola::codec::Marker;
 
+FileHead read_head(const std::filesystem::path& path)
+{
+    auto stream = wiola::media::LocalFileStream::open(path);
+
+    if (!stream)
+        return {};
+
+    auto head = FileHead::read(**stream);
+    return head ? *head : FileHead{};
+}
+
 /// Writes `bytes` to a file of its own and reads its head back.
 FileHead head_of(const char* name, std::string_view bytes)
 {
@@ -40,12 +53,12 @@ FileHead head_of(const char* name, std::string_view bytes)
     out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     out.close();
 
-    return FileHead::read(path);
+    return read_head(path);
 }
 
 TEST(FileHead, IsEmptyWhenThereIsNoFile)
 {
-    const FileHead head{FileHead::read("/nonexistent/wiola.wav")};
+    const FileHead head{read_head("/nonexistent/wiola.wav")};
 
     EXPECT_TRUE(head.empty());
     EXPECT_FALSE(head.carries(Marker{0, "RIFF"}));
@@ -58,7 +71,7 @@ TEST(FileHead, IsEmptyForAnEmptyFile)
 
 TEST(FileHead, IsEmptyForADirectory)
 {
-    EXPECT_TRUE(FileHead::read(std::filesystem::temp_directory_path()).empty());
+    EXPECT_TRUE(read_head(std::filesystem::temp_directory_path()).empty());
 }
 
 TEST(FileHead, CarriesAMarkerWhereItSaysItIs)

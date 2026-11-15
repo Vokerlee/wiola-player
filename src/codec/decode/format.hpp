@@ -21,6 +21,7 @@
 #pragma once
 
 #include <codec/decode/decoder.hpp>
+#include <media/byte_stream.hpp>
 
 #include <array>
 #include <cstddef>
@@ -41,8 +42,8 @@ struct Marker {
 /// The first bytes of a file, as many as it had.
 class FileHead final {
 public:
-    /// Reads the leading bytes of `path`. Empty when the file cannot be opened.
-    [[nodiscard]] static FileHead read(const std::filesystem::path& path);
+    /// Reads leading bytes from the current cursor, distinguishing EOF from read failure.
+    [[nodiscard]] static media::Result<FileHead> read(media::ByteStream& stream);
 
     /// Whether `marker` is present where it says it should be.
     [[nodiscard]] bool carries(const Marker& marker) const noexcept;

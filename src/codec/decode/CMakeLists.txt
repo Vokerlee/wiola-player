@@ -2,7 +2,6 @@ wiola_add_library(
     wiola_codec_decode
     SOURCES
         decoder.cpp
-        file_stream.cpp
         flac_reader.cpp
         format.cpp
         mp3_reader.cpp

@@ -25,15 +25,15 @@
 
 namespace wiola::codec {
 
-FileHead FileHead::read(const std::filesystem::path& path)
+media::Result<FileHead> FileHead::read(media::ByteStream& stream)
 {
     FileHead head;
-    std::ifstream file{path, std::ios::binary};
+    const auto read = stream.read(head.bytes_);
 
-    file.read(reinterpret_cast<char*>(head.bytes_.data()),
-        static_cast<std::streamsize>(head.bytes_.size()));
-    head.size_ = static_cast<std::size_t>(file.gcount());
+    if (!read)
+        return media::unexpected{read.error()};
 
+    head.size_ = *read;
     return head;
 }
 
