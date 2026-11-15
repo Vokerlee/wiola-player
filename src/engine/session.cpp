@@ -30,6 +30,7 @@
 #include <audio/dsp/shaped_source.hpp>
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/open.hpp>
+#include <codec/provider.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 
@@ -49,7 +50,16 @@ Session::Session()
 }
 
 Session::Session(OutputFactory make_output)
-    : Session{std::move(make_output), codec::open_file, codec::read_tags}
+    : Session{std::move(make_output), std::make_shared<codec::LocalMediaProvider>()}
+{
+}
+
+Session::Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider)
+    : chain_{
+          {equalizer_, volume_}
+},
+    loader_{std::make_unique<Loader>(provider)}, metadata_{std::move(provider)},
+    out_{chain_, std::move(make_output)}
 {
 }
 

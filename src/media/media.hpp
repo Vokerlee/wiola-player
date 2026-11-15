@@ -46,6 +46,17 @@ struct TrackMetadata {
     std::optional<units::Time> duration;
 };
 
+struct Metadata {
+    TrackMetadata track;
+    Artwork artwork;
+
+    [[nodiscard]] bool empty() const noexcept
+    {
+        return track.title.empty() && track.artist.empty() && track.album.empty() &&
+            artwork.empty() && !track.duration.has_value();
+    }
+};
+
 struct FileFacts {
     std::filesystem::path path;
     std::string extension;

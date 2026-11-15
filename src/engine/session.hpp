@@ -60,6 +60,9 @@ public:
     /// Plays through whatever `make_output` builds, which is asked once per track.
     explicit Session(OutputFactory make_output);
 
+    /// Uses one format-neutral provider for loading and metadata.
+    Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider);
+
     /// Uses the supplied media collaborators, for deterministic engine tests.
     Session(OutputFactory make_output, DecoderOpener open_decoder, MetadataReader read_metadata);
 

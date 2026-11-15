@@ -27,16 +27,7 @@
 namespace wiola::codec {
 
 /// Unverified file claims, with absent duration represented explicitly rather than as zero.
-struct Tags {
-    media::TrackMetadata track;
-    media::Artwork artwork;
-
-    [[nodiscard]] bool empty() const noexcept
-    {
-        return track.title.empty() && track.artist.empty() && track.album.empty() &&
-            artwork.empty() && !track.duration.has_value();
-    }
-};
+using Tags = media::Metadata;
 
 /// Reads file claims without decoding the stream; unavailable fields remain absent.
 [[nodiscard]] Tags read_tags(const std::filesystem::path& path);

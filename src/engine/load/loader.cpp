@@ -20,13 +20,23 @@
 
 #include "loader.hpp"
 
+#include <codec/provider.hpp>
+
 #include <new>
 #include <utility>
 
 namespace wiola::engine {
 
 Loader::Loader()
-    : Loader{codec::open_file}
+    : Loader{std::make_shared<codec::LocalMediaProvider>()}
+{
+}
+
+Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
+    : open_{[provider = std::move(provider)](const std::filesystem::path& path) {
+        auto asset{provider->open(path)};
+        return asset ? (*asset)->create_decoder() : codec::Opened{media::unexpected{asset.error()}};
+    }}
 {
 }
 

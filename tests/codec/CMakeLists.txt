@@ -26,6 +26,12 @@ wiola_add_test(
 )
 wiola_add_test(codec_format_test SOURCES format_test.cpp LIBS wiola_codec)
 wiola_add_test(
+    codec_provider_test
+    SOURCES provider_test.cpp
+    LIBS wiola_codec
+    DATA "${fixtures}"
+)
+wiola_add_test(
     codec_decoder_test
     SOURCES decoder_test.cpp
     LIBS wiola_codec

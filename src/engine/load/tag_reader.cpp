@@ -20,6 +20,8 @@
 
 #include "tag_reader.hpp"
 
+#include <codec/provider.hpp>
+
 #include <algorithm>
 #include <new>
 #include <stdexcept>
@@ -28,7 +30,22 @@
 namespace wiola::engine {
 
 TagReader::TagReader()
-    : TagReader{codec::read_tags}
+    : TagReader{std::make_shared<codec::LocalMediaProvider>()}
+{
+}
+
+TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t max_pending,
+    std::size_t max_completed)
+    : TagReader{[provider = std::move(provider)](const std::filesystem::path& path) {
+                    auto asset{provider->open(path)};
+                    auto metadata{asset
+                            ? (*asset)->read_metadata()
+                            : media::Result<media::Metadata>{media::unexpected{asset.error()}}};
+                    if (!metadata)
+                        throw std::runtime_error{metadata.error().detail};
+                    return *metadata;
+                },
+          max_pending, max_completed}
 {
 }
 

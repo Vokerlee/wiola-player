@@ -23,6 +23,7 @@
 #include <codec/decode/open.hpp>
 #include <core/macros.hpp>
 #include <engine/load/load_request.hpp>
+#include <media/provider.hpp>
 
 #include <condition_variable>
 #include <cstddef>
@@ -40,6 +41,7 @@ using DecoderOpener = std::function<codec::Opened(const std::filesystem::path&)>
 class Loader {
 public:
     Loader();
+    explicit Loader(std::shared_ptr<media::MediaProvider> provider);
     explicit Loader(DecoderOpener open);
 
     NO_COPY_SEMANTIC(Loader);
