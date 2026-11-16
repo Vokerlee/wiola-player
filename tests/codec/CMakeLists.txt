@@ -56,6 +56,12 @@ if(WIOLA_ENABLE_FFMPEG)
         DATA "${fixtures}"
     )
     wiola_add_test(
+        codec_ffmpeg_container_test
+        SOURCES ffmpeg_container_test.cpp
+        LIBS wiola_codec wiola_codec_ffmpeg wiola_ffmpeg
+        DATA "${fixtures}"
+    )
+    wiola_add_test(
         codec_ffmpeg_metadata_test
         SOURCES ffmpeg_metadata_test.cpp
         LIBS wiola_codec_ffmpeg wiola_codec_provider wiola_ffmpeg

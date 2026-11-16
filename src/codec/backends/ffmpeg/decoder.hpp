@@ -39,7 +39,8 @@ private:
     media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) override;
     [[nodiscard]] media::Result<pcm::Frames> stage_seek(pcm::Frames target);
     [[nodiscard]] media::Result<bool> trim_frame(const AVFrame& frame,
-        std::optional<pcm::Frames> preroll = {}, std::int64_t timestamp_offset = 0);
+        std::optional<pcm::Frames> preroll = {}, std::int64_t timestamp_offset = 0,
+        std::optional<std::int64_t> sequential_start = {});
 
     std::filesystem::path path_;
     std::size_t stream_index_;
