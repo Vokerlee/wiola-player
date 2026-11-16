@@ -13,6 +13,12 @@ if(WIOLA_ENABLE_FFMPEG)
         LIBS wiola_ffmpeg
         DATA "${fixtures}"
     )
+    wiola_add_test(
+        codec_ffmpeg_io_test
+        SOURCES ffmpeg_io_test.cpp
+        LIBS wiola_codec_ffmpeg wiola_ffmpeg
+        DATA "${fixtures}"
+    )
 endif()
 
 wiola_add_test(
