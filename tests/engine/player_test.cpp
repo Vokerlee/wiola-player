@@ -98,7 +98,11 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
-    bool seek_frame(wiola::pcm::Frames) override { return true; }
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+    }
 
 private:
     std::atomic<int> num_reads_{0};
@@ -127,9 +131,16 @@ protected:
             .end_of_stream = position_frames() + produced == length};
     }
 
-    bool seek_frame(wiola::pcm::Frames frame_index) override
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
     {
-        return frame_index <= wiola::pcm::Frames{8};
+        if (frame_index > wiola::pcm::Frames{8})
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::seek_failed,
+                                    .detail = "past actual end"}
+            };
+
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
 
@@ -157,7 +168,11 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
-    bool seek_frame(wiola::pcm::Frames) override { return true; }
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+    }
 
 private:
     int num_reads_{0};
@@ -480,6 +495,29 @@ TEST(Player, FailedSeekDoesNotPublishTheRequestedPosition)
     player.wait();
 }
 
+TEST(Player, PublishesTheAchievedPositionOfAnApproximateSeek)
+{
+    const StreamSpec spec{units::Frequency{100.0}, 2};
+    auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
+    wiola::testing::FakeDecoder* moved{source.get()};
+    moved->achieve_next_seek_at(wiola::pcm::Frames{90});
+    wiola::pcm::PcmQueue buffer{spec, wiola::pcm::Frames{512}};
+    wiola::testing::FakeOutput output;
+    Player player{std::move(source), buffer.producer(), output};
+
+    ASSERT_TRUE(player.start());
+    ASSERT_TRUE(player.pause());
+    ASSERT_TRUE(eventually([&output] { return !output.running(); }));
+    player.seek(1_s);
+
+    ASSERT_TRUE(eventually([moved] { return moved->num_seeks() == 1; }));
+    EXPECT_EQ(player.time_played(), units::Time{0.9});
+    EXPECT_EQ(player.state(), State::paused);
+
+    player.stop();
+    player.wait();
+}
+
 TEST(Player, NewerSeekSurvivesFailureOfAnOlderOne)
 {
     const StreamSpec spec{units::Frequency{100.0}, 2};
@@ -680,11 +718,12 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
-    bool seek_frame(wiola::pcm::Frames /*frame_index*/) override
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
     {
         std::this_thread::sleep_for(200ms);
 
-        return true;
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
 
@@ -711,11 +750,12 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
-    bool seek_frame(wiola::pcm::Frames /*frame_index*/) override
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
     {
         num_seeks_.fetch_add(1);
 
-        return true;
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 
 private:

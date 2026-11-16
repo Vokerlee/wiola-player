@@ -27,6 +27,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
+#include <limits>
 #include <mutex>
 #include <span>
 
@@ -80,6 +81,11 @@ public:
 
     void refuse_next_seek() noexcept { refuse_next_seek_.store(true); }
 
+    void achieve_next_seek_at(pcm::Frames achieved) noexcept
+    {
+        next_achieved_.store(achieved.count());
+    }
+
     [[nodiscard]] int num_reads() const noexcept { return num_reads_.load(); }
 
     [[nodiscard]] std::size_t last_render_samples() const noexcept
@@ -105,7 +111,7 @@ protected:
         return codec::DecodeOutcome{.frames = num_frames};
     }
 
-    bool seek_frame(pcm::Frames frame_index) override
+    media::Result<codec::SeekOutcome> seek_frame(pcm::Frames frame_index) override
     {
         num_seeks_.fetch_add(1);
         last_seek_.store(frame_index.count());
@@ -114,7 +120,18 @@ protected:
             seek_gate_->wait();
 
         const bool refused{refusing_seeks_.load() || refuse_next_seek_.exchange(false)};
-        return !refused;
+        if (refused)
+            return media::unexpected{
+                media::Error{.category = media::ErrorCategory::seek_failed,
+                             .detail = "seek refused"}
+            };
+
+        constexpr std::size_t use_target{std::numeric_limits<std::size_t>::max()};
+        const std::size_t requested{next_achieved_.exchange(use_target)};
+        const pcm::Frames achieved{requested == use_target ? frame_index.count() : requested};
+        return codec::SeekOutcome{.target = frame_index,
+            .achieved = achieved,
+            .exact = achieved == frame_index};
     }
 
 private:
@@ -126,6 +143,7 @@ private:
     std::atomic<int> num_seeks_{0};
     std::atomic<std::size_t> last_seek_{0};
     std::atomic<std::size_t> last_render_samples_{0};
+    std::atomic<std::size_t> next_achieved_{std::numeric_limits<std::size_t>::max()};
 };
 
 } // namespace wiola::testing

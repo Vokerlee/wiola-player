@@ -57,7 +57,7 @@ private:
 
     media::Result<DecodeOutcome> decode(std::span<float> output, pcm::Frames num_frames) override;
 
-    bool seek_frame(pcm::Frames frame_index) override;
+    media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) override;
 
     std::unique_ptr<Handle> handle_;
 };

@@ -93,9 +93,15 @@ media::Result<DecodeOutcome> FlacReader::decode(std::span<float> output, pcm::Fr
             num_frames.count(), output.data()))}};
 }
 
-bool FlacReader::seek_frame(pcm::Frames frame_index)
+media::Result<SeekOutcome> FlacReader::seek_frame(pcm::Frames frame_index)
 {
-    return drflac_seek_to_pcm_frame(handle_->flac, frame_index.count()) == DRFLAC_TRUE;
+    if (drflac_seek_to_pcm_frame(handle_->flac, frame_index.count()) != DRFLAC_TRUE)
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::seek_failed,
+                         .detail = "FLAC seek failed"}
+        };
+
+    return SeekOutcome{.target = frame_index, .achieved = frame_index};
 }
 
 const Format& FlacReader::format()

@@ -41,7 +41,11 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = wiola::pcm::Frames{1}};
     }
 
-    bool seek_frame(wiola::pcm::Frames) override { return true; }
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+    }
 };
 
 class CorruptTailDecoder final : public wiola::codec::AudioDecoder {
@@ -64,7 +68,11 @@ protected:
         };
     }
 
-    bool seek_frame(wiola::pcm::Frames) override { return true; }
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+    }
 };
 
 class EstimatedDecoder final : public wiola::codec::AudioDecoder {
@@ -88,7 +96,11 @@ protected:
         return wiola::codec::DecodeOutcome{.frames = wanted};
     }
 
-    bool seek_frame(wiola::pcm::Frames) override { return true; }
+    wiola::media::Result<wiola::codec::SeekOutcome>
+    seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+    }
 };
 
 TEST(AudioDecoder, AShortReadIsProgressRatherThanEndOfFile)
