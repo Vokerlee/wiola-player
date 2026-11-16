@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <codec/decode/decoder.hpp>
 #include <media/byte_stream.hpp>
 #include <media/media.hpp>
 
@@ -21,6 +22,11 @@ struct AVDictionary;
 
 namespace wiola::codec::ffmpeg {
 
+struct FfmpegStreamFacts {
+    std::size_t stream_index;
+    DecoderStreamInfo output;
+};
+
 class FfmpegInput final {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<FfmpegInput>>
@@ -34,6 +40,8 @@ public:
     FfmpegInput& operator=(FfmpegInput&&) = delete;
 
     [[nodiscard]] AVFormatContext* format() const noexcept { return format_; }
+
+    [[nodiscard]] media::Result<FfmpegStreamFacts> inspect();
 
 private:
     explicit FfmpegInput(std::unique_ptr<media::ByteStream> stream) noexcept;
