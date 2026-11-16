@@ -35,6 +35,9 @@ public:
     [[nodiscard]] media::Result<void> submit(const AVFrame& frame);
     [[nodiscard]] media::Result<void> finish();
     [[nodiscard]] media::Result<DecodeOutcome> read(std::span<float> output, bool source_ended);
+    void reset() noexcept;
+    void discard_first(pcm::Frames frames) noexcept;
+    void truncate(pcm::Frames frames) noexcept;
 
     [[nodiscard]] bool pending() const noexcept { return offset_ < pending_.size(); }
 

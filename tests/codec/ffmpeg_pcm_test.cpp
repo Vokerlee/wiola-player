@@ -14,6 +14,7 @@ extern "C" {
 #include <libavutil/frame.h>
 }
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -181,6 +182,70 @@ TEST(FfmpegDecoder, EmitsAndDrainsDelayedAacPcm)
 
     ASSERT_TRUE(samples);
     EXPECT_FALSE(samples->empty());
+}
+
+TEST(FfmpegDecoder, SampleAccurateWavSeekMatchesSequentialDecoding)
+{
+    const std::filesystem::path path{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"};
+    auto reference{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+    ASSERT_TRUE(reference);
+    ASSERT_TRUE(decoder);
+    auto expected{decode_all(**reference)};
+    ASSERT_TRUE(expected);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{4000})};
+    ASSERT_TRUE(sought);
+    EXPECT_EQ(sought->achieved, wiola::pcm::Frames{4000});
+    EXPECT_TRUE(sought->exact);
+    std::array<float, 128> output{};
+    auto actual{(*decoder)->read(output)};
+    ASSERT_TRUE(actual);
+    ASSERT_EQ(actual->frames, wiola::pcm::Frames{64});
+    EXPECT_TRUE(std::equal(output.begin(), output.end(), expected->begin() + 4000 * 2));
+}
+
+TEST(FfmpegDecoder, FailedSeekPreservesPositionAndSubsequentSamples)
+{
+    const std::filesystem::path path{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"};
+    auto reference{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+    ASSERT_TRUE(reference);
+    ASSERT_TRUE(decoder);
+    auto expected{decode_all(**reference)};
+    ASSERT_TRUE(expected);
+    std::array<float, 128> prefix{};
+    ASSERT_TRUE((*decoder)->read(prefix));
+
+    auto rejected{(*decoder)->seek((*decoder)->num_frames() + wiola::pcm::Frames{1})};
+    ASSERT_FALSE(rejected);
+    EXPECT_EQ((*decoder)->position_frames(), wiola::pcm::Frames{64});
+    std::array<float, 128> output{};
+    ASSERT_TRUE((*decoder)->read(output));
+    EXPECT_TRUE(std::equal(output.begin(), output.end(), expected->begin() + 64 * 2));
+}
+
+TEST(FfmpegDecoder, AacSeekMatchesItsSequentialAudibleTimeline)
+{
+    const std::filesystem::path path{
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "multi-audio.m4a"};
+    auto reference{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+    ASSERT_TRUE(reference);
+    ASSERT_TRUE(decoder);
+    auto expected{decode_all(**reference)};
+    ASSERT_TRUE(expected);
+
+    ASSERT_TRUE((*decoder)->seek(wiola::pcm::Frames{1000}));
+    std::array<float, 128> output{};
+    std::size_t filled{0};
+    while (filled < output.size()) {
+        auto actual{(*decoder)->read(std::span{output}.subspan(filled))};
+        ASSERT_TRUE(actual);
+        ASSERT_GT(actual->frames, wiola::pcm::Frames{});
+        filled += (*decoder)->spec().samples_per(actual->frames);
+    }
+    EXPECT_TRUE(std::equal(output.begin(), output.end(), expected->begin() + 1000 * 2));
 }
 
 } // namespace

@@ -154,6 +154,33 @@ media::Result<void> PcmConverter::finish()
         "PCM converter drain did not finish")};
 }
 
+void PcmConverter::reset() noexcept
+{
+    swr_free(&converter_);
+    av_channel_layout_uninit(&input_layout_);
+    input_format_ = -1;
+    input_rate_ = 0;
+    pending_.clear();
+    offset_ = 0;
+    finished_ = false;
+}
+
+void PcmConverter::discard_first(pcm::Frames frames) noexcept
+{
+    const std::size_t samples{std::min(output_.samples_per(frames), pending_.size() - offset_)};
+    offset_ += samples;
+    if (!pending()) {
+        pending_.clear();
+        offset_ = 0;
+    }
+}
+
+void PcmConverter::truncate(pcm::Frames frames) noexcept
+{
+    const std::size_t samples{output_.samples_per(frames)};
+    pending_.resize(offset_ + std::min(samples, pending_.size() - offset_));
+}
+
 media::Result<DecodeOutcome> PcmConverter::read(std::span<float> output, bool source_ended)
 {
     const pcm::Frames available{output_.frames_per(pending_.size() - offset_)};
