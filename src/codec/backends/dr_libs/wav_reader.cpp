@@ -85,10 +85,11 @@ std::unique_ptr<WavReader> WavReader::open(const std::filesystem::path& path)
     };
 }
 
-media::Result<pcm::Frames> WavReader::decode(std::span<float> output, pcm::Frames num_frames)
+media::Result<DecodeOutcome> WavReader::decode(std::span<float> output, pcm::Frames num_frames)
 {
-    return pcm::Frames{static_cast<std::size_t>(drwav_read_pcm_frames_f32(&handle_->wav,
-        num_frames.count(), output.data()))};
+    return DecodeOutcome{
+        .frames = pcm::Frames{static_cast<std::size_t>(drwav_read_pcm_frames_f32(&handle_->wav,
+            num_frames.count(), output.data()))}};
 }
 
 bool WavReader::seek_frame(pcm::Frames frame_index)

@@ -45,9 +45,10 @@ public:
             return media::unexpected{decoder.error()};
 
         const pcm::StreamSpec spec{(*decoder)->spec()};
+        const std::optional<pcm::Frames> length{(*decoder)->duration_frames()};
         return media::MediaInfo{.spec = spec,
-            .duration = spec.valid() ? std::optional{spec.time_per((*decoder)->num_frames())}
-                                     : std::nullopt};
+            .duration =
+                spec.valid() && length ? std::optional{spec.time_per(*length)} : std::nullopt};
     }
 
     media::Result<media::Metadata> read_metadata() override { return read_tags(path_); }

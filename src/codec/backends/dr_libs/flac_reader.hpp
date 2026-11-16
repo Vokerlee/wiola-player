@@ -49,7 +49,7 @@ private:
     FlacReader(pcm::StreamSpec spec, pcm::Frames num_frames,
         std::unique_ptr<Handle> handle) noexcept;
 
-    media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) override;
+    media::Result<DecodeOutcome> decode(std::span<float> output, pcm::Frames num_frames) override;
 
     bool seek_frame(pcm::Frames frame_index) override;
 

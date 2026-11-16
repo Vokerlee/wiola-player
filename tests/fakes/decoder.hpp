@@ -92,7 +92,8 @@ public:
     [[nodiscard]] pcm::Frames last_seek() const noexcept { return pcm::Frames{last_seek_.load()}; }
 
 protected:
-    media::Result<pcm::Frames> decode(std::span<float> output, pcm::Frames num_frames) override
+    media::Result<codec::DecodeOutcome> decode(std::span<float> output,
+        pcm::Frames num_frames) override
     {
         if (read_gate_ != nullptr)
             read_gate_->wait();
@@ -101,7 +102,7 @@ protected:
         last_render_samples_.store(spec().samples_per(num_frames));
         std::fill_n(output.begin(), spec().samples_per(num_frames), 0.0F);
 
-        return num_frames;
+        return codec::DecodeOutcome{.frames = num_frames};
     }
 
     bool seek_frame(pcm::Frames frame_index) override

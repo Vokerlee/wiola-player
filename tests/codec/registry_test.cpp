@@ -36,9 +36,10 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float>, wiola::pcm::Frames) override
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float>,
+        wiola::pcm::Frames) override
     {
-        return wiola::pcm::Frames{};
+        return wiola::codec::DecodeOutcome{.frames = {}, .end_of_stream = true};
     }
 
     bool seek_frame(wiola::pcm::Frames) override { return true; }

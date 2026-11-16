@@ -90,12 +90,12 @@ public:
     [[nodiscard]] int num_reads() const noexcept { return num_reads_.load(); }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         ++num_reads_;
         std::fill_n(output.begin(), num_frames.count() * 2, 0.25F);
-        return num_frames;
+        return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
     bool seek_frame(wiola::pcm::Frames) override { return true; }
@@ -115,7 +115,7 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         if (num_reads_++ == 0)
@@ -125,7 +125,7 @@ protected:
             };
 
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
-        return num_frames;
+        return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
     bool seek_frame(wiola::pcm::Frames) override { return true; }
@@ -608,12 +608,12 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
 
-        return num_frames;
+        return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
     bool seek_frame(wiola::pcm::Frames /*frame_index*/) override
@@ -639,12 +639,12 @@ public:
     [[nodiscard]] int num_seeks() const noexcept { return num_seeks_.load(); }
 
 protected:
-    wiola::media::Result<wiola::pcm::Frames> decode(std::span<float> output,
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
 
-        return num_frames;
+        return wiola::codec::DecodeOutcome{.frames = num_frames};
     }
 
     bool seek_frame(wiola::pcm::Frames /*frame_index*/) override

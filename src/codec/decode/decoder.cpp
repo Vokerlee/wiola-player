@@ -26,36 +26,52 @@ namespace wiola::codec {
 
 media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
-    if (output.size() % spec_.num_channels != 0)
+    const pcm::StreamSpec stream_spec{spec()};
+    if (output.size() % stream_spec.num_channels != 0)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::read_failed,
                          .detail = "decoder output does not contain whole frames"}
         };
 
-    const pcm::Frames wanted{std::min(spec_.frames_per(output.size()), num_frames_left())};
+    if (exhausted_)
+        return DecodeOutcome{.frames = {}, .end_of_stream = true};
 
-    if (wanted == pcm::Frames{})
-        return DecodeOutcome{.frames = {}, .end_of_stream = exhausted()};
+    pcm::Frames wanted{stream_spec.frames_per(output.size())};
+    if (length_accuracy() == LengthAccuracy::exact)
+        wanted = std::min(wanted, num_frames_left());
+
+    if (wanted == pcm::Frames{}) {
+        exhausted_ = length_accuracy() == LengthAccuracy::exact;
+        return DecodeOutcome{.frames = {}, .end_of_stream = exhausted_};
+    }
 
     auto decoded{decode(output, wanted)};
 
     if (!decoded)
         return media::unexpected{decoded.error()};
 
-    if (*decoded > wanted)
+    if (decoded->frames > wanted)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::damaged,
                          .detail = "decoder reported more frames than requested"}
         };
 
-    if (*decoded == pcm::Frames{})
+    if (decoded->frames == pcm::Frames{} && !decoded->end_of_stream)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::damaged,
-                         .detail = "decoder stopped before the declared end"}
+                         .detail = "decoder made no progress and did not finish"}
         };
 
-    num_frames_read_ += *decoded;
-    return DecodeOutcome{.frames = *decoded, .end_of_stream = exhausted()};
+    position_ += decoded->frames;
+    if (length_accuracy() == LengthAccuracy::exact && position_ > num_frames())
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::damaged,
+                         .detail = "decoder passed the exact stream length"}
+        };
+
+    exhausted_ = decoded->end_of_stream ||
+        (length_accuracy() == LengthAccuracy::exact && position_ == num_frames());
+    return DecodeOutcome{.frames = decoded->frames, .end_of_stream = exhausted_};
 }
 
 media::Result<std::size_t> AudioDecoder::render(std::span<float> output)
@@ -65,12 +81,18 @@ media::Result<std::size_t> AudioDecoder::render(std::span<float> output)
     if (!decoded)
         return media::unexpected{decoded.error()};
 
-    return spec_.samples_per(decoded->frames);
+    return spec().samples_per(decoded->frames);
 }
 
 media::Result<void> AudioDecoder::seek(pcm::Frames frame_index)
 {
-    if (frame_index > num_frames_)
+    if (!seekable())
+        return media::unexpected{
+            media::Error{.category = media::ErrorCategory::seek_failed,
+                         .detail = "decoder stream is not seekable"}
+        };
+
+    if (length_accuracy() == LengthAccuracy::exact && frame_index > num_frames())
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::invalid_seek,
                          .detail = "seek target is past the end"}
@@ -82,7 +104,8 @@ media::Result<void> AudioDecoder::seek(pcm::Frames frame_index)
                          .detail = "decoder rejected the seek"}
         };
 
-    num_frames_read_ = frame_index;
+    position_ = frame_index;
+    exhausted_ = length_accuracy() == LengthAccuracy::exact && position_ == num_frames();
     return {};
 }
 
