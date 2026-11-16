@@ -36,7 +36,7 @@ jobs:
       # One sanitizer failing is not a reason to stop hearing from the others.
       fail-fast: false
       matrix:
-        preset: [linux-debug, linux-asan, linux-tsan]
+        preset: [linux-debug, linux-baseline, linux-asan, linux-tsan]
         include:
           # A race that needs a scheduler accident will not show up in one run of the suite.
           - preset: linux-tsan
