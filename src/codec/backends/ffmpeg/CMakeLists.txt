@@ -1,5 +1,5 @@
 wiola_add_library(
     wiola_codec_ffmpeg
-    SOURCES input.cpp packet_decoder.cpp
+    SOURCES decoder.cpp input.cpp packet_decoder.cpp pcm_converter.cpp
     LIBS wiola_media wiola_ffmpeg
 )
