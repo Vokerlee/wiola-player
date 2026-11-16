@@ -6,7 +6,7 @@ set(wiola_ffmpeg_source "${CMAKE_BINARY_DIR}/_deps/ffmpeg-src")
 file(MAKE_DIRECTORY "${wiola_ffmpeg_prefix}/include")
 
 set(wiola_ffmpeg_demuxers
-    aac;aiff;ape;asf;au;caf;flac;matroska;mov;mp3;mpc;mpc8;ogg;tta;wav;wv
+    aac;aiff;ape;asf;au;caf;flac;matroska;mov;mp3;mpc;mpc8;ogg;tta;w64;wav;wv
 )
 set(wiola_ffmpeg_decoders
     aac;alac;ape;flac;mp3;mpc7;mpc8;opus;tta;vorbis;wavpack;wmav1;wmav2
