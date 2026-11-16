@@ -4,11 +4,7 @@ add_subdirectory(decode)
 wiola_add_library(
     wiola_codec_provider
     SOURCES provider.cpp
-    LIBS wiola_codec_decode wiola_codec_tags
+    LIBS wiola_codec_decode wiola_codec_ffmpeg
 )
-target_link_libraries(wiola_codec_provider PRIVATE wiola_codec_ffmpeg)
 
-wiola_add_module(
-    wiola_codec
-    LIBS wiola_codec_decode wiola_codec_tags wiola_codec_provider
-)
+wiola_add_module(wiola_codec LIBS wiola_codec_decode wiola_codec_provider)

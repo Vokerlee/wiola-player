@@ -143,7 +143,7 @@ void TagReader::work(const std::stop_token& stop)
             reading_ = true;
         }
 
-        codec::Tags tags;
+        media::Metadata tags;
         bool failed{false};
 
         try {

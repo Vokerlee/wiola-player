@@ -30,61 +30,10 @@ FetchContent_Declare(
     FIND_PACKAGE_ARGS NAMES CLI11
 )
 
-# What a file says about itself, which every player needs and none should parse for itself: a
-# tag is a stranger's bytes, and this is the library everyone else's fuzzing has already been
-# through.
-set(wiola_saved_build_testing "${BUILD_TESTING}")
-set(wiola_saved_build_examples "${BUILD_EXAMPLES}")
-set(wiola_saved_build_bindings "${BUILD_BINDINGS}")
-set(wiola_saved_with_zlib "${WITH_ZLIB}")
-set(BUILD_TESTING OFF)
-set(BUILD_EXAMPLES OFF)
-set(BUILD_BINDINGS OFF)
-set(WITH_ZLIB OFF)
-
-FetchContent_Declare(
-    taglib
-    GIT_REPOSITORY https://github.com/taglib/taglib.git
-    GIT_TAG v2.0.2
-    GIT_SHALLOW TRUE
-)
-
-FetchContent_MakeAvailable(miniaudio taglib)
+FetchContent_MakeAvailable(miniaudio)
 if(WIOLA_BUILD_CLI)
     FetchContent_MakeAvailable(cli11)
 endif()
-
-set(BUILD_TESTING "${wiola_saved_build_testing}")
-set(BUILD_EXAMPLES "${wiola_saved_build_examples}")
-set(BUILD_BINDINGS "${wiola_saved_build_bindings}")
-set(WITH_ZLIB "${wiola_saved_with_zlib}")
-
-# Taglib's headers sit in a directory each and include one another by bare name, and it says
-# where they are only for a build that installs it. A build that fetches it has to say instead.
-file(GLOB_RECURSE wiola_taglib_headers "${taglib_SOURCE_DIR}/taglib/*.h")
-
-set(wiola_taglib_dirs "${taglib_SOURCE_DIR}" "${taglib_BINARY_DIR}")
-
-foreach(header IN LISTS wiola_taglib_headers)
-    get_filename_component(wiola_taglib_dir "${header}" DIRECTORY)
-    list(APPEND wiola_taglib_dirs "${wiola_taglib_dir}")
-endforeach()
-
-# Built into this program rather than beside it, which its headers have to be told: without this
-# they declare everything as coming from a library that is loaded, and nothing links on Windows.
-target_compile_definitions(tag INTERFACE TAGLIB_STATIC)
-
-list(REMOVE_DUPLICATES wiola_taglib_dirs)
-
-# Only for what is built here: taglib exports this target for installing, and a path into a build
-# directory is not one an installed target may carry.
-foreach(wiola_taglib_dir IN LISTS wiola_taglib_dirs)
-    target_include_directories(
-        tag
-        SYSTEM
-        INTERFACE "$<BUILD_INTERFACE:${wiola_taglib_dir}>"
-    )
-endforeach()
 
 # Nothing but the tests needs this, and a build without them should not go to the network for it.
 if(WIOLA_BUILD_TESTS)

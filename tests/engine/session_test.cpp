@@ -155,7 +155,7 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
                     .num_channels = 0})};
             return wiola::codec::Opened{std::move(decoder)};
         },
-        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
 
     EXPECT_EQ(session.open({"invalid.wav"}), OpenResult::loading);
     while (session.reading())
@@ -175,7 +175,7 @@ TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
             [](const std::filesystem::path&) {
                 return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::codec::Tags{}; },
+            [](const std::filesystem::path&) { return wiola::media::Metadata{}; },
             wiola::engine::TransportConfig{}, wiola::engine::BufferingConfig{.duration = duration}};
 
         session.open({"track.wav"});
@@ -687,7 +687,7 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
             opening.wait();
             return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
         },
-        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
 
     session.open({"late.wav"});
     opening.wait_until_entered();
@@ -712,7 +712,7 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
                 opening.wait();
             return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
         },
-        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
 
     session.open({"first.wav", second});
     ASSERT_TRUE(poll_until(session, [&session] { return session.loaded(); }));

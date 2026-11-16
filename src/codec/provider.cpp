@@ -21,7 +21,6 @@
 #include <codec/provider.hpp>
 
 #include <codec/backends/ffmpeg/metadata.hpp>
-#include <codec/backends/taglib/tags.hpp>
 #include <media/local_file_stream.hpp>
 
 #include <utility>
@@ -53,24 +52,7 @@ public:
             .seekable = (*decoder)->seekable()};
     }
 
-    media::Result<media::Metadata> read_metadata() override
-    {
-        media::Metadata metadata{read_tags(path_)};
-        auto fallback{ffmpeg::read_metadata(path_)};
-        if (fallback) {
-            if (metadata.track.title.empty())
-                metadata.track.title = std::move(fallback->track.title);
-            if (metadata.track.artist.empty())
-                metadata.track.artist = std::move(fallback->track.artist);
-            if (metadata.track.album.empty())
-                metadata.track.album = std::move(fallback->track.album);
-            if (!metadata.track.duration)
-                metadata.track.duration = fallback->track.duration;
-            if (metadata.artwork.empty())
-                metadata.artwork = std::move(fallback->artwork);
-        }
-        return metadata;
-    }
+    media::Result<media::Metadata> read_metadata() override { return ffmpeg::read_metadata(path_); }
 
     media::Result<std::unique_ptr<Decoder>> create_decoder() override
     {
