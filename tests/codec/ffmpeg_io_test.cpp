@@ -44,6 +44,7 @@ public:
         const std::size_t count{std::min(output.size(), bytes_.size() - cursor_)};
         std::copy_n(bytes_.begin() + static_cast<std::ptrdiff_t>(cursor_), count, output.begin());
         cursor_ += count;
+        bytes_read_ += count;
         return count;
     }
 
@@ -81,9 +82,12 @@ public:
 
     void oversized() noexcept { oversized_ = true; }
 
+    std::uint64_t bytes_read() const noexcept { return bytes_read_; }
+
 private:
     std::vector<std::byte> bytes_;
     std::size_t cursor_{0};
+    std::uint64_t bytes_read_{0};
     bool fail_reads_{false};
     bool fail_seeks_{false};
     bool oversized_{false};
@@ -216,6 +220,36 @@ TEST(FfmpegInspection, NeverSelectsAttachedArtworkAsAudio)
     ASSERT_TRUE(facts);
     EXPECT_EQ(facts->stream_index, 0U);
     EXPECT_EQ(facts->output.spec.num_channels, 2U);
+}
+
+TEST(FfmpegInspection, DoesNotScanLargeInputsDuringStartup)
+{
+    auto bytes{fixture_bytes()};
+    std::size_t data_marker{0};
+    for (std::size_t index{0}; index + 4 <= bytes.size(); ++index) {
+        if (std::memcmp(bytes.data() + index, "data", 4) == 0) {
+            data_marker = index;
+            break;
+        }
+    }
+    ASSERT_NE(data_marker, 0U);
+    const std::size_t payload_offset{data_marker + 8};
+    bytes.resize(1024 * 1024);
+    const auto write_size{[&](std::size_t offset, std::size_t value) {
+        for (std::size_t byte{0}; byte < 4; ++byte)
+            bytes[offset + byte] = static_cast<std::byte>(value >> (byte * 8));
+    }};
+    write_size(4, bytes.size() - 8);
+    write_size(data_marker + 4, bytes.size() - payload_offset);
+    auto stream{std::make_unique<FaultyStream>(std::move(bytes))};
+    auto* observer{stream.get()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+
+    auto facts{(*input)->inspect()};
+
+    ASSERT_TRUE(facts);
+    EXPECT_LT(observer->bytes_read(), 1024U * 1024U / 2U);
 }
 
 } // namespace
