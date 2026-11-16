@@ -142,7 +142,7 @@ TEST(MediaBackendRegistry, DescriptorCopiesOwnTheirIdentityAndProbeData)
     const wiola::codec::MediaBackendRegistry registry{{backend}};
 
     EXPECT_EQ(registry.backends().front().name, "Dynamically qualified fake");
-    EXPECT_EQ(registry.backends().front().extensions.front(), ".fake");
+    EXPECT_EQ(registry.backends().front().formats.front().extensions.front(), ".fake");
     EXPECT_TRUE(registry.open(fake_file()));
     EXPECT_EQ(attempts, 1);
 }
@@ -164,6 +164,40 @@ TEST(MediaBackendRegistry, RecognizedUnsupportedEncodingIsNotReportedAsDamage)
     ASSERT_FALSE(decoder);
     EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::unsupported);
     EXPECT_EQ(decoder.error().detail, "recognized container has an unsupported codec");
+}
+
+TEST(MediaBackendRegistry, MultipleFormatsShareOneBackendProbe)
+{
+    int attempts{0};
+    const std::array formats{fake_backend(attempts), fake_backend(attempts)};
+    const wiola::codec::Backend backend{"Combined fake", formats,
+        [&attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+            ++attempts;
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::not_mine,
+                                    .detail = "not fake"}
+            };
+        }};
+    const wiola::codec::MediaBackendRegistry registry{{backend}};
+
+    auto decoder{registry.open(fake_file())};
+
+    ASSERT_FALSE(decoder);
+    EXPECT_EQ(attempts, 1);
+}
+
+TEST(MediaBackendRegistry, CancellationIsObservableBeforeBackendOpening)
+{
+    int attempts{0};
+    const wiola::codec::MediaBackendRegistry registry{{fake_backend(attempts)}};
+    std::stop_source cancelled;
+    cancelled.request_stop();
+
+    auto decoder{registry.open(fake_file(), cancelled.get_token())};
+
+    ASSERT_FALSE(decoder);
+    EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::cancelled);
+    EXPECT_EQ(attempts, 0);
 }
 
 } // namespace

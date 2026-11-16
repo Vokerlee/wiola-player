@@ -53,7 +53,7 @@ MediaBackendRegistry::MediaBackendRegistry()
 {
 }
 
-MediaBackendRegistry::MediaBackendRegistry(std::vector<Format> backends, std::size_t max_attempts)
+MediaBackendRegistry::MediaBackendRegistry(std::vector<Backend> backends, std::size_t max_attempts)
     : backends_{std::move(backends)}
     , max_attempts_{max_attempts}
 {
@@ -64,16 +64,18 @@ MediaBackendRegistry::MediaBackendRegistry(std::vector<Format> backends, std::si
 std::vector<std::string> MediaBackendRegistry::playback_extensions() const
 {
     std::vector<std::string> extensions;
-    for (const Format& backend : backends_) {
+    for (const Backend& backend : backends_) {
         if (!backend.capabilities.playback)
             continue;
-        for (const std::string_view extension : backend.extensions)
-            extensions.emplace_back(extension);
+        for (const Format& format : backend.formats)
+            for (const std::string& extension : format.extensions)
+                extensions.push_back(extension);
     }
     return extensions;
 }
 
-Opened MediaBackendRegistry::open(const std::filesystem::path& path) const
+Opened MediaBackendRegistry::open(const std::filesystem::path& path,
+    std::stop_token cancelled) const
 {
     const media::FileFacts facts{.path = path, .extension = lowercased_extension(path)};
     auto probe{media::LocalFileStream::open(facts.path)};
@@ -97,9 +99,16 @@ Opened MediaBackendRegistry::open(const std::filesystem::path& path) const
     std::optional<media::Error> failure;
 
     for (const Match reason : reasons) {
-        for (const Format& format : backends_) {
-            if (!format.capabilities.playback || match_of(format, *head, facts.extension) != reason)
+        for (const Backend& backend : backends_) {
+            if (!backend.capabilities.playback ||
+                match_of(backend, *head, facts.extension) != reason)
                 continue;
+
+            if (cancelled.stop_requested())
+                return media::unexpected{
+                    media::Error{.category = media::ErrorCategory::cancelled,
+                                 .detail = "media probe cancelled"}
+                };
 
             if (attempts++ == max_attempts_)
                 return media::unexpected{
@@ -109,7 +118,7 @@ Opened MediaBackendRegistry::open(const std::filesystem::path& path) const
 
             claimed = claimed || reason == Match::signature;
 
-            auto opened{format.open(path)};
+            auto opened{backend.open(path)};
             if (opened)
                 return opened;
 

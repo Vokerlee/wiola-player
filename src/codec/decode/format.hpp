@@ -96,6 +96,30 @@ struct Format {
     BackendCapabilities capabilities{};
 };
 
+struct Backend {
+    Backend(Format format)
+        : name{format.name}
+        , open{format.open}
+        , capabilities{format.capabilities}
+        , formats{std::move(format)}
+    {
+    }
+
+    Backend(std::string name, std::span<const Format> formats, Format::OpenFunction open,
+        BackendCapabilities capabilities = {})
+        : name{std::move(name)}
+        , open{std::move(open)}
+        , capabilities{capabilities}
+        , formats{formats.begin(), formats.end()}
+    {
+    }
+
+    std::string name;
+    Format::OpenFunction open;
+    BackendCapabilities capabilities{};
+    std::vector<Format> formats;
+};
+
 /// Why a format is worth trying, best reason first. Ordering the attempts is the whole of format
 /// detection: a file is this format if the format's own reader accepts it, and nothing else.
 enum class Match {
@@ -115,6 +139,8 @@ inline constexpr std::array reasons{
 
 /// Why `format` is worth trying for a file with this head and this `extension`.
 [[nodiscard]] Match match_of(const Format& format, const FileHead& head,
+    std::string_view extension);
+[[nodiscard]] Match match_of(const Backend& backend, const FileHead& head,
     std::string_view extension);
 
 } // namespace wiola::codec
