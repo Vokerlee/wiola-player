@@ -37,7 +37,7 @@ public:
     struct Reading {
         std::vector<QueueEntryId> entries;
         std::filesystem::path path;
-        codec::Tags tags;
+        media::Metadata tags;
         bool failed{false};
     };
 

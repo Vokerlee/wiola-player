@@ -54,7 +54,7 @@ TEST(MetadataCoordinator, CoalescesDuplicatePathsWithoutMergingEntryIdentity)
     std::atomic<std::size_t> num_reads{0};
     MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
         ++num_reads;
-        return wiola::codec::Tags{};
+        return wiola::media::Metadata{};
     }};
 
     coordinator.replace(playlist.tracks());
@@ -76,7 +76,7 @@ TEST(MetadataCoordinator, DropsAnObsoleteGenerationAfterItsPhysicalRead)
     MetadataCoordinator coordinator{[&opening](const std::filesystem::path& path) {
         if (path == "old.wav")
             opening.wait();
-        return wiola::codec::Tags{};
+        return wiola::media::Metadata{};
     }};
 
     coordinator.replace(old_queue.tracks());
@@ -95,7 +95,7 @@ TEST(MetadataCoordinator, RejectsAnOversizedBatchBeforeAcceptingAny)
     Playlist playlist;
     playlist.set({Track::of("first.wav"), Track::of("second.wav")});
     MetadataCoordinator coordinator{
-        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }, 1, 1};
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }, 1, 1};
 
     EXPECT_THROW(coordinator.replace(playlist.tracks()), std::length_error);
     EXPECT_FALSE(coordinator.busy());

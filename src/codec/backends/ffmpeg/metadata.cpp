@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Private bounded FFmpeg metadata and attached-artwork fallback.
+ * @brief Private bounded FFmpeg metadata and attached-artwork reader.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  */

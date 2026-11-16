@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <codec/backends/taglib/tags.hpp>
 #include <core/macros.hpp>
 #include <engine/queue/track.hpp>
 #include <media/provider.hpp>
@@ -36,7 +35,7 @@
 
 namespace wiola::engine {
 
-using MetadataReader = std::function<codec::Tags(const std::filesystem::path&)>;
+using MetadataReader = std::function<media::Metadata(const std::filesystem::path&)>;
 
 /// Bounded tag worker. Oversized batches are rejected before any partial batch is accepted.
 class TagReader {
@@ -51,7 +50,7 @@ public:
         std::uint64_t generation{0};
         QueueEntryId id;
         std::filesystem::path path;
-        codec::Tags tags;
+        media::Metadata tags;
         bool failed{false};
     };
 

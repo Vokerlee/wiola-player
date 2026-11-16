@@ -51,7 +51,7 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
                 std::make_unique<wiola::testing::FakeDecoder>()};
             return decoder;
         },
-        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
 
     service.open({"track.wav"});
     while (service.reading())
@@ -94,7 +94,7 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
                 std::make_unique<wiola::testing::FakeDecoder>()};
             return decoder;
         },
-        [](const std::filesystem::path&) { return wiola::codec::Tags{}; }};
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
 
     service.open({"headless.wav"});
     while (service.reading())

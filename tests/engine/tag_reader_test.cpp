@@ -31,7 +31,7 @@
 
 namespace {
 
-using wiola::codec::Tags;
+using Tags = wiola::media::Metadata;
 using wiola::engine::TagReader;
 using wiola::testing::Gate;
 
