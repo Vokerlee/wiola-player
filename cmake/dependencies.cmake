@@ -3,9 +3,7 @@
 
 include(FetchContent)
 
-if(WIOLA_ENABLE_FFMPEG)
-    include(ffmpeg)
-endif()
+include(ffmpeg)
 
 # Dependency option() calls must honor the scoped normal variables set below.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
@@ -32,15 +30,6 @@ FetchContent_Declare(
     FIND_PACKAGE_ARGS NAMES CLI11
 )
 
-FetchContent_Declare(
-    dr_libs
-    GIT_REPOSITORY https://github.com/mackron/dr_libs.git
-    # The repository tags each decoder on its own and holds all three in one tree, so any one
-    # tag pins the other two as they stood beside it.
-    GIT_TAG wav-0.14.5
-    GIT_SHALLOW TRUE
-)
-
 # What a file says about itself, which every player needs and none should parse for itself: a
 # tag is a stranger's bytes, and this is the library everyone else's fuzzing has already been
 # through.
@@ -60,7 +49,7 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(miniaudio dr_libs taglib)
+FetchContent_MakeAvailable(miniaudio taglib)
 if(WIOLA_BUILD_CLI)
     FetchContent_MakeAvailable(cli11)
 endif()

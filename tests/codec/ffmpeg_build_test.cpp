@@ -35,6 +35,7 @@ TEST(FfmpegBuild, PinsTheAuditedReleaseAndRequiredComponents)
         AV_CODEC_ID_ALAC,
         AV_CODEC_ID_APE,
         AV_CODEC_ID_FLAC,
+        AV_CODEC_ID_MP2,
         AV_CODEC_ID_MP3,
         AV_CODEC_ID_MUSEPACK7,
         AV_CODEC_ID_MUSEPACK8,
@@ -50,7 +51,7 @@ TEST(FfmpegBuild, PinsTheAuditedReleaseAndRequiredComponents)
     for (const AVCodecID codec : codecs)
         EXPECT_NE(avcodec_find_decoder(codec), nullptr) << avcodec_get_name(codec);
 
-    constexpr std::array<std::string_view, 16> demuxers{
+    constexpr std::array<std::string_view, 17> demuxers{
         "aac",
         "aiff",
         "ape",
@@ -65,6 +66,7 @@ TEST(FfmpegBuild, PinsTheAuditedReleaseAndRequiredComponents)
         "mpc8",
         "ogg",
         "tta",
+        "w64",
         "wav",
         "wv",
     };

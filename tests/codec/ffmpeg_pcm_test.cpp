@@ -5,7 +5,6 @@
  * @copyright © 2026, <vokerlee@gmail.com>
  */
 
-#include <codec/backends/dr_libs/wav_reader.hpp>
 #include <codec/backends/ffmpeg/decoder.hpp>
 #include <codec/backends/ffmpeg/pcm_converter.hpp>
 
@@ -184,11 +183,13 @@ wiola::media::Result<std::vector<float>> decode_all(wiola::codec::Decoder& decod
     };
 }
 
-TEST(FfmpegDecoder, MatchesTheReferenceWavReaderWithTinyBlocks)
+TEST(FfmpegDecoder, MatchesAnIndependentlyEncodedPcmFixtureWithTinyBlocks)
 {
     const std::filesystem::path path{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"};
     auto broad{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
-    auto reference{wiola::codec::WavReader::open(path)};
+    auto reference{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone-s16be.aiff"
+    )};
     ASSERT_TRUE(broad);
     ASSERT_TRUE(reference);
 
@@ -276,6 +277,30 @@ TEST(FfmpegDecoder, AacSeekMatchesItsSequentialAudibleTimeline)
         filled += (*decoder)->spec().samples_per(actual->frames);
     }
     EXPECT_TRUE(std::equal(output.begin(), output.end(), expected->begin() + 1000 * 2));
+}
+
+TEST(FfmpegDecoder, FlacAndMpegSeeksMatchSequentialDecoding)
+{
+    for (const char* name : {"tone.flac", "tone.mp2", "tone.mp3"}) {
+        const std::filesystem::path path{std::filesystem::path{WIOLA_TEST_DATA_DIR} / name};
+        auto reference{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+        auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(path)};
+        ASSERT_TRUE(reference) << name;
+        ASSERT_TRUE(decoder) << name;
+        auto expected{decode_all(**reference)};
+        ASSERT_TRUE(expected) << name;
+        ASSERT_TRUE((*decoder)->seek(wiola::pcm::Frames{1000})) << name;
+        std::array<float, 128> output{};
+        std::size_t filled{0};
+        while (filled < output.size()) {
+            auto actual{(*decoder)->read(std::span{output}.subspan(filled))};
+            ASSERT_TRUE(actual) << name;
+            ASSERT_GT(actual->frames, wiola::pcm::Frames{}) << name;
+            filled += (*decoder)->spec().samples_per(actual->frames);
+        }
+        for (std::size_t index{0}; index < output.size(); ++index)
+            EXPECT_NEAR(output[index], (*expected)[2000 + index], 0.0001F) << name;
+    }
 }
 
 } // namespace
