@@ -84,6 +84,29 @@ skips fetching GoogleTest.
 Changing the compiler or `QT_MINGW_ROOT` after a successful configure does nothing, because both
 are already recorded in the cache. Delete the build directory and configure again.
 
+## Source file headers
+
+Every first-party C/C++ source and header file, including tests, must carry the complete GPL notice
+in its file header. Copyright-only or otherwise abbreviated headers are not accepted. Use ASCII for
+the copyright line: `@copyright (c) 2026, <vokerlee@gmail.com>`. Copy this block verbatim after the
+`@copyright` line:
+
+```cpp
+ *
+ * Wiola is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Wiola is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
+```
+
 ## Formatting
 
 Only the scripts. Never `clang-format` or `gersemi` by hand - they format what the scripts choose,

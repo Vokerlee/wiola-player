@@ -2,7 +2,7 @@
  * @file
  * @brief Application-level open status, including asynchronous loading.
  * @author Roman Glaz
- * @copyright © 2026, <vokerlee@gmail.com>
+ * @copyright (c) 2026, <vokerlee@gmail.com>
  *
  * Wiola is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
