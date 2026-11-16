@@ -35,7 +35,10 @@ bool has_exact_sample_count(AVCodecID codec)
 {
     switch (codec) {
     case AV_CODEC_ID_ALAC:
+    case AV_CODEC_ID_APE:
     case AV_CODEC_ID_FLAC:
+    case AV_CODEC_ID_TTA:
+    case AV_CODEC_ID_WAVPACK:
     case AV_CODEC_ID_PCM_ALAW:
     case AV_CODEC_ID_PCM_MULAW:
     case AV_CODEC_ID_PCM_S8:

@@ -83,6 +83,15 @@ Backend backend()
         Marker{0, "RF64"},
         Marker{8, "WAVE"}
     };
+    static const std::array wavpack_markers{
+        Marker{0, "wvpk"}
+    };
+    static const std::array ape_markers{
+        Marker{0, "MAC "}
+    };
+    static const std::array tta_markers{
+        Marker{0, "TTA1"}
+    };
     static constexpr std::array<std::string_view, 3> ogg_extensions{".ogg", ".oga", ".opus"};
     static constexpr std::array<std::string_view, 2> mp4_extensions{".m4a", ".mp4"};
     static constexpr std::array<std::string_view, 1> adts_extensions{".aac"};
@@ -92,16 +101,22 @@ Backend backend()
     static constexpr std::array<std::string_view, 1> caf_extensions{".caf"};
     static constexpr std::array<std::string_view, 1> w64_extensions{".w64"};
     static constexpr std::array<std::string_view, 1> rf64_extensions{".rf64"};
+    static constexpr std::array<std::string_view, 1> wavpack_extensions{".wv"};
+    static constexpr std::array<std::string_view, 1> ape_extensions{".ape"};
+    static constexpr std::array<std::string_view, 1> tta_extensions{".tta"};
     static const std::array formats{
-        Format{"Ogg Vorbis/Opus",     ogg_markers,               ogg_extensions,  {}},
-        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers,               mp4_extensions,  {}},
-        Format{"ADTS AAC-LC",         std::span<const Marker>{}, adts_extensions, {}},
-        Format{"AIFF PCM",            aiff_markers,              aiff_extensions, {}},
-        Format{"AIFC PCM",            aifc_markers,              aifc_extensions, {}},
-        Format{"AU PCM",              au_markers,                au_extensions,   {}},
-        Format{"CAF PCM",             caf_markers,               caf_extensions,  {}},
-        Format{"Wave64 PCM",          w64_markers,               w64_extensions,  {}},
-        Format{"RF64 PCM",            rf64_markers,              rf64_extensions, {}}
+        Format{"Ogg Vorbis/Opus",     ogg_markers,               ogg_extensions,     {}},
+        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers,               mp4_extensions,     {}},
+        Format{"ADTS AAC-LC",         std::span<const Marker>{}, adts_extensions,    {}},
+        Format{"AIFF PCM",            aiff_markers,              aiff_extensions,    {}},
+        Format{"AIFC PCM",            aifc_markers,              aifc_extensions,    {}},
+        Format{"AU PCM",              au_markers,                au_extensions,      {}},
+        Format{"CAF PCM",             caf_markers,               caf_extensions,     {}},
+        Format{"Wave64 PCM",          w64_markers,               w64_extensions,     {}},
+        Format{"RF64 PCM",            rf64_markers,              rf64_extensions,    {}},
+        Format{"WavPack",             wavpack_markers,           wavpack_extensions, {}},
+        Format{"Monkey's Audio",      ape_markers,               ape_extensions,     {}},
+        Format{"TTA",                 tta_markers,               tta_extensions,     {}}
     };
     return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
                        auto decoder{FfmpegDecoder::open(path)};
