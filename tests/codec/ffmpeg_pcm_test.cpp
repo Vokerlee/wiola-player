@@ -7,6 +7,7 @@
 
 #include <codec/backends/dr_libs/wav_reader.hpp>
 #include <codec/backends/ffmpeg/decoder.hpp>
+#include <codec/backends/ffmpeg/pcm_converter.hpp>
 
 #include <gtest/gtest.h>
 

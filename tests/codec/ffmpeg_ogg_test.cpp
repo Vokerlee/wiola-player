@@ -1,0 +1,104 @@
+/**
+ * @file
+ * @brief Provider-level Ogg Vorbis and Ogg Opus qualification.
+ * @author Roman Glaz
+ * @copyright © 2026, <vokerlee@gmail.com>
+ */
+
+#include <codec/provider.hpp>
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <array>
+#include <filesystem>
+#include <tuple>
+#include <vector>
+
+namespace {
+
+wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder)
+{
+    std::vector<float> samples;
+    std::array<float, 126> block{};
+    for (int calls{0}; calls < 10000; ++calls) {
+        auto read{decoder.read(block)};
+        if (!read)
+            return wiola::media::unexpected{read.error()};
+        const std::size_t count{decoder.spec().samples_per(read->frames)};
+        samples.insert(samples.end(), block.begin(),
+            block.begin() + static_cast<std::ptrdiff_t>(count));
+        if (read->end_of_stream)
+            return samples;
+    }
+    return wiola::media::unexpected{
+        wiola::media::Error{.category = wiola::media::ErrorCategory::limit_exceeded,
+                            .detail = "Ogg decode did not finish"}
+    };
+}
+
+wiola::codec::Opened open_ogg(const char* name)
+{
+    wiola::codec::MediaBackendRegistry registry;
+    return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
+}
+
+TEST(OggQualification, VorbisAndOpusDecodeThroughOneProviderWithCorrectRates)
+{
+    wiola::codec::LocalMediaProvider provider;
+    for (const auto& [name, rate, frames] : {
+             // Lossy qualification follows FFmpeg's independent decoded timeline.
+             std::tuple{"tone-vorbis.ogg", 44100, 10897},
+             std::tuple{"tone.opus",       48000, 12000},
+    }) {
+        auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        ASSERT_TRUE(asset) << name;
+        auto decoder{(*asset)->create_decoder()};
+        ASSERT_TRUE(decoder) << name;
+        EXPECT_EQ((*decoder)->spec().sample_rate, wiola::units::Frequency{rate}) << name;
+        auto samples{read_all(**decoder)};
+        ASSERT_TRUE(samples) << name;
+        EXPECT_EQ(samples->size(), static_cast<std::size_t>(frames) * 2U) << name;
+
+        auto metadata{(*asset)->read_metadata()};
+        ASSERT_TRUE(metadata) << name;
+        EXPECT_EQ(metadata->track.artist, "Исполнитель") << name;
+        EXPECT_FALSE(metadata->track.title.empty()) << name;
+    }
+}
+
+TEST(OggQualification, SeeksMatchSequentialVorbisAndOpusSamples)
+{
+    for (const char* name : {"tone-vorbis.ogg", "tone.opus"}) {
+        auto reference{open_ogg(name)};
+        auto sought{open_ogg(name)};
+        ASSERT_TRUE(reference) << name;
+        ASSERT_TRUE(sought) << name;
+        auto expected{read_all(**reference)};
+        ASSERT_TRUE(expected) << name;
+        ASSERT_TRUE((*sought)->seek(wiola::pcm::Frames{1000})) << name;
+
+        std::array<float, 128> output{};
+        std::size_t filled{0};
+        while (filled < output.size()) {
+            auto read{(*sought)->read(std::span{output}.subspan(filled))};
+            ASSERT_TRUE(read) << name;
+            ASSERT_GT(read->frames, wiola::pcm::Frames{}) << name;
+            filled += (*sought)->spec().samples_per(read->frames);
+        }
+        EXPECT_TRUE(std::equal(output.begin(), output.end(), expected->begin() + 2000)) << name;
+    }
+}
+
+TEST(OggQualification, RejectsAChainedRateChangeInsteadOfMixingPcmShapes)
+{
+    auto decoder{open_ogg("chained-rate-change.ogg")};
+    ASSERT_TRUE(decoder);
+
+    auto samples{read_all(**decoder)};
+
+    ASSERT_FALSE(samples);
+    EXPECT_EQ(samples.error().category, wiola::media::ErrorCategory::unsupported);
+}
+
+} // namespace

@@ -32,10 +32,16 @@ TEST(BackendQualification, AdvertisesOnlyTheCurrentlyVerifiedPlaybackSet)
     std::vector<std::string> extensions{registry.playback_extensions()};
     std::ranges::sort(extensions);
 
+#ifdef WIOLA_ENABLE_FFMPEG
+    EXPECT_EQ(extensions,
+        (std::vector<std::string>{".flac", ".mp2", ".mp3", ".mpga", ".oga", ".ogg", ".opus", ".wav",
+            ".wave"}));
+    ASSERT_EQ(registry.backends().size(), 4U);
+#else
     EXPECT_EQ(extensions,
         (std::vector<std::string>{".flac", ".mp2", ".mp3", ".mpga", ".wav", ".wave"}));
-
     ASSERT_EQ(registry.backends().size(), 3U);
+#endif
     for (const auto& backend : registry.backends()) {
         EXPECT_TRUE(backend.capabilities.playback);
         EXPECT_TRUE(backend.capabilities.metadata);

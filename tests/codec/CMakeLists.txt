@@ -26,6 +26,12 @@ if(WIOLA_ENABLE_FFMPEG)
         DATA "${fixtures}"
     )
     wiola_add_test(
+        codec_ffmpeg_ogg_test
+        SOURCES ffmpeg_ogg_test.cpp
+        LIBS wiola_codec wiola_codec_ffmpeg wiola_ffmpeg
+        DATA "${fixtures}"
+    )
+    wiola_add_test(
         codec_ffmpeg_metadata_test
         SOURCES ffmpeg_metadata_test.cpp
         LIBS wiola_codec_ffmpeg wiola_codec_provider wiola_ffmpeg
@@ -68,6 +74,12 @@ wiola_add_test(
     SOURCES backend_qualification_test.cpp
     LIBS wiola_codec
 )
+if(WIOLA_ENABLE_FFMPEG)
+    target_compile_definitions(
+        codec_backend_qualification_test
+        PRIVATE WIOLA_ENABLE_FFMPEG=1
+    )
+endif()
 wiola_add_test(
     codec_provider_test
     SOURCES provider_test.cpp

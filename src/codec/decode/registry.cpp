@@ -23,6 +23,9 @@
 #include <codec/backends/dr_libs/flac_reader.hpp>
 #include <codec/backends/dr_libs/mp3_reader.hpp>
 #include <codec/backends/dr_libs/wav_reader.hpp>
+#ifdef WIOLA_ENABLE_FFMPEG
+#include <codec/backends/ffmpeg/decoder.hpp>
+#endif
 
 #include <media/local_file_stream.hpp>
 
@@ -44,12 +47,19 @@ std::string lowercased_extension(const std::filesystem::path& path)
     return extension;
 }
 
+std::vector<Backend> default_backends()
+{
+    std::vector<Backend> backends{WavReader::format(), FlacReader::format(), Mp3Reader::format()};
+#ifdef WIOLA_ENABLE_FFMPEG
+    backends.push_back(ffmpeg::backend());
+#endif
+    return backends;
+}
+
 } // namespace
 
 MediaBackendRegistry::MediaBackendRegistry()
-    : MediaBackendRegistry{
-          {WavReader::format(), FlacReader::format(), Mp3Reader::format()}
-}
+    : MediaBackendRegistry{default_backends()}
 {
 }
 
