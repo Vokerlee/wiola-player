@@ -98,6 +98,10 @@ Backend backend()
     static const std::array ebml_markers{
         Marker{0, "\x1a\x45\xdf\xa3"}
     };
+    static const std::array wav_markers{
+        Marker{0, "RIFF"},
+        Marker{8, "WAVE"}
+    };
     static constexpr std::array<std::string_view, 3> ogg_extensions{".ogg", ".oga", ".opus"};
     static constexpr std::array<std::string_view, 2> mp4_extensions{".m4a", ".mp4"};
     static constexpr std::array<std::string_view, 1> adts_extensions{".aac"};
@@ -112,6 +116,7 @@ Backend backend()
     static constexpr std::array<std::string_view, 1> tta_extensions{".tta"};
     static constexpr std::array<std::string_view, 1> asf_extensions{".wma"};
     static constexpr std::array<std::string_view, 2> ebml_extensions{".mka", ".webm"};
+    static constexpr std::array<std::string_view, 2> wav_extensions{".wav", ".wave"};
     static const std::array formats{
         Format{"Ogg Vorbis/Opus",           ogg_markers,               ogg_extensions,     {}},
         Format{"MP4/M4A AAC-LC/ALAC",       mp4_markers,               mp4_extensions,     {}},
@@ -126,7 +131,8 @@ Backend backend()
         Format{"Monkey's Audio",            ape_markers,               ape_extensions,     {}},
         Format{"TTA",                       tta_markers,               tta_extensions,     {}},
         Format{"ASF WMAv2",                 asf_markers,               asf_extensions,     {}},
-        Format{"Matroska/WebM Vorbis/Opus", ebml_markers,              ebml_extensions,    {}}
+        Format{"Matroska/WebM Vorbis/Opus", ebml_markers,              ebml_extensions,    {}},
+        Format{"WAV PCM",                   wav_markers,               wav_extensions,     {}}
     };
     return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
                        auto decoder{FfmpegDecoder::open(path)};

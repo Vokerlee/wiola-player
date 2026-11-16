@@ -7,6 +7,8 @@
 
 #include "input.hpp"
 
+#include "qualification.hpp"
+
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/error.h>
@@ -186,8 +188,13 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
         if (parameters->codec_type != AVMEDIA_TYPE_AUDIO)
             continue;
         saw_audio = true;
-        if (!avcodec_find_decoder(parameters->codec_id) || parameters->sample_rate <= 0 ||
-            !semantic_channel_layout(parameters->ch_layout))
+        const AVCodec* decoder{avcodec_find_decoder(parameters->codec_id)};
+        const char* profile{
+            decoder ? avcodec_profile_name(parameters->codec_id, parameters->profile) : nullptr};
+        if (!decoder || parameters->sample_rate <= 0 ||
+            !semantic_channel_layout(parameters->ch_layout) ||
+            !is_qualified(format_->iformat->name, avcodec_get_name(parameters->codec_id),
+                profile ? profile : ""))
             continue;
         if (!selected ||
             (!(selected->disposition & AV_DISPOSITION_DEFAULT) &&

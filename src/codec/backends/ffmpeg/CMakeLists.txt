@@ -6,5 +6,6 @@ wiola_add_library(
         metadata.cpp
         packet_decoder.cpp
         pcm_converter.cpp
+        qualification.cpp
     LIBS wiola_media wiola_ffmpeg
 )

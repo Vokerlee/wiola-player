@@ -90,6 +90,23 @@ TEST(Mp3Reader, ReadsFormatAndSamples)
     EXPECT_TRUE((*reader)->exhausted());
 }
 
+TEST(Mp3Reader, QualifiesMpegLayerIIIndependently)
+{
+    auto reader{Mp3Reader::open(fixture("tone.mp2"))};
+
+    ASSERT_TRUE(reader);
+    EXPECT_EQ((*reader)->spec().sample_rate, wiola::units::Frequency{44100});
+    EXPECT_EQ((*reader)->spec().num_channels, 2U);
+    EXPECT_GT((*reader)->num_frames(), Frames{});
+    auto reference{Mp3Reader::open(fixture("tone.mp2"))};
+    ASSERT_TRUE(reference);
+    const auto expected{read_frames(**reference, 1064)};
+    EXPECT_EQ(drain(**reader), (*reader)->spec().samples_per((*reader)->num_frames()));
+    ASSERT_TRUE((*reader)->seek(Frames{1000}));
+    EXPECT_EQ(read_frames(**reader, 64),
+        (std::vector<float>{expected.begin() + 2000, expected.begin() + 2128}));
+}
+
 TEST(Mp3Reader, RejectsWhatIsNotMp3)
 {
     EXPECT_FALSE(Mp3Reader::open("/nonexistent/wiola.mp3"));
