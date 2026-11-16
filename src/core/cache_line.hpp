@@ -2,7 +2,7 @@
  * @file
  * @brief Cache line size used to keep independently written data off a shared line.
  * @author Roman Glaz
- * @copyright © 2026, <vokerlee@gmail.com>
+ * @copyright (c) 2026, <vokerlee@gmail.com>
  *
  * Wiola is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

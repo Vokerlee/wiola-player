@@ -2,7 +2,7 @@
  * @file
  * @brief Declarations that are written the same way every time.
  * @author Roman Glaz
- * @copyright © 2026, <vokerlee@gmail.com>
+ * @copyright (c) 2026, <vokerlee@gmail.com>
  *
  * Wiola is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
