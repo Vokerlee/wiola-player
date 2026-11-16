@@ -1,5 +1,2 @@
-add_subdirectory(dr_libs)
-if(WIOLA_ENABLE_FFMPEG)
-    add_subdirectory(ffmpeg)
-endif()
+add_subdirectory(ffmpeg)
 add_subdirectory(taglib)

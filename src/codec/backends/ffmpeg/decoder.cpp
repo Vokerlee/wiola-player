@@ -102,6 +102,9 @@ Backend backend()
         Marker{0, "RIFF"},
         Marker{8, "WAVE"}
     };
+    static const std::array flac_markers{
+        Marker{0, "fLaC"}
+    };
     static constexpr std::array<std::string_view, 3> ogg_extensions{".ogg", ".oga", ".opus"};
     static constexpr std::array<std::string_view, 2> mp4_extensions{".m4a", ".mp4"};
     static constexpr std::array<std::string_view, 1> adts_extensions{".aac"};
@@ -117,6 +120,8 @@ Backend backend()
     static constexpr std::array<std::string_view, 1> asf_extensions{".wma"};
     static constexpr std::array<std::string_view, 2> ebml_extensions{".mka", ".webm"};
     static constexpr std::array<std::string_view, 2> wav_extensions{".wav", ".wave"};
+    static constexpr std::array<std::string_view, 1> flac_extensions{".flac"};
+    static constexpr std::array<std::string_view, 3> mpeg_extensions{".mp2", ".mp3", ".mpga"};
     static const std::array formats{
         Format{"Ogg Vorbis/Opus",           ogg_markers,               ogg_extensions,     {}},
         Format{"MP4/M4A AAC-LC/ALAC",       mp4_markers,               mp4_extensions,     {}},
@@ -132,7 +137,9 @@ Backend backend()
         Format{"TTA",                       tta_markers,               tta_extensions,     {}},
         Format{"ASF WMAv2",                 asf_markers,               asf_extensions,     {}},
         Format{"Matroska/WebM Vorbis/Opus", ebml_markers,              ebml_extensions,    {}},
-        Format{"WAV PCM",                   wav_markers,               wav_extensions,     {}}
+        Format{"WAV PCM",                   wav_markers,               wav_extensions,     {}},
+        Format{"FLAC",                      flac_markers,              flac_extensions,    {}},
+        Format{"MPEG audio Layer II/III",   std::span<const Marker>{}, mpeg_extensions,    {}}
     };
     return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
                        auto decoder{FfmpegDecoder::open(path)};
@@ -275,7 +282,10 @@ media::Result<DecodeOutcome> FfmpegDecoder::decode(std::span<float> output, pcm:
 media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
 {
     std::int64_t timestamp_offset{0};
-    auto first{packets_->next_frame()};
+    auto probe{FfmpegDecoder::open(path_)};
+    if (!probe)
+        return media::unexpected{probe.error()};
+    auto first{(*probe)->packets_->next_frame()};
     if (!first)
         return media::unexpected{first.error()};
     if (first->end_of_stream)
@@ -301,14 +311,21 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
         (origin < 0 && timestamp < std::numeric_limits<std::int64_t>::min() - origin))
         return media::unexpected{seek_error("seek timestamp overflow")};
     timestamp += origin;
-    if (av_seek_frame(input_->format(), static_cast<int>(stream_index_), timestamp,
-            AVSEEK_FLAG_BACKWARD) < 0)
-        return media::unexpected{seek_error("FFmpeg demuxer rejected the seek")};
+    std::optional<std::int64_t> sequential_position;
+    if (stream->codecpar->codec_id == AV_CODEC_ID_MP3)
+        sequential_position = 0;
+    if (!sequential_position &&
+        av_seek_frame(input_->format(), static_cast<int>(stream_index_), timestamp,
+            AVSEEK_FLAG_BACKWARD) < 0) {
+        if (av_seek_frame(input_->format(), static_cast<int>(stream_index_), origin,
+                AVSEEK_FLAG_BACKWARD) < 0)
+            return media::unexpected{seek_error("FFmpeg demuxer rejected the seek")};
+        sequential_position = 0;
+    }
 
     packets_->reset_after_seek();
     converter_->reset();
     source_ended_ = false;
-    std::optional<std::int64_t> sequential_position;
 
     if (length_accuracy() == LengthAccuracy::exact && target == num_frames())
         return target;

@@ -182,7 +182,9 @@ TEST(AudioDecoder, EveryBackendReportsWholeFrameProgressAndExplicitEnd)
             ended = read->end_of_stream;
         }
 
-        EXPECT_EQ(total, (*decoder)->num_frames()) << name;
+        EXPECT_GT(total, wiola::pcm::Frames{}) << name;
+        if ((*decoder)->length_accuracy() == wiola::codec::LengthAccuracy::exact)
+            EXPECT_EQ(total, (*decoder)->num_frames()) << name;
     }
 }
 

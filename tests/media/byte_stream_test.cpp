@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Contract tests for seekable byte streams and decoder callbacks.
+ * @brief Contract tests for seekable byte streams.
  * @author Roman Glaz
  * @copyright © 2026, <vokerlee@gmail.com>
  *
@@ -17,8 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <codec/backends/dr_libs/stream_callbacks.hpp>
 
 #include <media/byte_stream.hpp>
 
@@ -85,17 +83,6 @@ private:
     bool fail_reads_{false};
 };
 
-enum Origin {
-    from_start,
-    from_current,
-    from_end,
-};
-
-using Callbacks = wiola::codec::StreamCallbacks<Origin, from_start, from_current, from_end,
-    std::uint64_t, std::int64_t>;
-using NarrowCallbacks = wiola::codec::StreamCallbacks<Origin, from_start, from_current, from_end,
-    std::uint8_t, std::int64_t>;
-
 TEST(ByteStream, ReadsSeeksAndReportsItsCursor)
 {
     MemoryStream stream{
@@ -138,31 +125,6 @@ TEST(ByteStream, DistinguishesEndOfFileFromReadFailure)
     read = stream.read(out);
     ASSERT_FALSE(read);
     EXPECT_EQ(read.error().category, ErrorCategory::read_failed);
-}
-
-TEST(StreamCallbacks, RejectsUnknownOriginsAndOutOfRangeSeeks)
-{
-    MemoryStream stream{
-        {std::byte{1}, std::byte{2}}
-    };
-
-    EXPECT_EQ(Callbacks::seek(&stream, 0, static_cast<Origin>(99)), 0U);
-    EXPECT_EQ(Callbacks::seek(&stream, -1, from_start), 0U);
-    EXPECT_EQ(Callbacks::seek(&stream, -1, from_end), 1U);
-
-    std::uint64_t cursor{0};
-    EXPECT_EQ(Callbacks::tell(&stream, &cursor), 1U);
-    EXPECT_EQ(cursor, 1U);
-}
-
-TEST(StreamCallbacks, DoesNotNarrowAnOversizedCursor)
-{
-    MemoryStream stream(std::vector<std::byte>(256));
-    ASSERT_EQ(NarrowCallbacks::seek(&stream, 256, from_start), 1U);
-
-    std::uint8_t cursor{17};
-    EXPECT_EQ(NarrowCallbacks::tell(&stream, &cursor), 0U);
-    EXPECT_EQ(cursor, 17U);
 }
 
 } // namespace

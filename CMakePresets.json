@@ -36,15 +36,6 @@
             }
         },
         {
-            "name": "linux-baseline",
-            "displayName": "Linux, native audio backends without FFmpeg",
-            "inherits": "linux-debug",
-            "binaryDir": "${sourceDir}/build-baseline",
-            "cacheVariables": {
-                "WIOLA_ENABLE_FFMPEG": "OFF"
-            }
-        },
-        {
             "name": "linux-release",
             "displayName": "Linux, what a release is built from",
             "inherits": "linux",
@@ -111,10 +102,6 @@
             "configurePreset": "linux-debug"
         },
         {
-            "name": "linux-baseline",
-            "configurePreset": "linux-baseline"
-        },
-        {
             "name": "linux-release",
             "configurePreset": "linux-release"
         },
@@ -146,13 +133,6 @@
         {
             "name": "linux-debug",
             "configurePreset": "linux-debug",
-            "output": {
-                "outputOnFailure": true
-            }
-        },
-        {
-            "name": "linux-baseline",
-            "configurePreset": "linux-baseline",
             "output": {
                 "outputOnFailure": true
             }

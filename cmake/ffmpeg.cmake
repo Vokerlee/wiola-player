@@ -9,7 +9,7 @@ set(wiola_ffmpeg_demuxers
     aac;aiff;ape;asf;au;caf;flac;matroska;mov;mp3;mpc;mpc8;ogg;tta;w64;wav;wv
 )
 set(wiola_ffmpeg_decoders
-    aac;alac;ape;flac;mp3;mpc7;mpc8;opus;tta;vorbis;wavpack;wmav1;wmav2
+    aac;alac;ape;flac;mp2;mp3;mpc7;mpc8;opus;tta;vorbis;wavpack;wmav1;wmav2
     pcm_alaw;pcm_f32be;pcm_f32le;pcm_f64be;pcm_f64le;pcm_mulaw;pcm_s8
     pcm_s16be;pcm_s16le;pcm_s24be;pcm_s24le;pcm_s32be;pcm_s32le;pcm_u8
     adpcm_ima_wav;adpcm_ms
