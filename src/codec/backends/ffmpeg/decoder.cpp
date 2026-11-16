@@ -177,13 +177,32 @@ media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
 {
     const pcm::Frames reference{preroll.value_or(position_frames())};
     std::optional<std::int64_t> start;
-    if (preroll && sequential_start)
-        start = *sequential_start;
-    else if (preroll)
-        start = frame_position(frame, *input_->format(), stream_index_,
-            static_cast<int>(spec().sample_rate.hz()));
-    if (start && !sequential_start)
-        *start -= timestamp_offset;
+    bool link_changed{false};
+    if (preroll) {
+        if (sequential_start)
+            start = *sequential_start;
+        else
+            start = frame_position(frame, *input_->format(), stream_index_,
+                static_cast<int>(spec().sample_rate.hz()));
+        if (start && !sequential_start)
+            *start -= timestamp_offset;
+    } else {
+        const auto position{frame_position(frame, *input_->format(), stream_index_,
+            static_cast<int>(spec().sample_rate.hz()))};
+        if (position) {
+            if (!audible_timestamp_origin_)
+                audible_timestamp_origin_ = *position;
+            const std::int64_t relative{*position - *audible_timestamp_origin_};
+            if (previous_relative_position_ && relative < *previous_relative_position_) {
+                link_base_ = position_frames();
+                link_changed = true;
+            }
+            start = static_cast<std::int64_t>(link_base_.count()) + relative;
+            if (link_changed && frame.nb_samples > fresh_frame_samples_)
+                *start -= frame.nb_samples - fresh_frame_samples_;
+            previous_relative_position_ = relative;
+        }
+    }
 
     if (start) {
         const std::int64_t end{*start + frame.nb_samples};
@@ -195,7 +214,8 @@ media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
     if (!submitted)
         return media::unexpected{submitted.error()};
 
-    if (start && *start < static_cast<std::int64_t>(reference.count())) {
+    if ((preroll || link_changed) && start &&
+        *start < static_cast<std::int64_t>(reference.count())) {
         const auto audible_start{static_cast<std::uint64_t>(std::max<std::int64_t>(*start, 0))};
         const auto discard{static_cast<std::uint64_t>(reference.count()) - audible_start};
         if (discard <= std::numeric_limits<std::size_t>::max())
@@ -257,6 +277,8 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
     const int initial_frame_samples{first->frame->nb_samples};
     const auto initial_position{frame_position(*first->frame, *input_->format(), stream_index_,
         static_cast<int>(spec().sample_rate.hz()))};
+    audible_timestamp_origin_ = initial_position;
+    fresh_frame_samples_ = initial_frame_samples;
     if (initial_position && *initial_position > 0)
         timestamp_offset = *initial_position;
 
@@ -334,6 +356,10 @@ media::Result<SeekOutcome> FfmpegDecoder::seek_frame(pcm::Frames frame_index)
     input_.swap((*candidate)->input_);
     packets_.swap((*candidate)->packets_);
     converter_.swap((*candidate)->converter_);
+    audible_timestamp_origin_ = (*candidate)->audible_timestamp_origin_;
+    fresh_frame_samples_ = (*candidate)->fresh_frame_samples_;
+    previous_relative_position_.reset();
+    link_base_ = frame_index;
     source_ended_ = false;
     return SeekOutcome{.target = frame_index, .achieved = *staged, .exact = true};
 }

@@ -90,15 +90,38 @@ TEST(OggQualification, SeeksMatchSequentialVorbisAndOpusSamples)
     }
 }
 
-TEST(OggQualification, RejectsAChainedRateChangeInsteadOfMixingPcmShapes)
+TEST(OggQualification, ChainedIdenticalPcmKeepsEverySampleAcrossTheLinkBoundary)
 {
-    auto decoder{open_ogg("chained-rate-change.ogg")};
-    ASSERT_TRUE(decoder);
+    auto reference{open_ogg("tone-vorbis.ogg")};
+    auto chained{open_ogg("chained-same-shape.ogg")};
+    ASSERT_TRUE(reference);
+    ASSERT_TRUE(chained);
+    auto link{read_all(**reference)};
+    ASSERT_TRUE(link);
+    std::vector<float> expected{*link};
+    expected.insert(expected.end(), link->begin(), link->end());
+    EXPECT_EQ((*chained)->length_accuracy(), wiola::codec::LengthAccuracy::estimated);
+    EXPECT_EQ((*chained)->num_frames(), (*reference)->num_frames());
 
-    auto samples{read_all(**decoder)};
+    auto samples{read_all(**chained)};
 
-    ASSERT_FALSE(samples);
-    EXPECT_EQ(samples.error().category, wiola::media::ErrorCategory::unsupported);
+    ASSERT_TRUE(samples);
+    ASSERT_EQ(samples->size(), expected.size());
+    for (std::size_t index{0}; index < expected.size(); ++index)
+        EXPECT_FLOAT_EQ((*samples)[index], expected[index]) << "sample " << index;
+}
+
+TEST(OggQualification, RejectsChainedPcmShapeChanges)
+{
+    for (const char* name : {"chained-rate-change.ogg", "chained-channel-change.ogg"}) {
+        auto decoder{open_ogg(name)};
+        ASSERT_TRUE(decoder) << name;
+
+        auto samples{read_all(**decoder)};
+
+        ASSERT_FALSE(samples) << name;
+        EXPECT_EQ(samples.error().category, wiola::media::ErrorCategory::unsupported) << name;
+    }
 }
 
 } // namespace

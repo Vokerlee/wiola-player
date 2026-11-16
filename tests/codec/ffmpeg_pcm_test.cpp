@@ -41,6 +41,12 @@ public:
 
     AVFrame* get() const noexcept { return frame_; }
 
+    void set_layout(std::uint64_t mask) noexcept
+    {
+        av_channel_layout_uninit(&frame_->ch_layout);
+        av_channel_layout_from_mask(&frame_->ch_layout, mask);
+    }
+
 private:
     AVFrame* frame_;
 };
@@ -133,6 +139,29 @@ TEST(FfmpegPcm, DrainsAndRejectsRateChangesBeforePublishingPcm)
     auto end{converter.read(output, true)};
     ASSERT_TRUE(end);
     EXPECT_TRUE(end->end_of_stream);
+}
+
+TEST(FfmpegPcm, RejectsSampleFormatAndSemanticLayoutChanges)
+{
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 6, wiola::pcm::ChannelLayout::five_point_one_side}
+    };
+    TestFrame initial{AV_SAMPLE_FMT_S16, 44100, 6, 1};
+    initial.set_layout(AV_CH_LAYOUT_5POINT1);
+    ASSERT_TRUE(converter.submit(*initial.get()));
+    std::array<float, 6> output{};
+    ASSERT_TRUE(converter.read(output, false));
+
+    TestFrame changed_format{AV_SAMPLE_FMT_S32, 44100, 6, 1};
+    auto format_result{converter.submit(*changed_format.get())};
+    ASSERT_FALSE(format_result);
+    EXPECT_EQ(format_result.error().category, wiola::media::ErrorCategory::unsupported);
+
+    TestFrame changed_layout{AV_SAMPLE_FMT_S16, 44100, 6, 1};
+    changed_layout.set_layout(AV_CH_LAYOUT_5POINT1_BACK);
+    auto layout_result{converter.submit(*changed_layout.get())};
+    ASSERT_FALSE(layout_result);
+    EXPECT_EQ(layout_result.error().category, wiola::media::ErrorCategory::unsupported);
 }
 
 wiola::media::Result<std::vector<float>> decode_all(wiola::codec::Decoder& decoder)

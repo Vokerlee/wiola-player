@@ -47,6 +47,10 @@ private:
     std::unique_ptr<FfmpegInput> input_;
     std::unique_ptr<PacketDecoder> packets_;
     std::unique_ptr<PcmConverter> converter_;
+    std::optional<std::int64_t> audible_timestamp_origin_;
+    std::optional<std::int64_t> previous_relative_position_;
+    pcm::Frames link_base_{};
+    int fresh_frame_samples_{0};
     bool source_ended_{false};
 };
 
