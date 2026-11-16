@@ -6,6 +6,15 @@ wiola_add_test(
 )
 set(fixtures "${CMAKE_CURRENT_SOURCE_DIR}/data")
 
+if(WIOLA_ENABLE_FFMPEG)
+    wiola_add_test(
+        codec_ffmpeg_build_test
+        SOURCES ffmpeg_build_test.cpp
+        LIBS wiola_ffmpeg
+        DATA "${fixtures}"
+    )
+endif()
+
 wiola_add_test(
     codec_wav_reader_test
     SOURCES wav_reader_test.cpp

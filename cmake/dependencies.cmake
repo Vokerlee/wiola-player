@@ -3,6 +3,10 @@
 
 include(FetchContent)
 
+if(WIOLA_ENABLE_FFMPEG)
+    include(ffmpeg)
+endif()
+
 # Dependency option() calls must honor the scoped normal variables set below.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
