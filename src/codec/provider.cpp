@@ -48,7 +48,8 @@ public:
         const std::optional<pcm::Frames> length{(*decoder)->duration_frames()};
         return media::MediaInfo{.spec = spec,
             .duration =
-                spec.valid() && length ? std::optional{spec.time_per(*length)} : std::nullopt};
+                spec.valid() && length ? std::optional{spec.time_per(*length)} : std::nullopt,
+            .seekable = (*decoder)->seekable()};
     }
 
     media::Result<media::Metadata> read_metadata() override { return read_tags(path_); }

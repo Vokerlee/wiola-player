@@ -110,7 +110,7 @@ TEST(Session, StartsWithNothingLoaded)
     EXPECT_FALSE(fixture.session.loaded());
     EXPECT_EQ(fixture.session.state(), State::idle);
     EXPECT_FALSE(fixture.session.playing());
-    EXPECT_EQ(fixture.session.total_time(), units::Time{});
+    EXPECT_EQ(fixture.session.total_time(), std::nullopt);
     EXPECT_EQ(fixture.session.time_played(), units::Time{});
 }
 
@@ -137,7 +137,8 @@ TEST(Session, LoadsATrack)
 
     EXPECT_TRUE(fixture.session.loaded());
     EXPECT_EQ(fixture.num_outputs, 1U);
-    EXPECT_NEAR(fixture.session.total_time().get<units::Sec>(), wiola::testing::source_seconds,
+    ASSERT_TRUE(fixture.session.total_time());
+    EXPECT_NEAR(fixture.session.total_time()->get<units::Sec>(), wiola::testing::source_seconds,
         0.01);
 }
 

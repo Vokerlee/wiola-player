@@ -30,7 +30,9 @@ Player::Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer b
     audio::Output& output, TransportConfig config)
     : output_{output}
     , spec_{source->spec()}
-    , num_frames_{source->num_frames()}
+    , length_{source->duration_frames()}
+    , length_accuracy_{source->length_accuracy()}
+    , seekable_{source->seekable()}
     , worker_{std::move(source), std::move(buffer), output, {}, config}
 {
 }
@@ -48,14 +50,15 @@ bool Player::start()
 
 void Player::seek(units::Time position) noexcept
 {
-    if (!std::isfinite(position.seconds()))
+    if (!seekable_ || !std::isfinite(position.seconds()))
         return;
 
     const std::optional<pcm::Frames> target{
         spec_.checked_frames_at(std::max(position, units::Time{}))};
 
-    // A position outside the source is not a request: playback and its reported position stay put.
-    if (target && *target <= num_frames_)
+    const bool outside_exact_source{target && length_accuracy_ == codec::LengthAccuracy::exact &&
+        length_ && *target > *length_};
+    if (target && !outside_exact_source)
         worker_.seek(*target);
 }
 
@@ -69,9 +72,9 @@ bool Player::resume() noexcept
     return worker_.resume();
 }
 
-units::Time Player::total_time() const noexcept
+std::optional<units::Time> Player::total_time() const noexcept
 {
-    return spec_.time_per(num_frames_);
+    return length_ ? std::optional{spec_.time_per(*length_)} : std::nullopt;
 }
 
 units::Time Player::time_played() const noexcept

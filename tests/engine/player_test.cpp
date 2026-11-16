@@ -104,6 +104,35 @@ private:
     std::atomic<int> num_reads_{0};
 };
 
+class UnknownLengthSource final : public wiola::codec::Decoder {
+public:
+    UnknownLengthSource()
+        : wiola::codec::AudioDecoder{
+              wiola::codec::DecoderStreamInfo{.spec = StreamSpec{units::Frequency{44100.0}, 2},
+                                              .length = std::nullopt,
+                                              .length_accuracy = wiola::codec::LengthAccuracy::unknown}
+    }
+    {
+    }
+
+protected:
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+        wiola::pcm::Frames num_frames) override
+    {
+        constexpr wiola::pcm::Frames length{8};
+        const wiola::pcm::Frames remaining{length - position_frames()};
+        const wiola::pcm::Frames produced{std::min(num_frames, remaining)};
+        std::fill_n(output.begin(), produced.count() * 2, 0.0F);
+        return wiola::codec::DecodeOutcome{.frames = produced,
+            .end_of_stream = position_frames() + produced == length};
+    }
+
+    bool seek_frame(wiola::pcm::Frames frame_index) override
+    {
+        return frame_index <= wiola::pcm::Frames{8};
+    }
+};
+
 class FailFirstReadSource final : public wiola::codec::Decoder {
 public:
     FailFirstReadSource()
@@ -199,6 +228,41 @@ TEST(Player, PrimingReadFailureFaultsInsteadOfBeingRetriedAsNormalPlayback)
 
     EXPECT_EQ(player.state(), State::faulted);
     EXPECT_EQ(output.num_starts(), 0);
+}
+
+TEST(Player, UnknownDurationPlaysToActualExhaustion)
+{
+    Rig rig{std::make_unique<UnknownLengthSource>()};
+    Player& player{rig.player};
+
+    EXPECT_EQ(player.total_time(), std::nullopt);
+    EXPECT_TRUE(player.seekable());
+    ASSERT_TRUE(player.start());
+    player.wait();
+
+    EXPECT_EQ(player.state(), State::ended);
+    EXPECT_EQ(player.total_time(), std::nullopt);
+    EXPECT_EQ(player.time_played(), units::Time{8.0 / 44100.0});
+}
+
+TEST(Player, UnknownDurationKeepsTransportAndAbsoluteSeekAvailable)
+{
+    auto source{std::make_unique<UnknownLengthSource>()};
+    const StreamSpec spec{source->spec()};
+    wiola::pcm::PcmQueue buffer{spec, wiola::pcm::Frames{16}};
+    wiola::testing::FakeOutput output;
+    Player player{std::move(source), buffer.producer(), output};
+
+    ASSERT_TRUE(player.start());
+    ASSERT_TRUE(player.pause());
+    player.seek(units::Time{2.0 / 44100.0});
+    EXPECT_EQ(player.time_played(), units::Time{2.0 / 44100.0});
+    ASSERT_TRUE(player.resume());
+    player.stop();
+    player.wait();
+
+    EXPECT_EQ(player.state(), State::stopped);
+    EXPECT_EQ(player.total_time(), std::nullopt);
 }
 
 TEST(Player, StartReturnsBeforePlaybackEnds)
@@ -303,7 +367,7 @@ TEST(Player, SeekMovesTheSource)
 
     // Only a source that moved runs out this soon: from where it was, the rest would take the
     // length of the track.
-    EXPECT_LT(std::chrono::steady_clock::now() - began, player.total_time().chrono() / 2);
+    EXPECT_LT(std::chrono::steady_clock::now() - began, player.total_time()->chrono() / 2);
 }
 
 TEST(Player, SeekBeyondTheEndIsIgnored)

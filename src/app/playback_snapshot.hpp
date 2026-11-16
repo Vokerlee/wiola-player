@@ -39,9 +39,10 @@ struct PlaybackSnapshot {
     std::size_t metadata_revision{0};
     std::size_t selection_revision{0};
     units::Time time_played{};
-    units::Time total_time{};
+    std::optional<units::Time> total_time;
     bool loaded{false};
     bool playing{false};
+    bool seekable{false};
 };
 
 } // namespace wiola::engine

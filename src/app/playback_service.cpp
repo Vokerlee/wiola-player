@@ -182,9 +182,14 @@ units::Time PlaybackService::time_played() const noexcept
     return session_.time_played();
 }
 
-units::Time PlaybackService::total_time() const noexcept
+std::optional<units::Time> PlaybackService::total_time() const noexcept
 {
     return session_.total_time();
+}
+
+bool PlaybackService::seekable() const noexcept
+{
+    return session_.seekable();
 }
 
 const Playlist& PlaybackService::playlist() const noexcept

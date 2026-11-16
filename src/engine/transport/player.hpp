@@ -30,6 +30,7 @@
 #include <utils/units.hpp>
 
 #include <memory>
+#include <optional>
 
 namespace wiola::engine {
 
@@ -82,7 +83,9 @@ public:
     [[nodiscard]] Playback::State state() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
     [[nodiscard]] bool finished() const noexcept;
-    [[nodiscard]] units::Time total_time() const noexcept;
+    [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
+
+    [[nodiscard]] bool seekable() const noexcept { return seekable_; }
 
     /// Follows what is being heard rather than what has been decoded. A pending seek reports its
     /// target until the worker commits or recovers it.
@@ -91,7 +94,9 @@ public:
 private:
     audio::Output& output_;
     pcm::StreamSpec spec_;
-    pcm::Frames num_frames_;
+    std::optional<pcm::Frames> length_;
+    codec::LengthAccuracy length_accuracy_;
+    bool seekable_;
     TransportWorker worker_;
 };
 

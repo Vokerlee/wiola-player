@@ -69,7 +69,8 @@ public:
     [[nodiscard]] OpenResult open_result() const noexcept;
     [[nodiscard]] Playback::State state() const noexcept;
     [[nodiscard]] units::Time time_played() const noexcept;
-    [[nodiscard]] units::Time total_time() const noexcept;
+    [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
+    [[nodiscard]] bool seekable() const noexcept;
     [[nodiscard]] const Playlist& playlist() const noexcept;
     [[nodiscard]] const std::filesystem::path& track() const noexcept;
 

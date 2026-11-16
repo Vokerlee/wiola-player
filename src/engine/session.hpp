@@ -150,7 +150,8 @@ public:
     [[nodiscard]] Playback::State state() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
     [[nodiscard]] units::Time time_played() const noexcept;
-    [[nodiscard]] units::Time total_time() const noexcept;
+    [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
+    [[nodiscard]] bool seekable() const noexcept;
 
     [[nodiscard]] audio::Volume& volume() noexcept { return volume_; }
 
