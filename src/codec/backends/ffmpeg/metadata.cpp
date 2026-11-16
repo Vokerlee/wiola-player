@@ -17,6 +17,7 @@ extern "C" {
 }
 
 #include <cstring>
+#include <utility>
 
 namespace wiola::codec::ffmpeg {
 
@@ -38,23 +39,32 @@ std::string field(AVDictionary* primary, AVDictionary* secondary, const char* na
 void read_artwork(media::Metadata& metadata, AVFormatContext* format)
 {
     for (unsigned int index{0}; index < format->nb_streams; ++index) {
-        const AVStream* stream{format->streams[index]};
-        if (!(stream->disposition & AV_DISPOSITION_ATTACHED_PIC))
+        media::Artwork artwork{wiola::codec::ffmpeg::read_artwork(*format->streams[index])};
+        if (artwork.empty())
             continue;
-        const AVPacket& picture{stream->attached_pic};
-        if (!picture.data || picture.size <= 0 ||
-            static_cast<std::size_t>(picture.size) > media::max_encoded_artwork_bytes)
-            continue;
-        const auto* bytes{reinterpret_cast<const std::byte*>(picture.data)};
-        metadata.artwork.data.assign(bytes, bytes + picture.size);
-        metadata.artwork.mime_type = stream->codecpar->codec_id == AV_CODEC_ID_PNG ? "image/png"
-            : stream->codecpar->codec_id == AV_CODEC_ID_MJPEG                      ? "image/jpeg"
-                                                                                   : "";
+        metadata.artwork = std::move(artwork);
         return;
     }
 }
 
 } // namespace
+
+media::Artwork read_artwork(const AVStream& stream)
+{
+    media::Artwork artwork;
+    if (!(stream.disposition & AV_DISPOSITION_ATTACHED_PIC))
+        return artwork;
+    const AVPacket& picture{stream.attached_pic};
+    if (!picture.data || picture.size <= 0 ||
+        static_cast<std::size_t>(picture.size) > media::max_encoded_artwork_bytes)
+        return artwork;
+    const auto* bytes{reinterpret_cast<const std::byte*>(picture.data)};
+    artwork.data.assign(bytes, bytes + picture.size);
+    artwork.mime_type = stream.codecpar->codec_id == AV_CODEC_ID_PNG ? "image/png"
+        : stream.codecpar->codec_id == AV_CODEC_ID_MJPEG             ? "image/jpeg"
+                                                                     : "";
+    return artwork;
+}
 
 media::Result<media::Metadata> read_metadata(const std::filesystem::path& path)
 {

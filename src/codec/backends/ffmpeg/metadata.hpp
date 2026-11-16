@@ -11,8 +11,11 @@
 
 #include <filesystem>
 
+struct AVStream;
+
 namespace wiola::codec::ffmpeg {
 
+[[nodiscard]] media::Artwork read_artwork(const AVStream& stream);
 [[nodiscard]] media::Result<media::Metadata> read_metadata(const std::filesystem::path& path);
 
 } // namespace wiola::codec::ffmpeg
