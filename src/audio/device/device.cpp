@@ -27,6 +27,31 @@
 
 namespace wiola::audio {
 
+namespace {
+
+void set_channel_map(const pcm::StreamSpec& spec, ma_channel* map) noexcept
+{
+    switch (spec.channel_layout) {
+    case pcm::ChannelLayout::mono:
+        map[0] = MA_CHANNEL_MONO;
+        break;
+    case pcm::ChannelLayout::stereo:
+        map[0] = MA_CHANNEL_FRONT_LEFT;
+        map[1] = MA_CHANNEL_FRONT_RIGHT;
+        break;
+    case pcm::ChannelLayout::five_point_one_side: {
+        constexpr ma_channel channels[]{MA_CHANNEL_FRONT_LEFT, MA_CHANNEL_FRONT_RIGHT,
+            MA_CHANNEL_FRONT_CENTER, MA_CHANNEL_LFE, MA_CHANNEL_SIDE_LEFT, MA_CHANNEL_SIDE_RIGHT};
+        std::copy_n(channels, 6, map);
+        break;
+    }
+    case pcm::ChannelLayout::unspecified:
+        break;
+    }
+}
+
+} // namespace
+
 struct Device::Backend {
     ma_device handle{};
     bool initialized{false};
@@ -67,8 +92,11 @@ bool Device::start() noexcept
         return ma_device_start(&backend_->handle) == MA_SUCCESS;
 
     ma_device_config config{ma_device_config_init(ma_device_type_playback)};
+    ma_channel channel_map[MA_MAX_CHANNELS]{};
     config.playback.format = ma_format_f32;
     config.playback.channels = static_cast<ma_uint32>(spec_.num_channels);
+    set_channel_map(spec_, channel_map);
+    config.playback.pChannelMap = channel_map;
     config.sampleRate = static_cast<ma_uint32>(spec_.sample_rate.get<units::Hz>());
     config.pUserData = this;
     config.dataCallback = [](ma_device* handle, void* output, const void*, ma_uint32 num_frames) {

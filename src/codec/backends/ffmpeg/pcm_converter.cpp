@@ -62,7 +62,10 @@ media::Result<void> PcmConverter::configure(const AVFrame& frame)
     else
         av_channel_layout_default(&input_layout_, channels);
     AVChannelLayout output_layout{};
-    av_channel_layout_default(&output_layout, static_cast<int>(output_.num_channels));
+    if (output_.channel_layout == pcm::ChannelLayout::five_point_one_side)
+        av_channel_layout_from_mask(&output_layout, AV_CH_LAYOUT_5POINT1);
+    else
+        av_channel_layout_default(&output_layout, static_cast<int>(output_.num_channels));
     const int allocated{swr_alloc_set_opts2(&converter_, &output_layout, AV_SAMPLE_FMT_FLT,
         frame.sample_rate, &input_layout_, static_cast<AVSampleFormat>(frame.format),
         frame.sample_rate, 0, nullptr)};

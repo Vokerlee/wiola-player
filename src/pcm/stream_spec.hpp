@@ -79,9 +79,17 @@ private:
  * The other layout is planar: one array per channel, [ L L L L ] [ R R R R ]. Codecs commonly
  * decode that way. Everything here is interleaved, which is what a device callback takes.
  */
+enum class ChannelLayout {
+    unspecified,
+    mono,
+    stereo,
+    five_point_one_side,
+};
+
 struct StreamSpec {
     units::Frequency sample_rate{48000.0};
     std::size_t num_channels{2};
+    ChannelLayout channel_layout{ChannelLayout::unspecified};
 
     [[nodiscard]] constexpr bool valid() const noexcept
     {

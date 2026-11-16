@@ -31,6 +31,21 @@ media::Error failure(media::ErrorCategory category, const char* detail)
     return media::Error{.category = category, .detail = detail};
 }
 
+std::optional<pcm::ChannelLayout> semantic_channel_layout(const AVChannelLayout& layout)
+{
+    if (layout.nb_channels == 1 &&
+        (layout.order == AV_CHANNEL_ORDER_UNSPEC ||
+            (layout.order == AV_CHANNEL_ORDER_NATIVE && layout.u.mask == AV_CH_LAYOUT_MONO)))
+        return pcm::ChannelLayout::mono;
+    if (layout.nb_channels == 2 &&
+        (layout.order == AV_CHANNEL_ORDER_UNSPEC ||
+            (layout.order == AV_CHANNEL_ORDER_NATIVE && layout.u.mask == AV_CH_LAYOUT_STEREO)))
+        return pcm::ChannelLayout::stereo;
+    if (layout.order == AV_CHANNEL_ORDER_NATIVE && layout.u.mask == AV_CH_LAYOUT_5POINT1)
+        return pcm::ChannelLayout::five_point_one_side;
+    return std::nullopt;
+}
+
 bool has_exact_sample_count(AVCodecID codec)
 {
     switch (codec) {
@@ -171,8 +186,8 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
         if (parameters->codec_type != AVMEDIA_TYPE_AUDIO)
             continue;
         saw_audio = true;
-        if (!avcodec_find_decoder(parameters->codec_id) || parameters->ch_layout.nb_channels <= 0 ||
-            parameters->ch_layout.nb_channels > 2 || parameters->sample_rate <= 0)
+        if (!avcodec_find_decoder(parameters->codec_id) || parameters->sample_rate <= 0 ||
+            !semantic_channel_layout(parameters->ch_layout))
             continue;
         if (!selected ||
             (!(selected->disposition & AV_DISPOSITION_DEFAULT) &&
@@ -182,14 +197,16 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
 
     if (!selected)
         return media::unexpected{failure(media::ErrorCategory::unsupported,
-            saw_audio ? "no supported mono/stereo audio stream"
+            saw_audio ? "no supported audio stream or channel layout"
                       : "input contains no audio stream")};
 
     const AVCodecParameters* parameters{selected->codecpar};
+    const auto channel_layout{semantic_channel_layout(parameters->ch_layout)};
     pcm::StreamSpec spec{.sample_rate = units::Frequency{parameters->codec_id == AV_CODEC_ID_OPUS
                                  ? 48000.0
                                  : static_cast<double>(parameters->sample_rate)},
-        .num_channels = static_cast<std::size_t>(parameters->ch_layout.nb_channels)};
+        .num_channels = static_cast<std::size_t>(parameters->ch_layout.nb_channels),
+        .channel_layout = *channel_layout};
     std::optional<pcm::Frames> length;
     AVRational time_base{selected->time_base};
     std::int64_t duration{selected->duration};
