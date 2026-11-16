@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -93,6 +94,7 @@ Opened MediaBackendRegistry::open(const std::filesystem::path& path) const
 
     bool claimed{false};
     std::size_t attempts{0};
+    std::optional<media::Error> failure;
 
     for (const Match reason : reasons) {
         for (const Format& format : backends_) {
@@ -107,10 +109,21 @@ Opened MediaBackendRegistry::open(const std::filesystem::path& path) const
 
             claimed = claimed || reason == Match::signature;
 
-            if (std::unique_ptr<Decoder> decoder{format.open(path)})
-                return decoder;
+            auto opened{format.open(path)};
+            if (opened)
+                return opened;
+
+            if (opened.error().category == media::ErrorCategory::unreadable)
+                return opened;
+
+            if (opened.error().category != media::ErrorCategory::not_mine &&
+                (!failure || opened.error().category == media::ErrorCategory::damaged))
+                failure = opened.error();
         }
     }
+
+    if (failure)
+        return media::unexpected{std::move(*failure)};
 
     return media::unexpected{
         media::Error{.category = claimed ? media::ErrorCategory::damaged

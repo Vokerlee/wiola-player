@@ -82,17 +82,17 @@ TEST(Mp3Reader, ReadsFormatAndSamples)
 {
     const auto reader = Mp3Reader::open(fixture("tone.mp3"));
 
-    ASSERT_NE(reader, nullptr);
-    EXPECT_EQ(reader->spec().sample_rate, wiola::units::Frequency{44100});
-    EXPECT_EQ(reader->spec().num_channels, 2u);
-    EXPECT_GT(reader->num_frames(), Frames{0});
-    EXPECT_EQ(drain(*reader), reader->spec().samples_per(reader->num_frames()));
-    EXPECT_TRUE(reader->exhausted());
+    ASSERT_TRUE(reader);
+    EXPECT_EQ((*reader)->spec().sample_rate, wiola::units::Frequency{44100});
+    EXPECT_EQ((*reader)->spec().num_channels, 2u);
+    EXPECT_GT((*reader)->num_frames(), Frames{0});
+    EXPECT_EQ(drain(**reader), (*reader)->spec().samples_per((*reader)->num_frames()));
+    EXPECT_TRUE((*reader)->exhausted());
 }
 
 TEST(Mp3Reader, RejectsWhatIsNotMp3)
 {
-    EXPECT_EQ(Mp3Reader::open("/nonexistent/wiola.mp3"), nullptr);
+    EXPECT_FALSE(Mp3Reader::open("/nonexistent/wiola.mp3"));
 }
 
 /// Seeking must land on the very sample that reading all the way there would have reached.
@@ -103,15 +103,15 @@ TEST(Mp3Reader, SeekLandsWhereReadingWouldHave)
     constexpr std::size_t num_compared{64};
 
     auto straight = Mp3Reader::open(fixture("tone.mp3"));
-    ASSERT_NE(straight, nullptr);
-    const std::vector<float> expected{read_frames(*straight, target + num_compared)};
+    ASSERT_TRUE(straight);
+    const std::vector<float> expected{read_frames(**straight, target + num_compared)};
 
     auto sought = Mp3Reader::open(fixture("tone.mp3"));
-    ASSERT_NE(sought, nullptr);
-    ASSERT_TRUE(sought->seek(Frames{target}));
+    ASSERT_TRUE(sought);
+    ASSERT_TRUE((*sought)->seek(Frames{target}));
 
-    const std::size_t num_channels{sought->spec().num_channels};
-    const std::vector<float> actual{read_frames(*sought, num_compared)};
+    const std::size_t num_channels{(*sought)->spec().num_channels};
+    const std::vector<float> actual{read_frames(**sought, num_compared)};
 
     ASSERT_EQ(actual.size(), num_compared * num_channels);
     EXPECT_TRUE(std::equal(actual.begin(), actual.end(), expected.begin() + target * num_channels));
@@ -120,40 +120,40 @@ TEST(Mp3Reader, SeekLandsWhereReadingWouldHave)
 TEST(Mp3Reader, SeekMovesThePosition)
 {
     auto reader = Mp3Reader::open(fixture("tone.mp3"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    ASSERT_TRUE(reader->seek(Frames{4000}));
-    EXPECT_EQ(reader->num_frames_left(), reader->num_frames() - Frames{4000});
-    EXPECT_FALSE(reader->exhausted());
+    ASSERT_TRUE((*reader)->seek(Frames{4000}));
+    EXPECT_EQ((*reader)->num_frames_left(), (*reader)->num_frames() - Frames{4000});
+    EXPECT_FALSE((*reader)->exhausted());
 
-    ASSERT_TRUE(reader->seek(reader->num_frames()));
-    EXPECT_EQ(reader->num_frames_left(), Frames{0});
-    EXPECT_TRUE(reader->exhausted());
+    ASSERT_TRUE((*reader)->seek((*reader)->num_frames()));
+    EXPECT_EQ((*reader)->num_frames_left(), Frames{0});
+    EXPECT_TRUE((*reader)->exhausted());
 
     std::array<float, 16> block{};
-    EXPECT_EQ(reader->render(block).value(), 0u);
+    EXPECT_EQ((*reader)->render(block).value(), 0u);
 }
 
 TEST(Mp3Reader, SeekRewinds)
 {
     auto reader = Mp3Reader::open(fixture("tone.mp3"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    const std::vector<float> first{read_frames(*reader, 64)};
+    const std::vector<float> first{read_frames(**reader, 64)};
 
-    ASSERT_TRUE(reader->seek(Frames{0}));
-    EXPECT_EQ(reader->num_frames_left(), reader->num_frames());
-    EXPECT_EQ(read_frames(*reader, 64), first);
+    ASSERT_TRUE((*reader)->seek(Frames{0}));
+    EXPECT_EQ((*reader)->num_frames_left(), (*reader)->num_frames());
+    EXPECT_EQ(read_frames(**reader, 64), first);
 }
 
 TEST(Mp3Reader, RefusesToSeekPastTheEnd)
 {
     auto reader = Mp3Reader::open(fixture("tone.mp3"));
-    ASSERT_NE(reader, nullptr);
+    ASSERT_TRUE(reader);
 
-    ASSERT_TRUE(reader->seek(Frames{4000}));
-    EXPECT_FALSE(reader->seek(reader->num_frames() + Frames{1}));
+    ASSERT_TRUE((*reader)->seek(Frames{4000}));
+    EXPECT_FALSE((*reader)->seek((*reader)->num_frames() + Frames{1}));
 
     // A refused seek leaves the position alone.
-    EXPECT_EQ(reader->num_frames_left(), reader->num_frames() - Frames{4000});
+    EXPECT_EQ((*reader)->num_frames_left(), (*reader)->num_frames() - Frames{4000});
 }

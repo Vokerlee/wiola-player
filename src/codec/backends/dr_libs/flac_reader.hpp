@@ -38,8 +38,9 @@ public:
     /// How this format is recognized and opened.
     [[nodiscard]] static const Format& format();
 
-    /// Opens `path`. Null when the file is missing or is not FLAC.
-    [[nodiscard]] static std::unique_ptr<FlacReader> open(const std::filesystem::path& path);
+    /// Opens `path` with a distinct unreadable or unrecognized-input result.
+    [[nodiscard]] static media::Result<std::unique_ptr<FlacReader>>
+    open(const std::filesystem::path& path);
 
     ~FlacReader() override;
 
