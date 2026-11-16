@@ -107,4 +107,9 @@ LocalMediaProvider::open(const std::filesystem::path& path)
     return asset;
 }
 
+std::vector<std::string> LocalMediaProvider::playback_extensions() const
+{
+    return registry_.playback_extensions();
+}
+
 } // namespace wiola::codec

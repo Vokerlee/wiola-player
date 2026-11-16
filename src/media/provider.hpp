@@ -26,6 +26,8 @@
 
 #include <filesystem>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace wiola::media {
 
@@ -53,6 +55,8 @@ public:
 
     /// Identifies a resource without decoding it or creating playback/output state.
     virtual Result<std::unique_ptr<MediaAsset>> open(const std::filesystem::path& path) = 0;
+
+    [[nodiscard]] virtual std::vector<std::string> playback_extensions() const = 0;
 
 protected:
     MediaProvider() = default;

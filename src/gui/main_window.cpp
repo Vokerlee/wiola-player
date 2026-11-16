@@ -25,10 +25,6 @@
 #include "player_view_metrics.hpp"
 #include "qt_path_adapter.hpp"
 
-#include <codec/decode/decoder.hpp>
-#include <codec/decode/open.hpp>
-#include <codec/decode/registry.hpp>
-
 #include <QFileDialog>
 #include <QFont>
 #include <QHBoxLayout>
@@ -246,7 +242,7 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
 std::vector<std::filesystem::path> MainWindow::ask_for_tracks()
 {
     QStringList patterns;
-    for (const std::string& extension : codec::MediaBackendRegistry{}.playback_extensions())
+    for (const std::string& extension : session_.playback_extensions())
         patterns.append(QString::fromStdString("*" + extension));
 
     const QString filter{QString{"Audio (%1);;All files (*)"}.arg(patterns.join(' '))};

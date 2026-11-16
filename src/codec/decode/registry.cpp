@@ -71,6 +71,8 @@ std::vector<std::string> MediaBackendRegistry::playback_extensions() const
             for (const std::string& extension : format.extensions)
                 extensions.push_back(extension);
     }
+    std::ranges::sort(extensions);
+    extensions.erase(std::unique(extensions.begin(), extensions.end()), extensions.end());
     return extensions;
 }
 

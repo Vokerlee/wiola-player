@@ -84,4 +84,12 @@ TEST(MediaProvider, RejectsAnUnavailableResourceBeforeCreatingAnAsset)
     EXPECT_EQ(asset.error().category, wiola::media::ErrorCategory::unreadable);
 }
 
+TEST(MediaProvider, ExposesItsConfiguredPlaybackCapabilities)
+{
+    const wiola::codec::MediaBackendRegistry registry;
+    const wiola::codec::LocalMediaProvider provider{registry};
+
+    EXPECT_EQ(provider.playback_extensions(), registry.playback_extensions());
+}
+
 } // namespace
