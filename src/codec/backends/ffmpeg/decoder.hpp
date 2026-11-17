@@ -20,6 +20,9 @@
 
 #pragma once
 
+#include "conversion_api.hpp"
+#include "packet_decoder.hpp"
+
 #include <codec/decode/decoder.hpp>
 #include <codec/decode/format.hpp>
 
@@ -33,20 +36,31 @@ struct AVFrame;
 namespace wiola::codec::ffmpeg {
 
 class FfmpegInput;
-class PacketDecoder;
 class PcmConverter;
+
+using DemuxSeek = int (*)(AVFormatContext*, int, std::int64_t, int);
+
+struct FfmpegDecoderOptions {
+    PacketDecoderOptions packets;
+    PcmConversionApi conversion;
+    StreamInfoReader inspect{nullptr};
+    DemuxSeek seek{nullptr};
+    int decode_work_budget{64};
+    int seek_work_budget{65536};
+};
 
 [[nodiscard]] Backend backend();
 
 class FfmpegDecoder final : public Decoder {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<FfmpegDecoder>>
-    open(const std::filesystem::path& path);
+    open(const std::filesystem::path& path, FfmpegDecoderOptions options = {});
     ~FfmpegDecoder() override;
 
 private:
     FfmpegDecoder(std::filesystem::path path, std::size_t stream_index, DecoderStreamInfo info,
-        std::unique_ptr<FfmpegInput> input, std::unique_ptr<PacketDecoder> packets) noexcept;
+        std::unique_ptr<FfmpegInput> input, std::unique_ptr<PacketDecoder> packets,
+        FfmpegDecoderOptions options) noexcept;
 
     media::Result<DecodeOutcome> decode(std::span<float> output, pcm::Frames num_frames) override;
     media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) override;
@@ -54,9 +68,11 @@ private:
     [[nodiscard]] media::Result<bool> trim_frame(const AVFrame& frame,
         std::optional<pcm::Frames> preroll = {}, std::int64_t timestamp_offset = 0,
         std::optional<std::int64_t> sequential_start = {});
+    [[nodiscard]] int demux_seek(std::int64_t timestamp) noexcept;
 
     std::filesystem::path path_;
     std::size_t stream_index_;
+    FfmpegDecoderOptions options_;
     std::unique_ptr<FfmpegInput> input_;
     std::unique_ptr<PacketDecoder> packets_;
     std::unique_ptr<PcmConverter> converter_;

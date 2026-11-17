@@ -30,8 +30,6 @@ namespace wiola::codec::ffmpeg {
 
 namespace {
 
-constexpr int max_work_packets{1024};
-
 media::Error decode_error(const char* detail)
 {
     return media::Error{.category = media::ErrorCategory::damaged, .detail = detail};
@@ -39,19 +37,25 @@ media::Error decode_error(const char* detail)
 
 } // namespace
 
-PacketDecoder::PacketDecoder(FfmpegInput& input, std::size_t stream_index) noexcept
+PacketDecoder::PacketDecoder(FfmpegInput& input, std::size_t stream_index,
+    PacketDecoderOptions options) noexcept
     : input_{input}
     , stream_index_{stream_index}
+    , options_{options}
 {
 }
 
 media::Result<std::unique_ptr<PacketDecoder>> PacketDecoder::open(FfmpegInput& input,
-    const FfmpegStreamFacts& facts)
+    const FfmpegStreamFacts& facts, PacketDecoderOptions options)
 {
-    auto decoder{std::unique_ptr<PacketDecoder>{new PacketDecoder{input, facts.stream_index}}};
+    auto decoder{
+        std::unique_ptr<PacketDecoder>{new PacketDecoder{input, facts.stream_index, options}}};
+
     auto initialized{decoder->initialize()};
+
     if (!initialized)
         return media::unexpected{initialized.error()};
+
     return decoder;
 }
 
@@ -59,6 +63,7 @@ media::Result<void> PacketDecoder::initialize()
 {
     const AVStream* stream{input_.format()->streams[stream_index_]};
     const AVCodec* selected{avcodec_find_decoder(stream->codecpar->codec_id)};
+
     if (!selected)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::unsupported,
@@ -68,6 +73,7 @@ media::Result<void> PacketDecoder::initialize()
     codec_ = avcodec_alloc_context3(selected);
     packet_ = av_packet_alloc();
     frame_ = av_frame_alloc();
+
     if (!codec_ || !packet_ || !frame_)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::limit_exceeded,
@@ -75,10 +81,20 @@ media::Result<void> PacketDecoder::initialize()
         };
 
     codec_->thread_count = 1;
-    if (avcodec_parameters_to_context(codec_, stream->codecpar) < 0)
+
+    const int parameters{options_.api.parameters
+            ? options_.api.parameters(codec_, stream->codecpar)
+            : avcodec_parameters_to_context(codec_, stream->codecpar)};
+
+    if (parameters < 0)
         return media::unexpected{decode_error("FFmpeg codec parameters are invalid")};
-    if (avcodec_open2(codec_, selected, nullptr) < 0)
+
+    const int opened{options_.api.open ? options_.api.open(codec_, selected, nullptr)
+                                       : avcodec_open2(codec_, selected, nullptr)};
+
+    if (opened < 0)
         return media::unexpected{decode_error("FFmpeg decoder could not be opened")};
+
     return {};
 }
 
@@ -86,8 +102,10 @@ PacketDecoder::~PacketDecoder()
 {
     if (frame_)
         av_frame_free(&frame_);
+
     if (packet_)
         av_packet_free(&packet_);
+
     if (codec_)
         avcodec_free_context(&codec_);
 }
@@ -97,11 +115,36 @@ media::Result<FfmpegFrameEvent> PacketDecoder::error(media::Error error)
     return media::unexpected{std::move(error)};
 }
 
+int PacketDecoder::receive() noexcept
+{
+    if (options_.api.receive)
+        return options_.api.receive(codec_, frame_);
+
+    return avcodec_receive_frame(codec_, frame_);
+}
+
+int PacketDecoder::send(const AVPacket* packet) noexcept
+{
+    if (options_.api.send)
+        return options_.api.send(codec_, packet);
+
+    return avcodec_send_packet(codec_, packet);
+}
+
+int PacketDecoder::read() noexcept
+{
+    if (options_.api.read)
+        return options_.api.read(input_.format(), packet_);
+
+    return av_read_frame(input_.format(), packet_);
+}
+
 void PacketDecoder::reset_after_seek() noexcept
 {
     avcodec_flush_buffers(codec_);
     av_packet_unref(packet_);
     av_frame_unref(frame_);
+
     packet_pending_ = false;
     demux_ended_ = false;
     drain_sent_ = false;
@@ -113,51 +156,66 @@ media::Result<FfmpegFrameEvent> PacketDecoder::next_frame()
     if (ended_)
         return FfmpegFrameEvent{.frame = nullptr, .end_of_stream = true};
 
-    for (int work{0}; work < max_work_packets; ++work) {
-        const int received{avcodec_receive_frame(codec_, frame_)};
+    for (int work{0}; work < options_.work_budget; ++work) {
+        const int received{receive()};
+
         if (received >= 0)
             return FfmpegFrameEvent{.frame = frame_, .end_of_stream = false};
+
         if (received == AVERROR_EOF) {
             ended_ = true;
+
             return FfmpegFrameEvent{.frame = nullptr, .end_of_stream = true};
         }
+
         if (received != AVERROR(EAGAIN))
             return error(decode_error("FFmpeg frame reception failed"));
 
         if (packet_pending_) {
-            const int sent{avcodec_send_packet(codec_, packet_)};
+            const int sent{send(packet_)};
+
             if (sent == AVERROR(EAGAIN))
                 return error(decode_error("FFmpeg packet/frame pump is stalled"));
+
             if (sent < 0)
                 return error(decode_error("FFmpeg packet submission failed"));
+
             packet_pending_ = false;
             av_packet_unref(packet_);
+
             continue;
         }
 
         if (!demux_ended_) {
-            const int read{av_read_frame(input_.format(), packet_)};
-            if (read >= 0) {
+            const int result{read()};
+
+            if (result >= 0) {
                 if (packet_->stream_index == static_cast<int>(stream_index_))
                     packet_pending_ = true;
                 else
                     av_packet_unref(packet_);
+
                 continue;
             }
-            if (read != AVERROR_EOF) {
-                if (input_.io_error())
-                    return error(*input_.io_error());
-                return error(decode_error("FFmpeg packet demuxing failed"));
+
+            if (result != AVERROR_EOF) {
+                const auto& io_error{input_.io_error()};
+
+                return error(io_error ? *io_error : decode_error("FFmpeg packet demuxing failed"));
             }
+
             demux_ended_ = true;
         }
 
         if (!drain_sent_) {
-            const int sent{avcodec_send_packet(codec_, nullptr)};
+            const int sent{send(nullptr)};
+
             if (sent == AVERROR(EAGAIN))
                 continue;
+
             if (sent < 0)
                 return error(decode_error("FFmpeg decoder drain failed"));
+
             drain_sent_ = true;
         }
     }

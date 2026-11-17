@@ -24,6 +24,7 @@
 
 #include <array>
 #include <filesystem>
+#include <fstream>
 
 namespace {
 
@@ -82,6 +83,22 @@ TEST(MediaProvider, RejectsAnUnavailableResourceBeforeCreatingAnAsset)
 
     ASSERT_FALSE(asset);
     EXPECT_EQ(asset.error().category, wiola::media::ErrorCategory::unreadable);
+}
+
+TEST(MediaProvider, PropagatesInspectionFailureFromTheDecoderRegistry)
+{
+    const std::filesystem::path path{
+        std::filesystem::temp_directory_path() / "wiola_provider_not_audio.bin"};
+    std::ofstream{path} << "not audio";
+
+    wiola::codec::LocalMediaProvider provider;
+    auto asset{provider.open(path)};
+    ASSERT_TRUE(asset);
+
+    auto info{(*asset)->inspect()};
+
+    ASSERT_FALSE(info);
+    EXPECT_EQ(info.error().category, wiola::media::ErrorCategory::unsupported);
 }
 
 TEST(MediaProvider, ExposesItsConfiguredPlaybackCapabilities)

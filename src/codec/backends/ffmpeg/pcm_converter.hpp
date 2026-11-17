@@ -20,10 +20,13 @@
 
 #pragma once
 
+#include "conversion_api.hpp"
+
 #include <codec/decode/decoder.hpp>
 #include <media/media.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 struct AVFrame;
@@ -37,7 +40,7 @@ namespace wiola::codec::ffmpeg {
 
 class PcmConverter final {
 public:
-    explicit PcmConverter(pcm::StreamSpec output) noexcept;
+    explicit PcmConverter(pcm::StreamSpec output, PcmConversionApi api = {}) noexcept;
     ~PcmConverter();
 
     PcmConverter(const PcmConverter&) = delete;
@@ -56,12 +59,15 @@ public:
 
 private:
     [[nodiscard]] media::Result<void> configure(const AVFrame& frame);
+    [[nodiscard]] int out_samples(int input_frames) const noexcept;
+    [[nodiscard]] int convert(std::uint8_t** output, int output_frames,
+        const std::uint8_t* const * input, int input_frames) noexcept;
 
     pcm::StreamSpec output_;
+    PcmConversionApi api_;
     SwrContext* converter_{nullptr};
     AVChannelLayout input_layout_{};
     int input_format_{-1};
-    int input_rate_{0};
     std::vector<float> pending_;
     std::size_t offset_{0};
     bool finished_{false};
