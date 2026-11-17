@@ -34,7 +34,19 @@ runs:
         path: |
           ${{ inputs.build-dir }}/_deps/*-src
           ${{ inputs.build-dir }}/_deps/*-subbuild
-        key: deps-${{ inputs.name }}-${{ hashFiles('cmake/dependencies.cmake') }}
+        key: deps-${{ inputs.name }}-${{ hashFiles('cmake/dependencies.cmake', 'cmake/ffmpeg.cmake') }}
+
+    # FFmpeg's installed libraries and ExternalProject stamps must agree for its build to be
+    # skipped. The object directory is deliberately excluded: it is the largest part and can be
+    # recreated if a step ever needs to run again.
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.build-dir }}/_deps/ffmpeg-download
+          ${{ inputs.build-dir }}/_deps/ffmpeg-install
+          ${{ inputs.build-dir }}/wiola_ffmpeg_build-prefix
+          ${{ inputs.build-dir }}/CMakeFiles/wiola_ffmpeg_build-complete
+        key: ffmpeg-${{ inputs.name }}-${{ hashFiles('cmake/ffmpeg.cmake', 'cmake/mingw-w64.cmake') }}
 
     # What was compiled last time. Keyed by commit so every run leaves one, and restored from
     # whichever of this name's is newest.
