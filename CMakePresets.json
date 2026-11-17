@@ -13,7 +13,6 @@
             "binaryDir": "${sourceDir}/build-headless",
             "cacheVariables": {
                 "WIOLA_BUILD_GUI": "OFF",
-                "WIOLA_BUILD_CLI": "OFF",
                 "ENABLE_UNIT_TESTS": "OFF"
             }
         },

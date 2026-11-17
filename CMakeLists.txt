@@ -24,7 +24,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(ENABLE_UNIT_TESTS "Build unit tests" ON)
 option(WIOLA_BUILD_GUI "Build the Qt GUI and player executable" ON)
-option(WIOLA_BUILD_CLI "Build command-line parsing support" ON)
 option(ENABLE_COVERAGE "Instrument the project's code for coverage" OFF)
 
 option(ENABLE_ASAN "Build the project's code with the address sanitizer" OFF)
