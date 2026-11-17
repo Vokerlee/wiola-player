@@ -21,6 +21,7 @@
 #pragma once
 
 #include <media/media.hpp>
+#include <media/operation_context.hpp>
 
 #include <filesystem>
 
@@ -29,6 +30,7 @@ struct AVStream;
 namespace wiola::codec::ffmpeg {
 
 [[nodiscard]] media::Artwork read_artwork(const AVStream& stream);
-[[nodiscard]] media::Result<media::Metadata> read_metadata(const std::filesystem::path& path);
+[[nodiscard]] media::Result<media::Metadata> read_metadata(const std::filesystem::path& path,
+    const media::OperationContext& context = {});
 
 } // namespace wiola::codec::ffmpeg

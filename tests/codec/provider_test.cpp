@@ -81,6 +81,24 @@ TEST(MediaProvider, DistinguishesCancellationFromDeadlineExpiry)
     EXPECT_EQ(timed_out.error().category, wiola::media::ErrorCategory::timed_out);
 }
 
+TEST(MediaProvider, StopsAnOpenedDecoderAtItsNextWorkBoundary)
+{
+    wiola::codec::LocalMediaProvider provider;
+    std::stop_source stop;
+    const wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
+    auto asset{provider.open(fixture("tone.wav"), context)};
+    ASSERT_TRUE(asset);
+    auto decoder{(*asset)->create_decoder(context)};
+    ASSERT_TRUE(decoder);
+
+    stop.request_stop();
+    std::array<float, 8> samples{};
+    auto read{(*decoder)->render(samples)};
+
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::cancelled);
+}
+
 TEST(MediaProvider, CreatesIndependentDecodersForOneAsset)
 {
     wiola::codec::LocalMediaProvider provider;

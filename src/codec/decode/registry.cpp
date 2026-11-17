@@ -78,15 +78,15 @@ std::vector<std::string> MediaBackendRegistry::playback_extensions() const
 }
 
 Opened MediaBackendRegistry::open(const std::filesystem::path& path,
-    std::stop_token cancelled) const
+    const media::OperationContext& context) const
 {
     const media::FileFacts facts{.path = path, .extension = lowercased_extension(path)};
-    auto probe{media::LocalFileStream::open(facts.path)};
+    auto probe{media::LocalFileStream::open(facts.path, context)};
 
     if (!probe)
         return media::unexpected{probe.error()};
 
-    auto head{FileHead::read(**probe)};
+    auto head{FileHead::read(**probe, context)};
 
     if (!head)
         return media::unexpected{head.error()};
@@ -107,11 +107,8 @@ Opened MediaBackendRegistry::open(const std::filesystem::path& path,
                 match_of(backend, *head, facts.extension) != reason)
                 continue;
 
-            if (cancelled.stop_requested())
-                return media::unexpected{
-                    media::Error{.category = media::ErrorCategory::cancelled,
-                                 .detail = "media probe cancelled"}
-                };
+            if (context.stop_reason() != media::StopReason::none)
+                return media::unexpected{context.error()};
 
             if (attempts++ == max_attempts_)
                 return media::unexpected{
@@ -121,7 +118,7 @@ Opened MediaBackendRegistry::open(const std::filesystem::path& path,
 
             claimed = claimed || reason == Match::signature;
 
-            auto opened{backend.open(path)};
+            auto opened{backend.open(path, context)};
             if (opened)
                 return opened;
 

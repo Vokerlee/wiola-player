@@ -72,7 +72,10 @@ void Loader::start(LoadRequest request)
 {
     {
         const std::lock_guard asked{mutex_};
-        active_stop_.request_stop();
+
+        if (opening_)
+            active_stop_.request_stop();
+
         active_stop_ = std::stop_source{};
         asked_ = std::move(request);
         done_.reset();

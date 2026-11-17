@@ -52,7 +52,8 @@ public:
 
     ~Loader();
 
-    /// Replaces any queued request; an in-progress third-party open finishes physically.
+    /// Replaces any queued request and cooperatively cancels only an active open. A completed
+    /// decoder keeps its operation context alive after a later request starts.
     void start(LoadRequest request);
     [[nodiscard]] bool busy() const noexcept;
     [[nodiscard]] std::optional<LoadCompletion> take();

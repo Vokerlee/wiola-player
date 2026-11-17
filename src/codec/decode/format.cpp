@@ -25,10 +25,11 @@
 
 namespace wiola::codec {
 
-media::Result<FileHead> FileHead::read(media::ByteStream& stream)
+media::Result<FileHead> FileHead::read(media::ByteStream& stream,
+    const media::OperationContext& context)
 {
     FileHead head;
-    const auto read = stream.read(head.bytes_);
+    const auto read = stream.read(head.bytes_, context);
 
     if (!read)
         return media::unexpected{read.error()};

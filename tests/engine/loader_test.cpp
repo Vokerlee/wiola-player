@@ -32,6 +32,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <stop_token>
 #include <thread>
 #include <utility>
 
@@ -179,6 +180,26 @@ TEST(Loader, TakesAnotherFileAfterOneIsDone)
     loader.start(request("again.wav", 2));
 
     EXPECT_TRUE(wait_for(loader).has_value());
+}
+
+TEST(Loader, DoesNotCancelACompletedDecoderWhenAnotherLoadStarts)
+{
+    std::stop_token first_stop;
+    Loader loader{[&first_stop](const std::filesystem::path& path,
+                      const wiola::media::OperationContext& context) {
+        if (path == "first.wav")
+            first_stop = context.stop;
+
+        return success();
+    }};
+
+    loader.start(request("first.wav", 1));
+    ASSERT_TRUE(wait_for(loader).has_value());
+
+    loader.start(request("second.wav", 2));
+    ASSERT_TRUE(wait_for(loader).has_value());
+
+    EXPECT_FALSE(first_stop.stop_requested());
 }
 
 TEST(Loader, CanBeThrownAwayWhileItIsReading)

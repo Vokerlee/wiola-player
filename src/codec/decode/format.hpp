@@ -31,6 +31,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -46,7 +47,8 @@ struct Marker {
 class FileHead final {
 public:
     /// Reads leading bytes from the current cursor, distinguishing EOF from read failure.
-    [[nodiscard]] static media::Result<FileHead> read(media::ByteStream& stream);
+    [[nodiscard]] static media::Result<FileHead> read(media::ByteStream& stream,
+        const media::OperationContext& context = {});
 
     /// Whether `marker` is present where it says it should be.
     [[nodiscard]] bool carries(const Marker& marker) const noexcept;
@@ -74,7 +76,34 @@ struct BackendCapabilities {
 };
 
 struct Format {
-    using OpenFunction = std::function<Opened(const std::filesystem::path&)>;
+    class OpenFunction {
+    public:
+        OpenFunction() = default;
+
+        template<typename Callable>
+        OpenFunction(Callable open)
+            : open_{[open = std::move(open)](const std::filesystem::path& path,
+                        const media::OperationContext& context) -> Opened {
+                if constexpr (std::is_invocable_v<Callable&, const std::filesystem::path&,
+                                  const media::OperationContext&>)
+                    return open(path, context);
+                else
+                    return open(path);
+            }}
+        {
+        }
+
+        [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(open_); }
+
+        Opened operator()(const std::filesystem::path& path,
+            const media::OperationContext& context) const
+        {
+            return open_(path, context);
+        }
+
+    private:
+        std::function<Opened(const std::filesystem::path&, const media::OperationContext&)> open_;
+    };
 
     Format(std::string name, std::span<const Marker> markers,
         std::span<const std::string_view> extensions, OpenFunction open,
