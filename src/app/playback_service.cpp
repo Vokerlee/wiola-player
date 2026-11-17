@@ -41,9 +41,13 @@ PlaybackService::PlaybackService(OutputFactory make_output, DecoderOpener open_d
 {
 }
 
-OpenResult PlaybackService::open(std::vector<std::filesystem::path> tracks)
+OperationReceipt PlaybackService::open(std::vector<std::filesystem::path> tracks)
 {
-    return session_.open(std::move(tracks));
+    session_.open(std::move(tracks));
+
+    return {.id = session_.open_request_id(),
+        .operation = OperationKind::open,
+        .acceptance = CommandResult::accepted};
 }
 
 void PlaybackService::add(std::vector<std::filesystem::path> tracks)
@@ -140,6 +144,11 @@ PlaybackSnapshot PlaybackService::pump()
 {
     session_.catch_up();
     return session_.snapshot();
+}
+
+OperationOutcomes PlaybackService::take_outcomes()
+{
+    return session_.take_outcomes();
 }
 
 PlaybackSnapshot PlaybackService::snapshot() const

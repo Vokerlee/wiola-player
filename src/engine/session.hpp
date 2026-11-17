@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <app/operation_outcome.hpp>
 #include <app/playback_snapshot.hpp>
 #include <audio/dsp/equalizer.hpp>
 #include <audio/dsp/processing_chain.hpp>
@@ -39,6 +40,7 @@
 #include <engine/transport/transport_config.hpp>
 #include <utils/units.hpp>
 
+#include <deque>
 #include <filesystem>
 #include <memory>
 #include <span>
@@ -121,6 +123,8 @@ public:
     /// opens tracks, as often as it likes - a caller that draws should call it as it draws.
     void catch_up();
     [[nodiscard]] PlaybackSnapshot snapshot() const;
+    [[nodiscard]] OperationId open_request_id() const noexcept;
+    [[nodiscard]] OperationOutcomes take_outcomes();
 
     /// Whether a file is still being read.
     [[nodiscard]] bool reading() const noexcept;
@@ -165,6 +169,7 @@ public:
 private:
     /// Starts an identified load with the requested transport intent.
     OpenResult begin_reading(const Track& track, LoadIntent intent);
+    void record_outcome(OperationKind operation, OperationId id, media::Result<void> result);
 
     /// Puts on whatever has finished being read, and plays it if that is what it was read for.
     void take_up_finished_read();
@@ -198,6 +203,9 @@ private:
     Playlist playlist_;
 
     LoadCoordinator loads_;
+    OperationId open_request_id_{0};
+    std::deque<OperationOutcome> outcomes_;
+    bool outcomes_overflowed_{false};
     std::filesystem::path track_;
 
     /// A track that has been read and not yet put on, with the name it goes by.

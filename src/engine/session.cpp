@@ -86,6 +86,8 @@ Session::~Session() = default;
 
 OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 {
+    open_request_id_ = 0;
+
     std::vector<Track> queued;
     queued.reserve(tracks.size());
 
@@ -211,10 +213,26 @@ OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
     ready_.reset();
     ready_track_.clear();
 
-    loader_->start(loads_.begin(track.id(), track.path(), intent));
+    LoadRequest request{loads_.begin(track.id(), track.path(), intent)};
+    open_request_id_ = request.generation;
+    loader_->start(std::move(request));
     last_result_ = OpenResult::loading;
 
     return last_result_;
+}
+
+void Session::record_outcome(OperationKind operation, OperationId id, media::Result<void> result)
+{
+    constexpr std::size_t max_retained_outcomes{64};
+
+    if (outcomes_.size() == max_retained_outcomes) {
+        outcomes_.pop_front();
+        outcomes_overflowed_ = true;
+    }
+
+    outcomes_.push_back(
+        OperationOutcome{.id = id, .operation = operation, .result = std::move(result)}
+    );
 }
 
 OpenResult Session::read_current_track(bool playing)
@@ -237,6 +255,10 @@ void Session::catch_up()
 void Session::take_up_finished_tags()
 {
     for (MetadataCoordinator::Reading& reading : metadata_.take()) {
+        record_outcome(OperationKind::metadata, reading.entries.front().value,
+            reading.result ? media::Result<void>{}
+                           : media::Result<void>{media::unexpected{reading.result.error()}});
+
         media::Metadata tags =
             reading.result ? std::move(reading.result).value() : media::Metadata{};
         TrackMetadata metadata{
@@ -261,11 +283,16 @@ void Session::take_up_finished_read()
     codec::Opened& opened{completed->opened};
 
     if (!opened) {
+        record_outcome(OperationKind::open, completed->request.generation,
+            media::unexpected{opened.error()});
+
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
         last_result_ = open_failed(opened.error().category);
         return;
     }
+
+    record_outcome(OperationKind::open, completed->request.generation, media::Result<void>{});
 
     ready_ = std::move(*opened);
     ready_track_ = completed->request.path;
@@ -450,6 +477,25 @@ PlaybackSnapshot Session::snapshot() const
         .loaded = loaded(),
         .playing = playing(),
         .seekable = seekable()};
+}
+
+OperationId Session::open_request_id() const noexcept
+{
+    return open_request_id_;
+}
+
+OperationOutcomes Session::take_outcomes()
+{
+    OperationOutcomes taken;
+    taken.values.reserve(outcomes_.size());
+
+    for (OperationOutcome& outcome : outcomes_)
+        taken.values.push_back(std::move(outcome));
+
+    outcomes_.clear();
+    taken.overflowed = std::exchange(outcomes_overflowed_, false);
+
+    return taken;
 }
 
 } // namespace wiola::engine
