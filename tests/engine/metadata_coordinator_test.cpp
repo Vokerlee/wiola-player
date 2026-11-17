@@ -201,4 +201,25 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWithoutStartingIt)
     EXPECT_FALSE(coordinator.busy());
 }
 
+TEST(MetadataCoordinator, PreservesTypedFailureBesideCoalescedEntryIdentity)
+{
+    Playlist playlist;
+    playlist.set({Track::of("same.wav"), Track::of("same.wav")});
+    MetadataCoordinator coordinator{[](const std::filesystem::path&) {
+        return wiola::media::unexpected{
+            wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
+                                .detail = "unknown tags"}
+        };
+    }};
+
+    coordinator.replace(playlist.tracks());
+    const auto readings{wait_for(coordinator)};
+
+    ASSERT_EQ(readings.size(), 1U);
+    EXPECT_EQ(readings.front().entries.size(), 2U);
+    ASSERT_FALSE(readings.front().result);
+    EXPECT_EQ(readings.front().result.error().category, wiola::media::ErrorCategory::unsupported);
+    EXPECT_EQ(readings.front().result.error().detail, "unknown tags");
+}
+
 } // namespace

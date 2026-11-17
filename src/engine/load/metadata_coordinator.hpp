@@ -37,8 +37,7 @@ public:
     struct Reading {
         std::vector<QueueEntryId> entries;
         std::filesystem::path path;
-        media::Metadata tags;
-        bool failed{false};
+        media::Result<media::Metadata> result;
     };
 
     explicit MetadataCoordinator(std::shared_ptr<media::MediaProvider> provider,

@@ -108,6 +108,7 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
     ASSERT_TRUE(completed.has_value());
     ASSERT_FALSE(completed->opened.has_value());
     EXPECT_EQ(completed->opened.error().category, wiola::media::ErrorCategory::unreadable);
+    EXPECT_EQ(completed->opened.error().detail, "missing");
 }
 
 TEST(Loader, HandsTheAnswerOverOnlyOnce)

@@ -711,6 +711,29 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
         EXPECT_EQ(track.metadata().title, "read");
 }
 
+TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
+{
+    Session session{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [](const std::filesystem::path&) {
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [](const std::filesystem::path&) -> wiola::media::Result<wiola::media::Metadata> {
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
+                                    .detail = "no tag format"}
+            };
+        }};
+
+    EXPECT_EQ(session.open({"playable.wav"}), OpenResult::loading);
+    ASSERT_TRUE(poll_until(session,
+        [&session] { return session.loaded() && session.playlist().metadata_revision() == 1U; }));
+
+    EXPECT_EQ(session.open_result(), OpenResult::opened);
+    EXPECT_TRUE(session.loaded());
+    EXPECT_EQ(session.playlist().tracks().front().title(), "playable");
+}
+
 TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
 {
     wiola::testing::Gate opening;

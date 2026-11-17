@@ -24,10 +24,13 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -72,10 +75,10 @@ TEST(TagReader, ReadsWithTheSuppliedCollaborator)
     ASSERT_EQ(readings.size(), 2U);
     EXPECT_EQ(readings[0].id, wiola::engine::QueueEntryId{1});
     EXPECT_EQ(readings[0].path, std::filesystem::path{"first.wav"});
-    EXPECT_EQ(readings[0].tags.track.artist, "first");
+    EXPECT_EQ(readings[0].result->track.artist, "first");
     EXPECT_EQ(readings[1].id, wiola::engine::QueueEntryId{2});
     EXPECT_EQ(readings[1].path, std::filesystem::path{"second.wav"});
-    EXPECT_EQ(readings[1].tags.track.artist, "second");
+    EXPECT_EQ(readings[1].result->track.artist, "second");
     EXPECT_TRUE(reader.take().empty());
 }
 
@@ -101,7 +104,7 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
 
     const std::vector<TagReader::Reading> readings{wait_for(reader)};
     ASSERT_EQ(readings.size(), 1U);
-    EXPECT_EQ(readings.front().tags.track.title, "released");
+    EXPECT_EQ(readings.front().result->track.title, "released");
 }
 
 TEST(TagReader, IgnoresAnEmptyBatch)
@@ -131,8 +134,54 @@ TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
 
     const auto readings{wait_for(reader)};
     ASSERT_EQ(readings.size(), 2U);
-    EXPECT_TRUE(readings[0].failed);
-    EXPECT_FALSE(readings[1].failed);
+    ASSERT_FALSE(readings[0].result);
+    EXPECT_EQ(readings[0].result.error().category, wiola::media::ErrorCategory::unreadable);
+    EXPECT_EQ(readings[0].result.error().detail, "metadata reader failed");
+    EXPECT_TRUE(readings[1].result);
+    EXPECT_TRUE(readings[1].result->empty());
+}
+
+TEST(TagReader, PreservesTypedFailuresAndContinuesWithTheNextRequest)
+{
+    using wiola::media::ErrorCategory;
+    const std::vector<std::pair<ErrorCategory, std::filesystem::path>> failures{
+        {ErrorCategory::unreadable,     "unreadable.wav" },
+        {ErrorCategory::unsupported,    "unsupported.wav"},
+        {ErrorCategory::cancelled,      "cancelled.wav"  },
+        {ErrorCategory::limit_exceeded, "limited.wav"    },
+        {ErrorCategory::damaged,        "damaged.wav"    },
+    };
+    TagReader reader{[&failures](const std::filesystem::path& path) -> wiola::media::Result<Tags> {
+        const auto failure{std::ranges::find_if(failures,
+            [&path](const auto& candidate) { return candidate.second == path; })};
+
+        if (failure == failures.end())
+            return Tags{};
+
+        return wiola::media::unexpected{
+            wiola::media::Error{.category = failure->first, .detail = path.stem().string()}
+        };
+    }};
+    std::vector<TagReader::Request> requests;
+
+    for (std::size_t index{0}; index < failures.size(); ++index)
+        requests.push_back({.id = wiola::engine::QueueEntryId{index + 1},
+            .path = failures[index].second});
+
+    requests.push_back({.id = wiola::engine::QueueEntryId{6}, .path = "working.wav"});
+    reader.start(std::move(requests));
+
+    const auto readings{wait_for(reader)};
+    ASSERT_EQ(readings.size(), failures.size() + 1);
+
+    for (std::size_t index{0}; index < failures.size(); ++index) {
+        ASSERT_FALSE(readings[index].result);
+        EXPECT_EQ(readings[index].result.error().category, failures[index].first);
+        EXPECT_EQ(readings[index].result.error().detail, failures[index].second.stem().string());
+        EXPECT_EQ(readings[index].path, failures[index].second);
+    }
+
+    EXPECT_TRUE(readings.back().result);
 }
 
 TEST(TagReader, AcceptsOnlyThePrefixThatFits)
@@ -177,5 +226,25 @@ TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)
     const auto readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 1U);
-    EXPECT_TRUE(readings.front().tags.artwork.empty());
+    ASSERT_TRUE(readings.front().result);
+    EXPECT_TRUE(readings.front().result->artwork.empty());
+}
+
+TEST(TagReader, BoundsBackendDiagnosticDetail)
+{
+    TagReader reader{[](const std::filesystem::path&) -> wiola::media::Result<Tags> {
+        return wiola::media::unexpected{
+            wiola::media::Error{.category = wiola::media::ErrorCategory::damaged,
+                                .detail = std::string(2048, 'x')}
+        };
+    }};
+
+    reader.start({
+        {.id = wiola::engine::QueueEntryId{9}, .path = "verbose.wav"}
+    });
+    const auto readings{wait_for(reader)};
+
+    ASSERT_EQ(readings.size(), 1U);
+    ASSERT_FALSE(readings.front().result);
+    EXPECT_EQ(readings.front().result.error().detail.size(), 1024U);
 }
