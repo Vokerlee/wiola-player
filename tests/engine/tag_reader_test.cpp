@@ -230,6 +230,39 @@ TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)
     EXPECT_TRUE(readings.front().result->artwork.empty());
 }
 
+TEST(TagReader, GenerationCancellationReachesTheActiveReadOnly)
+{
+    Gate reading;
+    std::atomic<bool> old_was_cancelled{false};
+    TagReader reader{
+        [&reading, &old_was_cancelled](const std::filesystem::path& path,
+            const wiola::media::OperationContext& context) -> wiola::media::Result<Tags> {
+            if (path == "old.wav") {
+                reading.wait();
+                old_was_cancelled = context.stop_reason() == wiola::media::StopReason::cancelled;
+                return wiola::media::unexpected{context.error()};
+            }
+
+            return Tags{};
+        }};
+
+    reader.start({
+        {.generation = 1, .id = wiola::engine::QueueEntryId{1}, .path = "old.wav"}
+    });
+    reading.wait_until_entered();
+    reader.cancel_before(2);
+    reader.start({
+        {.generation = 2, .id = wiola::engine::QueueEntryId{2}, .path = "current.wav"}
+    });
+    reading.release();
+
+    const auto readings{wait_for(reader)};
+    ASSERT_EQ(readings.size(), 1U);
+    EXPECT_EQ(readings.front().path, std::filesystem::path{"current.wav"});
+    EXPECT_TRUE(readings.front().result);
+    EXPECT_TRUE(old_was_cancelled);
+}
+
 TEST(TagReader, BoundsBackendDiagnosticDetail)
 {
     TagReader reader{[](const std::filesystem::path&) -> wiola::media::Result<Tags> {

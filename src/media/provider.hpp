@@ -23,6 +23,7 @@
 #include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <media/media.hpp>
+#include <media/operation_context.hpp>
 
 #include <filesystem>
 #include <memory>
@@ -38,9 +39,10 @@ public:
 
     virtual ~MediaAsset() = default;
 
-    virtual Result<MediaInfo> inspect() = 0;
-    virtual Result<Metadata> read_metadata() = 0;
-    virtual Result<std::unique_ptr<codec::Decoder>> create_decoder() = 0;
+    virtual Result<MediaInfo> inspect(const OperationContext& context = {}) = 0;
+    virtual Result<Metadata> read_metadata(const OperationContext& context = {}) = 0;
+    virtual Result<std::unique_ptr<codec::Decoder>>
+    create_decoder(const OperationContext& context = {}) = 0;
 
 protected:
     MediaAsset() = default;
@@ -54,7 +56,8 @@ public:
     virtual ~MediaProvider() = default;
 
     /// Identifies a resource without decoding it or creating playback/output state.
-    virtual Result<std::unique_ptr<MediaAsset>> open(const std::filesystem::path& path) = 0;
+    virtual Result<std::unique_ptr<MediaAsset>> open(const std::filesystem::path& path,
+        const OperationContext& context = {}) = 0;
 
     [[nodiscard]] virtual std::vector<std::string> playback_extensions() const = 0;
 

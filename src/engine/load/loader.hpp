@@ -36,6 +36,8 @@
 namespace wiola::engine {
 
 using DecoderOpener = std::function<codec::Opened(const std::filesystem::path&)>;
+using ContextDecoderOpener =
+    std::function<codec::Opened(const std::filesystem::path&, const media::OperationContext&)>;
 
 /// Latest-request-wins decoder opening with request identity retained in every completion.
 class Loader {
@@ -43,6 +45,7 @@ public:
     Loader();
     explicit Loader(std::shared_ptr<media::MediaProvider> provider);
     explicit Loader(DecoderOpener open);
+    explicit Loader(ContextDecoderOpener open);
 
     NO_COPY_SEMANTIC(Loader);
     NO_MOVE_SEMANTIC(Loader);
@@ -57,7 +60,8 @@ public:
 private:
     void work(const std::stop_token& stop);
 
-    DecoderOpener open_;
+    ContextDecoderOpener open_;
+    std::stop_source active_stop_;
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
     std::optional<LoadRequest> asked_;

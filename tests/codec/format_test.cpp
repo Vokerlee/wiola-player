@@ -59,7 +59,8 @@ FileHead head_of(const char* name, std::string_view bytes)
 
 class ReadFailure final : public wiola::media::ByteStream {
 public:
-    wiola::media::Result<std::size_t> read(std::span<std::byte>) override
+    wiola::media::Result<std::size_t> read(std::span<std::byte>,
+        const wiola::media::OperationContext&) override
     {
         return wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::read_failed,
@@ -67,9 +68,16 @@ public:
         };
     }
 
-    wiola::media::Result<void> seek(std::int64_t, wiola::media::SeekOrigin) override { return {}; }
+    wiola::media::Result<void> seek(std::int64_t, wiola::media::SeekOrigin,
+        const wiola::media::OperationContext&) override
+    {
+        return {};
+    }
 
-    wiola::media::Result<std::uint64_t> tell() override { return std::uint64_t{0}; }
+    wiola::media::Result<std::uint64_t> tell(const wiola::media::OperationContext&) override
+    {
+        return std::uint64_t{0};
+    }
 };
 
 TEST(FileHead, PropagatesAReadFailure)

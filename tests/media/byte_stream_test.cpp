@@ -26,6 +26,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <stop_token>
 #include <vector>
 
 namespace {
@@ -44,8 +45,12 @@ public:
     {
     }
 
-    Result<std::size_t> read(std::span<std::byte> out) override
+    Result<std::size_t> read(std::span<std::byte> out,
+        const wiola::media::OperationContext& context = {}) override
     {
+        if (context.stop_reason() != wiola::media::StopReason::none)
+            return unexpected{context.error()};
+
         if (fail_reads_)
             return unexpected{
                 Error{.category = ErrorCategory::read_failed, .detail = "injected"}
@@ -57,8 +62,12 @@ public:
         return count;
     }
 
-    Result<void> seek(std::int64_t offset, SeekOrigin origin) override
+    Result<void> seek(std::int64_t offset, SeekOrigin origin,
+        const wiola::media::OperationContext& context = {}) override
     {
+        if (context.stop_reason() != wiola::media::StopReason::none)
+            return unexpected{context.error()};
+
         const std::int64_t base{origin == SeekOrigin::start ? 0
                 : origin == SeekOrigin::current ? static_cast<std::int64_t>(cursor_)
                                                 : static_cast<std::int64_t>(bytes_.size())};
@@ -73,7 +82,13 @@ public:
         return {};
     }
 
-    Result<std::uint64_t> tell() override { return cursor_; }
+    Result<std::uint64_t> tell(const wiola::media::OperationContext& context = {}) override
+    {
+        if (context.stop_reason() != wiola::media::StopReason::none)
+            return unexpected{context.error()};
+
+        return cursor_;
+    }
 
     void fail_reads() { fail_reads_ = true; }
 
@@ -125,6 +140,26 @@ TEST(ByteStream, DistinguishesEndOfFileFromReadFailure)
     read = stream.read(out);
     ASSERT_FALSE(read);
     EXPECT_EQ(read.error().category, ErrorCategory::read_failed);
+}
+
+TEST(ByteStream, AppliesCancellationToReadSeekAndTell)
+{
+    MemoryStream stream{{std::byte{1}}};
+    std::stop_source stop;
+    stop.request_stop();
+    const wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
+    std::array<std::byte, 1> out{};
+
+    auto read{stream.read(out, context)};
+    auto seek{stream.seek(0, SeekOrigin::start, context)};
+    auto tell{stream.tell(context)};
+
+    ASSERT_FALSE(read);
+    ASSERT_FALSE(seek);
+    ASSERT_FALSE(tell);
+    EXPECT_EQ(read.error().category, ErrorCategory::cancelled);
+    EXPECT_EQ(seek.error().category, ErrorCategory::cancelled);
+    EXPECT_EQ(tell.error().category, ErrorCategory::cancelled);
 }
 
 } // namespace

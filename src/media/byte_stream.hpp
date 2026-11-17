@@ -21,6 +21,7 @@
 #pragma once
 
 #include <core/macros.hpp>
+#include <media/operation_context.hpp>
 #include <media/result.hpp>
 
 #include <cstddef>
@@ -43,9 +44,11 @@ public:
     virtual ~ByteStream() = default;
 
     /// A short successful read is EOF; an error is never encoded as a short read.
-    [[nodiscard]] virtual Result<std::size_t> read(std::span<std::byte> out) = 0;
-    [[nodiscard]] virtual Result<void> seek(std::int64_t offset, SeekOrigin origin) = 0;
-    [[nodiscard]] virtual Result<std::uint64_t> tell() = 0;
+    [[nodiscard]] virtual Result<std::size_t> read(std::span<std::byte> out,
+        const OperationContext& context = {}) = 0;
+    [[nodiscard]] virtual Result<void> seek(std::int64_t offset, SeekOrigin origin,
+        const OperationContext& context = {}) = 0;
+    [[nodiscard]] virtual Result<std::uint64_t> tell(const OperationContext& context = {}) = 0;
 
 protected:
     ByteStream() = default;

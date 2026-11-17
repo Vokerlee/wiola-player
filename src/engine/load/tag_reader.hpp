@@ -37,6 +37,9 @@
 namespace wiola::engine {
 
 using MetadataReader = std::function<media::Result<media::Metadata>(const std::filesystem::path&)>;
+using ContextMetadataReader =
+    std::function<media::Result<media::Metadata>(const std::filesystem::path&,
+        const media::OperationContext&)>;
 
 /// Bounded tag worker. Submission accepts as much of a batch as capacity permits.
 class TagReader {
@@ -60,6 +63,9 @@ public:
     explicit TagReader(MetadataReader read, std::size_t max_pending = 256,
         std::size_t max_completed = 256,
         std::size_t max_completed_artwork_bytes = 64 * 1024 * 1024);
+    explicit TagReader(ContextMetadataReader read, std::size_t max_pending = 256,
+        std::size_t max_completed = 256,
+        std::size_t max_completed_artwork_bytes = 64 * 1024 * 1024);
 
     NO_COPY_SEMANTIC(TagReader);
     NO_MOVE_SEMANTIC(TagReader);
@@ -78,7 +84,8 @@ public:
 private:
     void work(const std::stop_token& stop);
 
-    MetadataReader reader_;
+    ContextMetadataReader reader_;
+    std::stop_source active_stop_;
     const std::size_t max_pending_;
     const std::size_t max_completed_;
     const std::size_t max_completed_artwork_bytes_;

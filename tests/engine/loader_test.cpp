@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -195,6 +196,33 @@ TEST(Loader, CanBeThrownAwayWhileItIsReading)
 
     loader.start(request("track.wav"));
     opening.wait_until_entered();
+}
+
+TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
+{
+    Gate opening;
+    std::atomic<bool> old_was_cancelled{false};
+    Loader loader{[&opening, &old_was_cancelled](const std::filesystem::path& path,
+                      const wiola::media::OperationContext& context) -> Opened {
+        if (path == "old.wav") {
+            opening.wait();
+            old_was_cancelled = context.stop_reason() == wiola::media::StopReason::cancelled;
+            return wiola::media::unexpected{context.error()};
+        }
+
+        return success(20);
+    }};
+
+    loader.start(request("old.wav", 1));
+    opening.wait_until_entered();
+    loader.start(request("current.wav", 2));
+    opening.release();
+
+    const auto completed{wait_for(loader)};
+    ASSERT_TRUE(completed.has_value());
+    EXPECT_EQ(completed->request.generation, 2U);
+    EXPECT_TRUE(completed->opened);
+    EXPECT_TRUE(old_was_cancelled);
 }
 
 TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)

@@ -31,11 +31,13 @@ namespace wiola::media {
 class LocalFileStream final : public ByteStream {
 public:
     [[nodiscard]] static Result<std::unique_ptr<LocalFileStream>>
-    open(const std::filesystem::path& path);
+    open(const std::filesystem::path& path, const OperationContext& context = {});
 
-    [[nodiscard]] Result<std::size_t> read(std::span<std::byte> out) override;
-    [[nodiscard]] Result<void> seek(std::int64_t offset, SeekOrigin origin) override;
-    [[nodiscard]] Result<std::uint64_t> tell() override;
+    [[nodiscard]] Result<std::size_t> read(std::span<std::byte> out,
+        const OperationContext& context = {}) override;
+    [[nodiscard]] Result<void> seek(std::int64_t offset, SeekOrigin origin,
+        const OperationContext& context = {}) override;
+    [[nodiscard]] Result<std::uint64_t> tell(const OperationContext& context = {}) override;
 
 private:
     std::ifstream file_;
