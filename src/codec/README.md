@@ -131,6 +131,127 @@ end-of-stream flag is explicit, and the final read may contain both audio and th
 the engine play everything through the final drain rather than stopping at the container's packet
 boundary.
 
+## Threads: who does the work
+
+The codec directory itself does not launch a general-purpose thread pool. Thread ownership belongs
+to the engine and the audio device around it. This makes every potentially blocking operation
+synchronous from the codec's point of view, while the caller decides which thread may block.
+
+The following inventory is per [`Session`](../engine/session.hpp). Wiola's desktop application
+currently has one session; additional sessions would have independent workers of their own. Qt and
+the operating system may have internal threads that are outside this inventory.
+
+### The application thread
+
+The application thread is normally Qt's GUI thread. It handles user commands and calls
+[`Session::catch_up`](../engine/session.cpp) to collect completed loads and metadata. The two
+`QTimer` objects in [`MainWindow`](../gui/main_window.cpp) run on this same thread; timers do not
+create worker threads. A non-GUI caller can use [`PlaybackService::pump`](../app/playback_service.cpp)
+for the same job.
+
+Opening a file returns before decoder inspection finishes. Later, `catch_up` installs the completed
+decoder and applies completed tags to the playlist. This keeps FFmpeg I/O away from the GUI without
+making the whole `Session` a lock-protected object that arbitrary threads may call.
+
+### One loader worker
+
+[`Loader`](../engine/load/loader.cpp) owns one `std::jthread`. It is created lazily by
+[`Loader::start`](../engine/load/loader.cpp) on the first request and remains alive, usually sleeping
+on a condition variable, until the loader is destroyed. There is one loader per session and at most
+one decoder open physically in progress on it.
+
+The call path is:
+
+- [`Session::open`](../engine/session.cpp) and `Session::begin_reading` submit a request;
+- [`Loader::start`](../engine/load/loader.cpp) stores the request and wakes the worker;
+- [`Loader::work`](../engine/load/loader.cpp) calls the media provider and
+  [`FfmpegDecoder::open`](backends/ffmpeg/decoder.cpp) synchronously;
+- `Session::catch_up` collects the completion on the application thread.
+
+Starting another request cooperatively cancels an active open, but there is never a second loader
+thread doing a parallel open. A completed decoder is handed to playback and is not cancelled merely
+because another load starts.
+
+### One metadata worker
+
+[`TagReader`](../engine/load/tag_reader.cpp) also owns one lazy, persistent `std::jthread`. Its entry
+points are [`TagReader::start`](../engine/load/tag_reader.cpp), `TagReader::work`, and
+`TagReader::take`. It reads one file's metadata at a time, even when the playlist contains hundreds
+of files.
+
+[`MetadataCoordinator`](../engine/load/metadata_coordinator.cpp) groups duplicate paths, submits
+requests incrementally, and discards obsolete playlist generations. The reader has bounded pending
+and completed queues, each holding up to 256 entries by default, plus a 64 MiB completed-artwork
+budget. These bounds limit queued memory; they are not a pool of 256 workers.
+
+The worker calls [`read_metadata`](backends/ffmpeg/metadata.cpp) synchronously. Metadata inspection
+and decoder opening can therefore run in parallel with each other, but each has its own input and
+file cursor.
+
+### One active transport worker
+
+Playback decoding gets a separate thread so that container reads, codec work, seeking, and PCM
+conversion do not block either the GUI or the real-time audio callback.
+
+[`Player::start`](../engine/transport/player.cpp) calls
+[`TransportWorker::start`](../engine/transport/transport_worker.cpp), which launches one
+`std::jthread` running `TransportWorker::work`. The worker calls
+[`DecodeLoop::begin`](../engine/transport/decode_loop.cpp) and then
+[`DecodeLoop::run`](../engine/transport/decode_loop.cpp). That loop invokes
+[`FfmpegDecoder::decode`](backends/ffmpeg/decoder.cpp) synchronously and pushes PCM into the
+playback queue.
+
+A session has one active transport worker. It finishes after a stop, end-of-stream, or fault, and a
+later replay joins any previous worker before starting another. Pause and resume change transport
+state and wake this worker; they do not create replacement threads.
+
+Seek preparation also runs here. The candidate decoder described in the next section is opened and
+positioned on the transport worker, not on a new seek thread.
+
+### The audio backend callback
+
+[`Device`](../audio/device/device.cpp) does not explicitly create a `std::thread`. Its `start` method
+configures a miniaudio data callback, and the platform audio backend invokes that callback on its
+playback thread or callback stream. A session has one current output device and one serial callback
+stream.
+
+The callback runs [`Device::render`](../audio/device/device.cpp), which asks
+[`BufferSource::render`](../audio/dsp/buffer_source.cpp) for already-decoded PCM. It does not read
+compressed files or call FFmpeg.
+
+The transport worker is the single producer for a [`PcmQueue`](../pcm/pcm_queue.hpp), and the audio
+callback is its single consumer. This single-producer/single-consumer ring is the handoff between
+the two threads. It avoids running decoder locks or file I/O inside the audio callback.
+
+### No internal FFmpeg decoding pool
+
+[`PacketDecoder::initialize`](backends/ffmpeg/packet_decoder.cpp) explicitly sets FFmpeg's codec
+`thread_count` to 1. Decoding therefore uses the transport thread that made the call; Wiola does not
+create an additional per-codec frame-thread pool. Inspection and metadata calls are likewise made
+synchronously by their respective loader or metadata workers.
+
+### How many run in parallel?
+
+During ordinary playback, the active contexts are the application thread, the transport worker, and
+the audio callback. The loader and metadata workers may exist but are asleep.
+
+The busiest normal case can have **five active execution contexts per session**:
+
+1. the application thread handling UI and completions;
+2. the loader opening the next track;
+3. the metadata worker inspecting another playlist entry;
+4. the transport worker decoding the current track;
+5. the audio callback consuming decoded PCM.
+
+Seeking does not increase that count, and neither does creating a candidate decoder. When playback
+is idle, only the application thread needs to be active; the loader and metadata workers can remain
+alive but waiting until session destruction.
+
+For a code-level walkthrough, follow `Session::open` into `Loader::work`, then follow
+`Session::catch_up` and `Session::install_read_track` into `Player::start`. From there,
+`TransportWorker::work` and `DecodeLoop::run` show the producer side, while `Device::render` and
+`BufferSource::render` show the real-time consumer side.
+
 ## Seeking without losing the current position
 
 A seek should not destroy a perfectly good playback position before we know that the new position
