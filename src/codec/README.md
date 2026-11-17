@@ -218,6 +218,68 @@ flowchart LR
 For 5.1-side audio, the semantic side-speaker order is preserved. There is no hidden downmix. For
 mono and stereo, the default FFmpeg layout is sufficient.
 
+### What mono, stereo, and 5.1-side look like in PCM
+
+A **sample** is one number for one channel. A **PCM frame** is the group of samples, one per
+channel, captured at the same instant. The sample rate counts frames per second, not individual
+floating-point values per second.
+
+Mono stores one float per frame:
+
+```text
+frame 0    frame 1    frame 2
+  M0         M1         M2
+```
+
+Stereo stores left and right together, two floats per frame:
+
+```text
+frame 0       frame 1       frame 2
+ L0  R0        L1  R1        L2  R2
+```
+
+Wiola's 5.1-side layout stores six floats per frame in this exact order:
+
+```text
+frame 0
+ FL0  FR0  C0  LFE0  SL0  SR0
+
+frame 1
+ FL1  FR1  C1  LFE1  SL1  SR1
+```
+
+`FL` and `FR` are front left/right, `C` is center, `LFE` is the low-frequency effects channel, and
+`SL` and `SR` are **side** left/right. The `.1` names the LFE channel; it does not mean a fraction
+of a sample. Side speakers are not interchangeable with rear speakers, which is why Wiola names
+this layout `five_point_one_side` instead of treating any six-channel stream as identical.
+
+For frame `i`, the channel at `channel_index` lives at:
+
+```text
+buffer[i * num_channels + channel_index]
+```
+
+Thus stereo frame 10 starts at float index 20, while a 5.1-side frame 10 starts at index 60. This
+is also why queue operations must preserve frame alignment: shifting a stereo buffer by one float
+would swap left and right, and shifting a 5.1 buffer would reinterpret every speaker position.
+
+```mermaid
+flowchart LR
+    PCM[Interleaved PCM] --> Mono[Mono: M]
+    PCM --> Stereo[Stereo: L, R]
+    PCM --> Surround[5.1-side: FL, FR, C, LFE, SL, SR]
+    Mono --> Map[Matching device channel map]
+    Stereo --> Map
+    Surround --> Map
+```
+
+The converter changes sample representation, not the channels' meanings. The device layer then maps
+the same positions to Miniaudio. Mono uses `MA_CHANNEL_MONO`; stereo uses front left/right; 5.1-side
+uses front left/right, center, LFE, and side left/right. There is no downmix in this path.
+
+The [PCM guide](../pcm/README.md) develops the sampling theory, buffer indexing, memory sizes, and
+frame-aligned queue rules in more detail.
+
 ## 7. Timestamps describe audible positions
 
 A compressed packet timestamp is not automatically the sample position the listener expects. Stream
