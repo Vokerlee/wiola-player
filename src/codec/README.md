@@ -1,305 +1,206 @@
-# How Wiola reads audio and metadata
+# From an audio file to sound: a developer's guide
 
-The codec layer gives the rest of Wiola a small, dependable view of an audio file. It answers three
-questions: what the file contains, what we know about it without playing it, and how to turn it into
-sound when playback begins. FFmpeg does the container and codec work, but its types and ownership
-rules stay inside this directory.
+This guide follows one song through Wiola, from the moment it is opened until its samples reach the
+audio device. It explains why the pieces exist and how they cooperate. The code links are optional
+starting points, not a list of APIs to memorize.
 
-This separation matters because reading tags and playing audio are different activities. Opening a
-file for metadata must not move the playback position, and creating a second decoder must not disturb
-the first one.
+FFmpeg reads containers and compressed audio. Miniaudio talks to the audio device. The codec layer
+sits between them and turns format-specific details into a small set of ideas the rest of the player
+understands: metadata, duration, PCM audio, playback position, and errors.
 
-## Opening a file
+## 1. Start with a file, not a playback thread
 
-[`LocalMediaProvider`](provider.cpp) begins by opening a local byte stream and returning a
-[`media::MediaAsset`](../media/provider.hpp). An asset represents the resource, not a position in it.
-It can inspect the file, read its metadata, or create independent decoders.
+When [`LocalMediaProvider`](provider.cpp) opens a path, it creates a
+[`media::MediaAsset`](../media/provider.hpp). Think of the asset as “something Wiola can open,” not
+as “something currently playing.” It has no playback cursor of its own.
 
-FFmpeg receives the file through [`media::ByteStream`](../media/byte_stream.hpp), rather than through
-a filename passed to a global file API. [`FfmpegInput`](backends/ffmpeg/input.hpp) owns that stream
-and the FFmpeg input built around it. This gives every inspection and decoder its own file cursor.
-It also lets Wiola bound I/O, propagate cancellation, and reject attempts to open secondary
-resources.
+That distinction gives us two useful freedoms:
 
-Recognition is based on content as well as the filename suffix. A file that looks like a supported
-format is inspected for a usable audio stream, a known codec and profile, and a supported channel
-layout. A familiar extension alone is not a promise that playback will work.
+- we can inspect a file without changing what is already playing;
+- we can create more than one decoder from the same asset, and each decoder keeps its own position.
 
-## Reading metadata without touching playback
+Every decoder receives an independent input. Metadata inspection, normal playback, and seek
+preparation never have to share a file cursor.
 
-[`read_metadata`](backends/ffmpeg/metadata.cpp) creates a new `FfmpegInput`, inspects the selected
-audio stream, reads the fields Wiola uses, and then destroys that input. It never borrows the input
-of a decoder that is already playing.
+## 2. Recognize the file before trusting it
 
-The process is:
+A filename ending in `.mp3` or `.flac` is only a hint. Wiola also examines the file's contents, then
+asks FFmpeg to identify the container and inspect its streams.
 
-1. Open an independent stream and let FFmpeg recognize the container.
-2. Inspect the streams and select a supported audio stream, preferring the container's default when
-   there is a choice.
-3. Read `title`, `artist`, and `album` from the container tags. If a field is absent there, look in
-   the selected audio stream's tags.
-4. Ask the same inspection code used by playback for the stream's duration information.
-5. Copy the first usable attached picture as encoded artwork.
+A usable file needs more than a recognized suffix. It must contain an audio stream whose codec,
+profile, sample rate, and channel layout are supported. If several audio streams are present, the
+container's default is preferred. A picture attached as album artwork must not accidentally become
+the audio stream.
 
-Missing text remains empty rather than becoming a fabricated value. Text fields are limited to
-64 KiB each. Artwork is limited to 8 MiB and remains in its original encoded form; PNG and JPEG are
-identified explicitly, and no image decoding happens in the codec layer.
+The input reaches FFmpeg through [`FfmpegInput`](backends/ffmpeg/input.hpp), which owns a
+[`media::ByteStream`](../media/byte_stream.hpp). This gives Wiola control over reads, seeks,
+cancellation, and file size. It also prevents FFmpeg from opening secondary resources behind our
+back.
 
-These rules live in [`metadata.cpp`](backends/ffmpeg/metadata.cpp). The tests in
-[`ffmpeg_metadata_test.cpp`](../../tests/codec/ffmpeg_metadata_test.cpp) cover ordinary tags,
-stream-level fallbacks, Unicode, artwork, and oversized input.
+## 3. Read the tags without starting playback
 
-## Where the audio length comes from
+Reading metadata is a separate visit to the file. The
+[`read_metadata`](backends/ffmpeg/metadata.cpp) function opens its own input, inspects the selected
+audio stream, collects the information, and closes that input again.
 
-Duration is not necessarily a tag written by a person. Unlike a title or an artist, it is usually a
-fact reported or derived by the demuxer while it examines the container.
+For title, artist, and album, Wiola first looks at the container's tags. If a field is missing
+there, it tries the selected audio stream's tags. A missing field stays empty; Wiola does not invent
+a replacement inside the codec layer.
 
-After stream inspection, [`FfmpegInput::inspect`](backends/ffmpeg/input.cpp) tries two sources, in
-this order:
+Attached artwork is copied in its original encoded form. The codec does not decode the image. PNG
+and JPEG are recognized explicitly, and oversized text or artwork is discarded rather than allowed
+to consume unbounded memory.
 
-1. **The selected audio stream's duration.** This is the most specific answer. Its time base
-   describes how to convert the stored duration units into seconds.
-2. **The container's overall duration.** This is used when the selected stream has no duration of
-   its own. Container duration uses FFmpeg's standard microsecond time base.
+Because this input is independent, reading tags cannot rewind or otherwise disturb a song that is
+already playing.
 
-When either value is available and valid, Wiola converts it to seconds and then to a number of PCM
-frames using the output sample rate. The metadata reader converts the same frame count back to the
-shared time representation used by the rest of the application.
+## 4. Solve the duration puzzle
 
-FFmpeg may obtain these values from container headers, sample tables, indexes, packet timestamps, or
-other format-specific information. Depending on the demuxer, it may also estimate a container
-duration from information such as bitrate and file size. Wiola does not implement a separate
-file-size-divided-by-bitrate guess of its own.
+Duration is different from a title. It is often not a tag at all. Usually the demuxer—the part of
+FFmpeg that understands the container—reports or derives it while inspecting the file.
 
-If neither the stream nor the container supplies a usable non-negative duration, Wiola reports **no
-known duration**. It does not scan the entire file merely to fill in the field.
+Wiola tries two sources in order:
 
-## Does duration discovery decode the track?
+1. **The selected audio stream's duration**, because it describes the audio we actually selected.
+2. **The container's overall duration**, when the stream has no duration of its own.
 
-**Wiola does not decode the whole track to determine its length.** The metadata path does not create
-a [`PacketDecoder`](backends/ffmpeg/packet_decoder.hpp), enter the playback loop, or count decoded
-frames through end-of-stream.
+Both values need a time base. For example, a duration of `441000` with a time base of `1/44100`
+means ten seconds. At a sample rate of 44,100 Hz, that becomes 441,000 PCM frames. The conversion
+from FFmpeg's timing information to this neutral frame count happens in
+[`FfmpegInput::inspect`](backends/ffmpeg/input.cpp).
 
-There is an important nuance: inspection is not necessarily a read-of-a-few-header-bytes operation.
-Wiola calls FFmpeg's `avformat_find_stream_info`, and FFmpeg may read some packets or briefly invoke
-a decoder to establish stream parameters. The input is configured with a 256 KiB probe size and a
-one-second analysis-duration limit. Cancellation can interrupt this work through the input's
-operation context.
+Different containers provide different clues. Some have sample tables or indexes. Others leave
+FFmpeg to use packet timestamps or estimate a duration from information such as bitrate and file
+size. Wiola accepts FFmpeg's answer when it is usable; it does not add a second home-grown
+file-size-divided-by-bitrate calculation.
 
-So the precise guarantee is **no full-track decode by Wiola**, not “FFmpeg will never look at a
-compressed audio frame.” For formats with useful indexes or duration fields, inspection can be very
-cheap. For damaged or unusual files, FFmpeg may need more of the bounded probe before it succeeds,
-fails, or leaves the duration unknown.
+If neither source produces a usable non-negative value, the duration is left **unknown**. Wiola does
+not read the whole file merely to avoid showing an empty duration field.
 
-## Why a duration can be exact, estimated, or unknown
+### Does finding the duration decode the song?
 
-A displayed time and our confidence in that time are different things. The decoder therefore carries
-a [`LengthAccuracy`](decode/decoder.hpp) alongside its optional frame count.
+**Not the whole song.** Wiola has no loop that decodes a track from beginning to end just to count
+its frames. The metadata path does not even create the packet decoder used for playback.
 
-| Accuracy | What it means |
-| --- | --- |
-| `exact` | The reported frame count is allowed to bound playback. Wiola uses this for supported PCM and sample-count-based lossless formats, and for MP4 AAC when the stream itself supplies a duration. |
-| `estimated` | A duration exists, but it must not cut off audible data. This covers formats whose container timing may omit codec delay, padding, or final frames. |
-| `unknown` | No usable duration was found. Playback must rely on actual decoding progress and end-of-stream. |
+There is a subtlety worth knowing: FFmpeg's stream inspection may read some packets, and for some
+formats it may briefly invoke a decoder to establish stream facts. Wiola configures a 256 KiB probe
+size and a one-second analysis-duration limit, and cancellation can interrupt the operation.
 
-This policy prevents a plausible-looking estimate from damaging the last seconds of a song. Exact
-lengths can trim padding at the end of a read. Estimated lengths never truncate output, and a file
-that ends before its estimate is not treated as damaged merely for doing so.
+The honest summary is therefore “no full-track decode,” not “no compressed audio is ever touched.”
 
-Unknown duration does not make a file unplayable. Playback continues until the decoder explicitly
-reports end-of-stream or an error. Seek capability is reported separately, so “we do not know the
-total time” does not automatically mean “we cannot seek.”
+### Why some lengths are trusted more than others
 
-## What happens when playback actually starts
+A duration can look precise and still be a poor boundary for playback. Codec delay and padding are
+classic examples: cutting output at an estimated container duration could remove real sound.
 
-Creating a decoder is a separate operation from reading metadata. The asset asks the
-[`MediaBackendRegistry`](decode/registry.hpp) for a new [`AudioDecoder`](decode/decoder.hpp), and the
-FFmpeg backend builds fresh input, packet, and conversion state.
+Wiola keeps three levels of confidence:
 
-The resulting pipeline is easiest to understand as four responsibilities:
+- **Exact** lengths may bound output. Supported PCM and sample-count-based lossless formats use
+  this category, as does MP4 AAC when the stream itself supplies the duration.
+- **Estimated** lengths are useful for display but never truncate audio.
+- **Unknown** means there is no reliable total to display or use as a boundary.
 
-- [`FfmpegInput`](backends/ffmpeg/input.hpp) reads the container and selects the audio stream.
-- [`PacketDecoder`](backends/ffmpeg/packet_decoder.hpp) turns compressed packets into decoded audio
-  frames and reports when the source is exhausted.
-- [`PcmConverter`](backends/ffmpeg/pcm_converter.hpp) converts those frames into the interleaved
-  floating-point PCM shape promised to the engine.
-- [`FfmpegDecoder`](backends/ffmpeg/decoder.hpp) coordinates their state and presents only neutral
-  progress, end-of-stream, position, and error values to the caller.
+Actual decoding progress and the explicit end-of-stream signal always decide when playback ends. An
+unknown duration does not make a file unplayable, and it does not automatically make seeking
+impossible.
 
-A short read means that some audio was produced; it does not by itself mean the track ended. The
-end-of-stream flag is explicit, and the final read may contain both audio and that flag. This lets
-the engine play everything through the final drain rather than stopping at the container's packet
-boundary.
+## 5. Open a track without freezing the application
 
-## Threads: who does the work
+Now imagine selecting an album in the GUI. The application thread submits the work and returns to
+handling the window. Two background workers can help with the album:
 
-The codec directory itself does not launch a general-purpose thread pool. Thread ownership belongs
-to the engine and the audio device around it. This makes every potentially blocking operation
-synchronous from the codec's point of view, while the caller decides which thread may block.
+- **One loader worker** opens the track selected for playback. It performs container inspection and
+  decoder construction away from the GUI. There is only one loader thread per session, so two
+  decoder opens do not run in parallel on that worker.
+- **One metadata worker** reads playlist tags one file at a time. Its queues can hold many requests,
+  but those requests are not a pool of additional threads.
 
-The following inventory is per [`Session`](../engine/session.hpp). Wiola's desktop application
-currently has one session; additional sessions would have independent workers of their own. Qt and
-the operating system may have internal threads that are outside this inventory.
+Both workers are created lazily on their first request and then reused. When idle, they wait rather
+than repeatedly opening new threads. The application later collects their completions through
+[`Session::catch_up`](../engine/session.cpp).
 
-### The application thread
+The loader path begins in [`Loader::start`](../engine/load/loader.cpp). The metadata path begins in
+[`TagReader::start`](../engine/load/tag_reader.cpp). These are useful places to set a breakpoint if
+you want to watch the work arrive.
 
-The application thread is normally Qt's GUI thread. It handles user commands and calls
-[`Session::catch_up`](../engine/session.cpp) to collect completed loads and metadata. The two
-`QTimer` objects in [`MainWindow`](../gui/main_window.cpp) run on this same thread; timers do not
-create worker threads. A non-GUI caller can use [`PlaybackService::pump`](../app/playback_service.cpp)
-for the same job.
+## 6. Follow the audio after Play is pressed
 
-Opening a file returns before decoder inspection finishes. Later, `catch_up` installs the completed
-decoder and applies completed tags to the playlist. This keeps FFmpeg I/O away from the GUI without
-making the whole `Session` a lock-protected object that arbitrary threads may call.
+A completed open gives the session a decoder. Pressing Play creates one transport worker for the
+current playback run. This worker owns the blocking part of playback: reading the container,
+decoding packets, converting samples, and preparing seeks.
 
-### One loader worker
+The journey through the codec looks like this:
 
-[`Loader`](../engine/load/loader.cpp) owns one `std::jthread`. It is created lazily by
-[`Loader::start`](../engine/load/loader.cpp) on the first request and remains alive, usually sleeping
-on a condition variable, until the loader is destroyed. There is one loader per session and at most
-one decoder open physically in progress on it.
+1. FFmpeg supplies a compressed packet.
+2. The packet decoder turns it into a decoded audio frame.
+3. The PCM converter turns that frame into interleaved floating-point samples.
+4. The transport worker places those samples in a queue.
 
-The call path is:
+“PCM” simply means the uncompressed sample values an audio device can consume. “Interleaved” means
+that channels alternate in the buffer: left, right, left, right for stereo.
 
-- [`Session::open`](../engine/session.cpp) and `Session::begin_reading` submit a request;
-- [`Loader::start`](../engine/load/loader.cpp) stores the request and wakes the worker;
-- [`Loader::work`](../engine/load/loader.cpp) calls the media provider and
-  [`FfmpegDecoder::open`](backends/ffmpeg/decoder.cpp) synchronously;
-- `Session::catch_up` collects the completion on the application thread.
+The entry point for this work is [`DecodeLoop::run`](../engine/transport/decode_loop.cpp). FFmpeg's
+codec is configured with one thread, so its decode call runs on this transport worker rather than
+creating another codec-specific pool.
 
-Starting another request cooperatively cancels an active open, but there is never a second loader
-thread doing a parallel open. A completed decoder is handed to playback and is not cancelled merely
-because another load starts.
+### Why the audio device needs a separate callback
 
-### One metadata worker
+The audio backend regularly asks for the next block of sound. That request arrives on miniaudio's
+playback callback, owned by the platform audio backend rather than by an explicit `std::thread` in
+Wiola.
 
-[`TagReader`](../engine/load/tag_reader.cpp) also owns one lazy, persistent `std::jthread`. Its entry
-points are [`TagReader::start`](../engine/load/tag_reader.cpp), `TagReader::work`, and
-`TagReader::take`. It reads one file's metadata at a time, even when the playlist contains hundreds
-of files.
+This callback must not wait for file I/O or a slow decoder. It therefore does something much
+simpler: it takes PCM that the transport worker has already produced. The
+[`PcmQueue`](../pcm/pcm_queue.hpp) connects them. The transport worker is the only producer, and
+the audio callback is the only consumer.
 
-[`MetadataCoordinator`](../engine/load/metadata_coordinator.cpp) groups duplicate paths, submits
-requests incrementally, and discards obsolete playlist generations. The reader has bounded pending
-and completed queues, each holding up to 256 entries by default, plus a 64 MiB completed-artwork
-budget. These bounds limit queued memory; they are not a pool of 256 workers.
+You can see the consumer side in [`Device::render`](../audio/device/device.cpp). There is no FFmpeg
+call on that path.
 
-The worker calls [`read_metadata`](backends/ffmpeg/metadata.cpp) synchronously. Metadata inspection
-and decoder opening can therefore run in parallel with each other, but each has its own input and
-file cursor.
+## 7. Count the threads without guessing
 
-### One active transport worker
+For one session during ordinary playback, three execution contexts matter:
 
-Playback decoding gets a separate thread so that container reads, codec work, seeking, and PCM
-conversion do not block either the GUI or the real-time audio callback.
+- the application thread handling UI and completions;
+- the transport worker decoding audio;
+- the audio callback consuming PCM.
 
-[`Player::start`](../engine/transport/player.cpp) calls
-[`TransportWorker::start`](../engine/transport/transport_worker.cpp), which launches one
-`std::jthread` running `TransportWorker::work`. The worker calls
-[`DecodeLoop::begin`](../engine/transport/decode_loop.cpp) and then
-[`DecodeLoop::run`](../engine/transport/decode_loop.cpp). That loop invokes
-[`FfmpegDecoder::decode`](backends/ffmpeg/decoder.cpp) synchronously and pushes PCM into the
-playback queue.
+The loader and metadata workers may exist, but they are asleep.
 
-A session has one active transport worker. It finishes after a stop, end-of-stream, or fault, and a
-later replay joins any previous worker before starting another. Pause and resume change transport
-state and wake this worker; they do not create replacement threads.
+If the listener opens another track while the current one plays and playlist metadata is still
+being read, five contexts can be active at once: the application thread, loader, metadata reader,
+transport worker, and audio callback. That is the normal upper bound for one session—not a
+per-file thread explosion.
 
-Seek preparation also runs here. The candidate decoder described in the next section is opened and
-positioned on the transport worker, not on a new seek thread.
+Pause and resume reuse the transport worker. Stop lets it finish. Seeking also stays on that same
+worker, so none of these actions adds another background thread.
 
-### The audio backend callback
+## 8. Seek without throwing away a good position
 
-[`Device`](../audio/device/device.cpp) does not explicitly create a `std::thread`. Its `start` method
-configures a miniaudio data callback, and the platform audio backend invokes that callback on its
-playback thread or callback stream. A session has one current output device and one serial callback
-stream.
+A seek can fail for format-specific reasons: timestamps may be missing, a demuxer may reject the
+request, or the target may lie beyond the actual audio. Wiola does not destroy the current playback
+position before discovering those problems.
 
-The callback runs [`Device::render`](../audio/device/device.cpp), which asks
-[`BufferSource::render`](../audio/dsp/buffer_source.cpp) for already-decoded PCM. It does not read
-compressed files or call FFmpeg.
+Instead, [`FfmpegDecoder`](backends/ffmpeg/decoder.cpp) prepares a candidate decoder on the
+transport worker. The candidate is moved to the requested position and decoded far enough to make
+the target audible frame ready. Only then does it replace the current input state. If preparation
+fails, the original decoder remains usable.
 
-The transport worker is the single producer for a [`PcmQueue`](../pcm/pcm_queue.hpp), and the audio
-callback is its single consumer. This single-producer/single-consumer ring is the handoff between
-the two threads. It avoids running decoder locks or file I/O inside the audio callback.
+The candidate is another decoder state, not another thread.
 
-### No internal FFmpeg decoding pool
+## 9. What to read first in the source
 
-[`PacketDecoder::initialize`](backends/ffmpeg/packet_decoder.cpp) explicitly sets FFmpeg's codec
-`thread_count` to 1. Decoding therefore uses the transport thread that made the call; Wiola does not
-create an additional per-codec frame-thread pool. Inspection and metadata calls are likewise made
-synchronously by their respective loader or metadata workers.
+You do not need to read every class at once. This order follows the guide:
 
-### How many run in parallel?
+1. [`provider.cpp`](provider.cpp) shows how an asset provides metadata and new decoders.
+2. [`metadata.cpp`](backends/ffmpeg/metadata.cpp) shows the independent tag-and-artwork visit.
+3. [`input.cpp`](backends/ffmpeg/input.cpp) shows stream selection and the two duration sources.
+4. [`decoder.cpp`](backends/ffmpeg/decoder.cpp) shows decoding, length policy, and transactional
+   seeking.
+5. [`loader.cpp`](../engine/load/loader.cpp) and
+   [`transport_worker.cpp`](../engine/transport/transport_worker.cpp) show where the background
+   work enters and leaves the codec.
+6. [`device.cpp`](../audio/device/device.cpp) shows the final, FFmpeg-free audio callback.
 
-During ordinary playback, the active contexts are the application thread, the transport worker, and
-the audio callback. The loader and metadata workers may exist but are asleep.
-
-The busiest normal case can have **five active execution contexts per session**:
-
-1. the application thread handling UI and completions;
-2. the loader opening the next track;
-3. the metadata worker inspecting another playlist entry;
-4. the transport worker decoding the current track;
-5. the audio callback consuming decoded PCM.
-
-Seeking does not increase that count, and neither does creating a candidate decoder. When playback
-is idle, only the application thread needs to be active; the loader and metadata workers can remain
-alive but waiting until session destruction.
-
-For a code-level walkthrough, follow `Session::open` into `Loader::work`, then follow
-`Session::catch_up` and `Session::install_read_track` into `Player::start`. From there,
-`TransportWorker::work` and `DecodeLoop::run` show the producer side, while `Device::render` and
-`BufferSource::render` show the real-time consumer side.
-
-## Seeking without losing the current position
-
-A seek should not destroy a perfectly good playback position before we know that the new position
-works. [`FfmpegDecoder`](backends/ffmpeg/decoder.cpp) therefore prepares an independent candidate
-decoder, positions it, and decodes far enough to make the requested audible frame ready. Only a
-successful candidate replaces the current input state.
-
-Codec delay, timestamp offsets, and preroll stay inside the backend. The public contract is simpler:
-either the requested position is ready, or the original decoder remains usable. Estimated and
-unknown durations do not change that ownership rule.
-
-## Errors, limits, and cancellation
-
-Compressed files are untrusted input. Probe sizes, analysis time, metadata fields, artwork, decode
-work, and seek work all have limits. Errors returned to the engine use
-[`media::Result`](../media/result.hpp) and backend-neutral categories instead of leaking FFmpeg error
-codes into application logic.
-
-An [`OperationContext`](../media/operation_context.hpp) carries cooperative cancellation and an
-optional deadline. Input callbacks and bounded work loops observe it, so replacing an active open
-can stop unnecessary work. A completed decoder keeps its own operation state; starting another load
-must not cancel audio that is already playing.
-
-## A practical map for changes
-
-For metadata or duration work, start here:
-
-- [`provider.cpp`](provider.cpp) — connects a media asset to metadata and decoder creation.
-- [`metadata.cpp`](backends/ffmpeg/metadata.cpp) — reads tags and artwork and publishes the optional
-  duration.
-- [`input.cpp`](backends/ffmpeg/input.cpp) — selects streams, finds stream/container durations, and
-  classifies their accuracy.
-- [`decoder.cpp`](backends/ffmpeg/decoder.cpp) — applies length policy during decoding and seeking.
-- [`decoder.hpp`](decode/decoder.hpp) — defines the backend-neutral length and progress contracts.
-
-For playback changes, continue with [`packet_decoder.cpp`](backends/ffmpeg/packet_decoder.cpp) and
-[`pcm_converter.cpp`](backends/ffmpeg/pcm_converter.cpp). FFmpeg setup and the deliberately small
-set of enabled demuxers and decoders are defined in
-[`cmake/ffmpeg.cmake`](../../cmake/ffmpeg.cmake).
-
-Useful checks are:
-
-```sh
-ctest --preset linux-debug -R 'FfmpegMetadata|FfmpegDecoder|FfmpegInput|FfmpegInspection'
-ctest --preset linux-asan -R 'FfmpegHardening|FfmpegMetadata'
-cmake --build --preset linux-headless -j
-cmake --build --preset windows-release -j
-```
-
-Native Windows playback still needs to be tested on Windows. A successful MinGW cross-build proves
-that the executable links, not that its audio path works at runtime.
+By the end of that path, you have followed the file from bytes to metadata, from compressed packets
+to PCM, and from the transport worker to the listener.
