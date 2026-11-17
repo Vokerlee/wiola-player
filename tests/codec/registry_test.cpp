@@ -239,7 +239,7 @@ TEST(MediaBackendRegistry, CancellationIsObservableBeforeBackendOpening)
     std::stop_source cancelled;
     cancelled.request_stop();
 
-    auto decoder{registry.open(fake_file(), cancelled.get_token())};
+    auto decoder{registry.open(fake_file(), {.stop = cancelled.get_token(), .deadline = {}})};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::cancelled);

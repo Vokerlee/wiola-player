@@ -41,6 +41,7 @@ extern "C" {
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <stop_token>
 #include <vector>
 
 namespace {
@@ -503,6 +504,42 @@ TEST(FfmpegInput, InspectionReportsDamageWhenFfmpegFailsWithoutAnIoError)
 
     ASSERT_FALSE(facts);
     EXPECT_EQ(facts.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegInput, RejectsAnAlreadyCancelledOpen)
+{
+    std::stop_source stop;
+    stop.request_stop();
+    const wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
+
+    auto input{
+        wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()),
+            context)};
+
+    ASSERT_FALSE(input);
+    EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::cancelled);
+}
+
+std::stop_source inspection_stop;
+
+TEST(FfmpegInput, HonorsTheFfmpegInterruptCallbackDuringInspection)
+{
+    inspection_stop = std::stop_source{};
+    const wiola::media::OperationContext context{.stop = inspection_stop.get_token(),
+        .deadline = {}};
+    auto input{
+        wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()),
+            context)};
+    ASSERT_TRUE(input);
+
+    auto facts{(*input)->inspect([](AVFormatContext* format, AVDictionary**) {
+        inspection_stop.request_stop();
+        const auto interrupt{format->interrupt_callback};
+        return interrupt.callback(interrupt.opaque) ? AVERROR_EXIT : 0;
+    })};
+
+    ASSERT_FALSE(facts);
+    EXPECT_EQ(facts.error().category, wiola::media::ErrorCategory::cancelled);
 }
 
 } // namespace

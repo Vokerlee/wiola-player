@@ -45,7 +45,7 @@ using StreamInfoReader = int (*)(AVFormatContext*, AVDictionary**);
 class FfmpegInput final {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<FfmpegInput>>
-    open(std::unique_ptr<media::ByteStream> stream);
+    open(std::unique_ptr<media::ByteStream> stream, const media::OperationContext& context = {});
 
     ~FfmpegInput();
 
@@ -56,19 +56,23 @@ public:
 
     [[nodiscard]] AVFormatContext* format() const noexcept { return format_; }
 
+    [[nodiscard]] const media::OperationContext& context() const noexcept { return context_; }
+
     [[nodiscard]] media::Result<FfmpegStreamFacts>
     inspect(StreamInfoReader read_stream_info = nullptr);
 
     [[nodiscard]] const std::optional<media::Error>& io_error() const noexcept { return io_error_; }
 
 private:
-    explicit FfmpegInput(std::unique_ptr<media::ByteStream> stream) noexcept;
+    explicit FfmpegInput(std::unique_ptr<media::ByteStream> stream,
+        const media::OperationContext& context) noexcept;
 
     [[nodiscard]] media::Result<void> initialize();
     [[nodiscard]] media::Result<void> measure_size();
 
     static int read(void* opaque, unsigned char* output, int size) noexcept;
     static std::int64_t seek(void* opaque, std::int64_t offset, int origin) noexcept;
+    static int interrupted(void* opaque) noexcept;
     static int reject_secondary_open(AVFormatContext*, AVIOContext**, const char*, int,
         AVDictionary**) noexcept;
 
@@ -76,6 +80,7 @@ private:
     std::int64_t seek(std::int64_t offset, int origin) noexcept;
 
     std::unique_ptr<media::ByteStream> stream_;
+    media::OperationContext context_;
     AVFormatContext* format_{nullptr};
     void* io_{nullptr};
     std::uint64_t size_{0};

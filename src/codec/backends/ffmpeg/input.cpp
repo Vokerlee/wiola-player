@@ -91,18 +91,23 @@ bool has_exact_sample_count(AVCodecID codec)
 
 } // namespace
 
-FfmpegInput::FfmpegInput(std::unique_ptr<media::ByteStream> stream) noexcept
+FfmpegInput::FfmpegInput(std::unique_ptr<media::ByteStream> stream,
+    const media::OperationContext& context) noexcept
     : stream_{std::move(stream)}
+    , context_{context}
 {
 }
 
 media::Result<std::unique_ptr<FfmpegInput>>
-FfmpegInput::open(std::unique_ptr<media::ByteStream> stream)
+FfmpegInput::open(std::unique_ptr<media::ByteStream> stream, const media::OperationContext& context)
 {
     if (!stream)
         return media::unexpected{failure(media::ErrorCategory::unreadable, "missing byte stream")};
 
-    auto input{std::unique_ptr<FfmpegInput>{new FfmpegInput{std::move(stream)}}};
+    if (context.stop_reason() != media::StopReason::none)
+        return media::unexpected{context.error()};
+
+    auto input{std::unique_ptr<FfmpegInput>{new FfmpegInput{std::move(stream), context}}};
     auto initialized{input->initialize()};
     if (!initialized)
         return media::unexpected{initialized.error()};
@@ -138,9 +143,14 @@ media::Result<void> FfmpegInput::initialize()
     format_->probesize = probe_bytes;
     format_->max_analyze_duration = probe_time;
     format_->io_open = &FfmpegInput::reject_secondary_open;
+    format_->interrupt_callback =
+        AVIOInterruptCB{.callback = &FfmpegInput::interrupted, .opaque = this};
 
     const int opened{avformat_open_input(&format_, "", nullptr, nullptr)};
     if (opened < 0) {
+        if (context_.stop_reason() != media::StopReason::none)
+            return media::unexpected{context_.error()};
+
         if (io_error_)
             return media::unexpected{*io_error_};
         return media::unexpected{
@@ -152,16 +162,17 @@ media::Result<void> FfmpegInput::initialize()
 
 media::Result<void> FfmpegInput::measure_size()
 {
-    auto original{stream_->tell()};
+    auto original{stream_->tell(context_)};
     if (!original)
         return media::unexpected{original.error()};
-    auto end{stream_->seek(0, media::SeekOrigin::end)};
+    auto end{stream_->seek(0, media::SeekOrigin::end, context_)};
     if (!end)
         return media::unexpected{end.error()};
-    auto measured{stream_->tell()};
+    auto measured{stream_->tell(context_)};
     if (!measured)
         return media::unexpected{measured.error()};
-    auto restored{stream_->seek(static_cast<std::int64_t>(*original), media::SeekOrigin::start)};
+    auto restored{
+        stream_->seek(static_cast<std::int64_t>(*original), media::SeekOrigin::start, context_)};
     if (!restored)
         return media::unexpected{restored.error()};
     if (*measured > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
@@ -186,10 +197,16 @@ FfmpegInput::~FfmpegInput()
 
 media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stream_info)
 {
+    if (context_.stop_reason() != media::StopReason::none)
+        return media::unexpected{context_.error()};
+
     if (!read_stream_info)
         read_stream_info = avformat_find_stream_info;
 
     if (read_stream_info(format_, nullptr) < 0) {
+        if (context_.stop_reason() != media::StopReason::none)
+            return media::unexpected{context_.error()};
+
         if (io_error_)
             return media::unexpected{*io_error_};
         return media::unexpected{
@@ -275,7 +292,8 @@ int FfmpegInput::read(unsigned char* output, int size) noexcept
 
     try {
         auto count{
-            stream_->read({reinterpret_cast<std::byte*>(output), static_cast<std::size_t>(size)})};
+            stream_->read({reinterpret_cast<std::byte*>(output), static_cast<std::size_t>(size)},
+                context_)};
         if (!count) {
             if (!io_error_)
                 io_error_ = count.error();
@@ -309,12 +327,12 @@ std::int64_t FfmpegInput::seek(std::int64_t offset, int origin) noexcept
         return AVERROR(EINVAL);
 
     try {
-        auto moved{stream_->seek(offset, *mapped)};
+        auto moved{stream_->seek(offset, *mapped, context_)};
         if (!moved) {
             io_error_ = moved.error();
             return AVERROR(EIO);
         }
-        auto position{stream_->tell()};
+        auto position{stream_->tell(context_)};
         if (!position) {
             io_error_ = position.error();
             return AVERROR(EIO);
@@ -327,6 +345,12 @@ std::int64_t FfmpegInput::seek(std::int64_t offset, int origin) noexcept
             failure(media::ErrorCategory::seek_failed, "byte stream seek threw an exception");
         return AVERROR(EIO);
     }
+}
+
+int FfmpegInput::interrupted(void* opaque) noexcept
+{
+    const auto* input{static_cast<const FfmpegInput*>(opaque)};
+    return input->context_.stop_reason() == media::StopReason::none ? 0 : 1;
 }
 
 int FfmpegInput::reject_secondary_open(AVFormatContext*, AVIOContext**, const char*, int,

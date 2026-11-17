@@ -54,7 +54,8 @@ struct FfmpegDecoderOptions {
 class FfmpegDecoder final : public Decoder {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<FfmpegDecoder>>
-    open(const std::filesystem::path& path, FfmpegDecoderOptions options = {});
+    open(const std::filesystem::path& path, FfmpegDecoderOptions options = {},
+        const media::OperationContext& context = {});
     ~FfmpegDecoder() override;
 
 private:

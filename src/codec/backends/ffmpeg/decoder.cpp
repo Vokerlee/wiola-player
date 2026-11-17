@@ -154,12 +154,13 @@ Backend backend()
         Format{"FLAC",                      flac_markers,              flac_extensions,    {}},
         Format{"MPEG audio Layer II/III",   std::span<const Marker>{}, mpeg_extensions,    {}}
     };
-    return Backend{"FFmpeg", formats, [](const std::filesystem::path& path) -> Opened {
-                       auto decoder{FfmpegDecoder::open(path)};
-                       if (!decoder)
-                           return media::unexpected{decoder.error()};
-                       return std::unique_ptr<Decoder>{std::move(*decoder)};
-                   }};
+    return Backend{"FFmpeg", formats,
+        [](const std::filesystem::path& path, const media::OperationContext& context) -> Opened {
+            auto decoder{FfmpegDecoder::open(path, {}, context)};
+            if (!decoder)
+                return media::unexpected{decoder.error()};
+            return std::unique_ptr<Decoder>{std::move(*decoder)};
+        }};
 }
 
 FfmpegDecoder::FfmpegDecoder(std::filesystem::path path, std::size_t stream_index,
@@ -178,14 +179,14 @@ FfmpegDecoder::FfmpegDecoder(std::filesystem::path path, std::size_t stream_inde
 FfmpegDecoder::~FfmpegDecoder() = default;
 
 media::Result<std::unique_ptr<FfmpegDecoder>> FfmpegDecoder::open(const std::filesystem::path& path,
-    FfmpegDecoderOptions options)
+    FfmpegDecoderOptions options, const media::OperationContext& context)
 {
-    auto stream{media::LocalFileStream::open(path)};
+    auto stream{media::LocalFileStream::open(path, context)};
 
     if (!stream)
         return media::unexpected{stream.error()};
 
-    auto input{FfmpegInput::open(std::move(*stream))};
+    auto input{FfmpegInput::open(std::move(*stream), context)};
 
     if (!input)
         return media::unexpected{input.error()};
@@ -283,6 +284,9 @@ media::Result<DecodeOutcome> FfmpegDecoder::decode(std::span<float> output, pcm:
     const std::span<float> requested{output.first(spec().samples_per(num_frames))};
 
     for (int work{0}; work < options_.decode_work_budget; ++work) {
+        if (input_->context().stop_reason() != media::StopReason::none)
+            return media::unexpected{input_->context().error()};
+
         if (!converter_->pending() && !source_ended_) {
             auto event{packets_->next_frame()};
 
@@ -325,7 +329,7 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
 {
     std::int64_t timestamp_offset{0};
 
-    auto probe{FfmpegDecoder::open(path_, options_)};
+    auto probe{FfmpegDecoder::open(path_, options_, input_->context())};
 
     if (!probe)
         return media::unexpected{probe.error()};
@@ -386,6 +390,9 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
         return target;
 
     for (int work{0}; work < options_.seek_work_budget; ++work) {
+        if (input_->context().stop_reason() != media::StopReason::none)
+            return media::unexpected{input_->context().error()};
+
         auto event{packets_->next_frame()};
 
         if (!event)
@@ -446,7 +453,7 @@ int FfmpegDecoder::demux_seek(std::int64_t timestamp) noexcept
 
 media::Result<SeekOutcome> FfmpegDecoder::seek_frame(pcm::Frames frame_index)
 {
-    auto candidate{FfmpegDecoder::open(path_, options_)};
+    auto candidate{FfmpegDecoder::open(path_, options_, input_->context())};
 
     if (!candidate)
         return media::unexpected{candidate.error()};

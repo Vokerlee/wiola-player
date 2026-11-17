@@ -79,12 +79,13 @@ media::Artwork read_artwork(const AVStream& stream)
     return artwork;
 }
 
-media::Result<media::Metadata> read_metadata(const std::filesystem::path& path)
+media::Result<media::Metadata> read_metadata(const std::filesystem::path& path,
+    const media::OperationContext& context)
 {
-    auto stream{media::LocalFileStream::open(path)};
+    auto stream{media::LocalFileStream::open(path, context)};
     if (!stream)
         return media::unexpected{stream.error()};
-    auto input{FfmpegInput::open(std::move(*stream))};
+    auto input{FfmpegInput::open(std::move(*stream), context)};
     if (!input)
         return media::unexpected{input.error()};
     auto facts{(*input)->inspect()};

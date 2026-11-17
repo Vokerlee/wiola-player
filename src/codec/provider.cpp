@@ -42,7 +42,7 @@ public:
         if (context.stop_reason() != media::StopReason::none)
             return media::unexpected{context.error()};
 
-        auto decoder{registry_.open(path_)};
+        auto decoder{registry_.open(path_, context)};
 
         if (!decoder)
             return media::unexpected{decoder.error()};
@@ -60,7 +60,7 @@ public:
         if (context.stop_reason() != media::StopReason::none)
             return media::unexpected{context.error()};
 
-        return ffmpeg::read_metadata(path_);
+        return ffmpeg::read_metadata(path_, context);
     }
 
     media::Result<std::unique_ptr<Decoder>>
@@ -69,7 +69,7 @@ public:
         if (context.stop_reason() != media::StopReason::none)
             return media::unexpected{context.error()};
 
-        return registry_.open(path_);
+        return registry_.open(path_, context);
     }
 
 private:
