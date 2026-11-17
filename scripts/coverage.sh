@@ -45,7 +45,8 @@ cmake --build --preset "$preset" -j
 rm -rf "$build_dir/coverage"
 mkdir -p "$build_dir/coverage"
 
-LLVM_PROFILE_FILE="$PWD/$build_dir/coverage/%p.profraw" ctest --preset "$preset"
+LLVM_PROFILE_FILE="$PWD/$build_dir/coverage/%p.profraw" \
+    ctest --preset "$preset" --no-tests=error --timeout 120
 
 "$llvm_profdata" merge -sparse \
     "$build_dir"/coverage/*.profraw \

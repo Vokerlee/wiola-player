@@ -19,6 +19,7 @@ concurrency:
 jobs:
   format:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,6 +33,7 @@ jobs:
   test:
     name: test (${{ matrix.preset }})
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       # One sanitizer failing is not a reason to stop hearing from the others.
       fail-fast: false
@@ -50,10 +52,19 @@ jobs:
           name: ${{ matrix.preset }}
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
-      - run: ctest --preset ${{ matrix.preset }} ${{ matrix.ctest_args }}
+      - run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 ${{ matrix.ctest_args }}
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics-${{ matrix.preset }}
+          path: build-*/Testing/Temporary
+          if-no-files-found: ignore
+          retention-days: 7
 
   headless:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-build
@@ -65,6 +76,7 @@ jobs:
 
   release:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-build
@@ -76,6 +88,7 @@ jobs:
 
   windows:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-build
@@ -106,6 +119,7 @@ jobs:
 
   coverage:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       # All of it, since what a pull request changed is measured against where it started.
       - uses: actions/checkout@v4
@@ -124,6 +138,14 @@ jobs:
       - run: ./scripts/coverage.sh
         env:
           CXX: clang++-18
+      - name: Upload coverage test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-test-diagnostics
+          path: build-coverage/Testing/Temporary
+          if-no-files-found: ignore
+          retention-days: 7
       # The numbers, on the run's own page.
       - run: |
           {
@@ -159,6 +181,7 @@ jobs:
     needs: coverage
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       pages: write
       id-token: write
