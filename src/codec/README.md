@@ -37,6 +37,38 @@ container, codec, profile, and channel layout inside it. For example, the qualif
 AAC-LC in MP4 or ADTS, not every AAC profile. The exact admission set is deliberately small and is
 listed in [`qualification.cpp`](backends/ffmpeg/qualification.cpp).
 
+### Wiola has one production backend: FFmpeg
+
+FFmpeg is not one of several decoding backends today; it is **the only one**. The registry still
+provides a neutral opening point, but its default production catalog leads to the FFmpeg backend.
+The useful boundary is therefore not “a plugin system with many implementations.” It is a way to
+keep FFmpeg's C objects, error codes, and ownership rules out of the engine and to allow simple fake
+decoders in tests.
+
+```mermaid
+flowchart TD
+    Asset[Media asset] --> Registry[MediaBackendRegistry]
+    Asset --> Tags[FFmpeg metadata reader]
+    Registry --> Backend[FFmpeg backend: the single production backend]
+    Backend --> Decoder[FfmpegDecoder]
+    Tags --> Input[FfmpegInput]
+    Decoder --> Input
+    Decoder --> Packets[PacketDecoder]
+    Decoder --> Converter[PcmConverter]
+    Input --> Stream[Wiola ByteStream and custom AVIO]
+    Input --> Format[libavformat: container I/O, demuxing, inspection]
+    Packets --> Codec[libavcodec: compressed packets to decoded frames]
+    Converter --> Resample[libswresample: sample representation conversion]
+    Format --> Util[libavutil: frames, layouts, timing, and shared utilities]
+    Codec --> Util
+    Resample --> Util
+```
+
+Each playback decoder owns its own `FfmpegInput`, `PacketDecoder`, and `PcmConverter`; the diagram
+shows responsibilities, not shared global objects. The metadata reader uses a separate `FfmpegInput`.
+In this way, one FFmpeg backend can still support independent metadata visits, playback cursors, and
+seek candidates without sharing mutable FFmpeg state.
+
 ## 2. From a filename to an admitted audio stream
 
 Opening a path creates a [`media::MediaAsset`](../media/provider.hpp). An asset represents something
