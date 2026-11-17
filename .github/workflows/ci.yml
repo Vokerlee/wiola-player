@@ -63,6 +63,17 @@ jobs:
       - run: cmake --preset linux-headless
       - run: cmake --build --preset linux-headless -j
 
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: linux-release
+          build-dir: build-release
+      - run: cmake --preset linux-release
+      - run: cmake --build --preset linux-release -j
+
   windows:
     runs-on: ubuntu-24.04
     steps:
