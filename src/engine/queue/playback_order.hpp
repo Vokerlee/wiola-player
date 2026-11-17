@@ -37,6 +37,7 @@ public:
     };
 
     void reset(std::size_t size);
+    void reserve(std::size_t size);
     void add();
     [[nodiscard]] bool remove(std::size_t index) noexcept;
     void clear() noexcept;

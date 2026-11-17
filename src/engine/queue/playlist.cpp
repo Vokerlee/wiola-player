@@ -27,40 +27,80 @@ namespace wiola::engine {
 
 void Playlist::set(std::vector<Track> tracks)
 {
+    QueueEntryId next{next_id_};
+    std::map<QueueEntryId, std::size_t> indices;
+
+    for (std::size_t index{0}; index < tracks.size(); ++index) {
+        tracks[index].id_ = next;
+        ++next.value;
+        indices.emplace(tracks[index].id(), index);
+    }
+
+    PlaybackOrder order{order_};
+    order.reset(tracks.size());
+
+    tracks_ = std::move(tracks);
+    indices_.swap(indices);
+    order_ = std::move(order);
+    next_id_ = next;
     ++revision_;
     ++structural_revision_;
-    tracks_ = std::move(tracks);
-
-    for (Track& track : tracks_)
-        identify(track);
-
-    reindex();
-    order_.reset(tracks_.size());
 }
 
 void Playlist::add(Track track)
 {
-    ++revision_;
-    ++structural_revision_;
-    identify(track);
-    indices_.insert_or_assign(track.id(), tracks_.size());
-    tracks_.push_back(std::move(track));
-    order_.add();
+    add(std::vector<Track>{std::move(track)});
 }
 
-bool Playlist::remove(std::size_t index)
+void Playlist::add(std::vector<Track> tracks)
 {
-    const auto previous_position{position()};
-    if (!order_.remove(index))
+    if (tracks.empty())
+        return;
+
+    tracks_.reserve(tracks_.size() + tracks.size());
+    order_.reserve(tracks_.size() + tracks.size());
+
+    QueueEntryId next{next_id_};
+    std::map<QueueEntryId, std::size_t> additions;
+
+    for (Track& track : tracks) {
+        track.id_ = next;
+        ++next.value;
+        additions.emplace(track.id(), tracks_.size() + additions.size());
+    }
+
+    indices_.merge(additions);
+
+    for (Track& track : tracks) {
+        tracks_.push_back(std::move(track));
+        order_.add();
+    }
+
+    next_id_ = next;
+    ++revision_;
+    ++structural_revision_;
+}
+
+bool Playlist::remove(std::size_t index) noexcept
+{
+    if (index >= tracks_.size())
         return false;
+
+    const auto previous_position{position()};
+    indices_.erase(tracks_[index].id());
+    tracks_.erase(tracks_.begin() + static_cast<std::ptrdiff_t>(index));
+    static_cast<void>(order_.remove(index));
+
+    for (auto& [id, position] : indices_) {
+        if (position > index)
+            --position;
+    }
 
     ++revision_;
     ++structural_revision_;
-    indices_.erase(tracks_[index].id());
-    tracks_.erase(tracks_.begin() + static_cast<std::ptrdiff_t>(index));
-    reindex();
     if (previous_position != position())
         ++selection_revision_;
+
     return true;
 }
 
@@ -206,19 +246,6 @@ void Playlist::unshuffle() noexcept
 bool Playlist::shuffled() const noexcept
 {
     return order_.shuffled();
-}
-
-void Playlist::identify(Track& track)
-{
-    track.id_ = next_id_;
-    ++next_id_.value;
-}
-
-void Playlist::reindex() noexcept
-{
-    indices_.clear();
-    for (std::size_t index = 0; index < tracks_.size(); ++index)
-        indices_.insert_or_assign(tracks_[index].id(), index);
 }
 
 } // namespace wiola::engine

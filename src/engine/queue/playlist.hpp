@@ -39,7 +39,8 @@ public:
 
     void set(std::vector<Track> tracks);
     void add(Track track);
-    bool remove(std::size_t index);
+    void add(std::vector<Track> tracks);
+    bool remove(std::size_t index) noexcept;
     void clear() noexcept;
 
     [[nodiscard]] bool empty() const noexcept;
@@ -74,9 +75,6 @@ public:
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    void identify(Track& track);
-    void reindex() noexcept;
-
     std::vector<Track> tracks_;
     std::map<QueueEntryId, std::size_t> indices_;
     PlaybackOrder order_;

@@ -142,7 +142,7 @@ PlaybackSnapshot PlaybackService::pump()
     return session_.snapshot();
 }
 
-PlaybackSnapshot PlaybackService::snapshot() const noexcept
+PlaybackSnapshot PlaybackService::snapshot() const
 {
     return session_.snapshot();
 }

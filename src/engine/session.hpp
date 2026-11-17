@@ -120,7 +120,7 @@ public:
     /// being read, and takes up the next one when the last has run out. For the thread that
     /// opens tracks, as often as it likes - a caller that draws should call it as it draws.
     void catch_up();
-    [[nodiscard]] PlaybackSnapshot snapshot() const noexcept;
+    [[nodiscard]] PlaybackSnapshot snapshot() const;
 
     /// Whether a file is still being read.
     [[nodiscard]] bool reading() const noexcept;

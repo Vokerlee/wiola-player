@@ -130,9 +130,13 @@ void Session::add(std::vector<std::filesystem::path> tracks)
 {
     const bool was_empty{playlist_.empty()};
     const std::size_t first_new{playlist_.tracks().size()};
+    std::vector<Track> queued;
+    queued.reserve(tracks.size());
 
     for (const std::filesystem::path& track : tracks)
-        playlist_.add(Track::of(track));
+        queued.push_back(Track::of(track));
+
+    playlist_.add(std::move(queued));
 
     metadata_.append(std::span<const Track>{playlist_.tracks()}.subspan(first_new));
 
@@ -431,7 +435,7 @@ std::vector<std::string> Session::playback_extensions() const
     return provider_ ? provider_->playback_extensions() : std::vector<std::string>{};
 }
 
-PlaybackSnapshot Session::snapshot() const noexcept
+PlaybackSnapshot Session::snapshot() const
 {
     return {.state = state(),
         .open_result = open_result(),
