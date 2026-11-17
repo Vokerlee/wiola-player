@@ -91,8 +91,7 @@ std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
 
         readings.push_back(Reading{.entries = std::move(entries->second),
             .path = std::move(read.path),
-            .tags = std::move(read.tags),
-            .failed = read.failed});
+            .result = std::move(read.result)});
         entries_.erase(entries);
     }
 

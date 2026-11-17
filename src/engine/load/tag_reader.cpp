@@ -38,12 +38,8 @@ TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t
     std::size_t max_completed)
     : TagReader{[provider = std::move(provider)](const std::filesystem::path& path) {
                     auto asset{provider->open(path)};
-                    auto metadata{asset
-                            ? (*asset)->read_metadata()
-                            : media::Result<media::Metadata>{media::unexpected{asset.error()}}};
-                    if (!metadata)
-                        throw std::runtime_error{metadata.error().detail};
-                    return *metadata;
+                    return asset ? (*asset)->read_metadata()
+                                 : media::Result<media::Metadata>{media::unexpected{asset.error()}};
                 },
           max_pending, max_completed}
 {
@@ -105,7 +101,7 @@ void TagReader::cancel_before(std::uint64_t generation)
             [generation](const Reading& reading) { return reading.generation < generation; });
         completed_artwork_bytes_ = 0;
         for (const Reading& reading : read_)
-            completed_artwork_bytes_ += reading.tags.artwork.data.size();
+            completed_artwork_bytes_ += reading.result ? reading.result->artwork.data.size() : 0;
     }
 
     collected_.notify_all();
@@ -146,22 +142,28 @@ void TagReader::work(const std::stop_token& stop)
             reading_ = true;
         }
 
-        media::Metadata tags;
-        bool failed{false};
+        media::Result<media::Metadata> result{media::Metadata{}};
 
         try {
-            tags = reader_(request.path);
+            result = reader_(request.path);
         } catch (const std::bad_alloc&) {
             // Allocation failure is fatal: no reliable error object or queue storage can be made.
             throw;
         } catch (...) {
-            failed = true;
+            result = media::unexpected{
+                media::Error{.category = media::ErrorCategory::unreadable,
+                             .detail = "metadata reader failed"}
+            };
         }
 
-        if (tags.artwork.data.size() > max_completed_artwork_bytes_)
-            tags.artwork = {};
+        constexpr std::size_t max_error_detail_bytes{1024};
+        if (!result && result.error().detail.size() > max_error_detail_bytes)
+            result.error().detail.resize(max_error_detail_bytes);
 
-        const std::size_t artwork_bytes{tags.artwork.data.size()};
+        if (result && result->artwork.data.size() > max_completed_artwork_bytes_)
+            result->artwork = {};
+
+        const std::size_t artwork_bytes{result ? result->artwork.data.size() : 0};
 
         {
             std::unique_lock asked{mutex_};
@@ -183,8 +185,7 @@ void TagReader::work(const std::stop_token& stop)
             read_.push_back(Reading{.generation = request.generation,
                 .id = request.id,
                 .path = std::move(request.path),
-                .tags = std::move(tags),
-                .failed = failed});
+                .result = std::move(result)});
             reading_ = false;
         }
     }

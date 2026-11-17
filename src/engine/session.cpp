@@ -236,16 +236,17 @@ void Session::catch_up()
 
 void Session::take_up_finished_tags()
 {
-    for (const MetadataCoordinator::Reading& reading : metadata_.take()) {
+    for (MetadataCoordinator::Reading& reading : metadata_.take()) {
+        media::Metadata tags =
+            reading.result ? std::move(reading.result).value() : media::Metadata{};
         TrackMetadata metadata{
-            .title = reading.tags.track.title.empty() ? reading.path.stem().string()
-                                                      : reading.tags.track.title,
-            .artist = reading.tags.track.artist,
-            .album = reading.tags.track.album,
-            .duration = reading.tags.track.duration,
+            .title = tags.track.title.empty() ? reading.path.stem().string() : tags.track.title,
+            .artist = tags.track.artist,
+            .album = tags.track.album,
+            .duration = tags.track.duration,
         };
 
-        auto artwork{std::make_shared<const media::Artwork>(std::move(reading.tags.artwork))};
+        auto artwork{std::make_shared<const media::Artwork>(std::move(tags.artwork))};
         playlist_.apply_metadata(reading.entries, metadata, std::move(artwork));
     }
 }

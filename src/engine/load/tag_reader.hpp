@@ -36,7 +36,7 @@
 
 namespace wiola::engine {
 
-using MetadataReader = std::function<media::Metadata(const std::filesystem::path&)>;
+using MetadataReader = std::function<media::Result<media::Metadata>(const std::filesystem::path&)>;
 
 /// Bounded tag worker. Submission accepts as much of a batch as capacity permits.
 class TagReader {
@@ -51,8 +51,7 @@ public:
         std::uint64_t generation{0};
         QueueEntryId id;
         std::filesystem::path path;
-        media::Metadata tags;
-        bool failed{false};
+        media::Result<media::Metadata> result;
     };
 
     TagReader();
