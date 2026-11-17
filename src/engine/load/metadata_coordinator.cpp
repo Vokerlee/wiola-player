@@ -41,6 +41,10 @@ void MetadataCoordinator::replace(std::span<const Track> tracks)
     Groups groups{group(tracks)};
     ++generation_;
     reader_.cancel_before(generation_);
+
+    deferred_.clear();
+    next_submission_ = 0;
+
     start(groups);
     entries_ = std::move(groups);
 }
@@ -69,7 +73,10 @@ void MetadataCoordinator::cancel()
 {
     ++generation_;
     reader_.cancel_before(generation_);
+
     entries_.clear();
+    deferred_.clear();
+    next_submission_ = 0;
 }
 
 std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
@@ -89,12 +96,14 @@ std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
         entries_.erase(entries);
     }
 
+    submit();
+
     return readings;
 }
 
 bool MetadataCoordinator::busy() const noexcept
 {
-    return reader_.busy();
+    return reader_.busy() || next_submission_ < deferred_.size();
 }
 
 MetadataCoordinator::Groups MetadataCoordinator::group(std::span<const Track> tracks) const
@@ -109,17 +118,34 @@ MetadataCoordinator::Groups MetadataCoordinator::group(std::span<const Track> tr
 
 void MetadataCoordinator::start(Groups& groups)
 {
-    std::vector<TagReader::Request> requests;
-    requests.reserve(groups.size());
+    deferred_.reserve(deferred_.size() + groups.size());
 
     for (const auto& [path, entries] : groups) {
         if (!entries.empty())
-            requests.push_back(
+            deferred_.push_back(
                 TagReader::Request{.generation = generation_, .id = entries.front(), .path = path}
             );
     }
 
-    reader_.start(std::move(requests));
+    submit();
+}
+
+void MetadataCoordinator::submit()
+{
+    if (next_submission_ == deferred_.size()) {
+        deferred_.clear();
+        next_submission_ = 0;
+
+        return;
+    }
+
+    const std::span remaining{std::span{deferred_}.subspan(next_submission_)};
+    next_submission_ += reader_.start(remaining);
+
+    if (next_submission_ == deferred_.size()) {
+        deferred_.clear();
+        next_submission_ = 0;
+    }
 }
 
 } // namespace wiola::engine

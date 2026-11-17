@@ -30,6 +30,7 @@
 #include <filesystem>
 #include <functional>
 #include <mutex>
+#include <span>
 #include <thread>
 #include <vector>
 
@@ -37,7 +38,7 @@ namespace wiola::engine {
 
 using MetadataReader = std::function<media::Metadata(const std::filesystem::path&)>;
 
-/// Bounded tag worker. Oversized batches are rejected before any partial batch is accepted.
+/// Bounded tag worker. Submission accepts as much of a batch as capacity permits.
 class TagReader {
 public:
     struct Request {
@@ -66,7 +67,11 @@ public:
 
     ~TagReader();
 
-    void start(std::vector<Request> requests);
+    /// Accepts a prefix of `requests` and returns its size. A full queue accepts none.
+    std::size_t start(std::span<Request> requests);
+
+    std::size_t start(std::vector<Request>&& requests) { return start(std::span{requests}); }
+
     void cancel_before(std::uint64_t generation);
     [[nodiscard]] std::vector<Reading> take();
     [[nodiscard]] bool busy() const noexcept;

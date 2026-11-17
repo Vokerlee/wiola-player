@@ -40,6 +40,7 @@
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <thread>
 
 namespace {
@@ -676,6 +677,35 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
         [&fixture, &first] { return fixture.session.track() == first; }));
 
     EXPECT_FALSE(fixture.session.playing());
+}
+
+TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
+{
+    std::atomic<std::size_t> num_reads{0};
+    Session session{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [](const std::filesystem::path&) {
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [&num_reads](const std::filesystem::path&) {
+            ++num_reads;
+            wiola::media::Metadata metadata;
+            metadata.track.title = "read";
+            return metadata;
+        }};
+    std::vector<std::filesystem::path> paths;
+    paths.reserve(300);
+
+    for (std::size_t index{0}; index < 300; ++index)
+        paths.push_back("track-" + std::to_string(index) + ".wav");
+
+    EXPECT_EQ(session.open(std::move(paths)), OpenResult::loading);
+    ASSERT_TRUE(poll_until(session,
+        [&session] { return session.playlist().metadata_revision() == 300U; }));
+
+    EXPECT_EQ(num_reads, 300U);
+    for (const auto& track : session.playlist().tracks())
+        EXPECT_EQ(track.metadata().title, "read");
 }
 
 TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)

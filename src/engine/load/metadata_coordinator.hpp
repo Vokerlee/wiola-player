@@ -64,10 +64,13 @@ private:
 
     Groups group(std::span<const Track> tracks) const;
     void start(Groups& groups);
+    void submit();
 
     TagReader reader_;
     std::uint64_t generation_{0};
     Groups entries_;
+    std::vector<TagReader::Request> deferred_;
+    std::size_t next_submission_{0};
 };
 
 } // namespace wiola::engine
