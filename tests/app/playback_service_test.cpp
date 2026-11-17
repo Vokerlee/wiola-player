@@ -25,7 +25,11 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <atomic>
+#include <string>
 #include <thread>
+#include <vector>
 
 namespace {
 
@@ -106,4 +110,159 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
     EXPECT_EQ(snapshot.track, std::filesystem::path{"headless.wav"});
     EXPECT_EQ(snapshot.queue_position, 0U);
     EXPECT_EQ(snapshot.total_time, service.total_time());
+}
+
+TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
+{
+    PlaybackService service{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [](const std::filesystem::path&) {
+            return wiola::codec::Opened{wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
+                    .detail = "missing codec"}}};
+        },
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+
+    const auto receipt{service.open({"unsupported.wav"})};
+    ASSERT_EQ(receipt.acceptance, CommandResult::accepted);
+    ASSERT_NE(receipt.id, 0U);
+
+    while (service.reading())
+        std::this_thread::yield();
+    service.pump();
+
+    const auto outcomes{service.take_outcomes()};
+    const auto outcome{std::ranges::find_if(outcomes.values, [&receipt](const auto& value) {
+        return value.operation == wiola::engine::OperationKind::open && value.id == receipt.id;
+    })};
+
+    ASSERT_NE(outcome, outcomes.values.end());
+    ASSERT_FALSE(outcome->result);
+    EXPECT_EQ(outcome->result.error().category, wiola::media::ErrorCategory::unsupported);
+    EXPECT_EQ(outcome->result.error().detail, "missing codec");
+    EXPECT_TRUE(service.take_outcomes().values.empty());
+}
+
+TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
+{
+    wiola::testing::Gate opening;
+    PlaybackService service{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [&opening](const std::filesystem::path& path) -> wiola::codec::Opened {
+            if (path == "old.wav") {
+                opening.wait();
+                return wiola::media::unexpected{
+                    wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable,
+                                        .detail = "old"}
+                };
+            }
+
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+
+    const auto old{service.open({"old.wav"})};
+    opening.wait_until_entered();
+    const auto current{service.open({"current.wav"})};
+    opening.release();
+
+    while (service.reading())
+        std::this_thread::yield();
+    service.pump();
+
+    const auto outcomes{service.take_outcomes()};
+    std::size_t open_outcomes{0};
+
+    for (const auto& outcome : outcomes.values) {
+        if (outcome.operation != wiola::engine::OperationKind::open)
+            continue;
+
+        ++open_outcomes;
+        EXPECT_EQ(outcome.id, current.id);
+        EXPECT_NE(outcome.id, old.id);
+        EXPECT_TRUE(outcome.result);
+    }
+
+    EXPECT_EQ(open_outcomes, 1U);
+    EXPECT_EQ(service.open_result(), wiola::engine::OpenResult::opened);
+}
+
+TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
+{
+    std::atomic<std::size_t> num_metadata_reads{0};
+    PlaybackService service{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [](const std::filesystem::path&) -> wiola::codec::Opened {
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [&num_metadata_reads](
+            const std::filesystem::path&
+        ) -> wiola::media::Result<wiola::media::Metadata> {
+            ++num_metadata_reads;
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::damaged,
+                                    .detail = "bad tags"}
+            };
+        }};
+
+    const auto receipt{service.open({"playable.wav"})};
+    ASSERT_EQ(receipt.acceptance, CommandResult::accepted);
+
+    while (!service.loaded() || service.playlist().metadata_revision() == 0) {
+        service.pump();
+        std::this_thread::yield();
+    }
+
+    const auto outcomes{service.take_outcomes()};
+    const auto metadata{std::ranges::find_if(outcomes.values, [](const auto& value) {
+        return value.operation == wiola::engine::OperationKind::metadata;
+    })};
+
+    ASSERT_NE(metadata, outcomes.values.end());
+    ASSERT_FALSE(metadata->result);
+    EXPECT_EQ(metadata->result.error().category, wiola::media::ErrorCategory::damaged);
+    EXPECT_EQ(metadata->result.error().detail, "bad tags");
+    EXPECT_TRUE(service.loaded());
+    EXPECT_EQ(service.open_result(), wiola::engine::OpenResult::opened);
+}
+
+TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
+{
+    std::atomic<std::size_t> num_metadata_reads{0};
+    PlaybackService service{
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        [](const std::filesystem::path&) -> wiola::codec::Opened {
+            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [&num_metadata_reads](const std::filesystem::path&) {
+            ++num_metadata_reads;
+            return wiola::media::Metadata{};
+        }};
+    std::vector<std::filesystem::path> tracks;
+
+    for (std::size_t index{0}; index < 80; ++index)
+        tracks.push_back("track-" + std::to_string(index) + ".wav");
+
+    service.open(std::move(tracks));
+
+    while (service.reading() || num_metadata_reads < 80)
+        std::this_thread::yield();
+    service.pump();
+
+    const auto outcomes{service.take_outcomes()};
+    const auto opens{std::ranges::count_if(outcomes.values, [](const auto& outcome) {
+        return outcome.operation == wiola::engine::OperationKind::open;
+    })};
+    const auto metadata{std::ranges::count_if(outcomes.values, [](const auto& outcome) {
+        return outcome.operation == wiola::engine::OperationKind::metadata;
+    })};
+
+    EXPECT_EQ(outcomes.values.size(), 64U);
+    EXPECT_TRUE(outcomes.overflowed)
+        << "open outcomes: " << opens << ", metadata outcomes: " << metadata
+        << ", open result: " << static_cast<int>(service.open_result());
+
+    const auto next{service.take_outcomes()};
+    EXPECT_TRUE(next.values.empty());
+    EXPECT_FALSE(next.overflowed);
 }

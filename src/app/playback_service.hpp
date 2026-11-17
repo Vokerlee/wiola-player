@@ -20,14 +20,10 @@
 
 #pragma once
 
+#include <app/operation_outcome.hpp>
 #include <engine/session.hpp>
 
 namespace wiola::engine {
-
-enum class CommandResult {
-    accepted,
-    unavailable,
-};
 
 class PlaybackService {
 public:
@@ -37,7 +33,7 @@ public:
     PlaybackService(OutputFactory make_output, DecoderOpener open_decoder,
         MetadataReader read_metadata);
 
-    OpenResult open(std::vector<std::filesystem::path> tracks);
+    OperationReceipt open(std::vector<std::filesystem::path> tracks);
     void add(std::vector<std::filesystem::path> tracks);
     bool remove(std::size_t index);
     void clear();
@@ -61,6 +57,7 @@ public:
 
     /// Drains completions and advances playback; schedulers and headless callers share this pump.
     PlaybackSnapshot pump();
+    [[nodiscard]] OperationOutcomes take_outcomes();
     [[nodiscard]] PlaybackSnapshot snapshot() const;
     void catch_up();
     [[nodiscard]] bool reading() const noexcept;
