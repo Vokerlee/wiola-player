@@ -24,6 +24,8 @@
 
 #include <array>
 #include <filesystem>
+#include <functional>
+#include <utility>
 
 namespace {
 
@@ -102,6 +104,192 @@ protected:
         return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
+
+wiola::codec::DecoderStreamInfo exact_stream(wiola::pcm::Frames length)
+{
+    return {
+        .spec = {},
+        .length = length,
+        .length_accuracy = wiola::codec::LengthAccuracy::exact,
+        .seekable = true,
+    };
+}
+
+class CallbackDecoder final : public wiola::codec::AudioDecoder {
+public:
+    using Decode =
+        std::function<wiola::media::Result<wiola::codec::DecodeOutcome>(wiola::pcm::Frames)>;
+    using Seek = std::function<wiola::media::Result<wiola::codec::SeekOutcome>(wiola::pcm::Frames)>;
+
+    CallbackDecoder(wiola::codec::DecoderStreamInfo info, Decode decode, Seek seek = {})
+        : AudioDecoder{info}
+        , decode_{std::move(decode)}
+        , seek_{std::move(seek)}
+    {
+        if (!seek_) {
+            seek_ = [](wiola::pcm::Frames target) {
+                return wiola::codec::SeekOutcome{
+                    .target = target,
+                    .achieved = target,
+                };
+            };
+        }
+    }
+
+protected:
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float>,
+        wiola::pcm::Frames wanted) override
+    {
+        return decode_(wanted);
+    }
+
+    wiola::media::Result<wiola::codec::SeekOutcome> seek_frame(wiola::pcm::Frames target) override
+    {
+        return seek_(target);
+    }
+
+private:
+    Decode decode_;
+    Seek seek_;
+};
+
+TEST(AudioDecoder, RejectsAnOutputSpanThatEndsInsideAFrame)
+{
+    bool called{false};
+
+    CallbackDecoder decoder{
+        exact_stream(wiola::pcm::Frames{4}),
+        [&called](wiola::pcm::Frames) {
+            called = true;
+
+            return wiola::codec::DecodeOutcome{};
+        },
+    };
+    std::array<float, 3> output{};
+
+    auto read{decoder.read(output)};
+
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::read_failed);
+    EXPECT_FALSE(called);
+}
+
+TEST(AudioDecoder, AnEmptyExactStreamIsAlreadyExhausted)
+{
+    CallbackDecoder decoder{
+        exact_stream(wiola::pcm::Frames{}),
+        [](wiola::pcm::Frames) -> wiola::media::Result<wiola::codec::DecodeOutcome> {
+            ADD_FAILURE() << "an empty stream must not call its backend";
+
+            return wiola::codec::DecodeOutcome{};
+        },
+    };
+    std::array<float, 2> output{};
+
+    auto read{decoder.read(output)};
+    auto repeated{decoder.read(output)};
+
+    ASSERT_TRUE(read);
+    ASSERT_TRUE(repeated);
+
+    EXPECT_TRUE(read->end_of_stream);
+    EXPECT_TRUE(repeated->end_of_stream);
+    EXPECT_TRUE(decoder.exhausted());
+    EXPECT_EQ(decoder.stream_info().length, wiola::pcm::Frames{});
+}
+
+TEST(AudioDecoder, RejectsBackendOverproduction)
+{
+    CallbackDecoder decoder{
+        exact_stream(wiola::pcm::Frames{4}),
+        [](wiola::pcm::Frames wanted) {
+            return wiola::codec::DecodeOutcome{
+                .frames = wanted + wiola::pcm::Frames{1},
+            };
+        },
+    };
+    std::array<float, 2> output{};
+
+    auto read{decoder.read(output)};
+
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(AudioDecoder, RejectsBackendProgressStalls)
+{
+    CallbackDecoder decoder{
+        exact_stream(wiola::pcm::Frames{4}),
+        [](wiola::pcm::Frames) { return wiola::codec::DecodeOutcome{}; },
+    };
+    std::array<float, 2> output{};
+
+    auto read{decoder.read(output)};
+
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(AudioDecoder, RenderPropagatesTheBackendFailure)
+{
+    CallbackDecoder decoder{
+        exact_stream(wiola::pcm::Frames{4}),
+        [](wiola::pcm::Frames) -> wiola::media::Result<wiola::codec::DecodeOutcome> {
+            return wiola::media::unexpected{
+                wiola::media::Error{
+                                    .category = wiola::media::ErrorCategory::damaged,
+                                    .detail = "injected decode failure",
+                                    },
+            };
+        },
+    };
+    std::array<float, 2> output{};
+
+    auto rendered{decoder.render(output)};
+
+    ASSERT_FALSE(rendered);
+    EXPECT_EQ(rendered.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(AudioDecoder, RejectsSeekingAnUnseekableStream)
+{
+    auto info{exact_stream(wiola::pcm::Frames{4})};
+    info.seekable = false;
+
+    CallbackDecoder decoder{
+        info,
+        [](wiola::pcm::Frames) {
+            return wiola::codec::DecodeOutcome{
+                .frames = {},
+                .end_of_stream = true,
+            };
+        },
+    };
+
+    auto sought{decoder.seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(AudioDecoder, RejectsABackendThatChangesTheSeekTarget)
+{
+    CallbackDecoder decoder{
+        exact_stream(wiola::pcm::Frames{4}),
+        [](wiola::pcm::Frames) { return wiola::codec::DecodeOutcome{}; },
+        [](wiola::pcm::Frames target) {
+            return wiola::codec::SeekOutcome{
+                .target = target + wiola::pcm::Frames{1},
+                .achieved = target,
+            };
+        },
+    };
+
+    auto sought{decoder.seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+}
 
 TEST(AudioDecoder, AShortReadIsProgressRatherThanEndOfFile)
 {

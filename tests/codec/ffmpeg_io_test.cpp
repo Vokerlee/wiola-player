@@ -26,16 +26,21 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include <libavutil/error.h>
+#include <libavutil/mem.h>
 }
 
 #include <algorithm>
+#include <cerrno>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 namespace {
@@ -49,51 +54,86 @@ public:
 
     wiola::media::Result<std::size_t> read(std::span<std::byte> output) override
     {
+        if (throw_reads_)
+            throw std::runtime_error{"injected read exception"};
+
         if (fail_reads_)
             return wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::read_failed,
                                     .detail = "injected read"}
             };
+
         const std::size_t count{std::min(output.size(), bytes_.size() - cursor_)};
+
         std::copy_n(bytes_.begin() + static_cast<std::ptrdiff_t>(cursor_), count, output.begin());
+
         cursor_ += count;
         bytes_read_ += count;
+
         return count;
     }
 
     wiola::media::Result<void> seek(std::int64_t offset, wiola::media::SeekOrigin origin) override
     {
-        if (fail_seeks_)
+        ++seek_calls_;
+
+        if (throw_seeks_)
+            throw std::runtime_error{"injected seek exception"};
+
+        if (fail_seeks_ || seek_calls_ == fail_seek_at_)
             return wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::seek_failed,
                                     .detail = "injected seek"}
             };
+
         const std::int64_t base{origin == wiola::media::SeekOrigin::start ? 0
                 : origin == wiola::media::SeekOrigin::current
                 ? static_cast<std::int64_t>(cursor_)
                 : static_cast<std::int64_t>(bytes_.size())};
         const std::int64_t target{base + offset};
+
         if (target < 0)
             return wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::seek_failed,
                                     .detail = "negative cursor"}
             };
+
         cursor_ = static_cast<std::size_t>(target);
+
         return {};
     }
 
     wiola::media::Result<std::uint64_t> tell() override
     {
-        if (oversized_)
+        ++tell_calls_;
+
+        if (tell_calls_ == fail_tell_at_)
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::seek_failed,
+                                    .detail = "injected tell"}
+            };
+
+        if (tell_calls_ == oversized_tell_at_)
             return static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) + 1;
+
         return cursor_;
     }
 
     void fail_reads() noexcept { fail_reads_ = true; }
 
+    void throw_reads() noexcept { throw_reads_ = true; }
+
     void fail_seeks() noexcept { fail_seeks_ = true; }
 
-    void oversized() noexcept { oversized_ = true; }
+    void fail_seek(std::size_t call) noexcept { fail_seek_at_ = call; }
+
+    void throw_seeks() noexcept { throw_seeks_ = true; }
+
+    void fail_tell(std::size_t call) noexcept { fail_tell_at_ = call; }
+
+    void oversized() noexcept { oversized_tell_at_ = 2; }
+
+    void oversized_next_tell() noexcept { oversized_tell_at_ = tell_calls_ + 1; }
 
     std::uint64_t bytes_read() const noexcept { return bytes_read_; }
 
@@ -101,14 +141,27 @@ private:
     std::vector<std::byte> bytes_;
     std::size_t cursor_{0};
     std::uint64_t bytes_read_{0};
+    std::size_t seek_calls_{0};
+    std::size_t fail_seek_at_{0};
+    std::size_t tell_calls_{0};
+    std::size_t fail_tell_at_{0};
+    std::size_t oversized_tell_at_{0};
     bool fail_reads_{false};
+    bool throw_reads_{false};
     bool fail_seeks_{false};
-    bool oversized_{false};
+    bool throw_seeks_{false};
 };
 
-std::vector<std::byte> fixture_bytes()
+class AllocationLimit final {
+public:
+    explicit AllocationLimit(std::size_t bytes) { av_max_alloc(bytes); }
+
+    ~AllocationLimit() { av_max_alloc(std::numeric_limits<std::size_t>::max()); }
+};
+
+std::vector<std::byte> fixture_bytes(const char* name = "tone.wav")
 {
-    const std::filesystem::path path{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"};
+    const std::filesystem::path path{std::filesystem::path{WIOLA_TEST_DATA_DIR} / name};
     std::ifstream input{path, std::ios::binary};
     const std::vector<char> chars{std::istreambuf_iterator<char>{input},
         std::istreambuf_iterator<char>{}};
@@ -163,6 +216,17 @@ TEST(FfmpegInput, PreservesInjectedSeekFailure)
 {
     auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
     stream->fail_seeks();
+
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
+    ASSERT_FALSE(input);
+    EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegInput, PropagatesFailureToRestoreTheInitialCursor)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    stream->fail_seek(2);
 
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
 
@@ -263,6 +327,180 @@ TEST(FfmpegInspection, DoesNotScanLargeInputsDuringStartup)
 
     ASSERT_TRUE(facts);
     EXPECT_LT(observer->bytes_read(), 1024U * 1024U / 2U);
+}
+
+TEST(FfmpegInput, RejectsAMissingByteStream)
+{
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(nullptr)};
+
+    ASSERT_FALSE(input);
+    EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::unreadable);
+}
+
+TEST(FfmpegInput, ReportsFormatContextAllocationFailure)
+{
+    AllocationLimit limited{1};
+
+    auto input{
+        wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+
+    ASSERT_FALSE(input);
+    EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::unreadable);
+    EXPECT_EQ(input.error().detail, "FFmpeg input allocation failed");
+}
+
+TEST(FfmpegInput, ReportsCustomIoAllocationFailure)
+{
+    AllocationLimit limited{16 * 1024 - 1};
+
+    auto input{
+        wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+
+    ASSERT_FALSE(input);
+    EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::unreadable);
+    EXPECT_EQ(input.error().detail, "FFmpeg I/O allocation failed");
+}
+
+TEST(FfmpegInput, PropagatesInitialAndMeasuredTellFailures)
+{
+    for (const std::size_t call : {std::size_t{1}, std::size_t{2}}) {
+        auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+        stream->fail_tell(call);
+
+        auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
+        ASSERT_FALSE(input) << call;
+        EXPECT_EQ(input.error().category, wiola::media::ErrorCategory::seek_failed) << call;
+    }
+}
+
+TEST(FfmpegInput, RejectsInvalidCallbackArguments)
+{
+    auto input{
+        wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+    ASSERT_TRUE(input);
+    auto* io{(*input)->format()->pb};
+    std::uint8_t byte{0};
+
+    const int null_output{io->read_packet(io->opaque, nullptr, 0)};
+    const int negative_size{io->read_packet(io->opaque, &byte, -1)};
+    const auto unknown_origin{io->seek(io->opaque, 0, 42)};
+
+    EXPECT_EQ(null_output, AVERROR(EINVAL));
+    EXPECT_EQ(negative_size, AVERROR(EINVAL));
+    EXPECT_EQ(unknown_origin, AVERROR(EINVAL));
+}
+
+TEST(FfmpegInput, TurnsReadExceptionsIntoStableMediaErrors)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    auto* observer{stream.get()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+    observer->throw_reads();
+    auto* io{(*input)->format()->pb};
+    std::uint8_t byte{0};
+
+    const int result{io->read_packet(io->opaque, &byte, 1)};
+
+    EXPECT_EQ(result, AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, wiola::media::ErrorCategory::read_failed);
+}
+
+TEST(FfmpegInput, PreservesSeekFailuresFromTheByteStream)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    auto* observer{stream.get()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+    observer->fail_seeks();
+    auto* io{(*input)->format()->pb};
+
+    const auto result{io->seek(io->opaque, 0, SEEK_SET)};
+
+    EXPECT_EQ(result, AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegInput, PreservesTellFailuresAfterASuccessfulSeek)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    auto* observer{stream.get()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+    observer->fail_tell(3);
+    auto* io{(*input)->format()->pb};
+
+    const auto result{io->seek(io->opaque, 0, SEEK_SET)};
+
+    EXPECT_EQ(result, AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegInput, RejectsCallbackPositionsOutsideFfmpegOffsets)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    auto* observer{stream.get()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+    observer->oversized_next_tell();
+    auto* io{(*input)->format()->pb};
+
+    const auto result{io->seek(io->opaque, 0, SEEK_SET)};
+
+    EXPECT_EQ(result, AVERROR(EOVERFLOW));
+}
+
+TEST(FfmpegInput, TurnsSeekExceptionsIntoStableMediaErrors)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    auto* observer{stream.get()};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+    observer->throw_seeks();
+    auto* io{(*input)->format()->pb};
+
+    const auto result{io->seek(io->opaque, 0, SEEK_SET)};
+
+    EXPECT_EQ(result, AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegInput, InspectionPreservesAnInjectedIoFailure)
+{
+    auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
+    auto* observer{stream.get()};
+
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+    ASSERT_TRUE(input);
+
+    observer->fail_reads();
+    auto* io{(*input)->format()->pb};
+    std::uint8_t byte{0};
+    ASSERT_EQ(io->read_packet(io->opaque, &byte, 1), AVERROR(EIO));
+
+    auto facts{
+        (*input)->inspect([](AVFormatContext*, AVDictionary**) { return AVERROR_INVALIDDATA; })};
+
+    ASSERT_FALSE(facts);
+    EXPECT_EQ(facts.error().category, wiola::media::ErrorCategory::read_failed);
+}
+
+TEST(FfmpegInput, InspectionReportsDamageWhenFfmpegFailsWithoutAnIoError)
+{
+    auto input{
+        wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+    ASSERT_TRUE(input);
+
+    auto facts{
+        (*input)->inspect([](AVFormatContext*, AVDictionary**) { return AVERROR_INVALIDDATA; })};
+
+    ASSERT_FALSE(facts);
+    EXPECT_EQ(facts.error().category, wiola::media::ErrorCategory::damaged);
 }
 
 } // namespace

@@ -24,13 +24,18 @@
 #include <gtest/gtest.h>
 
 extern "C" {
+#include <libavformat/avformat.h>
+#include <libavutil/error.h>
 #include <libavutil/frame.h>
+#include <libavutil/mem.h>
+#include <libswresample/swresample.h>
 }
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -176,6 +181,212 @@ TEST(FfmpegPcm, RejectsSampleFormatAndSemanticLayoutChanges)
     EXPECT_EQ(layout_result.error().category, wiola::media::ErrorCategory::unsupported);
 }
 
+class AllocationLimit final {
+public:
+    explicit AllocationLimit(std::size_t bytes) { av_max_alloc(bytes); }
+
+    ~AllocationLimit() { av_max_alloc(std::numeric_limits<std::size_t>::max()); }
+};
+
+TEST(FfmpegPcm, RejectsSubmissionAndDrainWhilePcmIsPending)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+    ASSERT_TRUE(converter.submit(*frame.get()));
+
+    auto repeated{converter.submit(*frame.get())};
+    auto drained{converter.finish()};
+
+    ASSERT_FALSE(repeated);
+    ASSERT_FALSE(drained);
+    EXPECT_EQ(repeated.error().category, wiola::media::ErrorCategory::damaged);
+    EXPECT_EQ(drained.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegPcm, RejectsAFrameBeyondTheConversionBound)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    frame.get()->nb_samples = 65537;
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+
+    auto submitted{converter.submit(*frame.get())};
+
+    ASSERT_FALSE(submitted);
+    EXPECT_EQ(submitted.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegPcm, UsesTheDefaultLayoutWhenAFrameHasNoExplicitMapping)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    av_channel_layout_uninit(&frame.get()->ch_layout);
+    frame.get()->ch_layout.order = AV_CHANNEL_ORDER_NATIVE;
+    frame.get()->ch_layout.nb_channels = 2;
+    frame.get()->ch_layout.u.mask = 0;
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+
+    auto submitted{converter.submit(*frame.get())};
+
+    ASSERT_TRUE(submitted);
+    EXPECT_TRUE(converter.pending());
+}
+
+TEST(FfmpegPcm, ReportsConverterAllocationFailure)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+    AllocationLimit limited{1};
+
+    auto submitted{converter.submit(*frame.get())};
+
+    ASSERT_FALSE(submitted);
+    EXPECT_EQ(submitted.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegPcm, ReportsConverterInitializationFailure)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConversionApi api;
+    api.initialize = [](SwrContext*) {
+        return -1;
+    };
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2},
+        api
+    };
+
+    auto submitted{converter.submit(*frame.get())};
+
+    ASSERT_FALSE(submitted);
+    EXPECT_EQ(submitted.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegPcm, RejectsAnInvalidConvertedFrameCapacity)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConversionApi api;
+    api.out_samples = [](SwrContext*, int) {
+        return -1;
+    };
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2},
+        api
+    };
+
+    auto submitted{converter.submit(*frame.get())};
+
+    ASSERT_FALSE(submitted);
+    EXPECT_EQ(submitted.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegPcm, ReportsSampleConversionFailure)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConversionApi api;
+    api.convert = [](SwrContext*, std::uint8_t**, int, const std::uint8_t* const *, int) {
+        return -1;
+    };
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2},
+        api
+    };
+
+    auto submitted{converter.submit(*frame.get())};
+
+    ASSERT_FALSE(submitted);
+    EXPECT_EQ(submitted.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegPcm, FinishesImmediatelyWithoutAConverter)
+{
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+
+    auto first{converter.finish()};
+    auto repeated{converter.finish()};
+
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(repeated);
+}
+
+TEST(FfmpegPcm, ReportsConverterDrainFailure)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConversionApi api;
+    api.convert = [](SwrContext*, std::uint8_t**, int, const std::uint8_t* const * input, int) {
+        return input ? 1 : -1;
+    };
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2},
+        api
+    };
+    ASSERT_TRUE(converter.submit(*frame.get()));
+    std::array<float, 2> output{};
+    ASSERT_TRUE(converter.read(output, false));
+
+    auto drained{converter.finish()};
+
+    ASSERT_FALSE(drained);
+    EXPECT_EQ(drained.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegPcm, BoundsAConverterThatNeverFinishesDraining)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConversionApi api;
+    api.convert = [](SwrContext*, std::uint8_t**, int, const std::uint8_t* const *, int) {
+        return 1;
+    };
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2},
+        api
+    };
+    ASSERT_TRUE(converter.submit(*frame.get()));
+    std::array<float, 2> output{};
+    ASSERT_TRUE(converter.read(output, false));
+
+    auto drained{converter.finish()};
+
+    ASSERT_FALSE(drained);
+    EXPECT_EQ(drained.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegPcm, ResetDropsPendingAudioAndAllowsACleanFinish)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 1};
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+    ASSERT_TRUE(converter.submit(*frame.get()));
+
+    converter.reset();
+    auto drained{converter.finish()};
+
+    EXPECT_FALSE(converter.pending());
+    ASSERT_TRUE(drained);
+}
+
+TEST(FfmpegPcm, DiscardFirstClearsTheConsumedBuffer)
+{
+    TestFrame frame{AV_SAMPLE_FMT_S16, 44100, 2, 2};
+    wiola::codec::ffmpeg::PcmConverter converter{
+        {wiola::units::Frequency{44100.0}, 2}
+    };
+    ASSERT_TRUE(converter.submit(*frame.get()));
+
+    converter.discard_first(wiola::pcm::Frames{2});
+
+    EXPECT_FALSE(converter.pending());
+}
+
 wiola::media::Result<std::vector<float>> decode_all(wiola::codec::Decoder& decoder)
 {
     std::vector<float> samples;
@@ -314,6 +525,328 @@ TEST(FfmpegDecoder, FlacAndMpegSeeksMatchSequentialDecoding)
         for (std::size_t index{0}; index < output.size(); ++index)
             EXPECT_NEAR(output[index], (*expected)[2000 + index], 0.0001F) << name;
     }
+}
+
+int inspection_calls{0};
+int inspection_failure{0};
+int constant_receive_result{0};
+int scripted_receive_calls{0};
+int demux_seek_calls{0};
+
+enum class ReceiveScript {
+    error,
+    end,
+    missing_timestamp,
+    beyond_target,
+};
+
+ReceiveScript receive_script{ReceiveScript::error};
+
+int failing_inspection(AVFormatContext* format, AVDictionary** options)
+{
+    ++inspection_calls;
+
+    if (inspection_calls == inspection_failure)
+        return AVERROR_INVALIDDATA;
+
+    return avformat_find_stream_info(format, options);
+}
+
+int overflowing_origin_inspection(AVFormatContext* format, AVDictionary** options)
+{
+    const int result{avformat_find_stream_info(format, options)};
+
+    for (unsigned int index{0}; index < format->nb_streams; ++index)
+        format->streams[index]->start_time = std::numeric_limits<std::int64_t>::max();
+
+    return result;
+}
+
+int constant_receive(AVCodecContext*, AVFrame*)
+{
+    return constant_receive_result;
+}
+
+int scripted_receive(AVCodecContext*, AVFrame* frame)
+{
+    ++scripted_receive_calls;
+
+    if (scripted_receive_calls == 1) {
+        frame->nb_samples = 1;
+        frame->best_effort_timestamp = 0;
+
+        return 0;
+    }
+
+    frame->nb_samples = 1;
+
+    switch (receive_script) {
+    case ReceiveScript::error:
+        return AVERROR_INVALIDDATA;
+    case ReceiveScript::end:
+        return AVERROR_EOF;
+    case ReceiveScript::missing_timestamp:
+        frame->best_effort_timestamp = AV_NOPTS_VALUE;
+
+        return 0;
+    case ReceiveScript::beyond_target:
+        frame->best_effort_timestamp = 2000;
+
+        return 0;
+    }
+
+    return AVERROR_INVALIDDATA;
+}
+
+int failing_demux_seek(AVFormatContext*, int, std::int64_t, int)
+{
+    return AVERROR_INVALIDDATA;
+}
+
+int failing_restart_demux_seek(AVFormatContext*, int, std::int64_t, int)
+{
+    ++demux_seek_calls;
+
+    return demux_seek_calls == 1 ? 0 : AVERROR_INVALIDDATA;
+}
+
+TEST(FfmpegDecoder, ReportsLocalFileAndCodecInitializationFailures)
+{
+    auto missing{wiola::codec::ffmpeg::FfmpegDecoder::open("/nonexistent/wiola.wav")};
+
+    ASSERT_FALSE(missing);
+    EXPECT_EQ(missing.error().category, wiola::media::ErrorCategory::unreadable);
+
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.packets.api.open = [](AVCodecContext*, const AVCodec*, AVDictionary**) {
+        return -1;
+    };
+
+    auto invalid{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+
+    ASSERT_FALSE(invalid);
+    EXPECT_EQ(invalid.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegDecoder, EnforcesItsConversionWorkBudget)
+{
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.decode_work_budget = 0;
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+    std::array<float, 2> output{};
+
+    auto read{(*decoder)->read(output)};
+
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegDecoder, PropagatesConverterDrainFailure)
+{
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.conversion.convert = [](SwrContext* converter, std::uint8_t** output, int output_frames,
+                                     const std::uint8_t* const * input, int input_frames) {
+        if (!input)
+            return -1;
+
+        return swr_convert(converter, output, output_frames, input, input_frames);
+    };
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone-vorbis.ogg", options
+    )};
+    ASSERT_TRUE(decoder);
+    std::array<float, 128> output{};
+    auto read{(*decoder)->read(output)};
+
+    for (int calls{0}; read && !read->end_of_stream && calls < 1000; ++calls)
+        read = (*decoder)->read(output);
+
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
+}
+
+TEST(FfmpegDecoder, PropagatesCandidateAndOriginProbeOpenFailures)
+{
+    for (const int failure : {2, 3}) {
+        inspection_calls = 0;
+        inspection_failure = failure;
+        wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+        options.inspect = failing_inspection;
+        auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+            std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+        )};
+        ASSERT_TRUE(decoder) << failure;
+
+        auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+        ASSERT_FALSE(sought) << failure;
+        EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::damaged) << failure;
+    }
+}
+
+TEST(FfmpegDecoder, RejectsErrorAndEndFromTheOriginFrameProbe)
+{
+    for (const int result : {AVERROR_INVALIDDATA, AVERROR_EOF}) {
+        constant_receive_result = result;
+        wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+        options.packets.api.receive = constant_receive;
+        auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+            std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+        )};
+        ASSERT_TRUE(decoder);
+
+        auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+        ASSERT_FALSE(sought);
+    }
+}
+
+TEST(FfmpegDecoder, PropagatesErrorsAndEndDuringSeekPreroll)
+{
+    for (const ReceiveScript script : {ReceiveScript::error, ReceiveScript::end}) {
+        scripted_receive_calls = 0;
+        receive_script = script;
+        wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+        options.packets.api.receive = scripted_receive;
+        auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+            std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+        )};
+        ASSERT_TRUE(decoder);
+
+        auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+        ASSERT_FALSE(sought);
+    }
+}
+
+TEST(FfmpegDecoder, RejectsSeekPrerollWithoutTimestamps)
+{
+    scripted_receive_calls = 0;
+    receive_script = ReceiveScript::missing_timestamp;
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.packets.api.receive = scripted_receive;
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegDecoder, RejectsADemuxerThatCannotSeekToOrigin)
+{
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.seek = failing_demux_seek;
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegDecoder, RejectsADemuxerThatCannotRestartSeekPreroll)
+{
+    scripted_receive_calls = 0;
+    receive_script = ReceiveScript::beyond_target;
+    demux_seek_calls = 0;
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.packets.api.receive = scripted_receive;
+    options.seek = failing_restart_demux_seek;
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegDecoder, PropagatesConversionFailureDuringSeekPreroll)
+{
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.conversion.out_samples = [](SwrContext*, int) {
+        return -1;
+    };
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegDecoder, EnforcesItsSeekPrerollBudget)
+{
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.seek_work_budget = 0;
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::limit_exceeded);
+}
+
+TEST(FfmpegDecoder, SeeksDirectlyToTheExactEnd)
+{
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek((*decoder)->num_frames())};
+
+    ASSERT_TRUE(sought);
+    EXPECT_EQ(sought->achieved, (*decoder)->num_frames());
+    EXPECT_TRUE((*decoder)->exhausted());
+}
+
+TEST(FfmpegDecoder, RejectsSeekFramesOutsideFfmpegTimestamps)
+{
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone-vorbis.ogg"
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{std::numeric_limits<std::size_t>::max()})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+}
+
+TEST(FfmpegDecoder, RejectsAnOriginThatOverflowsTheSeekTimestamp)
+{
+    wiola::codec::ffmpeg::FfmpegDecoderOptions options;
+    options.inspect = overflowing_origin_inspection;
+    auto decoder{wiola::codec::ffmpeg::FfmpegDecoder::open(
+        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", options
+    )};
+    ASSERT_TRUE(decoder);
+
+    auto sought{(*decoder)->seek(wiola::pcm::Frames{1})};
+
+    ASSERT_FALSE(sought);
+    EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
 }
 
 } // namespace

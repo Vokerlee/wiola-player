@@ -27,6 +27,7 @@ namespace wiola::codec {
 media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
     const pcm::StreamSpec stream_spec{spec()};
+
     if (output.size() % stream_spec.num_channels != 0)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::read_failed,
@@ -37,11 +38,13 @@ media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
         return DecodeOutcome{.frames = {}, .end_of_stream = true};
 
     pcm::Frames wanted{stream_spec.frames_per(output.size())};
+
     if (length_accuracy() == LengthAccuracy::exact)
         wanted = std::min(wanted, num_frames_left());
 
     if (wanted == pcm::Frames{}) {
         exhausted_ = length_accuracy() == LengthAccuracy::exact;
+
         return DecodeOutcome{.frames = {}, .end_of_stream = exhausted_};
     }
 
@@ -63,14 +66,9 @@ media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
         };
 
     position_ += decoded->frames;
-    if (length_accuracy() == LengthAccuracy::exact && position_ > num_frames())
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::damaged,
-                         .detail = "decoder passed the exact stream length"}
-        };
-
     exhausted_ = decoded->end_of_stream ||
         (length_accuracy() == LengthAccuracy::exact && position_ == num_frames());
+
     return DecodeOutcome{.frames = decoded->frames, .end_of_stream = exhausted_};
 }
 

@@ -40,6 +40,8 @@ struct FfmpegStreamFacts {
     DecoderStreamInfo output;
 };
 
+using StreamInfoReader = int (*)(AVFormatContext*, AVDictionary**);
+
 class FfmpegInput final {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<FfmpegInput>>
@@ -54,7 +56,8 @@ public:
 
     [[nodiscard]] AVFormatContext* format() const noexcept { return format_; }
 
-    [[nodiscard]] media::Result<FfmpegStreamFacts> inspect();
+    [[nodiscard]] media::Result<FfmpegStreamFacts>
+    inspect(StreamInfoReader read_stream_info = nullptr);
 
     [[nodiscard]] const std::optional<media::Error>& io_error() const noexcept { return io_error_; }
 

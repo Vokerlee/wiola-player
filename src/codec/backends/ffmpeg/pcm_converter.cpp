@@ -27,7 +27,6 @@ extern "C" {
 }
 
 #include <algorithm>
-#include <limits>
 
 namespace wiola::codec::ffmpeg {
 
@@ -43,8 +42,9 @@ media::Error conversion_error(media::ErrorCategory category, const char* detail)
 
 } // namespace
 
-PcmConverter::PcmConverter(pcm::StreamSpec output) noexcept
+PcmConverter::PcmConverter(pcm::StreamSpec output, PcmConversionApi api) noexcept
     : output_{output}
+    , api_{api}
 {
 }
 
@@ -54,9 +54,27 @@ PcmConverter::~PcmConverter()
     av_channel_layout_uninit(&input_layout_);
 }
 
+int PcmConverter::out_samples(int input_frames) const noexcept
+{
+    if (api_.out_samples)
+        return api_.out_samples(converter_, input_frames);
+
+    return swr_get_out_samples(converter_, input_frames);
+}
+
+int PcmConverter::convert(std::uint8_t** output, int output_frames,
+    const std::uint8_t* const * input, int input_frames) noexcept
+{
+    if (api_.convert)
+        return api_.convert(converter_, output, output_frames, input, input_frames);
+
+    return swr_convert(converter_, output, output_frames, input, input_frames);
+}
+
 media::Result<void> PcmConverter::configure(const AVFrame& frame)
 {
     const int channels{frame.ch_layout.nb_channels};
+
     if (frame.sample_rate != static_cast<int>(output_.sample_rate.hz()) || channels <= 0 ||
         static_cast<std::size_t>(channels) != output_.num_channels)
         return media::unexpected{conversion_error(media::ErrorCategory::unsupported,
@@ -67,6 +85,7 @@ media::Result<void> PcmConverter::configure(const AVFrame& frame)
             av_channel_layout_compare(&input_layout_, &frame.ch_layout) != 0)
             return media::unexpected{conversion_error(media::ErrorCategory::unsupported,
                 "decoded stream changed sample format or layout")};
+
         return {};
     }
 
@@ -74,24 +93,32 @@ media::Result<void> PcmConverter::configure(const AVFrame& frame)
         av_channel_layout_copy(&input_layout_, &frame.ch_layout);
     else
         av_channel_layout_default(&input_layout_, channels);
+
     AVChannelLayout output_layout{};
+
     if (output_.channel_layout == pcm::ChannelLayout::five_point_one_side)
         av_channel_layout_from_mask(&output_layout, AV_CH_LAYOUT_5POINT1);
     else
         av_channel_layout_default(&output_layout, static_cast<int>(output_.num_channels));
+
     const int allocated{swr_alloc_set_opts2(&converter_, &output_layout, AV_SAMPLE_FMT_FLT,
         frame.sample_rate, &input_layout_, static_cast<AVSampleFormat>(frame.format),
         frame.sample_rate, 0, nullptr)};
+
     av_channel_layout_uninit(&output_layout);
+
     if (allocated < 0 || !converter_)
         return media::unexpected{conversion_error(media::ErrorCategory::limit_exceeded,
             "PCM converter allocation failed")};
-    if (swr_init(converter_) < 0)
+
+    const int initialized{api_.initialize ? api_.initialize(converter_) : swr_init(converter_)};
+
+    if (initialized < 0)
         return media::unexpected{
             conversion_error(media::ErrorCategory::damaged, "PCM converter initialization failed")};
 
     input_format_ = frame.format;
-    input_rate_ = frame.sample_rate;
+
     return {};
 }
 
@@ -100,33 +127,34 @@ media::Result<void> PcmConverter::submit(const AVFrame& frame)
     if (pending() || finished_)
         return media::unexpected{conversion_error(media::ErrorCategory::damaged,
             "PCM converter submitted out of order")};
+
     if (frame.nb_samples < 0 || frame.nb_samples > max_converted_frames)
         return media::unexpected{conversion_error(media::ErrorCategory::limit_exceeded,
             "decoded frame exceeds the PCM bound")};
 
     auto configured{configure(frame)};
+
     if (!configured)
         return configured;
 
-    const int capacity{swr_get_out_samples(converter_, frame.nb_samples)};
+    const int capacity{out_samples(frame.nb_samples)};
+
     if (capacity < 0 || capacity > max_converted_frames)
         return media::unexpected{conversion_error(media::ErrorCategory::limit_exceeded,
             "converted PCM exceeds the frame bound")};
-    const auto samples{
-        output_.checked_samples_per(pcm::Frames{static_cast<std::size_t>(capacity)})};
-    if (!samples)
-        return media::unexpected{conversion_error(media::ErrorCategory::limit_exceeded,
-            "converted PCM sample count overflow")};
 
-    pending_.resize(*samples);
-    uint8_t* output[]{reinterpret_cast<uint8_t*>(pending_.data())};
-    const int produced{
-        swr_convert(converter_, output, capacity, frame.extended_data, frame.nb_samples)};
+    pending_.resize(output_.samples_per(pcm::Frames{static_cast<std::size_t>(capacity)}));
+
+    std::uint8_t* output[]{reinterpret_cast<std::uint8_t*>(pending_.data())};
+    const int produced{convert(output, capacity, frame.extended_data, frame.nb_samples)};
+
     if (produced < 0)
         return media::unexpected{
             conversion_error(media::ErrorCategory::damaged, "PCM sample conversion failed")};
+
     pending_.resize(output_.samples_per(pcm::Frames{static_cast<std::size_t>(produced)}));
     offset_ = 0;
+
     return {};
 }
 
@@ -134,38 +162,41 @@ media::Result<void> PcmConverter::finish()
 {
     if (finished_)
         return {};
+
     if (pending())
         return media::unexpected{conversion_error(media::ErrorCategory::damaged,
             "PCM converter drained before pending audio was read")};
+
     if (!converter_) {
         finished_ = true;
+
         return {};
     }
 
-    const auto samples{output_.checked_samples_per(pcm::Frames{drain_frames})};
-    if (!samples)
-        return media::unexpected{
-            conversion_error(media::ErrorCategory::limit_exceeded, "PCM drain size overflow")};
-    std::vector<float> converted(*samples);
-    uint8_t* output[]{reinterpret_cast<uint8_t*>(converted.data())};
+    std::vector<float> converted(output_.samples_per(pcm::Frames{drain_frames}));
+    std::uint8_t* output[]{reinterpret_cast<std::uint8_t*>(converted.data())};
+
     for (int calls{0}; calls < max_converted_frames / drain_frames; ++calls) {
-        const int produced{swr_convert(converter_, output, drain_frames, nullptr, 0)};
+        const int produced{convert(output, drain_frames, nullptr, 0)};
+
         if (produced < 0)
             return media::unexpected{
                 conversion_error(media::ErrorCategory::damaged, "PCM converter drain failed")};
+
         if (produced == 0) {
             finished_ = true;
+
             return {};
         }
-        if (pending_.size() + output_.samples_per(pcm::Frames{static_cast<std::size_t>(produced)}) >
-            output_.samples_per(pcm::Frames{max_converted_frames}))
-            return media::unexpected{conversion_error(media::ErrorCategory::limit_exceeded,
-                "PCM drain exceeds the pending bound")};
-        pending_.insert(pending_.end(), converted.begin(),
-            converted.begin() +
-                static_cast<std::ptrdiff_t>(output_.samples_per(pcm::Frames{
-                    static_cast<std::size_t>(produced)})));
+
+        const auto first{converted.begin()};
+        const auto last{first +
+            static_cast<std::ptrdiff_t>(output_.samples_per(pcm::Frames{
+                static_cast<std::size_t>(produced)}))};
+
+        pending_.insert(pending_.end(), first, last);
     }
+
     return media::unexpected{conversion_error(media::ErrorCategory::limit_exceeded,
         "PCM converter drain did not finish")};
 }
@@ -174,8 +205,8 @@ void PcmConverter::reset() noexcept
 {
     swr_free(&converter_);
     av_channel_layout_uninit(&input_layout_);
+
     input_format_ = -1;
-    input_rate_ = 0;
     pending_.clear();
     offset_ = 0;
     finished_ = false;
@@ -184,7 +215,9 @@ void PcmConverter::reset() noexcept
 void PcmConverter::discard_first(pcm::Frames frames) noexcept
 {
     const std::size_t samples{std::min(output_.samples_per(frames), pending_.size() - offset_)};
+
     offset_ += samples;
+
     if (!pending()) {
         pending_.clear();
         offset_ = 0;
@@ -194,6 +227,7 @@ void PcmConverter::discard_first(pcm::Frames frames) noexcept
 void PcmConverter::truncate(pcm::Frames frames) noexcept
 {
     const std::size_t samples{output_.samples_per(frames)};
+
     pending_.resize(offset_ + std::min(samples, pending_.size() - offset_));
 }
 
@@ -202,12 +236,16 @@ media::Result<DecodeOutcome> PcmConverter::read(std::span<float> output, bool so
     const pcm::Frames available{output_.frames_per(pending_.size() - offset_)};
     const pcm::Frames wanted{std::min(available, output_.frames_per(output.size()))};
     const std::size_t samples{output_.samples_per(wanted)};
+
     std::copy_n(pending_.begin() + static_cast<std::ptrdiff_t>(offset_), samples, output.begin());
+
     offset_ += samples;
+
     if (!pending()) {
         pending_.clear();
         offset_ = 0;
     }
+
     return DecodeOutcome{.frames = wanted,
         .end_of_stream = source_ended && finished_ && !pending()};
 }

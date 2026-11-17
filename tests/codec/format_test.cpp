@@ -24,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string_view>
@@ -54,6 +55,31 @@ FileHead head_of(const char* name, std::string_view bytes)
     out.close();
 
     return read_head(path);
+}
+
+class ReadFailure final : public wiola::media::ByteStream {
+public:
+    wiola::media::Result<std::size_t> read(std::span<std::byte>) override
+    {
+        return wiola::media::unexpected{
+            wiola::media::Error{.category = wiola::media::ErrorCategory::read_failed,
+                                .detail = "injected header failure"}
+        };
+    }
+
+    wiola::media::Result<void> seek(std::int64_t, wiola::media::SeekOrigin) override { return {}; }
+
+    wiola::media::Result<std::uint64_t> tell() override { return std::uint64_t{0}; }
+};
+
+TEST(FileHead, PropagatesAReadFailure)
+{
+    ReadFailure stream;
+
+    auto head{FileHead::read(stream)};
+
+    ASSERT_FALSE(head);
+    EXPECT_EQ(head.error().category, wiola::media::ErrorCategory::read_failed);
 }
 
 TEST(FileHead, IsEmptyWhenThereIsNoFile)

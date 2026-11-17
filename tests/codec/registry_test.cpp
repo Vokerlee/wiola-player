@@ -25,6 +25,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 
 namespace {
 
@@ -69,6 +70,51 @@ wiola::codec::Format fake_backend(int& attempts)
             std::unique_ptr<wiola::codec::Decoder> decoder{std::make_unique<EmptyDecoder>()};
             return decoder;
         }};
+}
+
+TEST(MediaBackendRegistry, RejectsAZeroAttemptBudget)
+{
+    EXPECT_THROW((wiola::codec::MediaBackendRegistry{{}, 0}), std::invalid_argument);
+}
+
+TEST(MediaBackendRegistry, PropagatesAHeaderReadFailure)
+{
+    if (!std::filesystem::exists("/proc/self/mem"))
+        GTEST_SKIP() << "requires a procfs file that opens but cannot be read";
+
+    int attempts{0};
+    const wiola::codec::MediaBackendRegistry registry{{fake_backend(attempts)}};
+
+    auto decoder{registry.open("/proc/self/mem")};
+
+    ASSERT_FALSE(decoder);
+    EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::read_failed);
+    EXPECT_EQ(attempts, 0);
+}
+
+TEST(MediaBackendRegistry, StopsImmediatelyWhenAReadableResourceFails)
+{
+    int first_attempts{0};
+    int second_attempts{0};
+    auto first{fake_backend(first_attempts)};
+    first.open = [&first_attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+        ++first_attempts;
+
+        return wiola::media::unexpected{
+            wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable,
+                                .detail = "resource disappeared"}
+        };
+    };
+    const wiola::codec::MediaBackendRegistry registry{
+        {first, fake_backend(second_attempts)}
+    };
+
+    auto decoder{registry.open(fake_file())};
+
+    ASSERT_FALSE(decoder);
+    EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::unreadable);
+    EXPECT_EQ(first_attempts, 1);
+    EXPECT_EQ(second_attempts, 0);
 }
 
 TEST(MediaBackendRegistry, SelectsAnInjectedBackendByContent)

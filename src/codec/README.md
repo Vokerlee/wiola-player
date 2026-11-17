@@ -8,6 +8,35 @@ codec layer.
 This document describes responsibilities and contracts. The linked headers are the source of truth
 for exact types and function signatures.
 
+## Main idea
+
+The codec is a trust and ownership boundary, not a thin wrapper around FFmpeg. Compressed bytes and
+container metadata are untrusted input; interleaved PCM, stream facts, metadata, and typed errors are
+the small set of values the rest of Wiola understands. Keeping those values backend-neutral lets the
+engine control playback without knowing which library produced them.
+
+A [`media::MediaAsset`](../media/provider.hpp) represents a resource, while an
+[`AudioDecoder`](decode/decoder.hpp) represents one position in that resource. This distinction is
+what allows inspection, metadata reading, and multiple playback cursors to coexist without sharing
+packet state or a file cursor. Creating another decoder creates another independent state machine.
+
+Admission is deliberately split into three questions. Format discovery asks which backend might own
+the bytes. Stream qualification asks whether Wiola supports the actual container, codec, profile,
+and channel layout. Conversion validates that decoded frames continue to match the promised PCM
+shape. A familiar extension or an FFmpeg decoder alone is therefore not a playback guarantee.
+
+The public decoder contract makes progress and failure explicit. Reads distinguish short progress,
+EOF, and errors; exact and estimated lengths have different meanings; seeks either produce an
+audible target or leave the current position untouched. These policies live in the neutral contract,
+while codec-specific packet, timestamp, and preroll mechanics stay inside the backend.
+
+Private option types—[`FfmpegDecoderOptions`](backends/ffmpeg/decoder.hpp),
+[`PacketDecoderOptions`](backends/ffmpeg/packet_decoder.hpp), and
+[`PcmConversionApi`](backends/ffmpeg/conversion_api.hpp)—collect backend limits and external C calls
+in one place. Production uses the real FFmpeg defaults. Tests can substitute a single failing call
+to verify error propagation and work limits without changing application interfaces or manufacturing
+invalid PCM buffers.
+
 ## Layers and ownership
 
 | Area | Types | Responsibility |

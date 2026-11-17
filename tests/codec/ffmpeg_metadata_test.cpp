@@ -231,4 +231,39 @@ TEST(FfmpegMetadata, RejectsOversizedArtworkBeforeCopyingItsPayload)
     avformat_free_context(format);
 }
 
+TEST(FfmpegMetadata, KeepsArtworkBytesWhenTheImageCodecHasNoMimeMapping)
+{
+    AVFormatContext* format{avformat_alloc_context()};
+    ASSERT_NE(format, nullptr);
+    AVStream* stream{avformat_new_stream(format, nullptr)};
+    ASSERT_NE(stream, nullptr);
+    stream->disposition = AV_DISPOSITION_ATTACHED_PIC;
+    std::uint8_t marker{42};
+    stream->attached_pic.data = &marker;
+    stream->attached_pic.size = 1;
+
+    auto artwork{wiola::codec::ffmpeg::read_artwork(*stream)};
+
+    ASSERT_FALSE(artwork.empty());
+    EXPECT_TRUE(artwork.mime_type.empty());
+    stream->attached_pic.data = nullptr;
+    stream->attached_pic.size = 0;
+    avformat_free_context(format);
+}
+
+TEST(FfmpegMetadata, SeparatesUnrecognizedInputFromUnsupportedAudio)
+{
+    const std::filesystem::path invalid{
+        std::filesystem::temp_directory_path() / "wiola_metadata_invalid.bin"};
+    std::ofstream{invalid} << "not audio";
+
+    auto unrecognized{wiola::codec::ffmpeg::read_metadata(invalid)};
+    auto unsupported{wiola::codec::ffmpeg::read_metadata(fixtures() / "no-audio.mp4")};
+
+    ASSERT_FALSE(unrecognized);
+    ASSERT_FALSE(unsupported);
+    EXPECT_EQ(unrecognized.error().category, wiola::media::ErrorCategory::not_mine);
+    EXPECT_EQ(unsupported.error().category, wiola::media::ErrorCategory::unsupported);
+}
+
 } // namespace

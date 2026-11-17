@@ -28,6 +28,9 @@
 #include <memory>
 
 struct AVCodecContext;
+struct AVCodec;
+struct AVCodecParameters;
+struct AVDictionary;
 struct AVFrame;
 struct AVPacket;
 
@@ -38,10 +41,23 @@ struct FfmpegFrameEvent {
     bool end_of_stream{false};
 };
 
+struct PacketCodecApi {
+    int (*parameters)(AVCodecContext*, const AVCodecParameters*){nullptr};
+    int (*open)(AVCodecContext*, const AVCodec*, AVDictionary**){nullptr};
+    int (*receive)(AVCodecContext*, AVFrame*){nullptr};
+    int (*send)(AVCodecContext*, const AVPacket*){nullptr};
+    int (*read)(AVFormatContext*, AVPacket*){nullptr};
+};
+
+struct PacketDecoderOptions {
+    PacketCodecApi api;
+    int work_budget{1024};
+};
+
 class PacketDecoder final {
 public:
     [[nodiscard]] static media::Result<std::unique_ptr<PacketDecoder>> open(FfmpegInput& input,
-        const FfmpegStreamFacts& facts);
+        const FfmpegStreamFacts& facts, PacketDecoderOptions options = {});
     ~PacketDecoder();
 
     PacketDecoder(const PacketDecoder&) = delete;
@@ -55,12 +71,18 @@ public:
     [[nodiscard]] AVCodecContext* codec() const noexcept { return codec_; }
 
 private:
-    PacketDecoder(FfmpegInput& input, std::size_t stream_index) noexcept;
+    PacketDecoder(FfmpegInput& input, std::size_t stream_index,
+        PacketDecoderOptions options) noexcept;
+
     [[nodiscard]] media::Result<void> initialize();
     [[nodiscard]] media::Result<FfmpegFrameEvent> error(media::Error error);
+    [[nodiscard]] int receive() noexcept;
+    [[nodiscard]] int send(const AVPacket* packet) noexcept;
+    [[nodiscard]] int read() noexcept;
 
     FfmpegInput& input_;
     std::size_t stream_index_;
+    PacketDecoderOptions options_;
     AVCodecContext* codec_{nullptr};
     AVPacket* packet_{nullptr};
     AVFrame* frame_{nullptr};

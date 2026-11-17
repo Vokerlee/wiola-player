@@ -121,14 +121,14 @@ media::Result<void> FfmpegInput::initialize()
             failure(media::ErrorCategory::unreadable, "FFmpeg input allocation failed")};
 
     auto* buffer{static_cast<unsigned char*>(av_malloc(io_buffer_size))};
-    if (!buffer)
-        return media::unexpected{
-            failure(media::ErrorCategory::unreadable, "FFmpeg I/O allocation failed")};
 
-    io_ = avio_alloc_context(buffer, io_buffer_size, 0, this, &FfmpegInput::read, nullptr,
-        &FfmpegInput::seek);
-    if (!io_) {
+    if (buffer)
+        io_ = avio_alloc_context(buffer, io_buffer_size, 0, this, &FfmpegInput::read, nullptr,
+            &FfmpegInput::seek);
+
+    if (!buffer || !io_) {
         av_free(buffer);
+
         return media::unexpected{
             failure(media::ErrorCategory::unreadable, "FFmpeg I/O allocation failed")};
     }
@@ -184,9 +184,12 @@ FfmpegInput::~FfmpegInput()
     }
 }
 
-media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
+media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stream_info)
 {
-    if (avformat_find_stream_info(format_, nullptr) < 0) {
+    if (!read_stream_info)
+        read_stream_info = avformat_find_stream_info;
+
+    if (read_stream_info(format_, nullptr) < 0) {
         if (io_error_)
             return media::unexpected{*io_error_};
         return media::unexpected{
@@ -195,20 +198,26 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect()
 
     AVStream* selected{nullptr};
     bool saw_audio{false};
+
     for (unsigned int index{0}; index < format_->nb_streams; ++index) {
         AVStream* candidate{format_->streams[index]};
         const AVCodecParameters* parameters{candidate->codecpar};
+
         if (parameters->codec_type != AVMEDIA_TYPE_AUDIO)
             continue;
+
         saw_audio = true;
+
         const AVCodec* decoder{avcodec_find_decoder(parameters->codec_id)};
         const char* profile{
             decoder ? avcodec_profile_name(parameters->codec_id, parameters->profile) : nullptr};
+
         if (!decoder || parameters->sample_rate <= 0 ||
             !semantic_channel_layout(parameters->ch_layout) ||
             !is_qualified(format_->iformat->name, avcodec_get_name(parameters->codec_id),
                 profile ? profile : ""))
             continue;
+
         if (!selected ||
             (!(selected->disposition & AV_DISPOSITION_DEFAULT) &&
                 (candidate->disposition & AV_DISPOSITION_DEFAULT)))
