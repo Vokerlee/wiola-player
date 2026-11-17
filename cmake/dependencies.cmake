@@ -22,18 +22,7 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_Declare(
-    cli11
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-    GIT_TAG v2.6.2
-    GIT_SHALLOW TRUE
-    FIND_PACKAGE_ARGS NAMES CLI11
-)
-
 FetchContent_MakeAvailable(miniaudio)
-if(WIOLA_BUILD_CLI)
-    FetchContent_MakeAvailable(cli11)
-endif()
 
 # Nothing but the tests needs this, and a build without them should not go to the network for it.
 if(WIOLA_BUILD_TESTS)

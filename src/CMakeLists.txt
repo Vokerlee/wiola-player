@@ -1,8 +1,5 @@
 add_subdirectory(app)
 add_subdirectory(audio)
-if(WIOLA_BUILD_CLI)
-    add_subdirectory(cli)
-endif()
 add_subdirectory(codec)
 add_subdirectory(engine)
 if(WIOLA_BUILD_GUI)
@@ -17,13 +14,7 @@ endif()
 add_executable(wiola-player main.cpp)
 target_link_libraries(
     wiola-player
-    PRIVATE
-        wiola_cli
-        wiola_core
-        wiola_coverage
-        wiola_gui
-        wiola_sanitizer
-        wiola_warnings
+    PRIVATE wiola_core wiola_coverage wiola_gui wiola_sanitizer wiola_warnings
 )
 
 # Windows opens a console for anything but a GUI binary. Ignored on other systems.
