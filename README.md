@@ -3,9 +3,8 @@
 # Wiola Player
 
 Wiola is a small desktop music player with a playlist, track metadata and artwork, seeking,
-repeat/shuffle modes, volume control, and a ten-band equalizer. It uses FFmpeg for audio formats and
-Miniaudio for playback. On Windows, the player is one executable: no installer and no DLLs to place
-beside it.
+repeat/shuffle modes, volume control, and a ten-band equalizer. On Windows, the player is one
+executable: no installer and no DLLs to place beside it.
 
 <img src="assets/wiola-demo.png" alt="wiola-player playing a track on Windows" width="410">
 
@@ -26,8 +25,7 @@ required tools, build presets, tests, coverage, and formatting checks for Linux 
 
 ## Audio support
 
-Wiola supports explicitly qualified container/codec combinations rather than accepting every file
-that FFmpeg can recognize:
+Wiola supports these audio formats:
 
 - MP2 and MP3;
 - AAC-LC in MP4/M4A and ADTS;
@@ -36,13 +34,9 @@ that FFmpeg can recognize:
 - WavPack, Monkey's Audio, TTA, and WMAv2;
 - PCM in WAV, AIFF/AIFC, AU, CAF, Wave64, and RF64 containers.
 
-Mono, stereo, and 5.1-side channel layouts are supported. Unknown layouts are rejected rather than
-silently downmixed. A matching filename extension alone does not guarantee that a particular file is
+Mono, stereo, and 5.1-side channel layouts are supported. Unsupported layouts are not silently
+downmixed. A matching filename extension alone does not guarantee that a particular file is
 playable.
-
-The [codec developer guide](src/codec/README.md) explains the single FFmpeg backend, metadata and
-duration discovery, packet decoding, PCM conversion, timestamps, seeking, and the handoff to the
-audio device.
 
 ## Using the player
 
@@ -55,8 +49,8 @@ audio device.
 - **EQ** opens the ten-band equalizer, with up to ±12 dB adjustment per band.
 - Track tags and attached artwork appear in the playlist when available.
 
-The playlist, volume, and equalizer settings are restored for the next run. Metadata inspection and
-track opening happen in the background so they do not block the window.
+The playlist, volume, and equalizer settings are restored for the next run. The window remains
+responsive while tracks and their metadata are opened.
 
 ## Command-line flags
 
