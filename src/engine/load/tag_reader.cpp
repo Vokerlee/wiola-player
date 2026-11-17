@@ -36,9 +36,10 @@ TagReader::TagReader()
 
 TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t max_pending,
     std::size_t max_completed)
-    : TagReader{[provider = std::move(provider)](const std::filesystem::path& path) {
-                    auto asset{provider->open(path)};
-                    return asset ? (*asset)->read_metadata()
+    : TagReader{[provider = std::move(provider)](const std::filesystem::path& path,
+                    const media::OperationContext& context) {
+                    auto asset{provider->open(path, context)};
+                    return asset ? (*asset)->read_metadata(context)
                                  : media::Result<media::Metadata>{media::unexpected{asset.error()}};
                 },
           max_pending, max_completed}
@@ -46,6 +47,19 @@ TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t
 }
 
 TagReader::TagReader(MetadataReader read, std::size_t max_pending, std::size_t max_completed,
+    std::size_t max_completed_artwork_bytes)
+    : TagReader{[read = std::move(read)](const std::filesystem::path& path,
+                    const media::OperationContext& context) {
+                    if (context.stop_reason() != media::StopReason::none)
+                        return media::Result<media::Metadata>{media::unexpected{context.error()}};
+
+                    return read(path);
+                },
+          max_pending, max_completed, max_completed_artwork_bytes}
+{
+}
+
+TagReader::TagReader(ContextMetadataReader read, std::size_t max_pending, std::size_t max_completed,
     std::size_t max_completed_artwork_bytes)
     : reader_{std::move(read)}
     , max_pending_{max_pending}
@@ -59,6 +73,7 @@ TagReader::TagReader(MetadataReader read, std::size_t max_pending, std::size_t m
 TagReader::~TagReader()
 {
     if (thread_.joinable()) {
+        active_stop_.request_stop();
         thread_.request_stop();
         waiting_.notify_all();
         collected_.notify_all();
@@ -72,6 +87,10 @@ std::size_t TagReader::start(std::span<Request> requests)
 
     {
         const std::lock_guard asked{mutex_};
+
+        if (active_stop_.stop_requested())
+            active_stop_ = std::stop_source{};
+
         const std::size_t available{max_pending_ - std::min(asked_.size(), max_pending_)};
         accepted = std::min(requests.size(), available);
 
@@ -94,6 +113,7 @@ void TagReader::cancel_before(std::uint64_t generation)
 {
     {
         const std::lock_guard asked{mutex_};
+        active_stop_.request_stop();
         latest_generation_ = std::max(latest_generation_, generation);
         std::erase_if(asked_,
             [generation](const Request& request) { return request.generation < generation; });
@@ -129,6 +149,7 @@ void TagReader::work(const std::stop_token& stop)
 {
     while (true) {
         Request request;
+        media::OperationContext context;
 
         {
             std::unique_lock asked{mutex_};
@@ -138,6 +159,7 @@ void TagReader::work(const std::stop_token& stop)
                 return;
 
             request = std::move(asked_.front());
+            context.stop = active_stop_.get_token();
             asked_.pop_front();
             reading_ = true;
         }
@@ -145,7 +167,7 @@ void TagReader::work(const std::stop_token& stop)
         media::Result<media::Metadata> result{media::Metadata{}};
 
         try {
-            result = reader_(request.path);
+            result = reader_(request.path, context);
         } catch (const std::bad_alloc&) {
             // Allocation failure is fatal: no reliable error object or queue storage can be made.
             throw;

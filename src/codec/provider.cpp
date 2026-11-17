@@ -37,8 +37,11 @@ public:
     {
     }
 
-    media::Result<media::MediaInfo> inspect() override
+    media::Result<media::MediaInfo> inspect(const media::OperationContext& context) override
     {
+        if (context.stop_reason() != media::StopReason::none)
+            return media::unexpected{context.error()};
+
         auto decoder{registry_.open(path_)};
 
         if (!decoder)
@@ -52,10 +55,20 @@ public:
             .seekable = (*decoder)->seekable()};
     }
 
-    media::Result<media::Metadata> read_metadata() override { return ffmpeg::read_metadata(path_); }
-
-    media::Result<std::unique_ptr<Decoder>> create_decoder() override
+    media::Result<media::Metadata> read_metadata(const media::OperationContext& context) override
     {
+        if (context.stop_reason() != media::StopReason::none)
+            return media::unexpected{context.error()};
+
+        return ffmpeg::read_metadata(path_);
+    }
+
+    media::Result<std::unique_ptr<Decoder>>
+    create_decoder(const media::OperationContext& context) override
+    {
+        if (context.stop_reason() != media::StopReason::none)
+            return media::unexpected{context.error()};
+
         return registry_.open(path_);
     }
 
@@ -74,9 +87,9 @@ LocalMediaProvider::LocalMediaProvider(MediaBackendRegistry registry)
 }
 
 media::Result<std::unique_ptr<media::MediaAsset>>
-LocalMediaProvider::open(const std::filesystem::path& path)
+LocalMediaProvider::open(const std::filesystem::path& path, const media::OperationContext& context)
 {
-    auto stream{media::LocalFileStream::open(path)};
+    auto stream{media::LocalFileStream::open(path, context)};
 
     if (!stream)
         return media::unexpected{stream.error()};

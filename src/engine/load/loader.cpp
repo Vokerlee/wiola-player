@@ -33,14 +33,27 @@ Loader::Loader()
 }
 
 Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
-    : open_{[provider = std::move(provider)](const std::filesystem::path& path) {
-        auto asset{provider->open(path)};
-        return asset ? (*asset)->create_decoder() : codec::Opened{media::unexpected{asset.error()}};
+    : open_{[provider = std::move(provider)](const std::filesystem::path& path,
+                const media::OperationContext& context) {
+        auto asset{provider->open(path, context)};
+        return asset ? (*asset)->create_decoder(context)
+                     : codec::Opened{media::unexpected{asset.error()}};
     }}
 {
 }
 
 Loader::Loader(DecoderOpener open)
+    : open_{[open = std::move(open)](const std::filesystem::path& path,
+                const media::OperationContext& context) {
+        if (context.stop_reason() != media::StopReason::none)
+            return codec::Opened{media::unexpected{context.error()}};
+
+        return open(path);
+    }}
+{
+}
+
+Loader::Loader(ContextDecoderOpener open)
     : open_{std::move(open)}
 {
 }
@@ -48,6 +61,7 @@ Loader::Loader(DecoderOpener open)
 Loader::~Loader()
 {
     if (thread_.joinable()) {
+        active_stop_.request_stop();
         thread_.request_stop();
         waiting_.notify_all();
         thread_.join();
@@ -58,6 +72,8 @@ void Loader::start(LoadRequest request)
 {
     {
         const std::lock_guard asked{mutex_};
+        active_stop_.request_stop();
+        active_stop_ = std::stop_source{};
         asked_ = std::move(request);
         done_.reset();
         ++num_asked_;
@@ -85,6 +101,7 @@ void Loader::work(const std::stop_token& stop)
 {
     while (true) {
         LoadRequest request;
+        media::OperationContext context;
         std::size_t asked_when{0};
 
         {
@@ -95,6 +112,7 @@ void Loader::work(const std::stop_token& stop)
                 return;
 
             request = *std::exchange(asked_, std::nullopt);
+            context.stop = active_stop_.get_token();
             asked_when = num_asked_;
             opening_ = true;
         }
@@ -104,7 +122,7 @@ void Loader::work(const std::stop_token& stop)
                 .detail = "decoder was not opened"}}};
 
         try {
-            opened = open_(request.path);
+            opened = open_(request.path, context);
         } catch (const std::bad_alloc&) {
             throw;
         } catch (...) {

@@ -23,8 +23,10 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <stop_token>
 
 namespace {
 
@@ -58,6 +60,25 @@ TEST(MediaProvider, OpensEverySupportedFormatThroughOneFacade)
         ASSERT_TRUE(read) << name;
         EXPECT_GT(*read, 0U) << name;
     }
+}
+
+TEST(MediaProvider, DistinguishesCancellationFromDeadlineExpiry)
+{
+    wiola::codec::LocalMediaProvider provider;
+    std::stop_source stop;
+    stop.request_stop();
+
+    const wiola::media::OperationContext cancelled_context{.stop = stop.get_token(),
+        .deadline = {}};
+    auto cancelled{provider.open("not-a-real-file.wav", cancelled_context)};
+    ASSERT_FALSE(cancelled);
+    EXPECT_EQ(cancelled.error().category, wiola::media::ErrorCategory::cancelled);
+
+    const wiola::media::OperationContext expired{.stop = {},
+        .deadline = wiola::media::OperationContext::Clock::now() - std::chrono::seconds{1}};
+    auto timed_out{provider.open("not-a-real-file.wav", expired)};
+    ASSERT_FALSE(timed_out);
+    EXPECT_EQ(timed_out.error().category, wiola::media::ErrorCategory::timed_out);
 }
 
 TEST(MediaProvider, CreatesIndependentDecodersForOneAsset)

@@ -33,8 +33,12 @@ Error failure(ErrorCategory category, const char* detail)
 
 } // namespace
 
-Result<std::unique_ptr<LocalFileStream>> LocalFileStream::open(const std::filesystem::path& path)
+Result<std::unique_ptr<LocalFileStream>> LocalFileStream::open(const std::filesystem::path& path,
+    const OperationContext& context)
 {
+    if (context.stop_reason() != StopReason::none)
+        return unexpected{context.error()};
+
     std::error_code error;
     if (!std::filesystem::is_regular_file(path, error))
         return unexpected{failure(ErrorCategory::unreadable, "local file is not a regular file")};
@@ -48,8 +52,11 @@ Result<std::unique_ptr<LocalFileStream>> LocalFileStream::open(const std::filesy
     return stream;
 }
 
-Result<std::size_t> LocalFileStream::read(std::span<std::byte> out)
+Result<std::size_t> LocalFileStream::read(std::span<std::byte> out, const OperationContext& context)
 {
+    if (context.stop_reason() != StopReason::none)
+        return unexpected{context.error()};
+
     if (out.size() > static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max()))
         return unexpected{failure(ErrorCategory::read_failed, "read size exceeds stream range")};
 
@@ -62,8 +69,12 @@ Result<std::size_t> LocalFileStream::read(std::span<std::byte> out)
     return count;
 }
 
-Result<void> LocalFileStream::seek(std::int64_t offset, SeekOrigin origin)
+Result<void> LocalFileStream::seek(std::int64_t offset, SeekOrigin origin,
+    const OperationContext& context)
 {
+    if (context.stop_reason() != StopReason::none)
+        return unexpected{context.error()};
+
     if (offset < std::numeric_limits<std::streamoff>::min() ||
         offset > std::numeric_limits<std::streamoff>::max())
         return unexpected{failure(ErrorCategory::seek_failed, "seek offset exceeds stream range")};
@@ -80,8 +91,11 @@ Result<void> LocalFileStream::seek(std::int64_t offset, SeekOrigin origin)
     return {};
 }
 
-Result<std::uint64_t> LocalFileStream::tell()
+Result<std::uint64_t> LocalFileStream::tell(const OperationContext& context)
 {
+    if (context.stop_reason() != StopReason::none)
+        return unexpected{context.error()};
+
     file_.clear();
     const std::streampos position{file_.tellg()};
 

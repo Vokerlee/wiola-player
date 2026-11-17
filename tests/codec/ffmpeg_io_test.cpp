@@ -52,7 +52,8 @@ public:
     {
     }
 
-    wiola::media::Result<std::size_t> read(std::span<std::byte> output) override
+    wiola::media::Result<std::size_t> read(std::span<std::byte> output,
+        const wiola::media::OperationContext&) override
     {
         if (throw_reads_)
             throw std::runtime_error{"injected read exception"};
@@ -73,7 +74,8 @@ public:
         return count;
     }
 
-    wiola::media::Result<void> seek(std::int64_t offset, wiola::media::SeekOrigin origin) override
+    wiola::media::Result<void> seek(std::int64_t offset, wiola::media::SeekOrigin origin,
+        const wiola::media::OperationContext&) override
     {
         ++seek_calls_;
 
@@ -103,7 +105,7 @@ public:
         return {};
     }
 
-    wiola::media::Result<std::uint64_t> tell() override
+    wiola::media::Result<std::uint64_t> tell(const wiola::media::OperationContext&) override
     {
         ++tell_calls_;
 
