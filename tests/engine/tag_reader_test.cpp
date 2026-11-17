@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <span>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -107,7 +108,9 @@ TEST(TagReader, IgnoresAnEmptyBatch)
 {
     TagReader reader{[](const std::filesystem::path&) { return Tags{}; }};
 
-    reader.start({});
+    std::vector<TagReader::Request> requests;
+
+    EXPECT_EQ(reader.start(requests), 0U);
 
     EXPECT_FALSE(reader.busy());
     EXPECT_TRUE(reader.take().empty());
@@ -130,6 +133,33 @@ TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
     ASSERT_EQ(readings.size(), 2U);
     EXPECT_TRUE(readings[0].failed);
     EXPECT_FALSE(readings[1].failed);
+}
+
+TEST(TagReader, AcceptsOnlyThePrefixThatFits)
+{
+    Gate reading;
+    TagReader reader{[&reading](const std::filesystem::path&) {
+                         reading.wait();
+                         return Tags{};
+                     },
+        1, 3};
+    std::vector<TagReader::Request> requests{
+        {.id = wiola::engine::QueueEntryId{1}, .path = "first.wav" },
+        {.id = wiola::engine::QueueEntryId{2}, .path = "second.wav"},
+        {.id = wiola::engine::QueueEntryId{3}, .path = "third.wav" },
+    };
+
+    EXPECT_EQ(reader.start(requests), 1U);
+    reading.wait_until_entered();
+    EXPECT_EQ(reader.start(std::span{requests}.subspan(1)), 1U);
+    EXPECT_EQ(reader.start(std::span{requests}.subspan(2)), 0U);
+
+    reading.release();
+    const auto readings{wait_for(reader)};
+
+    ASSERT_EQ(readings.size(), 2U);
+    EXPECT_EQ(readings[0].path, std::filesystem::path{"first.wav"});
+    EXPECT_EQ(readings[1].path, std::filesystem::path{"second.wav"});
 }
 
 TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)

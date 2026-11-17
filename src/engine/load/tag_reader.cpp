@@ -70,25 +70,28 @@ TagReader::~TagReader()
     }
 }
 
-void TagReader::start(std::vector<Request> requests)
+std::size_t TagReader::start(std::span<Request> requests)
 {
-    if (requests.empty())
-        return;
+    std::size_t accepted{0};
 
     {
         const std::lock_guard asked{mutex_};
+        const std::size_t available{max_pending_ - std::min(asked_.size(), max_pending_)};
+        accepted = std::min(requests.size(), available);
 
-        if (requests.size() > max_pending_ - std::min(asked_.size(), max_pending_))
-            throw std::length_error{"metadata pending capacity exceeded"};
-
-        for (Request& request : requests)
+        for (Request& request : requests.first(accepted))
             asked_.push_back(std::move(request));
     }
+
+    if (accepted == 0)
+        return 0;
 
     if (!thread_.joinable())
         thread_ = std::jthread{[this](const std::stop_token& stop) { work(stop); }};
 
     waiting_.notify_one();
+
+    return accepted;
 }
 
 void TagReader::cancel_before(std::uint64_t generation)
@@ -162,10 +165,11 @@ void TagReader::work(const std::stop_token& stop)
 
         {
             std::unique_lock asked{mutex_};
-            reading_ = false;
 
-            if (request.generation < latest_generation_)
+            if (request.generation < latest_generation_) {
+                reading_ = false;
                 continue;
+            }
 
             collected_.wait(asked, stop, [this, artwork_bytes] {
                 return read_.size() < max_completed_ &&
@@ -181,6 +185,7 @@ void TagReader::work(const std::stop_token& stop)
                 .path = std::move(request.path),
                 .tags = std::move(tags),
                 .failed = failed});
+            reading_ = false;
         }
     }
 }
