@@ -68,6 +68,87 @@ PCM stream.
 
 The processing chain does not downmix six channels to two or invent surround channels from stereo.
 
+## The codec-to-audio contract, value by value
+
+The codec and audio layers share PCM values and a stream specification, but they deliberately do not
+share one interface. The codec's read operation belongs to the blocking transport worker; the
+source's render operation belongs to the real-time output path.
+
+[`PlaybackPipeline`](../engine/pipeline/playback_pipeline.cpp) is where those worlds are connected.
+It receives a `std::unique_ptr<codec::Decoder>`, constructs a `PcmQueue` from the decoder's stream
+specification, gives the queue's producer to the transport player, and exposes the queue's consumer
+as a `BufferSource`.
+
+```mermaid
+sequenceDiagram
+    participant Codec as codec::Decoder
+    participant Loop as DecodeLoop
+    participant Queue as PcmQueue
+    participant Source as Source and DSP chain
+    participant Device as Device
+
+    Note over Codec,Loop: Blocking transport worker
+    Codec-->>Loop: DecodeOutcome with frame count and EOS
+    Loop->>Queue: Frame-aligned span of float samples
+    Note over Queue,Device: Real-time consumption
+    Queue-->>Source: Complete-frame samples
+    Source-->>Device: Rendered and processed samples
+    Device-->>Loop: frames_played when position is queried
+```
+
+The boundaries pass these exact values:
+
+| Boundary | What is passed | What it means |
+| --- | --- | --- |
+| Decoder to pipeline | `DecoderStreamInfo` | Sample rate, channel count/layout, optional length and accuracy, and seek capability. The device needs only the stream specification; the player uses the playback facts. |
+| Decoder to `DecodeLoop` | `media::Result<DecodeOutcome>` | Whole decoded PCM frames, the number produced, explicit end-of-stream, or a typed error. A short read alone is not EOS. |
+| `DecodeLoop` to `PcmQueue::Producer` | `std::span<const float>` plus accepted-sample count | Interleaved samples in a frame-aligned block. Zero accepted samples means the queue is full, so the worker waits instead of dropping audio. |
+| Queue to `BufferSource` | `std::span<float>` plus returned-sample count | Complete frames already decoded. A short answer means the consumer caught up with the producer. |
+| `BufferSource` through relay and DSP | The same output span and a fixed `StreamSpec` | PCM is modified in place. Frame order, sample rate, and channel meaning remain unchanged. |
+| `Source` to `Device` | Rendered-sample count | How much real source material was supplied. The device fills any remainder with silence and counts only the supplied frames. |
+| Device back to transport | `frames_played` | Output progress used to compute the audible position and decide when buffered final audio has drained. |
+
+End-of-stream is intentionally **not** stored in the PCM queue or passed through `Source::render`.
+The transport learns it from the codec, waits until queued audio has played out, and then finishes
+playback. The audio callback sees only samples or a shortage of samples.
+
+Output start/stop commands are also out-of-band control operations, not values embedded in the PCM
+stream. Metadata, artwork, filenames, FFmpeg packet/frame objects, codec contexts, and decoder
+pointers never cross into the real-time source path.
+
+### A concrete two-channel example
+
+Suppose the decoder produces two stereo frames:
+
+```text
+L0, R0, L1, R1
+```
+
+At the codec boundary, `DecodeOutcome` reports `frames = 2`. `DecodeLoop` uses the stream
+specification to treat these as four samples and attempts to push all four into the queue. It does
+not report “four frames” to the queue: the queue works in floats, while the public decoder result
+works in frames.
+
+If the audio callback later asks for two frames but only one remains in the queue, `BufferSource`
+returns two samples. The device supplies two additional zero samples to complete its output block,
+increments `frames_played` by one frame, and increments `num_underruns` once.
+
+If the decoder's final result contains two frames **and** `end_of_stream = true`, those four samples
+still enter the queue normally. EOS stays with the transport worker while the audio callback drains
+them and any older queued audio. Only after that audible material has played out does transport
+finish.
+
+### Ownership at the boundary
+
+The decoder remains owned by the transport pipeline. The queue belongs to `PlaybackPipeline`.
+`BufferSource`, relay, and processing stages use non-owning references, so their lifetime is enforced
+by output shutdown and `OutputConnection`, not by passing another smart pointer through the audio
+callback.
+
+This is why the handoff needs both a data contract and a lifetime contract: the span tells the
+callback where the samples are, while stopping the output guarantees that nobody is still reading
+them when their owner goes away.
+
 ## 3. The real-time source contract
 
 [`Source`](dsp/source.hpp) is the small interface the device understands. It has only two important
