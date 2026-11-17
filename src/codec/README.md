@@ -8,6 +8,18 @@ FFmpeg reads containers and compressed audio. Miniaudio talks to the audio devic
 sits between them and turns format-specific details into a small set of ideas the rest of the player
 understands: metadata, duration, PCM audio, playback position, and errors.
 
+```mermaid
+flowchart LR
+    File[Audio file] --> Asset[Media asset]
+    Asset -->|inspect without playing| Metadata[Tags, artwork, and duration]
+    Asset -->|create when needed| Decoder[Independent decoder]
+    Decoder -->|decode and convert| PCM[Interleaved PCM]
+    PCM --> Device[Audio device]
+```
+
+The asset branches into two independent activities: learning about the file and playing it. The
+rest of this guide follows both branches until they meet again at the audio device.
+
 ## 1. Start with a file, not a playback thread
 
 When [`LocalMediaProvider`](provider.cpp) opens a path, it creates a
@@ -77,6 +89,22 @@ file-size-divided-by-bitrate calculation.
 If neither source produces a usable non-negative value, the duration is left **unknown**. Wiola does
 not read the whole file merely to avoid showing an empty duration field.
 
+```mermaid
+flowchart TD
+    Inspect[Inspect the selected audio stream] --> Stream{Stream duration available?}
+    Stream -->|Yes| StreamTime[Convert using the stream time base]
+    Stream -->|No| Container{Container duration available?}
+    Container -->|Yes| ContainerTime[Convert using the container time base]
+    Container -->|No| Unknown[Leave duration unknown]
+    StreamTime --> Accuracy[Classify as exact or estimated]
+    ContainerTime --> Accuracy
+    Accuracy --> Play[Play until actual end-of-stream]
+    Unknown --> Play
+```
+
+Every branch eventually reaches the same rule: duration helps describe the track, but actual
+end-of-stream decides when playback finishes.
+
 ### Does finding the duration decode the song?
 
 **Not the whole song.** Wiola has no loop that decodes a track from beginning to end just to count
@@ -119,6 +147,22 @@ Both workers are created lazily on their first request and then reused. When idl
 than repeatedly opening new threads. The application later collects their completions through
 [`Session::catch_up`](../engine/session.cpp).
 
+```mermaid
+sequenceDiagram
+    participant App as Application thread
+    participant Loader as Loader worker
+    participant Tags as Metadata worker
+
+    App->>Loader: Open the selected track
+    App->>Tags: Read playlist metadata
+    Note over App: Continue handling the UI
+    Loader-->>App: Deliver the decoder on a later catch_up
+    Tags-->>App: Deliver tags on a later catch_up
+```
+
+The requests leave the application thread immediately. Results return only when the application
+pumps completions, so worker code never updates GUI widgets directly.
+
 The loader path begins in [`Loader::start`](../engine/load/loader.cpp). The metadata path begins in
 [`TagReader::start`](../engine/load/tag_reader.cpp). These are useful places to set a breakpoint if
 you want to watch the work arrive.
@@ -154,6 +198,25 @@ simpler: it takes PCM that the transport worker has already produced. The
 [`PcmQueue`](../pcm/pcm_queue.hpp) connects them. The transport worker is the only producer, and
 the audio callback is the only consumer.
 
+```mermaid
+flowchart LR
+    subgraph Transport[Transport worker]
+        Input[Compressed input] --> Decode[Decode and convert with FFmpeg]
+    end
+
+    Decode --> Queue[(Single-producer, single-consumer PCM queue)]
+
+    subgraph Callback[Audio backend callback]
+        Render[Take ready PCM]
+    end
+
+    Queue --> Render
+    Render --> Device[Audio device]
+```
+
+The queue is the important boundary: slow, blocking work stays on the left; the real-time consumer
+on the right only takes samples that are ready.
+
 You can see the consumer side in [`Device::render`](../audio/device/device.cpp). There is no FFmpeg
 call on that path.
 
@@ -185,6 +248,16 @@ Instead, [`FfmpegDecoder`](backends/ffmpeg/decoder.cpp) prepares a candidate dec
 transport worker. The candidate is moved to the requested position and decoded far enough to make
 the target audible frame ready. Only then does it replace the current input state. If preparation
 fails, the original decoder remains usable.
+
+```mermaid
+flowchart TD
+    Current[Current decoder keeps its position] --> Candidate[Prepare a candidate on the transport worker]
+    Candidate --> Ready{Requested audible frame ready?}
+    Ready -->|Yes| Commit[Replace the current input state]
+    Ready -->|No| Keep[Discard the candidate]
+    Commit --> Target[Continue from the requested position]
+    Keep --> Original[Continue from the original position]
+```
 
 The candidate is another decoder state, not another thread.
 
