@@ -1,311 +1,324 @@
-# Codec architecture
+# From an audio file to sound: a codec developer's guide
 
-The codec layer identifies local media, reads its metadata, and produces independent streams of
-interleaved floating-point PCM. FFmpeg is the only decoding and metadata backend. Audio output is a
-separate concern: Miniaudio belongs to the [audio device layer](../audio/device/device.hpp), not the
-codec layer.
+This guide follows one song through Wiola's codec layer. It starts with the difference between a
+container and a codec, then explains metadata, duration, packet decoding, PCM conversion, timestamps,
+and seeking. The code links are optional places to explore after the ideas make sense.
 
-This document describes responsibilities and contracts. The linked headers are the source of truth
-for exact types and function signatures.
+FFmpeg reads containers and compressed audio. Wiola chooses what to admit, owns the decoding state,
+and turns the result into interleaved floating-point PCM. Miniaudio appears only at the end, when
+that PCM is sent to the audio device.
 
-## Main idea
+## 1. A container is not a codec
 
-The codec is a trust and ownership boundary, not a thin wrapper around FFmpeg. Compressed bytes and
-container metadata are untrusted input; interleaved PCM, stream facts, metadata, and typed errors are
-the small set of values the rest of Wiola understands. Keeping those values backend-neutral lets the
-engine control playback without knowing which library produced them.
+An audio file usually combines two different things:
 
-A [`media::MediaAsset`](../media/provider.hpp) represents a resource, while an
-[`AudioDecoder`](decode/decoder.hpp) represents one position in that resource. This distinction is
-what allows inspection, metadata reading, and multiple playback cursors to coexist without sharing
-packet state or a file cursor. Creating another decoder creates another independent state machine.
+- a **container**, such as MP4, Ogg, WAV, or Matroska, which stores streams, packets, tags, and
+  timing information;
+- a **codec**, such as AAC, FLAC, Opus, or MP3, which defines how audio samples are compressed into
+  those packets.
 
-Admission is deliberately split into three questions. Format discovery asks which backend might own
-the bytes. Stream qualification asks whether Wiola supports the actual container, codec, profile,
-and channel layout. Conversion validates that decoded frames continue to match the promised PCM
-shape. A familiar extension or an FFmpeg decoder alone is therefore not a playback guarantee.
-
-The public decoder contract makes progress and failure explicit. Reads distinguish short progress,
-EOF, and errors; exact and estimated lengths have different meanings; seeks either produce an
-audible target or leave the current position untouched. These policies live in the neutral contract,
-while codec-specific packet, timestamp, and preroll mechanics stay inside the backend.
-
-Private option types—[`FfmpegDecoderOptions`](backends/ffmpeg/decoder.hpp),
-[`PacketDecoderOptions`](backends/ffmpeg/packet_decoder.hpp), and
-[`PcmConversionApi`](backends/ffmpeg/conversion_api.hpp)—collect backend limits and external C calls
-in one place. Production uses the real FFmpeg defaults. Tests can substitute a single failing call
-to verify error propagation and work limits without changing application interfaces or manufacturing
-invalid PCM buffers.
-
-## Layers and ownership
-
-| Area | Types | Responsibility |
-| --- | --- | --- |
-| Public media facade | [`media::MediaProvider`](../media/provider.hpp), [`media::MediaAsset`](../media/provider.hpp) | Backend-neutral access to one resource, its facts, its metadata, and new decoders. |
-| Local facade implementation | [`LocalMediaProvider`](provider.hpp), [`LocalMediaAsset`](provider.cpp) | Connects local files to the registry and metadata reader. An asset has no shared playback cursor. |
-| Decoder contract | [`AudioDecoder`](decode/decoder.hpp), also exposed as [`Decoder`](decode/decoder.hpp) | Defines PCM reads, stream information, position tracking, and transactional seeking. |
-| Format discovery | [`MediaBackendRegistry`](decode/registry.hpp), [`Backend`](decode/format.hpp), [`Format`](decode/format.hpp) | Orders bounded backend probes using content markers and extensions. |
-| FFmpeg backend | [`FfmpegDecoder`](backends/ffmpeg/decoder.hpp) and its [private collaborators](#ffmpeg-collaborators) | Demuxes, decodes, converts, inspects, and seeks without exposing FFmpeg types publicly. |
-| Metadata | [`read_metadata`](backends/ffmpeg/metadata.hpp), [`read_artwork`](backends/ffmpeg/metadata.hpp) | Reads bounded text, duration, and attached artwork through an independent FFmpeg input. |
-| Supporting values | [`media::Metadata`](../media/media.hpp), [`pcm::StreamSpec`](../pcm/stream_spec.hpp), [`pcm::Frames`](../pcm/stream_spec.hpp), [`media::Result`](../media/result.hpp) | Keep metadata, PCM geometry, frame counts, and failures explicit and backend-neutral. |
-
-```mermaid
-flowchart LR
-    Caller[Engine / application / CLI] --> MP[media::MediaProvider]
-    MP --> LP[LocalMediaProvider]
-    LP --> MA[media::MediaAsset]
-    MA --> LA[LocalMediaAsset]
-    LA --> Metadata[FFmpeg metadata reader]
-    LA --> Registry[MediaBackendRegistry]
-    Registry --> Backend[FFmpeg Backend / Format]
-    Backend --> Decoder[AudioDecoder]
-    Decoder --> FD[FfmpegDecoder]
-    FD --> PCM[Interleaved float PCM]
-    Metadata --> MD[media::Metadata]
-```
-
-The application depends on the neutral interfaces above the FFmpeg boundary. Constructing another
-decoder from the same asset creates another independent decoding state machine.
-
-## Public decoder model
-
-[`AudioDecoder`](decode/decoder.hpp) is the abstract base for all playback decoders. Its public API
-owns common stream policy; a backend supplies only stream-specific decoding and seek operations.
-
-| Contract type | Meaning |
-| --- | --- |
-| [`DecoderStreamInfo`](decode/decoder.hpp) | PCM shape, optional frame length, length accuracy, and seek capability. |
-| [`LengthAccuracy`](decode/decoder.hpp) | Distinguishes exact, estimated, and unknown lengths so estimates do not truncate audio. |
-| [`DecodeOutcome`](decode/decoder.hpp) | Reports produced frames and explicit end-of-stream together. |
-| [`SeekOutcome`](decode/decoder.hpp) | Reports the requested target, achieved frame, and whether positioning was exact. |
-| [`Opened`](decode/open.hpp) | Contains either an owned decoder or a typed media error. |
-
-Key rules:
-
-- [`read`](decode/decoder.hpp) consumes whole PCM frames. A short read is not implicitly EOF.
-- [`render`](decode/decoder.hpp) is the sample-count convenience view of the same read operation.
-- Exact lengths constrain output; estimated and unknown lengths do not.
-- [`seek`](decode/decoder.hpp) preserves the old position when the backend cannot complete the seek.
-- [`position_frames`](decode/decoder.hpp) and terminal state belong to the public base, so callers
-  observe the same cursor rules for every backend.
-- PCM shape is described by [`pcm::StreamSpec`](../pcm/stream_spec.hpp); channel layout is semantic,
-  not inferred solely from channel count.
-
-The neutral contract is exercised by [`audio_decoder_test.cpp`](../../tests/codec/audio_decoder_test.cpp)
-and [`decoder_test.cpp`](../../tests/codec/decoder_test.cpp).
-
-## Format discovery and admission
-
-Discovery answers “which backend should accept this file?” It does not decide whether a particular
-codec profile is playable.
-
-| Type | Role |
-| --- | --- |
-| [`FileHead`](decode/format.hpp) | Bounded leading-byte view used for signature matching. |
-| [`Marker`](decode/format.hpp) | Declarative content signature at a fixed offset. |
-| [`Format`](decode/format.hpp) | Owned name, markers, extensions, opener, and capabilities for one format family. |
-| [`Backend`](decode/format.hpp) | Groups formats behind one opener and capability set. |
-| [`BackendCapabilities`](decode/format.hpp) | Separates advertised playback and metadata capabilities. |
-| [`Match`](decode/format.hpp) | Ranks signature, extension, and weaker reasons to attempt a backend. |
-| [`MediaBackendRegistry`](decode/registry.hpp) | Performs deterministic, bounded, cancellable acceptance probes and returns typed failures. |
-
-The default registry contains the [`ffmpeg::backend`](backends/ffmpeg/decoder.hpp). Its format
-catalog advertises container families; the separate [`Qualification`](backends/ffmpeg/qualification.hpp)
-set admits only explicitly supported container, codec, and profile combinations after inspection.
-This keeps file recognition, FFmpeg capability, and Wiola support policy distinct.
-
-Relevant contracts live in [`format_test.cpp`](../../tests/codec/format_test.cpp),
-[`registry_test.cpp`](../../tests/codec/registry_test.cpp),
-[`backend_qualification_test.cpp`](../../tests/codec/backend_qualification_test.cpp), and
-[`ffmpeg_qualification_test.cpp`](../../tests/codec/ffmpeg_qualification_test.cpp).
-
-## FFmpeg collaborators
-
-FFmpeg headers and ownership are private to [`backends/ffmpeg`](backends/ffmpeg/). The neutral
-[`AudioDecoder`](decode/decoder.hpp) boundary does not expose packets, codec contexts, dictionaries,
-or channel-layout bit masks.
-
-| Collaborator | Ownership and role |
-| --- | --- |
-| [`FfmpegDecoder`](backends/ffmpeg/decoder.hpp) | Implements the neutral decoder contract and coordinates input, packets, conversion, stream position, and seeking. |
-| [`FfmpegInput`](backends/ffmpeg/input.hpp) | Owns an independent byte stream and FFmpeg demux input; selects a qualified audio stream and publishes neutral stream facts. |
-| [`FfmpegStreamFacts`](backends/ffmpeg/input.hpp) | Connects the selected FFmpeg stream index to [`DecoderStreamInfo`](decode/decoder.hpp). |
-| [`PacketDecoder`](backends/ffmpeg/packet_decoder.hpp) | Owns codec, packet, and frame state; presents decoded frames and explicit terminal events. |
-| [`FfmpegFrameEvent`](backends/ffmpeg/packet_decoder.hpp) | Backend-internal decoded-frame or end-of-stream result. |
-| [`PcmConverter`](backends/ffmpeg/pcm_converter.hpp) | Converts decoded representations to the declared interleaved float PCM shape and holds bounded pending output. |
-| [`read_metadata`](backends/ffmpeg/metadata.hpp) | Uses separate input state for bounded metadata and artwork reads. |
-| [`Qualification`](backends/ffmpeg/qualification.hpp) | Machine-readable support record; the complete set is defined in [`qualification.cpp`](backends/ffmpeg/qualification.cpp). |
-
-```mermaid
-classDiagram
-    class AudioDecoder {
-        <<abstract>>
-    }
-    class FfmpegDecoder
-    class FfmpegInput
-    class PacketDecoder
-    class PcmConverter
-    class ByteStream {
-        <<interface>>
-    }
-    class LocalFileStream
-
-    AudioDecoder <|-- FfmpegDecoder
-    FfmpegDecoder *-- FfmpegInput
-    FfmpegDecoder *-- PacketDecoder
-    FfmpegDecoder *-- PcmConverter
-    PacketDecoder --> FfmpegInput : demuxes through
-    ByteStream <|-- LocalFileStream
-    FfmpegInput *-- ByteStream : independent input
-```
-
-[`media::ByteStream`](../media/byte_stream.hpp) isolates FFmpeg I/O from filenames and the standard
-file API. [`media::LocalFileStream`](../media/local_file_stream.hpp) is the local-file implementation.
-Each input owns its stream, so metadata inspection, decoder creation, and seek preparation do not
-share a file cursor accidentally.
-
-Backend behavior is covered by [`ffmpeg_io_test.cpp`](../../tests/codec/ffmpeg_io_test.cpp),
-[`ffmpeg_packet_decoder_test.cpp`](../../tests/codec/ffmpeg_packet_decoder_test.cpp),
-[`ffmpeg_pcm_test.cpp`](../../tests/codec/ffmpeg_pcm_test.cpp), and the format-specific tests listed
-[below](#test-map).
-
-## Operation contracts
-
-### Open and inspect
-
-[`LocalMediaProvider::open`](provider.cpp) establishes access to a local resource and returns an
-asset. The asset uses [`MediaBackendRegistry`](decode/registry.hpp) for decoder creation and the
-[FFmpeg metadata reader](backends/ffmpeg/metadata.hpp) for metadata. Decoder inspection selects only
-a supported audio stream and converts backend facts into [`media::MediaInfo`](../media/media.hpp).
+A demuxer reads the container and produces compressed packets. A decoder reads packets for one
+codec and produces decoded audio frames. Only after that do we have samples that can become PCM for
+the audio device.
 
 ```mermaid
 flowchart TD
-    Start[Open local ByteStream] --> Head[Read bounded file head]
-    Head --> Match[Match content marker then extension]
-    Match --> AVIO[Create custom AVIO]
-    AVIO --> Probe[Bounded avformat inspection]
-    Probe --> Audio{Playable audio stream?}
-    Audio -->|no| Unsupported[Typed unsupported error]
-    Audio -->|yes| Matrix{Container + codec + profile qualified?}
-    Matrix -->|no| Unsupported
-    Matrix -->|yes| Layout{Semantic layout supported?}
-    Layout -->|no| Unsupported
-    Layout -->|yes| Facts[Select stream and publish PCM facts]
+    File[Audio file] --> Container[Container: MP4, Ogg, WAV, Matroska, ...]
+    Container --> Tags[Tags and attached artwork]
+    Container --> Streams[Streams and timing information]
+    Streams --> Packets[Compressed audio packets]
+    Packets --> Codec[Codec: AAC, FLAC, Opus, MP3, ...]
+    Codec --> Frames[Decoded audio frames]
+    Frames --> PCM[Interleaved floating-point PCM]
 ```
 
-Recognition by suffix alone is not acceptance. The backend must recognize the content, find a
-supported semantic channel layout, and pass the qualification policy. Secondary resource opens are
-rejected, and probing work is bounded.
+This is why “FFmpeg supports the file extension” is not enough. Wiola must support the particular
+container, codec, profile, and channel layout inside it. For example, the qualification policy admits
+AAC-LC in MP4 or ADTS, not every AAC profile. The exact admission set is deliberately small and is
+listed in [`qualification.cpp`](backends/ffmpeg/qualification.cpp).
 
-### Decode
+### Wiola has one production backend: FFmpeg
 
-A decoder turns backend frame events into neutral [`DecodeOutcome`](decode/decoder.hpp) values.
-Packet draining, conversion draining, codec delay, and timestamp handling remain behind
-[`FfmpegDecoder`](backends/ffmpeg/decoder.hpp). Callers see only PCM frames, progress, EOF, or a
-typed failure.
+FFmpeg is not one of several decoding backends today; it is **the only one**. The registry still
+provides a neutral opening point, but its default production catalog leads to the FFmpeg backend.
+The useful boundary is therefore not “a plugin system with many implementations.” It is a way to
+keep FFmpeg's C objects, error codes, and ownership rules out of the engine and to allow simple fake
+decoders in tests.
+
+```mermaid
+flowchart TD
+    Asset[Media asset] --> Registry[MediaBackendRegistry]
+    Asset --> Tags[FFmpeg metadata reader]
+    Registry --> Backend[FFmpeg backend: the single production backend]
+    Backend --> Decoder[FfmpegDecoder]
+    Tags --> Input[FfmpegInput]
+    Decoder --> Input
+    Decoder --> Packets[PacketDecoder]
+    Decoder --> Converter[PcmConverter]
+    Input --> Stream[Wiola ByteStream and custom AVIO]
+    Input --> Format[libavformat: container I/O, demuxing, inspection]
+    Packets --> Codec[libavcodec: compressed packets to decoded frames]
+    Converter --> Resample[libswresample: sample representation conversion]
+    Format --> Util[libavutil: frames, layouts, timing, and shared utilities]
+    Codec --> Util
+    Resample --> Util
+```
+
+Each playback decoder owns its own `FfmpegInput`, `PacketDecoder`, and `PcmConverter`; the diagram
+shows responsibilities, not shared global objects. The metadata reader uses a separate `FfmpegInput`.
+In this way, one FFmpeg backend can still support independent metadata visits, playback cursors, and
+seek candidates without sharing mutable FFmpeg state.
+
+## 2. From a filename to an admitted audio stream
+
+Opening a path creates a [`media::MediaAsset`](../media/provider.hpp). An asset represents something
+that can be inspected or decoded; it is not a playback cursor. Metadata reads and decoders created
+from the same asset remain independent.
+
+Admission then answers a series of increasingly specific questions:
+
+```mermaid
+flowchart TD
+    File[Filename and leading bytes] --> Match{Recognized container family?}
+    Match -->|No| NotMine[Not a supported input]
+    Match -->|Yes| Inspect[Inspect streams with FFmpeg]
+    Inspect --> Audio{Suitable audio stream?}
+    Audio -->|No| Unsupported[No playable audio]
+    Audio -->|Yes| Qualified{Container, codec, and profile qualified?}
+    Qualified -->|No| Unsupported
+    Qualified -->|Yes| Layout{Channel layout supported?}
+    Layout -->|No| Unsupported
+    Layout -->|Yes| Select[Select this stream and describe its PCM output]
+```
+
+Content markers are stronger evidence than a suffix. FFmpeg inspection then discovers what is
+actually inside. If multiple audio streams are usable, the container's default stream is preferred.
+An attached picture is never selected as audio.
+
+Wiola currently supports mono, stereo, and an explicit 5.1-side layout. It does not silently downmix
+an unfamiliar surround layout to stereo. Opus is presented at its required 48 kHz output rate;
+other codecs use the inspected stream rate.
+
+The selected stream and its output description are assembled in
+[`FfmpegInput::inspect`](backends/ffmpeg/input.cpp). The input uses a Wiola-owned
+[`media::ByteStream`](../media/byte_stream.hpp), so reads, seeks, file-size queries, cancellation,
+and secondary-resource rejection do not depend on FFmpeg opening the path by itself.
+
+## 3. Metadata is a separate visit to the container
+
+Reading metadata does not start a playback decoder. The
+[`read_metadata`](backends/ffmpeg/metadata.cpp) function creates an independent input, selects the
+audio stream, reads what it needs, and closes that input.
+
+Title, artist, and album come from container tags first, with the selected stream's tags as a
+fallback. Missing fields stay empty. Attached artwork is copied in its original encoded form; the
+codec does not decode the image. Text and artwork have size limits so hostile metadata cannot create
+unbounded allocations.
+
+Because this visit has its own file cursor, it cannot rewind a song that is already playing.
+
+## 4. Duration comes from timing information, not necessarily from tags
+
+A duration is often derived by the demuxer rather than written as an ordinary tag. Wiola tries the
+selected stream first and the container second:
+
+```mermaid
+flowchart TD
+    Inspect[Inspect the selected audio stream] --> Stream{Stream duration available?}
+    Stream -->|Yes| StreamTime[Convert using the stream time base]
+    Stream -->|No| Container{Container duration available?}
+    Container -->|Yes| ContainerTime[Convert using the container time base]
+    Container -->|No| Unknown[Leave duration unknown]
+    StreamTime --> Accuracy[Classify as exact or estimated]
+    ContainerTime --> Accuracy
+    Accuracy --> Play[Play until actual end-of-stream]
+    Unknown --> Play
+```
+
+A time base explains the units. A duration of `441000` with a time base of `1/44100` means ten
+seconds. At 44,100 Hz, that becomes 441,000 PCM frames.
+
+Depending on the format, FFmpeg may use sample tables, indexes, packet timestamps, bitrate, or file
+size to produce its answer. Wiola does not add a second bitrate-based estimate of its own. If
+neither source is usable and non-negative, duration remains unknown.
+
+Wiola does **not** decode the whole song to count its frames. However, `avformat_find_stream_info`
+may read packets or briefly invoke a decoder while establishing stream facts. The input has a
+256 KiB probe size and a one-second analysis-duration limit. The precise guarantee is therefore “no
+full-track decode,” not “compressed audio is never touched.”
+
+### Why the accuracy of a length matters
+
+Container time and audible sample count are not always identical. Encoder delay and padding can add
+samples before or after the music. Wiola therefore distinguishes:
+
+- **exact** lengths, which may bound output;
+- **estimated** lengths, which are useful for display but never truncate audio;
+- **unknown** lengths, which provide no output boundary.
+
+Supported PCM and sample-count-based lossless formats use exact lengths when available. MP4 AAC is
+also exact when the stream itself supplies a duration. Other reported durations remain estimates.
+Actual end-of-stream always has the final say, so an estimate cannot cut off the end of a song.
+
+## 5. Demuxing and decoding are a two-way pump
+
+FFmpeg's packet decoder is not simply “read one packet, get one frame.” A packet may produce no
+frame immediately, several frames may be waiting inside the codec, and delayed frames may appear
+only after input has ended.
+
+[`PacketDecoder::next_frame`](backends/ffmpeg/packet_decoder.cpp) therefore asks for a decoded frame
+first. If FFmpeg needs more input, the loop reads another packet. Packets belonging to other streams
+are discarded. If a packet is accepted, the loop asks for frames again.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Reading
-    Reading --> Decoding: compressed packet
-    Decoding --> Reading: more input required
-    Decoding --> PendingPcm: decoded frame
-    PendingPcm --> Reading: all PCM consumed
-    Reading --> DrainingDecoder: input EOF
-    DrainingDecoder --> DrainingConverter: decoder drained
-    DrainingConverter --> End: converter drained and no pending PCM
-    PendingPcm --> DrainingConverter: final PCM consumed
+    [*] --> ReceiveFrame
+    ReceiveFrame --> EmitFrame: Frame available
+    EmitFrame --> ReceiveFrame: Next call
+    ReceiveFrame --> ReadPacket: Needs input
+    ReadPacket --> ReceiveFrame: Selected packet submitted
+    ReadPacket --> DrainCodec: Container EOF
+    DrainCodec --> ReceiveFrame: Null packet sent
+    ReceiveFrame --> DrainConverter: Codec EOF
+    DrainConverter --> End: Converted PCM consumed
     End --> [*]
 ```
 
-A read may contain audio and EOF together. Exact lengths trim final padding; estimated and unknown
-lengths never clamp audible output or turn a shorter-than-estimated file into damage.
+Container EOF is not necessarily audible EOF. When no more packets exist, Wiola submits a null
+packet to drain the codec. After the codec is drained, the PCM converter is drained too. Only when
+all converted samples have been consumed does the public decoder report end-of-stream.
 
-### Seek
+This is why a final read can contain both audio and the end-of-stream flag. A short read means
+progress, not necessarily the end.
 
-The public [`AudioDecoder`](decode/decoder.hpp) API exposes a frame-targeted, transactional contract.
-Codec-specific positioning and any required preroll are private to
-[`FfmpegDecoder`](backends/ffmpeg/decoder.hpp). Failure does not replace the caller's current decode
-position with partially prepared state.
+## 6. Decoded frames are not yet the engine's PCM
+
+Different codecs produce different sample representations: signed or unsigned integers, floating
+point, packed samples, or separate planes per channel. Wiola standardizes them into interleaved
+32-bit floating-point PCM.
+
+[`PcmConverter`](backends/ffmpeg/pcm_converter.cpp) configures itself from the first decoded frame.
+It preserves the promised sample rate and channel layout while converting the sample representation.
+Later frames must keep the same rate, channel count, sample format, and layout. A stream that changes
+shape mid-flight is rejected instead of corrupting the playback queue's assumptions.
+
+The converter also holds pending output. Codec frames and caller read sizes do not have to match:
+one decoded frame can supply several reads, and a small read does not force the rest of the frame
+to be thrown away.
+
+```mermaid
+flowchart LR
+    Packet[Compressed packet] --> Frame[Codec-specific decoded frame]
+    Frame --> Convert[Sample-format conversion]
+    Convert --> Pending[Pending interleaved float PCM]
+    Pending --> Read1[Caller read]
+    Pending --> Read2[Next caller read]
+```
+
+For 5.1-side audio, the semantic side-speaker order is preserved. There is no hidden downmix. For
+mono and stereo, the default FFmpeg layout is sufficient.
+
+## 7. Timestamps describe audible positions
+
+A compressed packet timestamp is not automatically the sample position the listener expects. Stream
+start offsets, codec delay, and decoded-frame timing all matter.
+
+Wiola uses each decoded frame's best-effort timestamp, rescales it to the output sample rate, and
+subtracts the stream's encoded origin. The first audible timestamp establishes an origin for normal
+playback. When timestamps move backwards at a container link, Wiola rebases them at the current
+output position instead of moving the public cursor backwards.
+
+Equal-shape chained inputs can continue this way. A rate, channel-count, sample-format, or semantic
+layout change is rejected rather than allowing differently shaped PCM into the same queue.
+
+Exact lengths can trim final padding. Estimated and unknown lengths never clamp output, because a
+plausible container estimate is not permission to remove audible frames.
+
+## 8. Seeking requires decoding, not just a file seek
+
+Moving a compressed file cursor to a nearby packet is only the beginning. The requested audible
+sample may depend on earlier packets, and the first decoded frames may be preroll rather than sound
+the listener requested.
+
+Wiola therefore prepares an independent candidate decoder on the transport worker. It positions the
+candidate, decodes toward the target, discards preroll, and waits until the requested frame is ready.
+Only then does the candidate replace the current input state.
 
 ```mermaid
 flowchart TD
-    Target[Target output frame] --> Candidate[Prepare independent candidate]
-    Candidate --> Position[Position and decode to audible target]
-    Position --> Ready{Requested frame ready?}
-    Ready -->|no| Keep[Keep current decoder and position]
-    Ready -->|yes| Commit[Commit candidate state]
-    Commit --> Play[Resume from requested frame]
+    Target[Requested output frame] --> Candidate[Prepare an independent candidate]
+    Candidate --> Position[Seek demuxer or restart from origin]
+    Position --> Preroll[Decode and discard frames before the target]
+    Preroll --> Ready{Target frame ready?}
+    Ready -->|Yes| Commit[Commit the candidate]
+    Ready -->|No| Keep[Keep the original decoder and position]
 ```
 
-### Metadata
+MP3 needs special care because demuxer seeking does not provide a reliable sample-accurate audible
+timeline. Wiola may restart from the origin and count decoded frames sequentially. Other streams
+can also restart from the origin when a demux seek fails or lands beyond the requested sample.
 
-[`LocalMediaAsset::read_metadata`](provider.cpp) calls FFmpeg directly. Text and artwork are bounded,
-absent fields remain absent, and duration uses the same neutral time representation as the rest of
-the media layer. Metadata reading does not consume or reset a playback decoder.
+The candidate is another decoder state, not another thread. A failed seek leaves the current
+position usable.
 
-### Chained inputs and channel layouts
+## 9. Where codec work runs
 
-Equal-shape links may continue, with backend timestamp state rebased at the current output position.
-Rate, channel-count, sample-format, or semantic-layout changes are rejected before differently shaped
-PCM reaches the queue.
+The codec does not need a general thread pool. Its synchronous operations are called by a small
+number of owners around it:
 
-Mono and stereo are supported. Explicit 5.1-side order is preserved through conversion and the
-device channel map, with no silent downmix. Other mappings are rejected rather than inferred from
-channel count.
+- one loader worker can inspect and construct the next decoder;
+- one metadata worker can read playlist tags;
+- one transport worker can demux, decode, convert, and seek the current decoder;
+- the audio callback consumes PCM but never calls FFmpeg.
 
-## Dependency rules
+The current decoder can therefore keep playing while the loader opens the next one and the metadata
+worker reads another file. Each activity has independent input and decoder state.
 
-1. Application and engine code depend on [`media::MediaAsset`](../media/provider.hpp) and
-   [`AudioDecoder`](decode/decoder.hpp), not concrete FFmpeg types.
-2. [`provider.hpp`](provider.hpp) and [`decode/`](decode/) contain no FFmpeg headers.
-3. [`FfmpegDecoder`](backends/ffmpeg/decoder.hpp) is one implementation of the neutral contract;
-   registry data selects backends without making the decoder interface format-specific.
-4. Assets and decoders have different lifetimes: an asset can create multiple decoders, while each
-   decoder owns one playback position.
-5. PCM output uses the shared [`pcm::StreamSpec`](../pcm/stream_spec.hpp) contract; audio-device
-   configuration and playback remain outside `codec`.
-6. Errors travel as [`media::Result`](../media/result.hpp) values with categories from
-   [`media::ErrorCategory`](../media/result.hpp), rather than backend error codes leaking upward.
+```mermaid
+flowchart LR
+    subgraph Transport[Transport worker]
+        Demux[Demux and decode] --> Convert[Convert to PCM]
+    end
 
-## Extending format support
+    Convert --> Queue[(Single-producer, single-consumer PCM queue)]
 
-1. Enable only the required FFmpeg demuxer/decoder in [`cmake/ffmpeg.cmake`](../../cmake/ffmpeg.cmake).
-2. Add content markers and suffixes to the catalog in [`decoder.cpp`](backends/ffmpeg/decoder.cpp).
-3. Add the container/codec/profile record to [`qualification.cpp`](backends/ffmpeg/qualification.cpp).
-4. Add a small independently produced fixture and its expected PCM shape to
-   [`ffmpeg_qualification_test.cpp`](../../tests/codec/ffmpeg_qualification_test.cpp).
-5. Verify open, nonempty decode, final drain, metadata behavior, and declared seek/length behavior.
-6. Add corruption and format-change cases where the container needs them.
+    subgraph Callback[Audio backend callback]
+        Render[Take ready PCM]
+    end
 
-Do not advertise a codec family from one profile. Do not enable network access, video decoding, or
-secondary resource opening as a side effect.
+    Queue --> Render
+    Render --> Device[Audio device]
+```
 
-## Test map
+FFmpeg's codec is configured with `thread_count = 1`, so decoding uses the transport thread that
+made the call. Seek candidates do not add a thread. The queue keeps blocking codec work away from
+the real-time audio callback.
 
-| Concern | Tests |
-| --- | --- |
-| Provider facade and independent decoders | [`provider_test.cpp`](../../tests/codec/provider_test.cpp) |
-| Public decoder progress, length, and seek policy | [`audio_decoder_test.cpp`](../../tests/codec/audio_decoder_test.cpp), [`decoder_test.cpp`](../../tests/codec/decoder_test.cpp) |
-| Format matching and registry behavior | [`format_test.cpp`](../../tests/codec/format_test.cpp), [`registry_test.cpp`](../../tests/codec/registry_test.cpp) |
-| FFmpeg input, packets, and PCM conversion | [`ffmpeg_io_test.cpp`](../../tests/codec/ffmpeg_io_test.cpp), [`ffmpeg_packet_decoder_test.cpp`](../../tests/codec/ffmpeg_packet_decoder_test.cpp), [`ffmpeg_pcm_test.cpp`](../../tests/codec/ffmpeg_pcm_test.cpp) |
-| Metadata, Unicode, artwork, and limits | [`ffmpeg_metadata_test.cpp`](../../tests/codec/ffmpeg_metadata_test.cpp) |
-| Qualification and corruption boundaries | [`ffmpeg_qualification_test.cpp`](../../tests/codec/ffmpeg_qualification_test.cpp), [`ffmpeg_hardening_test.cpp`](../../tests/codec/ffmpeg_hardening_test.cpp) |
-| Containers, chaining, lossless formats, and sampled files | [`ffmpeg_container_test.cpp`](../../tests/codec/ffmpeg_container_test.cpp), [`ffmpeg_ogg_test.cpp`](../../tests/codec/ffmpeg_ogg_test.cpp), [`ffmpeg_lossless_test.cpp`](../../tests/codec/ffmpeg_lossless_test.cpp), [`ffmpeg_sampled_file_test.cpp`](../../tests/codec/ffmpeg_sampled_file_test.cpp) |
-| MP4, ADTS, and channel layouts | [`ffmpeg_mp4_test.cpp`](../../tests/codec/ffmpeg_mp4_test.cpp), [`ffmpeg_adts_test.cpp`](../../tests/codec/ffmpeg_adts_test.cpp), [`ffmpeg_channel_layout_test.cpp`](../../tests/codec/ffmpeg_channel_layout_test.cpp) |
-| FFmpeg build surface | [`ffmpeg_build_test.cpp`](../../tests/codec/ffmpeg_build_test.cpp), [`cmake/ffmpeg.cmake`](../../cmake/ffmpeg.cmake) |
+## 10. Errors and cancellation stay inside a neutral contract
 
-Useful entry points for changes are the [codec build targets](CMakeLists.txt),
-[FFmpeg backend target](backends/ffmpeg/CMakeLists.txt), and
-[codec test registration](../../tests/codec/CMakeLists.txt).
+Containers and codecs are exposed to damaged and hostile files. Wiola bounds probing, metadata,
+artwork, packet work, conversion work, frame sizes, and seek preroll. Failures become
+[`media::Result`](../media/result.hpp) values with stable categories rather than leaking FFmpeg error
+codes into the engine.
 
-## Useful checks
+An [`OperationContext`](../media/operation_context.hpp) carries cooperative cancellation and an
+optional deadline. Input callbacks and decode/seek loops observe it. This stops unnecessary opens
+and long operations without trying to kill a thread inside third-party code.
 
-- `ctest --preset linux-debug -R 'FfmpegQualification|BackendQualification'`
-- `ctest --preset linux-debug -R 'FfmpegDecoder|FfmpegMetadata'`
-- `ctest --preset linux-asan -R 'FfmpegHardening|FfmpegMetadata'`
-- `cmake --build --preset linux-headless -j`
-- `cmake --build --preset windows-release -j`
+## 11. A useful source-reading order
 
-Native Windows runtime behavior must be tested on Windows; a MinGW cross-build and import inspection
-alone are not playback evidence.
+Follow the codec in the same order as the data:
+
+1. [`provider.cpp`](provider.cpp) — assets, inspection, metadata, and decoder creation.
+2. [`input.cpp`](backends/ffmpeg/input.cpp) — custom I/O, stream selection, and duration.
+3. [`qualification.cpp`](backends/ffmpeg/qualification.cpp) — the exact container/codec/profile
+   admission set.
+4. [`packet_decoder.cpp`](backends/ffmpeg/packet_decoder.cpp) — packet submission, frame reception,
+   and codec draining.
+5. [`pcm_converter.cpp`](backends/ffmpeg/pcm_converter.cpp) — sample conversion, pending PCM, and
+   converter draining.
+6. [`decoder.cpp`](backends/ffmpeg/decoder.cpp) — timestamps, output length policy, chaining, and
+   transactional seeking.
+
+That path takes you from container bytes to the final audible sample without requiring a detour
+through the rest of the application's thread management.
