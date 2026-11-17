@@ -28,6 +28,8 @@
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
+#include <limits>
+#include <new>
 #include <set>
 #include <vector>
 
@@ -38,6 +40,29 @@ using wiola::engine::QueueEntryId;
 using wiola::engine::Track;
 using wiola::engine::TrackMetadata;
 using Repeat = wiola::engine::Playlist::Repeat;
+
+thread_local std::size_t allocations_before_failure{std::numeric_limits<std::size_t>::max()};
+
+class AllocationFailure {
+public:
+    explicit AllocationFailure(std::size_t after) { allocations_before_failure = after; }
+
+    ~AllocationFailure() { allocations_before_failure = std::numeric_limits<std::size_t>::max(); }
+};
+
+template<typename Operation>
+bool allocation_fails(std::size_t after, Operation operation)
+{
+    const AllocationFailure failure{after};
+
+    try {
+        operation();
+    } catch (const std::bad_alloc&) {
+        return true;
+    }
+
+    return false;
+}
 
 /// Three tracks, named so that a test can say which one it is standing at.
 std::vector<Track> three()
@@ -55,6 +80,19 @@ const std::filesystem::path& path_of(const Playlist& playlist)
 }
 
 } // namespace
+
+extern "C" void* __real__Znwm(std::size_t size);
+
+extern "C" void* __wrap__Znwm(std::size_t size)
+{
+    if (allocations_before_failure == 0)
+        throw std::bad_alloc{};
+
+    if (allocations_before_failure != std::numeric_limits<std::size_t>::max())
+        --allocations_before_failure;
+
+    return __real__Znwm(size);
+}
 
 TEST(Playlist, StandsNowhereWhileItIsEmpty)
 {
@@ -493,3 +531,69 @@ TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
     EXPECT_EQ(playlist.tracks()[0].id(), surviving);
     EXPECT_EQ(playlist.tracks()[0].title(), "updated");
 }
+
+TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
+{
+    for (std::size_t after{0}; after < 3; ++after) {
+        Playlist playlist;
+        playlist.set(three());
+        playlist.go_to(1);
+        const std::vector ids{playlist.tracks()[0].id(), playlist.tracks()[1].id(),
+            playlist.tracks()[2].id()};
+        const std::size_t revision{playlist.revision()};
+        const std::size_t structural_revision{playlist.structural_revision()};
+        std::vector replacement{Track::of("new-first.wav"), Track::of("new-second.wav")};
+
+        ASSERT_TRUE(allocation_fails(
+            after, [&playlist, &replacement] { playlist.set(std::move(replacement)); }
+        )) << "allocation index "
+           << after;
+
+        ASSERT_EQ(playlist.tracks().size(), 3U);
+        EXPECT_EQ(playlist.revision(), revision);
+        EXPECT_EQ(playlist.structural_revision(), structural_revision);
+        EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+
+        for (std::size_t index{0}; index < ids.size(); ++index) {
+            EXPECT_EQ(playlist.tracks()[index].id(), ids[index]);
+            EXPECT_EQ(playlist.index_of(ids[index]), index);
+        }
+
+        playlist.add(Track::of("accepted.wav"));
+        EXPECT_EQ(playlist.tracks().back().id(), QueueEntryId{4});
+    }
+}
+
+TEST(Playlist, AppendAllocationFailuresLeaveTheAcceptedQueueUntouched)
+{
+    for (std::size_t after{0}; after < 4; ++after) {
+        Playlist playlist;
+        playlist.set(three());
+        const std::vector ids{playlist.tracks()[0].id(), playlist.tracks()[1].id(),
+            playlist.tracks()[2].id()};
+        const std::size_t revision{playlist.revision()};
+        const std::size_t structural_revision{playlist.structural_revision()};
+        std::vector additions{Track::of("fourth.wav"), Track::of("fifth.wav")};
+
+        ASSERT_TRUE(
+            allocation_fails(after, [&playlist, &additions] { playlist.add(std::move(additions)); })
+        ) << "allocation index "
+          << after;
+
+        ASSERT_EQ(playlist.tracks().size(), 3U);
+        EXPECT_EQ(playlist.revision(), revision);
+        EXPECT_EQ(playlist.structural_revision(), structural_revision);
+
+        for (std::size_t index{0}; index < ids.size(); ++index) {
+            EXPECT_EQ(playlist.tracks()[index].id(), ids[index]);
+            EXPECT_EQ(playlist.index_of(ids[index]), index);
+        }
+
+        playlist.add(std::vector{Track::of("fourth.wav"), Track::of("fifth.wav")});
+        EXPECT_EQ(playlist.tracks()[3].id(), QueueEntryId{4});
+        EXPECT_EQ(playlist.tracks()[4].id(), QueueEntryId{5});
+        EXPECT_EQ(playlist.index_of(playlist.tracks()[4].id()), 4U);
+    }
+}
+
+static_assert(noexcept(std::declval<Playlist&>().remove(0)));

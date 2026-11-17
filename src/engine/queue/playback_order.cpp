@@ -34,6 +34,11 @@ void PlaybackOrder::reset(std::size_t size)
     place_ = order_.empty() ? std::nullopt : std::optional<std::size_t>{0};
 }
 
+void PlaybackOrder::reserve(std::size_t size)
+{
+    order_.reserve(size);
+}
+
 void PlaybackOrder::add()
 {
     order_.push_back(order_.size());

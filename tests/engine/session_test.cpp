@@ -42,6 +42,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 
 namespace {
 
@@ -52,6 +53,8 @@ using wiola::pcm::Frames;
 using State = wiola::engine::Playback::State;
 using wiola::engine::Session;
 namespace units = wiola::units;
+
+static_assert(!noexcept(std::declval<const Session&>().snapshot()));
 
 /// Loads and waits for it, the way a window that draws does: asking, then taking the answer up
 /// on a later turn.

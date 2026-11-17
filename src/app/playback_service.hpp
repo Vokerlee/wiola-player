@@ -61,7 +61,7 @@ public:
 
     /// Drains completions and advances playback; schedulers and headless callers share this pump.
     PlaybackSnapshot pump();
-    [[nodiscard]] PlaybackSnapshot snapshot() const noexcept;
+    [[nodiscard]] PlaybackSnapshot snapshot() const;
     void catch_up();
     [[nodiscard]] bool reading() const noexcept;
     [[nodiscard]] bool loaded() const noexcept;
