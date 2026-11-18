@@ -27,6 +27,7 @@
 
 #include <QFileDialog>
 #include <QFont>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QMenuBar>
@@ -86,7 +87,7 @@ MainWindow::MainWindow(engine::Session& session)
     , equalizer_{presenter_.equalizer_control(), settings_}
 {
     setWindowTitle("Wiola Player");
-    setMinimumWidth(tokens.player.window_min_width);
+    setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
 
     auto* central = new QWidget{this};
     setCentralWidget(central);
@@ -121,6 +122,8 @@ MainWindow::MainWindow(engine::Session& session)
 
     equalizer_button_ = new QPushButton{this};
     connect_action(*equalizer_button_, PlayerAction::equalizer);
+    equalizer_button_->setAccessibleName("Equalizer");
+    equalizer_button_->setToolTip("Open equalizer");
 
     boost_button_ = new QPushButton{"+", this};
     volume_value_ = new QLabel{this};
@@ -141,7 +144,9 @@ MainWindow::MainWindow(engine::Session& session)
     boost_button_->setCheckable(true);
     boost_button_->setChecked(volume_.boosted());
     boost_button_->setFixedWidth(tokens.player.boost_button_width);
-    boost_button_->setToolTip("Past full volume");
+    boost_button_->setFocusPolicy(Qt::StrongFocus);
+    boost_button_->setAccessibleName("Boost volume above 100%");
+    boost_button_->setToolTip("Allow volume above 100%");
 
     volume_value_->setFixedWidth(tokens.player.volume_value_width);
 
@@ -156,6 +161,10 @@ MainWindow::MainWindow(engine::Session& session)
     title.setPointSize(title.pointSize() + tokens.player.track_name_point_size_step);
     title.setBold(true);
     track_label_->setFont(title);
+    track_label_->setAccessibleName("Current track");
+    elapsed_label_->setAccessibleName("Elapsed time");
+    total_label_->setAccessibleName("Total duration");
+    status_label_->setAccessibleName("Player status");
 
     total_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -167,6 +176,7 @@ MainWindow::MainWindow(engine::Session& session)
 
     // How it plays. Everything here acts on the track that is on.
     auto* transport = new QHBoxLayout;
+    transport->setSpacing(tokens.player.control_spacing);
     transport->addWidget(previous_button_);
     transport->addWidget(play_button_);
     transport->addWidget(next_button_);
@@ -176,9 +186,18 @@ MainWindow::MainWindow(engine::Session& session)
     transport->addWidget(volume_value_);
     transport->addWidget(boost_button_);
 
+    QGroupBox* playback_group = new QGroupBox{"Now playing", this};
+    playback_group->setObjectName("playbackGroup");
+    QVBoxLayout* playback_layout = new QVBoxLayout{playback_group};
+    playback_layout->addWidget(track_label_);
+    playback_layout->addWidget(position_bar_);
+    playback_layout->addLayout(times);
+    playback_layout->addLayout(transport);
+
     // What the list does. Repeat and shuffle change what plays next rather than how this one
     // plays, which is why they are not up there with the transport.
     auto* list = new QHBoxLayout;
+    list->setSpacing(tokens.player.control_spacing);
     list->addWidget(open_button_);
     list->addWidget(repeat_button_);
     list->addWidget(shuffle_button_);
@@ -186,10 +205,8 @@ MainWindow::MainWindow(engine::Session& session)
     list->addWidget(equalizer_button_);
 
     auto* layout = new QVBoxLayout{central};
-    layout->addWidget(track_label_);
-    layout->addWidget(position_bar_);
-    layout->addLayout(times);
-    layout->addLayout(transport);
+    layout->setSpacing(tokens.player.section_spacing);
+    layout->addWidget(playback_group);
     layout->addLayout(list);
 
     documents_ = new QTabWidget{this};
@@ -226,13 +243,16 @@ MainWindow::MainWindow(engine::Session& session)
     });
 
     // What is done to the queue, under the queue it is done to.
-    auto* queue = new QHBoxLayout;
+    QGroupBox* queue_group = new QGroupBox{"Queue commands", this};
+    queue_group->setObjectName("queueCommandsGroup");
+    auto* queue = new QHBoxLayout{queue_group};
+    queue->setSpacing(tokens.player.control_spacing);
     queue->addWidget(add_button_);
     queue->addWidget(remove_button_);
     queue->addWidget(clear_button_);
     queue->addStretch();
 
-    layout->addLayout(queue);
+    layout->addWidget(queue_group);
 
     // Kept in the layout while it says nothing, so a message appearing does not resize the window.
     layout->addWidget(status_label_);
@@ -417,6 +437,7 @@ void MainWindow::connect_action(QPushButton& button, PlayerAction id, bool icon_
     addAction(command);
     button.setToolTip(command->toolTip());
     button.setAccessibleName(command->text());
+    button.setFocusPolicy(Qt::StrongFocus);
 
     if (icon_only) {
         button.setIcon(command->icon());
