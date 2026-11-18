@@ -24,8 +24,8 @@
 #include "player_actions.hpp"
 #include "player_presenter.hpp"
 #include "playlist_control.hpp"
-#include "playlist_view.hpp"
 #include "seek_bar.hpp"
+#include "track_table_view.hpp"
 #include "volume_control.hpp"
 
 #include <codec/decode/open.hpp>
@@ -176,7 +176,7 @@ private:
     QPushButton* remove_button_{nullptr};
     QPushButton* clear_button_{nullptr};
     SeekBar* position_bar_{nullptr};
-    PlaylistView* playlist_view_{nullptr};
+    TrackTableView* playlist_view_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};
     QPushButton* equalizer_button_{nullptr};

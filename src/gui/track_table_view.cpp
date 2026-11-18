@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief The queue, as a listener sees it.
+ * @brief Reusable track table with stable selection and user-visible column controls.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,10 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "playlist_view.hpp"
+#include "track_table_view.hpp"
 
 #include "presentation_tokens.hpp"
 
+#include <QAction>
 #include <QHeaderView>
 #include <QPainter>
 #include <QStyledItemDelegate>
@@ -58,7 +59,7 @@ public:
 
 } // namespace
 
-PlaylistView::PlaylistView(QWidget* parent)
+TrackTableView::TrackTableView(QWidget* parent)
     : QTableView{parent}
     , model_{*this, tokens.playlist.artwork}
 {
@@ -70,7 +71,9 @@ PlaylistView::PlaylistView(QWidget* parent)
     setShowGrid(false);
     setWordWrap(false);
     setTextElideMode(Qt::ElideRight);
-    setToolTip("Double-click a track to play it; Delete takes it out of the queue");
+    setToolTip("Double-click a track to play it; Delete removes the selected tracks");
+    setFocusPolicy(Qt::StrongFocus);
+    setAccessibleName("Track list");
 
     verticalHeader()->setVisible(false);
     verticalHeader()->setDefaultSectionSize(tokens.playlist.artwork.cover_size +
@@ -86,23 +89,64 @@ PlaylistView::PlaylistView(QWidget* parent)
     setColumnWidth(Column::length, tokens.playlist.length_column_width);
     setItemDelegate(new WithoutTheFocusBox{this});
 
+    horizontalHeader()->setContextMenuPolicy(Qt::ActionsContextMenu);
+
+    for (int column = Column::title; column < Column::num_columns; ++column) {
+        const QString label = model_.headerData(column, Qt::Horizontal, Qt::DisplayRole).toString();
+        QAction* visible = new QAction{label, horizontalHeader()};
+        visible->setCheckable(true);
+        visible->setChecked(true);
+        horizontalHeader()->addAction(visible);
+
+        connect(visible, &QAction::toggled, this,
+            [this, column](bool shown) { setColumnHidden(column, !shown); });
+    }
+
+    QAction* play = new QAction{"Play selected track", this};
+    addAction(play);
+    setContextMenuPolicy(Qt::ActionsContextMenu);
+
+    connect(play, &QAction::triggered, this, [this] {
+        if (const auto id = model_.track_id(currentIndex()))
+            emit track_chosen(*id);
+    });
+
+    QAction* remove = new QAction{"Remove selected tracks", this};
+    addAction(remove);
+    connect(remove, &QAction::triggered, this, &TrackTableView::removal_asked);
+
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
         if (const auto id = model_.track_id(index))
             emit track_chosen(*id);
     });
 }
 
-void PlaylistView::show_playlist(const engine::Playlist& playlist)
+void TrackTableView::show_tracks(const std::vector<engine::Track>& tracks,
+    std::optional<engine::QueueEntryId> current)
 {
-    const auto current = playlist.current()
-        ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
-        : std::nullopt;
-    model_.show_tracks(playlist.tracks(), current);
+    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
+    const auto current_id = model_.track_id(currentIndex());
+
+    model_.show_tracks(tracks, current);
+    selectionModel()->clearSelection();
+
+    for (int row = 0; row < model_.rowCount(); ++row) {
+        const QModelIndex first = model_.index(row, 0);
+        const auto id = model_.track_id(first);
+
+        if (id && std::ranges::find(selected, *id) != selected.end())
+            selectionModel()->select(first,
+                QItemSelectionModel::Select | QItemSelectionModel::Rows);
+
+        if (id && id == current_id)
+            selectionModel()->setCurrentIndex(first, QItemSelectionModel::NoUpdate);
+    }
 }
 
-std::vector<engine::QueueEntryId> PlaylistView::chosen_tracks() const
+std::vector<engine::QueueEntryId> TrackTableView::chosen_tracks() const
 {
     std::vector<engine::QueueEntryId> tracks;
+
     for (const QModelIndex& index : selectionModel()->selectedRows()) {
         if (const auto id = model_.track_id(index))
             tracks.push_back(*id);
@@ -111,7 +155,7 @@ std::vector<engine::QueueEntryId> PlaylistView::chosen_tracks() const
     return tracks;
 }
 
-void PlaylistView::keyPressEvent(QKeyEvent* event)
+void TrackTableView::keyPressEvent(QKeyEvent* event)
 {
     if (event->key() == Qt::Key_Delete) {
         emit removal_asked();
