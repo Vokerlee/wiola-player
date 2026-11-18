@@ -19,10 +19,13 @@
  */
 
 #include <app/player_application.hpp>
+#include <app/queue_library_migration.hpp>
 #include <core/version.hpp>
 #include <gui/main_window.hpp>
 
 #include <QApplication>
+#include <QDebug>
+#include <QSettings>
 
 #include <iostream>
 #include <string_view>
@@ -50,6 +53,13 @@ int main(int argc, char** argv)
 
     const QApplication app{argc, argv};
     wiola::app::PlayerApplication player;
+
+    QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+    const wiola::app::QueueLibraryMigration migration{settings};
+
+    if (migration.migrate(settings) != wiola::gui::LibraryJsonError::none)
+        qWarning("Could not migrate the queued tracks into the library");
+
     wiola::gui::MainWindow window{player.session()};
 
     player.attach(window);
