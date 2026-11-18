@@ -27,6 +27,7 @@
 
 #include <QSettings>
 #include <QString>
+#include <QTemporaryDir>
 
 #include <gtest/gtest.h>
 
@@ -46,11 +47,19 @@ class PlaylistControl : public testing::Test {
 protected:
     static void SetUpTestSuite()
     {
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
-            QString::fromStdString(std::filesystem::temp_directory_path().string()));
+        settings_directory = std::make_unique<QTemporaryDir>();
+        ASSERT_TRUE(settings_directory->isValid());
+
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settings_directory->path());
     }
 
-    void SetUp() override { settings.clear(); }
+    static void TearDownTestSuite() { settings_directory.reset(); }
+
+    void SetUp() override
+    {
+        settings.clear();
+        settings.sync();
+    }
 
     /// Turns the session over until it has caught up with what was asked of it.
     static void settle(wiola::engine::Session& session)
@@ -70,6 +79,7 @@ protected:
         };
     }
 
+    inline static std::unique_ptr<QTemporaryDir> settings_directory;
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "queue"};
 };
 
@@ -182,4 +192,145 @@ TEST_F(PlaylistControl, DropsTracksThatHaveGoneSince)
 
     ASSERT_EQ(restored.playlist().tracks().size(), 1U);
     EXPECT_EQ(restored.playlist().tracks().front().path(), kept);
+}
+
+TEST_F(PlaylistControl, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
+{
+    const std::filesystem::path repeated{wiola::testing::write_wav("wiola_queue_repeat.wav")};
+    const std::filesystem::path other{wiola::testing::write_wav("wiola_queue_other.wav")};
+
+    {
+        wiola::engine::Session session{nowhere()};
+        Control control{session, settings};
+
+        session.add({repeated, other, repeated});
+        settle(session);
+
+        ASSERT_TRUE(session.play_track(2));
+        settle(session);
+        ASSERT_EQ(session.playlist().position(), 2U);
+
+        control.save();
+    }
+
+    wiola::engine::Session restored{nowhere()};
+    Control control{restored, settings};
+
+    ASSERT_EQ(control.restore(), 0U);
+    settle(restored);
+
+    const auto& tracks{restored.playlist().tracks()};
+
+    ASSERT_EQ(tracks.size(), 3U);
+    EXPECT_EQ(tracks[0].path(), repeated);
+    EXPECT_EQ(tracks[1].path(), other);
+    EXPECT_EQ(tracks[2].path(), repeated);
+    EXPECT_NE(tracks[0].id(), tracks[2].id());
+
+    EXPECT_EQ(restored.playlist().position(), 0U);
+    EXPECT_EQ(restored.track(), repeated);
+    EXPECT_FALSE(restored.playing());
+}
+
+TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone)
+{
+    const std::filesystem::path first{wiola::testing::write_wav("wiola_queue_first.wav")};
+    const std::filesystem::path selected{wiola::testing::write_wav("wiola_queue_selected.wav")};
+    const std::filesystem::path last{wiola::testing::write_wav("wiola_queue_last.wav")};
+
+    {
+        wiola::engine::Session session{nowhere()};
+        Control control{session, settings};
+
+        session.add({first, selected, last});
+        settle(session);
+
+        ASSERT_TRUE(session.play_track(1));
+        settle(session);
+        control.save();
+    }
+
+    ASSERT_TRUE(std::filesystem::remove(selected));
+
+    wiola::engine::Session restored{nowhere()};
+    Control control{restored, settings};
+
+    EXPECT_EQ(control.restore(), 1U);
+    settle(restored);
+
+    ASSERT_EQ(restored.playlist().tracks().size(), 2U);
+    EXPECT_EQ(restored.playlist().tracks()[0].path(), first);
+    EXPECT_EQ(restored.playlist().tracks()[1].path(), last);
+
+    EXPECT_EQ(restored.playlist().position(), 0U);
+    EXPECT_EQ(restored.track(), first);
+    EXPECT_FALSE(restored.playing());
+}
+
+TEST_F(PlaylistControl, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
+{
+    const std::filesystem::path first{wiola::testing::write_wav("wiola_queue_first.wav")};
+    const std::filesystem::path selected{wiola::testing::write_wav("wiola_queue_selected.wav")};
+    const std::filesystem::path last{wiola::testing::write_wav("wiola_queue_last.wav")};
+
+    {
+        wiola::engine::Session session{nowhere()};
+        Control control{session, settings};
+
+        session.add({first, selected, last});
+        settle(session);
+
+        ASSERT_TRUE(session.play_track(1));
+        settle(session);
+
+        session.set_repeat(Repeat::all);
+        session.shuffle(true);
+        control.save();
+    }
+
+    wiola::engine::Session restored{nowhere()};
+    Control control{restored, settings};
+
+    ASSERT_EQ(control.restore(), 0U);
+    settle(restored);
+
+    EXPECT_EQ(restored.repeat(), Repeat::all);
+    EXPECT_TRUE(restored.shuffled());
+    EXPECT_EQ(restored.playlist().position(), 1U);
+    EXPECT_EQ(restored.track(), selected);
+    EXPECT_FALSE(restored.playing());
+}
+
+TEST_F(PlaylistControl, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
+{
+    QSettings other{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "another-queue"};
+    other.clear();
+    other.setValue("queue", "another application's queue");
+    other.setValue("volume", 19);
+
+    settings.setValue("volume", 73);
+    settings.setValue("equalizer/enabled", false);
+
+    {
+        wiola::engine::Session session{nowhere()};
+        Control control{session, settings};
+
+        session.add({wiola::testing::write_wav("wiola_queue.wav")});
+        settle(session);
+        control.save();
+    }
+
+    wiola::engine::Session restored{nowhere()};
+    Control control{restored, settings};
+
+    ASSERT_EQ(control.restore(), 0U);
+
+    EXPECT_EQ(settings.value("volume").toInt(), 73);
+    EXPECT_FALSE(settings.value("equalizer/enabled").toBool());
+
+    EXPECT_EQ(other.value("queue").toString(), "another application's queue");
+    EXPECT_EQ(other.value("volume").toInt(), 19);
+
+    other.clear();
+    other.sync();
 }
