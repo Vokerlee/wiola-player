@@ -26,6 +26,7 @@
 #include "player_actions.hpp"
 #include "player_presenter.hpp"
 #include "playlist_control.hpp"
+#include "saved_playlist_document.hpp"
 #include "saved_playlist_manager.hpp"
 #include "saved_playlist_storage.hpp"
 #include "seek_bar.hpp"
@@ -45,6 +46,7 @@
 #include <QTabWidget>
 
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -96,6 +98,11 @@ private:
 
     /// Plays the track the listener picked out of the queue.
     void play_chosen(engine::QueueEntryId id);
+
+    void open_playlist(const library::PlaylistId& id);
+    void refresh_playlist_documents();
+    void restore_playlist_documents();
+    void save_playlist_documents();
 
     /// Plays the track before or after this one in the list.
     void play_previous();
@@ -190,6 +197,7 @@ private:
     QTabWidget* documents_{nullptr};
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};
+    std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};

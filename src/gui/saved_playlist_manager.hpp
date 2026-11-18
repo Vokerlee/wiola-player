@@ -40,6 +40,7 @@ public:
     bool rename_selected(const std::string& name);
     bool duplicate_selected();
     bool remove_selected();
+    void on_changed(std::function<void()> observer);
 
 private:
     [[nodiscard]] std::optional<library::PlaylistId> selected() const;
@@ -54,6 +55,7 @@ private:
     QPushButton* duplicate_button_{nullptr};
     QPushButton* remove_button_{nullptr};
     QLabel* save_state_{nullptr};
+    std::function<void()> changed_observer_;
 };
 
 } // namespace wiola::gui

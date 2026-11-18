@@ -1,0 +1,51 @@
+/**
+ * @file
+ * @brief Read-only saved playlist document with persistent entry identity mapping.
+ * @author Roman Glaz
+ * @copyright (c) 2026, <vokerlee@gmail.com>
+ *
+ * Wiola is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Wiola is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include "track_table_view.hpp"
+
+#include <engine/queue/playlist.hpp>
+#include <library/repository.hpp>
+
+#include <QLabel>
+#include <QWidget>
+
+#include <functional>
+
+namespace wiola::gui {
+
+class SavedPlaylistDocument final : public QWidget {
+public:
+    explicit SavedPlaylistDocument(QWidget* parent = nullptr);
+
+    bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
+    [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
+    void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
+
+private:
+    QLabel* heading_{nullptr};
+    TrackTableView* table_{nullptr};
+    engine::Playlist rows_;
+    std::vector<library::PlaylistEntryRecord> entries_;
+    std::function<void(library::PlaylistEntryId)> entry_observer_;
+};
+
+} // namespace wiola::gui

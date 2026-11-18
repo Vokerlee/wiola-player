@@ -17,6 +17,7 @@ wiola_add_library(
         player_actions.cpp
         player_presenter.cpp
         player_settings.cpp
+        saved_playlist_document.cpp
         saved_playlist_manager.cpp
         saved_playlist_storage.cpp
         seek_bar.cpp
