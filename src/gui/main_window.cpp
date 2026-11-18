@@ -60,9 +60,10 @@ QString as_status(engine::OpenResult result)
 
 } // namespace
 
-MainWindow::MainWindow()
+MainWindow::MainWindow(engine::Session& session)
     // A file of its own on both platforms, rather than the registry on one of them.
-    : settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
+    : session_{session}
+    , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
     , playlist_{session_, settings_}
     , volume_{session_.volume(), settings_}
     , equalizer_{session_.equalizer(), settings_}
@@ -107,8 +108,6 @@ MainWindow::MainWindow()
     total_label_ = new QLabel{this};
     status_label_ = new QLabel{this};
     volume_slider_ = new QSlider{Qt::Horizontal, this};
-    pump_timer_ = new QTimer{this};
-    refresh_timer_ = new QTimer{this};
 
     const PlayerSettings restored{
         QtSettingsAdapter{settings_}.read(volume_.scale(), session_.equalizer().config())};
@@ -204,11 +203,6 @@ MainWindow::MainWindow()
 
     // The clock follows the drag rather than waiting for the next poll.
     connect(position_bar_, &SeekBar::dragged, this, &MainWindow::refresh);
-
-    connect(pump_timer_, &QTimer::timeout, this, &MainWindow::take_up_load);
-    pump_timer_->start(metrics.refresh_interval);
-    connect(refresh_timer_, &QTimer::timeout, this, &MainWindow::refresh);
-    refresh_timer_->start(metrics.refresh_interval);
 
     if (const std::size_t gone{playlist_.restore()}; gone != 0)
         show_status(QString{"%1 queued track(s) are no longer where they were"}.arg(gone));
@@ -388,9 +382,8 @@ void MainWindow::show_list_buttons()
     shuffle_button_->setChecked(session_.shuffled());
 }
 
-void MainWindow::take_up_load()
+void MainWindow::update_after_pump()
 {
-    session_.catch_up();
     const engine::OpenResult result{session_.open_result()};
 
     // Said once: a window that repeated itself every turn would overwrite whatever else it has

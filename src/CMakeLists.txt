@@ -14,7 +14,12 @@ endif()
 add_executable(wiola-player main.cpp)
 target_link_libraries(
     wiola-player
-    PRIVATE wiola_core wiola_coverage wiola_gui wiola_sanitizer wiola_warnings
+    PRIVATE
+        wiola_core
+        wiola_coverage
+        wiola_player_application
+        wiola_sanitizer
+        wiola_warnings
 )
 
 # Windows opens a console for anything but a GUI binary. Ignored on other systems.

@@ -36,7 +36,6 @@
 #include <QSettings>
 #include <QSlider>
 #include <QStyle>
-#include <QTimer>
 #include <QWidget>
 
 #include <filesystem>
@@ -49,8 +48,8 @@ namespace wiola::gui {
 /**
  * Shows one track and the controls for it.
  *
- * The engine publishes nothing, so the window asks it where playback is on a timer. That is what
- * an event loop is for, and it keeps the engine free of any knowledge that a window exists.
+ * The application pumps its session independently. The window only reads that state when asked,
+ * so replacing the widget tree does not replace playback or stop decoder completions arriving.
  *
  * A window opens with nothing loaded and is given a track later, so that choosing one is an
  * ordinary thing to do rather than something only the command line can arrange.
@@ -59,13 +58,19 @@ class MainWindow final : public QWidget {
     Q_OBJECT
 
 public:
-    MainWindow();
+    explicit MainWindow(engine::Session& session);
 
     ~MainWindow() override;
 
     /// Begins playing `tracks`, in the order given. Reading a file takes as long as it takes, so
     /// what is playing keeps playing and the window says what happened once it has been read.
     void open(std::vector<std::filesystem::path> tracks);
+
+    /// Takes up the result of an application pump and reflects a changed track or playback fault.
+    void update_after_pump();
+
+    /// Reads the application-owned session and refreshes what is shown.
+    void refresh();
 
 private:
     /// Asks for files and plays them, in the order they were chosen.
@@ -130,19 +135,13 @@ private:
     /// Moves playback to `fraction` of the loaded track.
     void seek_to(double fraction);
 
-    /// Takes up a load that has finished, and says how it went.
-    void take_up_load();
-
-    /// Reads the engine and refreshes what is shown.
-    void refresh();
-
     /// Says `message`, or clears what was said when it is empty. Refreshing leaves this alone,
     /// so a message stays readable rather than lasting until the next poll.
     void show_status(const QString& message);
 
     [[nodiscard]] bool loaded() const noexcept { return session_.loaded(); }
 
-    engine::Session session_;
+    engine::Session& session_;
 
     /// What the window has already said about a load, so that it says it once.
     engine::OpenResult said_{engine::OpenResult::opened};
@@ -190,8 +189,6 @@ private:
     QLabel* elapsed_label_{nullptr};
     QLabel* total_label_{nullptr};
     QLabel* status_label_{nullptr};
-    QTimer* pump_timer_{nullptr};
-    QTimer* refresh_timer_{nullptr};
 };
 
 } // namespace wiola::gui

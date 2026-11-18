@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <app/player_application.hpp>
 #include <core/version.hpp>
 #include <gui/main_window.hpp>
 
@@ -48,8 +49,10 @@ int main(int argc, char** argv)
     }
 
     const QApplication app{argc, argv};
-    wiola::gui::MainWindow window;
+    wiola::app::PlayerApplication player;
+    wiola::gui::MainWindow window{player.session()};
 
+    player.attach(window);
     window.show();
 
     return QApplication::exec();
