@@ -1,6 +1,6 @@
 wiola_add_test(
-    gui_playlist_model_test
-    SOURCES playlist_model_test.cpp
+    gui_track_table_model_test
+    SOURCES track_table_model_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(

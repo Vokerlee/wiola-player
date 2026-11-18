@@ -87,22 +87,28 @@ PlaylistView::PlaylistView(QWidget* parent)
     setItemDelegate(new WithoutTheFocusBox{this});
 
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
-        emit track_chosen(static_cast<std::size_t>(index.row()));
+        if (const auto id = model_.track_id(index))
+            emit track_chosen(*id);
     });
 }
 
 void PlaylistView::show_playlist(const engine::Playlist& playlist)
 {
-    model_.show_playlist(playlist);
+    const auto current = playlist.current()
+        ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
+        : std::nullopt;
+    model_.show_tracks(playlist.tracks(), current);
 }
 
-std::vector<std::size_t> PlaylistView::chosen_rows() const
+std::vector<engine::QueueEntryId> PlaylistView::chosen_tracks() const
 {
-    std::vector<std::size_t> rows;
-    for (const QModelIndex& index : selectionModel()->selectedRows())
-        rows.push_back(static_cast<std::size_t>(index.row()));
-    std::ranges::sort(rows, std::ranges::greater{});
-    return rows;
+    std::vector<engine::QueueEntryId> tracks;
+    for (const QModelIndex& index : selectionModel()->selectedRows()) {
+        if (const auto id = model_.track_id(index))
+            tracks.push_back(*id);
+    }
+
+    return tracks;
 }
 
 void PlaylistView::keyPressEvent(QKeyEvent* event)

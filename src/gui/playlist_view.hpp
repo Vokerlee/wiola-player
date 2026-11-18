@@ -20,7 +20,9 @@
 
 #pragma once
 
-#include "playlist_model.hpp"
+#include "track_table_model.hpp"
+
+#include <engine/queue/playlist.hpp>
 
 #include <QKeyEvent>
 #include <QTableView>
@@ -36,17 +38,17 @@ class PlaylistView final : public QTableView {
 public:
     explicit PlaylistView(QWidget* parent = nullptr);
     void show_playlist(const engine::Playlist& playlist);
-    [[nodiscard]] std::vector<std::size_t> chosen_rows() const;
+    [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:
-    void track_chosen(std::size_t index);
+    void track_chosen(engine::QueueEntryId id);
     void removal_asked();
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
-    PlaylistModel model_;
+    TrackTableModel model_;
 };
 
 } // namespace wiola::gui
