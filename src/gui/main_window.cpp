@@ -111,7 +111,7 @@ MainWindow::MainWindow(engine::Session& session)
     boost_button_ = new QPushButton{"+", this};
     volume_value_ = new QLabel{this};
     position_bar_ = new SeekBar{this};
-    playlist_view_ = new TrackTableView{this};
+    now_playing_ = new NowPlayingDocument{this};
     track_label_ = new QLabel{this};
     elapsed_label_ = new QLabel{this};
     total_label_ = new QLabel{this};
@@ -177,7 +177,7 @@ MainWindow::MainWindow(engine::Session& session)
     layout->addLayout(times);
     layout->addLayout(transport);
     layout->addLayout(list);
-    layout->addWidget(playlist_view_);
+    layout->addWidget(now_playing_);
 
     // What is done to the queue, under the queue it is done to.
     auto* queue = new QHBoxLayout;
@@ -229,8 +229,8 @@ MainWindow::MainWindow(engine::Session& session)
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
 
-    connect(playlist_view_, &TrackTableView::track_chosen, this, &MainWindow::play_chosen);
-    connect(playlist_view_, &TrackTableView::removal_asked, this, &MainWindow::remove_chosen);
+    connect(now_playing_, &NowPlayingDocument::track_chosen, this, &MainWindow::play_chosen);
+    connect(now_playing_, &NowPlayingDocument::removal_asked, this, &MainWindow::remove_chosen);
 
     connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
     connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
@@ -309,7 +309,7 @@ void MainWindow::add_tracks()
 
 void MainWindow::remove_chosen()
 {
-    for (const engine::QueueEntryId id : playlist_view_->chosen_tracks()) {
+    for (const engine::QueueEntryId id : now_playing_->chosen_tracks()) {
         const auto index = presenter_.playlist().index_of(id);
         if (index)
             static_cast<void>(presenter_.remove(*index));
@@ -537,11 +537,7 @@ void MainWindow::refresh()
     position_bar_->setEnabled(playback.loaded && playback.seekable &&
         playback.total_time.has_value());
 
-    const engine::Playlist& playlist = presenter_.playlist();
-    const auto current = playlist.current()
-        ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
-        : std::nullopt;
-    playlist_view_->show_tracks(playlist.tracks(), current);
+    now_playing_->show_playlist(presenter_.playlist());
 
     if (!playback.loaded) {
         show_play_button(false);
