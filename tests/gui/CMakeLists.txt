@@ -23,3 +23,8 @@ wiola_add_test(
     SOURCES volume_control_test.cpp
     LIBS wiola_gui
 )
+wiola_add_test(gui_main_window_test SOURCES main_window_test.cpp LIBS wiola_gui)
+
+if(ENABLE_TSAN)
+    target_compile_definitions(gui_main_window_test PRIVATE WIOLA_TEST_TSAN)
+endif()
