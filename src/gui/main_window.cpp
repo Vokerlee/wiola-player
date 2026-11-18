@@ -205,14 +205,17 @@ MainWindow::MainWindow(engine::Session& session)
 
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
+    inspector_ = new TrackInspector{this};
 
     QSplitter* document_area = new QSplitter{this};
     document_area->setObjectName("documentArea");
     document_area->addWidget(navigation_);
     document_area->addWidget(documents_);
+    document_area->addWidget(inspector_);
     document_area->setStretchFactor(0, 0);
     document_area->setStretchFactor(1, 1);
-    document_area->setSizes({180, 620});
+    document_area->setStretchFactor(2, 0);
+    document_area->setSizes({180, 620, 220});
     layout->addWidget(document_area);
 
     navigation_->on_playlist_chosen([this](library::PlaylistId) {
@@ -581,6 +584,7 @@ void MainWindow::refresh()
         playback.total_time.has_value());
 
     now_playing_->show_playlist(presenter_.playlist());
+    inspector_->show_track(presenter_.playlist().current());
 
     if (!playback.loaded) {
         show_play_button(false);

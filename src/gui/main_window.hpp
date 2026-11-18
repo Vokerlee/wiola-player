@@ -27,6 +27,7 @@
 #include "player_presenter.hpp"
 #include "playlist_control.hpp"
 #include "seek_bar.hpp"
+#include "track_inspector.hpp"
 #include "volume_control.hpp"
 
 #include <codec/decode/open.hpp>
@@ -184,6 +185,7 @@ private:
     NowPlayingDocument* now_playing_{nullptr};
     QTabWidget* documents_{nullptr};
     LibraryNavigation* navigation_{nullptr};
+    TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};
     QPushButton* equalizer_button_{nullptr};
