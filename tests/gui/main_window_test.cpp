@@ -22,6 +22,7 @@
 #include <gui/seek_bar.hpp>
 
 #include <fixtures/wav.hpp>
+#include <fixtures/widget_diagnostics.hpp>
 
 #include <QApplication>
 #include <QCheckBox>
@@ -387,6 +388,7 @@ int main(int argc, char** argv)
 
     testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
+    wiola::testing::retain_widget_screenshots();
 
     return RUN_ALL_TESTS();
 }

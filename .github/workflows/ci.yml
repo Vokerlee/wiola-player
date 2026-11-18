@@ -52,13 +52,20 @@ jobs:
           name: ${{ matrix.preset }}
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
+      - name: Run offscreen GUI command journeys
+        run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 --output-on-failure -R '^MainWindowTest\.' ${{ matrix.ctest_args }}
+        env:
+          QT_QPA_PLATFORM: offscreen
+          WIOLA_GUI_FAILURE_ARTIFACTS: ${{ github.workspace }}/build-${{ matrix.preset }}/gui-artifacts
       - run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 ${{ matrix.ctest_args }}
       - name: Upload test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-diagnostics-${{ matrix.preset }}
-          path: build-*/Testing/Temporary
+          path: |
+            build-*/Testing/Temporary
+            build-*/gui-artifacts
           if-no-files-found: ignore
           retention-days: 7
 
