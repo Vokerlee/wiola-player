@@ -282,7 +282,7 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
     window.show();
     QCoreApplication::processEvents();
 
-    constexpr double fraction{2.0 / 3.0};
+    constexpr double fraction{4.0 / 5.0};
     drag_to(*position, fraction);
 
     ASSERT_TRUE(pump_until(window, session, [elapsed] { return elapsed->text() == "0:01"; }));
