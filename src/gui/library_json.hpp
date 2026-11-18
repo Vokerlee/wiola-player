@@ -22,10 +22,10 @@
 
 #include <library/records.hpp>
 
-#include <QByteArray>
-#include <QByteArrayView>
-
 #include <vector>
+
+class QByteArray;
+class QByteArrayView;
 
 namespace wiola::gui {
 
@@ -41,6 +41,7 @@ enum class LibraryJsonError {
     unsupported_version,
     invalid_record,
     limit_exceeded,
+    io,
 };
 
 [[nodiscard]] LibraryJsonError write_library_json(const LibrarySnapshot& library,

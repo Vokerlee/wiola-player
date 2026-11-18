@@ -43,3 +43,8 @@ wiola_add_test(
     SOURCES library_json_test.cpp
     LIBS wiola_gui wiola_library
 )
+wiola_add_test(
+    gui_library_storage_test
+    SOURCES library_storage_test.cpp
+    LIBS wiola_gui wiola_library
+)
