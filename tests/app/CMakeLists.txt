@@ -11,6 +11,11 @@ if(WIOLA_BUILD_GUI)
         LIBS wiola_player_application
     )
     wiola_add_test(
+        app_saved_playlist_commands_test
+        SOURCES saved_playlist_commands_test.cpp
+        LIBS wiola_saved_playlists
+    )
+    wiola_add_test(
         app_queue_library_migration_test
         SOURCES queue_library_migration_test.cpp
         LIBS wiola_queue_migration

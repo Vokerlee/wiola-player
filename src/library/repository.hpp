@@ -40,6 +40,7 @@ public:
     virtual PlaylistId create_playlist(std::string name) = 0;
     virtual bool put_playlist(PlaylistRecord playlist) = 0;
     virtual bool rename_playlist(const PlaylistId& id, std::string name) = 0;
+    virtual bool delete_playlist(const PlaylistId& id) = 0;
     [[nodiscard]] virtual const PlaylistRecord* playlist(const PlaylistId& id) const = 0;
     [[nodiscard]] virtual std::vector<PlaylistRecord> playlists() const = 0;
     virtual std::optional<PlaylistEntryId> append_track(const PlaylistId& playlist,
