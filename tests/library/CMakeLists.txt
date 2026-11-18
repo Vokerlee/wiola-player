@@ -8,3 +8,4 @@ wiola_add_test(
     SOURCES location_test.cpp
     LIBS wiola_library
 )
+wiola_add_test(library_records_test SOURCES records_test.cpp LIBS wiola_library)
