@@ -90,11 +90,14 @@ QList<QSlider*> equalizer_sliders(QWidget& window)
 }
 
 template<typename Predicate>
-bool pump_until(Predicate&& predicate)
+bool pump_until(MainWindow& window, wiola::engine::Session& session, Predicate&& predicate)
 {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
 
     while (!predicate() && std::chrono::steady_clock::now() < deadline) {
+        session.catch_up();
+        window.update_after_pump();
+        window.refresh();
         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
         QThread::msleep(1);
     }
@@ -104,11 +107,11 @@ bool pump_until(Predicate&& predicate)
     return predicate();
 }
 
-bool loaded(MainWindow& window, const std::filesystem::path& track)
+bool loaded(MainWindow& window, wiola::engine::Session& session, const std::filesystem::path& track)
 {
     const QPushButton* play = command(window, "Play");
 
-    return play != nullptr && pump_until([&window, &track, play] {
+    return play != nullptr && pump_until(window, session, [&window, &track, play] {
         return play->isEnabled() &&
             window.windowTitle() == QString::fromStdString(track.filename().string());
     });
@@ -178,7 +181,8 @@ protected:
 
 TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
 {
-    MainWindow window;
+    wiola::engine::Session session;
+    MainWindow window{session};
 
     const QPushButton* open = command(window, "Open tracks");
     const QPushButton* previous = command(window, "Previous track");
@@ -208,7 +212,8 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 {
     const std::filesystem::path first = track("wiola_window_first.wav");
     const std::filesystem::path second = track("wiola_window_second.wav");
-    MainWindow window;
+    wiola::engine::Session session;
+    MainWindow window{session};
 
     QPushButton* previous = command(window, "Previous track");
     QPushButton* play = command(window, "Play");
@@ -224,7 +229,7 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 
     window.open({first, second});
 
-    ASSERT_TRUE(loaded(window, first));
+    ASSERT_TRUE(loaded(window, session, first));
     EXPECT_TRUE(previous->isEnabled());
     EXPECT_TRUE(play->isEnabled());
     EXPECT_TRUE(next->isEnabled());
@@ -235,14 +240,14 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 
     next->click();
 
-    ASSERT_TRUE(pump_until([&window, &second] {
+    ASSERT_TRUE(pump_until(window, session, [&window, &second] {
         return window.windowTitle() == QString::fromStdString(second.filename().string());
     }));
     EXPECT_EQ(play->accessibleName(), "Play");
 
     previous->click();
 
-    ASSERT_TRUE(pump_until([&window, &first] {
+    ASSERT_TRUE(pump_until(window, session, [&window, &first] {
         return window.windowTitle() == QString::fromStdString(first.filename().string());
     }));
 
@@ -257,14 +262,15 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 {
     const std::filesystem::path source = track("wiola_window_seek.wav");
-    MainWindow window;
+    wiola::engine::Session session;
+    MainWindow window{session};
     SeekBar* position = window.findChild<SeekBar*>();
 
     ASSERT_NE(position, nullptr);
 
     window.open({source});
 
-    ASSERT_TRUE(loaded(window, source));
+    ASSERT_TRUE(loaded(window, session, source));
 
     QLabel* elapsed = with_text<QLabel>(window, "0:00");
     const QLabel* total = with_text<QLabel>(window, "0:01");
@@ -278,14 +284,15 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
     constexpr double fraction{2.0 / 3.0};
     drag_to(*position, fraction);
 
-    ASSERT_TRUE(pump_until([elapsed] { return elapsed->text() == "0:01"; }));
+    ASSERT_TRUE(pump_until(window, session, [elapsed] { return elapsed->text() == "0:01"; }));
     EXPECT_NEAR(position->fraction(), fraction, 0.01);
 }
 
 TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 {
     {
-        MainWindow window;
+        wiola::engine::Session session;
+        MainWindow window{session};
         QSlider* volume = volume_slider(window);
         QPushButton* boost = with_text<QPushButton>(window, "+");
 
@@ -307,7 +314,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
     EXPECT_EQ(stored("volume").toInt(), 123);
     EXPECT_TRUE(stored("volume/boosted").toBool());
 
-    MainWindow restored;
+    wiola::engine::Session session;
+    MainWindow restored{session};
     const QSlider* volume = volume_slider(restored);
     const QPushButton* boost = with_text<QPushButton>(restored, "+");
 
@@ -322,7 +330,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
 {
     {
-        MainWindow window;
+        wiola::engine::Session session;
+        MainWindow window{session};
         QPushButton* equalizer = with_text<QPushButton>(window, "EQ");
 
         ASSERT_NE(equalizer, nullptr);
@@ -347,7 +356,8 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     EXPECT_FALSE(stored("equalizer/enabled").toBool());
     EXPECT_FLOAT_EQ(stored("equalizer/band/2").toFloat(), 6.0F);
 
-    MainWindow restored;
+    wiola::engine::Session session;
+    MainWindow restored{session};
     QPushButton* equalizer = with_text<QPushButton>(restored, "EQ");
 
     ASSERT_NE(equalizer, nullptr);
