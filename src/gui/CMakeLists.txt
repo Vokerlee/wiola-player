@@ -9,6 +9,7 @@ wiola_add_library(
         playlist_control.cpp
         playlist_model.cpp
         playlist_view.cpp
+        player_actions.cpp
         player_presenter.cpp
         player_settings.cpp
         seek_bar.cpp

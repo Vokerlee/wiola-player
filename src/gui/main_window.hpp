@@ -21,6 +21,7 @@
 #pragma once
 
 #include "equalizer_panel.hpp"
+#include "player_actions.hpp"
 #include "player_presenter.hpp"
 #include "playlist_control.hpp"
 #include "playlist_view.hpp"
@@ -30,12 +31,10 @@
 #include <codec/decode/open.hpp>
 #include <utils/units.hpp>
 
-#include <QIcon>
 #include <QLabel>
 #include <QPushButton>
 #include <QSettings>
 #include <QSlider>
-#include <QStyle>
 #include <QWidget>
 
 #include <filesystem>
@@ -102,8 +101,8 @@ private:
     /// Plays the list in the order it was given, or in one drawn at random.
     void set_shuffled(bool shuffled);
 
-    /// Puts `icon` on `button`, with `says` for whoever cannot read a picture.
-    void show_button(QPushButton& button, QStyle::StandardPixmap icon, const QString& says);
+    /// Connects a button to a shared action and copies its accessible presentation.
+    void connect_action(QPushButton& button, PlayerAction id, bool icon_only = false);
 
     /// Shows the play button as pausing or as playing. Does nothing when it already shows that
     /// one: a window refreshing ten times a second would otherwise ask the style for an icon it
@@ -154,10 +153,8 @@ private:
     std::filesystem::path named_;
     std::optional<std::size_t> named_place_;
 
-    /// The two faces of the play button, taken from the style once: asking it for one is a
-    /// lookup, and the button changes far less often than the window is drawn.
-    QIcon play_icon_;
-    QIcon pause_icon_;
+    /// Shared command objects; buttons and keyboard shortcuts trigger the same actions.
+    PlayerActions actions_;
 
     /// Which of the two it is wearing, or nothing before it wears either.
     std::optional<bool> showing_pause_;

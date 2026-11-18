@@ -63,6 +63,7 @@ QString as_status(engine::OpenResult result)
 MainWindow::MainWindow(engine::Session& session)
     // A file of its own on both platforms, rather than the registry on one of them.
     : presenter_{session}
+    , actions_{*this}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
     , playlist_{presenter_, settings_}
     , volume_{presenter_.volume_control(), settings_}
@@ -78,27 +79,30 @@ MainWindow::MainWindow(engine::Session& session)
     next_button_ = new QPushButton{this};
     stop_button_ = new QPushButton{this};
 
-    play_icon_ = style()->standardIcon(QStyle::SP_MediaPlay);
-    pause_icon_ = style()->standardIcon(QStyle::SP_MediaPause);
-
-    // Pictures for what a listener does, and words for what is set: the style draws these, so
-    // there is nothing to ship beside the program and they look native wherever it runs.
-    show_button(*open_button_, QStyle::SP_DirOpenIcon, "Open tracks");
-    show_button(*previous_button_, QStyle::SP_MediaSkipBackward, "Previous track");
-    show_button(*next_button_, QStyle::SP_MediaSkipForward, "Next track");
-    show_button(*stop_button_, QStyle::SP_MediaStop, "Stop");
+    connect_action(*open_button_, PlayerAction::open, true);
+    connect_action(*previous_button_, PlayerAction::previous, true);
+    connect_action(*play_button_, PlayerAction::play, true);
+    connect_action(*next_button_, PlayerAction::next, true);
+    connect_action(*stop_button_, PlayerAction::stop, true);
 
     show_play_button(false);
 
     play_button_->setFixedWidth(metrics.play_button_width);
-    repeat_button_ = new QPushButton{"Repeat: off", this};
-    shuffle_button_ = new QPushButton{"Shuffle", this};
-    add_button_ = new QPushButton{"Add", this};
-    remove_button_ = new QPushButton{"Remove", this};
-    clear_button_ = new QPushButton{"Clear", this};
+    repeat_button_ = new QPushButton{this};
+    shuffle_button_ = new QPushButton{this};
+    add_button_ = new QPushButton{this};
+    remove_button_ = new QPushButton{this};
+    clear_button_ = new QPushButton{this};
 
-    shuffle_button_->setCheckable(true);
-    equalizer_button_ = new QPushButton{"EQ", this};
+    connect_action(*repeat_button_, PlayerAction::repeat);
+    connect_action(*shuffle_button_, PlayerAction::shuffle);
+    connect_action(*add_button_, PlayerAction::add);
+    connect_action(*remove_button_, PlayerAction::remove);
+    connect_action(*clear_button_, PlayerAction::clear);
+
+    equalizer_button_ = new QPushButton{this};
+    connect_action(*equalizer_button_, PlayerAction::equalizer);
+
     boost_button_ = new QPushButton{"+", this};
     volume_value_ = new QLabel{this};
     position_bar_ = new SeekBar{this};
@@ -182,20 +186,30 @@ MainWindow::MainWindow(engine::Session& session)
     // Kept in the layout while it says nothing, so a message appearing does not resize the window.
     layout->addWidget(status_label_);
 
-    connect(open_button_, &QPushButton::clicked, this, &MainWindow::choose_tracks);
-    connect(previous_button_, &QPushButton::clicked, this, &MainWindow::play_previous);
-    connect(next_button_, &QPushButton::clicked, this, &MainWindow::play_next);
+    connect(actions_.action(PlayerAction::open), &QAction::triggered, this,
+        &MainWindow::choose_tracks);
+    connect(actions_.action(PlayerAction::previous), &QAction::triggered, this,
+        &MainWindow::play_previous);
+    connect(actions_.action(PlayerAction::next), &QAction::triggered, this, &MainWindow::play_next);
+    connect(actions_.action(PlayerAction::play), &QAction::triggered, this,
+        &MainWindow::toggle_playback);
+    connect(actions_.action(PlayerAction::stop), &QAction::triggered, this,
+        &MainWindow::stop_playback);
+    connect(actions_.action(PlayerAction::repeat), &QAction::triggered, this,
+        &MainWindow::cycle_repeat);
+    connect(actions_.action(PlayerAction::shuffle), &QAction::triggered, this,
+        &MainWindow::set_shuffled);
+    connect(actions_.action(PlayerAction::add), &QAction::triggered, this, &MainWindow::add_tracks);
+    connect(actions_.action(PlayerAction::remove), &QAction::triggered, this,
+        &MainWindow::remove_chosen);
+    connect(actions_.action(PlayerAction::clear), &QAction::triggered, this,
+        &MainWindow::clear_queue);
+    connect(actions_.action(PlayerAction::equalizer), &QAction::triggered, this,
+        &MainWindow::show_equalizer);
+
     connect(playlist_view_, &PlaylistView::track_chosen, this, &MainWindow::play_chosen);
     connect(playlist_view_, &PlaylistView::removal_asked, this, &MainWindow::remove_chosen);
-    connect(add_button_, &QPushButton::clicked, this, &MainWindow::add_tracks);
-    connect(remove_button_, &QPushButton::clicked, this, &MainWindow::remove_chosen);
-    connect(clear_button_, &QPushButton::clicked, this, &MainWindow::clear_queue);
-    connect(repeat_button_, &QPushButton::clicked, this, &MainWindow::cycle_repeat);
-    connect(shuffle_button_, &QPushButton::toggled, this, &MainWindow::set_shuffled);
-    connect(play_button_, &QPushButton::clicked, this, &MainWindow::toggle_playback);
-    connect(stop_button_, &QPushButton::clicked, this, &MainWindow::stop_playback);
 
-    connect(equalizer_button_, &QPushButton::clicked, this, &MainWindow::show_equalizer);
     connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
     connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
 
@@ -322,16 +336,24 @@ void MainWindow::set_shuffled(bool shuffled)
     show_list_buttons();
 }
 
-void MainWindow::show_button(QPushButton& button, QStyle::StandardPixmap icon, const QString& says)
+void MainWindow::connect_action(QPushButton& button, PlayerAction id, bool icon_only)
 {
-    button.setIcon(style()->standardIcon(icon));
-    button.setToolTip(says);
+    QAction* command{actions_.action(id)};
 
-    // The word is gone, so the tooltip is what a listener is told: it is also what a screen
-    // reader is left with.
-    button.setAccessibleName(says);
+    addAction(command);
+    button.setToolTip(command->toolTip());
+    button.setAccessibleName(command->text());
 
-    button.setFixedWidth(metrics.icon_button_width);
+    if (icon_only) {
+        button.setIcon(command->icon());
+        button.setFixedWidth(metrics.icon_button_width);
+    } else {
+        button.setText(command->text());
+        button.setCheckable(command->isCheckable());
+        button.setChecked(command->isChecked());
+    }
+
+    connect(&button, &QPushButton::clicked, command, &QAction::trigger);
 }
 
 void MainWindow::show_play_button(bool pausing)
@@ -340,34 +362,24 @@ void MainWindow::show_play_button(bool pausing)
         return;
 
     showing_pause_ = pausing;
+    actions_.set_playing(pausing);
 
-    const QString says{pausing ? "Pause" : "Play"};
+    QAction* command{actions_.action(PlayerAction::play)};
 
-    play_button_->setIcon(pausing ? pause_icon_ : play_icon_);
-    play_button_->setToolTip(says);
-    play_button_->setAccessibleName(says);
+    play_button_->setIcon(command->icon());
+    play_button_->setToolTip(command->toolTip());
+    play_button_->setAccessibleName(command->text());
 }
 
 void MainWindow::show_list_buttons()
 {
-    using Repeat = engine::Playlist::Repeat;
     const PlayerPresentation presentation{presenter_.presentation()};
 
-    switch (presentation.repeat) {
-    case Repeat::none:
-        repeat_button_->setText("Repeat: off");
-        break;
+    actions_.set_repeat(presentation.repeat);
+    actions_.set_shuffled(presentation.shuffled);
 
-    case Repeat::all:
-        repeat_button_->setText("Repeat: all");
-        break;
-
-    case Repeat::track:
-        repeat_button_->setText("Repeat: one");
-        break;
-    }
-
-    shuffle_button_->setChecked(presentation.shuffled);
+    repeat_button_->setText(actions_.action(PlayerAction::repeat)->text());
+    shuffle_button_->setChecked(actions_.action(PlayerAction::shuffle)->isChecked());
 }
 
 void MainWindow::update_after_pump()
@@ -485,12 +497,17 @@ void MainWindow::refresh()
 {
     const engine::PlaybackSnapshot playback{presenter_.presentation().playback};
 
-    play_button_->setEnabled(playback.loaded);
-    stop_button_->setEnabled(playback.loaded);
+    actions_.set_available(PlayerAction::play, playback.loaded);
+    actions_.set_available(PlayerAction::stop, playback.loaded);
+    actions_.set_available(PlayerAction::previous, playback.loaded);
+    actions_.set_available(PlayerAction::next, playback.loaded);
+
+    play_button_->setEnabled(actions_.action(PlayerAction::play)->isEnabled());
+    stop_button_->setEnabled(actions_.action(PlayerAction::stop)->isEnabled());
+    previous_button_->setEnabled(actions_.action(PlayerAction::previous)->isEnabled());
+    next_button_->setEnabled(actions_.action(PlayerAction::next)->isEnabled());
     position_bar_->setEnabled(playback.loaded && playback.seekable &&
         playback.total_time.has_value());
-    previous_button_->setEnabled(playback.loaded);
-    next_button_->setEnabled(playback.loaded);
 
     playlist_view_->show_playlist(presenter_.playlist());
 

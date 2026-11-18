@@ -33,3 +33,8 @@ wiola_add_test(
     SOURCES player_presenter_test.cpp
     LIBS wiola_gui
 )
+wiola_add_test(
+    gui_player_actions_test
+    SOURCES player_actions_test.cpp
+    LIBS wiola_gui
+)
