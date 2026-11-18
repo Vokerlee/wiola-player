@@ -20,6 +20,8 @@
 
 #include <app/saved_playlist_commands.hpp>
 
+#include <gui/saved_playlist_storage.hpp>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QTemporaryDir>
@@ -42,7 +44,10 @@ protected:
 TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlaylists)
 {
     wiola::gui::SavedPlaylistStorage storage{file()};
-    wiola::app::SavedPlaylistCommands commands{repository, storage};
+    auto persist = [&storage](const wiola::library::LibraryRepository& records) {
+        return storage.save(records) == wiola::gui::LibraryJsonError::none;
+    };
+    wiola::app::SavedPlaylistCommands commands{repository, persist};
     const wiola::library::MediaId media{"media-1"};
     wiola::library::TrackRecord track;
     track.id = media;
@@ -84,7 +89,10 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
 TEST_F(SavedPlaylistCommands, RejectsBlankNamesAndMissingPlaylists)
 {
     wiola::gui::SavedPlaylistStorage storage{file()};
-    wiola::app::SavedPlaylistCommands commands{repository, storage};
+    auto persist = [&storage](const wiola::library::LibraryRepository& records) {
+        return storage.save(records) == wiola::gui::LibraryJsonError::none;
+    };
+    wiola::app::SavedPlaylistCommands commands{repository, persist};
 
     EXPECT_FALSE(commands.create("   ").valid());
     EXPECT_FALSE(commands.create(std::string(257, 'x')).valid());
@@ -103,7 +111,10 @@ TEST_F(SavedPlaylistCommands, RollsBackRepositoryChangesWhenPersistenceFails)
     ASSERT_TRUE(QDir{directory.path()}.mkdir("blocked"));
 
     wiola::gui::SavedPlaylistStorage storage{file("blocked")};
-    wiola::app::SavedPlaylistCommands commands{repository, storage};
+    auto persist = [&storage](const wiola::library::LibraryRepository& records) {
+        return storage.save(records) == wiola::gui::LibraryJsonError::none;
+    };
+    wiola::app::SavedPlaylistCommands commands{repository, persist};
 
     EXPECT_FALSE(commands.create("Cannot save").valid());
     EXPECT_TRUE(repository.playlists().empty());

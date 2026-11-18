@@ -29,6 +29,11 @@ wiola_add_test(
     LIBS wiola_gui wiola_library
 )
 wiola_add_test(
+    gui_saved_playlist_manager_test
+    SOURCES saved_playlist_manager_test.cpp
+    LIBS wiola_gui wiola_saved_playlists
+)
+wiola_add_test(
     gui_playlist_control_test
     SOURCES playlist_control_test.cpp
     LIBS wiola_gui

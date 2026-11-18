@@ -22,6 +22,8 @@
 
 #include <QString>
 
+#include <utility>
+
 namespace wiola::app {
 
 namespace {
@@ -36,9 +38,9 @@ std::string normalized_name(const std::string& name)
 } // namespace
 
 SavedPlaylistCommands::SavedPlaylistCommands(library::InMemoryRepository& repository,
-    gui::SavedPlaylistStorage& storage)
+    Persist persist)
     : repository_{repository}
-    , storage_{storage}
+    , persist_{std::move(persist)}
 {
 }
 
@@ -100,7 +102,7 @@ SavedPlaylistCommands::Snapshot SavedPlaylistCommands::snapshot() const
 
 bool SavedPlaylistCommands::commit(const Snapshot& previous)
 {
-    if (storage_.save(repository_) == gui::LibraryJsonError::none)
+    if (persist_(repository_))
         return true;
 
     static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists));
