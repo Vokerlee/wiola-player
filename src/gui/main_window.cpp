@@ -30,6 +30,7 @@
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QMenuBar>
+#include <QSplitter>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -201,7 +202,25 @@ MainWindow::MainWindow(engine::Session& session)
     documents_->addTab(placeholder_document(documents_,
                            "Folder workspaces will open here without changing the playback queue."),
         "Folder Workspace");
-    layout->addWidget(documents_);
+
+    navigation_ = new LibraryNavigation{this};
+    navigation_->show_repository(library_);
+
+    QSplitter* document_area = new QSplitter{this};
+    document_area->setObjectName("documentArea");
+    document_area->addWidget(navigation_);
+    document_area->addWidget(documents_);
+    document_area->setStretchFactor(0, 0);
+    document_area->setStretchFactor(1, 1);
+    document_area->setSizes({180, 620});
+    layout->addWidget(document_area);
+
+    navigation_->on_playlist_chosen([this](library::PlaylistId) {
+        documents_->setCurrentIndex(1);
+    });
+    navigation_->on_workspace_chosen([this](library::WorkspaceId) {
+        documents_->setCurrentIndex(2);
+    });
 
     // What is done to the queue, under the queue it is done to.
     auto* queue = new QHBoxLayout;

@@ -6,6 +6,7 @@ wiola_add_library(
         equalizer_control.cpp
         equalizer_panel.cpp
         library_json.cpp
+        library_navigation.cpp
         library_storage.cpp
         main_window.cpp
         now_playing_document.cpp
@@ -17,7 +18,7 @@ wiola_add_library(
         player_settings.cpp
         seek_bar.cpp
         volume_control.cpp
-    LIBS wiola_app wiola_codec wiola_engine
+    LIBS wiola_app wiola_codec wiola_engine wiola_library
 )
 
 # Qt needs its own generated sources, and its headers are part of using this library.
