@@ -28,6 +28,7 @@ namespace wiola::engine {
 class PlaybackService {
 public:
     PlaybackService();
+    explicit PlaybackService(Session& session);
     explicit PlaybackService(OutputFactory make_output);
     PlaybackService(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider);
     PlaybackService(OutputFactory make_output, DecoderOpener open_decoder,
@@ -55,6 +56,10 @@ public:
     [[nodiscard]] float equalizer_band(std::size_t index) const noexcept;
     [[nodiscard]] std::size_t num_equalizer_bands() const noexcept;
 
+    /// Mutable DSP collaborators used by the existing GUI control adapters.
+    [[nodiscard]] audio::Volume& volume_control() noexcept;
+    [[nodiscard]] audio::Equalizer& equalizer_control() noexcept;
+
     /// Drains completions and advances playback; schedulers and headless callers share this pump.
     PlaybackSnapshot pump();
     [[nodiscard]] OperationOutcomes take_outcomes();
@@ -78,7 +83,8 @@ public:
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    Session session_;
+    Session owned_session_;
+    Session* session_{&owned_session_};
 };
 
 } // namespace wiola::engine

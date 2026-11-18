@@ -20,7 +20,7 @@
 
 #include <gui/playlist_control.hpp>
 
-#include <engine/session.hpp>
+#include <gui/player_presenter.hpp>
 
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
@@ -40,9 +40,10 @@ namespace {
 
 using Repeat = wiola::engine::Playlist::Repeat;
 using Control = wiola::gui::PlaylistControl;
+using Presenter = wiola::gui::PlayerPresenter;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's, and a
-/// session that plays nowhere real.
+/// presenter that plays nowhere real.
 class PlaylistControl : public testing::Test {
 protected:
     static void SetUpTestSuite()
@@ -61,15 +62,15 @@ protected:
         settings.sync();
     }
 
-    /// Turns the session over until it has caught up with what was asked of it.
-    static void settle(wiola::engine::Session& session)
+    /// Turns the presenter over until it has caught up with what was asked of it.
+    static void settle(Presenter& presenter)
     {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
 
-        while (session.reading() && std::chrono::steady_clock::now() < deadline)
+        while (presenter.reading() && std::chrono::steady_clock::now() < deadline)
             std::this_thread::yield();
 
-        session.catch_up();
+        static_cast<void>(presenter.pump());
     }
 
     static wiola::engine::OutputFactory nowhere()
@@ -87,11 +88,11 @@ protected:
 
 TEST_F(PlaylistControl, RestoresNothingFromAnEmptySettingsFile)
 {
-    wiola::engine::Session session{nowhere()};
-    Control control{session, settings};
+    Presenter presenter{nowhere()};
+    Control control{presenter, settings};
 
     EXPECT_EQ(control.restore(), 0U);
-    EXPECT_TRUE(session.playlist().empty());
+    EXPECT_TRUE(presenter.playlist().empty());
 }
 
 TEST_F(PlaylistControl, PutsBackTheQueueTheLastRunLeft)
@@ -100,15 +101,15 @@ TEST_F(PlaylistControl, PutsBackTheQueueTheLastRunLeft)
     const std::filesystem::path next{wiola::testing::write_wav("wiola_queue_next.wav")};
 
     {
-        wiola::engine::Session session{nowhere()};
-        Control control{session, settings};
+        Presenter presenter{nowhere()};
+        Control control{presenter, settings};
 
-        session.add({first, next});
-        settle(session);
+        presenter.add({first, next});
+        settle(presenter);
         control.save();
     }
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     EXPECT_EQ(control.restore(), 0U);
@@ -125,47 +126,47 @@ TEST_F(PlaylistControl, StandsWhereTheLastRunStood)
     const std::filesystem::path next{wiola::testing::write_wav("wiola_queue_next.wav")};
 
     {
-        wiola::engine::Session session{nowhere()};
-        Control control{session, settings};
+        Presenter presenter{nowhere()};
+        Control control{presenter, settings};
 
-        session.add({first, next});
-        settle(session);
-        ASSERT_TRUE(session.play_track(1));
-        settle(session);
+        presenter.add({first, next});
+        settle(presenter);
+        ASSERT_TRUE(presenter.play_track(1));
+        settle(presenter);
         control.save();
     }
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     ASSERT_EQ(control.restore(), 0U);
     settle(restored);
 
     EXPECT_EQ(restored.playlist().position(), 1U);
-    EXPECT_EQ(restored.track(), next);
-    EXPECT_FALSE(restored.playing());
+    EXPECT_EQ(restored.presentation().playback.track, next);
+    EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
 TEST_F(PlaylistControl, PutsBackHowItWasBeingPlayedThrough)
 {
     {
-        wiola::engine::Session session{nowhere()};
-        Control control{session, settings};
+        Presenter presenter{nowhere()};
+        Control control{presenter, settings};
 
-        session.add({wiola::testing::write_wav("wiola_queue.wav")});
-        settle(session);
-        session.set_repeat(Repeat::track);
-        session.shuffle(true);
+        presenter.add({wiola::testing::write_wav("wiola_queue.wav")});
+        settle(presenter);
+        presenter.set_repeat(Repeat::track);
+        presenter.shuffle(true);
         control.save();
     }
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     ASSERT_EQ(control.restore(), 0U);
 
-    EXPECT_EQ(restored.repeat(), Repeat::track);
-    EXPECT_TRUE(restored.shuffled());
+    EXPECT_EQ(restored.presentation().repeat, Repeat::track);
+    EXPECT_TRUE(restored.presentation().shuffled);
 }
 
 /// A queue that cannot be played is worse than a shorter one.
@@ -175,17 +176,17 @@ TEST_F(PlaylistControl, DropsTracksThatHaveGoneSince)
     const std::filesystem::path gone{wiola::testing::write_wav("wiola_queue_gone.wav")};
 
     {
-        wiola::engine::Session session{nowhere()};
-        Control control{session, settings};
+        Presenter presenter{nowhere()};
+        Control control{presenter, settings};
 
-        session.add({kept, gone});
-        settle(session);
+        presenter.add({kept, gone});
+        settle(presenter);
         control.save();
     }
 
     std::filesystem::remove(gone);
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     EXPECT_EQ(control.restore(), 1U) << "the track that had gone was not counted";
@@ -200,7 +201,7 @@ TEST_F(PlaylistControl, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
     const std::filesystem::path other{wiola::testing::write_wav("wiola_queue_other.wav")};
 
     {
-        wiola::engine::Session session{nowhere()};
+        Presenter session{nowhere()};
         Control control{session, settings};
 
         session.add({repeated, other, repeated});
@@ -213,7 +214,7 @@ TEST_F(PlaylistControl, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
         control.save();
     }
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     ASSERT_EQ(control.restore(), 0U);
@@ -228,8 +229,8 @@ TEST_F(PlaylistControl, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
     EXPECT_NE(tracks[0].id(), tracks[2].id());
 
     EXPECT_EQ(restored.playlist().position(), 0U);
-    EXPECT_EQ(restored.track(), repeated);
-    EXPECT_FALSE(restored.playing());
+    EXPECT_EQ(restored.presentation().playback.track, repeated);
+    EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
 TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone)
@@ -239,7 +240,7 @@ TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGo
     const std::filesystem::path last{wiola::testing::write_wav("wiola_queue_last.wav")};
 
     {
-        wiola::engine::Session session{nowhere()};
+        Presenter session{nowhere()};
         Control control{session, settings};
 
         session.add({first, selected, last});
@@ -252,7 +253,7 @@ TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGo
 
     ASSERT_TRUE(std::filesystem::remove(selected));
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     EXPECT_EQ(control.restore(), 1U);
@@ -263,8 +264,8 @@ TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGo
     EXPECT_EQ(restored.playlist().tracks()[1].path(), last);
 
     EXPECT_EQ(restored.playlist().position(), 0U);
-    EXPECT_EQ(restored.track(), first);
-    EXPECT_FALSE(restored.playing());
+    EXPECT_EQ(restored.presentation().playback.track, first);
+    EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
 TEST_F(PlaylistControl, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
@@ -274,7 +275,7 @@ TEST_F(PlaylistControl, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
     const std::filesystem::path last{wiola::testing::write_wav("wiola_queue_last.wav")};
 
     {
-        wiola::engine::Session session{nowhere()};
+        Presenter session{nowhere()};
         Control control{session, settings};
 
         session.add({first, selected, last});
@@ -288,17 +289,17 @@ TEST_F(PlaylistControl, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
         control.save();
     }
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     ASSERT_EQ(control.restore(), 0U);
     settle(restored);
 
-    EXPECT_EQ(restored.repeat(), Repeat::all);
-    EXPECT_TRUE(restored.shuffled());
+    EXPECT_EQ(restored.presentation().repeat, Repeat::all);
+    EXPECT_TRUE(restored.presentation().shuffled);
     EXPECT_EQ(restored.playlist().position(), 1U);
-    EXPECT_EQ(restored.track(), selected);
-    EXPECT_FALSE(restored.playing());
+    EXPECT_EQ(restored.presentation().playback.track, selected);
+    EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
 TEST_F(PlaylistControl, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
@@ -312,7 +313,7 @@ TEST_F(PlaylistControl, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
     settings.setValue("equalizer/enabled", false);
 
     {
-        wiola::engine::Session session{nowhere()};
+        Presenter session{nowhere()};
         Control control{session, settings};
 
         session.add({wiola::testing::write_wav("wiola_queue.wav")});
@@ -320,7 +321,7 @@ TEST_F(PlaylistControl, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
         control.save();
     }
 
-    wiola::engine::Session restored{nowhere()};
+    Presenter restored{nowhere()};
     Control control{restored, settings};
 
     ASSERT_EQ(control.restore(), 0U);

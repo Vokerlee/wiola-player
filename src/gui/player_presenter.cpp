@@ -26,6 +26,11 @@ namespace wiola::gui {
 
 PlayerPresenter::PlayerPresenter() = default;
 
+PlayerPresenter::PlayerPresenter(engine::Session& session)
+    : service_{session}
+{
+}
+
 PlayerPresenter::PlayerPresenter(engine::OutputFactory make_output)
     : service_{std::move(make_output)}
 {
@@ -134,6 +139,21 @@ std::size_t PlayerPresenter::num_equalizer_bands() const noexcept
     return service_.num_equalizer_bands();
 }
 
+audio::Volume& PlayerPresenter::volume_control() noexcept
+{
+    return service_.volume_control();
+}
+
+audio::Equalizer& PlayerPresenter::equalizer_control() noexcept
+{
+    return service_.equalizer_control();
+}
+
+void PlayerPresenter::set_repeat(engine::Playlist::Repeat repeat) noexcept
+{
+    service_.set_repeat(repeat);
+}
+
 void PlayerPresenter::cycle_repeat() noexcept
 {
     using Repeat = engine::Playlist::Repeat;
@@ -180,6 +200,11 @@ PlayerPresentation PlayerPresenter::presentation() const
     return {.playback = service_.snapshot(),
         .repeat = service_.repeat(),
         .shuffled = service_.shuffled()};
+}
+
+bool PlayerPresenter::reading() const noexcept
+{
+    return service_.reading();
 }
 
 } // namespace wiola::gui

@@ -46,8 +46,8 @@ engine::Playlist::Repeat repeat_of(int stored) noexcept
 
 } // namespace
 
-PlaylistControl::PlaylistControl(engine::Session& session, QSettings& settings) noexcept
-    : session_{session}
+PlaylistControl::PlaylistControl(PlayerPresenter& presenter, QSettings& settings) noexcept
+    : presenter_{presenter}
     , settings_{settings}
 {
 }
@@ -65,38 +65,39 @@ std::size_t PlaylistControl::restore()
             ++gone;
     }
 
-    session_.set_repeat(repeat_of(stored.repeat));
+    presenter_.set_repeat(repeat_of(stored.repeat));
 
     if (tracks.empty())
         return gone;
 
-    session_.add(tracks);
+    presenter_.add(tracks);
 
     if (stored.selected) {
         const auto selected{std::ranges::find(tracks, *stored.selected)};
         if (selected != tracks.end())
-            static_cast<void>(session_.play_track(
+            static_cast<void>(presenter_.play_track(
                 static_cast<std::size_t>(std::distance(tracks.begin(), selected))
             ));
     }
 
     if (stored.shuffled)
-        session_.shuffle(true);
+        presenter_.shuffle(true);
 
     return gone;
 }
 
 void PlaylistControl::save()
 {
+    const PlayerPresentation presentation{presenter_.presentation()};
     PlaylistSettings settings{.tracks = {},
         .selected = {},
-        .repeat = static_cast<int>(session_.repeat()),
-        .shuffled = session_.shuffled()};
+        .repeat = static_cast<int>(presentation.repeat),
+        .shuffled = presentation.shuffled};
 
-    for (const engine::Track& track : session_.playlist().tracks())
+    for (const engine::Track& track : presenter_.playlist().tracks())
         settings.tracks.push_back(track.path());
 
-    if (const engine::Track* current = session_.playlist().current())
+    if (const engine::Track* current = presenter_.playlist().current())
         settings.selected = current->path();
 
     QtSettingsAdapter{settings_}.write_playlist(settings);

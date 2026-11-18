@@ -41,6 +41,7 @@ struct PlayerPresentation {
 class PlayerPresenter {
 public:
     PlayerPresenter();
+    explicit PlayerPresenter(engine::Session& session);
     explicit PlayerPresenter(engine::OutputFactory make_output);
     PlayerPresenter(engine::OutputFactory make_output, engine::DecoderOpener open_decoder,
         engine::MetadataReader read_metadata);
@@ -64,7 +65,10 @@ public:
     void set_equalizer_band(std::size_t index, float db) noexcept;
     [[nodiscard]] float equalizer_band(std::size_t index) const noexcept;
     [[nodiscard]] std::size_t num_equalizer_bands() const noexcept;
+    [[nodiscard]] audio::Volume& volume_control() noexcept;
+    [[nodiscard]] audio::Equalizer& equalizer_control() noexcept;
 
+    void set_repeat(engine::Playlist::Repeat repeat) noexcept;
     void cycle_repeat() noexcept;
     void shuffle(bool on);
     [[nodiscard]] const engine::Playlist& playlist() const noexcept;
@@ -72,6 +76,7 @@ public:
 
     PlayerPresentation pump();
     [[nodiscard]] PlayerPresentation presentation() const;
+    [[nodiscard]] bool reading() const noexcept;
 
 private:
     engine::PlaybackService service_;
