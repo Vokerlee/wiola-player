@@ -20,6 +20,8 @@
 
 #include "playlist_view.hpp"
 
+#include "presentation_tokens.hpp"
+
 #include <QHeaderView>
 #include <QPainter>
 #include <QStyledItemDelegate>
@@ -30,16 +32,7 @@ namespace wiola::gui {
 
 namespace {
 
-struct PlaylistViewMetrics {
-    ArtworkCachePolicy artwork{};
-    int playlist_height{120};
-    int row_padding{4};
-    int artist_column_width{120};
-    int album_column_width{120};
-    int length_column_width{60};
-};
-
-constexpr PlaylistViewMetrics metrics;
+constexpr PresentationTokens tokens;
 
 enum Column {
     cover,
@@ -67,10 +60,10 @@ public:
 
 PlaylistView::PlaylistView(QWidget* parent)
     : QTableView{parent}
-    , model_{*this, metrics.artwork}
+    , model_{*this, tokens.playlist.artwork}
 {
     setModel(&model_);
-    setMinimumHeight(metrics.playlist_height);
+    setMinimumHeight(tokens.playlist.min_height);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setSelectionBehavior(QAbstractItemView::SelectRows);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -80,16 +73,17 @@ PlaylistView::PlaylistView(QWidget* parent)
     setToolTip("Double-click a track to play it; Delete takes it out of the queue");
 
     verticalHeader()->setVisible(false);
-    verticalHeader()->setDefaultSectionSize(metrics.artwork.cover_size + metrics.row_padding);
+    verticalHeader()->setDefaultSectionSize(tokens.playlist.artwork.cover_size +
+        tokens.playlist.row_padding);
     horizontalHeader()->setSectionResizeMode(Column::cover, QHeaderView::Fixed);
     horizontalHeader()->setSectionResizeMode(Column::title, QHeaderView::Stretch);
     horizontalHeader()->setSectionResizeMode(Column::artist, QHeaderView::Interactive);
     horizontalHeader()->setSectionResizeMode(Column::album, QHeaderView::Interactive);
     horizontalHeader()->setSectionResizeMode(Column::length, QHeaderView::Fixed);
-    setColumnWidth(Column::cover, metrics.artwork.cover_size + metrics.row_padding);
-    setColumnWidth(Column::artist, metrics.artist_column_width);
-    setColumnWidth(Column::album, metrics.album_column_width);
-    setColumnWidth(Column::length, metrics.length_column_width);
+    setColumnWidth(Column::cover, tokens.playlist.artwork.cover_size + tokens.playlist.row_padding);
+    setColumnWidth(Column::artist, tokens.playlist.artist_column_width);
+    setColumnWidth(Column::album, tokens.playlist.album_column_width);
+    setColumnWidth(Column::length, tokens.playlist.length_column_width);
     setItemDelegate(new WithoutTheFocusBox{this});
 
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {

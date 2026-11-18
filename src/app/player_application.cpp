@@ -21,22 +21,22 @@
 #include "player_application.hpp"
 
 #include <gui/main_window.hpp>
-#include <gui/player_view_metrics.hpp>
+#include <gui/presentation_tokens.hpp>
 
 namespace wiola::app {
 
 PlayerApplication::PlayerApplication(QObject* parent)
     : QObject{parent}
 {
-    constexpr gui::PlayerViewMetrics metrics;
+    constexpr gui::PresentationTokens tokens;
 
     connect(&pump_timer_, &QTimer::timeout, this, [this] {
         session_.catch_up();
         emit pumped();
     });
 
-    pump_timer_.start(metrics.refresh_interval);
-    refresh_timer_.start(metrics.refresh_interval);
+    pump_timer_.start(tokens.player.refresh_interval);
+    refresh_timer_.start(tokens.player.refresh_interval);
 }
 
 void PlayerApplication::attach(gui::MainWindow& window)
