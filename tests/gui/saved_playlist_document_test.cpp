@@ -80,6 +80,14 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
     actions.front()->trigger();
 
     EXPECT_EQ(chosen, duplicate);
+
+    int play_requests{0};
+    document.on_play_requested([&play_requests] { ++play_requests; });
+    QPushButton* play_saved = document.findChild<QPushButton*>("playSavedPlaylist");
+    ASSERT_NE(play_saved, nullptr);
+    play_saved->click();
+
+    EXPECT_EQ(play_requests, 1);
 }
 
 TEST(SavedPlaylistDocument, RefreshesMetadataWithoutLosingPersistentSelection)
