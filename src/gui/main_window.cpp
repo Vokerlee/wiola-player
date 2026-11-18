@@ -42,6 +42,19 @@ namespace {
 
 constexpr PresentationTokens tokens;
 
+QWidget* placeholder_document(QWidget* parent, const QString& description)
+{
+    QWidget* document = new QWidget{parent};
+    QLabel* label = new QLabel{description, document};
+    label->setAlignment(Qt::AlignCenter);
+    label->setWordWrap(true);
+
+    QVBoxLayout* layout = new QVBoxLayout{document};
+    layout->addWidget(label);
+
+    return document;
+}
+
 /// What to say about a file that would not open.
 QString as_status(engine::OpenResult result)
 {
@@ -177,7 +190,18 @@ MainWindow::MainWindow(engine::Session& session)
     layout->addLayout(times);
     layout->addLayout(transport);
     layout->addLayout(list);
-    layout->addWidget(now_playing_);
+
+    documents_ = new QTabWidget{this};
+    documents_->setObjectName("documentTabs");
+    documents_->setDocumentMode(true);
+    documents_->addTab(now_playing_, "Now Playing");
+    documents_->addTab(placeholder_document(documents_,
+                           "Saved playlists will open here without changing the playback queue."),
+        "Playlist");
+    documents_->addTab(placeholder_document(documents_,
+                           "Folder workspaces will open here without changing the playback queue."),
+        "Folder Workspace");
+    layout->addWidget(documents_);
 
     // What is done to the queue, under the queue it is done to.
     auto* queue = new QHBoxLayout;
