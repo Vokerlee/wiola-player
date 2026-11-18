@@ -9,3 +9,8 @@ wiola_add_test(
     LIBS wiola_library
 )
 wiola_add_test(library_records_test SOURCES records_test.cpp LIBS wiola_library)
+wiola_add_test(
+    library_in_memory_repository_test
+    SOURCES in_memory_repository_test.cpp
+    LIBS wiola_library
+)
