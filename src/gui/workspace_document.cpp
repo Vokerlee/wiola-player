@@ -22,7 +22,10 @@
 
 #include "qt_path_adapter.hpp"
 
+#include <QHBoxLayout>
 #include <QVBoxLayout>
+
+#include <utility>
 
 namespace wiola::gui {
 
@@ -38,14 +41,44 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
 
     status_ = new QLabel{this};
     status_->setObjectName("workspaceStatus");
+
+    recursive_ = new QCheckBox{"Include subfolders", this};
+    recursive_->setObjectName("workspaceRecursive");
+    rescan_ = new QPushButton{"Rescan", this};
+    rescan_->setObjectName("rescanWorkspace");
+    cancel_ = new QPushButton{"Cancel", this};
+    cancel_->setObjectName("cancelWorkspaceScan");
+    progress_ = new QProgressBar{this};
+    progress_->setObjectName("workspaceProgress");
+    progress_->setTextVisible(false);
+
     table_ = new TrackTableView{this};
     table_->setAccessibleName("Workspace tracks");
+
+    QHBoxLayout* controls = new QHBoxLayout;
+    controls->addWidget(recursive_);
+    controls->addWidget(rescan_);
+    controls->addWidget(cancel_);
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
+    layout->addLayout(controls);
+    layout->addWidget(progress_);
     layout->addWidget(status_);
     layout->addWidget(table_);
+
+    connect(rescan_, &QPushButton::clicked, [this] {
+        if (rescan_observer_)
+            rescan_observer_(recursive_->isChecked());
+    });
+
+    connect(cancel_, &QPushButton::clicked, [this] {
+        if (cancel_observer_)
+            cancel_observer_();
+    });
+
+    set_busy(false);
 }
 
 void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::uint64_t generation)
@@ -54,8 +87,10 @@ void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::ui
     generation_ = generation;
     rows_.clear();
     heading_->setText(QtPathAdapter::to_qt(workspace.root));
+    recursive_->setChecked(workspace.recursive);
     status_->setText("Scanning...");
     table_->show_tracks(rows_.tracks());
+    set_busy(true);
 }
 
 bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
@@ -72,6 +107,7 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
     rows_.add(std::move(discovered));
     table_->show_tracks(rows_.tracks());
     status_->setText(QString{"%1 tracks"}.arg(rows_.tracks().size()));
+    set_busy(batch.status == app::WorkspaceScanStatus::running);
 
     if (batch.status == app::WorkspaceScanStatus::failed)
         status_->setText(status_->text() + " — scan failed");
@@ -79,6 +115,29 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
         status_->setText(status_->text() + " — cancelled");
 
     return true;
+}
+
+void WorkspaceDocument::show_cancelled()
+{
+    status_->setText(QString{"%1 tracks — cancelled"}.arg(rows_.tracks().size()));
+    set_busy(false);
+}
+
+void WorkspaceDocument::set_busy(bool busy)
+{
+    progress_->setRange(0, busy ? 0 : 1);
+    rescan_->setEnabled(!busy);
+    cancel_->setEnabled(busy);
+}
+
+void WorkspaceDocument::on_rescan_requested(std::function<void(bool recursive)> observer)
+{
+    rescan_observer_ = std::move(observer);
+}
+
+void WorkspaceDocument::on_cancel_requested(std::function<void()> observer)
+{
+    cancel_observer_ = std::move(observer);
 }
 
 std::vector<engine::QueueEntryId> WorkspaceDocument::chosen_tracks() const

@@ -109,6 +109,7 @@ private:
     void open_playlist(const library::PlaylistId& id);
     void open_folder();
     void open_workspace(const library::WorkspaceId& id);
+    void rescan_workspace(const library::WorkspaceId& id, bool recursive);
     void show_workspace_navigation();
     void restore_workspace_documents();
     void save_workspace_documents();

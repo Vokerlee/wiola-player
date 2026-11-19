@@ -26,7 +26,10 @@
 
 #include <engine/queue/playlist.hpp>
 
+#include <QCheckBox>
 #include <QLabel>
+#include <QProgressBar>
+#include <QPushButton>
 #include <QWidget>
 
 namespace wiola::gui {
@@ -37,15 +40,26 @@ public:
 
     void begin(const library::WorkspaceRecord& workspace, std::uint64_t generation);
     bool show_batch(const app::WorkspaceScanBatch& batch);
+    void show_cancelled();
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
+    void on_rescan_requested(std::function<void(bool recursive)> observer);
+    void on_cancel_requested(std::function<void()> observer);
 
 private:
+    void set_busy(bool busy);
+
     library::WorkspaceId workspace_;
     std::uint64_t generation_{0};
     engine::Playlist rows_;
     QLabel* heading_{nullptr};
     QLabel* status_{nullptr};
+    QCheckBox* recursive_{nullptr};
+    QPushButton* rescan_{nullptr};
+    QPushButton* cancel_{nullptr};
+    QProgressBar* progress_{nullptr};
     TrackTableView* table_{nullptr};
+    std::function<void(bool)> rescan_observer_;
+    std::function<void()> cancel_observer_;
 };
 
 } // namespace wiola::gui
