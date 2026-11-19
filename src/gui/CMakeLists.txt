@@ -11,6 +11,7 @@ wiola_add_library(
         main_window.cpp
         now_playing_document.cpp
         playlist_control.cpp
+        track_inspector.cpp
         track_table_model.cpp
         track_table_view.cpp
         player_actions.cpp
