@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_workspace_reconciliation_test
+    SOURCES workspace_reconciliation_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_workspace_scan_publisher_test
     SOURCES workspace_scan_publisher_test.cpp
     LIBS wiola_workspace_scans
