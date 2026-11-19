@@ -32,7 +32,7 @@ class SavedPlaylistStorage final {
 public:
     explicit SavedPlaylistStorage(std::filesystem::path file);
 
-    [[nodiscard]] LibraryJsonError save(const library::InMemoryRepository& repository);
+    [[nodiscard]] LibraryJsonError save(const library::LibraryRepository& repository);
     [[nodiscard]] LibraryJsonError restore(library::InMemoryRepository& repository) const;
 
 private:
