@@ -78,21 +78,35 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
 
     QAction* play = action(view, "Play selected track");
     QAction* remove = action(view, "Remove selected tracks");
+    QAction* add_active = action(view, "Add to active playlist");
+    QAction* add_to = action(view, "Add to playlist →");
     ASSERT_NE(play, nullptr);
     ASSERT_NE(remove, nullptr);
+    ASSERT_NE(add_active, nullptr);
+    ASSERT_NE(add_to, nullptr);
 
     std::optional<wiola::engine::QueueEntryId> chosen;
     int removals{0};
+    int active_transfers{0};
+    int destination_transfers{0};
     QObject::connect(&view, &wiola::gui::TrackTableView::track_chosen,
         [&chosen](wiola::engine::QueueEntryId id) { chosen = id; });
     QObject::connect(&view, &wiola::gui::TrackTableView::removal_asked,
         [&removals] { ++removals; });
+    QObject::connect(&view, &wiola::gui::TrackTableView::transfer_active_asked,
+        [&active_transfers] { ++active_transfers; });
+    QObject::connect(&view, &wiola::gui::TrackTableView::transfer_destination_asked,
+        [&destination_transfers] { ++destination_transfers; });
 
     play->trigger();
     remove->trigger();
+    add_active->trigger();
+    add_to->trigger();
 
     EXPECT_EQ(chosen, id_at(playlist, 1));
     EXPECT_EQ(removals, 1);
+    EXPECT_EQ(active_transfers, 1);
+    EXPECT_EQ(destination_transfers, 1);
     EXPECT_EQ(view.focusPolicy(), Qt::StrongFocus);
     EXPECT_EQ(view.accessibleName(), "Track list");
 }

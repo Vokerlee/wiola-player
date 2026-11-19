@@ -25,6 +25,9 @@
 #include "presentation_tokens.hpp"
 #include "qt_path_adapter.hpp"
 
+#include <library/location.hpp>
+
+#include <QCursor>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
@@ -322,6 +325,10 @@ MainWindow::MainWindow(engine::Session& session)
 
     connect(now_playing_, &NowPlayingDocument::track_chosen, this, &MainWindow::play_chosen);
     connect(now_playing_, &NowPlayingDocument::removal_asked, this, &MainWindow::remove_chosen);
+    connect(now_playing_, &NowPlayingDocument::transfer_active_asked, this,
+        [this] { transfer_now_playing(false); });
+    connect(now_playing_, &NowPlayingDocument::transfer_destination_asked, this,
+        [this] { transfer_now_playing(true); });
 
     connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
     connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
@@ -448,6 +455,12 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
     document->set_active(active_playlist_.id() == id);
     document->on_active_requested([this, id] { activate_playlist(id); });
     document->on_play_requested([this, id] { play_saved_playlist(id); });
+    document->on_transfer_active_requested([this, id, document] {
+        transfer_saved_playlist(id, *document, false);
+    });
+    document->on_transfer_destination_requested([this, id, document] {
+        transfer_saved_playlist(id, *document, true);
+    });
 
     const QString name = QString::fromStdString(library_.playlist(id)->name);
     documents_->addTab(document, name);
@@ -466,6 +479,99 @@ void MainWindow::activate_playlist(const library::PlaylistId& id)
 
     for (const auto& [playlist, document] : playlist_documents_)
         document->set_active(playlist == id);
+}
+
+void MainWindow::transfer_now_playing(bool choose_destination)
+{
+    std::vector<app::MediaTransfer> media;
+
+    for (const engine::QueueEntryId id : now_playing_->chosen_tracks()) {
+        const auto row = session_.playlist().index_of(id);
+        if (!row)
+            continue;
+
+        const std::filesystem::path& location = session_.playlist().tracks()[*row].path();
+        media.push_back({.media = library::media_id_for(location), .location = location});
+    }
+
+    if (choose_destination)
+        choose_transfer_destination(media);
+    else
+        transfer_to({}, media);
+}
+
+void MainWindow::transfer_saved_playlist(const library::PlaylistId& id,
+    SavedPlaylistDocument& document, bool choose_destination)
+{
+    const library::PlaylistRecord* source = library_.playlist(id);
+    if (source == nullptr)
+        return;
+
+    std::vector<app::MediaTransfer> media;
+
+    for (const library::PlaylistEntryId& selected : document.chosen_entries()) {
+        const auto entry =
+            std::ranges::find(source->entries, selected, &library::PlaylistEntryRecord::id);
+        if (entry == source->entries.end())
+            continue;
+
+        const library::TrackRecord* track = library_.track(entry->media);
+        media.push_back({.media = entry->media,
+            .location = track != nullptr && !track->locations.empty() ? track->locations.front()
+                                                                      : std::filesystem::path{}});
+    }
+
+    if (choose_destination)
+        choose_transfer_destination(media);
+    else
+        transfer_to({}, media);
+}
+
+void MainWindow::choose_transfer_destination(const std::vector<app::MediaTransfer>& media)
+{
+    QMenu destinations{this};
+
+    for (const library::PlaylistRecord& playlist : library_.playlists()) {
+        const library::PlaylistId id = playlist.id;
+        destinations.addAction(QString::fromStdString(playlist.name),
+            [this, id, media] { transfer_to(id, media); });
+    }
+
+    if (destinations.isEmpty())
+        destinations.addAction("No saved playlists")->setEnabled(false);
+
+    destinations.exec(QCursor::pos());
+}
+
+void MainWindow::transfer_to(std::optional<library::PlaylistId> destination,
+    const std::vector<app::MediaTransfer>& media)
+{
+    if (media.empty()) {
+        show_status("Select tracks to add");
+        return;
+    }
+
+    if (!destination)
+        destination = active_playlist_.id();
+
+    if (!destination) {
+        show_status("Choose an active playlist first");
+        return;
+    }
+
+    app::PlaylistTransfer transfer{library_, active_playlist_,
+        [this](const library::LibraryRepository& records) {
+            return playlist_storage_.save(records) == LibraryJsonError::none;
+        }};
+    const app::PlaylistTransferResult result = transfer.add_to(*destination, media);
+
+    if (!result.succeeded) {
+        show_status("Could not save the playlist transfer");
+        return;
+    }
+
+    show_status(QString{"%1 track(s) added"}.arg(result.added));
+    refresh_playlist_documents();
 }
 
 void MainWindow::play_saved_playlist(const library::PlaylistId& id)

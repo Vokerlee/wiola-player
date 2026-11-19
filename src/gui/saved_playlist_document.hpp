@@ -43,6 +43,8 @@ public:
     void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
     void on_play_requested(std::function<void()> observer);
     void on_active_requested(std::function<void()> observer);
+    void on_transfer_active_requested(std::function<void()> observer);
+    void on_transfer_destination_requested(std::function<void()> observer);
 
 private:
     void update_heading();
@@ -58,6 +60,8 @@ private:
     std::function<void(library::PlaylistEntryId)> entry_observer_;
     std::function<void()> playback_observer_;
     std::function<void()> active_observer_;
+    std::function<void()> transfer_active_observer_;
+    std::function<void()> transfer_destination_observer_;
 };
 
 } // namespace wiola::gui

@@ -46,6 +46,10 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
 
     connect(table_, &TrackTableView::track_chosen, this, &NowPlayingDocument::track_chosen);
     connect(table_, &TrackTableView::removal_asked, this, &NowPlayingDocument::removal_asked);
+    connect(table_, &TrackTableView::transfer_active_asked, this,
+        &NowPlayingDocument::transfer_active_asked);
+    connect(table_, &TrackTableView::transfer_destination_asked, this,
+        &NowPlayingDocument::transfer_destination_asked);
 }
 
 void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
