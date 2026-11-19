@@ -88,7 +88,7 @@ private:
     void clear_queue();
 
     /// Plays the track the listener picked out of the queue.
-    void play_chosen(std::size_t index);
+    void play_chosen(engine::QueueEntryId id);
 
     /// Plays the track before or after this one in the list.
     void play_previous();
