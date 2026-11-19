@@ -42,11 +42,21 @@ bool MetadataMerge::merge(library::InMemoryRepository& repository, const library
     learn(updated.embedded.title, learned.track.title);
     learn(updated.embedded.artist, learned.track.artist);
     learn(updated.embedded.album, learned.track.album);
+    learn(updated.embedded.genre, learned.track.genre);
+    learn(updated.embedded.comment, learned.track.comment);
+    learn(updated.embedded.composer, learned.track.composer);
 
-    if (learned.track.duration && updated.embedded.duration != learned.track.duration) {
-        updated.embedded.duration = learned.track.duration;
-        changed = true;
-    }
+    const auto learn_number = [&changed](auto& stored, const auto& incoming) {
+        if (incoming && stored != incoming) {
+            stored = incoming;
+            changed = true;
+        }
+    };
+
+    learn_number(updated.embedded.duration, learned.track.duration);
+    learn_number(updated.embedded.year, learned.track.year);
+    learn_number(updated.embedded.track_number, learned.track.track_number);
+    learn_number(updated.embedded.disc_number, learned.track.disc_number);
 
     if (!changed)
         return false;

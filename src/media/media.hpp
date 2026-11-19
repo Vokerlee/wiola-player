@@ -57,6 +57,24 @@ struct TrackMetadata {
     bool operator==(const TrackMetadata&) const = default;
 };
 
+struct MetadataWriteCapabilities {
+    bool title{false};
+    bool artist{false};
+    bool album{false};
+    bool genre{false};
+    bool year{false};
+    bool comment{false};
+    bool composer{false};
+    bool track_number{false};
+    bool disc_number{false};
+
+    [[nodiscard]] bool any() const noexcept
+    {
+        return title || artist || album || genre || year || comment || composer || track_number ||
+            disc_number;
+    }
+};
+
 struct Metadata {
     TrackMetadata track;
     Artwork artwork;

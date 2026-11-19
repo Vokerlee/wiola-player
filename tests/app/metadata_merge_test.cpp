@@ -88,6 +88,12 @@ TEST(MetadataMerge, LearnsOnlyChangedFieldsWithoutTouchingUserLayers)
     learned.track.title = "Learned title";
     learned.track.album = "Learned album";
     learned.track.duration = wiola::units::Time{42};
+    learned.track.genre = "Jazz";
+    learned.track.year = 2024;
+    learned.track.comment = "Live";
+    learned.track.composer = "Composer";
+    learned.track.track_number = 3;
+    learned.track.disc_number = 2;
 
     wiola::app::MetadataMerge merge;
     ASSERT_TRUE(merge.merge(repository, record.id, learned));
@@ -98,6 +104,12 @@ TEST(MetadataMerge, LearnsOnlyChangedFieldsWithoutTouchingUserLayers)
     EXPECT_EQ(updated->embedded.artist, "Known artist");
     EXPECT_EQ(updated->embedded.album, "Learned album");
     EXPECT_EQ(updated->embedded.duration, wiola::units::Time{42});
+    EXPECT_EQ(updated->embedded.genre, "Jazz");
+    EXPECT_EQ(updated->embedded.year, 2024);
+    EXPECT_EQ(updated->embedded.comment, "Live");
+    EXPECT_EQ(updated->embedded.composer, "Composer");
+    EXPECT_EQ(updated->embedded.track_number, 3);
+    EXPECT_EQ(updated->embedded.disc_number, 2);
     EXPECT_EQ(updated->display_title(), "User title");
     EXPECT_EQ(updated->tags.size(), 1);
     EXPECT_EQ(updated->metadata_revision, 8);
