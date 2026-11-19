@@ -5,6 +5,7 @@ add_subdirectory(engine)
 if(WIOLA_BUILD_GUI)
     add_subdirectory(gui)
 endif()
+add_subdirectory(library)
 add_subdirectory(media)
 
 if(NOT WIOLA_BUILD_GUI)
