@@ -8,6 +8,7 @@ wiola_add_library(
         playback_queue.cpp
         playback_service.cpp
         playlist_transfer.cpp
+        search_index.cpp
         workspace_reconciliation.cpp
         workspace_scanner.cpp
     LIBS wiola_engine wiola_library

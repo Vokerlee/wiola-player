@@ -42,6 +42,8 @@ struct TagRecord {
     TagId id;
     std::string key;
     std::string value;
+
+    bool operator==(const TagRecord&) const = default;
 };
 
 struct TrackRecord {
