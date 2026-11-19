@@ -32,6 +32,10 @@ public:
     [[nodiscard]] const TrackRecord* track(const MediaId& id) const override;
     [[nodiscard]] std::vector<TrackRecord> tracks() const override;
 
+    /// Validates a complete snapshot before replacing any current records.
+    bool replace_all(const std::vector<TrackRecord>& tracks,
+        const std::vector<PlaylistRecord>& playlists);
+
     PlaylistId create_playlist(std::string name) override;
     bool put_playlist(PlaylistRecord playlist) override;
     bool rename_playlist(const PlaylistId& id, std::string name) override;
