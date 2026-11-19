@@ -145,6 +145,7 @@ bool Playlist::describe(QueueEntryId id, TrackMetadata metadata)
 
     ++revision_;
     ++metadata_revision_;
+    ++tracks_[*index].revision_;
     tracks_[*index].metadata_ = std::move(metadata);
     return true;
 }
@@ -158,6 +159,7 @@ bool Playlist::illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork>
 
     ++revision_;
     ++metadata_revision_;
+    ++tracks_[*index].revision_;
     tracks_[*index].artwork_ = std::move(artwork);
     return true;
 }
@@ -173,6 +175,7 @@ void Playlist::apply_metadata(std::span<const QueueEntryId> entries, const Track
         if (!index)
             continue;
 
+        ++tracks_[*index].revision_;
         tracks_[*index].metadata_ = metadata;
         tracks_[*index].artwork_ = artwork;
         changed = true;

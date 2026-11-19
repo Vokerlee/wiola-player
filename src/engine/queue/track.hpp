@@ -70,11 +70,14 @@ public:
         return artwork_;
     }
 
+    [[nodiscard]] constexpr std::uint64_t revision() const noexcept { return revision_; }
+
 private:
     QueueEntryId id_{};
     std::filesystem::path path_;
     TrackMetadata metadata_;
     std::shared_ptr<const media::Artwork> artwork_;
+    std::uint64_t revision_{0};
 
     friend class Playlist;
 };

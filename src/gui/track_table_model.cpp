@@ -22,6 +22,8 @@
 
 #include "clock.hpp"
 
+#include <library/location.hpp>
+
 #include <QColor>
 #include <QFont>
 
@@ -88,8 +90,11 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
         }
     }
 
-    if (role == Qt::DecorationRole && index.column() == Column::cover)
-        return artwork_.cover_of(track.id().value, track.artwork());
+    if (role == Qt::DecorationRole && index.column() == Column::cover) {
+        return artwork_.cover_of({.media = library::media_id_for(track.path()).value,
+                                     .revision = track.revision()},
+            track.artwork());
+    }
 
     if (current_ != track.id())
         return {};
