@@ -98,6 +98,14 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
 
     EXPECT_EQ(active_requests, 1);
     EXPECT_EQ(heading->text(), "Favorites — Active destination");
+
+    int moves{0};
+    document.on_transfer_move_requested([&moves] { ++moves; });
+    const auto move = std::ranges::find_if(actions,
+        [](QAction* candidate) { return candidate->text() == "Move to playlist →"; });
+    ASSERT_NE(move, actions.end());
+    (*move)->trigger();
+    EXPECT_EQ(moves, 1);
 }
 
 TEST(SavedPlaylistDocument, RefreshesMetadataWithoutLosingPersistentSelection)

@@ -93,6 +93,11 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
         if (transfer_destination_observer_)
             transfer_destination_observer_();
     });
+
+    connect(table_, &TrackTableView::transfer_move_asked, [this] {
+        if (transfer_move_observer_)
+            transfer_move_observer_();
+    });
 }
 
 bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repository,
@@ -184,6 +189,11 @@ void SavedPlaylistDocument::on_transfer_active_requested(std::function<void()> o
 void SavedPlaylistDocument::on_transfer_destination_requested(std::function<void()> observer)
 {
     transfer_destination_observer_ = std::move(observer);
+}
+
+void SavedPlaylistDocument::on_transfer_move_requested(std::function<void()> observer)
+{
+    transfer_move_observer_ = std::move(observer);
 }
 
 } // namespace wiola::gui

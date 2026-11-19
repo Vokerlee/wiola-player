@@ -81,6 +81,17 @@ TEST(PlaylistTransfer, SupportsExplicitDestinationsAndRollsBackFailedBatches)
     EXPECT_EQ(repository.track(rejected), nullptr);
     EXPECT_EQ(repository.playlist(active_id)->entries.size(), 0);
     EXPECT_EQ(repository.playlist(other_id)->entries.size(), 1);
+
+    ASSERT_TRUE(transfer.add_to(active_id, {item, item}).succeeded);
+    const auto selected = repository.playlist(active_id)->entries.front().id;
+    const std::vector<wiola::library::PlaylistEntryId> selected_entries{selected};
+    const auto moved = transfer.move_to(active_id, other_id, selected_entries);
+
+    EXPECT_TRUE(moved.succeeded);
+    EXPECT_EQ(moved.added, 1);
+    EXPECT_EQ(repository.playlist(active_id)->entries.size(), 1);
+    EXPECT_EQ(repository.playlist(other_id)->entries.size(), 2);
+    EXPECT_NE(repository.playlist(active_id)->entries.front().id, selected);
 }
 
 } // namespace

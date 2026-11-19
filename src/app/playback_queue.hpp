@@ -34,6 +34,10 @@ struct PlaybackQueueResult {
 
 class PlaybackQueue final {
 public:
+    [[nodiscard]] PlaybackQueueResult replace_with_paths(engine::Session& session,
+        std::vector<std::filesystem::path> tracks) const;
+    [[nodiscard]] PlaybackQueueResult append_paths(engine::Session& session,
+        std::vector<std::filesystem::path> tracks) const;
     [[nodiscard]] PlaybackQueueResult replace_with_saved_playlist(engine::Session& session,
         const library::LibraryRepository& repository, const library::PlaylistId& id) const;
 };

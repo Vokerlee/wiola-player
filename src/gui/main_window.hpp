@@ -111,6 +111,9 @@ private:
     void open_folder();
     void open_workspace(const library::WorkspaceId& id);
     void rescan_workspace(const library::WorkspaceId& id, bool recursive);
+    void play_workspace_selection(WorkspaceDocument& document);
+    void append_workspace_selection(WorkspaceDocument& document);
+    void transfer_workspace(WorkspaceDocument& document, bool choose_destination);
     void show_workspace_navigation();
     void restore_workspace_documents();
     void save_workspace_documents();
@@ -118,6 +121,7 @@ private:
     void transfer_now_playing(bool choose_destination);
     void transfer_saved_playlist(const library::PlaylistId& id, SavedPlaylistDocument& document,
         bool choose_destination);
+    void choose_move_destination(const library::PlaylistId& id, SavedPlaylistDocument& document);
     void transfer_to(std::optional<library::PlaylistId> destination,
         const std::vector<app::MediaTransfer>& media);
     void choose_transfer_destination(const std::vector<app::MediaTransfer>& media);
