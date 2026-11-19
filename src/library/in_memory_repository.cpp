@@ -120,6 +120,11 @@ bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
     return true;
 }
 
+bool InMemoryRepository::delete_playlist(const PlaylistId& id)
+{
+    return playlists_.erase(id) != 0;
+}
+
 const PlaylistRecord* InMemoryRepository::playlist(const PlaylistId& id) const
 {
     const auto found{playlists_.find(id)};

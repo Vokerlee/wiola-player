@@ -39,6 +39,7 @@ public:
     PlaylistId create_playlist(std::string name) override;
     bool put_playlist(PlaylistRecord playlist) override;
     bool rename_playlist(const PlaylistId& id, std::string name) override;
+    bool delete_playlist(const PlaylistId& id) override;
     [[nodiscard]] const PlaylistRecord* playlist(const PlaylistId& id) const override;
     [[nodiscard]] std::vector<PlaylistRecord> playlists() const override;
     std::optional<PlaylistEntryId> append_track(const PlaylistId& playlist,

@@ -29,7 +29,7 @@ SavedPlaylistStorage::SavedPlaylistStorage(std::filesystem::path file)
 {
 }
 
-LibraryJsonError SavedPlaylistStorage::save(const library::InMemoryRepository& repository)
+LibraryJsonError SavedPlaylistStorage::save(const library::LibraryRepository& repository)
 {
     return storage_.save(LibrarySnapshot{
         .tracks = repository.tracks(),
