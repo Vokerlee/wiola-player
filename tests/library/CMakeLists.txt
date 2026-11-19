@@ -14,3 +14,8 @@ wiola_add_test(
     SOURCES in_memory_repository_test.cpp
     LIBS wiola_library
 )
+wiola_add_test(
+    library_fingerprint_test
+    SOURCES fingerprint_test.cpp
+    LIBS wiola_library
+)
