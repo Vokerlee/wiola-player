@@ -21,6 +21,7 @@
 #pragma once
 
 #include "equalizer_panel.hpp"
+#include "library_navigation.hpp"
 #include "now_playing_document.hpp"
 #include "player_actions.hpp"
 #include "player_presenter.hpp"
@@ -29,6 +30,8 @@
 #include "volume_control.hpp"
 
 #include <codec/decode/open.hpp>
+#include <engine/session.hpp>
+#include <library/in_memory_repository.hpp>
 #include <utils/units.hpp>
 
 #include <QLabel>
@@ -165,6 +168,7 @@ private:
     PlaylistControl playlist_;
     VolumeControl volume_;
     EqualizerControl equalizer_;
+    library::InMemoryRepository library_;
 
     QPushButton* open_button_{nullptr};
     QPushButton* previous_button_{nullptr};
@@ -179,6 +183,7 @@ private:
     SeekBar* position_bar_{nullptr};
     NowPlayingDocument* now_playing_{nullptr};
     QTabWidget* documents_{nullptr};
+    LibraryNavigation* navigation_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};
     QPushButton* equalizer_button_{nullptr};
