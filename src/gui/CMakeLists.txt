@@ -8,6 +8,7 @@ wiola_add_library(
         library_json.cpp
         library_storage.cpp
         main_window.cpp
+        now_playing_document.cpp
         playlist_control.cpp
         track_table_model.cpp
         track_table_view.cpp
