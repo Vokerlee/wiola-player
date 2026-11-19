@@ -1,1 +1,1 @@
-wiola_add_library(wiola_library SOURCES location.cpp)
+wiola_add_library(wiola_library SOURCES location.cpp in_memory_repository.cpp)
