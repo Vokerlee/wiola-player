@@ -6,6 +6,7 @@ wiola_add_library(
         equalizer_control.cpp
         equalizer_panel.cpp
         library_json.cpp
+        library_storage.cpp
         main_window.cpp
         playlist_control.cpp
         playlist_model.cpp

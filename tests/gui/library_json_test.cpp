@@ -20,6 +20,8 @@
 
 #include <gui/library_json.hpp>
 
+#include <QByteArray>
+
 #include <gtest/gtest.h>
 
 #include <string>
