@@ -28,6 +28,8 @@
 #include <QWidget>
 
 #include <functional>
+#include <set>
+#include <vector>
 
 namespace wiola::gui {
 
@@ -38,6 +40,7 @@ public:
     explicit StandardMetadataEditor(QWidget* parent = nullptr);
 
     void show_track(const library::TrackRecord* track);
+    void show_tracks(const std::vector<const library::TrackRecord*>& tracks);
     void show_status(const QString& status);
     void on_apply(Observer observer);
 
@@ -51,9 +54,12 @@ private:
 
     library::MediaId media_;
     library::ResolvedMetadata original_;
-    std::uint64_t revision_{0};
+    std::string selection_key_;
     bool initialized_{false};
     bool overrides_present_{false};
+    bool populating_{false};
+    std::set<QLineEdit*> touched_;
+    std::set<QLineEdit*> mixed_;
     QString feedback_;
     QLabel* status_{nullptr};
     QLineEdit* title_{nullptr};

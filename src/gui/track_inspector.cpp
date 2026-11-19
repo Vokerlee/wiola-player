@@ -130,9 +130,9 @@ void TrackInspector::show_custom_tags(const library::TrackRecord* track)
     custom_tags_->show_track(track);
 }
 
-void TrackInspector::show_standard_metadata(const library::TrackRecord* track)
+void TrackInspector::show_standard_metadata(const std::vector<const library::TrackRecord*>& tracks)
 {
-    standard_metadata_->show_track(track);
+    standard_metadata_->show_tracks(tracks);
 }
 
 } // namespace wiola::gui

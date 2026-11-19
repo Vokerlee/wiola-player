@@ -35,13 +35,13 @@
 #include "workspace_document.hpp"
 
 #include <app/active_playlist.hpp>
+#include <app/bulk_metadata_commands.hpp>
 #include <app/custom_tag_commands.hpp>
 #include <app/m3u_playlist.hpp>
 #include <app/media_revision_publisher.hpp>
 #include <app/metadata_merge.hpp>
 #include <app/playback_queue.hpp>
 #include <app/playlist_transfer.hpp>
-#include <app/standard_metadata_commands.hpp>
 #include <app/workspace_watcher.hpp>
 #include <codec/decode/open.hpp>
 #include <engine/session.hpp>
@@ -135,6 +135,7 @@ private:
     void publish_media_revision(app::BackgroundMetadataResult result);
     void finish_custom_tag(app::CustomTagResult result, const QString& success);
     void finish_standard_metadata(library::MediaId media, library::StandardFieldOverrides edit);
+    [[nodiscard]] std::vector<const library::TrackRecord*> selected_records();
     void refresh_playlist_documents();
     void restore_playlist_documents();
     void save_playlist_documents();
@@ -218,7 +219,7 @@ private:
     SavedPlaylistStorage playlist_storage_;
     app::SavedPlaylistCommands playlist_commands_;
     app::CustomTagCommands tag_commands_;
-    app::StandardMetadataCommands standard_commands_;
+    app::BulkMetadataCommands bulk_commands_;
     app::ActivePlaylist active_playlist_;
 
     QPushButton* open_button_{nullptr};

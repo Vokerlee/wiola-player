@@ -107,9 +107,9 @@ MainWindow::MainWindow(engine::Session& session)
           [this](const library::LibraryRepository& records) {
               return playlist_storage_.save(records) == LibraryJsonError::none;
           }}
-    , standard_commands_{library_, [this](const library::LibraryRepository& records) {
-                             return playlist_storage_.save(records) == LibraryJsonError::none;
-                         }}
+    , bulk_commands_{library_, [this](const library::LibraryRepository& records) {
+                         return playlist_storage_.save(records) == LibraryJsonError::none;
+                     }}
 {
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -1096,15 +1096,66 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
     show_status(success);
 }
 
-void MainWindow::finish_standard_metadata(library::MediaId media,
-    library::StandardFieldOverrides edit)
+std::vector<const library::TrackRecord*> MainWindow::selected_records()
 {
-    const app::StandardMetadataResult result = standard_commands_.apply(media, edit);
+    std::vector<const library::TrackRecord*> selected;
+
+    for (const auto& [id, document] : playlist_documents_) {
+        if (documents_->currentWidget() != document)
+            continue;
+
+        for (const library::PlaylistEntryId& entry : document->chosen_entries()) {
+            const auto& entries = library_.playlist(id)->entries;
+            const auto found = std::ranges::find(entries, entry, &library::PlaylistEntryRecord::id);
+            if (found != entries.end())
+                selected.push_back(library_.track(found->media));
+        }
+    }
+
+    for (const auto& [id, document] : workspace_documents_) {
+        if (documents_->currentWidget() != document)
+            continue;
+
+        for (const std::filesystem::path& path : document->chosen_paths())
+            selected.push_back(library_.track(library::media_id_for(path)));
+    }
+
+    if (documents_->currentWidget() == now_playing_) {
+        for (const engine::QueueEntryId entry : now_playing_->chosen_tracks()) {
+            const auto row = session_.playlist().index_of(entry);
+            if (row) {
+                selected.push_back(
+                    library_.track(library::media_id_for(session_.playlist().tracks()[*row].path()))
+                );
+            }
+        }
+    }
+
+    const auto without_missing = std::ranges::remove_if(selected,
+        [](const library::TrackRecord* track) { return track == nullptr; });
+    selected.erase(without_missing.begin(), without_missing.end());
+
+    if (selected.empty()) {
+        if (const engine::Track* current = session_.playlist().current()) {
+            if (const library::TrackRecord* record =
+                    library_.track(library::media_id_for(current->path())))
+                selected.push_back(record);
+        }
+    }
+
+    return selected;
+}
+
+void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFieldOverrides edit)
+{
+    std::vector<library::MediaId> selected;
+    for (const library::TrackRecord* record : selected_records())
+        selected.push_back(record->id);
+
+    const app::BulkMetadataResult result = bulk_commands_.apply(selected, edit);
 
     if (!result.succeeded()) {
-        const QString message = result.error == app::StandardMetadataError::missing_media
-            ? QString{"The track is no longer in the library"}
-            : result.error == app::StandardMetadataError::empty_edit
+        const QString message = result.error == app::StandardMetadataError::empty_edit
             ? QString{"There are no metadata changes to apply"}
             : QString{"Could not save the metadata changes"};
         inspector_->standard_metadata()->show_status(message);
@@ -1112,18 +1163,26 @@ void MainWindow::finish_standard_metadata(library::MediaId media,
         return;
     }
 
-    if (!result.changed) {
-        show_status("No metadata changes to save");
+    if (result.changed == 0) {
+        show_status(result.missing == 0
+                ? QString{"No metadata changes to save"}
+                : QString{"No selected tracks are available in the library"});
         return;
     }
 
     refresh_playlist_documents();
 
-    for (const auto& [id, document] : workspace_documents_)
-        static_cast<void>(document->show_media_revision(library_, media));
+    for (const auto& [id, document] : workspace_documents_) {
+        for (const library::TrackRecord* record : selected_records())
+            static_cast<void>(document->show_media_revision(library_, record->id));
+    }
 
     refresh();
-    show_status("Metadata updated in the application");
+    show_status(result.missing == 0
+            ? QString{"Metadata updated for %1 track(s)"}.arg(result.changed)
+            : QString{"Metadata updated for %1 track(s); %2 unavailable"}
+                  .arg(result.changed)
+                  .arg(result.missing));
 }
 
 void MainWindow::refresh_playlist_documents()
@@ -1390,7 +1449,7 @@ void MainWindow::refresh()
         current != nullptr ? library_.track(library::media_id_for(current->path())) : nullptr;
     inspector_->show_track(current);
     inspector_->show_custom_tags(record);
-    inspector_->show_standard_metadata(record);
+    inspector_->show_standard_metadata(selected_records());
 
     if (!playback.loaded) {
         show_play_button(false);

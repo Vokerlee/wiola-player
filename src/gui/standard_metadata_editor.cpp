@@ -127,7 +127,11 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
 
     for (QLineEdit* input : {title_, artist_, album_, genre_, year_, comment_, composer_,
              track_number_, disc_number_}) {
-        connect(input, &QLineEdit::textChanged, this, [this] {
+        connect(input, &QLineEdit::textChanged, this, [this, input] {
+            if (populating_)
+                return;
+
+            touched_.insert(input);
             feedback_.clear();
             update_actions();
         });
@@ -147,17 +151,59 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
 
 void StandardMetadataEditor::show_track(const library::TrackRecord* track)
 {
-    const library::MediaId next_media = track != nullptr ? track->id : library::MediaId{};
-    const std::uint64_t next_revision = track != nullptr ? track->metadata_revision : 0;
+    show_tracks(track != nullptr ? std::vector<const library::TrackRecord*>{track}
+                                 : std::vector<const library::TrackRecord*>{});
+}
 
-    if (initialized_ && media_ == next_media && revision_ == next_revision)
+void StandardMetadataEditor::show_tracks(const std::vector<const library::TrackRecord*>& tracks)
+{
+    std::vector<library::ResolvedMetadata> resolved;
+    std::string next_key;
+    library::MediaId next_media;
+    bool next_overrides = false;
+
+    for (const library::TrackRecord* track : tracks) {
+        if (track == nullptr)
+            continue;
+
+        if (!next_media.valid())
+            next_media = track->id;
+
+        next_key += track->id.value + ":" + std::to_string(track->metadata_revision) + ";";
+        next_overrides = next_overrides || any_override(track->overrides);
+        resolved.push_back(library::resolve_metadata(*track));
+    }
+
+    if (initialized_ && selection_key_ == next_key)
         return;
 
     media_ = next_media;
-    revision_ = next_revision;
+    selection_key_ = next_key;
     initialized_ = true;
-    overrides_present_ = track != nullptr && any_override(track->overrides);
-    original_ = track != nullptr ? library::resolve_metadata(*track) : library::ResolvedMetadata{};
+    overrides_present_ = next_overrides;
+    original_ = resolved.empty() ? library::ResolvedMetadata{} : resolved.front();
+    mixed_.clear();
+
+    for (std::size_t index = 1; index < resolved.size(); ++index) {
+        const auto& current = resolved[index];
+        const auto mix = [this](QLineEdit* field, auto& original, const auto& value) {
+            if (original != value) {
+                original = std::decay_t<decltype(original)>{};
+                mixed_.insert(field);
+            }
+        };
+
+        mix(title_, original_.title, current.title);
+        mix(artist_, original_.artist, current.artist);
+        mix(album_, original_.album, current.album);
+        mix(genre_, original_.genre, current.genre);
+        mix(year_, original_.year, current.year);
+        mix(comment_, original_.comment, current.comment);
+        mix(composer_, original_.composer, current.composer);
+        mix(track_number_, original_.track_number, current.track_number);
+        mix(disc_number_, original_.disc_number, current.disc_number);
+    }
+
     feedback_.clear();
     populate();
 }
@@ -180,15 +226,22 @@ library::ResolvedMetadata StandardMetadataEditor::current() const
 library::StandardFieldOverrides StandardMetadataEditor::overrides() const
 {
     const library::ResolvedMetadata values = current();
-    return {.title = values.title,
-        .artist = values.artist,
-        .album = values.album,
-        .genre = values.genre,
-        .comment = values.comment,
-        .composer = values.composer,
-        .year = values.year,
-        .track_number = values.track_number,
-        .disc_number = values.disc_number};
+    library::StandardFieldOverrides result;
+    const auto assign = [this](QLineEdit* field, auto& target, const auto& value) {
+        if (touched_.contains(field))
+            target = value;
+    };
+
+    assign(title_, result.title, values.title);
+    assign(artist_, result.artist, values.artist);
+    assign(album_, result.album, values.album);
+    assign(genre_, result.genre, values.genre);
+    assign(year_, result.year, values.year);
+    assign(comment_, result.comment, values.comment);
+    assign(composer_, result.composer, values.composer);
+    assign(track_number_, result.track_number, values.track_number);
+    assign(disc_number_, result.disc_number, values.disc_number);
+    return result;
 }
 
 bool StandardMetadataEditor::valid_numbers() const
@@ -199,11 +252,18 @@ bool StandardMetadataEditor::valid_numbers() const
 
 bool StandardMetadataEditor::dirty() const
 {
-    return media_.valid() && current() != original_;
+    return media_.valid() && !touched_.empty() && current() != original_;
 }
 
 void StandardMetadataEditor::populate()
 {
+    populating_ = true;
+    touched_.clear();
+
+    for (QLineEdit* input :
+        {title_, artist_, album_, genre_, year_, comment_, composer_, track_number_, disc_number_})
+        input->setPlaceholderText(mixed_.contains(input) ? "Mixed values" : QString{});
+
     title_->setText(qt(original_.title));
     artist_->setText(qt(original_.artist));
     album_->setText(qt(original_.album));
@@ -213,6 +273,7 @@ void StandardMetadataEditor::populate()
     composer_->setText(qt(original_.composer));
     track_number_->setText(number(original_.track_number));
     disc_number_->setText(number(original_.disc_number));
+    populating_ = false;
     update_actions();
 }
 
@@ -224,7 +285,7 @@ void StandardMetadataEditor::update_actions()
 
     const bool changed = dirty();
     apply_->setEnabled(changed && valid_numbers());
-    cancel_->setEnabled(changed);
+    cancel_->setEnabled(!touched_.empty());
 
     if (!media_.valid())
         status_->setText("Select a track to edit standard metadata.");

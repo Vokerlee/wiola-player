@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_bulk_metadata_commands_test
+    SOURCES bulk_metadata_commands_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_custom_tag_commands_test
     SOURCES custom_tag_commands_test.cpp
     LIBS wiola_app
