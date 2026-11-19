@@ -93,4 +93,21 @@ TEST_F(OptimisticMetadataEdits, RejectsRevisionConflictsBeforeChangingRecords)
     EXPECT_EQ(repository.track(media)->metadata_revision, 0);
 }
 
+TEST_F(OptimisticMetadataEdits, ReloadClearsApplicationOverridesTransactionally)
+{
+    wiola::library::StandardFieldOverrides edit;
+    edit.title = "Application";
+    wiola::app::OptimisticMetadataEdits commands{repository,
+        [](const wiola::library::LibraryRepository&) { return true; },
+        [this](const wiola::app::MetadataEditOutcome& outcome) { outcomes.push_back(outcome); }};
+    ASSERT_EQ(commands.submit({media}, edit).state, wiola::app::MetadataEditState::succeeded);
+    outcomes.clear();
+
+    const auto result = commands.reset({media});
+    ASSERT_EQ(outcomes.size(), 2);
+    EXPECT_EQ(result.state, wiola::app::MetadataEditState::succeeded);
+    EXPECT_EQ(result.changed, 1);
+    EXPECT_TRUE(repository.track(media)->overrides == wiola::library::StandardFieldOverrides{});
+}
+
 } // namespace

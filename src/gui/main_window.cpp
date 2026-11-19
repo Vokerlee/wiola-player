@@ -274,6 +274,9 @@ MainWindow::MainWindow(engine::Session& session)
                                                   library::StandardFieldOverrides edit) {
         finish_standard_metadata(media, std::move(edit));
     });
+    inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
+        resolve_metadata_conflict(action);
+    });
 
     workspace_scans_ =
         std::make_unique<app::WorkspaceScanPublisher>(*this, [this](app::WorkspaceScanBatch batch) {
@@ -1161,6 +1164,8 @@ void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFie
                 .fingerprint = record->fingerprint});
     }
 
+    pending_metadata_edit_ = PendingMetadataEdit{.media = selected, .edit = edit};
+
     const auto outcome = optimistic_edits_.submit(selected, edit, expected);
     if (outcome.state == app::MetadataEditState::failed ||
         outcome.state == app::MetadataEditState::conflicted)
@@ -1168,6 +1173,34 @@ void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFie
                     app::MetadataEditState::conflicted
                 ? QString{"The track changed since editing started; review before applying"}
                 : QString{"Could not save the metadata changes"});
+}
+
+void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
+{
+    if (action == MetadataConflictAction::review)
+        return;
+
+    if (!pending_metadata_edit_)
+        return;
+
+    if (action == MetadataConflictAction::keep) {
+        pending_metadata_edit_.reset();
+        inspector_->conflicts()->hide_conflict();
+        show_status("Kept current application metadata");
+        return;
+    }
+
+    app::MetadataEditOutcome outcome;
+
+    if (action == MetadataConflictAction::reload) {
+        outcome = optimistic_edits_.reset(pending_metadata_edit_->media);
+    } else {
+        outcome =
+            optimistic_edits_.submit(pending_metadata_edit_->media, pending_metadata_edit_->edit);
+    }
+
+    if (outcome.state == app::MetadataEditState::succeeded)
+        pending_metadata_edit_.reset();
 }
 
 void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcome)
@@ -1183,9 +1216,11 @@ void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcom
 
     switch (outcome.state) {
     case app::MetadataEditState::queued:
+        inspector_->conflicts()->hide_conflict();
         show_status(QString{"Saving metadata for %1 track(s)"}.arg(outcome.changed));
         break;
     case app::MetadataEditState::succeeded:
+        inspector_->conflicts()->hide_conflict();
         if (outcome.changed == 0) {
             show_status(outcome.missing == 0
                     ? QString{"No metadata changes to save"}
@@ -1199,11 +1234,15 @@ void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcom
         }
         break;
     case app::MetadataEditState::failed:
+        inspector_->conflicts()->hide_conflict();
         show_status(outcome.error == app::StandardMetadataError::empty_edit
                 ? QString{"There are no metadata changes to apply"}
                 : QString{"Could not save the metadata changes"});
         break;
     case app::MetadataEditState::conflicted:
+        inspector_->conflicts()->show_conflict(
+            "Embedded metadata changed after editing started. Choose how to resolve it."
+        );
         show_status("The track changed since editing started; review before applying");
         break;
     }
