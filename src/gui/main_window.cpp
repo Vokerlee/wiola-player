@@ -227,9 +227,6 @@ MainWindow::MainWindow(engine::Session& session)
     documents_->setDocumentMode(true);
     documents_->addTab(now_playing_, "Now Playing");
     documents_->addTab(placeholder_document(documents_,
-                           "Saved playlists will open here without changing the playback queue."),
-        "Playlist");
-    documents_->addTab(placeholder_document(documents_,
                            "Folder workspaces will open here without changing the playback queue."),
         "Folder Workspace");
 
@@ -255,12 +252,15 @@ MainWindow::MainWindow(engine::Session& session)
     document_area->setSizes({180, 620, 220});
     layout->addWidget(document_area);
 
-    navigation_->on_playlist_chosen([this](library::PlaylistId) {
+    navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
+    navigation_->on_workspace_chosen([this](library::WorkspaceId) {
         documents_->setCurrentIndex(1);
     });
-    navigation_->on_workspace_chosen([this](library::WorkspaceId) {
-        documents_->setCurrentIndex(2);
-    });
+    playlist_manager_->on_changed([this] { refresh_playlist_documents(); });
+    connect(documents_, &QTabWidget::currentChanged, this,
+        [this](int) { save_playlist_documents(); });
+
+    restore_playlist_documents();
 
     // What is done to the queue, under the queue it is done to.
     QGroupBox* queue_group = new QGroupBox{"Queue commands", this};
@@ -423,6 +423,80 @@ void MainWindow::play_chosen(engine::QueueEntryId id)
         static_cast<void>(presenter_.play_track(*index));
 
     refresh();
+}
+
+void MainWindow::open_playlist(const library::PlaylistId& id)
+{
+    if (const auto found = playlist_documents_.find(id); found != playlist_documents_.end()) {
+        documents_->setCurrentWidget(found->second);
+        save_playlist_documents();
+        return;
+    }
+
+    SavedPlaylistDocument* document = new SavedPlaylistDocument{this};
+    if (!document->show_playlist(library_, id)) {
+        delete document;
+        return;
+    }
+
+    playlist_documents_.emplace(id, document);
+    const QString name = QString::fromStdString(library_.playlist(id)->name);
+    documents_->addTab(document, name);
+    documents_->setCurrentWidget(document);
+    save_playlist_documents();
+}
+
+void MainWindow::refresh_playlist_documents()
+{
+    for (auto it = playlist_documents_.begin(); it != playlist_documents_.end();) {
+        const library::PlaylistRecord* playlist = library_.playlist(it->first);
+        SavedPlaylistDocument* document = it->second;
+
+        if (playlist == nullptr) {
+            documents_->removeTab(documents_->indexOf(document));
+            document->deleteLater();
+            it = playlist_documents_.erase(it);
+            continue;
+        }
+
+        static_cast<void>(document->show_playlist(library_, it->first));
+        documents_->setTabText(documents_->indexOf(document),
+            QString::fromStdString(playlist->name));
+        ++it;
+    }
+
+    save_playlist_documents();
+}
+
+void MainWindow::restore_playlist_documents()
+{
+    const library::PlaylistId current_id{
+        settings_.value("documents/current_playlist").toString().toStdString()};
+    const QStringList open = settings_.value("documents/open_playlists").toStringList();
+    for (const QString& id : open)
+        open_playlist(library::PlaylistId{id.toStdString()});
+
+    const auto current = playlist_documents_.find(current_id);
+    if (current != playlist_documents_.end())
+        documents_->setCurrentWidget(current->second);
+    else
+        documents_->setCurrentIndex(0);
+}
+
+void MainWindow::save_playlist_documents()
+{
+    QStringList open;
+    QString current;
+
+    for (const auto& [id, document] : playlist_documents_) {
+        open.push_back(QString::fromStdString(id.value));
+        if (documents_->currentWidget() == document)
+            current = QString::fromStdString(id.value);
+    }
+
+    settings_.setValue("documents/open_playlists", open);
+    settings_.setValue("documents/current_playlist", current);
+    settings_.sync();
 }
 
 void MainWindow::play_previous()

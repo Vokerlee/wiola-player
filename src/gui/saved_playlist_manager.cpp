@@ -163,7 +163,16 @@ bool SavedPlaylistManager::finish(bool succeeded, const library::PlaylistId& id)
         navigation_.select_playlist(id);
 
     save_state_->setText("All changes saved");
+
+    if (changed_observer_)
+        changed_observer_();
+
     return true;
+}
+
+void SavedPlaylistManager::on_changed(std::function<void()> observer)
+{
+    changed_observer_ = std::move(observer);
 }
 
 void SavedPlaylistManager::show_save_failed()
