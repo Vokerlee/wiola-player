@@ -28,6 +28,8 @@
 #include <QFileDialog>
 #include <QFont>
 #include <QHBoxLayout>
+#include <QMenu>
+#include <QMenuBar>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -71,6 +73,9 @@ MainWindow::MainWindow(engine::Session& session)
 {
     setWindowTitle("Wiola Player");
     setMinimumWidth(tokens.player.window_min_width);
+
+    auto* central = new QWidget{this};
+    setCentralWidget(central);
 
     // Every widget is given this window as its parent, so Qt owns them and destroys them with it.
     open_button_ = new QPushButton{this};
@@ -166,7 +171,7 @@ MainWindow::MainWindow(engine::Session& session)
     list->addStretch();
     list->addWidget(equalizer_button_);
 
-    auto* layout = new QVBoxLayout{this};
+    auto* layout = new QVBoxLayout{central};
     layout->addWidget(track_label_);
     layout->addWidget(position_bar_);
     layout->addLayout(times);
@@ -206,6 +211,23 @@ MainWindow::MainWindow(engine::Session& session)
         &MainWindow::clear_queue);
     connect(actions_.action(PlayerAction::equalizer), &QAction::triggered, this,
         &MainWindow::show_equalizer);
+
+    QMenu* file = menuBar()->addMenu("&File");
+    file->addAction(actions_.action(PlayerAction::open));
+    file->addAction(actions_.action(PlayerAction::add));
+    file->addAction(actions_.action(PlayerAction::clear));
+
+    QMenu* playback = menuBar()->addMenu("&Playback");
+    playback->addAction(actions_.action(PlayerAction::previous));
+    playback->addAction(actions_.action(PlayerAction::play));
+    playback->addAction(actions_.action(PlayerAction::next));
+    playback->addAction(actions_.action(PlayerAction::stop));
+    playback->addSeparator();
+    playback->addAction(actions_.action(PlayerAction::repeat));
+    playback->addAction(actions_.action(PlayerAction::shuffle));
+
+    QMenu* tools = menuBar()->addMenu("&Tools");
+    tools->addAction(actions_.action(PlayerAction::equalizer));
 
     connect(playlist_view_, &PlaylistView::track_chosen, this, &MainWindow::play_chosen);
     connect(playlist_view_, &PlaylistView::removal_asked, this, &MainWindow::remove_chosen);

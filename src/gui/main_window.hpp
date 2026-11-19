@@ -32,10 +32,10 @@
 #include <utils/units.hpp>
 
 #include <QLabel>
+#include <QMainWindow>
 #include <QPushButton>
 #include <QSettings>
 #include <QSlider>
-#include <QWidget>
 
 #include <filesystem>
 #include <memory>
@@ -53,7 +53,7 @@ namespace wiola::gui {
  * A window opens with nothing loaded and is given a track later, so that choosing one is an
  * ordinary thing to do rather than something only the command line can arrange.
  */
-class MainWindow final : public QWidget {
+class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
