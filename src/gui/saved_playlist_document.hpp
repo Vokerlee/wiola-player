@@ -33,6 +33,8 @@
 
 namespace wiola::gui {
 
+class TrackSearchPanel;
+
 class SavedPlaylistDocument final : public QWidget {
 public:
     explicit SavedPlaylistDocument(QWidget* parent = nullptr);
@@ -51,11 +53,13 @@ public:
 
 private:
     void update_heading();
+    void update_results();
 
     QLabel* heading_{nullptr};
     QPushButton* play_button_{nullptr};
     QPushButton* active_button_{nullptr};
     TrackTableView* table_{nullptr};
+    TrackSearchPanel* search_{nullptr};
     engine::Playlist rows_;
     std::vector<library::PlaylistEntryRecord> entries_;
     QString name_;

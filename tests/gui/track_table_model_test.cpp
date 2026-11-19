@@ -216,6 +216,33 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     EXPECT_EQ(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Jazz, Live");
 }
 
+TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::gui::TrackTableModel model{styled};
+    wiola::engine::Playlist playlist;
+    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.describe(id_at(playlist, 0),
+        {.title = "My Song", .artist = "The Artist", .album = "Great Album", .duration = {}});
+    playlist.describe(id_at(playlist, 1),
+        {.title = "My Song", .artist = "Other Artist", .album = "Great Album", .duration = {}});
+    model.show_library(repository);
+    model.show_tracks(playlist.tracks());
+
+    model.search_by({.title = "song", .artist = "the artist", .album = "great", .tags = {}});
+
+    EXPECT_EQ(model.rowCount(), 1);
+    EXPECT_EQ(model.total_count(), 2);
+    EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 0));
+
+    model.search_by({.title = "song", .artist = "missing", .album = "great", .tags = {}});
+    EXPECT_EQ(model.rowCount(), 0);
+    EXPECT_EQ(model.total_count(), 2);
+
+    model.search_by({});
+    EXPECT_EQ(model.rowCount(), 2);
+}
+
 int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");

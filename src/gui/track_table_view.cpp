@@ -358,6 +358,24 @@ void TrackTableView::restore_selection(const std::vector<engine::QueueEntryId>& 
     }
 }
 
+void TrackTableView::search_by(const library::SearchQuery& query)
+{
+    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
+    const auto current_id = model_.track_id(currentIndex());
+    model_.search_by(query);
+    restore_selection(selected, current_id);
+}
+
+std::size_t TrackTableView::visible_count() const
+{
+    return static_cast<std::size_t>(model_.rowCount());
+}
+
+std::size_t TrackTableView::total_count() const
+{
+    return model_.total_count();
+}
+
 std::vector<engine::QueueEntryId> TrackTableView::displayed_tracks() const
 {
     std::vector<engine::QueueEntryId> displayed;

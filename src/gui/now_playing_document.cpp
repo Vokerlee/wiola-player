@@ -20,6 +20,7 @@
 
 #include "now_playing_document.hpp"
 
+#include "track_search_panel.hpp"
 #include "track_table_view.hpp"
 
 #include <QLabel>
@@ -38,10 +39,16 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
 
     table_ = new TrackTableView{this};
     table_->setAccessibleName("Now Playing tracks");
+    search_ = new TrackSearchPanel{this};
+    search_->on_changed([this](library::SearchQuery query) {
+        table_->search_by(query);
+        update_results();
+    });
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading);
+    layout->addWidget(search_);
     layout->addWidget(table_);
 
     connect(table_, &TrackTableView::track_chosen, this, &NowPlayingDocument::track_chosen);
@@ -60,11 +67,18 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
         ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
         : std::nullopt;
     table_->show_tracks(playlist.tracks(), current);
+    update_results();
 }
 
 void NowPlayingDocument::show_library(const library::LibraryRepository& repository)
 {
     table_->show_library(repository);
+    update_results();
+}
+
+void NowPlayingDocument::update_results()
+{
+    search_->show_results(table_->visible_count(), table_->total_count());
 }
 
 std::vector<std::filesystem::path>
