@@ -185,8 +185,18 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
         EXPECT_EQ(documents->tabText(2), "Road");
         EXPECT_FALSE(play_button->isEnabled());
 
+        wiola::gui::SavedPlaylistDocument* editor =
+            static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(2));
+        QPushButton* use_active = editor->findChild<QPushButton*>("useActivePlaylist");
+        ASSERT_NE(use_active, nullptr);
+        use_active->click();
+        EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(),
+            "Road — Active destination");
+
         documents->setCurrentIndex(0);
         EXPECT_EQ(window.windowTitle(), "Wiola Player");
+        EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(),
+            "Road — Active destination");
         EXPECT_FALSE(play_button->isEnabled());
     }
 
@@ -200,6 +210,10 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
     ASSERT_NE(play_button, nullptr);
     ASSERT_EQ(documents->count(), 3);
     EXPECT_EQ(documents->tabText(2), "Road");
+    EXPECT_EQ(static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(2))
+                  ->findChild<QLabel*>("savedPlaylistHeading")
+                  ->text(),
+        "Road — Active destination");
     EXPECT_EQ(documents->currentIndex(), 0);
     EXPECT_FALSE(play_button->isEnabled());
 }

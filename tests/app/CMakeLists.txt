@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_active_playlist_test
+    SOURCES active_playlist_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_playback_queue_test
     SOURCES playback_queue_test.cpp
     LIBS wiola_app

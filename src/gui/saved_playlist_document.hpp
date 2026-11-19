@@ -38,18 +38,26 @@ public:
     explicit SavedPlaylistDocument(QWidget* parent = nullptr);
 
     bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
+    void set_active(bool active);
     [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
     void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
     void on_play_requested(std::function<void()> observer);
+    void on_active_requested(std::function<void()> observer);
 
 private:
+    void update_heading();
+
     QLabel* heading_{nullptr};
     QPushButton* play_button_{nullptr};
+    QPushButton* active_button_{nullptr};
     TrackTableView* table_{nullptr};
     engine::Playlist rows_;
     std::vector<library::PlaylistEntryRecord> entries_;
+    QString name_;
+    bool active_destination_{false};
     std::function<void(library::PlaylistEntryId)> entry_observer_;
     std::function<void()> playback_observer_;
+    std::function<void()> active_observer_;
 };
 
 } // namespace wiola::gui

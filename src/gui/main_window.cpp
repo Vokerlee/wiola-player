@@ -149,6 +149,10 @@ MainWindow::MainWindow(engine::Session& session)
     if (playlist_storage_.restore(library_) != LibraryJsonError::none)
         show_status("Could not restore the saved library");
 
+    const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
+    if (library_.playlist(active) != nullptr)
+        static_cast<void>(active_playlist_.set(active));
+
     const PlayerSettings restored{QtSettingsAdapter{settings_}.read(volume_.scale(),
         presenter_.equalizer_control().config())};
     volume_.apply_restored(restored.volume_position, restored.boosted);
@@ -441,12 +445,27 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
     }
 
     playlist_documents_.emplace(id, document);
+    document->set_active(active_playlist_.id() == id);
+    document->on_active_requested([this, id] { activate_playlist(id); });
     document->on_play_requested([this, id] { play_saved_playlist(id); });
 
     const QString name = QString::fromStdString(library_.playlist(id)->name);
     documents_->addTab(document, name);
     documents_->setCurrentWidget(document);
     save_playlist_documents();
+}
+
+void MainWindow::activate_playlist(const library::PlaylistId& id)
+{
+    if (library_.playlist(id) == nullptr)
+        return;
+
+    static_cast<void>(active_playlist_.set(id));
+    settings_.setValue("playlists/active", QString::fromStdString(id.value));
+    settings_.sync();
+
+    for (const auto& [playlist, document] : playlist_documents_)
+        document->set_active(playlist == id);
 }
 
 void MainWindow::play_saved_playlist(const library::PlaylistId& id)
@@ -477,6 +496,10 @@ void MainWindow::refresh_playlist_documents()
         if (playlist == nullptr) {
             documents_->removeTab(documents_->indexOf(document));
             document->deleteLater();
+
+            if (active_playlist_.clear_if(it->first))
+                settings_.remove("playlists/active");
+
             it = playlist_documents_.erase(it);
             continue;
         }
