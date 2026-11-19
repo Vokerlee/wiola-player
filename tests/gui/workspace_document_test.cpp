@@ -20,6 +20,9 @@
 
 #include <gui/workspace_document.hpp>
 
+#include <library/in_memory_repository.hpp>
+#include <library/location.hpp>
+
 #include <QApplication>
 #include <QLabel>
 
@@ -168,6 +171,50 @@ TEST(WorkspaceDocument, RoutesSelectedPathsToPlaybackAndTransferCallbacks)
     EXPECT_EQ(active, 1);
     EXPECT_EQ(destination, 1);
     EXPECT_EQ(document.chosen_paths(), std::vector<std::filesystem::path>{"two.flac"});
+}
+
+TEST(WorkspaceDocument, AppliesMediaRevisionsByIdentityWithoutLosingSelection)
+{
+    wiola::gui::WorkspaceDocument document;
+    const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
+        .root = "/music",
+        .recursive = true};
+    document.begin(workspace, 1);
+    ASSERT_TRUE(document.show_batch({
+        .workspace = workspace.id,
+        .generation = 1,
+        .tracks = {"/music/one.wav", "/music/two.wav"},
+        .status = wiola::app::WorkspaceScanStatus::complete
+    }));
+
+    wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
+    table->selectionModel()->select(table->model()->index(1, 0),
+        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    const std::vector<wiola::engine::QueueEntryId> selected = document.chosen_tracks();
+
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = wiola::library::media_id_for("/music/two.wav");
+    record.embedded.title = "Embedded title";
+    record.embedded.artist = "Learned artist";
+    record.overrides.title = "User title";
+    record.tags = {
+        {.id = wiola::library::TagId{"tag"}, .key = "mood", .value = "Calm"}
+    };
+    ASSERT_TRUE(repository.put_track(record));
+
+    ASSERT_TRUE(document.show_media_revision(repository, record.id));
+
+    EXPECT_EQ(table->model()->data(table->model()->index(1, 1), Qt::DisplayRole).toString(),
+        "User title");
+    EXPECT_EQ(table->model()->data(table->model()->index(1, 2), Qt::DisplayRole).toString(),
+        "Learned artist");
+    EXPECT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(), "one");
+    EXPECT_EQ(document.chosen_tracks(), selected);
+    EXPECT_EQ(repository.track(record.id)->tags.size(), 1);
+    EXPECT_EQ(repository.track(record.id)->overrides.title, "User title");
+    EXPECT_FALSE(document.show_media_revision(repository,
+        wiola::library::media_id_for("/music/missing.wav")));
 }
 
 } // namespace

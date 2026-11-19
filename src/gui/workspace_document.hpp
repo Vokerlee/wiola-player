@@ -25,6 +25,7 @@
 #include <app/workspace_scan_publisher.hpp>
 
 #include <engine/queue/playlist.hpp>
+#include <library/repository.hpp>
 
 #include <QCheckBox>
 #include <QLabel>
@@ -40,6 +41,8 @@ public:
 
     void begin(const library::WorkspaceRecord& workspace, std::uint64_t generation);
     bool show_batch(const app::WorkspaceScanBatch& batch);
+    bool show_media_revision(const library::LibraryRepository& repository,
+        const library::MediaId& media);
     void show_cancelled();
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
     [[nodiscard]] std::vector<std::filesystem::path> chosen_paths() const;

@@ -34,6 +34,7 @@ namespace wiola::app {
 
 struct BackgroundMetadataResult {
     library::MediaId media;
+    std::filesystem::path location;
     std::optional<media::Metadata> metadata;
     std::optional<media::Error> error;
 };

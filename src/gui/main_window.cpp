@@ -25,7 +25,9 @@
 #include "presentation_tokens.hpp"
 #include "qt_path_adapter.hpp"
 
+#include <codec/provider.hpp>
 #include <library/location.hpp>
+#include <library/metadata.hpp>
 
 #include <QCursor>
 #include <QFileDialog>
@@ -248,9 +250,22 @@ MainWindow::MainWindow(engine::Session& session)
     workspace_scans_ =
         std::make_unique<app::WorkspaceScanPublisher>(*this, [this](app::WorkspaceScanBatch batch) {
             const auto found = workspace_documents_.find(batch.workspace);
-            if (found != workspace_documents_.end())
-                static_cast<void>(found->second->show_batch(batch));
+            if (found == workspace_documents_.end() || !found->second->show_batch(batch))
+                return;
+
+            for (const std::filesystem::path& location : batch.tracks)
+                request_metadata(location);
         });
+
+    media_revisions_ = std::make_unique<app::MediaRevisionPublisher>(
+        *this, std::make_shared<codec::LocalMediaProvider>(),
+        [this](app::BackgroundMetadataResult result) { publish_media_revision(std::move(result)); }
+    );
+
+    for (const library::TrackRecord& track : library_.tracks()) {
+        if (!track.locations.empty())
+            request_metadata(track.locations.front());
+    }
 
     workspace_watcher_ = std::make_unique<app::WorkspaceWatcher>(this);
     workspace_watcher_->on_changed([this](library::WorkspaceId id) {
@@ -929,6 +944,56 @@ void MainWindow::play_saved_playlist(const library::PlaylistId& id)
             ? QString{"opening saved playlist..."}
             : QString{"%1 unavailable track(s) skipped"}.arg(result.unavailable));
     refresh();
+}
+
+void MainWindow::request_metadata(const std::filesystem::path& location)
+{
+    if (!media_revisions_)
+        return;
+
+    static_cast<void>(media_revisions_->enqueue(library::media_id_for(location), location));
+}
+
+void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
+{
+    if (!result.metadata) {
+        show_status("Could not read metadata for " +
+            QtPathAdapter::to_qt(result.location.filename()));
+        return;
+    }
+
+    const auto previous_tracks = library_.tracks();
+    const auto previous_playlists = library_.playlists();
+    const auto previous_workspaces = library_.workspaces();
+    bool created = false;
+
+    if (library_.track(result.media) == nullptr) {
+        library::TrackRecord record;
+        record.id = result.media;
+        record.locations = {result.location};
+        created = library_.put_track(std::move(record));
+
+        if (!created) {
+            show_status("Could not add the discovered track to the library");
+            return;
+        }
+    }
+
+    const bool merged = metadata_merge_.merge(library_, result.media, *result.metadata);
+    if (!created && !merged)
+        return;
+
+    if (playlist_storage_.save(library_) != LibraryJsonError::none) {
+        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
+            previous_workspaces));
+        show_status("Could not save the learned metadata");
+        return;
+    }
+
+    refresh_playlist_documents();
+
+    for (const auto& [id, document] : workspace_documents_)
+        static_cast<void>(document->show_media_revision(library_, result.media));
 }
 
 void MainWindow::refresh_playlist_documents()
