@@ -53,7 +53,7 @@ public:
     [[nodiscard]] virtual std::vector<WorkspaceRecord> workspaces() const = 0;
     virtual bool delete_workspace(const WorkspaceId& id) = 0;
 
-    /// Adds one value. Exact duplicates and more than 256 tags on one track are rejected.
+    /// Adds one trimmed value. Normalized duplicates, invalid text, and overflow are rejected.
     virtual TagId add_tag(const MediaId& media, std::string key, std::string value) = 0;
     virtual bool remove_tag(const MediaId& media, const TagId& tag) = 0;
 };

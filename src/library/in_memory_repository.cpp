@@ -20,22 +20,30 @@
 
 #include "in_memory_repository.hpp"
 
+#include "tags.hpp"
+
 #include <algorithm>
 #include <set>
 #include <utility>
 
 namespace wiola::library {
 
-namespace {
-
-constexpr std::size_t max_tags_per_track{256};
-
-}
-
 bool InMemoryRepository::put_track(TrackRecord track)
 {
-    if (!track.id.valid())
+    if (!track.id.valid() || track.tags.size() > max_tags_per_track)
         return false;
+
+    std::set<std::pair<std::string, std::string>> values;
+
+    for (const TagRecord& tag : track.tags) {
+        const auto candidate = make_tag_value(tag.key, tag.value);
+        const auto normalized =
+            std::pair{normalized_tag_text(tag.key), normalized_tag_text(tag.value)};
+
+        if (!tag.id.valid() || !candidate || candidate->key != tag.key ||
+            candidate->value != tag.value || !values.insert(normalized).second)
+            return false;
+    }
 
     const MediaId id{track.id};
     tracks_.insert_or_assign(id, std::move(track));
@@ -225,18 +233,25 @@ bool InMemoryRepository::delete_workspace(const WorkspaceId& id)
 TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::string value)
 {
     TrackRecord* found{tracks_.contains(media) ? &tracks_.at(media) : nullptr};
+    auto candidate = make_tag_value(std::move(key), std::move(value));
 
-    if (found == nullptr || found->tags.size() >= max_tags_per_track)
+    if (found == nullptr || !candidate || found->tags.size() >= max_tags_per_track)
         return {};
 
-    const auto duplicate = std::ranges::find_if(found->tags,
-        [&key, &value](const TagRecord& tag) { return tag.key == key && tag.value == value; });
+    const std::string normalized_key = normalized_tag_text(candidate->key);
+    const std::string normalized_value = normalized_tag_text(candidate->value);
+    const auto duplicate = std::ranges::find_if(found->tags, [&](const TagRecord& tag) {
+        return normalized_tag_text(tag.key) == normalized_key &&
+            normalized_tag_text(tag.value) == normalized_value;
+    });
 
     if (duplicate != found->tags.end())
         return {};
 
     const TagId id{next_tag_id()};
-    found->tags.push_back(TagRecord{.id = id, .key = std::move(key), .value = std::move(value)});
+    found->tags.push_back(
+        TagRecord{.id = id, .key = std::move(candidate->key), .value = std::move(candidate->value)}
+    );
     ++found->metadata_revision;
 
     return id;
