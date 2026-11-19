@@ -43,6 +43,7 @@ public:
     bool show_batch(const app::WorkspaceScanBatch& batch);
     bool show_media_revision(const library::LibraryRepository& repository,
         const library::MediaId& media);
+    void show_library(const library::LibraryRepository& repository);
     void show_cancelled();
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
     [[nodiscard]] std::vector<std::filesystem::path> chosen_paths() const;

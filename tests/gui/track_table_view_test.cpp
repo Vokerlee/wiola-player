@@ -21,6 +21,8 @@
 #include <gui/track_table_view.hpp>
 
 #include <engine/queue/playlist.hpp>
+#include <library/in_memory_repository.hpp>
+#include <library/location.hpp>
 
 #include <QAction>
 #include <QApplication>
@@ -144,6 +146,48 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
     EXPECT_EQ(selected[0], id_at(playlist, 0));
     EXPECT_EQ(selected[1], id_at(playlist, 2));
     EXPECT_EQ(view.currentIndex().row(), 0);
+}
+
+TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
+{
+    wiola::gui::TrackTableView view;
+    wiola::engine::Playlist playlist;
+    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    view.show_tracks(playlist.tracks());
+    view.selectionModel()->select(view.model()->index(0, 0),
+        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = wiola::library::media_id_for("first.wav");
+    record.tags = {
+        {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"}
+    };
+    ASSERT_TRUE(repository.put_track(record));
+
+    view.show_library(repository);
+    QAction* genre = action(*view.horizontalHeader(), "Tag: Genre");
+    ASSERT_NE(genre, nullptr);
+
+    genre->setChecked(true);
+    EXPECT_EQ(view.model()->columnCount(), 6);
+    EXPECT_EQ(view.model()->data(view.model()->index(0, 5), Qt::DisplayRole).toString(), "Jazz");
+    EXPECT_EQ(view.chosen_tracks(), std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
+
+    record.tags.front().value = "Fusion";
+    ++record.metadata_revision;
+    ASSERT_TRUE(repository.put_track(record));
+    ASSERT_TRUE(repository.add_tag(record.id, "Mood", "Calm").valid());
+    view.show_library(repository);
+
+    EXPECT_NE(action(*view.horizontalHeader(), "Tag: Mood"), nullptr);
+    EXPECT_EQ(view.model()->data(view.model()->index(0, 5), Qt::DisplayRole).toString(), "Fusion");
+
+    genre = action(*view.horizontalHeader(), "Tag: Genre");
+    ASSERT_NE(genre, nullptr);
+    genre->setChecked(false);
+    EXPECT_EQ(view.model()->columnCount(), 5);
+    EXPECT_EQ(view.chosen_tracks(), std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
 }
 
 } // namespace

@@ -1055,6 +1055,10 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
     }
 
     refresh_playlist_documents();
+
+    for (const auto& [id, document] : workspace_documents_)
+        document->show_library(library_);
+
     refresh();
     show_status(success);
 }
@@ -1315,6 +1319,7 @@ void MainWindow::refresh()
     position_bar_->setEnabled(playback.loaded && playback.seekable &&
         playback.total_time.has_value());
 
+    now_playing_->show_library(library_);
     now_playing_->show_playlist(presenter_.playlist());
 
     const engine::Track* current = presenter_.playlist().current();

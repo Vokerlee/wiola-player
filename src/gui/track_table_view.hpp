@@ -28,6 +28,8 @@
 #include <optional>
 #include <vector>
 
+class QAction;
+
 namespace wiola::gui {
 
 class TrackTableView final : public QTableView {
@@ -38,6 +40,7 @@ public:
 
     void show_tracks(const std::vector<engine::Track>& tracks,
         std::optional<engine::QueueEntryId> current = {});
+    void show_library(const library::LibraryRepository& repository);
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:
@@ -51,7 +54,15 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
+    void rebuild_tag_actions();
+    void update_tag_columns();
+
     TrackTableModel model_;
+    std::vector<engine::Track> tracks_;
+    std::optional<engine::QueueEntryId> current_;
+    std::vector<std::string> available_tags_;
+    std::vector<std::string> visible_tags_;
+    std::vector<QAction*> tag_actions_;
 };
 
 } // namespace wiola::gui

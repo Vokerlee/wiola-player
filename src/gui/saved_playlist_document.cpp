@@ -141,6 +141,7 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
                 .duration = resolved.duration}));
     }
 
+    table_->show_library(repository);
     table_->show_tracks(rows_.tracks());
     return true;
 }

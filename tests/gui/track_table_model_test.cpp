@@ -21,6 +21,8 @@
 #include <gui/track_table_model.hpp>
 
 #include <engine/queue/playlist.hpp>
+#include <library/in_memory_repository.hpp>
+#include <library/location.hpp>
 
 #include <QApplication>
 #include <QBuffer>
@@ -177,6 +179,41 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
     EXPECT_NE(first_red.cacheKey(), first_blue.cacheKey());
     EXPECT_EQ(first_red.cacheKey(), second_red.cacheKey());
     EXPECT_EQ(first_red.toImage().pixelColor(0, 0), QColor{Qt::GlobalColor::red});
+}
+
+TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = wiola::library::media_id_for("first.wav");
+    record.tags = {
+        {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"  },
+        {.id = wiola::library::TagId{"tag-2"}, .key = "Genre", .value = "Fusion"},
+        {.id = wiola::library::TagId{"tag-3"}, .key = "Mood",  .value = "Calm"  }
+    };
+    ASSERT_TRUE(repository.put_track(record));
+
+    wiola::gui::TrackTableModel model{styled};
+    wiola::engine::Playlist playlist;
+    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    model.show_tracks(playlist.tracks());
+    model.show_library(repository);
+    model.show_tag_keys({"Genre", "genre", "Mood"});
+
+    EXPECT_EQ(model.columnCount(), 7);
+    EXPECT_EQ(model.headerData(5, Qt::Horizontal, Qt::DisplayRole).toString(), "Genre");
+    EXPECT_EQ(model.headerData(6, Qt::Horizontal, Qt::DisplayRole).toString(), "Mood");
+    EXPECT_EQ(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Jazz, Fusion");
+    EXPECT_EQ(model.data(model.index(0, 6), Qt::DisplayRole).toString(), "Calm");
+    EXPECT_TRUE(model.data(model.index(1, 5), Qt::DisplayRole).toString().isEmpty());
+    EXPECT_EQ(wiola::gui::custom_tag_keys(repository), (std::vector<std::string>{"Genre", "Mood"}));
+
+    record.tags[1].value = "Live";
+    ++record.metadata_revision;
+    ASSERT_TRUE(repository.put_track(record));
+    model.show_library(repository);
+
+    EXPECT_EQ(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Jazz, Live");
 }
 
 int main(int argc, char** argv)
