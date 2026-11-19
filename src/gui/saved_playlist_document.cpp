@@ -52,13 +52,22 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     font.setBold(true);
     heading_->setFont(font);
 
+    play_button_ = new QPushButton{"Play in Now Playing", this};
+    play_button_->setObjectName("playSavedPlaylist");
+
     table_ = new TrackTableView{this};
     table_->setAccessibleName("Saved playlist tracks");
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
+    layout->addWidget(play_button_);
     layout->addWidget(table_);
+
+    connect(play_button_, &QPushButton::clicked, [this] {
+        if (playback_observer_)
+            playback_observer_();
+    });
 
     connect(table_, &TrackTableView::track_chosen, [this](engine::QueueEntryId id) {
         const auto row = rows_.index_of(id);
@@ -124,6 +133,11 @@ std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() co
 void SavedPlaylistDocument::on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer)
 {
     entry_observer_ = std::move(observer);
+}
+
+void SavedPlaylistDocument::on_play_requested(std::function<void()> observer)
+{
+    playback_observer_ = std::move(observer);
 }
 
 } // namespace wiola::gui

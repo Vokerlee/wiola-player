@@ -85,7 +85,8 @@ QString as_status(engine::OpenResult result)
 
 MainWindow::MainWindow(engine::Session& session)
     // A file of its own on both platforms, rather than the registry on one of them.
-    : presenter_{session}
+    : session_{session}
+    , presenter_{session}
     , actions_{*this}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
     , playlist_{presenter_, settings_}
@@ -440,10 +441,31 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
     }
 
     playlist_documents_.emplace(id, document);
+    document->on_play_requested([this, id] { play_saved_playlist(id); });
+
     const QString name = QString::fromStdString(library_.playlist(id)->name);
     documents_->addTab(document, name);
     documents_->setCurrentWidget(document);
     save_playlist_documents();
+}
+
+void MainWindow::play_saved_playlist(const library::PlaylistId& id)
+{
+    const app::PlaybackQueueResult result =
+        app::PlaybackQueue{}.replace_with_saved_playlist(session_, library_, id);
+
+    if (!result.requested) {
+        show_status("The saved playlist has no playable tracks");
+        refresh();
+        return;
+    }
+
+    said_ = result.open_result;
+    playlist_.save();
+    show_status(result.unavailable == 0
+            ? QString{"opening saved playlist..."}
+            : QString{"%1 unavailable track(s) skipped"}.arg(result.unavailable));
+    refresh();
 }
 
 void MainWindow::refresh_playlist_documents()

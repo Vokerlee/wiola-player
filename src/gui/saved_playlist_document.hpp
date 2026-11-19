@@ -26,6 +26,7 @@
 #include <library/repository.hpp>
 
 #include <QLabel>
+#include <QPushButton>
 #include <QWidget>
 
 #include <functional>
@@ -39,13 +40,16 @@ public:
     bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
     [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
     void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
+    void on_play_requested(std::function<void()> observer);
 
 private:
     QLabel* heading_{nullptr};
+    QPushButton* play_button_{nullptr};
     TrackTableView* table_{nullptr};
     engine::Playlist rows_;
     std::vector<library::PlaylistEntryRecord> entries_;
     std::function<void(library::PlaylistEntryId)> entry_observer_;
+    std::function<void()> playback_observer_;
 };
 
 } // namespace wiola::gui
