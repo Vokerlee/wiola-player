@@ -241,8 +241,16 @@ MainWindow::MainWindow(engine::Session& session)
 
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
+    show_workspace_navigation();
     playlist_manager_ = new SavedPlaylistManager{library_, playlist_commands_, *navigation_, this};
     inspector_ = new TrackInspector{this};
+
+    workspace_scans_ =
+        std::make_unique<app::WorkspaceScanPublisher>(*this, [this](app::WorkspaceScanBatch batch) {
+            const auto found = workspace_documents_.find(batch.workspace);
+            if (found != workspace_documents_.end())
+                static_cast<void>(found->second->show_batch(batch));
+        });
 
     QWidget* library_pane = new QWidget{this};
     QVBoxLayout* library_layout = new QVBoxLayout{library_pane};
@@ -262,14 +270,15 @@ MainWindow::MainWindow(engine::Session& session)
     layout->addWidget(document_area);
 
     navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
-    navigation_->on_workspace_chosen([this](library::WorkspaceId) {
-        documents_->setCurrentIndex(1);
-    });
+    navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });
     playlist_manager_->on_changed([this] { refresh_playlist_documents(); });
-    connect(documents_, &QTabWidget::currentChanged, this,
-        [this](int) { save_playlist_documents(); });
+    connect(documents_, &QTabWidget::currentChanged, this, [this](int) {
+        save_playlist_documents();
+        save_workspace_documents();
+    });
 
     restore_playlist_documents();
+    restore_workspace_documents();
 
     // What is done to the queue, under the queue it is done to.
     QGroupBox* queue_group = new QGroupBox{"Queue commands", this};
@@ -311,6 +320,10 @@ MainWindow::MainWindow(engine::Session& session)
     file->addAction(actions_.action(PlayerAction::open));
     file->addAction(actions_.action(PlayerAction::add));
     file->addAction(actions_.action(PlayerAction::clear));
+    file->addSeparator();
+
+    QAction* open_folder = file->addAction("Open folder...");
+    connect(open_folder, &QAction::triggered, this, &MainWindow::open_folder);
     file->addSeparator();
 
     QAction* import_m3u = file->addAction("Import M3U8...");
@@ -555,6 +568,100 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
     documents_->addTab(document, name);
     documents_->setCurrentWidget(document);
     save_playlist_documents();
+}
+
+void MainWindow::open_folder()
+{
+    const QString selected = QFileDialog::getExistingDirectory(this, "Open folder workspace");
+    if (selected.isEmpty())
+        return;
+
+    const auto previous_tracks = library_.tracks();
+    const auto previous_playlists = library_.playlists();
+    const auto previous_workspaces = library_.workspaces();
+    const library::WorkspaceId workspace =
+        library_.create_workspace(QtPathAdapter::from_qt(selected));
+
+    if (!workspace.valid())
+        return;
+
+    if (playlist_storage_.save(library_) != LibraryJsonError::none) {
+        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
+            previous_workspaces));
+        show_status("Could not save the folder workspace");
+        return;
+    }
+
+    show_workspace_navigation();
+    open_workspace(workspace);
+}
+
+void MainWindow::show_workspace_navigation()
+{
+    std::vector<WorkspaceNavigationEntry> entries;
+
+    for (const library::WorkspaceRecord& workspace : library_.workspaces()) {
+        const std::filesystem::path name = workspace.root.filename();
+        entries.push_back({.id = workspace.id,
+            .name = name.empty() ? workspace.root.string() : name.string()});
+    }
+
+    navigation_->show_workspaces(entries);
+}
+
+void MainWindow::open_workspace(const library::WorkspaceId& id)
+{
+    const library::WorkspaceRecord* workspace = library_.workspace(id);
+    if (workspace == nullptr)
+        return;
+
+    if (const auto found = workspace_documents_.find(id); found != workspace_documents_.end()) {
+        documents_->setCurrentWidget(found->second);
+        save_workspace_documents();
+        return;
+    }
+
+    WorkspaceDocument* document = new WorkspaceDocument{this};
+    workspace_documents_.emplace(id, document);
+
+    const std::filesystem::path name = workspace->root.filename();
+    documents_->addTab(document, name.empty() ? "Workspace" : QtPathAdapter::to_qt(name));
+    documents_->setCurrentWidget(document);
+
+    const std::uint64_t generation =
+        workspace_scans_->start(*workspace, session_.playback_extensions());
+    document->begin(*workspace, generation);
+    save_workspace_documents();
+}
+
+void MainWindow::restore_workspace_documents()
+{
+    const library::WorkspaceId current_id{
+        settings_.value("documents/current_workspace").toString().toStdString()};
+    const QStringList open = settings_.value("documents/open_workspaces").toStringList();
+
+    for (const QString& id : open)
+        open_workspace(library::WorkspaceId{id.toStdString()});
+
+    const auto current = workspace_documents_.find(current_id);
+    if (current != workspace_documents_.end())
+        documents_->setCurrentWidget(current->second);
+}
+
+void MainWindow::save_workspace_documents()
+{
+    QStringList open;
+    QString current;
+
+    for (const auto& [id, document] : workspace_documents_) {
+        open.push_back(QString::fromStdString(id.value));
+        if (documents_->currentWidget() == document)
+            current = QString::fromStdString(id.value);
+    }
+
+    settings_.setValue("documents/open_workspaces", open);
+    settings_.setValue("documents/current_workspace", current);
+    settings_.sync();
 }
 
 void MainWindow::activate_playlist(const library::PlaylistId& id)
