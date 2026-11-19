@@ -99,9 +99,13 @@ MainWindow::MainWindow(engine::Session& session)
     , volume_{presenter_.volume_control(), settings_}
     , equalizer_{presenter_.equalizer_control(), settings_}
     , playlist_storage_{library_file(settings_)}
-    , playlist_commands_{library_, [this](const library::LibraryRepository& records) {
-                             return playlist_storage_.save(records) == LibraryJsonError::none;
-                         }}
+    , playlist_commands_{library_,
+          [this](const library::LibraryRepository& records) {
+              return playlist_storage_.save(records) == LibraryJsonError::none;
+          }}
+    , tag_commands_{library_, [this](const library::LibraryRepository& records) {
+                        return playlist_storage_.save(records) == LibraryJsonError::none;
+                    }}
 {
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -246,6 +250,20 @@ MainWindow::MainWindow(engine::Session& session)
     show_workspace_navigation();
     playlist_manager_ = new SavedPlaylistManager{library_, playlist_commands_, *navigation_, this};
     inspector_ = new TrackInspector{this};
+
+    inspector_->custom_tags()->on_add([this](library::MediaId media, std::string key,
+                                          std::string value) {
+        finish_custom_tag(tag_commands_.add(media, std::move(key), std::move(value)),
+            "Custom tag added");
+    });
+    inspector_->custom_tags()->on_edit([this](library::MediaId media, library::TagId tag,
+                                           std::string key, std::string value) {
+        finish_custom_tag(tag_commands_.edit(media, tag, std::move(key), std::move(value)),
+            "Custom tag updated");
+    });
+    inspector_->custom_tags()->on_remove([this](library::MediaId media, library::TagId tag) {
+        finish_custom_tag(tag_commands_.remove(media, tag), "Custom tag removed");
+    });
 
     workspace_scans_ =
         std::make_unique<app::WorkspaceScanPublisher>(*this, [this](app::WorkspaceScanBatch batch) {
@@ -400,6 +418,9 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
 
     const QString first{QtPathAdapter::to_qt(tracks.front().filename())};
 
+    for (const std::filesystem::path& location : tracks)
+        request_metadata(location);
+
     static_cast<void>(presenter_.open(std::move(tracks)));
     said_ = presenter_.presentation().playback.open_result;
 
@@ -443,6 +464,9 @@ void MainWindow::add_tracks()
 
     if (tracks.empty())
         return;
+
+    for (const std::filesystem::path& location : tracks)
+        request_metadata(location);
 
     presenter_.add(std::move(tracks));
     playlist_.save();
@@ -996,6 +1020,45 @@ void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
         static_cast<void>(document->show_media_revision(library_, result.media));
 }
 
+void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& success)
+{
+    if (!result.succeeded()) {
+        switch (result.error) {
+        case app::CustomTagError::missing_media:
+            show_status("The track is no longer in the library");
+            break;
+        case app::CustomTagError::missing_tag:
+            show_status("The custom tag is no longer available");
+            break;
+        case app::CustomTagError::invalid_value:
+            show_status("Enter a valid, non-empty custom tag");
+            break;
+        case app::CustomTagError::duplicate_value:
+            show_status("That custom tag already exists");
+            break;
+        case app::CustomTagError::limit_exceeded:
+            show_status("The track already has the maximum number of custom tags");
+            break;
+        case app::CustomTagError::persistence_failed:
+            show_status("Could not save the custom tag change");
+            break;
+        case app::CustomTagError::none:
+            break;
+        }
+
+        return;
+    }
+
+    if (!result.changed) {
+        show_status("No custom tag changes to save");
+        return;
+    }
+
+    refresh_playlist_documents();
+    refresh();
+    show_status(success);
+}
+
 void MainWindow::refresh_playlist_documents()
 {
     for (auto it = playlist_documents_.begin(); it != playlist_documents_.end();) {
@@ -1253,7 +1316,12 @@ void MainWindow::refresh()
         playback.total_time.has_value());
 
     now_playing_->show_playlist(presenter_.playlist());
-    inspector_->show_track(presenter_.playlist().current());
+
+    const engine::Track* current = presenter_.playlist().current();
+    inspector_->show_track(current);
+    inspector_->show_custom_tags(
+        current != nullptr ? library_.track(library::media_id_for(current->path())) : nullptr
+    );
 
     if (!playback.loaded) {
         show_play_button(false);

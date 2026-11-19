@@ -21,6 +21,7 @@
 #pragma once
 
 #include "artwork_cache.hpp"
+#include "custom_tag_editor.hpp"
 
 #include <engine/queue/track.hpp>
 
@@ -34,6 +35,9 @@ public:
     explicit TrackInspector(QWidget* parent = nullptr);
 
     void show_track(const engine::Track* track);
+    void show_custom_tags(const library::TrackRecord* track);
+
+    [[nodiscard]] CustomTagEditor* custom_tags() const noexcept { return custom_tags_; }
 
 private:
     ArtworkCache artwork_;
@@ -44,6 +48,7 @@ private:
     QLabel* location_{nullptr};
     QLabel* duration_{nullptr};
     QLabel* availability_{nullptr};
+    CustomTagEditor* custom_tags_{nullptr};
 };
 
 } // namespace wiola::gui

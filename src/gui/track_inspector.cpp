@@ -82,9 +82,12 @@ TrackInspector::TrackInspector(QWidget* parent)
     fields->addRow("Duration", duration_);
     fields->addRow("File", availability_);
 
+    custom_tags_ = new CustomTagEditor{this};
+
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
+    layout->addWidget(custom_tags_);
     layout->addStretch();
 
     show_track(nullptr);
@@ -118,6 +121,11 @@ void TrackInspector::show_track(const engine::Track* track)
     duration_->setText(track->duration() ? as_clock(*track->duration()) : QString{"Unknown"});
     availability_->setText(missing ? "Missing" : "Available");
     availability_->setProperty("missing", missing);
+}
+
+void TrackInspector::show_custom_tags(const library::TrackRecord* track)
+{
+    custom_tags_->show_track(track);
 }
 
 } // namespace wiola::gui

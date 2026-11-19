@@ -35,6 +35,7 @@
 #include "workspace_document.hpp"
 
 #include <app/active_playlist.hpp>
+#include <app/custom_tag_commands.hpp>
 #include <app/m3u_playlist.hpp>
 #include <app/media_revision_publisher.hpp>
 #include <app/metadata_merge.hpp>
@@ -130,6 +131,7 @@ private:
     void play_saved_playlist(const library::PlaylistId& id);
     void request_metadata(const std::filesystem::path& location);
     void publish_media_revision(app::BackgroundMetadataResult result);
+    void finish_custom_tag(app::CustomTagResult result, const QString& success);
     void refresh_playlist_documents();
     void restore_playlist_documents();
     void save_playlist_documents();
@@ -212,6 +214,7 @@ private:
     library::InMemoryRepository library_;
     SavedPlaylistStorage playlist_storage_;
     app::SavedPlaylistCommands playlist_commands_;
+    app::CustomTagCommands tag_commands_;
     app::ActivePlaylist active_playlist_;
 
     QPushButton* open_button_{nullptr};
