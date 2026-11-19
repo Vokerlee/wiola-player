@@ -115,6 +115,14 @@ TrackTableView::TrackTableView(QWidget* parent)
     addAction(remove);
     connect(remove, &QAction::triggered, this, &TrackTableView::removal_asked);
 
+    QAction* add_active = new QAction{"Add to active playlist", this};
+    addAction(add_active);
+    connect(add_active, &QAction::triggered, this, &TrackTableView::transfer_active_asked);
+
+    QAction* add_to = new QAction{"Add to playlist →", this};
+    addAction(add_to);
+    connect(add_to, &QAction::triggered, this, &TrackTableView::transfer_destination_asked);
+
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
         if (const auto id = model_.track_id(index))
             emit track_chosen(*id);
