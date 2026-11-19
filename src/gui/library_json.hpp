@@ -32,6 +32,7 @@ namespace wiola::gui {
 struct LibrarySnapshot {
     std::vector<library::TrackRecord> tracks;
     std::vector<library::PlaylistRecord> playlists;
+    std::vector<library::WorkspaceRecord> workspaces;
 };
 
 enum class LibraryJsonError {

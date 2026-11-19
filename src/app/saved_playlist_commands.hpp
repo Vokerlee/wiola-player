@@ -42,6 +42,7 @@ private:
     struct Snapshot {
         std::vector<library::TrackRecord> tracks;
         std::vector<library::PlaylistRecord> playlists;
+        std::vector<library::WorkspaceRecord> workspaces;
     };
 
     [[nodiscard]] Snapshot snapshot() const;

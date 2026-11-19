@@ -45,6 +45,7 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
 
     const auto previous_tracks = repository_.tracks();
     const auto previous_playlists = repository_.playlists();
+    const auto previous_workspaces = repository_.workspaces();
     PlaylistTransferResult result;
 
     for (const MediaTransfer& item : media) {
@@ -73,7 +74,8 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
 
     result.succeeded = persist_(repository_);
     if (!result.succeeded) {
-        static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists));
+        static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
+            previous_workspaces));
         result.added = 0;
     }
 

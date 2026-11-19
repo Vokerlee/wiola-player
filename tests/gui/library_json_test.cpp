@@ -54,7 +54,11 @@ TrackRecord track_record()
 
 TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
 {
-    LibrarySnapshot original{.tracks = {track_record()}, .playlists = {}};
+    LibrarySnapshot original{.tracks = {track_record()},
+        .playlists = {},
+        .workspaces = {WorkspaceRecord{.id = WorkspaceId{"workspace-1"},
+            .root = "music",
+            .recursive = false}}};
     PlaylistRecord playlist;
     playlist.id = {.value = "playlist-1"};
     playlist.name = "Favorites";
@@ -90,6 +94,11 @@ TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
     ASSERT_EQ(entries.entries.size(), 2U);
     EXPECT_EQ(entries.entries[0].media, entries.entries[1].media);
     EXPECT_NE(entries.entries[0].id, entries.entries[1].id);
+
+    ASSERT_EQ(restored.workspaces.size(), 1U);
+    EXPECT_EQ(restored.workspaces.front().id, WorkspaceId{"workspace-1"});
+    EXPECT_EQ(restored.workspaces.front().root, original.workspaces.front().root);
+    EXPECT_FALSE(restored.workspaces.front().recursive);
 }
 
 TEST(LibraryJson, SuppliesDefaultsForOptionalFieldsFromAnOlderRecordShape)
@@ -135,7 +144,8 @@ TEST(LibraryJson, RejectsDuplicateTrackIdentities)
 {
     LibrarySnapshot library{
         .tracks = {track_record(), track_record()},
-        .playlists = {}
+        .playlists = {},
+        .workspaces = {}
     };
     QByteArray json;
 
@@ -144,7 +154,7 @@ TEST(LibraryJson, RejectsDuplicateTrackIdentities)
 
 TEST(LibraryJson, RejectsMoreThan256TagsOnOneTrack)
 {
-    LibrarySnapshot library{.tracks = {track_record()}, .playlists = {}};
+    LibrarySnapshot library{.tracks = {track_record()}, .playlists = {}, .workspaces = {}};
     library.tracks.front().tags.clear();
 
     for (std::size_t index = 0; index < 257; ++index) {

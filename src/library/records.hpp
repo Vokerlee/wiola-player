@@ -82,4 +82,10 @@ struct PlaylistRecord {
     std::vector<PlaylistEntryRecord> entries;
 };
 
+struct WorkspaceRecord {
+    WorkspaceId id;
+    std::filesystem::path root;
+    bool recursive{true};
+};
+
 } // namespace wiola::library
