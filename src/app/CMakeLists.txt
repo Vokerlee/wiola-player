@@ -9,6 +9,9 @@ wiola_add_library(
 )
 
 if(WIOLA_BUILD_GUI)
+    wiola_add_library(wiola_m3u SOURCES m3u_playlist.cpp LIBS wiola_library)
+    target_link_libraries(wiola_m3u PUBLIC Qt6::Core)
+
     wiola_add_library(
         wiola_player_application
         SOURCES player_application.cpp

@@ -34,6 +34,7 @@
 #include "volume_control.hpp"
 
 #include <app/active_playlist.hpp>
+#include <app/m3u_playlist.hpp>
 #include <app/playback_queue.hpp>
 #include <app/playlist_transfer.hpp>
 #include <codec/decode/open.hpp>
@@ -92,6 +93,8 @@ private:
 
     /// Asks for files and puts them at the end of the queue.
     void add_tracks();
+    void import_m3u_playlist();
+    void export_m3u_playlist();
 
     /// Takes whatever rows are picked out of the queue.
     void remove_chosen();
