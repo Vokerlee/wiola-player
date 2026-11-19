@@ -20,6 +20,8 @@
 
 #include "seek_bar.hpp"
 
+#include "presentation_tokens.hpp"
+
 #include <QMouseEvent>
 #include <QPainter>
 
@@ -29,15 +31,14 @@ namespace wiola::gui {
 
 namespace {
 
-constexpr int bar_height{12};
-constexpr int edge_width{2};
+constexpr PresentationTokens tokens;
 
 } // namespace
 
 SeekBar::SeekBar(QWidget* parent)
     : QWidget{parent}
 {
-    setFixedHeight(bar_height);
+    setFixedHeight(tokens.seek.bar_height);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setCursor(Qt::PointingHandCursor);
 }
@@ -69,16 +70,16 @@ void SeekBar::paintEvent(QPaintEvent* /*event*/)
     const auto played{static_cast<int>(fraction_ * track.width())};
     const QPalette& colors{palette()};
 
-    painter.fillRect(track, colors.color(QPalette::Mid));
+    painter.fillRect(track, colors.color(tokens.colors.seek_track));
     painter.fillRect(QRect{track.left(), track.top(), played, track.height()},
-        colors.color(isEnabled() ? QPalette::Highlight : QPalette::Dark));
+        colors.color(isEnabled() ? tokens.colors.seek_played : tokens.colors.seek_played_disabled));
 
     // The edge of the filled part is the position, and is what a drag takes hold of, so it is
     // drawn rather than left as wherever two colors happen to meet.
     if (isEnabled()) {
-        painter.fillRect(QRect{track.left() + played - edge_width / 2, track.top(), edge_width,
-                             track.height()},
-            colors.color(QPalette::WindowText));
+        painter.fillRect(QRect{track.left() + played - tokens.seek.edge_width / 2, track.top(),
+                             tokens.seek.edge_width, track.height()},
+            colors.color(tokens.colors.seek_edge));
     }
 }
 

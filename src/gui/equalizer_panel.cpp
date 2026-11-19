@@ -20,7 +20,7 @@
 
 #include "equalizer_panel.hpp"
 
-#include "equalizer_view_metrics.hpp"
+#include "presentation_tokens.hpp"
 
 #include <utils/units.hpp>
 
@@ -33,7 +33,7 @@ namespace wiola::gui {
 
 namespace {
 
-constexpr EqualizerViewMetrics metrics;
+constexpr PresentationTokens tokens;
 
 /// A center as a band is labelled: whole hertz up to a thousand, then thousands.
 QString as_label(units::Frequency center)
@@ -49,7 +49,7 @@ QString as_label(units::Frequency center)
 /// A slider position as the gain it stands for.
 constexpr double as_db(int steps)
 {
-    return static_cast<double>(steps) / metrics.gain_steps_per_db;
+    return static_cast<double>(steps) / tokens.equalizer.gain_steps_per_db;
 }
 
 /// A gain as it is read off the panel: signed, and to a tenth of a decibel.
@@ -63,12 +63,12 @@ QString as_gain(int steps)
 /// The slider position a gain in decibels stands on.
 int as_steps(float db)
 {
-    return static_cast<int>(std::lround(db * metrics.gain_steps_per_db));
+    return static_cast<int>(std::lround(db * tokens.equalizer.gain_steps_per_db));
 }
 
 int band_limit(const EqualizerControl& equalizer) noexcept
 {
-    return static_cast<int>(equalizer.max_band_gain()) * metrics.gain_steps_per_db;
+    return static_cast<int>(equalizer.max_band_gain()) * tokens.equalizer.gain_steps_per_db;
 }
 
 } // namespace
@@ -115,16 +115,16 @@ void EqualizerPanel::rebuild_bands()
         auto* slider = new QSlider{Qt::Vertical, bands_};
 
         slider->setRange(-limit, limit);
-        slider->setSingleStep(metrics.gain_step);
+        slider->setSingleStep(tokens.equalizer.gain_step);
         slider->setValue(as_steps(equalizer_.band_gain(i)));
-        slider->setFixedHeight(metrics.band_slider_height);
+        slider->setFixedHeight(tokens.equalizer.band_slider_height);
 
         auto* gain = new QLabel{as_gain(slider->value()), bands_};
-        gain->setFixedWidth(metrics.band_column_width);
+        gain->setFixedWidth(tokens.equalizer.band_column_width);
         gain->setAlignment(Qt::AlignHCenter);
 
         auto* center = new QLabel{as_label(equalizer_.band_center(i)), bands_};
-        center->setFixedWidth(metrics.band_column_width);
+        center->setFixedWidth(tokens.equalizer.band_column_width);
         center->setAlignment(Qt::AlignHCenter);
 
         connect(slider, &QSlider::valueChanged, this, [this, i, gain](int steps) {
