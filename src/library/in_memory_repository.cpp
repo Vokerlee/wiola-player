@@ -61,6 +61,27 @@ std::vector<TrackRecord> InMemoryRepository::tracks() const
     return result;
 }
 
+bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
+    const std::vector<PlaylistRecord>& playlists)
+{
+    InMemoryRepository replacement;
+
+    for (const TrackRecord& track : tracks) {
+        if (replacement.tracks_.contains(track.id) || !replacement.put_track(track))
+            return false;
+    }
+
+    for (const PlaylistRecord& playlist : playlists) {
+        if (replacement.playlists_.contains(playlist.id) || !replacement.put_playlist(playlist))
+            return false;
+    }
+
+    tracks_ = std::move(replacement.tracks_);
+    playlists_ = std::move(replacement.playlists_);
+
+    return true;
+}
+
 PlaylistId InMemoryRepository::create_playlist(std::string name)
 {
     const PlaylistId id{next_playlist_id()};

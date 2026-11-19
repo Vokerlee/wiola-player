@@ -17,6 +17,7 @@ wiola_add_library(
         player_actions.cpp
         player_presenter.cpp
         player_settings.cpp
+        saved_playlist_storage.cpp
         seek_bar.cpp
         volume_control.cpp
     LIBS wiola_app wiola_codec wiola_engine wiola_library
