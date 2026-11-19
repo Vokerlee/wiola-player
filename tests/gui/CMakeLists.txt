@@ -34,6 +34,11 @@ wiola_add_test(
     LIBS wiola_gui wiola_saved_playlists
 )
 wiola_add_test(
+    gui_workspace_document_test
+    SOURCES workspace_document_test.cpp
+    LIBS wiola_gui wiola_workspace_scans
+)
+wiola_add_test(
     gui_saved_playlist_document_test
     SOURCES saved_playlist_document_test.cpp
     LIBS wiola_gui wiola_library

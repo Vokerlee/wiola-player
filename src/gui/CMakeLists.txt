@@ -22,6 +22,7 @@ wiola_add_library(
         saved_playlist_storage.cpp
         seek_bar.cpp
         volume_control.cpp
+        workspace_document.cpp
     LIBS
         wiola_app
         wiola_codec
@@ -29,6 +30,7 @@ wiola_add_library(
         wiola_library
         wiola_m3u
         wiola_saved_playlists
+        wiola_workspace_scans
 )
 
 # Qt needs its own generated sources, and its headers are part of using this library.
