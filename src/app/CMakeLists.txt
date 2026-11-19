@@ -1,6 +1,6 @@
 wiola_add_library(
     wiola_app
-    SOURCES playback_queue.cpp playback_service.cpp
+    SOURCES active_playlist.cpp playback_queue.cpp playback_service.cpp
     LIBS wiola_engine wiola_library
 )
 
