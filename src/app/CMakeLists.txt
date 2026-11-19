@@ -18,6 +18,13 @@ if(WIOLA_BUILD_GUI)
     )
     target_link_libraries(wiola_workspace_scans PUBLIC Qt6::Core)
 
+    wiola_add_library(
+        wiola_workspace_watcher
+        SOURCES workspace_watcher.cpp
+        LIBS wiola_library
+    )
+    target_link_libraries(wiola_workspace_watcher PUBLIC Qt6::Core)
+
     wiola_add_library(wiola_m3u SOURCES m3u_playlist.cpp LIBS wiola_library)
     target_link_libraries(wiola_m3u PUBLIC Qt6::Core)
 
