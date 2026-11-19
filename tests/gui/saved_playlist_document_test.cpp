@@ -88,6 +88,16 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
     play_saved->click();
 
     EXPECT_EQ(play_requests, 1);
+
+    int active_requests{0};
+    document.on_active_requested([&active_requests] { ++active_requests; });
+    QPushButton* use_active = document.findChild<QPushButton*>("useActivePlaylist");
+    ASSERT_NE(use_active, nullptr);
+    use_active->click();
+    document.set_active(true);
+
+    EXPECT_EQ(active_requests, 1);
+    EXPECT_EQ(heading->text(), "Favorites — Active destination");
 }
 
 TEST(SavedPlaylistDocument, RefreshesMetadataWithoutLosingPersistentSelection)

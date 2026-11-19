@@ -52,6 +52,9 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     font.setBold(true);
     heading_->setFont(font);
 
+    active_button_ = new QPushButton{"Use as active playlist", this};
+    active_button_->setObjectName("useActivePlaylist");
+
     play_button_ = new QPushButton{"Play in Now Playing", this};
     play_button_->setObjectName("playSavedPlaylist");
 
@@ -61,8 +64,14 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
+    layout->addWidget(active_button_);
     layout->addWidget(play_button_);
     layout->addWidget(table_);
+
+    connect(active_button_, &QPushButton::clicked, [this] {
+        if (active_observer_)
+            active_observer_();
+    });
 
     connect(play_button_, &QPushButton::clicked, [this] {
         if (playback_observer_)
@@ -83,7 +92,8 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     if (playlist == nullptr)
         return false;
 
-    heading_->setText(QString::fromStdString(playlist->name));
+    name_ = QString::fromStdString(playlist->name);
+    update_heading();
 
     if (!same_entries(entries_, playlist->entries)) {
         std::vector<engine::Track> tracks;
@@ -117,6 +127,17 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     return true;
 }
 
+void SavedPlaylistDocument::set_active(bool active)
+{
+    active_destination_ = active;
+    update_heading();
+}
+
+void SavedPlaylistDocument::update_heading()
+{
+    heading_->setText(active_destination_ ? name_ + " — Active destination" : name_);
+}
+
 std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() const
 {
     std::vector<library::PlaylistEntryId> selected;
@@ -138,6 +159,11 @@ void SavedPlaylistDocument::on_entry_chosen(std::function<void(library::Playlist
 void SavedPlaylistDocument::on_play_requested(std::function<void()> observer)
 {
     playback_observer_ = std::move(observer);
+}
+
+void SavedPlaylistDocument::on_active_requested(std::function<void()> observer)
+{
+    active_observer_ = std::move(observer);
 }
 
 } // namespace wiola::gui

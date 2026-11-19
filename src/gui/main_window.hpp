@@ -33,6 +33,7 @@
 #include "track_inspector.hpp"
 #include "volume_control.hpp"
 
+#include <app/active_playlist.hpp>
 #include <app/playback_queue.hpp>
 #include <codec/decode/open.hpp>
 #include <engine/session.hpp>
@@ -101,6 +102,7 @@ private:
     void play_chosen(engine::QueueEntryId id);
 
     void open_playlist(const library::PlaylistId& id);
+    void activate_playlist(const library::PlaylistId& id);
     void play_saved_playlist(const library::PlaylistId& id);
     void refresh_playlist_documents();
     void restore_playlist_documents();
@@ -184,6 +186,7 @@ private:
     library::InMemoryRepository library_;
     SavedPlaylistStorage playlist_storage_;
     app::SavedPlaylistCommands playlist_commands_;
+    app::ActivePlaylist active_playlist_;
 
     QPushButton* open_button_{nullptr};
     QPushButton* previous_button_{nullptr};
