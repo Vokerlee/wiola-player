@@ -1,3 +1,4 @@
+wiola_add_test(gui_track_sort_test SOURCES track_sort_test.cpp LIBS wiola_gui)
 wiola_add_test(
     gui_track_table_model_test
     SOURCES track_table_model_test.cpp
