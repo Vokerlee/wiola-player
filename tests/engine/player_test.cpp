@@ -889,6 +889,7 @@ TEST(Player, FollowsTheOutputRatherThanTheDecoder)
     Player player{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(player.start());
+    ASSERT_TRUE(eventually([&output] { return output.running(); }));
     EXPECT_EQ(player.time_played().get<units::Sec>(), 0.0);
 
     output.play(wiola::pcm::Frames{
