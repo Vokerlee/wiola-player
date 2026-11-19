@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Incremental Qt model over immutable application playlist row values.
+ * @brief Incremental Qt table model addressed by stable track identities.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,12 +18,15 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "playlist_model.hpp"
+#include "track_table_model.hpp"
 
 #include "clock.hpp"
 
 #include <QColor>
 #include <QFont>
+
+#include <algorithm>
+#include <array>
 
 namespace wiola::gui {
 
@@ -40,29 +43,29 @@ enum Column {
 
 bool same_metadata(const engine::Track& a, const engine::Track& b)
 {
-    return a.id() == b.id() && a.title() == b.title() && a.artist() == b.artist() &&
-        a.album() == b.album() && a.duration() == b.duration() && a.artwork() == b.artwork();
+    return a.title() == b.title() && a.artist() == b.artist() && a.album() == b.album() &&
+        a.duration() == b.duration() && a.artwork() == b.artwork();
 }
 
 } // namespace
 
-PlaylistModel::PlaylistModel(const QWidget& styled, ArtworkCachePolicy policy)
+TrackTableModel::TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy)
     : artwork_{styled, policy}
     , policy_{policy}
 {
 }
 
-int PlaylistModel::rowCount(const QModelIndex& parent) const
+int TrackTableModel::rowCount(const QModelIndex& parent) const
 {
     return parent.isValid() ? 0 : static_cast<int>(rows_.size());
 }
 
-int PlaylistModel::columnCount(const QModelIndex& parent) const
+int TrackTableModel::columnCount(const QModelIndex& parent) const
 {
     return parent.isValid() ? 0 : Column::num_columns;
 }
 
-QVariant PlaylistModel::data(const QModelIndex& index, int role) const
+QVariant TrackTableModel::data(const QModelIndex& index, int role) const
 {
     if (!index.isValid() || index.row() < 0 ||
         static_cast<std::size_t>(index.row()) >= rows_.size())
@@ -88,7 +91,7 @@ QVariant PlaylistModel::data(const QModelIndex& index, int role) const
     if (role == Qt::DecorationRole && index.column() == Column::cover)
         return artwork_.cover_of(track.id().value, track.artwork());
 
-    if (current_ != static_cast<std::size_t>(index.row()))
+    if (current_ != track.id())
         return {};
 
     if (role == Qt::FontRole) {
@@ -106,7 +109,7 @@ QVariant PlaylistModel::data(const QModelIndex& index, int role) const
     return {};
 }
 
-QVariant PlaylistModel::headerData(int section, Qt::Orientation orientation, int role) const
+QVariant TrackTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
         return {};
@@ -117,43 +120,53 @@ QVariant PlaylistModel::headerData(int section, Qt::Orientation orientation, int
                                                          : QVariant{};
 }
 
-void PlaylistModel::show_playlist(const engine::Playlist& playlist)
+void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
+    std::optional<engine::QueueEntryId> current)
 {
-    if (structural_revision_ != playlist.structural_revision()) {
+    const bool same_structure = rows_.size() == tracks.size() &&
+        std::ranges::equal(rows_, tracks,
+            [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
+
+    if (!same_structure) {
         beginResetModel();
-        rows_ = playlist.tracks();
-        current_ = playlist.position();
-        structural_revision_ = playlist.structural_revision();
-        metadata_revision_ = playlist.metadata_revision();
-        selection_revision_ = playlist.selection_revision();
+        rows_ = tracks;
+        current_ = current;
         endResetModel();
         return;
     }
 
-    if (metadata_revision_ != playlist.metadata_revision()) {
-        for (std::size_t row = 0; row < rows_.size(); ++row) {
-            if (same_metadata(rows_[row], playlist.tracks()[row]))
-                continue;
+    for (std::size_t row = 0; row < rows_.size(); ++row) {
+        if (same_metadata(rows_[row], tracks[row]))
+            continue;
 
-            rows_[row] = playlist.tracks()[row];
-            const QModelIndex first{index(static_cast<int>(row), 0)};
-            const QModelIndex last{index(static_cast<int>(row), Column::num_columns - 1)};
-            emit dataChanged(first, last);
-        }
-        metadata_revision_ = playlist.metadata_revision();
+        rows_[row] = tracks[row];
+        const QModelIndex first{index(static_cast<int>(row), 0)};
+        const QModelIndex last{index(static_cast<int>(row), Column::num_columns - 1)};
+        emit dataChanged(first, last);
     }
 
-    if (selection_revision_ != playlist.selection_revision()) {
-        const auto previous{current_};
-        current_ = playlist.position();
-        selection_revision_ = playlist.selection_revision();
+    const auto previous{current_};
+    current_ = current;
 
-        for (const auto row : {previous, current_}) {
-            if (row && *row < rows_.size())
-                emit dataChanged(index(static_cast<int>(*row), 0),
-                    index(static_cast<int>(*row), Column::num_columns - 1));
+    for (const auto id : {previous, current_}) {
+        if (!id)
+            continue;
+
+        const auto row = std::ranges::find(rows_, *id, &engine::Track::id);
+        if (row != rows_.end()) {
+            const auto position = static_cast<int>(std::distance(rows_.begin(), row));
+            emit dataChanged(index(position, 0), index(position, Column::num_columns - 1));
         }
     }
+}
+
+std::optional<engine::QueueEntryId> TrackTableModel::track_id(const QModelIndex& index) const
+{
+    if (!index.isValid() || index.row() < 0 ||
+        static_cast<std::size_t>(index.row()) >= rows_.size())
+        return {};
+
+    return rows_[static_cast<std::size_t>(index.row())].id();
 }
 
 } // namespace wiola::gui

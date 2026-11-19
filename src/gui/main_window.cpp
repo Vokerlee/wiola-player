@@ -309,8 +309,11 @@ void MainWindow::add_tracks()
 
 void MainWindow::remove_chosen()
 {
-    for (const std::size_t row : playlist_view_->chosen_rows())
-        static_cast<void>(presenter_.remove(row));
+    for (const engine::QueueEntryId id : playlist_view_->chosen_tracks()) {
+        const auto index = presenter_.playlist().index_of(id);
+        if (index)
+            static_cast<void>(presenter_.remove(*index));
+    }
 
     playlist_.save();
     refresh();
@@ -327,9 +330,12 @@ void MainWindow::clear_queue()
     refresh();
 }
 
-void MainWindow::play_chosen(std::size_t index)
+void MainWindow::play_chosen(engine::QueueEntryId id)
 {
-    static_cast<void>(presenter_.play_track(index));
+    const auto index = presenter_.playlist().index_of(id);
+    if (index)
+        static_cast<void>(presenter_.play_track(*index));
+
     refresh();
 }
 

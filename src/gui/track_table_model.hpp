@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Incremental Qt model over immutable application playlist row values.
+ * @brief Incremental Qt table model addressed by stable track identities.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -22,7 +22,7 @@
 
 #include "artwork_cache.hpp"
 
-#include <engine/queue/playlist.hpp>
+#include <engine/queue/track.hpp>
 
 #include <QAbstractTableModel>
 
@@ -31,25 +31,24 @@
 
 namespace wiola::gui {
 
-class PlaylistModel final : public QAbstractTableModel {
+class TrackTableModel final : public QAbstractTableModel {
 public:
-    explicit PlaylistModel(const QWidget& styled, ArtworkCachePolicy policy = {});
+    explicit TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy = {});
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
-    void show_playlist(const engine::Playlist& playlist);
+    void show_tracks(const std::vector<engine::Track>& tracks,
+        std::optional<engine::QueueEntryId> current = {});
+    [[nodiscard]] std::optional<engine::QueueEntryId> track_id(const QModelIndex& index) const;
 
 private:
     mutable ArtworkCache artwork_;
     ArtworkCachePolicy policy_;
     std::vector<engine::Track> rows_;
-    std::optional<std::size_t> current_;
-    std::optional<std::size_t> structural_revision_;
-    std::optional<std::size_t> metadata_revision_;
-    std::optional<std::size_t> selection_revision_;
+    std::optional<engine::QueueEntryId> current_;
 };
 
 } // namespace wiola::gui
