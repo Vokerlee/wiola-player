@@ -52,6 +52,11 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     progress_->setObjectName("workspaceProgress");
     progress_->setTextVisible(false);
 
+    play_ = new QPushButton{"Play selection", this};
+    play_->setObjectName("playWorkspaceSelection");
+    append_ = new QPushButton{"Add to Now Playing", this};
+    append_->setObjectName("appendWorkspaceSelection");
+
     table_ = new TrackTableView{this};
     table_->setAccessibleName("Workspace tracks");
 
@@ -60,10 +65,15 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     controls->addWidget(rescan_);
     controls->addWidget(cancel_);
 
+    QHBoxLayout* playback = new QHBoxLayout;
+    playback->addWidget(play_);
+    playback->addWidget(append_);
+
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
     layout->addLayout(controls);
+    layout->addLayout(playback);
     layout->addWidget(progress_);
     layout->addWidget(status_);
     layout->addWidget(table_);
@@ -76,6 +86,31 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     connect(cancel_, &QPushButton::clicked, [this] {
         if (cancel_observer_)
             cancel_observer_();
+    });
+
+    connect(play_, &QPushButton::clicked, [this] {
+        if (play_observer_)
+            play_observer_();
+    });
+
+    connect(append_, &QPushButton::clicked, [this] {
+        if (append_observer_)
+            append_observer_();
+    });
+
+    connect(table_, &TrackTableView::track_chosen, [this](engine::QueueEntryId) {
+        if (play_observer_)
+            play_observer_();
+    });
+
+    connect(table_, &TrackTableView::transfer_active_asked, [this] {
+        if (transfer_active_observer_)
+            transfer_active_observer_();
+    });
+
+    connect(table_, &TrackTableView::transfer_destination_asked, [this] {
+        if (transfer_destination_observer_)
+            transfer_destination_observer_();
     });
 
     set_busy(false);
@@ -143,6 +178,39 @@ void WorkspaceDocument::on_cancel_requested(std::function<void()> observer)
 std::vector<engine::QueueEntryId> WorkspaceDocument::chosen_tracks() const
 {
     return table_->chosen_tracks();
+}
+
+std::vector<std::filesystem::path> WorkspaceDocument::chosen_paths() const
+{
+    std::vector<std::filesystem::path> paths;
+
+    for (const engine::QueueEntryId id : chosen_tracks()) {
+        const auto row = rows_.index_of(id);
+        if (row)
+            paths.push_back(rows_.tracks()[*row].path());
+    }
+
+    return paths;
+}
+
+void WorkspaceDocument::on_play_requested(std::function<void()> observer)
+{
+    play_observer_ = std::move(observer);
+}
+
+void WorkspaceDocument::on_append_requested(std::function<void()> observer)
+{
+    append_observer_ = std::move(observer);
+}
+
+void WorkspaceDocument::on_transfer_active_requested(std::function<void()> observer)
+{
+    transfer_active_observer_ = std::move(observer);
+}
+
+void WorkspaceDocument::on_transfer_destination_requested(std::function<void()> observer)
+{
+    transfer_destination_observer_ = std::move(observer);
 }
 
 } // namespace wiola::gui

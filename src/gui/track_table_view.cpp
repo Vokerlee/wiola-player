@@ -123,6 +123,10 @@ TrackTableView::TrackTableView(QWidget* parent)
     addAction(add_to);
     connect(add_to, &QAction::triggered, this, &TrackTableView::transfer_destination_asked);
 
+    QAction* move_to = new QAction{"Move to playlist →", this};
+    addAction(move_to);
+    connect(move_to, &QAction::triggered, this, &TrackTableView::transfer_move_asked);
+
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
         if (const auto id = model_.track_id(index))
             emit track_chosen(*id);

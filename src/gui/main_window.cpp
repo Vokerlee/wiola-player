@@ -572,6 +572,9 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
     document->on_transfer_destination_requested([this, id, document] {
         transfer_saved_playlist(id, *document, true);
     });
+    document->on_transfer_move_requested([this, id, document] {
+        choose_move_destination(id, *document);
+    });
 
     const QString name = QString::fromStdString(library_.playlist(id)->name);
     documents_->addTab(document, name);
@@ -638,6 +641,14 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
         workspace_scans_->cancel();
         document->show_cancelled();
     });
+    document->on_play_requested([this, document] { play_workspace_selection(*document); });
+    document->on_append_requested([this, document] { append_workspace_selection(*document); });
+    document->on_transfer_active_requested([this, document] {
+        transfer_workspace(*document, false);
+    });
+    document->on_transfer_destination_requested([this, document] {
+        transfer_workspace(*document, true);
+    });
 
     const std::filesystem::path name = workspace->root.filename();
     documents_->addTab(document, name.empty() ? "Workspace" : QtPathAdapter::to_qt(name));
@@ -647,6 +658,49 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
         workspace_scans_->start(*workspace, session_.playback_extensions());
     document->begin(*workspace, generation);
     save_workspace_documents();
+}
+
+void MainWindow::play_workspace_selection(WorkspaceDocument& document)
+{
+    const app::PlaybackQueueResult result =
+        app::PlaybackQueue{}.replace_with_paths(session_, document.chosen_paths());
+
+    if (!result.requested) {
+        show_status("Select workspace tracks to play");
+        return;
+    }
+
+    said_ = result.open_result;
+    playlist_.save();
+    refresh();
+}
+
+void MainWindow::append_workspace_selection(WorkspaceDocument& document)
+{
+    const app::PlaybackQueueResult result =
+        app::PlaybackQueue{}.append_paths(session_, document.chosen_paths());
+
+    if (!result.requested) {
+        show_status("Select workspace tracks to add");
+        return;
+    }
+
+    playlist_.save();
+    show_status(QString{"%1 track(s) added to Now Playing"}.arg(result.queued));
+    refresh();
+}
+
+void MainWindow::transfer_workspace(WorkspaceDocument& document, bool choose_destination)
+{
+    std::vector<app::MediaTransfer> media;
+
+    for (const std::filesystem::path& path : document.chosen_paths())
+        media.push_back({.media = library::media_id_for(path), .location = path});
+
+    if (choose_destination)
+        choose_transfer_destination(media);
+    else
+        transfer_to({}, media);
 }
 
 void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive)
@@ -772,6 +826,43 @@ void MainWindow::transfer_saved_playlist(const library::PlaylistId& id,
         choose_transfer_destination(media);
     else
         transfer_to({}, media);
+}
+
+void MainWindow::choose_move_destination(const library::PlaylistId& id,
+    SavedPlaylistDocument& document)
+{
+    const std::vector<library::PlaylistEntryId> entries = document.chosen_entries();
+    if (entries.empty()) {
+        show_status("Select tracks to move");
+        return;
+    }
+
+    QMenu destinations{this};
+
+    for (const library::PlaylistRecord& playlist : library_.playlists()) {
+        if (playlist.id == id)
+            continue;
+
+        const library::PlaylistId destination = playlist.id;
+        destinations.addAction(QString::fromStdString(playlist.name),
+            [this, id, destination, entries] {
+                app::PlaylistTransfer transfer{library_, active_playlist_,
+                    [this](const library::LibraryRepository& records) {
+                        return playlist_storage_.save(records) == LibraryJsonError::none;
+                    }};
+                const auto result = transfer.move_to(id, destination, entries);
+
+                show_status(result.succeeded ? QString{"%1 track(s) moved"}.arg(result.added)
+                                             : QString{"Could not save the playlist move"});
+                if (result.succeeded)
+                    refresh_playlist_documents();
+            });
+    }
+
+    if (destinations.isEmpty())
+        destinations.addAction("No other saved playlists")->setEnabled(false);
+
+    destinations.exec(QCursor::pos());
 }
 
 void MainWindow::choose_transfer_destination(const std::vector<app::MediaTransfer>& media)

@@ -126,6 +126,50 @@ TEST(WorkspaceDocument, ExposesRecursionRescanProgressAndCancellationControls)
     EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "0 tracks — cancelled");
 }
 
+TEST(WorkspaceDocument, RoutesSelectedPathsToPlaybackAndTransferCallbacks)
+{
+    wiola::gui::WorkspaceDocument document;
+    const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
+        .root = "/music",
+        .recursive = true};
+    document.begin(workspace, 1);
+    ASSERT_TRUE(document.show_batch({
+        .workspace = workspace.id,
+        .generation = 1,
+        .tracks = {"one.wav", "two.flac"},
+        .status = wiola::app::WorkspaceScanStatus::running
+    }));
+
+    wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
+    table->selectionModel()->select(table->model()->index(1, 0),
+        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+
+    int play = 0;
+    int append = 0;
+    int active = 0;
+    int destination = 0;
+    document.on_play_requested([&play] { ++play; });
+    document.on_append_requested([&append] { ++append; });
+    document.on_transfer_active_requested([&active] { ++active; });
+    document.on_transfer_destination_requested([&destination] { ++destination; });
+
+    document.findChild<QPushButton*>("playWorkspaceSelection")->click();
+    document.findChild<QPushButton*>("appendWorkspaceSelection")->click();
+
+    for (QAction* action : table->actions()) {
+        if (action->text() == "Add to active playlist")
+            action->trigger();
+        if (action->text() == "Add to playlist →")
+            action->trigger();
+    }
+
+    EXPECT_EQ(play, 1);
+    EXPECT_EQ(append, 1);
+    EXPECT_EQ(active, 1);
+    EXPECT_EQ(destination, 1);
+    EXPECT_EQ(document.chosen_paths(), std::vector<std::filesystem::path>{"two.flac"});
+}
+
 } // namespace
 
 int main(int argc, char** argv)

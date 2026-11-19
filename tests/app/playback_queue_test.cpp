@@ -79,4 +79,20 @@ TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
     EXPECT_EQ(session.playlist().tracks()[0].path(), std::filesystem::path{"existing.wav"});
 }
 
+TEST(PlaybackQueue, AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue)
+{
+    wiola::engine::Session session;
+    session.add({"existing.wav"});
+
+    wiola::app::PlaybackQueue queue;
+    const auto result = queue.append_paths(session, {"one.wav", "two.wav"});
+
+    EXPECT_TRUE(result.requested);
+    EXPECT_EQ(result.queued, 2);
+    ASSERT_EQ(session.playlist().tracks().size(), 3);
+    EXPECT_EQ(session.playlist().tracks()[0].path(), std::filesystem::path{"existing.wav"});
+    EXPECT_EQ(session.playlist().tracks()[1].path(), std::filesystem::path{"one.wav"});
+    EXPECT_EQ(session.playlist().tracks()[2].path(), std::filesystem::path{"two.wav"});
+}
+
 } // namespace

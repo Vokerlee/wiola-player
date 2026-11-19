@@ -45,6 +45,7 @@ public:
     void on_active_requested(std::function<void()> observer);
     void on_transfer_active_requested(std::function<void()> observer);
     void on_transfer_destination_requested(std::function<void()> observer);
+    void on_transfer_move_requested(std::function<void()> observer);
 
 private:
     void update_heading();
@@ -62,6 +63,7 @@ private:
     std::function<void()> active_observer_;
     std::function<void()> transfer_active_observer_;
     std::function<void()> transfer_destination_observer_;
+    std::function<void()> transfer_move_observer_;
 };
 
 } // namespace wiola::gui

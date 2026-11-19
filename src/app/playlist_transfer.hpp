@@ -26,6 +26,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <vector>
 
 namespace wiola::app {
@@ -50,6 +51,8 @@ public:
     [[nodiscard]] PlaylistTransferResult add_to_active(const std::vector<MediaTransfer>& media);
     [[nodiscard]] PlaylistTransferResult add_to(const library::PlaylistId& playlist,
         const std::vector<MediaTransfer>& media);
+    [[nodiscard]] PlaylistTransferResult move_to(const library::PlaylistId& source,
+        const library::PlaylistId& destination, std::span<const library::PlaylistEntryId> entries);
 
 private:
     library::InMemoryRepository& repository_;

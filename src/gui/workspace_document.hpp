@@ -42,8 +42,13 @@ public:
     bool show_batch(const app::WorkspaceScanBatch& batch);
     void show_cancelled();
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
+    [[nodiscard]] std::vector<std::filesystem::path> chosen_paths() const;
     void on_rescan_requested(std::function<void(bool recursive)> observer);
     void on_cancel_requested(std::function<void()> observer);
+    void on_play_requested(std::function<void()> observer);
+    void on_append_requested(std::function<void()> observer);
+    void on_transfer_active_requested(std::function<void()> observer);
+    void on_transfer_destination_requested(std::function<void()> observer);
 
 private:
     void set_busy(bool busy);
@@ -56,10 +61,16 @@ private:
     QCheckBox* recursive_{nullptr};
     QPushButton* rescan_{nullptr};
     QPushButton* cancel_{nullptr};
+    QPushButton* play_{nullptr};
+    QPushButton* append_{nullptr};
     QProgressBar* progress_{nullptr};
     TrackTableView* table_{nullptr};
     std::function<void(bool)> rescan_observer_;
     std::function<void()> cancel_observer_;
+    std::function<void()> play_observer_;
+    std::function<void()> append_observer_;
+    std::function<void()> transfer_active_observer_;
+    std::function<void()> transfer_destination_observer_;
 };
 
 } // namespace wiola::gui
