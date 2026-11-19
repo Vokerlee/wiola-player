@@ -33,6 +33,7 @@
 #include "track_inspector.hpp"
 #include "volume_control.hpp"
 
+#include <app/playback_queue.hpp>
 #include <codec/decode/open.hpp>
 #include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
@@ -100,6 +101,7 @@ private:
     void play_chosen(engine::QueueEntryId id);
 
     void open_playlist(const library::PlaylistId& id);
+    void play_saved_playlist(const library::PlaylistId& id);
     void refresh_playlist_documents();
     void restore_playlist_documents();
     void save_playlist_documents();
@@ -154,6 +156,7 @@ private:
 
     [[nodiscard]] bool loaded() const noexcept { return presenter_.presentation().playback.loaded; }
 
+    engine::Session& session_;
     PlayerPresenter presenter_;
 
     /// What the window has already said about a load, so that it says it once.
