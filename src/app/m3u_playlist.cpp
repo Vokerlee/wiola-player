@@ -194,7 +194,7 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
         has_pending = false;
     }
 
-    if (!repository.replace_all(updated.tracks(), updated.playlists()))
+    if (!repository.replace_all(updated.tracks(), updated.playlists(), updated.workspaces()))
         return M3uError::invalid_record;
 
     output = playlist;

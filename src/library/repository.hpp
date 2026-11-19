@@ -47,6 +47,12 @@ public:
         const MediaId& media) = 0;
     virtual bool remove_entry(const PlaylistId& playlist, const PlaylistEntryId& entry) = 0;
 
+    virtual WorkspaceId create_workspace(std::filesystem::path root, bool recursive = true) = 0;
+    virtual bool put_workspace(WorkspaceRecord workspace) = 0;
+    [[nodiscard]] virtual const WorkspaceRecord* workspace(const WorkspaceId& id) const = 0;
+    [[nodiscard]] virtual std::vector<WorkspaceRecord> workspaces() const = 0;
+    virtual bool delete_workspace(const WorkspaceId& id) = 0;
+
     /// Adds one value. Exact duplicates and more than 256 tags on one track are rejected.
     virtual TagId add_tag(const MediaId& media, std::string key, std::string value) = 0;
     virtual bool remove_tag(const MediaId& media, const TagId& tag) = 0;

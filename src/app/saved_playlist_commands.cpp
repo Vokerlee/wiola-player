@@ -78,7 +78,8 @@ library::PlaylistId SavedPlaylistCommands::duplicate(const library::PlaylistId& 
 
     for (const library::PlaylistEntryRecord& entry : copied.entries) {
         if (!repository_.append_track(duplicate, entry.media)) {
-            static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists));
+            static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists,
+                previous.workspaces));
             return {};
         }
     }
@@ -97,7 +98,9 @@ bool SavedPlaylistCommands::remove(const library::PlaylistId& id)
 
 SavedPlaylistCommands::Snapshot SavedPlaylistCommands::snapshot() const
 {
-    return {.tracks = repository_.tracks(), .playlists = repository_.playlists()};
+    return {.tracks = repository_.tracks(),
+        .playlists = repository_.playlists(),
+        .workspaces = repository_.workspaces()};
 }
 
 bool SavedPlaylistCommands::commit(const Snapshot& previous)
@@ -105,7 +108,8 @@ bool SavedPlaylistCommands::commit(const Snapshot& previous)
     if (persist_(repository_))
         return true;
 
-    static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists));
+    static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists,
+        previous.workspaces));
 
     return false;
 }
