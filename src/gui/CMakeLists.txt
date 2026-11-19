@@ -9,10 +9,11 @@ wiola_add_library(
         playlist_control.cpp
         playlist_model.cpp
         playlist_view.cpp
+        player_presenter.cpp
         player_settings.cpp
         seek_bar.cpp
         volume_control.cpp
-    LIBS wiola_codec wiola_engine
+    LIBS wiola_app wiola_codec wiola_engine
 )
 
 # Qt needs its own generated sources, and its headers are part of using this library.
