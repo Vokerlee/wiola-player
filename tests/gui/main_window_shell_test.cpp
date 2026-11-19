@@ -146,11 +146,10 @@ TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocumen
     ASSERT_NE(documents, nullptr);
     ASSERT_NE(now_playing, nullptr);
     ASSERT_NE(play_button, nullptr);
-    ASSERT_EQ(documents->count(), 3);
+    ASSERT_EQ(documents->count(), 2);
 
     EXPECT_EQ(documents->tabText(0), "Now Playing");
-    EXPECT_EQ(documents->tabText(1), "Playlist");
-    EXPECT_EQ(documents->tabText(2), "Folder Workspace");
+    EXPECT_EQ(documents->tabText(1), "Folder Workspace");
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(documents->currentWidget(), now_playing);
     EXPECT_FALSE(play_button->isEnabled());
@@ -161,12 +160,47 @@ TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocumen
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(window.windowTitle(), "Wiola Player");
     EXPECT_FALSE(play_button->isEnabled());
+}
 
-    documents->setCurrentIndex(2);
+TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
+{
+    SCOPED_TRACE("create and restore saved playlist tabs");
 
-    EXPECT_EQ(documents->currentIndex(), 2);
-    EXPECT_EQ(documents->indexOf(now_playing), 0);
-    EXPECT_EQ(window.windowTitle(), "Wiola Player");
+    {
+        wiola::engine::Session session;
+        wiola::gui::MainWindow window{session};
+        wiola::gui::SavedPlaylistManager* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
+            window.findChild<QWidget*>("savedPlaylistManager")
+        );
+        QTabWidget* documents = window.findChild<QTabWidget*>("documentTabs");
+        QPushButton* play_button = button(window, "Play");
+
+        ASSERT_NE(manager, nullptr);
+        ASSERT_NE(documents, nullptr);
+        ASSERT_NE(play_button, nullptr);
+        ASSERT_TRUE(manager->create("Road"));
+        ASSERT_EQ(documents->count(), 3);
+
+        EXPECT_EQ(documents->currentIndex(), 2);
+        EXPECT_EQ(documents->tabText(2), "Road");
+        EXPECT_FALSE(play_button->isEnabled());
+
+        documents->setCurrentIndex(0);
+        EXPECT_EQ(window.windowTitle(), "Wiola Player");
+        EXPECT_FALSE(play_button->isEnabled());
+    }
+
+    SCOPED_TRACE("restore the second window");
+    wiola::engine::Session restored_session;
+    wiola::gui::MainWindow restored{restored_session};
+    QTabWidget* documents = restored.findChild<QTabWidget*>("documentTabs");
+    QPushButton* play_button = button(restored, "Play");
+
+    ASSERT_NE(documents, nullptr);
+    ASSERT_NE(play_button, nullptr);
+    ASSERT_EQ(documents->count(), 3);
+    EXPECT_EQ(documents->tabText(2), "Road");
+    EXPECT_EQ(documents->currentIndex(), 0);
     EXPECT_FALSE(play_button->isEnabled());
 }
 
