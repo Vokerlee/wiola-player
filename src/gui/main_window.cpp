@@ -35,6 +35,7 @@
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QMenuBar>
+#include <QSaveFile>
 #include <QSplitter>
 #include <QVBoxLayout>
 
@@ -310,6 +311,12 @@ MainWindow::MainWindow(engine::Session& session)
     file->addAction(actions_.action(PlayerAction::open));
     file->addAction(actions_.action(PlayerAction::add));
     file->addAction(actions_.action(PlayerAction::clear));
+    file->addSeparator();
+
+    QAction* import_m3u = file->addAction("Import M3U8...");
+    QAction* export_m3u = file->addAction("Export M3U8...");
+    connect(import_m3u, &QAction::triggered, this, &MainWindow::import_m3u_playlist);
+    connect(export_m3u, &QAction::triggered, this, &MainWindow::export_m3u_playlist);
 
     QMenu* playback = menuBar()->addMenu("&Playback");
     playback->addAction(actions_.action(PlayerAction::previous));
@@ -403,6 +410,86 @@ void MainWindow::add_tracks()
     presenter_.add(std::move(tracks));
     playlist_.save();
     refresh();
+}
+
+void MainWindow::import_m3u_playlist()
+{
+    const QString selected = QFileDialog::getOpenFileName(this, "Import M3U8 playlist", {},
+        "M3U8 playlists (*.m3u8 *.m3u);;All files (*)");
+    if (selected.isEmpty())
+        return;
+
+    QFile input{selected};
+    if (!input.open(QIODevice::ReadOnly)) {
+        show_status("Could not open the M3U8 playlist");
+        return;
+    }
+
+    const QByteArray encoded = input.read(16 * 1024 * 1024 + 1);
+    const auto previous_tracks = library_.tracks();
+    const auto previous_playlists = library_.playlists();
+    library::PlaylistId imported;
+    const QFileInfo details{selected};
+    const app::M3uError error =
+        app::M3uPlaylist::import_playlist(library_, QtPathAdapter::from_qt(details.absolutePath()),
+            details.completeBaseName().toStdString(), encoded, imported);
+
+    if (error != app::M3uError::none) {
+        show_status("Could not import the M3U8 playlist");
+        return;
+    }
+
+    if (playlist_storage_.save(library_) != LibraryJsonError::none) {
+        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists));
+        show_status("Could not save the imported playlist");
+        return;
+    }
+
+    navigation_->show_repository(library_);
+    open_playlist(imported);
+    show_status("M3U8 playlist imported");
+}
+
+void MainWindow::export_m3u_playlist()
+{
+    std::optional<library::PlaylistId> selected;
+
+    for (const auto& [id, document] : playlist_documents_) {
+        if (documents_->currentWidget() == document)
+            selected = id;
+    }
+
+    if (!selected)
+        selected = active_playlist_.id();
+
+    if (!selected) {
+        show_status("Open a saved playlist to export");
+        return;
+    }
+
+    const QString file =
+        QFileDialog::getSaveFileName(this, "Export M3U8 playlist", {}, "M3U8 playlists (*.m3u8)");
+    if (file.isEmpty())
+        return;
+
+    QByteArray encoded;
+    const std::filesystem::path path = QtPathAdapter::from_qt(file);
+    const app::M3uError error =
+        app::M3uPlaylist::export_playlist(library_, *selected, path.parent_path(), encoded);
+
+    if (error != app::M3uError::none) {
+        show_status("Could not export the M3U8 playlist");
+        return;
+    }
+
+    QSaveFile output{file};
+    if (!output.open(QIODevice::WriteOnly) || output.write(encoded) != encoded.size() ||
+        !output.commit()) {
+        show_status("Could not write the M3U8 playlist");
+        return;
+    }
+
+    show_status("M3U8 playlist exported");
 }
 
 void MainWindow::remove_chosen()

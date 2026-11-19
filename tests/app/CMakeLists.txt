@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_m3u_playlist_test
+    SOURCES m3u_playlist_test.cpp
+    LIBS wiola_m3u
+)
+wiola_add_test(
     app_playlist_transfer_test
     SOURCES playlist_transfer_test.cpp
     LIBS wiola_app

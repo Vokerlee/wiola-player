@@ -103,6 +103,8 @@ TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
     EXPECT_NE(action(*file, "Open tracks"), nullptr);
     EXPECT_NE(action(*file, "Add"), nullptr);
     EXPECT_NE(action(*file, "Clear"), nullptr);
+    EXPECT_NE(action(*file, "Import M3U8..."), nullptr);
+    EXPECT_NE(action(*file, "Export M3U8..."), nullptr);
     EXPECT_NE(action(*tools, "EQ"), nullptr);
 
     QAction* play = action(*playback, "Play");
