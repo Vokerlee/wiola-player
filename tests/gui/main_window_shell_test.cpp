@@ -25,6 +25,7 @@
 #include <QMenuBar>
 #include <QPushButton>
 #include <QSettings>
+#include <QTabWidget>
 #include <QTemporaryDir>
 
 #include <gtest/gtest.h>
@@ -130,6 +131,42 @@ TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
 
     EXPECT_TRUE(shuffle->isChecked());
     EXPECT_TRUE(shuffle_button->isChecked());
+}
+
+TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocument)
+{
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    QTabWidget* documents = window.findChild<QTabWidget*>("documentTabs");
+    wiola::gui::NowPlayingDocument* now_playing =
+        window.findChild<wiola::gui::NowPlayingDocument*>();
+    QPushButton* play_button = button(window, "Play");
+
+    ASSERT_NE(documents, nullptr);
+    ASSERT_NE(now_playing, nullptr);
+    ASSERT_NE(play_button, nullptr);
+    ASSERT_EQ(documents->count(), 3);
+
+    EXPECT_EQ(documents->tabText(0), "Now Playing");
+    EXPECT_EQ(documents->tabText(1), "Playlist");
+    EXPECT_EQ(documents->tabText(2), "Folder Workspace");
+    EXPECT_EQ(documents->indexOf(now_playing), 0);
+    EXPECT_EQ(documents->currentWidget(), now_playing);
+    EXPECT_FALSE(play_button->isEnabled());
+
+    documents->setCurrentIndex(1);
+
+    EXPECT_EQ(documents->currentIndex(), 1);
+    EXPECT_EQ(documents->indexOf(now_playing), 0);
+    EXPECT_EQ(window.windowTitle(), "Wiola Player");
+    EXPECT_FALSE(play_button->isEnabled());
+
+    documents->setCurrentIndex(2);
+
+    EXPECT_EQ(documents->currentIndex(), 2);
+    EXPECT_EQ(documents->indexOf(now_playing), 0);
+    EXPECT_EQ(window.windowTitle(), "Wiola Player");
+    EXPECT_FALSE(play_button->isEnabled());
 }
 
 } // namespace

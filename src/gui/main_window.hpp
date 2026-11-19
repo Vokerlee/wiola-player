@@ -36,6 +36,7 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSlider>
+#include <QTabWidget>
 
 #include <filesystem>
 #include <memory>
@@ -177,6 +178,7 @@ private:
     QPushButton* clear_button_{nullptr};
     SeekBar* position_bar_{nullptr};
     NowPlayingDocument* now_playing_{nullptr};
+    QTabWidget* documents_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};
     QPushButton* equalizer_button_{nullptr};
