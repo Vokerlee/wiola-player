@@ -22,6 +22,16 @@
 
 namespace wiola::library {
 
+namespace {
+
+template<typename T>
+const T& resolve(const std::optional<T>& override, const T& embedded)
+{
+    return override ? *override : embedded;
+}
+
+} // namespace
+
 ResolvedMetadata resolve_metadata(const TrackRecord& track)
 {
     ResolvedMetadata resolved{
@@ -29,12 +39,12 @@ ResolvedMetadata resolve_metadata(const TrackRecord& track)
         .artist = track.display_artist(),
         .album = track.display_album(),
         .duration = track.embedded.duration,
-        .genre = track.embedded.genre,
-        .year = track.embedded.year,
-        .comment = track.embedded.comment,
-        .composer = track.embedded.composer,
-        .track_number = track.embedded.track_number,
-        .disc_number = track.embedded.disc_number,
+        .genre = resolve(track.overrides.genre, track.embedded.genre),
+        .year = resolve(track.overrides.year, track.embedded.year),
+        .comment = resolve(track.overrides.comment, track.embedded.comment),
+        .composer = resolve(track.overrides.composer, track.embedded.composer),
+        .track_number = resolve(track.overrides.track_number, track.embedded.track_number),
+        .disc_number = resolve(track.overrides.disc_number, track.embedded.disc_number),
         .tags = track.tags,
         .missing = track.missing,
     };

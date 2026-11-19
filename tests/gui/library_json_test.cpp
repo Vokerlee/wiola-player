@@ -38,8 +38,20 @@ TrackRecord track_record()
     track.embedded = {.title = "Embedded",
         .artist = "Artist",
         .album = "Album",
-        .duration = wiola::units::Time{1.5}};
+        .duration = wiola::units::Time{1.5},
+        .genre = "Rock",
+        .year = 2020,
+        .comment = "Embedded comment",
+        .composer = "Embedded composer",
+        .track_number = 1,
+        .disc_number = 1};
     track.overrides.title = "My title";
+    track.overrides.genre = "Jazz";
+    track.overrides.comment = "User comment";
+    track.overrides.composer = "User composer";
+    track.overrides.year = 2026;
+    track.overrides.track_number = std::optional<std::uint32_t>{};
+    track.overrides.disc_number = 3;
     track.tags = {
         {.id = {.value = "tag-1"}, .key = "genre", .value = "Jazz"  },
         {.id = {.value = "tag-2"}, .key = "genre", .value = "Fusion"},
@@ -83,6 +95,19 @@ TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
     EXPECT_EQ(track.embedded.artist, "Artist");
     ASSERT_TRUE(track.embedded.duration.has_value());
     EXPECT_DOUBLE_EQ(track.embedded.duration->seconds(), 1.5);
+    EXPECT_EQ(track.embedded.genre, "Rock");
+    EXPECT_EQ(track.embedded.year, 2020);
+    EXPECT_EQ(track.embedded.comment, "Embedded comment");
+    EXPECT_EQ(track.embedded.composer, "Embedded composer");
+    EXPECT_EQ(track.embedded.track_number, 1);
+    EXPECT_EQ(track.embedded.disc_number, 1);
+    EXPECT_EQ(track.overrides.genre, "Jazz");
+    EXPECT_EQ(track.overrides.comment, "User comment");
+    EXPECT_EQ(track.overrides.composer, "User composer");
+    EXPECT_EQ(track.overrides.year, 2026);
+    ASSERT_TRUE(track.overrides.track_number.has_value());
+    EXPECT_FALSE(track.overrides.track_number->has_value());
+    EXPECT_EQ(track.overrides.disc_number, 3);
     ASSERT_EQ(track.tags.size(), 2U);
     EXPECT_EQ(track.tags[1].value, "Fusion");
     EXPECT_EQ(track.locations, original.tracks.front().locations);
