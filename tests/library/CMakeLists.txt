@@ -15,6 +15,7 @@ wiola_add_test(
 )
 wiola_add_test(library_records_test SOURCES records_test.cpp LIBS wiola_library)
 wiola_add_test(library_tags_test SOURCES tags_test.cpp LIBS wiola_library)
+wiola_add_test(library_search_test SOURCES search_test.cpp LIBS wiola_library)
 wiola_add_test(
     library_in_memory_repository_test
     SOURCES in_memory_repository_test.cpp
