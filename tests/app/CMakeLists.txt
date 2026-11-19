@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_workspace_scanner_test
+    SOURCES workspace_scanner_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_m3u_playlist_test
     SOURCES m3u_playlist_test.cpp
     LIBS wiola_m3u
