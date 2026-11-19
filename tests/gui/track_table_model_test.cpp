@@ -89,7 +89,8 @@ TEST_F(TrackTableModelTest, ChangesOnlyTheRowWhoseMetadataChanged)
         wiola::engine::TrackMetadata{.title = "new title",
             .artist = {},
             .album = {},
-            .duration = {}});
+            .duration = {},
+            .genre = {}});
     model.show_tracks(playlist.tracks());
 
     EXPECT_EQ(changes, 1);
@@ -240,9 +241,17 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
     playlist.describe(id_at(playlist, 0),
-        {.title = "My Song", .artist = "The Artist", .album = "Great Album", .duration = {}});
+        {.title = "My Song",
+            .artist = "The Artist",
+            .album = "Great Album",
+            .duration = {},
+            .genre = {}});
     playlist.describe(id_at(playlist, 1),
-        {.title = "My Song", .artist = "Other Artist", .album = "Great Album", .duration = {}});
+        {.title = "My Song",
+            .artist = "Other Artist",
+            .album = "Great Album",
+            .duration = {},
+            .genre = {}});
     model.show_library(repository);
     model.show_tracks(playlist.tracks());
 

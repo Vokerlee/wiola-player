@@ -158,7 +158,13 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
             engine::TrackMetadata{.title = resolved.title,
                 .artist = resolved.artist,
                 .album = resolved.album,
-                .duration = resolved.duration}));
+                .duration = resolved.duration,
+                .genre = resolved.genre,
+                .year = resolved.year,
+                .comment = resolved.comment,
+                .composer = resolved.composer,
+                .track_number = resolved.track_number,
+                .disc_number = resolved.disc_number}));
     }
 
     table_->show_library(repository);

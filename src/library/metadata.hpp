@@ -29,6 +29,12 @@ struct ResolvedMetadata {
     std::string artist;
     std::string album;
     std::optional<units::Time> duration;
+    std::string genre;
+    std::optional<std::uint32_t> year;
+    std::string comment;
+    std::string composer;
+    std::optional<std::uint32_t> track_number;
+    std::optional<std::uint32_t> disc_number;
     std::vector<TagRecord> tags;
     bool missing{false};
 };

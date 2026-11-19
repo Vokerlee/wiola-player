@@ -60,6 +60,27 @@ public:
 
     [[nodiscard]] const std::string& album() const noexcept { return metadata_.album; }
 
+    [[nodiscard]] const std::string& genre() const noexcept { return metadata_.genre; }
+
+    [[nodiscard]] const std::string& comment() const noexcept { return metadata_.comment; }
+
+    [[nodiscard]] const std::string& composer() const noexcept { return metadata_.composer; }
+
+    [[nodiscard]] constexpr std::optional<std::uint32_t> year() const noexcept
+    {
+        return metadata_.year;
+    }
+
+    [[nodiscard]] constexpr std::optional<std::uint32_t> track_number() const noexcept
+    {
+        return metadata_.track_number;
+    }
+
+    [[nodiscard]] constexpr std::optional<std::uint32_t> disc_number() const noexcept
+    {
+        return metadata_.disc_number;
+    }
+
     [[nodiscard]] constexpr std::optional<units::Time> duration() const noexcept
     {
         return metadata_.duration;

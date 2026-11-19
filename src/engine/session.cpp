@@ -266,6 +266,12 @@ void Session::take_up_finished_tags()
             .artist = tags.track.artist,
             .album = tags.track.album,
             .duration = tags.track.duration,
+            .genre = tags.track.genre,
+            .year = tags.track.year,
+            .comment = tags.track.comment,
+            .composer = tags.track.composer,
+            .track_number = tags.track.track_number,
+            .disc_number = tags.track.disc_number,
         };
 
         auto artwork{std::make_shared<const media::Artwork>(std::move(tags.artwork))};
