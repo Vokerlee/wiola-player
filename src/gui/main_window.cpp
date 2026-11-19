@@ -62,11 +62,11 @@ QString as_status(engine::OpenResult result)
 
 MainWindow::MainWindow(engine::Session& session)
     // A file of its own on both platforms, rather than the registry on one of them.
-    : session_{session}
+    : presenter_{session}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
-    , playlist_{session_, settings_}
-    , volume_{session_.volume(), settings_}
-    , equalizer_{session_.equalizer(), settings_}
+    , playlist_{presenter_, settings_}
+    , volume_{presenter_.volume_control(), settings_}
+    , equalizer_{presenter_.equalizer_control(), settings_}
 {
     setWindowTitle("Wiola Player");
     setMinimumWidth(metrics.window_width);
@@ -109,8 +109,8 @@ MainWindow::MainWindow(engine::Session& session)
     status_label_ = new QLabel{this};
     volume_slider_ = new QSlider{Qt::Horizontal, this};
 
-    const PlayerSettings restored{
-        QtSettingsAdapter{settings_}.read(volume_.scale(), session_.equalizer().config())};
+    const PlayerSettings restored{QtSettingsAdapter{settings_}.read(volume_.scale(),
+        presenter_.equalizer_control().config())};
     volume_.apply_restored(restored.volume_position, restored.boosted);
     equalizer_.apply_restored(restored.equalizer_enabled, restored.band_gains);
     const int position{volume_.position()};
@@ -222,7 +222,8 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
 
     const QString first{QtPathAdapter::to_qt(tracks.front().filename())};
 
-    said_ = session_.open(std::move(tracks));
+    static_cast<void>(presenter_.open(std::move(tracks)));
+    said_ = presenter_.presentation().playback.open_result;
 
     playlist_.save();
     show_status(QString{"opening "} + first + "...");
@@ -236,7 +237,7 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
 std::vector<std::filesystem::path> MainWindow::ask_for_tracks()
 {
     QStringList patterns;
-    for (const std::string& extension : session_.playback_extensions())
+    for (const std::string& extension : presenter_.playback_extensions())
         patterns.append(QString::fromStdString("*" + extension));
 
     const QString filter{QString{"Audio (%1);;All files (*)"}.arg(patterns.join(' '))};
@@ -265,7 +266,7 @@ void MainWindow::add_tracks()
     if (tracks.empty())
         return;
 
-    session_.add(std::move(tracks));
+    presenter_.add(std::move(tracks));
     playlist_.save();
     refresh();
 }
@@ -273,7 +274,7 @@ void MainWindow::add_tracks()
 void MainWindow::remove_chosen()
 {
     for (const std::size_t row : playlist_view_->chosen_rows())
-        static_cast<void>(session_.remove(row));
+        static_cast<void>(presenter_.remove(row));
 
     playlist_.save();
     refresh();
@@ -281,7 +282,7 @@ void MainWindow::remove_chosen()
 
 void MainWindow::clear_queue()
 {
-    session_.clear();
+    presenter_.clear();
     playlist_.save();
 
     // Emptying the queue puts the order back as it was given, shuffle button and all.
@@ -292,46 +293,32 @@ void MainWindow::clear_queue()
 
 void MainWindow::play_chosen(std::size_t index)
 {
-    static_cast<void>(session_.play_track(index));
+    static_cast<void>(presenter_.play_track(index));
     refresh();
 }
 
 void MainWindow::play_previous()
 {
-    static_cast<void>(session_.previous_track());
+    static_cast<void>(presenter_.previous_track());
     refresh();
 }
 
 void MainWindow::play_next()
 {
-    static_cast<void>(session_.next_track());
+    static_cast<void>(presenter_.next_track());
     refresh();
 }
 
 void MainWindow::cycle_repeat()
 {
-    using Repeat = engine::Playlist::Repeat;
-
-    switch (session_.repeat()) {
-    case Repeat::none:
-        session_.set_repeat(Repeat::all);
-        break;
-
-    case Repeat::all:
-        session_.set_repeat(Repeat::track);
-        break;
-
-    case Repeat::track:
-        session_.set_repeat(Repeat::none);
-        break;
-    }
+    presenter_.cycle_repeat();
 
     show_list_buttons();
 }
 
 void MainWindow::set_shuffled(bool shuffled)
 {
-    session_.shuffle(shuffled);
+    presenter_.shuffle(shuffled);
     show_list_buttons();
 }
 
@@ -364,8 +351,9 @@ void MainWindow::show_play_button(bool pausing)
 void MainWindow::show_list_buttons()
 {
     using Repeat = engine::Playlist::Repeat;
+    const PlayerPresentation presentation{presenter_.presentation()};
 
-    switch (session_.repeat()) {
+    switch (presentation.repeat) {
     case Repeat::none:
         repeat_button_->setText("Repeat: off");
         break;
@@ -379,12 +367,13 @@ void MainWindow::show_list_buttons()
         break;
     }
 
-    shuffle_button_->setChecked(session_.shuffled());
+    shuffle_button_->setChecked(presentation.shuffled);
 }
 
 void MainWindow::update_after_pump()
 {
-    const engine::OpenResult result{session_.open_result()};
+    const engine::PlaybackSnapshot playback{presenter_.presentation().playback};
+    const engine::OpenResult result{playback.open_result};
 
     // Said once: a window that repeated itself every turn would overwrite whatever else it has
     // to say.
@@ -401,9 +390,9 @@ void MainWindow::update_after_pump()
 
     // The title follows what is playing, so a list moving on to the next track renames the
     // window without anyone asking it to.
-    if (session_.track() != named_ || session_.playlist().position() != named_place_) {
-        named_ = session_.track();
-        named_place_ = session_.playlist().position();
+    if (playback.track != named_ || presenter_.playlist().position() != named_place_) {
+        named_ = playback.track;
+        named_place_ = presenter_.playlist().position();
 
         const QString name{
             named_.empty() ? QString{"no track"} : QtPathAdapter::to_qt(named_.filename())};
@@ -419,7 +408,7 @@ void MainWindow::update_after_pump()
 
     // A device that goes away is not a listener pressing stop, and is the one thing about
     // playback worth interrupting them for.
-    const bool faulted{session_.state() == engine::Playback::State::faulted};
+    const bool faulted{playback.state == engine::Playback::State::faulted};
 
     if (faulted && !said_fault_) {
         said_fault_ = true;
@@ -434,9 +423,12 @@ void MainWindow::toggle_playback()
         return;
 
     // Pausing cannot fail, so a refusal is always an output that would not open.
-    const bool pausing{session_.state() == engine::Playback::State::playing};
+    const bool pausing{presenter_.presentation().playback.playing};
+    const engine::CommandResult result{presenter_.toggle_playback()};
 
-    show_status(session_.play_or_pause() || pausing ? QString{} : QString{"no playback device"});
+    show_status(result == engine::CommandResult::accepted || pausing
+            ? QString{}
+            : QString{"no playback device"});
 }
 
 void MainWindow::stop_playback()
@@ -444,7 +436,7 @@ void MainWindow::stop_playback()
     if (!loaded())
         return;
 
-    session_.stop();
+    presenter_.stop();
 }
 
 void MainWindow::show_equalizer()
@@ -481,9 +473,7 @@ void MainWindow::set_boosted(bool boosted)
 
 void MainWindow::seek_to(double fraction)
 {
-    const auto total{session_.total_time()};
-    if (loaded() && session_.seekable() && total)
-        session_.seek(*total * fraction);
+    presenter_.seek_to(fraction);
 }
 
 void MainWindow::show_status(const QString& message)
@@ -493,15 +483,18 @@ void MainWindow::show_status(const QString& message)
 
 void MainWindow::refresh()
 {
-    play_button_->setEnabled(loaded());
-    stop_button_->setEnabled(loaded());
-    position_bar_->setEnabled(loaded() && session_.seekable() && session_.total_time().has_value());
-    previous_button_->setEnabled(loaded());
-    next_button_->setEnabled(loaded());
+    const engine::PlaybackSnapshot playback{presenter_.presentation().playback};
 
-    playlist_view_->show_playlist(session_.playlist());
+    play_button_->setEnabled(playback.loaded);
+    stop_button_->setEnabled(playback.loaded);
+    position_bar_->setEnabled(playback.loaded && playback.seekable &&
+        playback.total_time.has_value());
+    previous_button_->setEnabled(playback.loaded);
+    next_button_->setEnabled(playback.loaded);
 
-    if (!loaded()) {
+    playlist_view_->show_playlist(presenter_.playlist());
+
+    if (!playback.loaded) {
         show_play_button(false);
         track_label_->setText("no track");
         elapsed_label_->clear();
@@ -510,14 +503,14 @@ void MainWindow::refresh()
         return;
     }
 
-    const std::optional<units::Time> total{session_.total_time()};
+    const std::optional<units::Time> total{playback.total_time};
 
     // While the edge is being dragged it is a place being chosen, and that is the time worth
     // showing: a listener aiming for somewhere needs to see where they are aiming.
     const units::Time shown{position_bar_->dragging() && total ? *total * position_bar_->fraction()
-                                                               : session_.time_played()};
+                                                               : playback.time_played};
 
-    show_play_button(session_.playing());
+    show_play_button(playback.playing);
 
     elapsed_label_->setText(as_clock(shown));
     total_label_->setText(total ? as_clock(*total) : QString{"--:--"});

@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <engine/session.hpp>
+#include <gui/player_presenter.hpp>
 
 #include <QSettings>
 
@@ -37,7 +37,7 @@ namespace wiola::gui {
  */
 class PlaylistControl {
 public:
-    PlaylistControl(engine::Session& session, QSettings& settings) noexcept;
+    PlaylistControl(PlayerPresenter& presenter, QSettings& settings) noexcept;
 
     /// Puts back what the last run left. Tracks that have gone since are dropped rather than
     /// queued to fail, and how many were dropped is what this answers.
@@ -47,7 +47,7 @@ public:
     void save();
 
 private:
-    engine::Session& session_;
+    PlayerPresenter& presenter_;
     QSettings& settings_;
 };
 

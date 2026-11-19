@@ -21,13 +21,13 @@
 #pragma once
 
 #include "equalizer_panel.hpp"
+#include "player_presenter.hpp"
 #include "playlist_control.hpp"
 #include "playlist_view.hpp"
 #include "seek_bar.hpp"
 #include "volume_control.hpp"
 
 #include <codec/decode/open.hpp>
-#include <engine/session.hpp>
 #include <utils/units.hpp>
 
 #include <QIcon>
@@ -48,8 +48,8 @@ namespace wiola::gui {
 /**
  * Shows one track and the controls for it.
  *
- * The application pumps its session independently. The window only reads that state when asked,
- * so replacing the widget tree does not replace playback or stop decoder completions arriving.
+ * The application pumps its session independently. The window routes commands through its
+ * presenter and reads that state when asked, so replacing widgets does not replace playback.
  *
  * A window opens with nothing loaded and is given a track later, so that choosing one is an
  * ordinary thing to do rather than something only the command line can arrange.
@@ -139,9 +139,9 @@ private:
     /// so a message stays readable rather than lasting until the next poll.
     void show_status(const QString& message);
 
-    [[nodiscard]] bool loaded() const noexcept { return session_.loaded(); }
+    [[nodiscard]] bool loaded() const noexcept { return presenter_.presentation().playback.loaded; }
 
-    engine::Session& session_;
+    PlayerPresenter presenter_;
 
     /// What the window has already said about a load, so that it says it once.
     engine::OpenResult said_{engine::OpenResult::opened};
