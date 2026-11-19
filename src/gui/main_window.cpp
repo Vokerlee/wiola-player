@@ -26,6 +26,7 @@
 #include "qt_path_adapter.hpp"
 
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFont>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -57,6 +58,11 @@ QWidget* placeholder_document(QWidget* parent, const QString& description)
     return document;
 }
 
+std::filesystem::path library_file(const QSettings& settings)
+{
+    return QtPathAdapter::from_qt(QFileInfo{settings.fileName()}.absolutePath() + "/library.json");
+}
+
 /// What to say about a file that would not open.
 QString as_status(engine::OpenResult result)
 {
@@ -85,6 +91,10 @@ MainWindow::MainWindow(engine::Session& session)
     , playlist_{presenter_, settings_}
     , volume_{presenter_.volume_control(), settings_}
     , equalizer_{presenter_.equalizer_control(), settings_}
+    , playlist_storage_{library_file(settings_)}
+    , playlist_commands_{library_, [this](const library::LibraryRepository& records) {
+                             return playlist_storage_.save(records) == LibraryJsonError::none;
+                         }}
 {
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -134,6 +144,9 @@ MainWindow::MainWindow(engine::Session& session)
     total_label_ = new QLabel{this};
     status_label_ = new QLabel{this};
     volume_slider_ = new QSlider{Qt::Horizontal, this};
+
+    if (playlist_storage_.restore(library_) != LibraryJsonError::none)
+        show_status("Could not restore the saved library");
 
     const PlayerSettings restored{QtSettingsAdapter{settings_}.read(volume_.scale(),
         presenter_.equalizer_control().config())};
@@ -222,11 +235,18 @@ MainWindow::MainWindow(engine::Session& session)
 
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
+    playlist_manager_ = new SavedPlaylistManager{library_, playlist_commands_, *navigation_, this};
     inspector_ = new TrackInspector{this};
+
+    QWidget* library_pane = new QWidget{this};
+    QVBoxLayout* library_layout = new QVBoxLayout{library_pane};
+    library_layout->setContentsMargins(0, 0, 0, 0);
+    library_layout->addWidget(navigation_);
+    library_layout->addWidget(playlist_manager_);
 
     QSplitter* document_area = new QSplitter{this};
     document_area->setObjectName("documentArea");
-    document_area->addWidget(navigation_);
+    document_area->addWidget(library_pane);
     document_area->addWidget(documents_);
     document_area->addWidget(inspector_);
     document_area->setStretchFactor(0, 0);

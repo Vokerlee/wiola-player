@@ -26,6 +26,7 @@
 #include <QTreeWidget>
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,8 @@ public:
 
     void show_repository(const library::LibraryRepository& repository);
     void show_workspaces(const std::vector<WorkspaceNavigationEntry>& workspaces);
+    [[nodiscard]] std::optional<library::PlaylistId> selected_playlist() const;
+    bool select_playlist(const library::PlaylistId& id);
     void on_playlist_chosen(std::function<void(library::PlaylistId)> observer);
     void on_workspace_chosen(std::function<void(library::WorkspaceId)> observer);
 

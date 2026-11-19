@@ -13,7 +13,7 @@ if(WIOLA_BUILD_GUI)
     wiola_add_test(
         app_saved_playlist_commands_test
         SOURCES saved_playlist_commands_test.cpp
-        LIBS wiola_saved_playlists
+        LIBS wiola_saved_playlists wiola_gui
     )
     wiola_add_test(
         app_queue_library_migration_test

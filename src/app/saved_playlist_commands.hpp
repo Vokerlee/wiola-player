@@ -20,18 +20,18 @@
 
 #pragma once
 
-#include <gui/saved_playlist_storage.hpp>
-
 #include <library/in_memory_repository.hpp>
 
+#include <functional>
 #include <string>
 
 namespace wiola::app {
 
 class SavedPlaylistCommands final {
 public:
-    SavedPlaylistCommands(library::InMemoryRepository& repository,
-        gui::SavedPlaylistStorage& storage);
+    using Persist = std::function<bool(const library::LibraryRepository&)>;
+
+    SavedPlaylistCommands(library::InMemoryRepository& repository, Persist persist);
 
     [[nodiscard]] library::PlaylistId create(const std::string& name);
     [[nodiscard]] bool rename(const library::PlaylistId& id, const std::string& name);
@@ -48,7 +48,7 @@ private:
     [[nodiscard]] bool commit(const Snapshot& previous);
 
     library::InMemoryRepository& repository_;
-    gui::SavedPlaylistStorage& storage_;
+    Persist persist_;
 };
 
 } // namespace wiola::app
