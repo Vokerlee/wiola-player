@@ -30,7 +30,10 @@
 namespace wiola::gui {
 
 struct PlayerPresentationTokens {
-    int window_min_width{620};
+    int window_min_width{980};
+    int window_min_height{640};
+    int section_spacing{12};
+    int control_spacing{6};
     int play_button_width{64};
     int icon_button_width{44};
     int boost_button_width{24};

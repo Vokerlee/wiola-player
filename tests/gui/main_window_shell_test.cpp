@@ -21,6 +21,7 @@
 #include <gui/main_window.hpp>
 
 #include <QApplication>
+#include <QGroupBox>
 #include <QMenu>
 #include <QMenuBar>
 #include <QPushButton>
@@ -167,6 +168,33 @@ TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocumen
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(window.windowTitle(), "Wiola Player");
     EXPECT_FALSE(play_button->isEnabled());
+}
+
+TEST_F(MainWindowShell, GroupsControlsAndExposesTheirPurposeAndKeyboardFocus)
+{
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    QGroupBox* playback = window.findChild<QGroupBox*>("playbackGroup");
+    QGroupBox* queue = window.findChild<QGroupBox*>("queueCommandsGroup");
+    QPushButton* play = button(window, "Play");
+    QPushButton* boost = button(window, "+");
+    QPushButton* equalizer = button(window, "EQ");
+
+    ASSERT_NE(playback, nullptr);
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(play, nullptr);
+    ASSERT_NE(boost, nullptr);
+    ASSERT_NE(equalizer, nullptr);
+
+    EXPECT_EQ(playback->title(), "Now playing");
+    EXPECT_EQ(queue->title(), "Queue commands");
+    EXPECT_GE(window.minimumWidth(), 980);
+    EXPECT_GE(window.minimumHeight(), 640);
+    EXPECT_EQ(play->focusPolicy(), Qt::StrongFocus);
+    EXPECT_EQ(boost->focusPolicy(), Qt::StrongFocus);
+    EXPECT_EQ(boost->accessibleName(), "Boost volume above 100%");
+    EXPECT_EQ(equalizer->accessibleName(), "Equalizer");
+    EXPECT_FALSE(boost->toolTip().isEmpty());
 }
 
 } // namespace
