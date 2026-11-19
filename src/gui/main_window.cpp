@@ -252,6 +252,15 @@ MainWindow::MainWindow(engine::Session& session)
                 static_cast<void>(found->second->show_batch(batch));
         });
 
+    workspace_watcher_ = std::make_unique<app::WorkspaceWatcher>(this);
+    workspace_watcher_->on_changed([this](library::WorkspaceId id) {
+        if (const library::WorkspaceRecord* workspace = library_.workspace(id))
+            rescan_workspace(id, workspace->recursive);
+    });
+
+    for (const library::WorkspaceRecord& workspace : library_.workspaces())
+        static_cast<void>(workspace_watcher_->watch(workspace));
+
     QWidget* library_pane = new QWidget{this};
     QVBoxLayout* library_layout = new QVBoxLayout{library_pane};
     library_layout->setContentsMargins(0, 0, 0, 0);
@@ -592,6 +601,7 @@ void MainWindow::open_folder()
         return;
     }
 
+    static_cast<void>(workspace_watcher_->watch(*library_.workspace(workspace)));
     show_workspace_navigation();
     open_workspace(workspace);
 }
@@ -667,6 +677,8 @@ void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive
             return;
         }
     }
+
+    static_cast<void>(workspace_watcher_->watch(updated));
 
     const std::uint64_t generation =
         workspace_scans_->start(updated, session_.playback_extensions());
