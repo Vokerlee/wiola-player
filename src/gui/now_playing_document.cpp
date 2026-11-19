@@ -20,6 +20,7 @@
 
 #include "now_playing_document.hpp"
 
+#include "tag_filter_panel.hpp"
 #include "track_search_panel.hpp"
 #include "track_table_view.hpp"
 
@@ -44,11 +45,17 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
         table_->search_by(query);
         update_results();
     });
+    filters_ = new TagFilterPanel{this};
+    filters_->on_changed([this](std::vector<library::TagFilter> filters) {
+        table_->filter_by(filters);
+        update_results();
+    });
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading);
     layout->addWidget(search_);
+    layout->addWidget(filters_);
     layout->addWidget(table_);
 
     connect(table_, &TrackTableView::track_chosen, this, &NowPlayingDocument::track_chosen);

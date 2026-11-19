@@ -23,14 +23,29 @@
 #include <library/records.hpp>
 
 #include <string>
+#include <vector>
 
 namespace wiola::library {
+
+enum class TagFilterMode {
+    include,
+    exclude,
+};
+
+struct TagFilter {
+    std::string key;
+    std::string value;
+    TagFilterMode mode{TagFilterMode::include};
+
+    bool operator==(const TagFilter&) const = default;
+};
 
 struct SearchQuery {
     std::string title;
     std::string artist;
     std::string album;
     std::string tags;
+    std::vector<TagFilter> filters;
 };
 
 /// Trims and case-folds every field independently; empty fields do not restrict results.

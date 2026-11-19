@@ -57,7 +57,7 @@ bool same_metadata(const engine::Track& a, const engine::Track& b)
 bool restricted(const library::SearchQuery& query)
 {
     return !query.title.empty() || !query.artist.empty() || !query.album.empty() ||
-        !query.tags.empty();
+        !query.tags.empty() || !query.filters.empty();
 }
 
 bool matches(const engine::Track& track, const library::LibraryRepository* repository,
@@ -302,7 +302,8 @@ void TrackTableModel::search_by(const library::SearchQuery& query)
 {
     const library::SearchQuery normalized = library::normalized_search_query(query);
     const bool same = query_.title == normalized.title && query_.artist == normalized.artist &&
-        query_.album == normalized.album && query_.tags == normalized.tags;
+        query_.album == normalized.album && query_.tags == normalized.tags &&
+        query_.filters == normalized.filters;
 
     if (same)
         return;

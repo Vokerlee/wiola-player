@@ -39,6 +39,22 @@ bool matches_tag(const TagRecord& tag, const std::string& term)
     return contains(tag.key, term) || contains(tag.value, term);
 }
 
+bool present(const TrackRecord& track, const TagFilter& filter)
+{
+    return std::ranges::any_of(track.tags, [&](const TagRecord& tag) {
+        return normalized_tag_text(tag.key) == filter.key &&
+            (filter.value.empty() || normalized_tag_text(tag.value) == filter.value);
+    });
+}
+
+bool matches_filters(const TrackRecord& track, const std::vector<TagFilter>& filters)
+{
+    return std::ranges::all_of(filters, [&](const TagFilter& filter) {
+        return filter.mode == TagFilterMode::include ? present(track, filter)
+                                                     : !present(track, filter);
+    });
+}
+
 } // namespace
 
 SearchQuery normalized_search_query(SearchQuery query)
@@ -47,6 +63,11 @@ SearchQuery normalized_search_query(SearchQuery query)
     query.artist = normalized_tag_text(query.artist);
     query.album = normalized_tag_text(query.album);
     query.tags = normalized_tag_text(query.tags);
+
+    for (TagFilter& filter : query.filters) {
+        filter.key = normalized_tag_text(filter.key);
+        filter.value = normalized_tag_text(filter.value);
+    }
 
     return query;
 }
@@ -61,9 +82,12 @@ bool matches_search(const SearchQuery& query, const TrackRecord& track)
         !contains(metadata.album, normalized.album))
         return false;
 
-    return normalized.tags.empty() || std::ranges::any_of(track.tags, [&](const TagRecord& tag) {
-        return matches_tag(tag, normalized.tags);
-    });
+    if (!normalized.tags.empty() && std::ranges::none_of(track.tags, [&](const TagRecord& tag) {
+            return matches_tag(tag, normalized.tags);
+        }))
+        return false;
+
+    return matches_filters(track, normalized.filters);
 }
 
 } // namespace wiola::library

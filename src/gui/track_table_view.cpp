@@ -362,7 +362,19 @@ void TrackTableView::search_by(const library::SearchQuery& query)
 {
     const std::vector<engine::QueueEntryId> selected = chosen_tracks();
     const auto current_id = model_.track_id(currentIndex());
-    model_.search_by(query);
+    query_ = query;
+    query_.filters = filters_;
+    model_.search_by(query_);
+    restore_selection(selected, current_id);
+}
+
+void TrackTableView::filter_by(const std::vector<library::TagFilter>& filters)
+{
+    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
+    const auto current_id = model_.track_id(currentIndex());
+    filters_ = filters;
+    query_.filters = filters_;
+    model_.search_by(query_);
     restore_selection(selected, current_id);
 }
 

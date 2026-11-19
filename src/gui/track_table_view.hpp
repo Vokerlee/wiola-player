@@ -43,6 +43,7 @@ public:
     void show_library(const library::LibraryRepository& repository);
     void sort_by(const std::vector<TrackSortKey>& keys);
     void search_by(const library::SearchQuery& query);
+    void filter_by(const std::vector<library::TagFilter>& filters);
     [[nodiscard]] std::size_t visible_count() const;
     [[nodiscard]] std::size_t total_count() const;
     [[nodiscard]] std::vector<engine::QueueEntryId> displayed_tracks() const;
@@ -73,6 +74,8 @@ private:
     std::vector<std::string> available_tags_;
     std::vector<std::string> visible_tags_;
     std::vector<TrackSortKey> sort_keys_;
+    library::SearchQuery query_;
+    std::vector<library::TagFilter> filters_;
     std::vector<QAction*> tag_actions_;
 };
 

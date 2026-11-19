@@ -87,4 +87,28 @@ TEST_F(Search, MatchesTagKeysAndValuesWithNormalizedTerms)
     EXPECT_FALSE(wiola::library::matches_search(with_tag("energetic"), track));
 }
 
+TEST_F(Search, AppliesIncludeAndExcludeFiltersWithNormalizedValues)
+{
+    SearchQuery query;
+    query.filters = {
+        {.key = " genre ", .value = " NU JAZZ ", .mode = wiola::library::TagFilterMode::include},
+        {.key = "Mood",    .value = "Energetic", .mode = wiola::library::TagFilterMode::exclude}
+    };
+
+    EXPECT_TRUE(wiola::library::matches_search(query, track));
+
+    query.filters.back().value = "Calm";
+    EXPECT_FALSE(wiola::library::matches_search(query, track));
+
+    query.filters = {
+        {.key = "Mood", .value = {}, .mode = wiola::library::TagFilterMode::exclude}
+    };
+    EXPECT_FALSE(wiola::library::matches_search(query, track));
+
+    query.filters = {
+        {.key = "Missing", .value = {}, .mode = wiola::library::TagFilterMode::exclude}
+    };
+    EXPECT_TRUE(wiola::library::matches_search(query, track));
+}
+
 } // namespace

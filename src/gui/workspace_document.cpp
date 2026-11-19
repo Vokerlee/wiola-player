@@ -21,6 +21,7 @@
 #include "workspace_document.hpp"
 
 #include "qt_path_adapter.hpp"
+#include "tag_filter_panel.hpp"
 #include "track_search_panel.hpp"
 
 #include <library/location.hpp>
@@ -68,6 +69,11 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
         table_->search_by(query);
         update_results();
     });
+    filters_ = new TagFilterPanel{this};
+    filters_->on_changed([this](std::vector<library::TagFilter> filters) {
+        table_->filter_by(filters);
+        update_results();
+    });
 
     QHBoxLayout* controls = new QHBoxLayout;
     controls->addWidget(recursive_);
@@ -86,6 +92,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     layout->addWidget(progress_);
     layout->addWidget(status_);
     layout->addWidget(search_);
+    layout->addWidget(filters_);
     layout->addWidget(table_);
 
     connect(rescan_, &QPushButton::clicked, [this] {

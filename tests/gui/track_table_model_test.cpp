@@ -214,6 +214,23 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     model.show_library(repository);
 
     EXPECT_EQ(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Jazz, Live");
+
+    wiola::library::SearchQuery query;
+    query.filters = {
+        {.key = "genre", .value = "live", .mode = wiola::library::TagFilterMode::include}
+    };
+    model.search_by(query);
+    EXPECT_EQ(model.rowCount(), 1);
+
+    query.filters = {
+        {.key = "mood", .value = "calm", .mode = wiola::library::TagFilterMode::exclude}
+    };
+    model.search_by(query);
+    EXPECT_EQ(model.rowCount(), 1);
+    EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 1));
+
+    model.search_by({});
+    EXPECT_EQ(model.rowCount(), 2);
 }
 
 TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
@@ -229,13 +246,17 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
     model.show_library(repository);
     model.show_tracks(playlist.tracks());
 
-    model.search_by({.title = "song", .artist = "the artist", .album = "great", .tags = {}});
+    model.search_by(
+        {.title = "song", .artist = "the artist", .album = "great", .tags = {}, .filters = {}}
+    );
 
     EXPECT_EQ(model.rowCount(), 1);
     EXPECT_EQ(model.total_count(), 2);
     EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 0));
 
-    model.search_by({.title = "song", .artist = "missing", .album = "great", .tags = {}});
+    model.search_by(
+        {.title = "song", .artist = "missing", .album = "great", .tags = {}, .filters = {}}
+    );
     EXPECT_EQ(model.rowCount(), 0);
     EXPECT_EQ(model.total_count(), 2);
 

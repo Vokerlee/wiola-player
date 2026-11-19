@@ -36,6 +36,7 @@ namespace wiola::gui {
 
 class TrackTableView;
 class TrackSearchPanel;
+class TagFilterPanel;
 
 class NowPlayingDocument final : public QWidget {
     Q_OBJECT
@@ -61,6 +62,7 @@ private:
 
     TrackTableView* table_{nullptr};
     TrackSearchPanel* search_{nullptr};
+    TagFilterPanel* filters_{nullptr};
 };
 
 } // namespace wiola::gui
