@@ -1151,11 +1151,14 @@ std::vector<const library::TrackRecord*> MainWindow::selected_records()
 void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFieldOverrides edit)
 {
     std::vector<library::MediaId> selected;
-    std::map<library::MediaId, std::uint64_t> expected;
+    std::map<library::MediaId, app::ExpectedMediaState> expected;
 
     for (const library::TrackRecord* record : selected_records()) {
         selected.push_back(record->id);
-        expected.emplace(record->id, record->metadata_revision);
+        expected.emplace(record->id,
+            app::ExpectedMediaState{.metadata_revision = record->metadata_revision,
+                .content_revision = record->content_revision,
+                .fingerprint = record->fingerprint});
     }
 
     const auto outcome = optimistic_edits_.submit(selected, edit, expected);

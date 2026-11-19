@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <app/metadata_conflicts.hpp>
 #include <app/standard_metadata_commands.hpp>
 
 #include <map>
@@ -36,6 +37,7 @@ enum class MetadataEditState {
 struct MetadataEditOutcome {
     MetadataEditState state{MetadataEditState::queued};
     StandardMetadataError error{StandardMetadataError::none};
+    MetadataConflictKind conflict{MetadataConflictKind::none};
     std::size_t changed{0};
     std::size_t unchanged{0};
     std::size_t missing{0};
@@ -52,6 +54,9 @@ public:
     [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
         const library::StandardFieldOverrides& edit,
         const std::map<library::MediaId, std::uint64_t>& expected_revisions = {});
+    [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
+        const library::StandardFieldOverrides& edit,
+        const std::map<library::MediaId, ExpectedMediaState>& expected_states);
 
 private:
     library::InMemoryRepository& repository_;

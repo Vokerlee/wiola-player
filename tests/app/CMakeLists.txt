@@ -14,6 +14,11 @@ wiola_add_test(
     LIBS wiola_media_revisions
 )
 wiola_add_test(
+    app_metadata_conflicts_test
+    SOURCES metadata_conflicts_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_optimistic_metadata_edits_test
     SOURCES optimistic_metadata_edits_test.cpp
     LIBS wiola_app

@@ -66,6 +66,23 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
     const library::StandardFieldOverrides& edit,
     const std::map<library::MediaId, std::uint64_t>& expected_revisions)
 {
+    std::map<library::MediaId, ExpectedMediaState> expected_states;
+
+    for (const auto& [id, revision] : expected_revisions) {
+        const library::TrackRecord* track = repository_.track(id);
+        expected_states.emplace(id,
+            ExpectedMediaState{.metadata_revision = revision,
+                .content_revision = track != nullptr ? track->content_revision : 0,
+                .fingerprint = {}});
+    }
+
+    return submit(media, edit, expected_states);
+}
+
+MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::MediaId>& media,
+    const library::StandardFieldOverrides& edit,
+    const std::map<library::MediaId, ExpectedMediaState>& expected_states)
+{
     if (empty(edit)) {
         MetadataEditOutcome outcome{.state = MetadataEditState::failed,
             .error = StandardMetadataError::empty_edit};
@@ -77,11 +94,13 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
     const auto previous_tracks = repository_.tracks();
     const auto previous_playlists = repository_.playlists();
     const auto previous_workspaces = repository_.workspaces();
+    const MetadataConflictDetector detector;
 
-    for (const auto& [id, revision] : expected_revisions) {
-        const library::TrackRecord* track = repository_.track(id);
-        if (track != nullptr && track->metadata_revision != revision) {
-            MetadataEditOutcome outcome{.state = MetadataEditState::conflicted};
+    for (const auto& [id, expected] : expected_states) {
+        const auto conflict = detector.check(repository_, id, expected);
+        if (conflict != MetadataConflictKind::none) {
+            MetadataEditOutcome outcome{.state = MetadataEditState::conflicted,
+                .conflict = conflict};
             observer_(outcome);
             return outcome;
         }
