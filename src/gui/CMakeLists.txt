@@ -31,6 +31,7 @@ wiola_add_library(
         wiola_m3u
         wiola_saved_playlists
         wiola_workspace_scans
+        wiola_workspace_watcher
 )
 
 # Qt needs its own generated sources, and its headers are part of using this library.

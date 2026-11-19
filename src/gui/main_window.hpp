@@ -38,6 +38,7 @@
 #include <app/m3u_playlist.hpp>
 #include <app/playback_queue.hpp>
 #include <app/playlist_transfer.hpp>
+#include <app/workspace_watcher.hpp>
 #include <codec/decode/open.hpp>
 #include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
@@ -223,6 +224,7 @@ private:
     std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
     std::map<library::WorkspaceId, WorkspaceDocument*> workspace_documents_;
     std::unique_ptr<app::WorkspaceScanPublisher> workspace_scans_;
+    std::unique_ptr<app::WorkspaceWatcher> workspace_watcher_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};
