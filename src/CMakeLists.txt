@@ -19,6 +19,7 @@ target_link_libraries(
         wiola_core
         wiola_coverage
         wiola_player_application
+        wiola_queue_migration
         wiola_sanitizer
         wiola_warnings
 )
