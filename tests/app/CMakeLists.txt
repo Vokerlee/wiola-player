@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_workspace_scan_publisher_test
+    SOURCES workspace_scan_publisher_test.cpp
+    LIBS wiola_workspace_scans
+)
+wiola_add_test(
     app_workspace_scanner_test
     SOURCES workspace_scanner_test.cpp
     LIBS wiola_app
