@@ -4,6 +4,11 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
+    gui_track_table_view_test
+    SOURCES track_table_view_test.cpp
+    LIBS wiola_gui
+)
+wiola_add_test(
     gui_playlist_control_test
     SOURCES playlist_control_test.cpp
     LIBS wiola_gui

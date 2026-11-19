@@ -111,7 +111,7 @@ MainWindow::MainWindow(engine::Session& session)
     boost_button_ = new QPushButton{"+", this};
     volume_value_ = new QLabel{this};
     position_bar_ = new SeekBar{this};
-    playlist_view_ = new PlaylistView{this};
+    playlist_view_ = new TrackTableView{this};
     track_label_ = new QLabel{this};
     elapsed_label_ = new QLabel{this};
     total_label_ = new QLabel{this};
@@ -229,8 +229,8 @@ MainWindow::MainWindow(engine::Session& session)
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
 
-    connect(playlist_view_, &PlaylistView::track_chosen, this, &MainWindow::play_chosen);
-    connect(playlist_view_, &PlaylistView::removal_asked, this, &MainWindow::remove_chosen);
+    connect(playlist_view_, &TrackTableView::track_chosen, this, &MainWindow::play_chosen);
+    connect(playlist_view_, &TrackTableView::removal_asked, this, &MainWindow::remove_chosen);
 
     connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
     connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
@@ -537,7 +537,11 @@ void MainWindow::refresh()
     position_bar_->setEnabled(playback.loaded && playback.seekable &&
         playback.total_time.has_value());
 
-    playlist_view_->show_playlist(presenter_.playlist());
+    const engine::Playlist& playlist = presenter_.playlist();
+    const auto current = playlist.current()
+        ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
+        : std::nullopt;
+    playlist_view_->show_tracks(playlist.tracks(), current);
 
     if (!playback.loaded) {
         show_play_button(false);

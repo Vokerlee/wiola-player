@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief The queue, as a listener sees it.
+ * @brief Reusable track table with stable selection and user-visible column controls.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -22,22 +22,22 @@
 
 #include "track_table_model.hpp"
 
-#include <engine/queue/playlist.hpp>
-
 #include <QKeyEvent>
 #include <QTableView>
 
-#include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace wiola::gui {
 
-class PlaylistView final : public QTableView {
+class TrackTableView final : public QTableView {
     Q_OBJECT
 
 public:
-    explicit PlaylistView(QWidget* parent = nullptr);
-    void show_playlist(const engine::Playlist& playlist);
+    explicit TrackTableView(QWidget* parent = nullptr);
+
+    void show_tracks(const std::vector<engine::Track>& tracks,
+        std::optional<engine::QueueEntryId> current = {});
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:
