@@ -1,4 +1,9 @@
 wiola_add_test(
+    library_metadata_test
+    SOURCES metadata_test.cpp
+    LIBS wiola_library
+)
+wiola_add_test(
     library_identity_test
     SOURCES identity_test.cpp
     LIBS wiola_library
