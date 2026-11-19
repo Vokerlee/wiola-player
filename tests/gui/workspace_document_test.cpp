@@ -88,6 +88,44 @@ TEST(WorkspaceDocument, ClearsRowsWhenANewScanStarts)
     EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "Scanning...");
 }
 
+TEST(WorkspaceDocument, ExposesRecursionRescanProgressAndCancellationControls)
+{
+    wiola::gui::WorkspaceDocument document;
+    document.begin({.id = wiola::library::WorkspaceId{"workspace"},
+                       .root = "/music/library",
+                       .recursive = true},
+        4);
+
+    QCheckBox* recursive = document.findChild<QCheckBox*>("workspaceRecursive");
+    QPushButton* rescan = document.findChild<QPushButton*>("rescanWorkspace");
+    QPushButton* cancel = document.findChild<QPushButton*>("cancelWorkspaceScan");
+    QProgressBar* progress = document.findChild<QProgressBar*>("workspaceProgress");
+    ASSERT_NE(recursive, nullptr);
+    ASSERT_NE(rescan, nullptr);
+    ASSERT_NE(cancel, nullptr);
+    ASSERT_NE(progress, nullptr);
+
+    EXPECT_TRUE(recursive->isChecked());
+    EXPECT_EQ(document.findChild<QLabel*>("workspaceHeading")->text(), "/music/library");
+    EXPECT_EQ(progress->maximum(), 0);
+    EXPECT_TRUE(cancel->isEnabled());
+    EXPECT_FALSE(rescan->isEnabled());
+
+    std::optional<bool> requested_policy;
+    document.on_rescan_requested([&requested_policy](bool policy) { requested_policy = policy; });
+    recursive->setChecked(false);
+    rescan->setEnabled(true);
+    rescan->click();
+    EXPECT_EQ(requested_policy, false);
+
+    document.on_cancel_requested([&document] { document.show_cancelled(); });
+    cancel->click();
+    EXPECT_NE(progress->maximum(), 0);
+    EXPECT_FALSE(cancel->isEnabled());
+    EXPECT_TRUE(rescan->isEnabled());
+    EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "0 tracks — cancelled");
+}
+
 } // namespace
 
 int main(int argc, char** argv)

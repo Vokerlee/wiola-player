@@ -623,6 +623,11 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
 
     WorkspaceDocument* document = new WorkspaceDocument{this};
     workspace_documents_.emplace(id, document);
+    document->on_rescan_requested([this, id](bool recursive) { rescan_workspace(id, recursive); });
+    document->on_cancel_requested([this, document] {
+        workspace_scans_->cancel();
+        document->show_cancelled();
+    });
 
     const std::filesystem::path name = workspace->root.filename();
     documents_->addTab(document, name.empty() ? "Workspace" : QtPathAdapter::to_qt(name));
@@ -632,6 +637,40 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
         workspace_scans_->start(*workspace, session_.playback_extensions());
     document->begin(*workspace, generation);
     save_workspace_documents();
+}
+
+void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive)
+{
+    const library::WorkspaceRecord* current = library_.workspace(id);
+    WorkspaceDocument* document =
+        workspace_documents_.contains(id) ? workspace_documents_.at(id) : nullptr;
+    if (current == nullptr || document == nullptr)
+        return;
+
+    library::WorkspaceRecord updated = *current;
+    updated.recursive = recursive;
+
+    if (recursive != current->recursive) {
+        const auto previous_tracks = library_.tracks();
+        const auto previous_playlists = library_.playlists();
+        const auto previous_workspaces = library_.workspaces();
+
+        if (!library_.put_workspace(updated)) {
+            show_status("Could not update the folder workspace");
+            return;
+        }
+
+        if (playlist_storage_.save(library_) != LibraryJsonError::none) {
+            static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
+                previous_workspaces));
+            show_status("Could not save the workspace settings");
+            return;
+        }
+    }
+
+    const std::uint64_t generation =
+        workspace_scans_->start(updated, session_.playback_extensions());
+    document->begin(updated, generation);
 }
 
 void MainWindow::restore_workspace_documents()
