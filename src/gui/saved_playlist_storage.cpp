@@ -34,6 +34,7 @@ LibraryJsonError SavedPlaylistStorage::save(const library::LibraryRepository& re
     return storage_.save(LibrarySnapshot{
         .tracks = repository.tracks(),
         .playlists = repository.playlists(),
+        .workspaces = repository.workspaces(),
     });
 }
 
@@ -45,7 +46,7 @@ LibraryJsonError SavedPlaylistStorage::restore(library::InMemoryRepository& repo
     if (error != LibraryJsonError::none)
         return error;
 
-    return repository.replace_all(snapshot.tracks, snapshot.playlists)
+    return repository.replace_all(snapshot.tracks, snapshot.playlists, snapshot.workspaces)
         ? LibraryJsonError::none
         : LibraryJsonError::invalid_record;
 }

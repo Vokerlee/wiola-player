@@ -34,7 +34,8 @@ public:
 
     /// Validates a complete snapshot before replacing any current records.
     bool replace_all(const std::vector<TrackRecord>& tracks,
-        const std::vector<PlaylistRecord>& playlists);
+        const std::vector<PlaylistRecord>& playlists,
+        const std::vector<WorkspaceRecord>& workspaces);
 
     PlaylistId create_playlist(std::string name) override;
     bool put_playlist(PlaylistRecord playlist) override;
@@ -46,12 +47,19 @@ public:
         const MediaId& media) override;
     bool remove_entry(const PlaylistId& playlist, const PlaylistEntryId& entry) override;
 
+    WorkspaceId create_workspace(std::filesystem::path root, bool recursive = true) override;
+    bool put_workspace(WorkspaceRecord workspace) override;
+    [[nodiscard]] const WorkspaceRecord* workspace(const WorkspaceId& id) const override;
+    [[nodiscard]] std::vector<WorkspaceRecord> workspaces() const override;
+    bool delete_workspace(const WorkspaceId& id) override;
+
     TagId add_tag(const MediaId& media, std::string key, std::string value) override;
     bool remove_tag(const MediaId& media, const TagId& tag) override;
 
 private:
     PlaylistId next_playlist_id();
     PlaylistEntryId next_entry_id();
+    WorkspaceId next_workspace_id();
     TagId next_tag_id();
 
     [[nodiscard]] bool entry_exists(const PlaylistEntryId& id) const;
@@ -59,8 +67,10 @@ private:
 
     std::map<MediaId, TrackRecord> tracks_;
     std::map<PlaylistId, PlaylistRecord> playlists_;
+    std::map<WorkspaceId, WorkspaceRecord> workspaces_;
     std::size_t next_playlist_{1};
     std::size_t next_entry_{1};
+    std::size_t next_workspace_{1};
     std::size_t next_tag_{1};
 };
 

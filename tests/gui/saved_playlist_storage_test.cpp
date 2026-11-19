@@ -53,6 +53,8 @@ TEST_F(SavedPlaylistStorage, RestoresOrderedEntriesAndDuplicateMediaWithStableId
     const wiola::library::MediaId second{"media-second"};
     ASSERT_TRUE(original.put_track(track(first)));
     ASSERT_TRUE(original.put_track(track(second)));
+    const auto workspace = original.create_workspace("music", false);
+    ASSERT_TRUE(workspace.valid());
 
     const auto playlist = original.create_playlist("Favorites");
     const auto first_entry = original.append_track(playlist, first);
@@ -69,6 +71,8 @@ TEST_F(SavedPlaylistStorage, RestoresOrderedEntriesAndDuplicateMediaWithStableId
 
     EXPECT_EQ(restored.tracks().size(), 2);
     EXPECT_EQ(restored.track(wiola::library::MediaId{"obsolete"}), nullptr);
+    ASSERT_NE(restored.workspace(workspace), nullptr);
+    EXPECT_FALSE(restored.workspace(workspace)->recursive);
 
     const wiola::library::PlaylistRecord* saved = restored.playlist(playlist);
     ASSERT_NE(saved, nullptr);
@@ -96,7 +100,7 @@ TEST_F(SavedPlaylistStorage, RejectsInvalidSavedRecordsWithoutChangingTheReposit
             .media = wiola::library::MediaId{"unknown"}}},
     };
 
-    EXPECT_FALSE(repository.replace_all({track(retained)}, {invalid}));
+    EXPECT_FALSE(repository.replace_all({track(retained)}, {invalid}, {}));
     ASSERT_EQ(repository.playlists().size(), 0);
     ASSERT_NE(repository.track(retained), nullptr);
 

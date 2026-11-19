@@ -41,6 +41,7 @@ namespace {
 constexpr std::size_t max_document_bytes{16 * 1024 * 1024};
 constexpr std::size_t max_tracks{10000};
 constexpr std::size_t max_playlists{1000};
+constexpr std::size_t max_workspaces{1000};
 constexpr std::size_t max_playlist_entries{100000};
 constexpr std::size_t max_locations{64};
 constexpr std::size_t max_tags{256};
@@ -254,6 +255,31 @@ LibraryJsonError read_playlist(const QJsonValue& value, const std::set<library::
     return {};
 }
 
+LibraryJsonError read_workspace(const QJsonValue& value, library::WorkspaceRecord& output)
+{
+    if (!value.isObject())
+        return LibraryJsonError::invalid_record;
+
+    const QJsonObject object{value.toObject()};
+    std::string root;
+
+    if (!read_text(object, "id", output.id.value, max_name_bytes, true) ||
+        !read_text(object, "root", root, max_id_bytes, true) || !output.id.valid() || root.empty())
+        return LibraryJsonError::invalid_record;
+
+    output.root = QtPathAdapter::from_qt(QString::fromStdString(root));
+    output.recursive = true;
+
+    if (object.contains("recursive")) {
+        if (!object.value("recursive").isBool())
+            return LibraryJsonError::invalid_record;
+
+        output.recursive = object.value("recursive").toBool();
+    }
+
+    return LibraryJsonError::none;
+}
+
 QJsonObject write_track(const library::TrackRecord& track)
 {
     QJsonObject embedded{
@@ -317,6 +343,15 @@ QJsonObject write_playlist(const library::PlaylistRecord& playlist)
     };
 }
 
+QJsonObject write_workspace(const library::WorkspaceRecord& workspace)
+{
+    return {
+        {"id",        qt(workspace.id.value)              },
+        {"root",      QtPathAdapter::to_qt(workspace.root)},
+        {"recursive", workspace.recursive                 }
+    };
+}
+
 } // namespace
 
 LibraryJsonError write_library_json(const LibrarySnapshot& library, QByteArray& output)
@@ -329,10 +364,15 @@ LibraryJsonError write_library_json(const LibrarySnapshot& library, QByteArray& 
     for (const library::PlaylistRecord& playlist : library.playlists)
         playlists.push_back(write_playlist(playlist));
 
+    QJsonArray workspaces;
+    for (const library::WorkspaceRecord& workspace : library.workspaces)
+        workspaces.push_back(write_workspace(workspace));
+
     const QJsonObject root{
-        {"version",   1        },
-        {"tracks",    tracks   },
-        {"playlists", playlists}
+        {"version",    1         },
+        {"tracks",     tracks    },
+        {"playlists",  playlists },
+        {"workspaces", workspaces}
     };
     const QByteArray json{QJsonDocument{root}.toJson(QJsonDocument::Compact)};
 
@@ -371,14 +411,17 @@ LibraryJsonError read_library_json(QByteArrayView json, LibrarySnapshot& output)
     if (version.toInt() != 1)
         return LibraryJsonError::unsupported_version;
 
-    if (!root.value("tracks").isArray() || !root.value("playlists").isArray())
+    if (!root.value("tracks").isArray() || !root.value("playlists").isArray() ||
+        (root.contains("workspaces") && !root.value("workspaces").isArray()))
         return LibraryJsonError::malformed;
 
     const QJsonArray tracks{root.value("tracks").toArray()};
     const QJsonArray playlists{root.value("playlists").toArray()};
+    const QJsonArray workspaces{root.value("workspaces").toArray()};
 
     if (static_cast<std::size_t>(tracks.size()) > max_tracks ||
-        static_cast<std::size_t>(playlists.size()) > max_playlists)
+        static_cast<std::size_t>(playlists.size()) > max_playlists ||
+        static_cast<std::size_t>(workspaces.size()) > max_workspaces)
         return LibraryJsonError::limit_exceeded;
 
     LibrarySnapshot library;
@@ -411,6 +454,21 @@ LibraryJsonError read_library_json(QByteArrayView json, LibrarySnapshot& output)
             return LibraryJsonError::invalid_record;
 
         library.playlists.push_back(std::move(playlist));
+    }
+
+    std::set<library::WorkspaceId> workspace_ids;
+
+    for (const QJsonValue& value : workspaces) {
+        library::WorkspaceRecord workspace;
+        const LibraryJsonError result{read_workspace(value, workspace)};
+
+        if (result != LibraryJsonError::none)
+            return result;
+
+        if (!workspace_ids.insert(workspace.id).second)
+            return LibraryJsonError::invalid_record;
+
+        library.workspaces.push_back(std::move(workspace));
     }
 
     output = std::move(library);

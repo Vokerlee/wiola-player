@@ -428,6 +428,7 @@ void MainWindow::import_m3u_playlist()
     const QByteArray encoded = input.read(16 * 1024 * 1024 + 1);
     const auto previous_tracks = library_.tracks();
     const auto previous_playlists = library_.playlists();
+    const auto previous_workspaces = library_.workspaces();
     library::PlaylistId imported;
     const QFileInfo details{selected};
     const app::M3uError error =
@@ -440,7 +441,8 @@ void MainWindow::import_m3u_playlist()
     }
 
     if (playlist_storage_.save(library_) != LibraryJsonError::none) {
-        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists));
+        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
+            previous_workspaces));
         show_status("Could not save the imported playlist");
         return;
     }
