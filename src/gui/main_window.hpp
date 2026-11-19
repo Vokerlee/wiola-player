@@ -26,6 +26,8 @@
 #include "player_actions.hpp"
 #include "player_presenter.hpp"
 #include "playlist_control.hpp"
+#include "saved_playlist_manager.hpp"
+#include "saved_playlist_storage.hpp"
 #include "seek_bar.hpp"
 #include "track_inspector.hpp"
 #include "volume_control.hpp"
@@ -170,6 +172,8 @@ private:
     VolumeControl volume_;
     EqualizerControl equalizer_;
     library::InMemoryRepository library_;
+    SavedPlaylistStorage playlist_storage_;
+    app::SavedPlaylistCommands playlist_commands_;
 
     QPushButton* open_button_{nullptr};
     QPushButton* previous_button_{nullptr};
@@ -185,6 +189,7 @@ private:
     NowPlayingDocument* now_playing_{nullptr};
     QTabWidget* documents_{nullptr};
     LibraryNavigation* navigation_{nullptr};
+    SavedPlaylistManager* playlist_manager_{nullptr};
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};

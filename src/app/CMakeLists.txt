@@ -11,7 +11,7 @@ if(WIOLA_BUILD_GUI)
     wiola_add_library(
         wiola_saved_playlists
         SOURCES saved_playlist_commands.cpp
-        LIBS wiola_gui wiola_library
+        LIBS wiola_library
     )
     target_link_libraries(wiola_saved_playlists PUBLIC Qt6::Core)
 

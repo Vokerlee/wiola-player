@@ -100,6 +100,29 @@ void LibraryNavigation::on_workspace_chosen(std::function<void(library::Workspac
     workspace_observer_ = std::move(observer);
 }
 
+std::optional<library::PlaylistId> LibraryNavigation::selected_playlist() const
+{
+    const QTreeWidgetItem* current = currentItem();
+    if (current == nullptr || current->parent() != playlists_)
+        return {};
+
+    return library::PlaylistId{current->data(0, identity_role).toString().toStdString()};
+}
+
+bool LibraryNavigation::select_playlist(const library::PlaylistId& id)
+{
+    for (int row = 0; row < playlists_->childCount(); ++row) {
+        QTreeWidgetItem* candidate = playlists_->child(row);
+        if (candidate->data(0, identity_role).toString().toStdString() != id.value)
+            continue;
+
+        setCurrentItem(candidate);
+        return true;
+    }
+
+    return false;
+}
+
 void LibraryNavigation::show_repository(const library::LibraryRepository& repository)
 {
     while (playlists_->childCount() != 0)
