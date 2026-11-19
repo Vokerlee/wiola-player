@@ -39,7 +39,9 @@ public:
 
     bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
     void set_active(bool active);
+    [[nodiscard]] std::vector<std::filesystem::path> displayed_paths() const;
     [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
+    void on_apply_order_requested(std::function<void()> observer);
     void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
     void on_play_requested(std::function<void()> observer);
     void on_active_requested(std::function<void()> observer);
@@ -64,6 +66,7 @@ private:
     std::function<void()> transfer_active_observer_;
     std::function<void()> transfer_destination_observer_;
     std::function<void()> transfer_move_observer_;
+    std::function<void()> apply_order_observer_;
 };
 
 } // namespace wiola::gui

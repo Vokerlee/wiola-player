@@ -176,6 +176,20 @@ TEST(SavedPlaylistDocument, SortingPreservesPersistentEntrySelection)
     EXPECT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
         "Alpha");
     EXPECT_EQ(document.chosen_entries(), std::vector<wiola::library::PlaylistEntryId>{*alpha});
+
+    int applications = 0;
+    document.on_apply_order_requested([&] {
+        ++applications;
+        EXPECT_EQ(document.displayed_paths(),
+            (std::vector<std::filesystem::path>{"earlier.wav", "later.wav"}));
+    });
+
+    for (QAction* candidate : table->actions()) {
+        if (candidate->text() == "Apply displayed order to playback")
+            candidate->trigger();
+    }
+
+    EXPECT_EQ(applications, 1);
 }
 
 } // namespace

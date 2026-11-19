@@ -116,6 +116,11 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
             transfer_destination_observer_();
     });
 
+    connect(table_, &TrackTableView::order_application_asked, [this] {
+        if (apply_order_observer_)
+            apply_order_observer_();
+    });
+
     set_busy(false);
 }
 
@@ -228,6 +233,24 @@ std::vector<std::filesystem::path> WorkspaceDocument::chosen_paths() const
     }
 
     return paths;
+}
+
+std::vector<std::filesystem::path> WorkspaceDocument::displayed_paths() const
+{
+    std::vector<std::filesystem::path> paths;
+
+    for (const engine::QueueEntryId id : table_->displayed_tracks()) {
+        const auto row = rows_.index_of(id);
+        if (row)
+            paths.push_back(rows_.tracks()[*row].path());
+    }
+
+    return paths;
+}
+
+void WorkspaceDocument::on_apply_order_requested(std::function<void()> observer)
+{
+    apply_order_observer_ = std::move(observer);
 }
 
 void WorkspaceDocument::on_play_requested(std::function<void()> observer)

@@ -129,6 +129,7 @@ private:
         const std::vector<app::MediaTransfer>& media);
     void choose_transfer_destination(const std::vector<app::MediaTransfer>& media);
     void play_saved_playlist(const library::PlaylistId& id);
+    void play_displayed_paths(std::vector<std::filesystem::path> tracks);
     void request_metadata(const std::filesystem::path& location);
     void publish_media_revision(app::BackgroundMetadataResult result);
     void finish_custom_tag(app::CustomTagResult result, const QString& success);

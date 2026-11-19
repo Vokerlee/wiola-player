@@ -25,6 +25,7 @@
 #include <library/tags.hpp>
 
 #include <QAction>
+#include <QGuiApplication>
 #include <QHeaderView>
 #include <QPainter>
 #include <QStyledItemDelegate>
@@ -92,6 +93,12 @@ TrackTableView::TrackTableView(QWidget* parent)
     setItemDelegate(new WithoutTheFocusBox{this});
 
     horizontalHeader()->setContextMenuPolicy(Qt::ActionsContextMenu);
+    horizontalHeader()->setSectionsClickable(true);
+    horizontalHeader()->setSortIndicatorShown(true);
+
+    connect(horizontalHeader(), &QHeaderView::sectionClicked, this, [this](int column) {
+        sort_column(column, QGuiApplication::keyboardModifiers().testFlag(Qt::ControlModifier));
+    });
 
     for (int column = Column::title; column < Column::num_columns; ++column) {
         const QString label = model_.headerData(column, Qt::Horizontal, Qt::DisplayRole).toString();
@@ -128,6 +135,10 @@ TrackTableView::TrackTableView(QWidget* parent)
     QAction* move_to = new QAction{"Move to playlist →", this};
     addAction(move_to);
     connect(move_to, &QAction::triggered, this, &TrackTableView::transfer_move_asked);
+
+    QAction* apply_order = new QAction{"Apply displayed order to playback", this};
+    addAction(apply_order);
+    connect(apply_order, &QAction::triggered, this, &TrackTableView::order_application_asked);
 
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
         if (const auto id = model_.track_id(index))
@@ -217,8 +228,116 @@ void TrackTableView::sort_by(const std::vector<TrackSortKey>& keys)
 {
     const std::vector<engine::QueueEntryId> selected = chosen_tracks();
     const auto current_id = model_.track_id(currentIndex());
-    model_.sort_by(keys);
+    sort_keys_.clear();
+
+    for (const TrackSortKey& key : keys) {
+        if (key.valid())
+            sort_keys_.push_back(key);
+    }
+
+    model_.sort_by(sort_keys_);
     restore_selection(selected, current_id);
+    update_sort_indicator();
+}
+
+void TrackTableView::sort_column(int column, bool extend)
+{
+    TrackSortKey requested;
+
+    if (column >= TrackTableModel::standard_columns) {
+        const std::size_t tag =
+            static_cast<std::size_t>(column - TrackTableModel::standard_columns);
+        if (tag >= visible_tags_.size())
+            return;
+
+        requested = TrackSortKey::for_tag(visible_tags_[tag]);
+    } else {
+        switch (column) {
+        case Column::title:
+            requested.field = TrackSortField::title;
+            break;
+        case Column::artist:
+            requested.field = TrackSortField::artist;
+            break;
+        case Column::album:
+            requested.field = TrackSortField::album;
+            break;
+        case Column::length:
+            requested.field = TrackSortField::duration;
+            break;
+        default:
+            return;
+        }
+    }
+
+    const auto same = [&requested](const TrackSortKey& key) {
+        return key.field == requested.field && key.tag_key == requested.tag_key;
+    };
+
+    if (!extend) {
+        if (sort_keys_.size() == 1 && same(sort_keys_.front())) {
+            requested.direction = sort_keys_.front().direction == TrackSortDirection::ascending
+                ? TrackSortDirection::descending
+                : TrackSortDirection::ascending;
+        }
+
+        sort_by({requested});
+        return;
+    }
+
+    const auto existing = std::ranges::find_if(sort_keys_, same);
+    if (existing == sort_keys_.end()) {
+        sort_keys_.push_back(requested);
+    } else {
+        existing->direction = existing->direction == TrackSortDirection::ascending
+            ? TrackSortDirection::descending
+            : TrackSortDirection::ascending;
+    }
+
+    sort_by(sort_keys_);
+}
+
+void TrackTableView::update_sort_indicator()
+{
+    if (sort_keys_.empty()) {
+        horizontalHeader()->setSortIndicatorShown(false);
+        return;
+    }
+
+    const TrackSortKey& primary = sort_keys_.front();
+    int column = -1;
+
+    switch (primary.field) {
+    case TrackSortField::title:
+        column = Column::title;
+        break;
+    case TrackSortField::artist:
+        column = Column::artist;
+        break;
+    case TrackSortField::album:
+        column = Column::album;
+        break;
+    case TrackSortField::duration:
+        column = Column::length;
+        break;
+    case TrackSortField::custom_tag: {
+        const auto tag = std::ranges::find(visible_tags_, primary.tag_key);
+        if (tag != visible_tags_.end()) {
+            column = TrackTableModel::standard_columns +
+                static_cast<int>(std::distance(visible_tags_.begin(), tag));
+        }
+        break;
+    }
+    case TrackSortField::path:
+        break;
+    }
+
+    horizontalHeader()->setSortIndicatorShown(column >= 0);
+    if (column >= 0) {
+        horizontalHeader()->setSortIndicator(column,
+            primary.direction == TrackSortDirection::ascending ? Qt::AscendingOrder
+                                                               : Qt::DescendingOrder);
+    }
 }
 
 void TrackTableView::restore_selection(const std::vector<engine::QueueEntryId>& selected,
@@ -237,6 +356,19 @@ void TrackTableView::restore_selection(const std::vector<engine::QueueEntryId>& 
         if (id && id == current)
             selectionModel()->setCurrentIndex(first, QItemSelectionModel::NoUpdate);
     }
+}
+
+std::vector<engine::QueueEntryId> TrackTableView::displayed_tracks() const
+{
+    std::vector<engine::QueueEntryId> displayed;
+    displayed.reserve(static_cast<std::size_t>(model_.rowCount()));
+
+    for (int row = 0; row < model_.rowCount(); ++row) {
+        if (const auto id = model_.track_id(model_.index(row, 0)))
+            displayed.push_back(*id);
+    }
+
+    return displayed;
 }
 
 std::vector<engine::QueueEntryId> TrackTableView::chosen_tracks() const
