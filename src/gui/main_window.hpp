@@ -35,6 +35,7 @@
 
 #include <app/active_playlist.hpp>
 #include <app/playback_queue.hpp>
+#include <app/playlist_transfer.hpp>
 #include <codec/decode/open.hpp>
 #include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
@@ -103,6 +104,12 @@ private:
 
     void open_playlist(const library::PlaylistId& id);
     void activate_playlist(const library::PlaylistId& id);
+    void transfer_now_playing(bool choose_destination);
+    void transfer_saved_playlist(const library::PlaylistId& id, SavedPlaylistDocument& document,
+        bool choose_destination);
+    void transfer_to(std::optional<library::PlaylistId> destination,
+        const std::vector<app::MediaTransfer>& media);
+    void choose_transfer_destination(const std::vector<app::MediaTransfer>& media);
     void play_saved_playlist(const library::PlaylistId& id);
     void refresh_playlist_documents();
     void restore_playlist_documents();

@@ -43,6 +43,8 @@ public:
 signals:
     void track_chosen(engine::QueueEntryId id);
     void removal_asked();
+    void transfer_active_asked();
+    void transfer_destination_asked();
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
