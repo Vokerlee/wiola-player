@@ -32,6 +32,7 @@
 #include "seek_bar.hpp"
 #include "track_inspector.hpp"
 #include "volume_control.hpp"
+#include "workspace_document.hpp"
 
 #include <app/active_playlist.hpp>
 #include <app/m3u_playlist.hpp>
@@ -106,6 +107,11 @@ private:
     void play_chosen(engine::QueueEntryId id);
 
     void open_playlist(const library::PlaylistId& id);
+    void open_folder();
+    void open_workspace(const library::WorkspaceId& id);
+    void show_workspace_navigation();
+    void restore_workspace_documents();
+    void save_workspace_documents();
     void activate_playlist(const library::PlaylistId& id);
     void transfer_now_playing(bool choose_destination);
     void transfer_saved_playlist(const library::PlaylistId& id, SavedPlaylistDocument& document,
@@ -214,6 +220,8 @@ private:
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};
     std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
+    std::map<library::WorkspaceId, WorkspaceDocument*> workspace_documents_;
+    std::unique_ptr<app::WorkspaceScanPublisher> workspace_scans_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};
