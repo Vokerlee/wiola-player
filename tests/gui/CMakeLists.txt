@@ -14,6 +14,11 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
+    gui_library_navigation_test
+    SOURCES library_navigation_test.cpp
+    LIBS wiola_gui wiola_library
+)
+wiola_add_test(
     gui_playlist_control_test
     SOURCES playlist_control_test.cpp
     LIBS wiola_gui
