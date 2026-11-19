@@ -144,24 +144,15 @@ void TrackTableView::show_tracks(const std::vector<engine::Track>& tracks,
     current_ = current;
 
     model_.show_tracks(tracks, current);
-    selectionModel()->clearSelection();
-
-    for (int row = 0; row < model_.rowCount(); ++row) {
-        const QModelIndex first = model_.index(row, 0);
-        const auto id = model_.track_id(first);
-
-        if (id && std::ranges::find(selected, *id) != selected.end())
-            selectionModel()->select(first,
-                QItemSelectionModel::Select | QItemSelectionModel::Rows);
-
-        if (id && id == current_id)
-            selectionModel()->setCurrentIndex(first, QItemSelectionModel::NoUpdate);
-    }
+    restore_selection(selected, current_id);
 }
 
 void TrackTableView::show_library(const library::LibraryRepository& repository)
 {
+    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
+    const auto current_id = model_.track_id(currentIndex());
     model_.show_library(repository);
+    restore_selection(selected, current_id);
 
     std::vector<std::string> available = custom_tag_keys(repository);
     for (const std::string& visible : visible_tags_) {
@@ -216,6 +207,23 @@ void TrackTableView::update_tag_columns()
     const std::vector<engine::QueueEntryId> selected = chosen_tracks();
     const auto current_id = model_.track_id(currentIndex());
     model_.show_tag_keys(visible_tags_);
+    restore_selection(selected, current_id);
+
+    for (std::size_t column = 0; column < visible_tags_.size(); ++column)
+        setColumnHidden(TrackTableModel::standard_columns + static_cast<int>(column), false);
+}
+
+void TrackTableView::sort_by(const std::vector<TrackSortKey>& keys)
+{
+    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
+    const auto current_id = model_.track_id(currentIndex());
+    model_.sort_by(keys);
+    restore_selection(selected, current_id);
+}
+
+void TrackTableView::restore_selection(const std::vector<engine::QueueEntryId>& selected,
+    const std::optional<engine::QueueEntryId>& current)
+{
     selectionModel()->clearSelection();
 
     for (int row = 0; row < model_.rowCount(); ++row) {
@@ -226,12 +234,9 @@ void TrackTableView::update_tag_columns()
             selectionModel()->select(first,
                 QItemSelectionModel::Select | QItemSelectionModel::Rows);
 
-        if (id && id == current_id)
+        if (id && id == current)
             selectionModel()->setCurrentIndex(first, QItemSelectionModel::NoUpdate);
     }
-
-    for (std::size_t column = 0; column < visible_tags_.size(); ++column)
-        setColumnHidden(TrackTableModel::standard_columns + static_cast<int>(column), false);
 }
 
 std::vector<engine::QueueEntryId> TrackTableView::chosen_tracks() const

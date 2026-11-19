@@ -21,6 +21,7 @@
 #pragma once
 
 #include "artwork_cache.hpp"
+#include "track_sort.hpp"
 
 #include <engine/queue/track.hpp>
 
@@ -55,15 +56,18 @@ public:
         std::optional<engine::QueueEntryId> current = {});
     void show_library(const library::LibraryRepository& repository);
     void show_tag_keys(std::vector<std::string> keys);
+    void sort_by(const std::vector<TrackSortKey>& keys);
     [[nodiscard]] std::optional<engine::QueueEntryId> track_id(const QModelIndex& index) const;
 
 private:
     mutable ArtworkCache artwork_;
     ArtworkCachePolicy policy_;
+    std::vector<engine::Track> source_rows_;
     std::vector<engine::Track> rows_;
     std::optional<engine::QueueEntryId> current_;
     const library::LibraryRepository* repository_{nullptr};
     std::vector<std::string> tag_columns_;
+    std::vector<TrackSortKey> sort_keys_;
 };
 
 } // namespace wiola::gui

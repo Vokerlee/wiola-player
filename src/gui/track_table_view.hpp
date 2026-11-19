@@ -41,6 +41,7 @@ public:
     void show_tracks(const std::vector<engine::Track>& tracks,
         std::optional<engine::QueueEntryId> current = {});
     void show_library(const library::LibraryRepository& repository);
+    void sort_by(const std::vector<TrackSortKey>& keys);
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:
@@ -56,6 +57,8 @@ protected:
 private:
     void rebuild_tag_actions();
     void update_tag_columns();
+    void restore_selection(const std::vector<engine::QueueEntryId>& selected,
+        const std::optional<engine::QueueEntryId>& current);
 
     TrackTableModel model_;
     std::vector<engine::Track> tracks_;

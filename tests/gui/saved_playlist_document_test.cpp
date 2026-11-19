@@ -137,6 +137,47 @@ TEST(SavedPlaylistDocument, RefreshesMetadataWithoutLosingPersistentSelection)
     EXPECT_FALSE(document.show_playlist(repository, wiola::library::PlaylistId{"missing"}));
 }
 
+TEST(SavedPlaylistDocument, SortingPreservesPersistentEntrySelection)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord later;
+    later.id = wiola::library::MediaId{"later"};
+    later.embedded.title = "Zulu";
+    later.locations = {"later.wav"};
+
+    wiola::library::TrackRecord earlier;
+    earlier.id = wiola::library::MediaId{"earlier"};
+    earlier.embedded.title = "Alpha";
+    earlier.locations = {"earlier.wav"};
+    ASSERT_TRUE(repository.put_track(later));
+    ASSERT_TRUE(repository.put_track(earlier));
+
+    const auto playlist = repository.create_playlist("Favorites");
+    const auto zulu = repository.append_track(playlist, later.id);
+    const auto alpha = repository.append_track(playlist, earlier.id);
+    ASSERT_TRUE(zulu && alpha);
+
+    wiola::gui::SavedPlaylistDocument document;
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
+    table->sort_by({
+        wiola::gui::TrackSortKey{.field = wiola::gui::TrackSortField::title,
+                                 .direction = wiola::gui::TrackSortDirection::ascending,
+                                 .tag_key = {}}
+    });
+
+    ASSERT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
+        "Alpha");
+    table->selectionModel()->select(table->model()->index(0, 0),
+        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    EXPECT_EQ(document.chosen_entries(), std::vector<wiola::library::PlaylistEntryId>{*alpha});
+
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    EXPECT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
+        "Alpha");
+    EXPECT_EQ(document.chosen_entries(), std::vector<wiola::library::PlaylistEntryId>{*alpha});
+}
+
 } // namespace
 
 int main(int argc, char** argv)
