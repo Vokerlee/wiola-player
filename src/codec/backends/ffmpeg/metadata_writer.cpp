@@ -150,6 +150,12 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         if (copied < 0)
             return failed(media::MetadataWriteError::invalid_output, ffmpeg_error(copied));
 
+        if ((incoming->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+            (outgoing->codecpar->width <= 0 || outgoing->codecpar->height <= 0)) {
+            outgoing->codecpar->width = 1;
+            outgoing->codecpar->height = 1;
+        }
+
         outgoing->time_base = incoming->time_base;
         outgoing->disposition = incoming->disposition;
         av_dict_copy(&outgoing->metadata, incoming->metadata, 0);

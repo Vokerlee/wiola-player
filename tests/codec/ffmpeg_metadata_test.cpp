@@ -134,6 +134,39 @@ Bytes artwork_frame(const Bytes& drawn)
     return frame;
 }
 
+std::vector<float> decoded_samples(const std::filesystem::path& path)
+{
+    wiola::codec::LocalMediaProvider provider;
+    auto asset = provider.open(path);
+    EXPECT_TRUE(asset);
+    if (!asset)
+        return {};
+
+    auto decoder = (*asset)->create_decoder();
+    EXPECT_TRUE(decoder);
+    if (!decoder)
+        return {};
+
+    std::vector<float> samples;
+    std::array<float, 1024> block{};
+
+    for (int calls = 0; calls < 10000; ++calls) {
+        auto read = (*decoder)->read(block);
+        EXPECT_TRUE(read);
+        if (!read)
+            return samples;
+
+        const std::size_t count = (*decoder)->spec().samples_per(read->frames);
+        samples.insert(samples.end(), block.begin(),
+            block.begin() + static_cast<std::ptrdiff_t>(count));
+
+        if (read->end_of_stream)
+            break;
+    }
+
+    return samples;
+}
+
 TEST(FfmpegMetadata, RejectsAFileThatIsNotThere)
 {
     const auto metadata{wiola::codec::ffmpeg::read_metadata(fixtures() / "no-such-track.mp3")};
@@ -164,7 +197,7 @@ TEST(FfmpegMetadata, ReadsAnId3TitleFromMp3)
     EXPECT_EQ(metadata->track.title, "Together Forever");
 }
 
-TEST(FfmpegMetadata, ReadsExtendedFieldsWithoutClaimingPhysicalWriteSupport)
+TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
 {
     Bytes frames;
     append_frame(frames, title_frame("Extended"));
@@ -188,7 +221,7 @@ TEST(FfmpegMetadata, ReadsExtendedFieldsWithoutClaimingPhysicalWriteSupport)
     wiola::codec::LocalMediaProvider provider;
     auto asset{provider.open(track)};
     ASSERT_TRUE(asset);
-    EXPECT_FALSE((*asset)->metadata_write_capabilities().any());
+    EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 }
 
 TEST(FfmpegMetadata, DetectsMetadataWithoutAFileExtension)
@@ -220,6 +253,44 @@ TEST(FfmpegMetadata, ReadsAnId3AttachedPicture)
     EXPECT_EQ(metadata->artwork.mime_type, "image/png");
     ASSERT_EQ(metadata->artwork.data.size(), drawn.size());
     EXPECT_EQ(metadata->artwork.data, drawn);
+}
+
+TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
+{
+    constexpr char drawn_bytes[]{"\x89PNG\r\n\x1a\n and then some"};
+    Bytes drawn;
+    append(drawn, std::string_view{drawn_bytes, sizeof(drawn_bytes) - 1});
+
+    const auto track = tagged_copy("wiola_ffmpeg_write_cover.mp3", artwork_frame(drawn));
+    const auto original_samples = decoded_samples(track);
+
+    wiola::codec::LocalMediaProvider provider;
+    auto asset = provider.open(track);
+    ASSERT_TRUE(asset);
+    EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
+
+    wiola::media::MetadataWriteRequest request;
+    request.overrides.title = "Updated title";
+    request.overrides.comment = "Updated comment";
+
+    const auto outcome = (*asset)->write_metadata(request);
+    ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
+
+    const std::filesystem::path output = outcome.detail;
+
+    struct RemoveOutput {
+        std::filesystem::path path;
+
+        ~RemoveOutput() { std::filesystem::remove(path); }
+    } cleanup{output};
+
+    const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+    ASSERT_TRUE(metadata) << metadata.error().detail;
+    EXPECT_EQ(metadata->track.title, "Updated title");
+    EXPECT_EQ(metadata->track.comment, "Updated comment");
+    EXPECT_EQ(metadata->artwork.mime_type, "image/png");
+    EXPECT_EQ(metadata->artwork.data, drawn);
+    EXPECT_EQ(decoded_samples(output), original_samples);
 }
 
 TEST(FfmpegMetadata, ReadsBoundedUnicodeFieldsDurationAndAttachedArtwork)

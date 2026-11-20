@@ -21,6 +21,7 @@
 #include <codec/provider.hpp>
 
 #include <codec/backends/ffmpeg/metadata.hpp>
+#include <codec/backends/ffmpeg/metadata_writer.hpp>
 #include <media/local_file_stream.hpp>
 
 #include <utility>
@@ -61,6 +62,26 @@ public:
             return media::unexpected{context.error()};
 
         return ffmpeg::read_metadata(path_, context);
+    }
+
+    media::MetadataWriteCapabilities metadata_write_capabilities() const override
+    {
+        return registry_.metadata_write_capabilities(path_);
+    }
+
+    media::MetadataWriteOutcome write_metadata(const media::MetadataWriteRequest& request,
+        const media::OperationContext& context) override
+    {
+        if (!metadata_write_capabilities().any())
+            return {.state = media::MetadataWriteState::failed,
+                .error = media::MetadataWriteError::unsupported,
+                .source_modified = false,
+                .detail = "this format is read-only"};
+
+        const std::filesystem::path temporary = path_.parent_path() /
+            (path_.stem().string() + ".wiola-writing" + path_.extension().string());
+
+        return ffmpeg::remux_metadata(path_, temporary, request, context);
     }
 
     media::Result<std::unique_ptr<Decoder>>
