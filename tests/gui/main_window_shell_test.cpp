@@ -22,6 +22,7 @@
 
 #include <gui/classic_layout.hpp>
 #include <gui/tag_filter_panel.hpp>
+#include <gui/theme_editor.hpp>
 #include <gui/track_table_view.hpp>
 
 #include <QApplication>
@@ -458,6 +459,26 @@ TEST_F(MainWindowShell, RestoresTheNativeThemeChoice)
     wiola::gui::MainWindow restored{session};
     EXPECT_TRUE(action(*menu(restored, "&View"), "Dark theme")->isChecked());
     EXPECT_EQ(restored.palette().color(QPalette::Window), QColor{"#202124"});
+}
+
+TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
+{
+    {
+        wiola::engine::Session session;
+        wiola::gui::MainWindow window{session};
+        action(*menu(window, "&Tools"), "Edit theme...")->trigger();
+
+        auto* dialog = window.findChild<QDialog*>("themeEditor");
+        ASSERT_NE(dialog, nullptr);
+        auto* editor = static_cast<wiola::gui::ThemeEditor*>(dialog);
+        editor->set_color(wiola::gui::ThemeColorRole::window, QColor{"#f0f0f0"});
+        dialog->findChild<QPushButton*>("applyThemeEdit")->click();
+        EXPECT_EQ(window.palette().color(QPalette::Window), QColor{"#f0f0f0"});
+    }
+
+    wiola::engine::Session session;
+    wiola::gui::MainWindow restored{session};
+    EXPECT_EQ(restored.palette().color(QPalette::Window), QColor{"#f0f0f0"});
 }
 
 } // namespace
