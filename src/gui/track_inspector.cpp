@@ -84,11 +84,13 @@ TrackInspector::TrackInspector(QWidget* parent)
 
     custom_tags_ = new CustomTagEditor{this};
     standard_metadata_ = new StandardMetadataEditor{this};
+    conflicts_ = new MetadataConflictPanel{this};
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
     layout->addWidget(standard_metadata_);
+    layout->addWidget(conflicts_);
     layout->addWidget(custom_tags_);
     layout->addStretch();
 

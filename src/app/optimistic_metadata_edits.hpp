@@ -57,6 +57,7 @@ public:
     [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
         const library::StandardFieldOverrides& edit,
         const std::map<library::MediaId, ExpectedMediaState>& expected_states);
+    [[nodiscard]] MetadataEditOutcome reset(const std::vector<library::MediaId>& media);
 
 private:
     library::InMemoryRepository& repository_;

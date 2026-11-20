@@ -22,6 +22,7 @@
 
 #include "artwork_cache.hpp"
 #include "custom_tag_editor.hpp"
+#include "metadata_conflict_panel.hpp"
 #include "standard_metadata_editor.hpp"
 
 #include <engine/queue/track.hpp>
@@ -46,6 +47,8 @@ public:
         return standard_metadata_;
     }
 
+    [[nodiscard]] MetadataConflictPanel* conflicts() const noexcept { return conflicts_; }
+
 private:
     ArtworkCache artwork_;
     QLabel* artwork_label_{nullptr};
@@ -57,6 +60,7 @@ private:
     QLabel* availability_{nullptr};
     CustomTagEditor* custom_tags_{nullptr};
     StandardMetadataEditor* standard_metadata_{nullptr};
+    MetadataConflictPanel* conflicts_{nullptr};
 };
 
 } // namespace wiola::gui

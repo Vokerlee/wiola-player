@@ -10,6 +10,7 @@ wiola_add_library(
         library_navigation.cpp
         library_storage.cpp
         main_window.cpp
+        metadata_conflict_panel.cpp
         now_playing_document.cpp
         playlist_control.cpp
         track_inspector.cpp

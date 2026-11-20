@@ -136,6 +136,7 @@ private:
     void finish_custom_tag(app::CustomTagResult result, const QString& success);
     void finish_standard_metadata(library::MediaId media, library::StandardFieldOverrides edit);
     void publish_metadata_outcome(const app::MetadataEditOutcome& outcome);
+    void resolve_metadata_conflict(MetadataConflictAction action);
     [[nodiscard]] std::vector<const library::TrackRecord*> selected_records();
     void refresh_playlist_documents();
     void restore_playlist_documents();
@@ -222,6 +223,13 @@ private:
     app::CustomTagCommands tag_commands_;
     app::OptimisticMetadataEdits optimistic_edits_;
     app::ActivePlaylist active_playlist_;
+
+    struct PendingMetadataEdit {
+        std::vector<library::MediaId> media;
+        library::StandardFieldOverrides edit;
+    };
+
+    std::optional<PendingMetadataEdit> pending_metadata_edit_;
 
     QPushButton* open_button_{nullptr};
     QPushButton* previous_button_{nullptr};

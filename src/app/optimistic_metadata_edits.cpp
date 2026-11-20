@@ -150,4 +150,54 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
     return outcome;
 }
 
+MetadataEditOutcome OptimisticMetadataEdits::reset(const std::vector<library::MediaId>& media)
+{
+    const std::set<library::MediaId> unique{media.begin(), media.end()};
+    const auto previous_tracks = repository_.tracks();
+    const auto previous_playlists = repository_.playlists();
+    const auto previous_workspaces = repository_.workspaces();
+    MetadataEditOutcome outcome;
+
+    for (const library::MediaId& id : unique) {
+        const library::TrackRecord* existing = repository_.track(id);
+        if (existing == nullptr) {
+            ++outcome.missing;
+            continue;
+        }
+
+        if (existing->overrides == library::StandardFieldOverrides{}) {
+            ++outcome.unchanged;
+            continue;
+        }
+
+        library::TrackRecord updated = *existing;
+        updated.overrides = {};
+        ++updated.metadata_revision;
+
+        if (!repository_.put_track(std::move(updated))) {
+            ++outcome.missing;
+            continue;
+        }
+
+        ++outcome.changed;
+    }
+
+    outcome.state = MetadataEditState::queued;
+    observer_(outcome);
+
+    if (outcome.changed == 0 || persist_(repository_)) {
+        outcome.state = MetadataEditState::succeeded;
+        observer_(outcome);
+        return outcome;
+    }
+
+    static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
+        previous_workspaces));
+    outcome.state = MetadataEditState::failed;
+    outcome.error = StandardMetadataError::persistence_failed;
+    outcome.changed = 0;
+    observer_(outcome);
+    return outcome;
+}
+
 } // namespace wiola::app
