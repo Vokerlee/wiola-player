@@ -36,6 +36,14 @@ struct StandardFieldOverrides {
     std::optional<std::string> title;
     std::optional<std::string> artist;
     std::optional<std::string> album;
+    std::optional<std::string> genre;
+    std::optional<std::string> comment;
+    std::optional<std::string> composer;
+    std::optional<std::optional<std::uint32_t>> year;
+    std::optional<std::optional<std::uint32_t>> track_number;
+    std::optional<std::optional<std::uint32_t>> disc_number;
+
+    bool operator==(const StandardFieldOverrides&) const = default;
 };
 
 struct TagRecord {

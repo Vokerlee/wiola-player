@@ -59,6 +59,11 @@ wiola_add_test(
     LIBS wiola_app
 )
 wiola_add_test(
+    app_standard_metadata_commands_test
+    SOURCES standard_metadata_commands_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_search_index_test
     SOURCES search_index_test.cpp
     LIBS wiola_app

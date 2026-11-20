@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <limits>
 #include <set>
 #include <string>
 
@@ -95,6 +96,31 @@ bool read_override(const QJsonObject& object, const char* key, std::optional<std
     return true;
 }
 
+bool read_number(const QJsonValue& value, std::optional<std::uint32_t>& output)
+{
+    if (value.isUndefined() || value.isNull())
+        return true;
+
+    if (!value.isDouble() || !std::isfinite(value.toDouble()) || value.toDouble() < 0.0 ||
+        std::floor(value.toDouble()) != value.toDouble() ||
+        value.toDouble() > static_cast<double>(std::numeric_limits<std::uint32_t>::max()))
+        return false;
+
+    output = static_cast<std::uint32_t>(value.toDouble());
+    return true;
+}
+
+bool read_number_override(const QJsonObject& object, const char* key,
+    std::optional<std::optional<std::uint32_t>>& output)
+{
+    const QJsonValue value{object.value(key)};
+    if (value.isUndefined())
+        return true;
+
+    output.emplace();
+    return read_number(value, *output);
+}
+
 bool read_revision(const QJsonObject& object, const char* key, std::uint64_t& revision)
 {
     std::string text;
@@ -128,7 +154,13 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
 
         if (!read_text(embedded, "title", output.embedded.title) ||
             !read_text(embedded, "artist", output.embedded.artist) ||
-            !read_text(embedded, "album", output.embedded.album))
+            !read_text(embedded, "album", output.embedded.album) ||
+            !read_text(embedded, "genre", output.embedded.genre) ||
+            !read_text(embedded, "comment", output.embedded.comment) ||
+            !read_text(embedded, "composer", output.embedded.composer) ||
+            !read_number(embedded.value("year"), output.embedded.year) ||
+            !read_number(embedded.value("trackNumber"), output.embedded.track_number) ||
+            !read_number(embedded.value("discNumber"), output.embedded.disc_number))
             return LibraryJsonError::invalid_record;
 
         const QJsonValue duration{embedded.value("durationSeconds")};
@@ -150,7 +182,13 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
 
         if (!read_override(overrides, "title", output.overrides.title) ||
             !read_override(overrides, "artist", output.overrides.artist) ||
-            !read_override(overrides, "album", output.overrides.album))
+            !read_override(overrides, "album", output.overrides.album) ||
+            !read_override(overrides, "genre", output.overrides.genre) ||
+            !read_override(overrides, "comment", output.overrides.comment) ||
+            !read_override(overrides, "composer", output.overrides.composer) ||
+            !read_number_override(overrides, "year", output.overrides.year) ||
+            !read_number_override(overrides, "trackNumber", output.overrides.track_number) ||
+            !read_number_override(overrides, "discNumber", output.overrides.disc_number))
             return LibraryJsonError::invalid_record;
     }
 
@@ -294,15 +332,28 @@ LibraryJsonError read_workspace(const QJsonValue& value, library::WorkspaceRecor
 QJsonObject write_track(const library::TrackRecord& track)
 {
     QJsonObject embedded{
-        {"title",  qt(track.embedded.title) },
-        {"artist", qt(track.embedded.artist)},
-        {"album",  qt(track.embedded.album) }
+        {"title",    qt(track.embedded.title)   },
+        {"artist",   qt(track.embedded.artist)  },
+        {"album",    qt(track.embedded.album)   },
+        {"genre",    qt(track.embedded.genre)   },
+        {"comment",  qt(track.embedded.comment) },
+        {"composer", qt(track.embedded.composer)}
     };
 
     if (track.embedded.duration)
         embedded.insert("durationSeconds", track.embedded.duration->seconds());
     else
         embedded.insert("durationSeconds", QJsonValue::Null);
+
+    embedded.insert("year",
+        track.embedded.year ? QJsonValue{static_cast<qint64>(*track.embedded.year)}
+                            : QJsonValue::Null);
+    embedded.insert("trackNumber",
+        track.embedded.track_number ? QJsonValue{static_cast<qint64>(*track.embedded.track_number)}
+                                    : QJsonValue::Null);
+    embedded.insert("discNumber",
+        track.embedded.disc_number ? QJsonValue{static_cast<qint64>(*track.embedded.disc_number)}
+                                   : QJsonValue::Null);
 
     QJsonObject overrides;
     if (track.overrides.title)
@@ -311,6 +362,24 @@ QJsonObject write_track(const library::TrackRecord& track)
         overrides.insert("artist", qt(*track.overrides.artist));
     if (track.overrides.album)
         overrides.insert("album", qt(*track.overrides.album));
+    if (track.overrides.genre)
+        overrides.insert("genre", qt(*track.overrides.genre));
+    if (track.overrides.comment)
+        overrides.insert("comment", qt(*track.overrides.comment));
+    if (track.overrides.composer)
+        overrides.insert("composer", qt(*track.overrides.composer));
+
+    const auto write_number_override = [&overrides](const char* name, const auto& value) {
+        if (!value)
+            return;
+
+        overrides.insert(name,
+            *value ? QJsonValue{static_cast<qint64>(**value)} : QJsonValue::Null);
+    };
+
+    write_number_override("year", track.overrides.year);
+    write_number_override("trackNumber", track.overrides.track_number);
+    write_number_override("discNumber", track.overrides.disc_number);
 
     QJsonArray tags;
     for (const library::TagRecord& tag : track.tags)
