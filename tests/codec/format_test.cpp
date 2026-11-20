@@ -19,6 +19,7 @@
  */
 
 #include <codec/decode/format.hpp>
+#include <codec/decode/registry.hpp>
 
 #include <media/local_file_stream.hpp>
 
@@ -155,6 +156,21 @@ TEST(FileHead, ComparesBytesRatherThanCharacters)
 
     EXPECT_TRUE(head.carries(Marker{0, "\xFF\xFB"}));
     EXPECT_FALSE(head.carries(Marker{0, "\x7F\x7B"}));
+}
+
+TEST(FormatWriteCapabilities, EveryRegisteredFormatStartsReadOnly)
+{
+    const wiola::codec::MediaBackendRegistry registry;
+    std::size_t formats = 0;
+
+    for (const wiola::codec::Backend& backend : registry.backends()) {
+        for (const wiola::codec::Format& format : backend.formats) {
+            ++formats;
+            EXPECT_FALSE(format.metadata_writes.any()) << format.name;
+        }
+    }
+
+    EXPECT_GE(formats, 16U);
 }
 
 } // namespace
