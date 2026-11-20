@@ -62,6 +62,21 @@ MediaBackendRegistry::MediaBackendRegistry(std::vector<Backend> backends, std::s
         throw std::invalid_argument{"media backend attempt limit must be positive"};
 }
 
+media::MetadataWriteCapabilities
+MediaBackendRegistry::metadata_write_capabilities(const std::filesystem::path& path) const
+{
+    const std::string extension = lowercased_extension(path);
+
+    for (const Backend& backend : backends_) {
+        for (const Format& format : backend.formats) {
+            if (std::ranges::contains(format.extensions, extension))
+                return format.metadata_writes;
+        }
+    }
+
+    return {};
+}
+
 std::vector<std::string> MediaBackendRegistry::playback_extensions() const
 {
     std::vector<std::string> extensions;

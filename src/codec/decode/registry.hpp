@@ -41,6 +41,9 @@ public:
 
     [[nodiscard]] const std::vector<Backend>& backends() const noexcept { return backends_; }
 
+    [[nodiscard]] media::MetadataWriteCapabilities
+    metadata_write_capabilities(const std::filesystem::path& path) const;
+
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
 
 private:

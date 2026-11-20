@@ -134,25 +134,39 @@ Backend backend()
     static constexpr std::array<std::string_view, 2> ebml_extensions{".mka", ".webm"};
     static constexpr std::array<std::string_view, 2> wav_extensions{".wav", ".wave"};
     static constexpr std::array<std::string_view, 1> flac_extensions{".flac"};
-    static constexpr std::array<std::string_view, 3> mpeg_extensions{".mp2", ".mp3", ".mpga"};
+    static constexpr std::array<std::string_view, 2> mp2_extensions{".mp2", ".mpga"};
+    static constexpr std::array<std::string_view, 1> mp3_extensions{".mp3"};
+    static constexpr media::MetadataWriteCapabilities mp3_writes{
+        .title = true,
+        .artist = true,
+        .album = true,
+        .genre = true,
+        .year = true,
+        .comment = true,
+        .composer = true,
+        .track_number = true,
+        .disc_number = true,
+    };
     static const std::array formats{
-        Format{"Ogg Vorbis/Opus",           ogg_markers,               ogg_extensions,     {}},
-        Format{"MP4/M4A AAC-LC/ALAC",       mp4_markers,               mp4_extensions,     {}},
-        Format{"ADTS AAC-LC",               std::span<const Marker>{}, adts_extensions,    {}},
-        Format{"AIFF PCM",                  aiff_markers,              aiff_extensions,    {}},
-        Format{"AIFC PCM",                  aifc_markers,              aifc_extensions,    {}},
-        Format{"AU PCM",                    au_markers,                au_extensions,      {}},
-        Format{"CAF PCM",                   caf_markers,               caf_extensions,     {}},
-        Format{"Wave64 PCM",                w64_markers,               w64_extensions,     {}},
-        Format{"RF64 PCM",                  rf64_markers,              rf64_extensions,    {}},
-        Format{"WavPack",                   wavpack_markers,           wavpack_extensions, {}},
-        Format{"Monkey's Audio",            ape_markers,               ape_extensions,     {}},
-        Format{"TTA",                       tta_markers,               tta_extensions,     {}},
-        Format{"ASF WMAv2",                 asf_markers,               asf_extensions,     {}},
-        Format{"Matroska/WebM Vorbis/Opus", ebml_markers,              ebml_extensions,    {}},
-        Format{"WAV PCM",                   wav_markers,               wav_extensions,     {}},
-        Format{"FLAC",                      flac_markers,              flac_extensions,    {}},
-        Format{"MPEG audio Layer II/III",   std::span<const Marker>{}, mpeg_extensions,    {}}
+        Format{"Ogg Vorbis/Opus", ogg_markers, ogg_extensions, {}},
+        Format{"MP4/M4A AAC-LC/ALAC", mp4_markers, mp4_extensions, {}},
+        Format{"ADTS AAC-LC", std::span<const Marker>{}, adts_extensions, {}},
+        Format{"AIFF PCM", aiff_markers, aiff_extensions, {}},
+        Format{"AIFC PCM", aifc_markers, aifc_extensions, {}},
+        Format{"AU PCM", au_markers, au_extensions, {}},
+        Format{"CAF PCM", caf_markers, caf_extensions, {}},
+        Format{"Wave64 PCM", w64_markers, w64_extensions, {}},
+        Format{"RF64 PCM", rf64_markers, rf64_extensions, {}},
+        Format{"WavPack", wavpack_markers, wavpack_extensions, {}},
+        Format{"Monkey's Audio", ape_markers, ape_extensions, {}},
+        Format{"TTA", tta_markers, tta_extensions, {}},
+        Format{"ASF WMAv2", asf_markers, asf_extensions, {}},
+        Format{"Matroska/WebM Vorbis/Opus", ebml_markers, ebml_extensions, {}},
+        Format{"WAV PCM", wav_markers, wav_extensions, {}},
+        Format{"FLAC", flac_markers, flac_extensions, {}},
+        Format{"MPEG audio Layer II", std::span<const Marker>{}, mp2_extensions, {}},
+        Format{"MPEG audio Layer III", std::span<const Marker>{}, mp3_extensions, {}, {},
+               mp3_writes}
     };
     return Backend{"FFmpeg", formats,
         [](const std::filesystem::path& path, const media::OperationContext& context) -> Opened {

@@ -132,4 +132,26 @@ TEST(MetadataRemux, EmptyAndCancelledRequestsLeaveNoPartialOutput)
     EXPECT_FALSE(std::filesystem::exists(output));
 }
 
+TEST(MetadataRemux, RejectsMalformedMp3WithoutLeavingOutput)
+{
+    const auto input = temporary("wiola-remux-malformed.mp3");
+    const auto output = temporary("wiola-remux-malformed-output.mp3");
+    RemoveOnExit cleanup_input{input};
+    RemoveOnExit cleanup_output{output};
+    {
+        std::ofstream malformed{input, std::ios::binary};
+        malformed << "not an MP3";
+    }
+
+    const auto original = bytes(input);
+    wiola::media::MetadataWriteRequest request;
+    request.overrides.title = "Changed";
+    const auto outcome = wiola::codec::ffmpeg::remux_metadata(input, output, request);
+
+    EXPECT_EQ(outcome.state, MetadataWriteState::failed);
+    EXPECT_FALSE(outcome.source_modified);
+    EXPECT_EQ(bytes(input), original);
+    EXPECT_FALSE(std::filesystem::exists(output));
+}
+
 } // namespace
