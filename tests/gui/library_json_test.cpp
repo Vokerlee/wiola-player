@@ -167,6 +167,23 @@ TEST(LibraryJson, RejectsMoreThan256TagsOnOneTrack)
     EXPECT_EQ(write_library_json(library, json), LibraryJsonError::limit_exceeded);
 }
 
+TEST(LibraryJson, RejectsNormalizedDuplicateTagsAndTrimsRestoredText)
+{
+    const QByteArray duplicates{
+        R"({"version":1,"tracks":[{"id":"media-1","tags":[{"id":"tag-1","key":"Genre","value":"Jazz"},{"id":"tag-2","key":"genre","value":"jazz"}]}],"playlists":[]})"};
+    LibrarySnapshot restored;
+
+    EXPECT_EQ(read_library_json(duplicates, restored), LibraryJsonError::invalid_record);
+
+    const QByteArray spaced{
+        R"({"version":1,"tracks":[{"id":"media-1","tags":[{"id":"tag-1","key":" Genre ","value":" Nu Jazz "}]}],"playlists":[]})"};
+    ASSERT_EQ(read_library_json(spaced, restored), LibraryJsonError::none);
+    ASSERT_EQ(restored.tracks.size(), 1);
+    ASSERT_EQ(restored.tracks.front().tags.size(), 1);
+    EXPECT_EQ(restored.tracks.front().tags.front().key, "Genre");
+    EXPECT_EQ(restored.tracks.front().tags.front().value, "Nu Jazz");
+}
+
 TEST(LibraryJson, RejectsAPlaylistEntryForUnknownMedia)
 {
     LibrarySnapshot library;

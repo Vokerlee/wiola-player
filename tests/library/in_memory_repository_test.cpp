@@ -157,6 +157,40 @@ TEST_F(InMemoryRepository, AllowsMultipleTagValuesButRejectsAnExactDuplicate)
     EXPECT_EQ(repository.track(media)->metadata_revision, 3U);
 }
 
+TEST_F(InMemoryRepository, MatchesTagsWithoutCaseOrOuterWhitespaceButKeepsOriginalText)
+{
+    const TagId jazz = repository.add_tag(media, "  Genre ", "  Nu Jazz  ");
+
+    ASSERT_TRUE(jazz.valid());
+    EXPECT_EQ(repository.track(media)->tags.front().key, "Genre");
+    EXPECT_EQ(repository.track(media)->tags.front().value, "Nu Jazz");
+    EXPECT_FALSE(repository.add_tag(media, "genre", "nu jazz").valid());
+    EXPECT_FALSE(repository.add_tag(media, "GENRE", "NU JAZZ").valid());
+    EXPECT_TRUE(repository.add_tag(media, "genre", "Jazz").valid());
+    EXPECT_FALSE(repository.add_tag(media, " ", "Jazz").valid());
+    EXPECT_FALSE(repository.add_tag(media, "genre", " ").valid());
+}
+
+TEST_F(InMemoryRepository, RejectsInvalidOrNormalizedDuplicateRestoredTags)
+{
+    TrackRecord restored;
+    restored.id = {.value = "media-restored"};
+    restored.tags = {
+        {.id = {.value = "tag-1"}, .key = "Genre", .value = "Jazz"},
+        {.id = {.value = "tag-2"}, .key = "genre", .value = "jazz"}
+    };
+
+    EXPECT_FALSE(repository.put_track(restored));
+    EXPECT_EQ(repository.track(restored.id), nullptr);
+
+    restored.tags.pop_back();
+    restored.tags.front().key = " Genre ";
+    EXPECT_FALSE(repository.put_track(restored));
+
+    restored.tags.front().key = "Genre";
+    EXPECT_TRUE(repository.put_track(restored));
+}
+
 TEST_F(InMemoryRepository, BoundsTagsAndAvoidsARestoredTagIdentity)
 {
     TrackRecord restored;

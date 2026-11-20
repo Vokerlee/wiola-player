@@ -22,6 +22,8 @@
 
 #include "qt_path_adapter.hpp"
 
+#include <library/tags.hpp>
+
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -44,10 +46,10 @@ constexpr std::size_t max_playlists{1000};
 constexpr std::size_t max_workspaces{1000};
 constexpr std::size_t max_playlist_entries{100000};
 constexpr std::size_t max_locations{64};
-constexpr std::size_t max_tags{256};
+constexpr std::size_t max_tags{library::max_tags_per_track};
 constexpr std::size_t max_id_bytes{4096};
-constexpr std::size_t max_text_bytes{1024};
-constexpr std::size_t max_key_bytes{128};
+constexpr std::size_t max_text_bytes{library::max_tag_value_bytes};
+constexpr std::size_t max_key_bytes{library::max_tag_key_bytes};
 constexpr std::size_t max_name_bytes{256};
 constexpr std::size_t max_fingerprint_bytes{256};
 
@@ -174,10 +176,19 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
             if (!read_text(tag_object, "id", tag.id.value, max_name_bytes, true) ||
                 !read_text(tag_object, "key", tag.key, max_key_bytes, true) ||
                 !read_text(tag_object, "value", tag.value, max_text_bytes, true) ||
-                !tag.id.valid() || !identities.insert(tag.id).second ||
-                !values.emplace(tag.key, tag.value).second)
+                !tag.id.valid() || !identities.insert(tag.id).second)
                 return LibraryJsonError::invalid_record;
 
+            auto value = library::make_tag_value(std::move(tag.key), std::move(tag.value));
+            if (!value ||
+                !values
+                    .emplace(library::normalized_tag_text(value->key),
+                        library::normalized_tag_text(value->value))
+                    .second)
+                return LibraryJsonError::invalid_record;
+
+            tag.key = std::move(value->key);
+            tag.value = std::move(value->value);
             output.tags.push_back(std::move(tag));
         }
     }
