@@ -82,6 +82,16 @@ TEST(FfmpegBuild, PinsTheAuditedReleaseAndRequiredComponents)
         EXPECT_NE(av_find_input_format(std::string{demuxer}.c_str()), nullptr) << demuxer;
 }
 
+TEST(FfmpegBuild, ProbesOnlyTheRequiredMetadataMuxers)
+{
+    constexpr std::array<std::string_view, 4> muxers{"flac", "mov", "mp3", "ogg"};
+
+    for (const std::string_view muxer : muxers)
+        EXPECT_NE(av_guess_format(std::string{muxer}.c_str(), nullptr, nullptr), nullptr) << muxer;
+
+    EXPECT_EQ(av_guess_format("avi", nullptr, nullptr), nullptr);
+}
+
 TEST(FfmpegBuild, ExposesOnlyLocalFileInputProtocols)
 {
     void* opaque{nullptr};
