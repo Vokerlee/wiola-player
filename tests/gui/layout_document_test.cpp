@@ -129,4 +129,49 @@ TEST(LayoutDocument, FocusedPresetsRetainCompletePlayerControls)
     EXPECT_GT(queue.node_count, 20U);
 }
 
+TEST(LayoutDocument, RoundTripsNestedContainersWithTheirProperties)
+{
+    const QByteArray json = R"({"version":1,"root":{"id":"panes","type":"splitter",
+        "orientation":"vertical","sizes":[2,3],"children":[
+        {"id":"grid","type":"grid","columns":2,"children":[
+            {"id":"play","type":"button","action":"play","size":{"width":64}},
+            {"id":"status","type":"status"}]},
+        {"id":"tabs","type":"tabs","children":[
+            {"id":"first","type":"status","title":"First page"},
+            {"id":"second","type":"status"}]}]}})";
+    wiola::gui::LayoutDocument document;
+    ASSERT_EQ(wiola::gui::read_layout_json(json, document), LayoutJsonError::none);
+    ASSERT_EQ(wiola::gui::validate_layout_document(document), LayoutJsonError::none);
+    EXPECT_EQ(document.root.orientation, Qt::Vertical);
+    EXPECT_EQ(document.root.sizes, (std::vector<int>{2, 3}));
+    EXPECT_EQ(document.root.children[0].columns, 2);
+    const QByteArray serialized = wiola::gui::write_layout_json(document);
+    ASSERT_FALSE(serialized.isEmpty());
+    wiola::gui::LayoutDocument restored;
+    ASSERT_EQ(wiola::gui::read_layout_json(serialized, restored), LayoutJsonError::none);
+    EXPECT_EQ(wiola::gui::write_layout_json(restored), serialized);
+}
+
+TEST(LayoutDocument, RejectsInvalidContainerPropertiesTransactionally)
+{
+    wiola::gui::LayoutDocument document = wiola::gui::classic_layout_document();
+    for (const QByteArray json :
+        {R"({"version":1,"root":{"id":"x","type":"splitter","orientation":"diagonal"}})",
+            R"({"version":1,"root":{"id":"x","type":"splitter","sizes":[0]}})",
+            R"({"version":1,"root":{"id":"x","type":"splitter","sizes":[1.5]}})",
+            R"({"version":1,"root":{"id":"x","type":"splitter","sizes":[1]}})",
+            R"({"version":1,"root":{"id":"x","type":"grid","columns":0}})",
+            R"({"version":1,"root":{"id":"x","type":"grid","columns":33}})",
+            R"({"version":1,"root":{"id":"x","type":"row","columns":2}})",
+            R"({"version":1,"root":{"id":"x","type":"tabs","sizes":[]}})",
+            R"({"version":1,"root":{"id":"x","type":"button","children":[{"id":"y","type":"status"}]}})"}) {
+        EXPECT_EQ(wiola::gui::read_layout_json(json, document), LayoutJsonError::invalid_component)
+            << json.constData();
+        EXPECT_EQ(document.root.id, "classicRoot");
+    }
+    document.root.columns = 2;
+    EXPECT_EQ(wiola::gui::validate_layout_document(document), LayoutJsonError::invalid_component);
+    EXPECT_TRUE(wiola::gui::write_layout_json(document).isEmpty());
+}
+
 } // namespace

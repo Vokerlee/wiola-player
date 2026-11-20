@@ -49,6 +49,7 @@ public:
 
 private:
     void add_from_palette();
+    void add_container();
     void remove_selected();
     void move_selected(int offset);
     void drop_component(const QString& payload, const QPoint& position);
@@ -67,6 +68,10 @@ private:
     QLineEdit* title_{nullptr};
     QSpinBox* width_{nullptr};
     QComboBox* action_{nullptr};
+    QComboBox* container_kind_{nullptr};
+    QComboBox* orientation_{nullptr};
+    QSpinBox* columns_{nullptr};
+    QLineEdit* sizes_{nullptr};
     QPushButton* undo_{nullptr};
     QPushButton* redo_{nullptr};
     QLabel* status_{nullptr};

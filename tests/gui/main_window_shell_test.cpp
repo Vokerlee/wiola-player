@@ -26,6 +26,7 @@
 #include <gui/track_table_view.hpp>
 
 #include <QApplication>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QLineEdit>
 #include <QMenu>
@@ -315,6 +316,69 @@ TEST_F(MainWindowShell, LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocum
     EXPECT_EQ(session.playlist().tracks()[0].path(), first);
     EXPECT_EQ(session.playlist().tracks()[1].path(), second);
     EXPECT_EQ(session.playlist().position(), 0);
+}
+
+TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
+{
+    using wiola::gui::LayoutComponentKind;
+    using wiola::gui::LayoutNode;
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    window.open({"/tmp/wiola-nested-layout.mp3"});
+
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    auto* inspector = window.findChild<QWidget*>("trackInspector");
+    auto* area = window.findChild<QSplitter*>("documentArea");
+    ASSERT_NE(documents, nullptr);
+    ASSERT_NE(inspector, nullptr);
+    ASSERT_NE(area, nullptr);
+    documents->setCurrentIndex(1);
+    QWidget* active = documents->currentWidget();
+
+    auto layout = wiola::gui::classic_layout_document();
+    auto found = std::ranges::find_if(layout.root.children,
+        [](const LayoutNode& node) { return node.id == "documentArea"; });
+    ASSERT_NE(found, layout.root.children.end());
+    ASSERT_EQ(found->children.size(), 3);
+    LayoutNode grid;
+    grid.id = "documentGrid";
+    grid.kind = LayoutComponentKind::grid;
+    grid.columns = 2;
+    grid.children = {found->children[0], found->children[1]};
+    LayoutNode tabs;
+    tabs.id = "inspectorTabs";
+    tabs.kind = LayoutComponentKind::tabs;
+    tabs.children = {found->children[2]};
+    tabs.children.front().title = "Track details";
+    found->orientation = Qt::Vertical;
+    found->sizes = {2, 1};
+    found->children = {grid, tabs};
+    layout.node_count += 2;
+
+    ASSERT_TRUE(window.switch_layout(layout));
+    auto* built_grid = window.findChild<QWidget*>("documentGrid");
+    auto* built_tabs = window.findChild<QTabWidget*>("inspectorTabs");
+    ASSERT_NE(built_grid, nullptr);
+    ASSERT_NE(built_tabs, nullptr);
+    auto* cells = qobject_cast<QGridLayout*>(built_grid->layout());
+    ASSERT_NE(cells, nullptr);
+    ASSERT_NE(cells->itemAtPosition(0, 1), nullptr);
+    EXPECT_EQ(cells->itemAtPosition(0, 1)->widget(), documents);
+    EXPECT_EQ(built_tabs->widget(0), inspector);
+    EXPECT_EQ(built_tabs->tabText(0), "Track details");
+    EXPECT_EQ(area->orientation(), Qt::Vertical);
+    EXPECT_EQ(documents->currentWidget(), active);
+
+    ASSERT_TRUE(window.switch_layout(wiola::gui::classic_layout_document()));
+    EXPECT_EQ(window.findChild<QTabWidget*>("documentTabs"), documents);
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_EQ(area->orientation(), Qt::Horizontal);
+    EXPECT_EQ(area->widget(1), documents);
+    EXPECT_EQ(area->widget(2), inspector);
+    EXPECT_EQ(window.findChild<QWidget*>("documentGrid"), nullptr);
+    EXPECT_EQ(window.findChild<QTabWidget*>("inspectorTabs"), nullptr);
+    ASSERT_EQ(session.playlist().tracks().size(), 1);
+    EXPECT_EQ(session.playlist().tracks().front().path(), "/tmp/wiola-nested-layout.mp3");
 }
 
 TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)

@@ -119,6 +119,47 @@ TEST(ButtonLayoutEditor, AcceptsPaletteDropsAndRestoresHistory)
     EXPECT_NE(find(editor.document().root, "next"), nullptr);
 }
 
+TEST(ButtonLayoutEditor, CreatesAndConfiguresContainersWithUndoAndIsolatedPreview)
+{
+    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    auto* kind = editor.findChild<QComboBox*>("layoutContainerType");
+    auto* add = editor.findChild<QPushButton*>("addLayoutContainer");
+    ASSERT_NE(tree, nullptr);
+    ASSERT_NE(kind, nullptr);
+    ASSERT_NE(add, nullptr);
+    for (const auto type : {wiola::gui::LayoutComponentKind::grid,
+             wiola::gui::LayoutComponentKind::splitter, wiola::gui::LayoutComponentKind::tabs}) {
+        tree->setCurrentItem(tree->topLevelItem(0));
+        kind->setCurrentIndex(kind->findData(static_cast<int>(type)));
+        add->click();
+    }
+    ASSERT_NE(find(editor.document().root, "grid"), nullptr);
+    ASSERT_NE(find(editor.document().root, "splitter"), nullptr);
+    ASSERT_NE(find(editor.document().root, "tabs"), nullptr);
+    tree->setCurrentItem(item(*tree, "grid"));
+    auto* columns = editor.findChild<QSpinBox*>("layoutGridColumns");
+    ASSERT_NE(columns, nullptr);
+    EXPECT_TRUE(columns->isEnabled());
+    columns->setValue(3);
+    emit columns->editingFinished();
+    EXPECT_EQ(find(editor.document().root, "grid")->columns, 3);
+    tree->setCurrentItem(item(*tree, "splitter"));
+    auto* orientation = editor.findChild<QComboBox*>("layoutComponentOrientation");
+    ASSERT_NE(orientation, nullptr);
+    const int vertical = orientation->findData(static_cast<int>(Qt::Vertical));
+    orientation->setCurrentIndex(vertical);
+    emit orientation->activated(vertical);
+    EXPECT_EQ(find(editor.document().root, "splitter")->orientation, Qt::Vertical);
+    editor.findChild<QPushButton*>("undoLayoutEdit")->click();
+    EXPECT_NE(find(editor.document().root, "splitter")->orientation, Qt::Vertical);
+    editor.findChild<QPushButton*>("redoLayoutEdit")->click();
+    EXPECT_EQ(find(editor.document().root, "splitter")->orientation, Qt::Vertical);
+    auto* status = editor.findChild<QLabel*>("layoutEditorStatus");
+    ASSERT_NE(status, nullptr);
+    EXPECT_TRUE(status->text().isEmpty());
+}
+
 #ifndef WIOLA_TEST_TSAN
 TEST(ButtonLayoutEditor, RemovesSelectedComponentsWithTheKeyboard)
 {

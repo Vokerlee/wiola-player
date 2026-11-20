@@ -339,7 +339,6 @@ MainWindow::MainWindow(engine::Session& session)
     document_area_->setStretchFactor(0, 0);
     document_area_->setStretchFactor(1, 1);
     document_area_->setStretchFactor(2, 0);
-    document_area_->setSizes({180, 620, 220});
 
     navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
     navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });

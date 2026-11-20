@@ -88,8 +88,7 @@ QString action_name(PlayerAction action)
 
 bool container(LayoutComponentKind kind)
 {
-    return kind == LayoutComponentKind::row || kind == LayoutComponentKind::column ||
-        kind == LayoutComponentKind::stack || kind == LayoutComponentKind::group;
+    return is_layout_container(kind);
 }
 
 struct NodeLocation {
@@ -223,6 +222,15 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     palette_commands->addWidget(add);
     palette_commands->addWidget(remove);
 
+    container_kind_ = new QComboBox{this};
+    container_kind_->setObjectName("layoutContainerType");
+    for (const auto kind :
+        {LayoutComponentKind::row, LayoutComponentKind::column, LayoutComponentKind::group,
+            LayoutComponentKind::splitter, LayoutComponentKind::grid, LayoutComponentKind::tabs})
+        container_kind_->addItem(layout_component_name(kind), static_cast<int>(kind));
+    auto* add_container_button = new QPushButton{"Add container", this};
+    add_container_button->setObjectName("addLayoutContainer");
+
     title_ = new QLineEdit{this};
     title_->setObjectName("layoutComponentTitle");
     width_ = new QSpinBox{this};
@@ -235,10 +243,25 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     for (const ActionName& entry : available_actions)
         action_->addItem(entry.label, entry.name);
 
+    orientation_ = new QComboBox{this};
+    orientation_->setObjectName("layoutComponentOrientation");
+    orientation_->addItem("Horizontal", static_cast<int>(Qt::Horizontal));
+    orientation_->addItem("Vertical", static_cast<int>(Qt::Vertical));
+    columns_ = new QSpinBox{this};
+    columns_->setObjectName("layoutGridColumns");
+    columns_->setRange(1, 32);
+    sizes_ = new QLineEdit{this};
+    sizes_->setObjectName("layoutSplitterSizes");
+    sizes_->setPlaceholderText("Automatic, or one positive weight per pane");
+    sizes_->setMaxLength(256);
+
     auto* inspector = new QFormLayout;
     inspector->addRow("Title", title_);
     inspector->addRow("Fixed width", width_);
     inspector->addRow("Action", action_);
+    inspector->addRow("Orientation", orientation_);
+    inspector->addRow("Grid columns", columns_);
+    inspector->addRow("Splitter weights", sizes_);
 
     undo_ = new QPushButton{"Undo", this};
     undo_->setObjectName("undoLayoutEdit");
@@ -261,6 +284,8 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     left->addWidget(new QLabel{"Actions", this});
     left->addWidget(palette_);
     left->addLayout(palette_commands);
+    left->addWidget(container_kind_);
+    left->addWidget(add_container_button);
 
     auto* center = new QVBoxLayout;
     center->addWidget(new QLabel{"Layout", this});
@@ -287,6 +312,7 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     root->addWidget(buttons);
 
     connect(add, &QPushButton::clicked, this, &ButtonLayoutEditor::add_from_palette);
+    connect(add_container_button, &QPushButton::clicked, this, &ButtonLayoutEditor::add_container);
     connect(remove, &QPushButton::clicked, this, &ButtonLayoutEditor::remove_selected);
     connect(undo_, &QPushButton::clicked, this,
         [this] { finish_edit(editor_.undo(), selected_id()); });
@@ -297,6 +323,9 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     connect(title_, &QLineEdit::editingFinished, this, &ButtonLayoutEditor::configure_selected);
     connect(width_, &QSpinBox::editingFinished, this, &ButtonLayoutEditor::configure_selected);
     connect(action_, &QComboBox::activated, this, [this](int) { configure_selected(); });
+    connect(orientation_, &QComboBox::activated, this, [this](int) { configure_selected(); });
+    connect(columns_, &QSpinBox::editingFinished, this, &ButtonLayoutEditor::configure_selected);
+    connect(sizes_, &QLineEdit::editingFinished, this, &ButtonLayoutEditor::configure_selected);
     connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this, [this] {
         if (!apply_observer_ || apply_observer_(editor_.document()))
             accept();
@@ -380,6 +409,25 @@ void ButtonLayoutEditor::insert_action(PlayerAction action, const QString& paren
     finish_edit(editor_.insert(parent, index, node), id);
 }
 
+void ButtonLayoutEditor::add_container()
+{
+    NodeLocation target = locate(editor_.document().root, selected_id());
+    if (!target.node)
+        return;
+    const auto kind = static_cast<LayoutComponentKind>(container_kind_->currentData().toInt());
+    const QString base = layout_component_name(kind);
+    QString id = base;
+    for (int suffix = 2; locate(editor_.document().root, id).node; ++suffix)
+        id = base + "-" + QString::number(suffix);
+    LayoutNode node;
+    node.id = id;
+    node.kind = kind;
+    if (container(target.node->kind))
+        finish_edit(editor_.insert(target.node->id, target.node->children.size(), node), id);
+    else if (target.parent)
+        finish_edit(editor_.insert(target.parent->id, target.index + 1, node), id);
+}
+
 void ButtonLayoutEditor::remove_selected()
 {
     finish_edit(editor_.remove(selected_id()));
@@ -445,6 +493,26 @@ void ButtonLayoutEditor::configure_selected()
     if (configured.kind == LayoutComponentKind::button)
         configured.action = parse_action(action_->currentData().toString());
 
+    if (configured.kind == LayoutComponentKind::splitter) {
+        configured.orientation = static_cast<Qt::Orientation>(orientation_->currentData().toInt());
+        configured.sizes.clear();
+        if (!sizes_->text().trimmed().isEmpty()) {
+            for (const QString& part : sizes_->text().split(',')) {
+                bool valid = false;
+                const int value = part.trimmed().toInt(&valid);
+                if (!valid || value < 1 || value > 4096) {
+                    status_->setText(
+                        "Use positive splitter weights from 1 to 4096, separated by commas"
+                    );
+                    return;
+                }
+                configured.sizes.push_back(value);
+            }
+        }
+    }
+    if (configured.kind == LayoutComponentKind::grid)
+        configured.columns = columns_->value();
+
     finish_edit(editor_.configure(location.node->id, configured), location.node->id);
 }
 
@@ -456,7 +524,7 @@ void ButtonLayoutEditor::rebuild(const QString& selected)
     const auto add_node = [this](auto&& self, const LayoutNode& node,
                               QTreeWidgetItem* parent) -> void {
         auto* item = new QTreeWidgetItem{
-            {node.id, action_name(node.action.value_or(PlayerAction::count))}
+            {node.id, layout_component_name(node.kind)}
         };
         item->setData(0, identity_role, node.id);
 
@@ -494,6 +562,10 @@ void ButtonLayoutEditor::update_inspector()
     title_->setEnabled(present);
     width_->setEnabled(present);
     action_->setEnabled(button);
+    const bool splitter = present && location.node->kind == LayoutComponentKind::splitter;
+    orientation_->setEnabled(splitter);
+    sizes_->setEnabled(splitter);
+    columns_->setEnabled(present && location.node->kind == LayoutComponentKind::grid);
 
     if (present) {
         title_->setText(location.node->title);
@@ -501,10 +573,21 @@ void ButtonLayoutEditor::update_inspector()
         const int index =
             action_->findData(action_name(location.node->action.value_or(PlayerAction::count)));
         action_->setCurrentIndex(index);
+        orientation_->setCurrentIndex(orientation_->findData(
+            static_cast<int>(location.node->orientation.value_or(Qt::Horizontal))
+        ));
+        columns_->setValue(location.node->columns.value_or(1));
+        QStringList weights;
+        for (int weight : location.node->sizes)
+            weights.append(QString::number(weight));
+        sizes_->setText(weights.join(", "));
     } else {
         title_->clear();
         width_->setValue(0);
         action_->setCurrentIndex(-1);
+        orientation_->setCurrentIndex(0);
+        columns_->setValue(1);
+        sizes_->clear();
     }
 
     updating_ = false;

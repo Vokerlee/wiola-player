@@ -74,6 +74,8 @@ LayoutDocument library_focus_layout_document()
     area->id = "libraryFocusBody";
     area->title.clear();
     area->kind = LayoutComponentKind::row;
+    area->orientation.reset();
+    area->sizes.clear();
     area->children = {
         navigation,
         component("documentTabs", LayoutComponentKind::stack),

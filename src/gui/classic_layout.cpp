@@ -72,7 +72,8 @@ LayoutDocument classic_layout_document()
                 },
                 {
                     "id": "documentArea",
-                    "type": "stack",
+                    "type": "splitter",
+                    "sizes": [180, 620, 220],
                     "children": [
                         {
                             "id": "libraryPane",

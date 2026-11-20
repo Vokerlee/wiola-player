@@ -91,6 +91,9 @@ bool LayoutEditor::insert(const QString& parent, std::size_t index, const Layout
 
     destination->children.insert(destination->children.begin() + static_cast<std::ptrdiff_t>(index),
         node);
+    if (!destination->sizes.empty())
+        destination->sizes.insert(destination->sizes.begin() + static_cast<std::ptrdiff_t>(index),
+            1);
     return commit(std::move(next));
 }
 
@@ -106,6 +109,8 @@ bool LayoutEditor::remove(const QString& id)
         return false;
 
     parent->children.erase(parent->children.begin() + static_cast<std::ptrdiff_t>(index));
+    if (!parent->sizes.empty())
+        parent->sizes.erase(parent->sizes.begin() + static_cast<std::ptrdiff_t>(index));
     return commit(std::move(next));
 }
 
@@ -121,7 +126,11 @@ bool LayoutEditor::move(const QString& id, const QString& parent, std::size_t in
         return false;
 
     LayoutNode moved = source->children[source_index];
+    const bool weighted_source = !source->sizes.empty();
+    const int weight = weighted_source ? source->sizes[source_index] : 1;
     source->children.erase(source->children.begin() + static_cast<std::ptrdiff_t>(source_index));
+    if (!source->sizes.empty())
+        source->sizes.erase(source->sizes.begin() + static_cast<std::ptrdiff_t>(source_index));
     LayoutNode* destination = find_node(next.root, parent);
 
     if (destination == nullptr || index > destination->children.size())
@@ -129,6 +138,9 @@ bool LayoutEditor::move(const QString& id, const QString& parent, std::size_t in
 
     destination->children.insert(destination->children.begin() + static_cast<std::ptrdiff_t>(index),
         std::move(moved));
+    if (!destination->sizes.empty() || (destination == source && weighted_source))
+        destination->sizes.insert(destination->sizes.begin() + static_cast<std::ptrdiff_t>(index),
+            weight);
     return commit(std::move(next));
 }
 
