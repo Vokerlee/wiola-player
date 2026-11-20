@@ -2,6 +2,8 @@ wiola_add_library(
     wiola_app
     SOURCES
         active_playlist.cpp
+        background_metadata.cpp
+        metadata_merge.cpp
         playback_queue.cpp
         playback_service.cpp
         playlist_transfer.cpp

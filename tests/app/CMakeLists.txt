@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_metadata_merge_test
+    SOURCES metadata_merge_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_workspace_watcher_test
     SOURCES workspace_watcher_test.cpp
     LIBS wiola_workspace_watcher
