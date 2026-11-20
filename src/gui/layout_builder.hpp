@@ -56,6 +56,15 @@ public:
         QWidget* parent = nullptr) const;
 
 private:
+    struct Attachment {
+        QWidget* placeholder;
+        QWidget* widget;
+        LayoutNode node;
+    };
+
+    [[nodiscard]] QWidget* build_node(const LayoutNode& node, const LayoutBuildContext& context,
+        QWidget* parent, std::vector<Attachment>& attachments) const;
+
     std::map<LayoutComponentKind, Factory> factories_;
     std::map<QString, QWidget*> widgets_;
 };

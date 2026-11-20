@@ -84,21 +84,37 @@ bool LayoutBuilder::register_widget(const QString& id, QWidget* widget)
     return true;
 }
 
-QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& context,
-    QWidget* parent) const
+QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildContext& context,
+    QWidget* parent, std::vector<Attachment>& attachments) const
 {
     const auto reused = widgets_.find(node.id);
     QWidget* widget = nullptr;
 
     if (reused != widgets_.end()) {
-        widget = reused->second;
-    } else {
-        const auto registered = factories_.find(node.kind);
-        if (registered == factories_.end())
-            return nullptr;
-        widget = registered->second(parent, context);
+        QWidget* existing = reused->second;
+
+        if (!node.children.empty()) {
+            if (qobject_cast<QStackedWidget*>(existing)) {
+                widget = new QStackedWidget{parent};
+            } else if (qobject_cast<QBoxLayout*>(existing->layout())) {
+                widget = new QWidget{parent};
+                new QHBoxLayout{widget};
+            } else {
+                return nullptr;
+            }
+        } else {
+            widget = new QWidget{parent};
+        }
+
+        attachments.push_back({.placeholder = widget, .widget = existing, .node = node});
+        return widget;
     }
 
+    const auto registered = factories_.find(node.kind);
+    if (registered == factories_.end())
+        return nullptr;
+
+    widget = registered->second(parent, context);
     if (widget == nullptr)
         return nullptr;
 
@@ -109,15 +125,17 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
 
     if (node.width)
         widget->setFixedWidth(*node.width);
+
     if (node.height)
         widget->setFixedHeight(*node.height);
+
     if (node.min_width)
         widget->setMinimumWidth(*node.min_width);
+
     if (node.min_height)
         widget->setMinimumHeight(*node.min_height);
 
-    if (reused == widgets_.end() && node.kind == LayoutComponentKind::button && node.action &&
-        context.actions) {
+    if (node.kind == LayoutComponentKind::button && node.action && context.actions) {
         auto* button = qobject_cast<QPushButton*>(widget);
         QAction* action = context.actions->action(*node.action);
 
@@ -133,7 +151,7 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
     }
 
     for (const LayoutNode& child : node.children) {
-        QWidget* nested = build(child, context, widget);
+        QWidget* nested = build_node(child, context, widget, attachments);
         if (nested == nullptr) {
             delete widget;
             return nullptr;
@@ -150,6 +168,85 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
     }
 
     return widget;
+}
+
+QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& context,
+    QWidget* parent) const
+{
+    std::vector<Attachment> attachments;
+    QWidget* root = build_node(node, context, parent, attachments);
+
+    if (root == nullptr)
+        return nullptr;
+
+    for (auto attachment = attachments.rbegin(); attachment != attachments.rend(); ++attachment) {
+        QWidget* placeholder = attachment->placeholder;
+        QWidget* widget = attachment->widget;
+
+        if (!attachment->node.children.empty()) {
+            if (auto* target = qobject_cast<QStackedWidget*>(widget)) {
+                auto* source = qobject_cast<QStackedWidget*>(placeholder);
+
+                while (source->count() != 0) {
+                    QWidget* child = source->widget(0);
+                    source->removeWidget(child);
+                    target->addWidget(child);
+                }
+            } else {
+                auto* source = qobject_cast<QBoxLayout*>(placeholder->layout());
+                auto* target_layout = qobject_cast<QBoxLayout*>(widget->layout());
+
+                while (source->count() != 0) {
+                    QLayoutItem* item = source->takeAt(0);
+                    target_layout->addWidget(item->widget());
+                    delete item;
+                }
+            }
+        }
+
+        QWidget* placeholder_parent = placeholder->parentWidget();
+
+        if (auto* stack = qobject_cast<QStackedWidget*>(placeholder_parent)) {
+            const int index = stack->indexOf(placeholder);
+            stack->insertWidget(index, widget);
+            stack->removeWidget(placeholder);
+        } else if (placeholder_parent != nullptr) {
+            if (auto* layout = qobject_cast<QBoxLayout*>(placeholder_parent->layout())) {
+                const int index = layout->indexOf(placeholder);
+                layout->insertWidget(index, widget);
+                layout->removeWidget(placeholder);
+            } else {
+                widget->setParent(placeholder_parent);
+            }
+        } else {
+            widget->setParent(parent);
+        }
+
+        widget->setObjectName(attachment->node.id);
+
+        if (auto* group = qobject_cast<QGroupBox*>(widget))
+            group->setTitle(attachment->node.title);
+
+        if (attachment->node.width)
+            widget->setFixedWidth(*attachment->node.width);
+
+        if (attachment->node.height)
+            widget->setFixedHeight(*attachment->node.height);
+
+        if (attachment->node.min_width)
+            widget->setMinimumWidth(*attachment->node.min_width);
+
+        if (attachment->node.min_height)
+            widget->setMinimumHeight(*attachment->node.min_height);
+
+        const bool is_root = placeholder == root;
+        delete placeholder;
+
+        if (is_root)
+            root = widget;
+    }
+
+    return root;
 }
 
 } // namespace wiola::gui
