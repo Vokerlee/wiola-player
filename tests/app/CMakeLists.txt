@@ -58,6 +58,11 @@ wiola_add_test(
     SOURCES playback_service_test.cpp
     LIBS wiola_app
 )
+wiola_add_test(
+    app_search_index_test
+    SOURCES search_index_test.cpp
+    LIBS wiola_app
+)
 
 if(WIOLA_BUILD_GUI)
     wiola_add_test(
