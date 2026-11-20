@@ -107,11 +107,13 @@ struct Format {
 
     Format(std::string name, std::span<const Marker> markers,
         std::span<const std::string_view> extensions, OpenFunction open,
-        BackendCapabilities capabilities = {})
+        BackendCapabilities capabilities = {},
+        media::MetadataWriteCapabilities metadata_writes = {})
         : name{std::move(name)}
         , markers{markers.begin(), markers.end()}
         , open{std::move(open)}
         , capabilities{capabilities}
+        , metadata_writes{metadata_writes}
     {
         this->extensions.reserve(extensions.size());
         for (const std::string_view extension : extensions)
@@ -123,6 +125,7 @@ struct Format {
     std::vector<std::string> extensions;
     OpenFunction open;
     BackendCapabilities capabilities{};
+    media::MetadataWriteCapabilities metadata_writes{};
 };
 
 struct Backend {
