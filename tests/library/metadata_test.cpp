@@ -31,6 +31,12 @@ wiola::library::TrackRecord track()
     record.embedded.artist = "Embedded artist";
     record.embedded.album = "Embedded album";
     record.embedded.duration = wiola::units::Time{12.5};
+    record.embedded.genre = "Jazz";
+    record.embedded.year = 2026;
+    record.embedded.comment = "Live recording";
+    record.embedded.composer = "Composer";
+    record.embedded.track_number = 3;
+    record.embedded.disc_number = 2;
     record.tags = {
         {.id = wiola::library::TagId{"tag-1"}, .key = "genre", .value = "Jazz"},
         {.id = wiola::library::TagId{"tag-2"}, .key = "genre", .value = "Live"},
@@ -52,6 +58,12 @@ TEST(Metadata, ResolvesOverridesTagsDurationAndMissingState)
     EXPECT_EQ(resolved.album, "Embedded album");
     ASSERT_TRUE(resolved.duration.has_value());
     EXPECT_DOUBLE_EQ(resolved.duration->seconds(), 12.5);
+    EXPECT_EQ(resolved.genre, "Jazz");
+    EXPECT_EQ(resolved.year, 2026);
+    EXPECT_EQ(resolved.comment, "Live recording");
+    EXPECT_EQ(resolved.composer, "Composer");
+    EXPECT_EQ(resolved.track_number, 3);
+    EXPECT_EQ(resolved.disc_number, 2);
     ASSERT_EQ(resolved.tags.size(), 2);
     EXPECT_EQ(resolved.tags[0].value, "Jazz");
     EXPECT_EQ(resolved.tags[1].value, "Live");

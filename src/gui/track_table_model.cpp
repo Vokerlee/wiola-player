@@ -50,8 +50,7 @@ enum Column {
 
 bool same_metadata(const engine::Track& a, const engine::Track& b)
 {
-    return a.title() == b.title() && a.artist() == b.artist() && a.album() == b.album() &&
-        a.duration() == b.duration() && a.artwork() == b.artwork();
+    return a.metadata() == b.metadata() && a.artwork() == b.artwork();
 }
 
 bool restricted(const library::SearchQuery& query)

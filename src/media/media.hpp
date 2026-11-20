@@ -25,6 +25,7 @@
 #include <utils/units.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -46,6 +47,14 @@ struct TrackMetadata {
     std::string artist;
     std::string album;
     std::optional<units::Time> duration;
+    std::string genre;
+    std::optional<std::uint32_t> year;
+    std::string comment;
+    std::string composer;
+    std::optional<std::uint32_t> track_number;
+    std::optional<std::uint32_t> disc_number;
+
+    bool operator==(const TrackMetadata&) const = default;
 };
 
 struct Metadata {
@@ -55,7 +64,9 @@ struct Metadata {
     [[nodiscard]] bool empty() const noexcept
     {
         return track.title.empty() && track.artist.empty() && track.album.empty() &&
-            artwork.empty() && !track.duration.has_value();
+            track.genre.empty() && track.comment.empty() && track.composer.empty() &&
+            artwork.empty() && !track.duration.has_value() && !track.year.has_value() &&
+            !track.track_number.has_value() && !track.disc_number.has_value();
     }
 };
 

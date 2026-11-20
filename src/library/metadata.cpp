@@ -29,6 +29,12 @@ ResolvedMetadata resolve_metadata(const TrackRecord& track)
         .artist = track.display_artist(),
         .album = track.display_album(),
         .duration = track.embedded.duration,
+        .genre = track.embedded.genre,
+        .year = track.embedded.year,
+        .comment = track.embedded.comment,
+        .composer = track.embedded.composer,
+        .track_number = track.embedded.track_number,
+        .disc_number = track.embedded.disc_number,
         .tags = track.tags,
         .missing = track.missing,
     };
