@@ -19,6 +19,7 @@
  */
 
 #include <gui/classic_layout.hpp>
+#include <gui/focused_layout.hpp>
 #include <gui/layout_document.hpp>
 
 #include <gtest/gtest.h>
@@ -115,6 +116,17 @@ TEST(LayoutDocument, ClassicPresetIsValidAndComplete)
     const auto document = wiola::gui::classic_layout_document();
     EXPECT_GT(document.node_count, 20U);
     EXPECT_EQ(document.root.id, "classicRoot");
+}
+
+TEST(LayoutDocument, FocusedPresetsRetainCompletePlayerControls)
+{
+    const auto library = wiola::gui::library_focus_layout_document();
+    const auto queue = wiola::gui::queue_focus_layout_document();
+
+    EXPECT_EQ(library.root.id, "libraryFocusRoot");
+    EXPECT_EQ(queue.root.id, "queueFocusRoot");
+    EXPECT_GT(library.node_count, queue.node_count);
+    EXPECT_GT(queue.node_count, 20U);
 }
 
 } // namespace

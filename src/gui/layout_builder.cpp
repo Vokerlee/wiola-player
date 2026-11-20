@@ -28,6 +28,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QSplitter>
 #include <QStackedWidget>
 
 namespace wiola::gui {
@@ -94,7 +95,9 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
         QWidget* existing = reused->second;
 
         if (!node.children.empty()) {
-            if (qobject_cast<QStackedWidget*>(existing)) {
+            if (qobject_cast<QSplitter*>(existing)) {
+                widget = new QSplitter{parent};
+            } else if (qobject_cast<QStackedWidget*>(existing)) {
                 widget = new QStackedWidget{parent};
             } else if (qobject_cast<QBoxLayout*>(existing->layout())) {
                 widget = new QWidget{parent};
@@ -107,6 +110,23 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
         }
 
         attachments.push_back({.placeholder = widget, .widget = existing, .node = node});
+
+        for (const LayoutNode& child : node.children) {
+            QWidget* nested = build_node(child, context, widget, attachments);
+            if (nested == nullptr) {
+                delete widget;
+                return nullptr;
+            }
+
+            if (auto* splitter = qobject_cast<QSplitter*>(widget)) {
+                splitter->addWidget(nested);
+            } else if (auto* stack = qobject_cast<QStackedWidget*>(widget)) {
+                stack->addWidget(nested);
+            } else if (auto* layout = qobject_cast<QBoxLayout*>(widget->layout())) {
+                layout->addWidget(nested);
+            }
+        }
+
         return widget;
     }
 
@@ -157,7 +177,9 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
             return nullptr;
         }
 
-        if (auto* stack = qobject_cast<QStackedWidget*>(widget)) {
+        if (auto* splitter = qobject_cast<QSplitter*>(widget)) {
+            splitter->addWidget(nested);
+        } else if (auto* stack = qobject_cast<QStackedWidget*>(widget)) {
             stack->addWidget(nested);
         } else if (auto* layout = qobject_cast<QBoxLayout*>(widget->layout())) {
             layout->addWidget(nested);
@@ -184,7 +206,14 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
         QWidget* widget = attachment->widget;
 
         if (!attachment->node.children.empty()) {
-            if (auto* target = qobject_cast<QStackedWidget*>(widget)) {
+            if (auto* target = qobject_cast<QSplitter*>(widget)) {
+                auto* source = qobject_cast<QSplitter*>(placeholder);
+
+                while (source->count() != 0) {
+                    QWidget* child = source->widget(0);
+                    target->addWidget(child);
+                }
+            } else if (auto* target = qobject_cast<QStackedWidget*>(widget)) {
                 auto* source = qobject_cast<QStackedWidget*>(placeholder);
 
                 while (source->count() != 0) {
@@ -206,7 +235,10 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
 
         QWidget* placeholder_parent = placeholder->parentWidget();
 
-        if (auto* stack = qobject_cast<QStackedWidget*>(placeholder_parent)) {
+        if (auto* splitter = qobject_cast<QSplitter*>(placeholder_parent)) {
+            const int index = splitter->indexOf(placeholder);
+            splitter->insertWidget(index, widget);
+        } else if (auto* stack = qobject_cast<QStackedWidget*>(placeholder_parent)) {
             const int index = stack->indexOf(placeholder);
             stack->insertWidget(index, widget);
             stack->removeWidget(placeholder);
@@ -238,6 +270,8 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
 
         if (attachment->node.min_height)
             widget->setMinimumHeight(*attachment->node.min_height);
+
+        widget->show();
 
         const bool is_root = placeholder == root;
         delete placeholder;

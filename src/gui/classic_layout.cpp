@@ -70,7 +70,22 @@ LayoutDocument classic_layout_document()
                         {"id": "equalizer", "type": "button", "action": "equalizer"}
                     ]
                 },
-                {"id": "documentArea", "type": "stack"},
+                {
+                    "id": "documentArea",
+                    "type": "stack",
+                    "children": [
+                        {
+                            "id": "libraryPane",
+                            "type": "column",
+                            "children": [
+                                {"id": "libraryNavigation", "type": "inspector"},
+                                {"id": "savedPlaylistManager", "type": "inspector"}
+                            ]
+                        },
+                        {"id": "documentTabs", "type": "stack"},
+                        {"id": "trackInspector", "type": "inspector"}
+                    ]
+                },
                 {
                     "id": "queueCommandsGroup",
                     "type": "group",
