@@ -9,6 +9,11 @@ wiola_add_test(
     LIBS wiola_app
 )
 wiola_add_test(
+    app_background_metadata_writes_test
+    SOURCES background_metadata_writes_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_media_revision_publisher_test
     SOURCES media_revision_publisher_test.cpp
     LIBS wiola_media_revisions
