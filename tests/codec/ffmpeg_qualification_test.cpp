@@ -60,8 +60,8 @@ constexpr std::array fixtures{
     Fixture{"Matroska/WebM Vorbis/Opus", "opus",      "",   "tone-opus.mka",    12000, 2},
     Fixture{"WAV PCM",                   "pcm_s16le", "",   "tone.wav",         11025, 2},
     Fixture{"FLAC",                      "flac",      "",   "tone.flac",        11025, 2},
-    Fixture{"MPEG audio Layer II/III",   "mp2",       "",   "tone.mp2",         11520, 2},
-    Fixture{"MPEG audio Layer II/III",   "mp3",       "",   "tone.mp3",         11025, 2},
+    Fixture{"MPEG audio Layer II",       "mp2",       "",   "tone.mp2",         11520, 2},
+    Fixture{"MPEG audio Layer III",      "mp3",       "",   "tone.mp3",         11025, 2},
 };
 
 bool matches(const wiola::codec::ffmpeg::Qualification& qualification, const Fixture& fixture)
