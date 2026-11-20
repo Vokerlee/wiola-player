@@ -33,6 +33,8 @@
 
 #include <functional>
 
+class QLayout;
+
 namespace wiola::gui {
 
 class ButtonLayoutEditor final : public QDialog {
@@ -54,6 +56,7 @@ private:
     void configure_selected();
     void rebuild(const QString& selected = {});
     void update_inspector();
+    void update_preview();
     void update_history();
     void finish_edit(bool succeeded, const QString& selected = {});
     [[nodiscard]] QString selected_id() const;
@@ -67,6 +70,8 @@ private:
     QPushButton* undo_{nullptr};
     QPushButton* redo_{nullptr};
     QLabel* status_{nullptr};
+    QWidget* preview_{nullptr};
+    QLayout* preview_layout_{nullptr};
     ApplyObserver apply_observer_;
     bool updating_{false};
 };

@@ -20,16 +20,20 @@
 
 #include "button_layout_editor.hpp"
 
+#include "layout_builder.hpp"
+
 #include <QDialogButtonBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QMimeData>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <array>
 #include <optional>
 #include <utility>
@@ -251,6 +255,7 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
 
     auto* buttons = new QDialogButtonBox{QDialogButtonBox::Apply | QDialogButtonBox::Cancel, this};
     buttons->button(QDialogButtonBox::Apply)->setObjectName("applyLayoutEdit");
+    buttons->button(QDialogButtonBox::Cancel)->setObjectName("cancelLayoutEdit");
 
     auto* left = new QVBoxLayout;
     left->addWidget(new QLabel{"Actions", this});
@@ -262,10 +267,14 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     center->addWidget(hierarchy_);
     center->addLayout(history);
 
+    auto* preview_group = new QGroupBox{"Isolated preview", this};
+    preview_group->setObjectName("isolatedLayoutPreview");
+    preview_layout_ = new QVBoxLayout{preview_group};
+
     auto* right = new QVBoxLayout;
     right->addWidget(new QLabel{"Inspector", this});
     right->addLayout(inspector);
-    right->addStretch();
+    right->addWidget(preview_group, 1);
 
     auto* contents = new QHBoxLayout;
     contents->addLayout(left, 1);
@@ -472,6 +481,7 @@ void ButtonLayoutEditor::rebuild(const QString& selected)
 
     updating_ = false;
     update_inspector();
+    update_preview();
     update_history();
 }
 
@@ -498,6 +508,36 @@ void ButtonLayoutEditor::update_inspector()
     }
 
     updating_ = false;
+}
+
+void ButtonLayoutEditor::update_preview()
+{
+    delete preview_;
+    preview_ = LayoutBuilder{}.build(editor_.document().root, {}, preview_layout_->parentWidget());
+
+    if (preview_ == nullptr) {
+        status_->setText("Could not construct the isolated preview");
+        return;
+    }
+
+    preview_layout_->addWidget(preview_);
+
+    const auto present_node = [this](auto&& self, const LayoutNode& node) -> void {
+        if (node.action) {
+            if (auto* button = preview_->findChild<QPushButton*>(node.id)) {
+                const QString name = action_name(*node.action);
+                const auto found = std::ranges::find(available_actions, name, &ActionName::name);
+                button->setText(
+                    found == available_actions.end() ? name : QString::fromLatin1(found->label)
+                );
+            }
+        }
+
+        for (const LayoutNode& child : node.children)
+            self(self, child);
+    };
+
+    present_node(present_node, editor_.document().root);
 }
 
 void ButtonLayoutEditor::update_history()

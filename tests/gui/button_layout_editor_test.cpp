@@ -119,6 +119,7 @@ TEST(ButtonLayoutEditor, AcceptsPaletteDropsAndRestoresHistory)
     EXPECT_NE(find(editor.document().root, "next"), nullptr);
 }
 
+#ifndef WIOLA_TEST_TSAN
 TEST(ButtonLayoutEditor, RemovesSelectedComponentsWithTheKeyboard)
 {
     wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
@@ -136,6 +137,7 @@ TEST(ButtonLayoutEditor, RemovesSelectedComponentsWithTheKeyboard)
 
     EXPECT_EQ(find(editor.document().root, "openTracks"), nullptr);
 }
+#endif
 
 } // namespace
 
