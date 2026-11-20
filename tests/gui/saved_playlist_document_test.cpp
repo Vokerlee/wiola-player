@@ -21,10 +21,12 @@
 #include <gui/saved_playlist_document.hpp>
 
 #include <library/in_memory_repository.hpp>
+#include <library/location.hpp>
 
 #include <QAction>
 #include <QApplication>
 #include <QLabel>
+#include <QLineEdit>
 
 #include <gtest/gtest.h>
 
@@ -190,6 +192,73 @@ TEST(SavedPlaylistDocument, SortingPreservesPersistentEntrySelection)
     }
 
     EXPECT_EQ(applications, 1);
+}
+
+TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
+{
+    wiola::library::InMemoryRepository repository;
+    const auto make = [](std::string name, std::string title, std::string artist) {
+        wiola::library::TrackRecord record;
+        record.id = wiola::library::media_id_for(name + ".wav");
+        record.embedded.title = std::move(title);
+        record.embedded.artist = std::move(artist);
+        record.embedded.album = "Shared album";
+        record.locations = {name + ".wav"};
+        record.tags = {
+            {.id = wiola::library::TagId{name + "-tag"}, .key = "Genre", .value = "Jazz"}
+        };
+        return record;
+    };
+
+    const wiola::library::TrackRecord zulu = make("zulu", "Zulu", "Shared artist");
+    const wiola::library::TrackRecord other = make("other", "Beta", "Other artist");
+    const wiola::library::TrackRecord alpha = make("alpha", "Alpha", "Shared artist");
+    ASSERT_TRUE(repository.put_track(zulu));
+    ASSERT_TRUE(repository.put_track(other));
+    ASSERT_TRUE(repository.put_track(alpha));
+
+    const auto playlist = repository.create_playlist("Favorites");
+    const auto zulu_entry = repository.append_track(playlist, zulu.id);
+    const auto other_entry = repository.append_track(playlist, other.id);
+    const auto alpha_entry = repository.append_track(playlist, alpha.id);
+    ASSERT_TRUE(zulu_entry && other_entry && alpha_entry);
+
+    wiola::gui::SavedPlaylistDocument document;
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
+
+    document.findChild<QLineEdit*>("searchArtist")->setText("shared artist");
+    document.findChild<QLineEdit*>("tagFilterKey")->setText("Genre");
+    document.findChild<QLineEdit*>("tagFilterValue")->setText("Jazz");
+    document.findChild<QPushButton*>("includeTagFilter")->click();
+    table->sort_by({
+        wiola::gui::TrackSortKey{.field = wiola::gui::TrackSortField::title,
+                                 .direction = wiola::gui::TrackSortDirection::ascending,
+                                 .tag_key = {}}
+    });
+
+    QLabel* results = document.findChild<QLabel*>("trackSearchResults");
+    ASSERT_NE(results, nullptr);
+    EXPECT_EQ(results->text(), "2 of 3 tracks");
+    ASSERT_EQ(table->model()->rowCount(), 2);
+    EXPECT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
+        "Alpha");
+
+    table->selectionModel()->select(table->model()->index(0, 0),
+        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    EXPECT_EQ(document.chosen_entries(),
+        std::vector<wiola::library::PlaylistEntryId>{*alpha_entry});
+
+    document.findChild<QPushButton*>("resetTrackSearch")->click();
+    EXPECT_EQ(results->text(), "3 of 3 tracks");
+    EXPECT_EQ(document.chosen_entries(),
+        std::vector<wiola::library::PlaylistEntryId>{*alpha_entry});
+
+    const auto& entries = repository.playlist(playlist)->entries;
+    ASSERT_EQ(entries.size(), 3);
+    EXPECT_EQ(entries[0].id, *zulu_entry);
+    EXPECT_EQ(entries[1].id, *other_entry);
+    EXPECT_EQ(entries[2].id, *alpha_entry);
 }
 
 } // namespace

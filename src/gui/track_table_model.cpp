@@ -21,7 +21,7 @@
 #include "track_table_model.hpp"
 
 #include "clock.hpp"
-#include "track_sorter.hpp"
+#include "track_view_pipeline.hpp"
 
 #include <library/location.hpp>
 #include <library/repository.hpp>
@@ -56,26 +56,7 @@ bool same_metadata(const engine::Track& a, const engine::Track& b)
 
 bool restricted(const library::SearchQuery& query)
 {
-    return !query.title.empty() || !query.artist.empty() || !query.album.empty() ||
-        !query.tags.empty() || !query.filters.empty();
-}
-
-bool matches(const engine::Track& track, const library::LibraryRepository* repository,
-    const library::SearchQuery& query)
-{
-    if (!restricted(query))
-        return true;
-
-    const library::MediaId media = library::media_id_for(track.path());
-    const library::TrackRecord* record = repository != nullptr ? repository->track(media) : nullptr;
-
-    if (record != nullptr)
-        return library::matches_search(query, *record);
-
-    library::TrackRecord presented;
-    presented.id = media;
-    presented.embedded = track.metadata();
-    return library::matches_search(query, presented);
+    return track_query_active(query);
 }
 
 } // namespace
@@ -316,18 +297,7 @@ void TrackTableModel::search_by(const library::SearchQuery& query)
 
 std::vector<engine::Track> TrackTableModel::visible_rows() const
 {
-    std::vector<engine::Track> visible;
-    visible.reserve(source_rows_.size());
-
-    for (const engine::Track& track : source_rows_) {
-        if (matches(track, repository_, query_))
-            visible.push_back(track);
-    }
-
-    if (!sort_keys_.empty() && repository_ != nullptr)
-        return sorted_tracks(visible, *repository_, sort_keys_);
-
-    return visible;
+    return apply_track_view(source_rows_, repository_, query_, sort_keys_);
 }
 
 std::optional<engine::QueueEntryId> TrackTableModel::track_id(const QModelIndex& index) const

@@ -17,6 +17,7 @@ wiola_add_library(
         track_table_view.cpp
         track_sort.cpp
         track_sorter.cpp
+        track_view_pipeline.cpp
         track_search_panel.cpp
         tag_filter_panel.cpp
         player_actions.cpp
