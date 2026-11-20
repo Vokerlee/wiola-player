@@ -22,6 +22,7 @@
 
 #include "classic_layout.hpp"
 #include "clock.hpp"
+#include "focused_layout.hpp"
 #include "layout_builder.hpp"
 #include "player_settings.hpp"
 #include "presentation_tokens.hpp"
@@ -267,15 +268,15 @@ MainWindow::MainWindow(engine::Session& session)
     for (const library::WorkspaceRecord& workspace : library_.workspaces())
         static_cast<void>(workspace_watcher_->watch(workspace));
 
-    QWidget* library_pane = new QWidget{this};
-    QVBoxLayout* library_layout = new QVBoxLayout{library_pane};
+    library_pane_ = new QWidget{this};
+    QVBoxLayout* library_layout = new QVBoxLayout{library_pane_};
     library_layout->setContentsMargins(0, 0, 0, 0);
     library_layout->addWidget(navigation_);
     library_layout->addWidget(playlist_manager_);
 
     document_area_ = new QSplitter{this};
     document_area_->setObjectName("documentArea");
-    document_area_->addWidget(library_pane);
+    document_area_->addWidget(library_pane_);
     document_area_->addWidget(documents_);
     document_area_->addWidget(inspector_);
     document_area_->setStretchFactor(0, 0);
@@ -341,6 +342,17 @@ MainWindow::MainWindow(engine::Session& session)
     playback->addAction(actions_.action(PlayerAction::repeat));
     playback->addAction(actions_.action(PlayerAction::shuffle));
 
+    QMenu* view = menuBar()->addMenu("&View");
+    QAction* classic = view->addAction("Classic");
+    QAction* library = view->addAction("Library Focus");
+    QAction* queue = view->addAction("Queue Focus");
+    connect(classic, &QAction::triggered, this,
+        [this] { static_cast<void>(switch_layout(classic_layout_document())); });
+    connect(library, &QAction::triggered, this,
+        [this] { static_cast<void>(switch_layout(library_focus_layout_document())); });
+    connect(queue, &QAction::triggered, this,
+        [this] { static_cast<void>(switch_layout(queue_focus_layout_document())); });
+
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
 
@@ -380,31 +392,60 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
     }
 
     LayoutBuilder builder;
-    const std::array<std::pair<const char*, QWidget*>, 20> widgets{
-        std::pair{"trackLabel",    track_label_     },
-        std::pair{"positionBar",   position_bar_    },
-        std::pair{"elapsedTime",   elapsed_label_   },
-        std::pair{"totalDuration", total_label_     },
-        std::pair{"previousTrack", previous_button_ },
-        std::pair{"playPause",     play_button_     },
-        std::pair{"nextTrack",     next_button_     },
-        std::pair{"stopPlayback",  stop_button_     },
-        std::pair{"volumeSlider",  volume_slider_   },
-        std::pair{"volumeValue",   volume_value_    },
-        std::pair{"boostButton",   boost_button_    },
-        std::pair{"openTracks",    open_button_     },
-        std::pair{"repeatQueue",   repeat_button_   },
-        std::pair{"shuffleQueue",  shuffle_button_  },
-        std::pair{"equalizer",     equalizer_button_},
-        std::pair{"documentArea",  document_area_   },
-        std::pair{"addTracks",     add_button_      },
-        std::pair{"removeTracks",  remove_button_   },
-        std::pair{"clearQueue",    clear_button_    },
-        std::pair{"playerStatus",  status_label_    },
+    const std::array<std::pair<const char*, QWidget*>, 26> widgets{
+        std::pair{"trackLabel",           track_label_     },
+        std::pair{"positionBar",          position_bar_    },
+        std::pair{"elapsedTime",          elapsed_label_   },
+        std::pair{"totalDuration",        total_label_     },
+        std::pair{"previousTrack",        previous_button_ },
+        std::pair{"playPause",            play_button_     },
+        std::pair{"nextTrack",            next_button_     },
+        std::pair{"stopPlayback",         stop_button_     },
+        std::pair{"volumeSlider",         volume_slider_   },
+        std::pair{"volumeValue",          volume_value_    },
+        std::pair{"boostButton",          boost_button_    },
+        std::pair{"openTracks",           open_button_     },
+        std::pair{"repeatQueue",          repeat_button_   },
+        std::pair{"shuffleQueue",         shuffle_button_  },
+        std::pair{"equalizer",            equalizer_button_},
+        std::pair{"documentArea",         document_area_   },
+        std::pair{"libraryPane",          library_pane_    },
+        std::pair{"libraryNavigation",    navigation_      },
+        std::pair{"savedPlaylistManager", playlist_manager_},
+        std::pair{"documentTabs",         documents_       },
+        std::pair{"trackInspector",       inspector_       },
+        std::pair{"nowPlayingDocument",   now_playing_     },
+        std::pair{"addTracks",            add_button_      },
+        std::pair{"removeTracks",         remove_button_   },
+        std::pair{"clearQueue",           clear_button_    },
+        std::pair{"playerStatus",         status_label_    },
     };
 
     for (const auto& [id, widget] : widgets)
         static_cast<void>(builder.register_widget(QString::fromLatin1(id), widget));
+
+    static_cast<void>(builder.register_widget("nowPlayingSearch",
+        now_playing_->findChild<QWidget*>("trackSearchPanel")));
+    static_cast<void>(builder.register_widget("nowPlayingFilters",
+        now_playing_->findChild<QWidget*>("tagFilterPanel")));
+
+    for (const auto& [id, saved] : playlist_documents_) {
+        const QString identity = QString::fromStdString(id.value);
+        static_cast<void>(builder.register_widget("playlistDocument:" + identity, saved));
+        static_cast<void>(builder.register_widget("playlistSearch:" + identity,
+            saved->findChild<QWidget*>("trackSearchPanel")));
+        static_cast<void>(builder.register_widget("playlistFilters:" + identity,
+            saved->findChild<QWidget*>("tagFilterPanel")));
+    }
+
+    for (const auto& [id, workspace] : workspace_documents_) {
+        const QString identity = QString::fromStdString(id.value);
+        static_cast<void>(builder.register_widget("workspaceDocument:" + identity, workspace));
+        static_cast<void>(builder.register_widget("workspaceSearch:" + identity,
+            workspace->findChild<QWidget*>("trackSearchPanel")));
+        static_cast<void>(builder.register_widget("workspaceFilters:" + identity,
+            workspace->findChild<QWidget*>("tagFilterPanel")));
+    }
 
     QWidget* root = builder.build(document.root,
         {.presenter = &presenter_, .actions = &actions_, .library = &library_}, this);
@@ -412,6 +453,22 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
     if (root == nullptr) {
         show_status("Could not construct the layout");
         return false;
+    }
+
+    const auto belongs_to_root = [root](QWidget* widget) {
+        for (QWidget* current = widget; current != nullptr; current = current->parentWidget()) {
+            if (current == root)
+                return true;
+        }
+
+        return false;
+    };
+
+    for (const auto& [id, widget] : widgets) {
+        if (!belongs_to_root(widget)) {
+            widget->setParent(this);
+            widget->hide();
+        }
     }
 
     if (QLayout* layout = root->layout())

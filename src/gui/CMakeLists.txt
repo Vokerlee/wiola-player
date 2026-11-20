@@ -7,6 +7,7 @@ wiola_add_library(
         custom_tag_editor.cpp
         equalizer_control.cpp
         equalizer_panel.cpp
+        focused_layout.cpp
         library_json.cpp
         library_navigation.cpp
         library_storage.cpp

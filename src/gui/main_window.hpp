@@ -250,6 +250,7 @@ private:
     SeekBar* position_bar_{nullptr};
     NowPlayingDocument* now_playing_{nullptr};
     QTabWidget* documents_{nullptr};
+    QWidget* library_pane_{nullptr};
     QSplitter* document_area_{nullptr};
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};

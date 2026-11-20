@@ -31,6 +31,7 @@
 #include <QMenuBar>
 #include <QPushButton>
 #include <QSettings>
+#include <QSplitter>
 #include <QTabWidget>
 #include <QTemporaryDir>
 
@@ -348,6 +349,58 @@ TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
     EXPECT_EQ(window.centralWidget(), root);
     EXPECT_EQ(document_area->parentWidget(), original_parent);
     EXPECT_EQ(documents->currentWidget(), active);
+}
+
+TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
+{
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    auto* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
+        window.findChild<QWidget*>("savedPlaylistManager")
+    );
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    auto* navigation = window.findChild<QWidget*>("libraryNavigation");
+    auto* inspector = window.findChild<QWidget*>("trackInspector");
+    auto* area = window.findChild<QSplitter*>("documentArea");
+    ASSERT_NE(manager, nullptr);
+    ASSERT_NE(documents, nullptr);
+    ASSERT_NE(navigation, nullptr);
+    ASSERT_NE(inspector, nullptr);
+    ASSERT_NE(area, nullptr);
+    ASSERT_TRUE(manager->create("Focus"));
+
+    QWidget* active = documents->currentWidget();
+    QMenu* view = menu(window, "&View");
+    ASSERT_NE(view, nullptr);
+    QAction* queue = action(*view, "Queue Focus");
+    QAction* library = action(*view, "Library Focus");
+    QAction* classic = action(*view, "Classic");
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(library, nullptr);
+    ASSERT_NE(classic, nullptr);
+
+    queue->trigger();
+
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_TRUE(navigation->isHidden());
+    EXPECT_TRUE(inspector->isHidden());
+    EXPECT_TRUE(area->isHidden());
+
+    library->trigger();
+
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_FALSE(navigation->isHidden());
+    EXPECT_FALSE(inspector->isHidden());
+    EXPECT_TRUE(area->isHidden());
+
+    classic->trigger();
+
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_FALSE(navigation->isHidden());
+    EXPECT_FALSE(inspector->isHidden());
+    EXPECT_FALSE(area->isHidden());
+    EXPECT_GE(area->indexOf(documents), 0);
+    EXPECT_GE(area->indexOf(inspector), 0);
 }
 
 } // namespace
