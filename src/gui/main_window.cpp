@@ -107,9 +107,11 @@ MainWindow::MainWindow(engine::Session& session)
           [this](const library::LibraryRepository& records) {
               return playlist_storage_.save(records) == LibraryJsonError::none;
           }}
-    , bulk_commands_{library_, [this](const library::LibraryRepository& records) {
-                         return playlist_storage_.save(records) == LibraryJsonError::none;
-                     }}
+    , optimistic_edits_{library_,
+          [this](const library::LibraryRepository& records) {
+              return playlist_storage_.save(records) == LibraryJsonError::none;
+          },
+          [this](const app::MetadataEditOutcome& outcome) { publish_metadata_outcome(outcome); }}
 {
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -1149,27 +1151,24 @@ std::vector<const library::TrackRecord*> MainWindow::selected_records()
 void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFieldOverrides edit)
 {
     std::vector<library::MediaId> selected;
-    for (const library::TrackRecord* record : selected_records())
+    std::map<library::MediaId, std::uint64_t> expected;
+
+    for (const library::TrackRecord* record : selected_records()) {
         selected.push_back(record->id);
-
-    const app::BulkMetadataResult result = bulk_commands_.apply(selected, edit);
-
-    if (!result.succeeded()) {
-        const QString message = result.error == app::StandardMetadataError::empty_edit
-            ? QString{"There are no metadata changes to apply"}
-            : QString{"Could not save the metadata changes"};
-        inspector_->standard_metadata()->show_status(message);
-        show_status(message);
-        return;
+        expected.emplace(record->id, record->metadata_revision);
     }
 
-    if (result.changed == 0) {
-        show_status(result.missing == 0
-                ? QString{"No metadata changes to save"}
-                : QString{"No selected tracks are available in the library"});
-        return;
-    }
+    const auto outcome = optimistic_edits_.submit(selected, edit, expected);
+    if (outcome.state == app::MetadataEditState::failed ||
+        outcome.state == app::MetadataEditState::conflicted)
+        inspector_->standard_metadata()->show_status(outcome.state ==
+                    app::MetadataEditState::conflicted
+                ? QString{"The track changed since editing started; review before applying"}
+                : QString{"Could not save the metadata changes"});
+}
 
+void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcome)
+{
     refresh_playlist_documents();
 
     for (const auto& [id, document] : workspace_documents_) {
@@ -1178,11 +1177,33 @@ void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFie
     }
 
     refresh();
-    show_status(result.missing == 0
-            ? QString{"Metadata updated for %1 track(s)"}.arg(result.changed)
-            : QString{"Metadata updated for %1 track(s); %2 unavailable"}
-                  .arg(result.changed)
-                  .arg(result.missing));
+
+    switch (outcome.state) {
+    case app::MetadataEditState::queued:
+        show_status(QString{"Saving metadata for %1 track(s)"}.arg(outcome.changed));
+        break;
+    case app::MetadataEditState::succeeded:
+        if (outcome.changed == 0) {
+            show_status(outcome.missing == 0
+                    ? QString{"No metadata changes to save"}
+                    : QString{"No selected tracks are available in the library"});
+        } else {
+            show_status(outcome.missing == 0
+                    ? QString{"Metadata updated for %1 track(s)"}.arg(outcome.changed)
+                    : QString{"Metadata updated for %1 track(s); %2 unavailable"}
+                          .arg(outcome.changed)
+                          .arg(outcome.missing));
+        }
+        break;
+    case app::MetadataEditState::failed:
+        show_status(outcome.error == app::StandardMetadataError::empty_edit
+                ? QString{"There are no metadata changes to apply"}
+                : QString{"Could not save the metadata changes"});
+        break;
+    case app::MetadataEditState::conflicted:
+        show_status("The track changed since editing started; review before applying");
+        break;
+    }
 }
 
 void MainWindow::refresh_playlist_documents()

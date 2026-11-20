@@ -6,6 +6,7 @@ wiola_add_library(
         bulk_metadata_commands.cpp
         custom_tag_commands.cpp
         metadata_merge.cpp
+        optimistic_metadata_edits.cpp
         playback_queue.cpp
         playback_service.cpp
         playlist_transfer.cpp
