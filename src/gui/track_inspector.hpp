@@ -37,7 +37,7 @@ public:
 
     void show_track(const engine::Track* track);
     void show_custom_tags(const library::TrackRecord* track);
-    void show_standard_metadata(const library::TrackRecord* track);
+    void show_standard_metadata(const std::vector<const library::TrackRecord*>& tracks);
 
     [[nodiscard]] CustomTagEditor* custom_tags() const noexcept { return custom_tags_; }
 

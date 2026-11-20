@@ -114,6 +114,34 @@ TEST_F(StandardMetadataEditor, PreservesDirtyInputUntilARevisionChanges)
     EXPECT_EQ(editor.findChild<QLabel*>("standardMetadataStatus")->text(), "Could not save");
 }
 
+TEST_F(StandardMetadataEditor, MixedValuesRemainUnchangedUnlessExplicitlyEdited)
+{
+    wiola::library::TrackRecord other = track;
+    other.id = wiola::library::MediaId{"other"};
+    other.embedded.artist = "Different artist";
+    other.embedded.year = 2021;
+    editor.show_tracks({&track, &other});
+
+    EXPECT_EQ(field("standardTitle")->text(), "User title");
+    EXPECT_TRUE(field("standardArtist")->text().isEmpty());
+    EXPECT_EQ(field("standardArtist")->placeholderText(), "Mixed values");
+    EXPECT_TRUE(field("standardYear")->text().isEmpty());
+    EXPECT_EQ(field("standardYear")->placeholderText(), "Mixed values");
+
+    std::optional<wiola::library::StandardFieldOverrides> applied;
+    editor.on_apply([&](wiola::library::MediaId, wiola::library::StandardFieldOverrides edit) {
+        applied = std::move(edit);
+    });
+    field("standardGenre")->setText("Jazz");
+    button("applyStandardMetadata")->click();
+
+    ASSERT_TRUE(applied.has_value());
+    EXPECT_EQ(applied->genre, "Jazz");
+    EXPECT_FALSE(applied->artist.has_value());
+    EXPECT_FALSE(applied->year.has_value());
+    EXPECT_FALSE(applied->title.has_value());
+}
+
 } // namespace
 
 int main(int argc, char** argv)
