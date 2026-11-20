@@ -227,4 +227,62 @@ LayoutJsonError read_layout_json(QByteArrayView json, LayoutDocument& output)
     return LayoutJsonError::none;
 }
 
+LayoutJsonError validate_layout_document(const LayoutDocument& document)
+{
+    if (document.version != 1)
+        return LayoutJsonError::unsupported_version;
+
+    QSet<QString> identities;
+    std::size_t count = 0;
+
+    const auto validate_node = [&]<typename Self>(Self&& self, const LayoutNode& node,
+                                   int depth) -> LayoutJsonError {
+        if (depth > max_depth || count >= max_nodes)
+            return LayoutJsonError::limit_exceeded;
+
+        if (!valid_id(node.id) || identities.contains(node.id) || node.title.toUtf8().size() > 128)
+            return LayoutJsonError::invalid_component;
+
+        const int kind = static_cast<int>(node.kind);
+        if (kind < static_cast<int>(LayoutComponentKind::row) ||
+            kind > static_cast<int>(LayoutComponentKind::status))
+            return LayoutJsonError::invalid_component;
+
+        if (node.action) {
+            const int action = static_cast<int>(*node.action);
+            if (node.kind != LayoutComponentKind::button ||
+                action < static_cast<int>(PlayerAction::open) ||
+                action > static_cast<int>(PlayerAction::equalizer))
+                return LayoutJsonError::invalid_component;
+        }
+
+        for (const auto* dimension :
+            {&node.width, &node.height, &node.min_width, &node.min_height}) {
+            if (*dimension && (**dimension < 0 || **dimension > max_dimension))
+                return LayoutJsonError::invalid_component;
+        }
+
+        if (node.children.size() > max_children)
+            return LayoutJsonError::invalid_component;
+
+        identities.insert(node.id);
+        ++count;
+
+        for (const LayoutNode& child : node.children) {
+            const LayoutJsonError error = self(self, child, depth + 1);
+            if (error != LayoutJsonError::none)
+                return error;
+        }
+
+        return LayoutJsonError::none;
+    };
+
+    const LayoutJsonError result = validate_node(validate_node, document.root, 0);
+    if (result != LayoutJsonError::none)
+        return result;
+
+    return count == document.node_count ? LayoutJsonError::none
+                                        : LayoutJsonError::invalid_component;
+}
+
 } // namespace wiola::gui
