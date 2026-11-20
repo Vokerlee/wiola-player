@@ -46,10 +46,10 @@ ArtworkCache::ArtworkCache(const QWidget& styled, ArtworkCachePolicy policy)
         throw std::invalid_argument{"invalid artwork cache policy"};
 }
 
-const QPixmap& ArtworkCache::cover_of(std::uint64_t identity,
+const QPixmap& ArtworkCache::cover_of(ArtworkCacheKey key,
     const std::shared_ptr<const media::Artwork>& artwork)
 {
-    if (const auto found = covers_.find(identity); found != covers_.end())
+    if (const auto found = covers_.find(key); found != covers_.end())
         return found->second.cover;
 
     QPixmap art;
@@ -70,9 +70,8 @@ const QPixmap& ArtworkCache::cover_of(std::uint64_t identity,
         (covers_.size() >= policy_.covers_kept || bytes_ + bytes > policy_.cached_bytes))
         forget_oldest(1);
 
-    const auto held =
-        covers_.emplace(identity, Entry{.cover = std::move(cover), .bytes = bytes}).first;
-    order_.push_back(identity);
+    const auto held = covers_.emplace(key, Entry{.cover = std::move(cover), .bytes = bytes}).first;
+    order_.push_back(std::move(key));
     bytes_ += bytes;
     return held->second.cover;
 }

@@ -23,6 +23,8 @@
 #include "clock.hpp"
 #include "qt_path_adapter.hpp"
 
+#include <library/location.hpp>
+
 #include <QFormLayout>
 #include <QVBoxLayout>
 
@@ -91,7 +93,7 @@ TrackInspector::TrackInspector(QWidget* parent)
 void TrackInspector::show_track(const engine::Track* track)
 {
     if (track == nullptr) {
-        artwork_label_->setPixmap(artwork_.cover_of(0, {}));
+        artwork_label_->setPixmap(artwork_.cover_of({}, {}));
         title_->setText("No track selected");
         artist_->clear();
         album_->clear();
@@ -105,7 +107,10 @@ void TrackInspector::show_track(const engine::Track* track)
     std::error_code error;
     const bool missing = !std::filesystem::exists(track->path(), error);
 
-    artwork_label_->setPixmap(artwork_.cover_of(track->id().value, track->artwork()));
+    artwork_label_->setPixmap(artwork_.cover_of(
+        {.media = library::media_id_for(track->path()).value, .revision = track->revision()},
+        track->artwork()
+    ));
     title_->setText(fallback(track->title(), "Unknown title"));
     artist_->setText(fallback(track->artist(), "Unknown artist"));
     album_->setText(fallback(track->album(), "Unknown album"));

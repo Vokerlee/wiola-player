@@ -23,9 +23,14 @@
 #include <engine/queue/playlist.hpp>
 
 #include <QApplication>
+#include <QBuffer>
 #include <QFont>
+#include <QImage>
+#include <QPixmap>
 
 #include <gtest/gtest.h>
+
+#include <cstring>
 
 namespace {
 
@@ -37,6 +42,29 @@ protected:
 wiola::engine::QueueEntryId id_at(const wiola::engine::Playlist& playlist, std::size_t row)
 {
     return playlist.tracks().at(row).id();
+}
+
+std::shared_ptr<wiola::media::Artwork> sample_artwork(Qt::GlobalColor color)
+{
+    QImage image{4, 4, QImage::Format_ARGB32};
+    image.fill(color);
+
+    QByteArray encoded;
+    QBuffer buffer{&encoded};
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "PNG");
+
+    auto artwork = std::make_shared<wiola::media::Artwork>();
+    artwork->mime_type = "image/png";
+    artwork->data.resize(static_cast<std::size_t>(encoded.size()));
+    std::memcpy(artwork->data.data(), encoded.constData(), artwork->data.size());
+
+    return artwork;
+}
+
+QPixmap cover_at(wiola::gui::TrackTableModel& model, int row)
+{
+    return model.data(model.index(row, 0), Qt::DecorationRole).value<QPixmap>();
 }
 
 } // namespace
@@ -124,6 +152,31 @@ TEST_F(TrackTableModelTest, UpdatesSelectionWithoutDependingOnPlaylistRevisions)
 
     model.show_tracks(playlist.tracks());
     EXPECT_FALSE(model.data(model.index(1, 1), Qt::FontRole).value<QFont>().bold());
+}
+
+TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevision)
+{
+    wiola::gui::TrackTableModel model{styled};
+    wiola::engine::Playlist playlist;
+    playlist.set({wiola::engine::Track::of("same.wav"), wiola::engine::Track::of("same.wav")});
+    const std::vector entries{id_at(playlist, 0), id_at(playlist, 1)};
+
+    playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::blue));
+    model.show_tracks(playlist.tracks());
+
+    const QPixmap first_blue = cover_at(model, 0);
+    const QPixmap second_blue = cover_at(model, 1);
+    EXPECT_EQ(first_blue.cacheKey(), second_blue.cacheKey());
+    EXPECT_EQ(first_blue.toImage().pixelColor(0, 0), QColor{Qt::GlobalColor::blue});
+
+    playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::red));
+    model.show_tracks(playlist.tracks());
+
+    const QPixmap first_red = cover_at(model, 0);
+    const QPixmap second_red = cover_at(model, 1);
+    EXPECT_NE(first_red.cacheKey(), first_blue.cacheKey());
+    EXPECT_EQ(first_red.cacheKey(), second_red.cacheKey());
+    EXPECT_EQ(first_red.toImage().pixelColor(0, 0), QColor{Qt::GlobalColor::red});
 }
 
 int main(int argc, char** argv)

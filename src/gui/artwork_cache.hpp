@@ -27,20 +27,29 @@
 #include <QPixmap>
 #include <QWidget>
 
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <map>
 #include <memory>
+#include <string>
 
 namespace wiola::gui {
+
+struct ArtworkCacheKey {
+    std::string media;
+    std::uint64_t revision{0};
+
+    auto operator<=>(const ArtworkCacheKey&) const = default;
+};
 
 class ArtworkCache {
 public:
     ArtworkCache(const QWidget& styled, ArtworkCachePolicy policy = {});
 
     /// Converts already-read bytes on the GUI thread; missing/malformed artwork is cached too.
-    [[nodiscard]] const QPixmap& cover_of(std::uint64_t identity,
+    [[nodiscard]] const QPixmap& cover_of(ArtworkCacheKey key,
         const std::shared_ptr<const media::Artwork>& artwork);
 
 private:
@@ -53,8 +62,8 @@ private:
 
     QPixmap stub_;
     ArtworkCachePolicy policy_;
-    std::map<std::uint64_t, Entry> covers_;
-    std::deque<std::uint64_t> order_;
+    std::map<ArtworkCacheKey, Entry> covers_;
+    std::deque<ArtworkCacheKey> order_;
     std::size_t bytes_{0};
 };
 
