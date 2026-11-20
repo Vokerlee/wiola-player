@@ -9,6 +9,7 @@ wiola_add_library(
         library_json.cpp
         library_navigation.cpp
         library_storage.cpp
+        layout_document.cpp
         main_window.cpp
         metadata_conflict_panel.cpp
         now_playing_document.cpp
