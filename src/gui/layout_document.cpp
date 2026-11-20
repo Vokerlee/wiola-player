@@ -48,8 +48,8 @@ bool valid_id(const QString& id)
 
     return std::ranges::all_of(id, [](const QChar letter) {
         const ushort value = letter.unicode();
-        return (value >= 'a' && value <= 'z') || (value >= '0' && value <= '9') || value == '-' ||
-            value == '_';
+        return (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') ||
+            (value >= '0' && value <= '9') || value == '-' || value == '_';
     });
 }
 
@@ -138,6 +138,11 @@ struct Parser {
 
         if (!component_kind(object.value("type").toString(), output.kind))
             return LayoutJsonError::invalid_component;
+
+        const QJsonValue title = object.value("title");
+        if (!title.isUndefined() && (!title.isString() || title.toString().toUtf8().size() > 128))
+            return LayoutJsonError::invalid_component;
+        output.title = title.toString();
 
         output.id = id;
         identities.insert(id);

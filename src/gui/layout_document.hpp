@@ -47,6 +47,7 @@ enum class LayoutComponentKind {
 
 struct LayoutNode {
     QString id;
+    QString title;
     LayoutComponentKind kind{LayoutComponentKind::group};
     std::optional<PlayerAction> action;
     std::optional<int> width;

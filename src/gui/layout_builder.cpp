@@ -75,18 +75,37 @@ bool LayoutBuilder::register_component(LayoutComponentKind kind, Factory factory
     return true;
 }
 
+bool LayoutBuilder::register_widget(const QString& id, QWidget* widget)
+{
+    if (id.isEmpty() || widget == nullptr || widgets_.contains(id))
+        return false;
+
+    widgets_.emplace(id, widget);
+    return true;
+}
+
 QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& context,
     QWidget* parent) const
 {
-    const auto registered = factories_.find(node.kind);
-    if (registered == factories_.end())
-        return nullptr;
+    const auto reused = widgets_.find(node.id);
+    QWidget* widget = nullptr;
 
-    QWidget* widget = registered->second(parent, context);
+    if (reused != widgets_.end()) {
+        widget = reused->second;
+    } else {
+        const auto registered = factories_.find(node.kind);
+        if (registered == factories_.end())
+            return nullptr;
+        widget = registered->second(parent, context);
+    }
+
     if (widget == nullptr)
         return nullptr;
 
     widget->setObjectName(node.id);
+
+    if (auto* group = qobject_cast<QGroupBox*>(widget))
+        group->setTitle(node.title);
 
     if (node.width)
         widget->setFixedWidth(*node.width);
@@ -97,7 +116,8 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
     if (node.min_height)
         widget->setMinimumHeight(*node.min_height);
 
-    if (node.kind == LayoutComponentKind::button && node.action && context.actions) {
+    if (reused == widgets_.end() && node.kind == LayoutComponentKind::button && node.action &&
+        context.actions) {
         auto* button = qobject_cast<QPushButton*>(widget);
         QAction* action = context.actions->action(*node.action);
 
