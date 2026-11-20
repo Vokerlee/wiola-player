@@ -148,7 +148,7 @@ Backend backend()
         .disc_number = true,
     };
     static const std::array formats{
-        Format{"Ogg Vorbis/Opus", ogg_markers, ogg_extensions, {}},
+        Format{"Ogg Vorbis/Opus", ogg_markers, ogg_extensions, {}, {}, qualified_writes},
         Format{"MP4/M4A AAC-LC/ALAC", mp4_markers, mp4_extensions, {}, {}, qualified_writes},
         Format{"ADTS AAC-LC", std::span<const Marker>{}, adts_extensions, {}},
         Format{"AIFF PCM", aiff_markers, aiff_extensions, {}},

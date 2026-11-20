@@ -26,11 +26,14 @@ extern "C" {
 #include <libavutil/error.h>
 }
 
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <vector>
 
 namespace wiola::codec::ffmpeg {
 
@@ -40,6 +43,31 @@ using Input = std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)>;
 using Output = std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)>;
 using Io = std::unique_ptr<AVIOContext, void (*)(AVIOContext*)>;
 using Packet = std::unique_ptr<AVPacket, void (*)(AVPacket*)>;
+
+struct TimestampChain {
+    std::int64_t offset{0};
+    std::int64_t last_input{0};
+    std::int64_t last_output{0};
+    std::int64_t last_duration{0};
+    bool valid{false};
+};
+
+std::int64_t continuous_timestamp(std::int64_t value, std::int64_t duration,
+    TimestampChain& chain) noexcept
+{
+    if (value == AV_NOPTS_VALUE)
+        return value;
+
+    if (chain.valid && value <= chain.last_input)
+        chain.offset = chain.last_output + std::max(chain.last_duration, std::int64_t{1}) - value;
+
+    chain.last_input = value;
+    chain.last_output = value + chain.offset;
+    chain.last_duration = duration;
+    chain.valid = true;
+
+    return chain.last_output;
+}
 
 int interrupted(void* opaque) noexcept
 {
@@ -169,6 +197,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         outgoing->time_base = incoming->time_base;
         outgoing->disposition = incoming->disposition;
         av_dict_copy(&outgoing->metadata, incoming->metadata, 0);
+        apply(outgoing->metadata, request.overrides);
 
         if (incoming->attached_pic.size > 0) {
             const int picture = av_packet_ref(&outgoing->attached_pic, &incoming->attached_pic);
@@ -214,6 +243,9 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
             "FFmpeg could not allocate a packet");
     }
 
+    std::vector<TimestampChain> dts_chains(output->nb_streams);
+    std::vector<TimestampChain> pts_chains(output->nb_streams);
+
     while (true) {
         if (context.stop_reason() != media::StopReason::none) {
             io.reset();
@@ -240,6 +272,12 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         }
 
         av_packet_rescale_ts(packet.get(), incoming->time_base, outgoing->time_base);
+
+        if (primary_format == "ogg") {
+            const std::size_t index = static_cast<std::size_t>(packet->stream_index);
+            packet->dts = continuous_timestamp(packet->dts, packet->duration, dts_chains[index]);
+            packet->pts = continuous_timestamp(packet->pts, packet->duration, pts_chains[index]);
+        }
 
         const int written = av_interleaved_write_frame(output.get(), packet.get());
         av_packet_unref(packet.get());
