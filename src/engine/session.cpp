@@ -210,6 +210,7 @@ bool Session::shuffled() const noexcept
 OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
 {
     // Whatever was read and not put on was read for a track nobody is waiting for any more.
+    restore_position_.reset();
     ready_.reset();
     ready_track_.clear();
 
@@ -295,6 +296,7 @@ void Session::take_up_finished_read()
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
         last_result_ = open_failed(opened.error().category);
+        restore_position_.reset();
         return;
     }
 
@@ -306,7 +308,17 @@ void Session::take_up_finished_read()
 
     const bool play{completed->request.intent == LoadIntent::play};
 
-    if (install_read_track() && play)
+    if (!install_read_track()) {
+        restore_position_.reset();
+        return;
+    }
+
+    if (restore_position_) {
+        seek(*restore_position_);
+        restore_position_.reset();
+    }
+
+    if (play)
         static_cast<void>(play_or_pause());
 }
 
@@ -431,6 +443,34 @@ void Session::stop() noexcept
 
     // Stopping is not pausing: the next play begins at the start of the track.
     pipeline_->player().seek(units::Time{});
+}
+
+OpenResult Session::reload_current()
+{
+    const Track* current = playlist_.current();
+    if (current == nullptr)
+        return last_result_;
+
+    const bool resume = playing();
+    const units::Time position = time_played();
+
+    loads_.invalidate();
+    ready_.reset();
+    ready_track_.clear();
+
+    if (loaded()) {
+        pipeline_->player().stop();
+        pipeline_->player().wait();
+    }
+
+    out_.disconnect();
+    pipeline_.reset();
+
+    const OpenResult result =
+        begin_reading(*current, resume ? LoadIntent::play : LoadIntent::install);
+    restore_position_ = position;
+
+    return result;
 }
 
 void Session::seek(units::Time position) noexcept
