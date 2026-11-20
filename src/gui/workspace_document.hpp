@@ -35,6 +35,8 @@
 
 namespace wiola::gui {
 
+class TrackSearchPanel;
+
 class WorkspaceDocument final : public QWidget {
 public:
     explicit WorkspaceDocument(QWidget* parent = nullptr);
@@ -58,6 +60,7 @@ public:
 
 private:
     void set_busy(bool busy);
+    void update_results();
 
     library::WorkspaceId workspace_;
     std::uint64_t generation_{0};
@@ -71,6 +74,7 @@ private:
     QPushButton* append_{nullptr};
     QProgressBar* progress_{nullptr};
     TrackTableView* table_{nullptr};
+    TrackSearchPanel* search_{nullptr};
     std::function<void(bool)> rescan_observer_;
     std::function<void()> cancel_observer_;
     std::function<void()> play_observer_;

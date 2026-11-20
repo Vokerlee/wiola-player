@@ -20,6 +20,8 @@
 
 #include "saved_playlist_document.hpp"
 
+#include "track_search_panel.hpp"
+
 #include <library/metadata.hpp>
 
 #include <QLabel>
@@ -62,12 +64,18 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
 
     table_ = new TrackTableView{this};
     table_->setAccessibleName("Saved playlist tracks");
+    search_ = new TrackSearchPanel{this};
+    search_->on_changed([this](library::SearchQuery query) {
+        table_->search_by(query);
+        update_results();
+    });
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
     layout->addWidget(active_button_);
     layout->addWidget(play_button_);
+    layout->addWidget(search_);
     layout->addWidget(table_);
 
     connect(active_button_, &QPushButton::clicked, [this] {
@@ -148,6 +156,7 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
 
     table_->show_library(repository);
     table_->show_tracks(rows_.tracks());
+    update_results();
     return true;
 }
 
@@ -160,6 +169,11 @@ void SavedPlaylistDocument::set_active(bool active)
 void SavedPlaylistDocument::update_heading()
 {
     heading_->setText(active_destination_ ? name_ + " — Active destination" : name_);
+}
+
+void SavedPlaylistDocument::update_results()
+{
+    search_->show_results(table_->visible_count(), table_->total_count());
 }
 
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const

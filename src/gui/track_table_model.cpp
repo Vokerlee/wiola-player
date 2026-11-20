@@ -54,6 +54,30 @@ bool same_metadata(const engine::Track& a, const engine::Track& b)
         a.duration() == b.duration() && a.artwork() == b.artwork();
 }
 
+bool restricted(const library::SearchQuery& query)
+{
+    return !query.title.empty() || !query.artist.empty() || !query.album.empty() ||
+        !query.tags.empty();
+}
+
+bool matches(const engine::Track& track, const library::LibraryRepository* repository,
+    const library::SearchQuery& query)
+{
+    if (!restricted(query))
+        return true;
+
+    const library::MediaId media = library::media_id_for(track.path());
+    const library::TrackRecord* record = repository != nullptr ? repository->track(media) : nullptr;
+
+    if (record != nullptr)
+        return library::matches_search(query, *record);
+
+    library::TrackRecord presented;
+    presented.id = media;
+    presented.embedded = track.metadata();
+    return library::matches_search(query, presented);
+}
+
 } // namespace
 
 TrackTableModel::TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy)
@@ -167,12 +191,11 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
         std::ranges::equal(source_rows_, tracks,
             [](const engine::Track& a, const engine::Track& b) { return same_metadata(a, b); });
 
-    if (!sort_keys_.empty()) {
+    if (!sort_keys_.empty() || restricted(query_)) {
         if (!same_contents) {
             beginResetModel();
             source_rows_ = tracks;
-            rows_ = repository_ != nullptr ? sorted_tracks(source_rows_, *repository_, sort_keys_)
-                                           : source_rows_;
+            rows_ = visible_rows();
             endResetModel();
         }
     } else if (!same_structure) {
@@ -211,20 +234,17 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
 void TrackTableModel::show_library(const library::LibraryRepository& repository)
 {
     repository_ = &repository;
+    std::vector<engine::Track> visible = visible_rows();
+    const bool different_order = rows_.size() != visible.size() ||
+        !std::ranges::equal(rows_, visible,
+            [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
 
-    if (!sort_keys_.empty()) {
-        std::vector<engine::Track> sorted = sorted_tracks(source_rows_, repository, sort_keys_);
-        const bool different_order = rows_.size() != sorted.size() ||
-            !std::ranges::equal(rows_, sorted,
-                [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
-
-        if (different_order) {
-            beginResetModel();
-            rows_ = std::move(sorted);
-            endResetModel();
-        } else {
-            rows_ = std::move(sorted);
-        }
+    if (different_order) {
+        beginResetModel();
+        rows_ = std::move(visible);
+        endResetModel();
+    } else {
+        rows_ = std::move(visible);
     }
 
     if (rows_.empty() || tag_columns_.empty())
@@ -274,9 +294,39 @@ void TrackTableModel::sort_by(const std::vector<TrackSortKey>& keys)
 
     beginResetModel();
     sort_keys_ = std::move(valid);
-    rows_ = repository_ != nullptr ? sorted_tracks(source_rows_, *repository_, sort_keys_)
-                                   : source_rows_;
+    rows_ = visible_rows();
     endResetModel();
+}
+
+void TrackTableModel::search_by(const library::SearchQuery& query)
+{
+    const library::SearchQuery normalized = library::normalized_search_query(query);
+    const bool same = query_.title == normalized.title && query_.artist == normalized.artist &&
+        query_.album == normalized.album && query_.tags == normalized.tags;
+
+    if (same)
+        return;
+
+    beginResetModel();
+    query_ = normalized;
+    rows_ = visible_rows();
+    endResetModel();
+}
+
+std::vector<engine::Track> TrackTableModel::visible_rows() const
+{
+    std::vector<engine::Track> visible;
+    visible.reserve(source_rows_.size());
+
+    for (const engine::Track& track : source_rows_) {
+        if (matches(track, repository_, query_))
+            visible.push_back(track);
+    }
+
+    if (!sort_keys_.empty() && repository_ != nullptr)
+        return sorted_tracks(visible, *repository_, sort_keys_);
+
+    return visible;
 }
 
 std::optional<engine::QueueEntryId> TrackTableModel::track_id(const QModelIndex& index) const

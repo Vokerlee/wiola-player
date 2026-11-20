@@ -42,6 +42,9 @@ public:
         std::optional<engine::QueueEntryId> current = {});
     void show_library(const library::LibraryRepository& repository);
     void sort_by(const std::vector<TrackSortKey>& keys);
+    void search_by(const library::SearchQuery& query);
+    [[nodiscard]] std::size_t visible_count() const;
+    [[nodiscard]] std::size_t total_count() const;
     [[nodiscard]] std::vector<engine::QueueEntryId> displayed_tracks() const;
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 

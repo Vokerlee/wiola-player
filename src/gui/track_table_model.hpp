@@ -24,6 +24,7 @@
 #include "track_sort.hpp"
 
 #include <engine/queue/track.hpp>
+#include <library/search.hpp>
 
 #include <QAbstractTableModel>
 
@@ -57,9 +58,14 @@ public:
     void show_library(const library::LibraryRepository& repository);
     void show_tag_keys(std::vector<std::string> keys);
     void sort_by(const std::vector<TrackSortKey>& keys);
+    void search_by(const library::SearchQuery& query);
     [[nodiscard]] std::optional<engine::QueueEntryId> track_id(const QModelIndex& index) const;
 
+    [[nodiscard]] std::size_t total_count() const { return source_rows_.size(); }
+
 private:
+    [[nodiscard]] std::vector<engine::Track> visible_rows() const;
+
     mutable ArtworkCache artwork_;
     ArtworkCachePolicy policy_;
     std::vector<engine::Track> source_rows_;
@@ -68,6 +74,7 @@ private:
     const library::LibraryRepository* repository_{nullptr};
     std::vector<std::string> tag_columns_;
     std::vector<TrackSortKey> sort_keys_;
+    library::SearchQuery query_;
 };
 
 } // namespace wiola::gui

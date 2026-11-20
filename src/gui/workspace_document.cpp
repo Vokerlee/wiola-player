@@ -21,6 +21,7 @@
 #include "workspace_document.hpp"
 
 #include "qt_path_adapter.hpp"
+#include "track_search_panel.hpp"
 
 #include <library/location.hpp>
 #include <library/metadata.hpp>
@@ -62,6 +63,11 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
 
     table_ = new TrackTableView{this};
     table_->setAccessibleName("Workspace tracks");
+    search_ = new TrackSearchPanel{this};
+    search_->on_changed([this](library::SearchQuery query) {
+        table_->search_by(query);
+        update_results();
+    });
 
     QHBoxLayout* controls = new QHBoxLayout;
     controls->addWidget(recursive_);
@@ -79,6 +85,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     layout->addLayout(playback);
     layout->addWidget(progress_);
     layout->addWidget(status_);
+    layout->addWidget(search_);
     layout->addWidget(table_);
 
     connect(rescan_, &QPushButton::clicked, [this] {
@@ -149,6 +156,7 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
 
     rows_.add(std::move(discovered));
     table_->show_tracks(rows_.tracks());
+    update_results();
     status_->setText(QString{"%1 tracks"}.arg(rows_.tracks().size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
@@ -192,6 +200,12 @@ bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& re
 void WorkspaceDocument::show_library(const library::LibraryRepository& repository)
 {
     table_->show_library(repository);
+    update_results();
+}
+
+void WorkspaceDocument::update_results()
+{
+    search_->show_results(table_->visible_count(), table_->total_count());
 }
 
 void WorkspaceDocument::show_cancelled()

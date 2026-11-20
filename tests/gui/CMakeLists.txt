@@ -5,6 +5,11 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
+    gui_track_search_panel_test
+    SOURCES track_search_panel_test.cpp
+    LIBS wiola_gui
+)
+wiola_add_test(
     gui_track_table_model_test
     SOURCES track_table_model_test.cpp
     LIBS wiola_gui
