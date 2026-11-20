@@ -481,6 +481,51 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
     EXPECT_EQ(restored.palette().color(QPalette::Window), QColor{"#f0f0f0"});
 }
 
+TEST_F(MainWindowShell, LayoutPreviewCommandsAndCancelDoNotTouchPlayerState)
+{
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    window.open({"/tmp/wiola-preview-queue.mp3"});
+    auto* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
+        window.findChild<QWidget*>("savedPlaylistManager")
+    );
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    ASSERT_NE(manager, nullptr);
+    ASSERT_NE(documents, nullptr);
+    ASSERT_TRUE(manager->create("Unchanged"));
+    QWidget* active = documents->currentWidget();
+
+    action(*menu(window, "&Tools"), "Edit button layout...")->trigger();
+    auto* editor = window.findChild<QDialog*>("buttonLayoutEditor");
+    ASSERT_NE(editor, nullptr);
+    auto* tree = editor->findChild<QTreeWidget*>("layoutHierarchy");
+    auto* palette = editor->findChild<QListWidget*>("layoutComponentPalette");
+    ASSERT_NE(tree, nullptr);
+    ASSERT_NE(palette, nullptr);
+    const auto transport =
+        tree->findItems("transportControls", Qt::MatchExactly | Qt::MatchRecursive);
+    ASSERT_FALSE(transport.empty());
+    tree->setCurrentItem(transport.front());
+    palette->setCurrentRow(0);
+    editor->findChild<QPushButton*>("addLayoutAction")->click();
+
+    auto* preview = editor->findChild<QWidget*>("isolatedLayoutPreview");
+    ASSERT_NE(preview, nullptr);
+    auto* preview_command = preview->findChild<QPushButton*>("open");
+    ASSERT_NE(preview_command, nullptr);
+    preview_command->click();
+
+    EXPECT_EQ(session.playlist().tracks().size(), 1);
+    EXPECT_EQ(session.playlist().tracks()[0].path(), "/tmp/wiola-preview-queue.mp3");
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_EQ(editor->result(), 0);
+
+    editor->findChild<QPushButton*>("cancelLayoutEdit")->click();
+    EXPECT_EQ(editor->result(), QDialog::Rejected);
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_EQ(window.centralWidget()->findChild<QPushButton*>("open"), nullptr);
+}
+
 } // namespace
 
 int main(int argc, char** argv)
