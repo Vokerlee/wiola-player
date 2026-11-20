@@ -6,6 +6,7 @@ wiola_add_library(
         background_metadata_writes.cpp
         bulk_metadata_commands.cpp
         custom_tag_commands.cpp
+        media_replacement.cpp
         metadata_conflicts.cpp
         metadata_merge.cpp
         optimistic_metadata_edits.cpp
