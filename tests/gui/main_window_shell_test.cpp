@@ -246,6 +246,15 @@ TEST_F(MainWindowShell, GroupsControlsAndExposesTheirPurposeAndKeyboardFocus)
     EXPECT_EQ(boost->accessibleName(), "Boost volume above 100%");
     EXPECT_EQ(equalizer->accessibleName(), "Equalizer");
     EXPECT_FALSE(boost->toolTip().isEmpty());
+
+    QWidget* tags = window.findChild<QWidget*>("customTagEditor");
+    QPushButton* add_tag = window.findChild<QPushButton*>("addCustomTag");
+    QLabel* tag_explanation = window.findChild<QLabel*>("customTagExplanation");
+    ASSERT_NE(tags, nullptr);
+    ASSERT_NE(add_tag, nullptr);
+    ASSERT_NE(tag_explanation, nullptr);
+    EXPECT_FALSE(add_tag->isEnabled());
+    EXPECT_EQ(tag_explanation->text(), "Select a track to edit shared custom tags.");
 }
 
 } // namespace

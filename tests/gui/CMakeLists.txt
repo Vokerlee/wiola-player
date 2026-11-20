@@ -19,6 +19,11 @@ wiola_add_test(
     LIBS wiola_gui wiola_library
 )
 wiola_add_test(
+    gui_custom_tag_editor_test
+    SOURCES custom_tag_editor_test.cpp
+    LIBS wiola_gui
+)
+wiola_add_test(
     gui_track_inspector_test
     SOURCES track_inspector_test.cpp
     LIBS wiola_gui

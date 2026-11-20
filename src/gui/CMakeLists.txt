@@ -3,6 +3,7 @@ wiola_add_library(
     SOURCES
         clock.cpp
         artwork_cache.cpp
+        custom_tag_editor.cpp
         equalizer_control.cpp
         equalizer_panel.cpp
         library_json.cpp
