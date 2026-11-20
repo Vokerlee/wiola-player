@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_custom_tag_commands_test
+    SOURCES custom_tag_commands_test.cpp
+    LIBS wiola_app
+)
+wiola_add_test(
     app_media_revision_publisher_test
     SOURCES media_revision_publisher_test.cpp
     LIBS wiola_media_revisions

@@ -3,6 +3,7 @@ wiola_add_library(
     SOURCES
         active_playlist.cpp
         background_metadata.cpp
+        custom_tag_commands.cpp
         metadata_merge.cpp
         playback_queue.cpp
         playback_service.cpp
