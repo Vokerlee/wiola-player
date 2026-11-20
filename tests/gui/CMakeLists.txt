@@ -125,6 +125,17 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
+    gui_button_layout_editor_test
+    SOURCES button_layout_editor_test.cpp
+    LIBS wiola_gui
+)
+if(ENABLE_TSAN)
+    target_compile_definitions(
+        gui_button_layout_editor_test
+        PRIVATE WIOLA_TEST_TSAN
+    )
+endif()
+wiola_add_test(
     gui_layout_editor_test
     SOURCES layout_editor_test.cpp
     LIBS wiola_gui

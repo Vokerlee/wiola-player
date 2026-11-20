@@ -20,6 +20,7 @@
 
 #include "main_window.hpp"
 
+#include "button_layout_editor.hpp"
 #include "classic_layout.hpp"
 #include "clock.hpp"
 #include "focused_layout.hpp"
@@ -386,6 +387,16 @@ MainWindow::MainWindow(engine::Session& session)
 
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
+    QAction* edit_layout = tools->addAction("Edit button layout...");
+    connect(edit_layout, &QAction::triggered, this, [this] {
+        auto* editor = new ButtonLayoutEditor{
+            layout_for(settings_.value("layout/preset", "classic").toString()), this};
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        editor->on_apply([this](const LayoutDocument& document) {
+            return switch_layout(document);
+        });
+        editor->show();
+    });
 
     connect(now_playing_, &NowPlayingDocument::track_chosen, this, &MainWindow::play_chosen);
     connect(now_playing_, &NowPlayingDocument::removal_asked, this, &MainWindow::remove_chosen);
