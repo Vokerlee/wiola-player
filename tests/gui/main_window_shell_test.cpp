@@ -403,6 +403,48 @@ TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
     EXPECT_GE(area->indexOf(inspector), 0);
 }
 
+TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
+{
+    {
+        wiola::engine::Session session;
+        wiola::gui::MainWindow window{session};
+        auto* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
+            window.findChild<QWidget*>("savedPlaylistManager")
+        );
+        ASSERT_NE(manager, nullptr);
+        ASSERT_TRUE(manager->create("Persistent"));
+
+        action(*menu(window, "&View"), "Queue Focus")->trigger();
+
+        QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+        EXPECT_EQ(settings.value("layout/preset").toString(), "queue-focus");
+    }
+
+    {
+        wiola::engine::Session session;
+        wiola::gui::MainWindow window{session};
+        auto* documents = window.findChild<QTabWidget*>("documentTabs");
+        ASSERT_NE(documents, nullptr);
+        ASSERT_EQ(documents->count(), 3);
+        EXPECT_EQ(documents->tabText(2), "Persistent");
+        EXPECT_NE(window.findChild<QWidget*>("queueFocusRoot"), nullptr);
+        EXPECT_TRUE(window.findChild<QWidget*>("libraryNavigation")->isHidden());
+        EXPECT_TRUE(action(*menu(window, "&View"), "Queue Focus")->isChecked());
+
+        action(*menu(window, "&View"), "Library Focus")->trigger();
+    }
+
+    wiola::engine::Session session;
+    wiola::gui::MainWindow restored{session};
+    auto* documents = restored.findChild<QTabWidget*>("documentTabs");
+    ASSERT_NE(documents, nullptr);
+    ASSERT_EQ(documents->count(), 3);
+    EXPECT_EQ(documents->tabText(2), "Persistent");
+    EXPECT_NE(restored.findChild<QWidget*>("libraryFocusRoot"), nullptr);
+    EXPECT_FALSE(restored.findChild<QWidget*>("libraryNavigation")->isHidden());
+    EXPECT_TRUE(action(*menu(restored, "&View"), "Library Focus")->isChecked());
+}
+
 } // namespace
 
 int main(int argc, char** argv)

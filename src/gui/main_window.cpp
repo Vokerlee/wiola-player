@@ -32,6 +32,7 @@
 #include <library/location.hpp>
 #include <library/metadata.hpp>
 
+#include <QActionGroup>
 #include <QCursor>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -72,6 +73,17 @@ QWidget* placeholder_document(QWidget* parent, const QString& description)
 std::filesystem::path library_file(const QSettings& settings)
 {
     return QtPathAdapter::from_qt(QFileInfo{settings.fileName()}.absolutePath() + "/library.json");
+}
+
+LayoutDocument layout_for(const QString& choice)
+{
+    if (choice == "library-focus")
+        return library_focus_layout_document();
+
+    if (choice == "queue-focus")
+        return queue_focus_layout_document();
+
+    return classic_layout_document();
 }
 
 /// What to say about a file that would not open.
@@ -295,7 +307,8 @@ MainWindow::MainWindow(engine::Session& session)
     restore_playlist_documents();
     restore_workspace_documents();
 
-    static_cast<void>(switch_layout(classic_layout_document()));
+    const QString selected_layout = settings_.value("layout/preset", "classic").toString();
+    static_cast<void>(switch_layout(layout_for(selected_layout)));
 
     connect(actions_.action(PlayerAction::open), &QAction::triggered, this,
         &MainWindow::choose_tracks);
@@ -346,12 +359,30 @@ MainWindow::MainWindow(engine::Session& session)
     QAction* classic = view->addAction("Classic");
     QAction* library = view->addAction("Library Focus");
     QAction* queue = view->addAction("Queue Focus");
-    connect(classic, &QAction::triggered, this,
-        [this] { static_cast<void>(switch_layout(classic_layout_document())); });
+    auto* presets = new QActionGroup{this};
+    presets->setExclusive(true);
+
+    for (QAction* preset : {classic, library, queue}) {
+        preset->setCheckable(true);
+        presets->addAction(preset);
+    }
+
+    classic->setChecked(selected_layout != "library-focus" && selected_layout != "queue-focus");
+    library->setChecked(selected_layout == "library-focus");
+    queue->setChecked(selected_layout == "queue-focus");
+
+    const auto choose_layout = [this](const QString& choice) {
+        if (!switch_layout(layout_for(choice)))
+            return;
+
+        settings_.setValue("layout/preset", choice);
+        settings_.sync();
+    };
+
+    connect(classic, &QAction::triggered, this, [choose_layout] { choose_layout("classic"); });
     connect(library, &QAction::triggered, this,
-        [this] { static_cast<void>(switch_layout(library_focus_layout_document())); });
-    connect(queue, &QAction::triggered, this,
-        [this] { static_cast<void>(switch_layout(queue_focus_layout_document())); });
+        [choose_layout] { choose_layout("library-focus"); });
+    connect(queue, &QAction::triggered, this, [choose_layout] { choose_layout("queue-focus"); });
 
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
