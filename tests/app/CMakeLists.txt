@@ -24,6 +24,12 @@ wiola_add_test(
     LIBS wiola_app
 )
 wiola_add_test(
+    app_media_replacement_test
+    SOURCES media_replacement_test.cpp
+    LIBS wiola_app wiola_codec
+    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+)
+wiola_add_test(
     app_optimistic_metadata_edits_test
     SOURCES optimistic_metadata_edits_test.cpp
     LIBS wiola_app
