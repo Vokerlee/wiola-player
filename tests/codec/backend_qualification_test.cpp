@@ -37,7 +37,7 @@ TEST(BackendQualification, AdvertisesOnlyTheCurrentlyVerifiedPlaybackSet)
         EXPECT_TRUE(backend.capabilities.playback);
         EXPECT_TRUE(backend.capabilities.metadata);
         EXPECT_TRUE(backend.open);
-        ASSERT_EQ(backend.formats.size(), 17U);
+        ASSERT_EQ(backend.formats.size(), 18U);
         EXPECT_FALSE(backend.formats.front().extensions.empty());
     }
 }

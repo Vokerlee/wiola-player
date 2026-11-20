@@ -22,6 +22,7 @@
 
 #include <gui/player_actions.hpp>
 
+#include <QByteArray>
 #include <QByteArrayView>
 #include <QString>
 
@@ -34,6 +35,9 @@ enum class LayoutComponentKind {
     row,
     column,
     stack,
+    splitter,
+    grid,
+    tabs,
     group,
     button,
     track_table,
@@ -54,6 +58,11 @@ struct LayoutNode {
     std::optional<int> height;
     std::optional<int> min_width;
     std::optional<int> min_height;
+    /// Splitter orientation; absent means horizontal. Sizes are positive relative weights.
+    std::optional<Qt::Orientation> orientation;
+    std::vector<int> sizes;
+    /// Grid children fill rows in document order; absent means one column.
+    std::optional<int> columns;
     std::vector<LayoutNode> children;
 };
 
@@ -74,5 +83,9 @@ enum class LayoutJsonError {
 
 [[nodiscard]] LayoutJsonError read_layout_json(QByteArrayView json, LayoutDocument& output);
 [[nodiscard]] LayoutJsonError validate_layout_document(const LayoutDocument& document);
+[[nodiscard]] bool is_layout_container(LayoutComponentKind kind) noexcept;
+[[nodiscard]] QString layout_component_name(LayoutComponentKind kind);
+/// Returns an empty byte array for an invalid document.
+[[nodiscard]] QByteArray write_layout_json(const LayoutDocument& document);
 
 } // namespace wiola::gui

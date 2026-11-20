@@ -23,13 +23,18 @@
 #include <gui/track_table_view.hpp>
 
 #include <QApplication>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLayout>
 #include <QPointer>
 #include <QPushButton>
+#include <QSplitter>
 #include <QStackedWidget>
+#include <QTabWidget>
 
 #include <gtest/gtest.h>
+
+#include <memory>
 
 namespace {
 
@@ -160,6 +165,153 @@ TEST(LayoutBuilder, FailedConstructionLeavesRegisteredWidgetsInTheirOriginalLayo
     EXPECT_EQ(existing->parentWidget(), &original);
     EXPECT_EQ(layout->indexOf(existing), 0);
     EXPECT_EQ(layout->indexOf(trailing), 1);
+}
+
+TEST(LayoutBuilder, BuildsVerticalSplitterWithGridAndLabeledTabs)
+{
+    wiola::gui::LayoutDocument document;
+    ASSERT_EQ(wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"panes",
+        "type":"splitter","orientation":"vertical","sizes":[1,3],"children":[
+        {"id":"grid","type":"grid","columns":2,"children":[
+            {"id":"one","type":"status"},{"id":"two","type":"status"},{"id":"three","type":"status"}]},
+        {"id":"tabs","type":"tabs","children":[
+            {"id":"first","type":"status","title":"First"},{"id":"second","type":"status"}]}]}})",
+                  document),
+        wiola::gui::LayoutJsonError::none);
+    wiola::gui::LayoutBuilder builder;
+    std::unique_ptr<QWidget> widget{builder.build(document.root, {})};
+    auto* splitter = qobject_cast<QSplitter*>(widget.get());
+    ASSERT_NE(splitter, nullptr);
+    EXPECT_EQ(splitter->orientation(), Qt::Vertical);
+    EXPECT_FALSE(splitter->childrenCollapsible());
+    ASSERT_EQ(splitter->count(), 2);
+    auto* grid = qobject_cast<QGridLayout*>(splitter->widget(0)->layout());
+    ASSERT_NE(grid, nullptr);
+    EXPECT_EQ(grid->itemAtPosition(1, 0)->widget()->objectName(), "three");
+    auto* tabs = qobject_cast<QTabWidget*>(splitter->widget(1));
+    ASSERT_NE(tabs, nullptr);
+    EXPECT_EQ(tabs->count(), 2);
+    EXPECT_EQ(tabs->tabText(0), "First");
+    EXPECT_EQ(tabs->tabText(1), "second");
+}
+
+TEST(LayoutBuilder, PlacesBorrowedWidgetsInGridCellsAndTabPages)
+{
+    QWidget owner;
+    auto* first = new QPushButton{"Borrowed first", &owner};
+    auto* second = new QPushButton{"Borrowed second", &owner};
+    wiola::gui::LayoutBuilder builder;
+    ASSERT_TRUE(builder.register_widget("first", first));
+    ASSERT_TRUE(builder.register_widget("second", second));
+    wiola::gui::LayoutDocument document;
+    ASSERT_EQ(
+        wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"grid","type":"grid","columns":2,
+        "children":[{"id":"first","type":"button"},{"id":"tabs","type":"tabs","children":[
+            {"id":"second","type":"button","title":"Borrowed page"}]}]}})",
+            document),
+        wiola::gui::LayoutJsonError::none
+    );
+    QWidget* root = builder.build(document.root, {}, &owner);
+    ASSERT_NE(root, nullptr);
+    auto* grid = qobject_cast<QGridLayout*>(root->layout());
+    ASSERT_NE(grid, nullptr);
+    EXPECT_EQ(grid->itemAtPosition(0, 0)->widget(), first);
+    auto* tabs = qobject_cast<QTabWidget*>(grid->itemAtPosition(0, 1)->widget());
+    ASSERT_NE(tabs, nullptr);
+    EXPECT_EQ(tabs->widget(0), second);
+    EXPECT_EQ(tabs->tabText(0), "Borrowed page");
+}
+
+TEST(LayoutBuilder, ReordersBorrowedTabPagesAndPreservesTheSelectedPage)
+{
+    QWidget owner;
+    auto* tabs = new QTabWidget{&owner};
+    auto* first = new QPushButton{"First"};
+    auto* second = new QPushButton{"Second"};
+    tabs->addTab(first, "Old first");
+    tabs->addTab(second, "Old second");
+    tabs->setCurrentWidget(second);
+    wiola::gui::LayoutBuilder builder;
+    ASSERT_TRUE(builder.register_widget("tabs", tabs));
+    ASSERT_TRUE(builder.register_widget("first", first));
+    ASSERT_TRUE(builder.register_widget("second", second));
+    EXPECT_FALSE(builder.register_widget("duplicate", second));
+    wiola::gui::LayoutDocument document;
+    ASSERT_EQ(wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"tabs","type":"tabs",
+        "children":[{"id":"second","type":"button","title":"Selected"},
+                    {"id":"first","type":"button","title":"Other"}]}})",
+                  document),
+        wiola::gui::LayoutJsonError::none);
+
+    ASSERT_EQ(builder.build(document.root, {}, &owner), tabs);
+    ASSERT_EQ(tabs->count(), 2);
+    EXPECT_EQ(tabs->widget(0), second);
+    EXPECT_EQ(tabs->widget(1), first);
+    EXPECT_EQ(tabs->currentWidget(), second);
+    EXPECT_EQ(tabs->tabText(0), "Selected");
+    EXPECT_EQ(tabs->tabText(1), "Other");
+}
+
+TEST(LayoutBuilder, IncompatibleNestedContainerDoesNotMoveBorrowedWidgets)
+{
+    QWidget owner;
+    auto* button = new QPushButton{"Keep me", &owner};
+    auto* original = new QHBoxLayout{&owner};
+    original->addWidget(button);
+    wiola::gui::LayoutDocument document;
+    ASSERT_EQ(
+        wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"tabs","type":"tabs","children":[
+        {"id":"borrowed","type":"button"},{"id":"grid","type":"grid","children":[
+            {"id":"failure","type":"status"}]}]}})",
+            document),
+        wiola::gui::LayoutJsonError::none
+    );
+    wiola::gui::LayoutBuilder builder;
+    ASSERT_TRUE(builder.register_widget("borrowed", button));
+    // Borrowed widgets must be valid even if a later registered container is incompatible.
+    ASSERT_TRUE(builder.register_widget("grid", new QPushButton{&owner}));
+    EXPECT_EQ(builder.build(document.root, {}), nullptr);
+    EXPECT_EQ(button->parentWidget(), &owner);
+    EXPECT_EQ(original->indexOf(button), 0);
+}
+
+TEST(LayoutBuilder, RetiresDiscardedContainersWithoutDeletingOmittedRegisteredViews)
+{
+    for (const QString type : {"splitter", "tabs", "stack", "grid", "column"}) {
+        SCOPED_TRACE(type.toStdString());
+        QWidget owner;
+        wiola::gui::LayoutBuilder builder;
+        wiola::gui::LayoutDocument original;
+        const QByteArray original_json = QString{R"({"version":1,"root":{"id":"root","type":"%1",
+            "children":[{"id":"wrapper","type":"column","children":[
+                {"id":"omitted","type":"button"}]}]}})"}
+                                             .arg(type)
+                                             .toUtf8();
+        ASSERT_EQ(wiola::gui::read_layout_json(original_json, original),
+            wiola::gui::LayoutJsonError::none);
+        QWidget* root = builder.build(original.root, {}, &owner);
+        ASSERT_NE(root, nullptr);
+        QPointer<QWidget> wrapper = root->findChild<QWidget*>("wrapper");
+        QPointer<QPushButton> omitted = root->findChild<QPushButton*>("omitted");
+        ASSERT_NE(wrapper, nullptr);
+        ASSERT_NE(omitted, nullptr);
+        ASSERT_TRUE(builder.register_widget("root", root));
+        ASSERT_TRUE(builder.register_widget("omitted", omitted));
+
+        wiola::gui::LayoutDocument replacement;
+        const QByteArray replacement_json = QString{R"({"version":1,"root":{"id":"root","type":"%1",
+            "children":[{"id":"replacement","type":"status"}]}})"}
+                                                .arg(type)
+                                                .toUtf8();
+        ASSERT_EQ(wiola::gui::read_layout_json(replacement_json, replacement),
+            wiola::gui::LayoutJsonError::none);
+        ASSERT_EQ(builder.build(replacement.root, {}, &owner), root);
+        EXPECT_EQ(wrapper, nullptr);
+        ASSERT_NE(omitted, nullptr);
+        EXPECT_EQ(omitted->parentWidget(), &owner);
+        EXPECT_TRUE(omitted->isHidden());
+        EXPECT_NE(root->findChild<QWidget*>("replacement"), nullptr);
+    }
 }
 
 } // namespace

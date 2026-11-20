@@ -48,8 +48,8 @@ constexpr std::array qualified{
     Qualification{"Matroska/WebM Vorbis/Opus", "matroska,webm",           "opus",      ""  },
     Qualification{"WAV PCM",                   "wav",                     "pcm_s16le", ""  },
     Qualification{"FLAC",                      "flac",                    "flac",      ""  },
-    Qualification{"MPEG audio Layer II/III",   "mp3",                     "mp2",       ""  },
-    Qualification{"MPEG audio Layer II/III",   "mp3",                     "mp3",       ""  },
+    Qualification{"MPEG audio Layer II",       "mp3",                     "mp2",       ""  },
+    Qualification{"MPEG audio Layer III",      "mp3",                     "mp3",       ""  },
 };
 
 } // namespace

@@ -116,4 +116,47 @@ TEST(LayoutEditor, RemovesSubtreesAndRejectsInvalidConfigurations)
     EXPECT_EQ(editor.document().root.children[0].children[0].id, "volume");
 }
 
+TEST(LayoutEditor, KeepsSplitterWeightsAlignedThroughEditsAndHistory)
+{
+    auto layout = document();
+    layout.root.kind = wiola::gui::LayoutComponentKind::splitter;
+    layout.root.sizes = {2, 5};
+    layout.root.orientation = Qt::Vertical;
+    wiola::gui::LayoutEditor editor{layout};
+    ASSERT_TRUE(editor.insert("root", 1, node("extra", wiola::gui::LayoutComponentKind::status)));
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{2, 1, 5}));
+    ASSERT_TRUE(editor.move("play", "root", 0));
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{5, 2, 1}));
+    EXPECT_EQ(editor.document().root.children[0].id, "play");
+    ASSERT_TRUE(editor.remove("extra"));
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{5, 2}));
+    ASSERT_TRUE(editor.undo());
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{5, 2, 1}));
+    ASSERT_TRUE(editor.redo());
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{5, 2}));
+    EXPECT_EQ(editor.document().root.orientation, Qt::Vertical);
+    EXPECT_EQ(wiola::gui::validate_layout_document(editor.document()),
+        wiola::gui::LayoutJsonError::none);
+    ASSERT_TRUE(editor.remove("controls"));
+    ASSERT_TRUE(editor.move("play", "root", 0));
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{5}));
+}
+
+TEST(LayoutEditor, ConfiguresContainersAndRejectsMovesIntoLeaves)
+{
+    wiola::gui::LayoutEditor editor{document()};
+    auto grid = node("controls", wiola::gui::LayoutComponentKind::grid);
+    grid.columns = 2;
+    ASSERT_TRUE(editor.configure("controls", grid));
+    ASSERT_TRUE(editor.move("play", "controls", 0));
+    EXPECT_EQ(editor.document().root.children[0].columns, 2);
+    EXPECT_FALSE(editor.insert("play", 0,
+        node("invalid", wiola::gui::LayoutComponentKind::status)));
+    EXPECT_FALSE(editor.move("controls", "play", 0));
+    ASSERT_TRUE(editor.undo());
+    EXPECT_EQ(editor.document().root.children.size(), 2);
+    ASSERT_TRUE(editor.undo());
+    EXPECT_EQ(editor.document().root.children[0].kind, wiola::gui::LayoutComponentKind::group);
+}
+
 } // namespace
