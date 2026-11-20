@@ -36,6 +36,7 @@
 namespace wiola::gui {
 
 class TrackSearchPanel;
+class TagFilterPanel;
 
 class WorkspaceDocument final : public QWidget {
 public:
@@ -75,6 +76,7 @@ private:
     QProgressBar* progress_{nullptr};
     TrackTableView* table_{nullptr};
     TrackSearchPanel* search_{nullptr};
+    TagFilterPanel* filters_{nullptr};
     std::function<void(bool)> rescan_observer_;
     std::function<void()> cancel_observer_;
     std::function<void()> play_observer_;

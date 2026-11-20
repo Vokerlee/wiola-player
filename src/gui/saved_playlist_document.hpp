@@ -34,6 +34,7 @@
 namespace wiola::gui {
 
 class TrackSearchPanel;
+class TagFilterPanel;
 
 class SavedPlaylistDocument final : public QWidget {
 public:
@@ -60,6 +61,7 @@ private:
     QPushButton* active_button_{nullptr};
     TrackTableView* table_{nullptr};
     TrackSearchPanel* search_{nullptr};
+    TagFilterPanel* filters_{nullptr};
     engine::Playlist rows_;
     std::vector<library::PlaylistEntryRecord> entries_;
     QString name_;

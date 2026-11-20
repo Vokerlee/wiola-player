@@ -109,7 +109,8 @@ library::SearchQuery TrackSearchPanel::query() const
     return library::normalized_search_query({.title = title_->text().toStdString(),
         .artist = artist_->text().toStdString(),
         .album = album_->text().toStdString(),
-        .tags = {}});
+        .tags = {},
+        .filters = {}});
 }
 
 void TrackSearchPanel::show_results(std::size_t visible, std::size_t total)
