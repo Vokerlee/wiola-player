@@ -20,6 +20,8 @@
 
 #include "saved_playlist_document.hpp"
 
+#include <library/metadata.hpp>
+
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -131,11 +133,12 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
         if (media == nullptr)
             continue;
 
+        const library::ResolvedMetadata resolved = library::resolve_metadata(*media);
         static_cast<void>(rows_.describe(rows_.tracks()[row].id(),
-            engine::TrackMetadata{.title = media->display_title(),
-                .artist = media->display_artist(),
-                .album = media->display_album(),
-                .duration = media->embedded.duration}));
+            engine::TrackMetadata{.title = resolved.title,
+                .artist = resolved.artist,
+                .album = resolved.album,
+                .duration = resolved.duration}));
     }
 
     table_->show_tracks(rows_.tracks());
