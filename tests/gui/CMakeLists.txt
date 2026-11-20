@@ -119,6 +119,7 @@ wiola_add_test(
     SOURCES library_storage_test.cpp
     LIBS wiola_gui wiola_library
 )
+wiola_add_test(gui_theme_test SOURCES theme_test.cpp LIBS wiola_gui)
 wiola_add_test(
     gui_layout_document_test
     SOURCES layout_document_test.cpp
