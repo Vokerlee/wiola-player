@@ -404,6 +404,44 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
     EXPECT_EQ(decoded_samples(output), original_samples);
 }
 
+TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
+{
+    for (const char* name : {"attached-art.m4a", "tone-alac.mp4"}) {
+        const auto track = fixtures() / name;
+        const auto original_metadata = wiola::codec::ffmpeg::read_metadata(track);
+        ASSERT_TRUE(original_metadata) << name;
+        const auto original_samples = decoded_samples(track);
+
+        wiola::codec::LocalMediaProvider provider;
+        auto asset = provider.open(track);
+        ASSERT_TRUE(asset) << name;
+        EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
+
+        wiola::media::MetadataWriteRequest request;
+        request.overrides.title = "Updated MP4";
+        request.overrides.composer = "Composer";
+        const auto outcome = (*asset)->write_metadata(request);
+        ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
+
+        const std::filesystem::path output = outcome.detail;
+
+        struct RemoveOutput {
+            std::filesystem::path path;
+
+            ~RemoveOutput() { std::filesystem::remove(path); }
+        } cleanup{output};
+
+        const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+        ASSERT_TRUE(metadata) << metadata.error().detail;
+        EXPECT_EQ(metadata->track.title, "Updated MP4");
+        EXPECT_EQ(metadata->track.composer, "Composer");
+        EXPECT_EQ(metadata->artwork.data, original_metadata->artwork.data);
+        EXPECT_EQ(metadata->artwork.mime_type, original_metadata->artwork.mime_type);
+        EXPECT_EQ(metadata->track.duration, original_metadata->track.duration);
+        EXPECT_EQ(decoded_samples(output), original_samples) << name;
+    }
+}
+
 TEST(FfmpegMetadata, ReadsBoundedUnicodeFieldsDurationAndAttachedArtwork)
 {
     auto metadata{wiola::codec::ffmpeg::read_metadata(fixtures() / "attached-art.m4a")};

@@ -8,7 +8,7 @@ file(MAKE_DIRECTORY "${wiola_ffmpeg_prefix}/include")
 set(wiola_ffmpeg_demuxers
     aac;aiff;ape;asf;au;caf;flac;matroska;mov;mp3;mpc;mpc8;ogg;tta;w64;wav;wv
 )
-set(wiola_ffmpeg_muxers flac;mov;mp3;ogg)
+set(wiola_ffmpeg_muxers flac;ipod;mov;mp3;mp4;ogg)
 set(wiola_ffmpeg_decoders
     aac;alac;ape;flac;mp2;mp3;mpc7;mpc8;opus;tta;vorbis;wavpack;wmav1;wmav2
     pcm_alaw;pcm_f32be;pcm_f32le;pcm_f64be;pcm_f64le;pcm_mulaw;pcm_s8

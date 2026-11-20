@@ -84,7 +84,7 @@ TEST(FfmpegBuild, PinsTheAuditedReleaseAndRequiredComponents)
 
 TEST(FfmpegBuild, ProbesOnlyTheRequiredMetadataMuxers)
 {
-    constexpr std::array<std::string_view, 4> muxers{"flac", "mov", "mp3", "ogg"};
+    constexpr std::array<std::string_view, 6> muxers{"flac", "ipod", "mov", "mp3", "mp4", "ogg"};
 
     for (const std::string_view muxer : muxers)
         EXPECT_NE(av_guess_format(std::string{muxer}.c_str(), nullptr, nullptr), nullptr) << muxer;
