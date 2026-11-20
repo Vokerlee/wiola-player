@@ -195,6 +195,26 @@ std::filesystem::path flac_with_artwork(const char* name, const Bytes& drawn)
     return path;
 }
 
+std::vector<std::vector<unsigned char>> packet_payloads(const std::filesystem::path& path)
+{
+    AVFormatContext* input = nullptr;
+    if (avformat_open_input(&input, path.string().c_str(), nullptr, nullptr) < 0)
+        return {};
+
+    std::vector<std::vector<unsigned char>> payloads;
+    AVPacket* packet = av_packet_alloc();
+
+    while (av_read_frame(input, packet) >= 0) {
+        payloads.emplace_back(packet->data, packet->data + packet->size);
+        av_packet_unref(packet);
+    }
+
+    av_packet_free(&packet);
+    avformat_close_input(&input);
+
+    return payloads;
+}
+
 std::vector<float> decoded_samples(const std::filesystem::path& path)
 {
     wiola::codec::LocalMediaProvider provider;
@@ -439,6 +459,50 @@ TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
         EXPECT_EQ(metadata->artwork.mime_type, original_metadata->artwork.mime_type);
         EXPECT_EQ(metadata->track.duration, original_metadata->track.duration);
         EXPECT_EQ(decoded_samples(output), original_samples) << name;
+    }
+}
+
+TEST(FfmpegMetadata, QualifiedOggAndOpusWritingPreservesPacketsAndChainedPcm)
+{
+    for (const char* name : {"tone-vorbis.ogg", "tone.opus", "chained-same-shape.ogg"}) {
+        const auto track = fixtures() / name;
+        const auto original_metadata = wiola::codec::ffmpeg::read_metadata(track);
+        ASSERT_TRUE(original_metadata) << name;
+        const auto original_samples = decoded_samples(track);
+        const auto original_packets = packet_payloads(track);
+
+        wiola::codec::LocalMediaProvider provider;
+        auto asset = provider.open(track);
+        ASSERT_TRUE(asset) << name;
+        EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
+
+        wiola::media::MetadataWriteRequest request;
+        request.overrides.title = "Updated Ogg";
+        request.overrides.comment = "Preserved packet stream";
+        const auto outcome = (*asset)->write_metadata(request);
+        ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
+
+        const std::filesystem::path output = outcome.detail;
+
+        struct RemoveOutput {
+            std::filesystem::path path;
+
+            ~RemoveOutput() { std::filesystem::remove(path); }
+        } cleanup{output};
+
+        const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+        ASSERT_TRUE(metadata) << metadata.error().detail;
+        EXPECT_EQ(metadata->track.title, "Updated Ogg");
+        EXPECT_EQ(metadata->track.comment, "Preserved packet stream");
+        EXPECT_EQ(packet_payloads(output), original_packets) << name;
+
+        if (std::string_view{name} == "chained-same-shape.ogg") {
+            ASSERT_TRUE(metadata->track.duration);
+            EXPECT_GT(*metadata->track.duration, *original_metadata->track.duration);
+        } else {
+            EXPECT_EQ(metadata->track.duration, original_metadata->track.duration);
+            EXPECT_EQ(decoded_samples(output), original_samples) << name;
+        }
     }
 }
 
