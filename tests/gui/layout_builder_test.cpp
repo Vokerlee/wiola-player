@@ -23,7 +23,9 @@
 #include <gui/track_table_view.hpp>
 
 #include <QApplication>
+#include <QHBoxLayout>
 #include <QLayout>
+#include <QPointer>
 #include <QPushButton>
 #include <QStackedWidget>
 
@@ -125,6 +127,39 @@ TEST(LayoutBuilder, ReusesARegisteredWidgetByIdentity)
 
     EXPECT_EQ(builder.build(node, {}), existing);
     delete existing;
+}
+
+TEST(LayoutBuilder, FailedConstructionLeavesRegisteredWidgetsInTheirOriginalLayout)
+{
+    QWidget original;
+    auto* existing = new QPushButton{"Existing", &original};
+    auto* trailing = new QPushButton{"Trailing", &original};
+    auto* layout = new QHBoxLayout{&original};
+    layout->addWidget(existing);
+    layout->addWidget(trailing);
+
+    wiola::gui::LayoutNode reused;
+    reused.id = "play";
+    reused.kind = wiola::gui::LayoutComponentKind::button;
+
+    wiola::gui::LayoutNode invalid;
+    invalid.id = "invalid";
+    invalid.kind = static_cast<wiola::gui::LayoutComponentKind>(999);
+
+    wiola::gui::LayoutNode root;
+    root.id = "root";
+    root.kind = wiola::gui::LayoutComponentKind::row;
+    root.children = {reused, invalid};
+
+    wiola::gui::LayoutBuilder builder;
+    ASSERT_TRUE(builder.register_widget("play", existing));
+    QPointer<QPushButton> observed = existing;
+
+    EXPECT_EQ(builder.build(root, {}), nullptr);
+    EXPECT_EQ(observed, existing);
+    EXPECT_EQ(existing->parentWidget(), &original);
+    EXPECT_EQ(layout->indexOf(existing), 0);
+    EXPECT_EQ(layout->indexOf(trailing), 1);
 }
 
 } // namespace

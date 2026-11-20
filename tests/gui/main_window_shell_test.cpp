@@ -20,8 +20,13 @@
 
 #include <gui/main_window.hpp>
 
+#include <gui/classic_layout.hpp>
+#include <gui/tag_filter_panel.hpp>
+#include <gui/track_table_view.hpp>
+
 #include <QApplication>
 #include <QGroupBox>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QPushButton>
@@ -255,6 +260,94 @@ TEST_F(MainWindowShell, GroupsControlsAndExposesTheirPurposeAndKeyboardFocus)
     ASSERT_NE(tag_explanation, nullptr);
     EXPECT_FALSE(add_tag->isEnabled());
     EXPECT_EQ(tag_explanation->text(), "Select a track to edit shared custom tags.");
+}
+
+TEST_F(MainWindowShell, LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocument)
+{
+    const std::filesystem::path first{"/tmp/wiola-layout-first.mp3"};
+    const std::filesystem::path second{"/tmp/wiola-layout-second.mp3"};
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    window.open({first, second});
+
+    auto* now_playing = window.findChild<wiola::gui::NowPlayingDocument*>();
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    ASSERT_NE(now_playing, nullptr);
+    ASSERT_NE(documents, nullptr);
+
+    auto* table = now_playing->findChild<wiola::gui::TrackTableView*>();
+    ASSERT_NE(table, nullptr);
+    ASSERT_EQ(table->total_count(), 2);
+
+    table->selectRow(1);
+    const std::vector<wiola::engine::QueueEntryId> selected = now_playing->chosen_tracks();
+    ASSERT_EQ(selected.size(), 1);
+
+    QLineEdit* key = window.findChild<QLineEdit*>("tagFilterKey");
+    QLineEdit* value = window.findChild<QLineEdit*>("tagFilterValue");
+    QPushButton* exclude = window.findChild<QPushButton*>("excludeTagFilter");
+    ASSERT_NE(key, nullptr);
+    ASSERT_NE(value, nullptr);
+    ASSERT_NE(exclude, nullptr);
+    key->setText("mood");
+    value->setText("calm");
+    exclude->click();
+    ASSERT_EQ(table->visible_count(), 2);
+    ASSERT_EQ(now_playing->chosen_tracks(), selected);
+
+    documents->setCurrentIndex(1);
+    QWidget* active = documents->currentWidget();
+    QWidget* previous_root = window.centralWidget();
+    wiola::gui::LayoutDocument layout = wiola::gui::classic_layout_document();
+    layout.root.id = "switchedRoot";
+
+    ASSERT_TRUE(window.switch_layout(layout));
+
+    EXPECT_NE(window.centralWidget(), previous_root);
+    EXPECT_EQ(window.findChild<wiola::gui::NowPlayingDocument*>(), now_playing);
+    EXPECT_EQ(window.findChild<QTabWidget*>("documentTabs"), documents);
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_EQ(now_playing->chosen_tracks(), selected);
+    EXPECT_EQ(table->visible_count(), 2);
+    ASSERT_EQ(session.playlist().tracks().size(), 2);
+    EXPECT_EQ(session.playlist().tracks()[0].path(), first);
+    EXPECT_EQ(session.playlist().tracks()[1].path(), second);
+    EXPECT_EQ(session.playlist().position(), 0);
+}
+
+TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
+{
+    wiola::engine::Session session;
+    wiola::gui::MainWindow window{session};
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    QWidget* document_area = window.findChild<QWidget*>("documentArea");
+    QWidget* root = window.centralWidget();
+    ASSERT_NE(documents, nullptr);
+    ASSERT_NE(document_area, nullptr);
+    ASSERT_NE(root, nullptr);
+
+    documents->setCurrentIndex(1);
+    QWidget* active = documents->currentWidget();
+    QWidget* original_parent = document_area->parentWidget();
+
+    wiola::gui::LayoutNode reused;
+    reused.id = "documentArea";
+    reused.kind = wiola::gui::LayoutComponentKind::stack;
+
+    wiola::gui::LayoutNode invalid;
+    invalid.id = "invalid";
+    invalid.kind = static_cast<wiola::gui::LayoutComponentKind>(999);
+
+    wiola::gui::LayoutDocument layout;
+    layout.root.id = "invalidRoot";
+    layout.root.kind = wiola::gui::LayoutComponentKind::row;
+    layout.root.children = {reused, invalid};
+    layout.node_count = 3;
+
+    EXPECT_FALSE(window.switch_layout(layout));
+    EXPECT_EQ(window.centralWidget(), root);
+    EXPECT_EQ(document_area->parentWidget(), original_parent);
+    EXPECT_EQ(documents->currentWidget(), active);
 }
 
 } // namespace

@@ -273,15 +273,15 @@ MainWindow::MainWindow(engine::Session& session)
     library_layout->addWidget(navigation_);
     library_layout->addWidget(playlist_manager_);
 
-    QSplitter* document_area = new QSplitter{this};
-    document_area->setObjectName("documentArea");
-    document_area->addWidget(library_pane);
-    document_area->addWidget(documents_);
-    document_area->addWidget(inspector_);
-    document_area->setStretchFactor(0, 0);
-    document_area->setStretchFactor(1, 1);
-    document_area->setStretchFactor(2, 0);
-    document_area->setSizes({180, 620, 220});
+    document_area_ = new QSplitter{this};
+    document_area_->setObjectName("documentArea");
+    document_area_->addWidget(library_pane);
+    document_area_->addWidget(documents_);
+    document_area_->addWidget(inspector_);
+    document_area_->setStretchFactor(0, 0);
+    document_area_->setStretchFactor(1, 1);
+    document_area_->setStretchFactor(2, 0);
+    document_area_->setSizes({180, 620, 220});
 
     navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
     navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });
@@ -294,7 +294,7 @@ MainWindow::MainWindow(engine::Session& session)
     restore_playlist_documents();
     restore_workspace_documents();
 
-    build_classic_layout(document_area);
+    static_cast<void>(switch_layout(classic_layout_document()));
 
     connect(actions_.action(PlayerAction::open), &QAction::triggered, this,
         &MainWindow::choose_tracks);
@@ -372,12 +372,11 @@ MainWindow::MainWindow(engine::Session& session)
 
 MainWindow::~MainWindow() = default;
 
-void MainWindow::build_classic_layout(QWidget* document_area)
+bool MainWindow::switch_layout(const LayoutDocument& document)
 {
-    const LayoutDocument document = classic_layout_document();
     if (document.node_count == 0) {
-        show_status("Could not construct the Classic layout");
-        return;
+        show_status("Could not construct the layout");
+        return false;
     }
 
     LayoutBuilder builder;
@@ -397,7 +396,7 @@ void MainWindow::build_classic_layout(QWidget* document_area)
         std::pair{"repeatQueue",   repeat_button_   },
         std::pair{"shuffleQueue",  shuffle_button_  },
         std::pair{"equalizer",     equalizer_button_},
-        std::pair{"documentArea",  document_area    },
+        std::pair{"documentArea",  document_area_   },
         std::pair{"addTracks",     add_button_      },
         std::pair{"removeTracks",  remove_button_   },
         std::pair{"clearQueue",    clear_button_    },
@@ -409,15 +408,17 @@ void MainWindow::build_classic_layout(QWidget* document_area)
 
     QWidget* root = builder.build(document.root,
         {.presenter = &presenter_, .actions = &actions_, .library = &library_}, this);
+
     if (root == nullptr) {
-        show_status("Could not construct the Classic layout");
-        return;
+        show_status("Could not construct the layout");
+        return false;
     }
 
     if (QLayout* layout = root->layout())
         layout->setSpacing(tokens.player.section_spacing);
 
     setCentralWidget(root);
+    return true;
 }
 
 void MainWindow::open(std::vector<std::filesystem::path> tracks)

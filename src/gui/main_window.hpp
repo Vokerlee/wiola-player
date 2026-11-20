@@ -21,6 +21,7 @@
 #pragma once
 
 #include "equalizer_panel.hpp"
+#include "layout_document.hpp"
 #include "library_navigation.hpp"
 #include "now_playing_document.hpp"
 #include "player_actions.hpp"
@@ -61,6 +62,8 @@
 #include <optional>
 #include <vector>
 
+class QSplitter;
+
 namespace wiola::gui {
 
 /**
@@ -89,6 +92,9 @@ public:
 
     /// Reads the application-owned session and refreshes what is shown.
     void refresh();
+
+    /// Builds a complete layout before replacing the current one, retaining registered widgets.
+    [[nodiscard]] bool switch_layout(const LayoutDocument& document);
 
 private:
     /// Asks for files and plays them, in the order they were chosen.
@@ -155,8 +161,6 @@ private:
 
     /// Connects a button to a shared action and copies its accessible presentation.
     void connect_action(QPushButton& button, PlayerAction id, bool icon_only = false);
-
-    void build_classic_layout(QWidget* document_area);
 
     /// Shows the play button as pausing or as playing. Does nothing when it already shows that
     /// one: a window refreshing ten times a second would otherwise ask the style for an icon it
@@ -246,6 +250,7 @@ private:
     SeekBar* position_bar_{nullptr};
     NowPlayingDocument* now_playing_{nullptr};
     QTabWidget* documents_{nullptr};
+    QSplitter* document_area_{nullptr};
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};
     std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
