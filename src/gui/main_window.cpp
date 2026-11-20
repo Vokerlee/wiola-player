@@ -29,6 +29,7 @@
 #include "presentation_tokens.hpp"
 #include "qt_path_adapter.hpp"
 #include "theme.hpp"
+#include "theme_editor.hpp"
 
 #include <codec/provider.hpp>
 #include <library/location.hpp>
@@ -88,6 +89,40 @@ LayoutDocument layout_for(const QString& choice)
     return classic_layout_document();
 }
 
+constexpr std::array theme_color_roles{
+    ThemeColorRole::window,
+    ThemeColorRole::surface,
+    ThemeColorRole::text,
+    ThemeColorRole::muted_text,
+    ThemeColorRole::disabled_text,
+    ThemeColorRole::accent,
+    ThemeColorRole::accent_text,
+    ThemeColorRole::focus,
+    ThemeColorRole::error,
+};
+
+ThemeColors stored_custom_theme(const QSettings& settings)
+{
+    ThemeColors colors = theme_colors(Theme::light);
+
+    for (const ThemeColorRole role : theme_color_roles) {
+        const QString key = "theme/custom/" + QString::fromLatin1(theme_color_key(role));
+        const QColor stored{settings.value(key).toString()};
+        if (stored.isValid())
+            theme_color(colors, role) = stored;
+    }
+
+    return colors;
+}
+
+void store_custom_theme(QSettings& settings, const ThemeColors& colors)
+{
+    for (const ThemeColorRole role : theme_color_roles) {
+        settings.setValue("theme/custom/" + QString::fromLatin1(theme_color_key(role)),
+            theme_color(colors, role).name());
+    }
+}
+
 /// What to say about a file that would not open.
 QString as_status(engine::OpenResult result)
 {
@@ -133,7 +168,12 @@ MainWindow::MainWindow(engine::Session& session)
           [this](const app::MetadataEditOutcome& outcome) { publish_metadata_outcome(outcome); }}
 {
     const QString selected_theme = settings_.value("theme/name", "light").toString();
-    apply_theme(selected_theme == "dark" ? Theme::dark : Theme::light);
+    const ThemeColors custom_theme = stored_custom_theme(settings_);
+
+    if (selected_theme == "custom" && theme_contrast_error(custom_theme).isEmpty())
+        apply_theme(custom_theme);
+    else
+        apply_theme(selected_theme == "dark" ? Theme::dark : Theme::light);
 
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -400,17 +440,21 @@ MainWindow::MainWindow(engine::Session& session)
         themes->addAction(theme);
     }
 
-    light->setChecked(selected_theme != "dark");
+    light->setChecked(selected_theme != "dark" && selected_theme != "custom");
     dark->setChecked(selected_theme == "dark");
 
-    const auto choose_theme = [this](const QString& choice) {
-        apply_theme(choice == "dark" ? Theme::dark : Theme::light);
+    const auto refresh_theme_icons = [this] {
         actions_.reload_icons(*this);
         open_button_->setIcon(actions_.action(PlayerAction::open)->icon());
         previous_button_->setIcon(actions_.action(PlayerAction::previous)->icon());
         play_button_->setIcon(actions_.action(PlayerAction::play)->icon());
         next_button_->setIcon(actions_.action(PlayerAction::next)->icon());
         stop_button_->setIcon(actions_.action(PlayerAction::stop)->icon());
+    };
+
+    const auto choose_theme = [this, refresh_theme_icons](const QString& choice) {
+        apply_theme(choice == "dark" ? Theme::dark : Theme::light);
+        refresh_theme_icons();
         settings_.setValue("theme/name", choice);
         settings_.sync();
     };
@@ -430,6 +474,23 @@ MainWindow::MainWindow(engine::Session& session)
         });
         editor->show();
     });
+
+    QAction* edit_theme = tools->addAction("Edit theme...");
+    connect(edit_theme, &QAction::triggered, this,
+        [this, refresh_theme_icons, light, dark, initial = custom_theme] {
+            auto* editor = new ThemeEditor{initial, this};
+            editor->setAttribute(Qt::WA_DeleteOnClose);
+            editor->on_apply([this, refresh_theme_icons, light, dark](const ThemeColors& colors) {
+                apply_theme(colors);
+                refresh_theme_icons();
+                store_custom_theme(settings_, colors);
+                settings_.setValue("theme/name", "custom");
+                settings_.sync();
+                light->setChecked(false);
+                dark->setChecked(false);
+            });
+            editor->show();
+        });
 
     connect(now_playing_, &NowPlayingDocument::track_chosen, this, &MainWindow::play_chosen);
     connect(now_playing_, &NowPlayingDocument::removal_asked, this, &MainWindow::remove_chosen);

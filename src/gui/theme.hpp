@@ -33,6 +33,18 @@ enum class Theme {
     dark,
 };
 
+enum class ThemeColorRole {
+    window,
+    surface,
+    text,
+    muted_text,
+    disabled_text,
+    accent,
+    accent_text,
+    focus,
+    error,
+};
+
 struct ThemeColors {
     QColor window;
     QColor surface;
@@ -46,9 +58,15 @@ struct ThemeColors {
 };
 
 [[nodiscard]] ThemeColors theme_colors(Theme theme);
+[[nodiscard]] QColor& theme_color(ThemeColors& colors, ThemeColorRole role);
+[[nodiscard]] const QColor& theme_color(const ThemeColors& colors, ThemeColorRole role);
+[[nodiscard]] const char* theme_color_key(ThemeColorRole role);
+[[nodiscard]] double contrast_ratio(const QColor& first, const QColor& second);
+[[nodiscard]] QString theme_contrast_error(const ThemeColors& colors);
 [[nodiscard]] QPalette theme_palette(const ThemeColors& colors);
 [[nodiscard]] QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon);
 [[nodiscard]] QPixmap themed_artwork_placeholder(const QWidget& styled, int size);
 void apply_theme(Theme theme);
+void apply_theme(const ThemeColors& colors);
 
 } // namespace wiola::gui

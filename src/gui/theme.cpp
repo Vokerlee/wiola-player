@@ -26,6 +26,7 @@
 #include <QWidget>
 
 #include <algorithm>
+#include <cmath>
 
 namespace wiola::gui {
 
@@ -77,6 +78,106 @@ ThemeColors theme_colors(Theme theme)
         .focus = QColor{"#185abc"},
         .error = QColor{"#b3261e"},
     };
+}
+
+QColor& theme_color(ThemeColors& colors, ThemeColorRole role)
+{
+    switch (role) {
+    case ThemeColorRole::window:
+        return colors.window;
+    case ThemeColorRole::surface:
+        return colors.surface;
+    case ThemeColorRole::text:
+        return colors.text;
+    case ThemeColorRole::muted_text:
+        return colors.muted_text;
+    case ThemeColorRole::disabled_text:
+        return colors.disabled_text;
+    case ThemeColorRole::accent:
+        return colors.accent;
+    case ThemeColorRole::accent_text:
+        return colors.accent_text;
+    case ThemeColorRole::focus:
+        return colors.focus;
+    case ThemeColorRole::error:
+        return colors.error;
+    }
+
+    return colors.window;
+}
+
+const QColor& theme_color(const ThemeColors& colors, ThemeColorRole role)
+{
+    return theme_color(const_cast<ThemeColors&>(colors), role);
+}
+
+const char* theme_color_key(ThemeColorRole role)
+{
+    static constexpr std::array roles{
+        std::pair{ThemeColorRole::window,        "window"       },
+        std::pair{ThemeColorRole::surface,       "surface"      },
+        std::pair{ThemeColorRole::text,          "text"         },
+        std::pair{ThemeColorRole::muted_text,    "muted-text"   },
+        std::pair{ThemeColorRole::disabled_text, "disabled-text"},
+        std::pair{ThemeColorRole::accent,        "accent"       },
+        std::pair{ThemeColorRole::accent_text,   "accent-text"  },
+        std::pair{ThemeColorRole::focus,         "focus"        },
+        std::pair{ThemeColorRole::error,         "error"        },
+    };
+
+    const auto found = std::ranges::find(roles, role, &decltype(roles)::value_type::first);
+    return found == roles.end() ? "window" : found->second;
+}
+
+double contrast_ratio(const QColor& first, const QColor& second)
+{
+    const auto luminance = [](const QColor& color) {
+        const auto linear = [](qreal value) {
+            return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
+        };
+
+        return 0.2126 * linear(color.redF()) + 0.7152 * linear(color.greenF()) +
+            0.0722 * linear(color.blueF());
+    };
+
+    const double a = luminance(first);
+    const double b = luminance(second);
+    return (std::max(a, b) + 0.05) / (std::min(a, b) + 0.05);
+}
+
+QString theme_contrast_error(const ThemeColors& colors)
+{
+    struct Requirement {
+        QColor foreground;
+        QColor background;
+        double minimum;
+        const char* message;
+    };
+
+    const std::array requirements{
+        Requirement{colors.text,          colors.surface, 4.5,
+                    "Text needs at least 4.5:1 contrast on the surface"                 },
+        Requirement{colors.muted_text,    colors.surface, 4.5,
+                    "Secondary text needs at least 4.5:1 contrast on the surface"       },
+        Requirement{colors.disabled_text, colors.window,  3.0,
+                    "Disabled text needs at least 3:1 contrast on the window"           },
+        Requirement{colors.accent_text,   colors.accent,  4.5,
+                    "Selected text needs at least 4.5:1 contrast on the selection color"},
+        Requirement{colors.focus,         colors.window,  3.0,
+                    "Keyboard focus needs at least 3:1 contrast on the window"          },
+        Requirement{colors.error,         colors.surface, 4.5,
+                    "Errors need at least 4.5:1 contrast on the surface"                },
+    };
+
+    for (const Requirement& requirement : requirements) {
+        if (!requirement.foreground.isValid() || !requirement.background.isValid())
+            return "Every theme color must be valid";
+
+        if (contrast_ratio(requirement.foreground, requirement.background) < requirement.minimum)
+            return QString::fromLatin1(requirement.message);
+    }
+
+    return {};
 }
 
 QPalette theme_palette(const ThemeColors& colors)
@@ -157,7 +258,11 @@ QPixmap themed_artwork_placeholder(const QWidget& styled, int size)
 
 void apply_theme(Theme theme)
 {
-    const ThemeColors colors = theme_colors(theme);
+    apply_theme(theme_colors(theme));
+}
+
+void apply_theme(const ThemeColors& colors)
+{
     QApplication::setPalette(theme_palette(colors));
 
     QFont font = QApplication::font();
