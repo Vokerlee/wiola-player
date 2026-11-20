@@ -24,13 +24,18 @@
 #include <media/operation_context.hpp>
 
 #include <filesystem>
+#include <functional>
 
 namespace wiola::codec::ffmpeg {
+
+struct MetadataRemuxHooks {
+    std::function<int()> after_packet;
+};
 
 /// Copies compressed streams to `temporary` while applying only the requested metadata fields.
 /// The source is never replaced, and an existing destination is never overwritten.
 [[nodiscard]] media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     const std::filesystem::path& temporary, const media::MetadataWriteRequest& request,
-    const media::OperationContext& context = {});
+    const media::OperationContext& context = {}, MetadataRemuxHooks hooks = {});
 
 } // namespace wiola::codec::ffmpeg

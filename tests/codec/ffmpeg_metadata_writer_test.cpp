@@ -23,6 +23,11 @@
 
 #include <gtest/gtest.h>
 
+extern "C" {
+#include <libavutil/error.h>
+}
+
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -58,6 +63,13 @@ std::vector<char> bytes(const std::filesystem::path& path)
     std::ifstream input{path, std::ios::binary};
 
     return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+}
+
+wiola::media::MetadataWriteRequest title_request()
+{
+    wiola::media::MetadataWriteRequest request;
+    request.overrides.title = "Changed";
+    return request;
 }
 
 TEST(MetadataRemux, WritesRequestedFieldsWithoutChangingTheSource)
@@ -155,3 +167,37 @@ TEST(MetadataRemux, RejectsMalformedMp3WithoutLeavingOutput)
 }
 
 } // namespace
+
+TEST(MetadataRemux, InterruptedAndDiskFullWritesRemovePartialOutput)
+{
+    const auto cancelled_output = temporary("wiola-remux-interrupted.mp3");
+    const auto full_output = temporary("wiola-remux-disk-full.mp3");
+    RemoveOnExit cleanup_cancelled{cancelled_output};
+    RemoveOnExit cleanup_full{full_output};
+
+    std::stop_source stop;
+    wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
+    wiola::codec::ffmpeg::MetadataRemuxHooks interruption;
+    interruption.after_packet = [&stop] {
+        stop.request_stop();
+        return 0;
+    };
+
+    auto outcome = wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), cancelled_output,
+        title_request(), context, interruption);
+    EXPECT_EQ(outcome.state, MetadataWriteState::failed);
+    EXPECT_EQ(outcome.error, MetadataWriteError::cancelled);
+    EXPECT_FALSE(std::filesystem::exists(cancelled_output));
+
+    wiola::codec::ffmpeg::MetadataRemuxHooks disk_full;
+    disk_full.after_packet = [] {
+        return AVERROR(ENOSPC);
+    };
+    outcome = wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), full_output,
+        title_request(), {}, disk_full);
+
+    EXPECT_EQ(outcome.state, MetadataWriteState::failed);
+    EXPECT_EQ(outcome.error, MetadataWriteError::io);
+    EXPECT_FALSE(outcome.source_modified);
+    EXPECT_FALSE(std::filesystem::exists(full_output));
+}
