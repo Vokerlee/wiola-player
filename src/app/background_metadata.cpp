@@ -81,7 +81,10 @@ void BackgroundMetadata::run()
             jobs_.pop_front();
         }
 
-        BackgroundMetadataResult result{.media = job.media, .metadata = {}, .error = {}};
+        BackgroundMetadataResult result{.media = job.media,
+            .location = job.path,
+            .metadata = {},
+            .error = {}};
         media::Result<std::unique_ptr<media::MediaAsset>> asset = provider_->open(job.path);
 
         if (!asset) {

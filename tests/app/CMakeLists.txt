@@ -1,4 +1,9 @@
 wiola_add_test(
+    app_media_revision_publisher_test
+    SOURCES media_revision_publisher_test.cpp
+    LIBS wiola_media_revisions
+)
+wiola_add_test(
     app_metadata_merge_test
     SOURCES metadata_merge_test.cpp
     LIBS wiola_app

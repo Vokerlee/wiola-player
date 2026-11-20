@@ -36,6 +36,8 @@
 
 #include <app/active_playlist.hpp>
 #include <app/m3u_playlist.hpp>
+#include <app/media_revision_publisher.hpp>
+#include <app/metadata_merge.hpp>
 #include <app/playback_queue.hpp>
 #include <app/playlist_transfer.hpp>
 #include <app/workspace_watcher.hpp>
@@ -126,6 +128,8 @@ private:
         const std::vector<app::MediaTransfer>& media);
     void choose_transfer_destination(const std::vector<app::MediaTransfer>& media);
     void play_saved_playlist(const library::PlaylistId& id);
+    void request_metadata(const std::filesystem::path& location);
+    void publish_media_revision(app::BackgroundMetadataResult result);
     void refresh_playlist_documents();
     void restore_playlist_documents();
     void save_playlist_documents();
@@ -228,6 +232,8 @@ private:
     std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
     std::map<library::WorkspaceId, WorkspaceDocument*> workspace_documents_;
     std::unique_ptr<app::WorkspaceScanPublisher> workspace_scans_;
+    app::MetadataMerge metadata_merge_;
+    std::unique_ptr<app::MediaRevisionPublisher> media_revisions_;
     std::unique_ptr<app::WorkspaceWatcher> workspace_watcher_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};

@@ -28,6 +28,7 @@ wiola_add_library(
         wiola_codec
         wiola_engine
         wiola_library
+        wiola_media_revisions
         wiola_m3u
         wiola_saved_playlists
         wiola_workspace_scans

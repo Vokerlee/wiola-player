@@ -21,6 +21,13 @@ if(WIOLA_BUILD_GUI)
     target_link_libraries(wiola_workspace_scans PUBLIC Qt6::Core)
 
     wiola_add_library(
+        wiola_media_revisions
+        SOURCES media_revision_publisher.cpp
+        LIBS wiola_app
+    )
+    target_link_libraries(wiola_media_revisions PUBLIC Qt6::Core)
+
+    wiola_add_library(
         wiola_workspace_watcher
         SOURCES workspace_watcher.cpp
         LIBS wiola_library

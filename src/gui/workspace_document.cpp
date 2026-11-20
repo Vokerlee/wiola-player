@@ -22,6 +22,9 @@
 
 #include "qt_path_adapter.hpp"
 
+#include <library/location.hpp>
+#include <library/metadata.hpp>
+
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
@@ -150,6 +153,34 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
         status_->setText(status_->text() + " — cancelled");
 
     return true;
+}
+
+bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& repository,
+    const library::MediaId& media)
+{
+    const library::TrackRecord* record = repository.track(media);
+    if (record == nullptr)
+        return false;
+
+    const library::ResolvedMetadata resolved = library::resolve_metadata(*record);
+    bool matched = false;
+
+    for (const engine::Track& track : rows_.tracks()) {
+        if (library::media_id_for(track.path()) != media)
+            continue;
+
+        static_cast<void>(rows_.describe(track.id(),
+            engine::TrackMetadata{.title = resolved.title,
+                .artist = resolved.artist,
+                .album = resolved.album,
+                .duration = resolved.duration}));
+        matched = true;
+    }
+
+    if (matched)
+        table_->show_tracks(rows_.tracks());
+
+    return matched;
 }
 
 void WorkspaceDocument::show_cancelled()
