@@ -445,6 +445,21 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
     EXPECT_TRUE(action(*menu(restored, "&View"), "Library Focus")->isChecked());
 }
 
+TEST_F(MainWindowShell, RestoresTheNativeThemeChoice)
+{
+    {
+        wiola::engine::Session session;
+        wiola::gui::MainWindow window{session};
+        action(*menu(window, "&View"), "Dark theme")->trigger();
+        EXPECT_TRUE(action(*menu(window, "&View"), "Dark theme")->isChecked());
+    }
+
+    wiola::engine::Session session;
+    wiola::gui::MainWindow restored{session};
+    EXPECT_TRUE(action(*menu(restored, "&View"), "Dark theme")->isChecked());
+    EXPECT_EQ(restored.palette().color(QPalette::Window), QColor{"#202124"});
+}
+
 } // namespace
 
 int main(int argc, char** argv)

@@ -28,6 +28,7 @@
 #include "player_settings.hpp"
 #include "presentation_tokens.hpp"
 #include "qt_path_adapter.hpp"
+#include "theme.hpp"
 
 #include <codec/provider.hpp>
 #include <library/location.hpp>
@@ -131,6 +132,9 @@ MainWindow::MainWindow(engine::Session& session)
           },
           [this](const app::MetadataEditOutcome& outcome) { publish_metadata_outcome(outcome); }}
 {
+    const QString selected_theme = settings_.value("theme/name", "light").toString();
+    apply_theme(selected_theme == "dark" ? Theme::dark : Theme::light);
+
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
 
@@ -384,6 +388,29 @@ MainWindow::MainWindow(engine::Session& session)
     connect(library, &QAction::triggered, this,
         [choose_layout] { choose_layout("library-focus"); });
     connect(queue, &QAction::triggered, this, [choose_layout] { choose_layout("queue-focus"); });
+
+    view->addSeparator();
+    QAction* light = view->addAction("Light theme");
+    QAction* dark = view->addAction("Dark theme");
+    auto* themes = new QActionGroup{this};
+    themes->setExclusive(true);
+
+    for (QAction* theme : {light, dark}) {
+        theme->setCheckable(true);
+        themes->addAction(theme);
+    }
+
+    light->setChecked(selected_theme != "dark");
+    dark->setChecked(selected_theme == "dark");
+
+    const auto choose_theme = [this](const QString& choice) {
+        apply_theme(choice == "dark" ? Theme::dark : Theme::light);
+        settings_.setValue("theme/name", choice);
+        settings_.sync();
+    };
+
+    connect(light, &QAction::triggered, this, [choose_theme] { choose_theme("light"); });
+    connect(dark, &QAction::triggered, this, [choose_theme] { choose_theme("dark"); });
 
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
