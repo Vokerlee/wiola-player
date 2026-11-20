@@ -25,15 +25,21 @@
 #include <media/provider.hpp>
 
 #include <filesystem>
+#include <functional>
 #include <string_view>
 
 namespace wiola::app {
 
+struct MediaReplacementHooks {
+    std::function<bool()> before_commit;
+};
+
 /// Reopens and compares source/output audio, retains a backup, then atomically renames the
 /// validated output over the source. Validation or conflict failures never replace the source.
-[[nodiscard]] media::MetadataWriteOutcome
-commit_media_replacement(const std::filesystem::path& source,
-    const std::filesystem::path& temporary, media::MediaProvider& provider,
-    std::string_view expected_fingerprint = {}, const media::OperationContext& context = {});
+[[nodiscard]] media::MetadataWriteOutcome commit_media_replacement(
+    const std::filesystem::path& source, const std::filesystem::path& temporary,
+    media::MediaProvider& provider, std::string_view expected_fingerprint = {},
+    const media::OperationContext& context = {}, MediaReplacementHooks hooks = {}
+);
 
 } // namespace wiola::app

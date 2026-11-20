@@ -157,3 +157,34 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
 }
 
 } // namespace
+
+TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
+{
+    const auto source = temporary("wiola-locked-replacement.mp3");
+    const auto output = temporary("wiola-locked-replacement-output.mp3");
+    auto backup = source;
+    backup += ".wiola-backup";
+    Cleanup cleanup{
+        {source, output, backup}
+    };
+
+    std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
+    const auto original = bytes(source);
+    ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
+        wiola::media::MetadataWriteState::written);
+
+    wiola::codec::LocalMediaProvider provider;
+    wiola::app::MediaReplacementHooks hooks;
+    hooks.before_commit = [] {
+        return false;
+    };
+
+    const auto outcome =
+        wiola::app::commit_media_replacement(source, output, provider, {}, {}, hooks);
+
+    EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
+    EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::io);
+    EXPECT_FALSE(outcome.source_modified);
+    EXPECT_EQ(bytes(source), original);
+    EXPECT_FALSE(std::filesystem::exists(backup));
+}

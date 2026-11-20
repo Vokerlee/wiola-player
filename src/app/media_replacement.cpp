@@ -103,7 +103,8 @@ std::optional<media::MetadataWriteOutcome> compare(media::MediaProvider& provide
 
 media::MetadataWriteOutcome commit_media_replacement(const std::filesystem::path& source,
     const std::filesystem::path& temporary, media::MediaProvider& provider,
-    std::string_view expected_fingerprint, const media::OperationContext& context)
+    std::string_view expected_fingerprint, const media::OperationContext& context,
+    MediaReplacementHooks hooks)
 {
     if (source == temporary)
         return failure(media::MetadataWriteError::invalid_edit,
@@ -137,6 +138,10 @@ media::MetadataWriteOutcome commit_media_replacement(const std::filesystem::path
 
     if (error)
         return failure(media::MetadataWriteError::io, error.message());
+
+    if (hooks.before_commit && !hooks.before_commit())
+        return failure(media::MetadataWriteError::io,
+            "the source is locked or replacement was refused");
 
 #ifdef _WIN32
     std::filesystem::rename(source, backup, error);

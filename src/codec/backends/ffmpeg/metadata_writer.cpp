@@ -120,7 +120,7 @@ void apply(AVDictionary*& metadata, const media::MetadataOverrides& edit)
 
 media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     const std::filesystem::path& temporary, const media::MetadataWriteRequest& request,
-    const media::OperationContext& context)
+    const media::OperationContext& context, MetadataRemuxHooks hooks)
 {
     if (request.overrides.empty())
         return {.state = media::MetadataWriteState::unchanged,
@@ -280,12 +280,14 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         }
 
         const int written = av_interleaved_write_frame(output.get(), packet.get());
+        const int injected = hooks.after_packet ? hooks.after_packet() : 0;
         av_packet_unref(packet.get());
 
-        if (written < 0) {
+        if (written < 0 || injected < 0) {
             io.reset();
             std::filesystem::remove(temporary, filesystem_error);
-            return failed(media::MetadataWriteError::io, ffmpeg_error(written));
+            return failed(media::MetadataWriteError::io,
+                ffmpeg_error(written < 0 ? written : injected));
         }
     }
 
