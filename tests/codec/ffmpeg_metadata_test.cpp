@@ -80,15 +80,38 @@ std::filesystem::path tagged_copy(const char* name, const Bytes& frames)
     return made;
 }
 
-Bytes title_frame(std::string_view title)
+Bytes text_frame(std::string_view id, std::string_view text)
 {
     Bytes frame;
-    append(frame, "TIT2");
-    append(frame, {0, 0, 0, static_cast<unsigned>(title.size() + 1)});
+    append(frame, id);
+    append(frame, {0, 0, 0, static_cast<unsigned>(text.size() + 1)});
     append(frame, {0, 0});
     append(frame, {0});
-    append(frame, title);
+    append(frame, text);
     return frame;
+}
+
+Bytes title_frame(std::string_view title)
+{
+    return text_frame("TIT2", title);
+}
+
+Bytes comment_frame(std::string_view comment)
+{
+    Bytes frame;
+    append(frame, "COMM");
+    append(frame, {0, 0, 0, static_cast<unsigned>(comment.size() + 5)});
+    append(frame, {0, 0});
+    append(frame, {0});
+    append(frame, "eng");
+    append(frame, {0});
+    append(frame, comment);
+    return frame;
+}
+
+void append_frame(Bytes& out, const Bytes& frame)
+{
+    out.insert(out.end(), frame.begin(), frame.end());
 }
 
 Bytes artwork_frame(const Bytes& drawn)
@@ -139,6 +162,33 @@ TEST(FfmpegMetadata, ReadsAnId3TitleFromMp3)
 
     ASSERT_TRUE(metadata);
     EXPECT_EQ(metadata->track.title, "Together Forever");
+}
+
+TEST(FfmpegMetadata, ReadsExtendedFieldsWithoutClaimingPhysicalWriteSupport)
+{
+    Bytes frames;
+    append_frame(frames, title_frame("Extended"));
+    append_frame(frames, text_frame("TCON", "Jazz"));
+    append_frame(frames, text_frame("TYER", "2024"));
+    append_frame(frames, comment_frame("Live recording"));
+    append_frame(frames, text_frame("TCOM", "Composer"));
+    append_frame(frames, text_frame("TRCK", "3/12"));
+    append_frame(frames, text_frame("TPOS", "2/3"));
+    const auto track{tagged_copy("wiola_ffmpeg_extended.mp3", frames)};
+
+    const auto metadata{wiola::codec::ffmpeg::read_metadata(track)};
+    ASSERT_TRUE(metadata);
+    EXPECT_EQ(metadata->track.genre, "Jazz");
+    EXPECT_EQ(metadata->track.year, 2024);
+    EXPECT_EQ(metadata->track.comment, "Live recording");
+    EXPECT_EQ(metadata->track.composer, "Composer");
+    EXPECT_EQ(metadata->track.track_number, 3);
+    EXPECT_EQ(metadata->track.disc_number, 2);
+
+    wiola::codec::LocalMediaProvider provider;
+    auto asset{provider.open(track)};
+    ASSERT_TRUE(asset);
+    EXPECT_FALSE((*asset)->metadata_write_capabilities().any());
 }
 
 TEST(FfmpegMetadata, DetectsMetadataWithoutAFileExtension)

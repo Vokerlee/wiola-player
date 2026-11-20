@@ -29,7 +29,9 @@ extern "C" {
 #include <libavutil/dict.h>
 }
 
+#include <charconv>
 #include <cstring>
+#include <initializer_list>
 #include <utility>
 
 namespace wiola::codec::ffmpeg {
@@ -47,6 +49,33 @@ std::string field(AVDictionary* primary, AVDictionary* secondary, const char* na
         return {};
     const std::size_t size{std::strlen(entry->value)};
     return size <= max_text_bytes ? std::string{entry->value, size} : std::string{};
+}
+
+std::string first_field(AVDictionary* primary, AVDictionary* secondary,
+    std::initializer_list<const char*> names)
+{
+    for (const char* name : names) {
+        std::string value = field(primary, secondary, name);
+        if (!value.empty())
+            return value;
+    }
+
+    return {};
+}
+
+std::optional<std::uint32_t> number(const std::string& text)
+{
+    std::uint32_t value{0};
+    const char* const last = text.data() + text.size();
+    const auto parsed = std::from_chars(text.data(), last, value);
+
+    if (parsed.ec != std::errc{} || parsed.ptr == text.data())
+        return std::nullopt;
+
+    if (parsed.ptr != last && *parsed.ptr != '/' && *parsed.ptr != '-')
+        return std::nullopt;
+
+    return value;
 }
 
 void read_artwork(media::Metadata& metadata, AVFormatContext* format)
@@ -98,6 +127,13 @@ media::Result<media::Metadata> read_metadata(const std::filesystem::path& path,
     metadata.track.title = field(format->metadata, selected, "title");
     metadata.track.artist = field(format->metadata, selected, "artist");
     metadata.track.album = field(format->metadata, selected, "album");
+    metadata.track.genre = first_field(format->metadata, selected, {"genre"});
+    metadata.track.comment = first_field(format->metadata, selected, {"comment", "description"});
+    metadata.track.composer = first_field(format->metadata, selected, {"composer"});
+    metadata.track.year = number(first_field(format->metadata, selected, {"date", "year"}));
+    metadata.track.track_number = number(first_field(format->metadata, selected, {"track"}));
+    metadata.track.disc_number = number(first_field(format->metadata, selected, {"disc"}));
+
     if (facts->output.length)
         metadata.track.duration = facts->output.spec.time_per(*facts->output.length);
     read_artwork(metadata, format);

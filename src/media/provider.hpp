@@ -41,6 +41,12 @@ public:
 
     virtual Result<MediaInfo> inspect(const OperationContext& context = {}) = 0;
     virtual Result<Metadata> read_metadata(const OperationContext& context = {}) = 0;
+
+    [[nodiscard]] virtual MetadataWriteCapabilities metadata_write_capabilities() const
+    {
+        return {};
+    }
+
     virtual Result<std::unique_ptr<codec::Decoder>>
     create_decoder(const OperationContext& context = {}) = 0;
 
