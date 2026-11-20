@@ -405,6 +405,12 @@ MainWindow::MainWindow(engine::Session& session)
 
     const auto choose_theme = [this](const QString& choice) {
         apply_theme(choice == "dark" ? Theme::dark : Theme::light);
+        actions_.reload_icons(*this);
+        open_button_->setIcon(actions_.action(PlayerAction::open)->icon());
+        previous_button_->setIcon(actions_.action(PlayerAction::previous)->icon());
+        play_button_->setIcon(actions_.action(PlayerAction::play)->icon());
+        next_button_->setIcon(actions_.action(PlayerAction::next)->icon());
+        stop_button_->setIcon(actions_.action(PlayerAction::stop)->icon());
         settings_.setValue("theme/name", choice);
         settings_.sync();
     };

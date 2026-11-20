@@ -20,9 +20,7 @@
 
 #include "artwork_cache.hpp"
 
-#include "presentation_tokens.hpp"
-
-#include <QStyle>
+#include "theme.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -30,16 +28,8 @@
 
 namespace wiola::gui {
 
-namespace {
-
-constexpr PresentationTokens tokens;
-
-}
-
 ArtworkCache::ArtworkCache(const QWidget& styled, ArtworkCachePolicy policy)
-    : stub_{styled.style()
-              ->standardIcon(tokens.icons.artwork_fallback)
-              .pixmap(policy.cover_size, policy.cover_size)}
+    : stub_{themed_artwork_placeholder(styled, policy.cover_size)}
     , policy_{policy}
 {
     if (!policy_.valid())

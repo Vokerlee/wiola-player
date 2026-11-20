@@ -47,16 +47,25 @@ enum Column {
     num_columns,
 };
 
-class WithoutTheFocusBox final : public QStyledItemDelegate {
+class ThemedRowDelegate final : public QStyledItemDelegate {
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option,
         const QModelIndex& index) const override
     {
-        QStyleOptionViewItem without{option};
-        without.state &= ~QStyle::State_HasFocus;
-        QStyledItemDelegate::paint(painter, without, index);
+        QStyledItemDelegate::paint(painter, option, index);
+
+        if (!option.state.testFlag(QStyle::State_HasFocus))
+            return;
+
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+        QPen focus{option.palette.color(QPalette::Highlight), 2};
+        painter->setPen(focus);
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRoundedRect(option.rect.adjusted(1, 1, -2, -2), 3, 3);
+        painter->restore();
     }
 };
 
@@ -90,7 +99,7 @@ TrackTableView::TrackTableView(QWidget* parent)
     setColumnWidth(Column::artist, tokens.playlist.artist_column_width);
     setColumnWidth(Column::album, tokens.playlist.album_column_width);
     setColumnWidth(Column::length, tokens.playlist.length_column_width);
-    setItemDelegate(new WithoutTheFocusBox{this});
+    setItemDelegate(new ThemedRowDelegate{this});
 
     horizontalHeader()->setContextMenuPolicy(Qt::ActionsContextMenu);
     horizontalHeader()->setSectionsClickable(true);

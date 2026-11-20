@@ -21,6 +21,7 @@
 #include <gui/theme.hpp>
 
 #include <QApplication>
+#include <QWidget>
 
 #include <gtest/gtest.h>
 
@@ -57,6 +58,27 @@ TEST(Theme, ApplyingDarkThemeUpdatesNativePaletteAndSemanticStates)
     EXPECT_TRUE(qApp->styleSheet().contains(colors.focus.name()));
     EXPECT_TRUE(qApp->styleSheet().contains(colors.error.name()));
     EXPECT_TRUE(qApp->styleSheet().contains("padding: 5px"));
+    EXPECT_TRUE(qApp->styleSheet().contains("QLabel[status=\"error\"]"));
+    EXPECT_TRUE(qApp->styleSheet().contains("QLabel[status=\"busy\"]"));
+}
+
+TEST(Theme, CustomIconsAndArtworkFollowTheActivePalette)
+{
+    wiola::gui::apply_theme(wiola::gui::Theme::light);
+    QWidget light;
+    const QImage light_icon =
+        wiola::gui::themed_standard_icon(light, QStyle::SP_MediaPlay).pixmap(24, 24).toImage();
+    const QImage light_art = wiola::gui::themed_artwork_placeholder(light, 96).toImage();
+
+    wiola::gui::apply_theme(wiola::gui::Theme::dark);
+    QWidget dark;
+    const QIcon dark_themed_icon = wiola::gui::themed_standard_icon(dark, QStyle::SP_MediaPlay);
+    const QImage dark_icon = dark_themed_icon.pixmap(24, 24).toImage();
+    const QImage dark_art = wiola::gui::themed_artwork_placeholder(dark, 96).toImage();
+
+    EXPECT_NE(light_icon, dark_icon);
+    EXPECT_NE(light_art, dark_art);
+    EXPECT_FALSE(dark_themed_icon.pixmap(24, 24, QIcon::Disabled).isNull());
 }
 
 } // namespace

@@ -58,6 +58,7 @@ public:
     [[nodiscard]] QAction* action(PlayerAction id) const noexcept;
 
     void set_available(PlayerAction id, bool available);
+    void reload_icons(const QWidget& styled);
     void set_playing(bool playing);
     void set_repeat(engine::Playlist::Repeat repeat);
     void set_shuffled(bool shuffled);
