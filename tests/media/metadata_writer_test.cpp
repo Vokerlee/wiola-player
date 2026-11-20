@@ -1,0 +1,82 @@
+/**
+ * @file
+ * @brief Metadata writer contract regression tests.
+ * @author Roman Glaz
+ * @copyright (c) 2026, <vokerlee@gmail.com>
+ *
+ * Wiola is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Wiola is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <media/provider.hpp>
+
+#include <gtest/gtest.h>
+
+namespace {
+
+class ReadOnlyAsset final : public wiola::media::MediaAsset {
+public:
+    wiola::media::Result<wiola::media::MediaInfo>
+    inspect(const wiola::media::OperationContext&) override
+    {
+        return wiola::media::MediaInfo{};
+    }
+
+    wiola::media::Result<wiola::media::Metadata>
+    read_metadata(const wiola::media::OperationContext&) override
+    {
+        return wiola::media::Metadata{};
+    }
+
+    wiola::media::Result<std::unique_ptr<wiola::codec::Decoder>>
+    create_decoder(const wiola::media::OperationContext&) override
+    {
+        return std::unique_ptr<wiola::codec::Decoder>{};
+    }
+};
+
+TEST(MetadataWriter, RepresentsFieldEditsAndExpectedStateWithoutLibraryDependencies)
+{
+    wiola::media::MetadataWriteRequest request{
+        .overrides = {.title = "Title",
+                      .artist = std::string{},
+                      .album = {},
+                      .genre = {},
+                      .year = 2026,
+                      .comment = {},
+                      .composer = {},
+                      .track_number = {},
+                      .disc_number = {}},
+        .expected = {.metadata_revision = 4, .content_revision = 9, .fingerprint = "abc"}
+    };
+
+    EXPECT_FALSE(request.overrides.empty());
+    EXPECT_TRUE(request.overrides.artist->empty());
+    EXPECT_EQ(request.expected.metadata_revision, 4);
+    EXPECT_EQ(request.expected.content_revision, 9);
+    EXPECT_EQ(request.expected.fingerprint, "abc");
+}
+
+TEST(MetadataWriter, ReadOnlyAssetsRejectWritesWithoutModifyingTheSource)
+{
+    ReadOnlyAsset asset;
+    const wiola::media::MetadataWriteOutcome outcome = asset.write_metadata({});
+
+    EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
+    EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::unsupported);
+    EXPECT_FALSE(outcome.source_modified);
+    EXPECT_FALSE(outcome.detail.empty());
+    EXPECT_FALSE(asset.metadata_write_capabilities().any());
+}
+
+} // namespace

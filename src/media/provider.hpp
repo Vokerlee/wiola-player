@@ -47,6 +47,17 @@ public:
         return {};
     }
 
+    virtual MetadataWriteOutcome write_metadata(const MetadataWriteRequest& request,
+        const OperationContext& context = {})
+    {
+        static_cast<void>(request);
+        static_cast<void>(context);
+
+        return {.state = MetadataWriteState::failed,
+            .error = MetadataWriteError::unsupported,
+            .detail = "metadata writing is not supported for this media asset"};
+    }
+
     virtual Result<std::unique_ptr<codec::Decoder>>
     create_decoder(const OperationContext& context = {}) = 0;
 

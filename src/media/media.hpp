@@ -75,6 +75,58 @@ struct MetadataWriteCapabilities {
     }
 };
 
+struct MetadataOverrides {
+    std::optional<std::string> title;
+    std::optional<std::string> artist;
+    std::optional<std::string> album;
+    std::optional<std::string> genre;
+    std::optional<std::uint32_t> year;
+    std::optional<std::string> comment;
+    std::optional<std::string> composer;
+    std::optional<std::uint32_t> track_number;
+    std::optional<std::uint32_t> disc_number;
+
+    [[nodiscard]] bool empty() const noexcept
+    {
+        return !title && !artist && !album && !genre && !year && !comment && !composer &&
+            !track_number && !disc_number;
+    }
+};
+
+struct ExpectedMediaState {
+    std::optional<std::uint64_t> metadata_revision;
+    std::optional<std::uint64_t> content_revision;
+    std::string fingerprint;
+};
+
+struct MetadataWriteRequest {
+    MetadataOverrides overrides;
+    ExpectedMediaState expected;
+};
+
+enum class MetadataWriteState {
+    written,
+    unchanged,
+    failed,
+};
+
+enum class MetadataWriteError {
+    none,
+    unsupported,
+    conflicted,
+    invalid_edit,
+    io,
+    cancelled,
+    invalid_output,
+};
+
+struct MetadataWriteOutcome {
+    MetadataWriteState state{MetadataWriteState::failed};
+    MetadataWriteError error{MetadataWriteError::none};
+    bool source_modified{false};
+    std::string detail;
+};
+
 struct Metadata {
     TrackMetadata track;
     Artwork artwork;
