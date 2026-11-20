@@ -125,6 +125,11 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
+    gui_layout_builder_test
+    SOURCES layout_builder_test.cpp
+    LIBS wiola_gui
+)
+wiola_add_test(
     gui_main_window_shell_test
     SOURCES main_window_shell_test.cpp
     LIBS wiola_gui
