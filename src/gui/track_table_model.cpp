@@ -21,6 +21,7 @@
 #include "track_table_model.hpp"
 
 #include "clock.hpp"
+#include "track_sorter.hpp"
 
 #include <library/location.hpp>
 #include <library/repository.hpp>
@@ -159,26 +160,37 @@ QVariant TrackTableModel::headerData(int section, Qt::Orientation orientation, i
 void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
     std::optional<engine::QueueEntryId> current)
 {
-    const bool same_structure = rows_.size() == tracks.size() &&
-        std::ranges::equal(rows_, tracks,
+    const bool same_structure = source_rows_.size() == tracks.size() &&
+        std::ranges::equal(source_rows_, tracks,
             [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
+    const bool same_contents = same_structure &&
+        std::ranges::equal(source_rows_, tracks,
+            [](const engine::Track& a, const engine::Track& b) { return same_metadata(a, b); });
 
-    if (!same_structure) {
+    if (!sort_keys_.empty()) {
+        if (!same_contents) {
+            beginResetModel();
+            source_rows_ = tracks;
+            rows_ = repository_ != nullptr ? sorted_tracks(source_rows_, *repository_, sort_keys_)
+                                           : source_rows_;
+            endResetModel();
+        }
+    } else if (!same_structure) {
         beginResetModel();
+        source_rows_ = tracks;
         rows_ = tracks;
-        current_ = current;
         endResetModel();
-        return;
-    }
+    } else {
+        for (std::size_t row = 0; row < rows_.size(); ++row) {
+            if (same_metadata(source_rows_[row], tracks[row]))
+                continue;
 
-    for (std::size_t row = 0; row < rows_.size(); ++row) {
-        if (same_metadata(rows_[row], tracks[row]))
-            continue;
-
-        rows_[row] = tracks[row];
-        const QModelIndex first{index(static_cast<int>(row), 0)};
-        const QModelIndex last{index(static_cast<int>(row), columnCount({}) - 1)};
-        emit dataChanged(first, last);
+            source_rows_[row] = tracks[row];
+            rows_[row] = tracks[row];
+            const QModelIndex first{index(static_cast<int>(row), 0)};
+            const QModelIndex last{index(static_cast<int>(row), columnCount({}) - 1)};
+            emit dataChanged(first, last);
+        }
     }
 
     const auto previous{current_};
@@ -199,6 +211,21 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
 void TrackTableModel::show_library(const library::LibraryRepository& repository)
 {
     repository_ = &repository;
+
+    if (!sort_keys_.empty()) {
+        std::vector<engine::Track> sorted = sorted_tracks(source_rows_, repository, sort_keys_);
+        const bool different_order = rows_.size() != sorted.size() ||
+            !std::ranges::equal(rows_, sorted,
+                [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
+
+        if (different_order) {
+            beginResetModel();
+            rows_ = std::move(sorted);
+            endResetModel();
+        } else {
+            rows_ = std::move(sorted);
+        }
+    }
 
     if (rows_.empty() || tag_columns_.empty())
         return;
@@ -230,6 +257,25 @@ void TrackTableModel::show_tag_keys(std::vector<std::string> keys)
 
     beginResetModel();
     tag_columns_ = std::move(columns);
+    endResetModel();
+}
+
+void TrackTableModel::sort_by(const std::vector<TrackSortKey>& keys)
+{
+    std::vector<TrackSortKey> valid;
+
+    for (const TrackSortKey& key : keys) {
+        if (key.valid())
+            valid.push_back(key);
+    }
+
+    if (valid == sort_keys_)
+        return;
+
+    beginResetModel();
+    sort_keys_ = std::move(valid);
+    rows_ = repository_ != nullptr ? sorted_tracks(source_rows_, *repository_, sort_keys_)
+                                   : source_rows_;
     endResetModel();
 }
 

@@ -52,6 +52,8 @@ struct TrackSortKey {
         TrackSortDirection direction = TrackSortDirection::ascending);
 
     [[nodiscard]] bool valid() const;
+
+    bool operator==(const TrackSortKey&) const = default;
 };
 
 using TrackSortValue = std::variant<std::monostate, std::string, units::Time>;
