@@ -60,6 +60,11 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
     table_->show_tracks(playlist.tracks(), current);
 }
 
+void NowPlayingDocument::show_library(const library::LibraryRepository& repository)
+{
+    table_->show_library(repository);
+}
+
 std::vector<engine::QueueEntryId> NowPlayingDocument::chosen_tracks() const
 {
     return table_->chosen_tracks();

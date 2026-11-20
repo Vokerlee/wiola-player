@@ -180,7 +180,13 @@ bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& re
     if (matched)
         table_->show_tracks(rows_.tracks());
 
+    table_->show_library(repository);
     return matched;
+}
+
+void WorkspaceDocument::show_library(const library::LibraryRepository& repository)
+{
+    table_->show_library(repository);
 }
 
 void WorkspaceDocument::show_cancelled()

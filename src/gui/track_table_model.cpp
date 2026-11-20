@@ -23,12 +23,16 @@
 #include "clock.hpp"
 
 #include <library/location.hpp>
+#include <library/repository.hpp>
+#include <library/tags.hpp>
 
 #include <QColor>
 #include <QFont>
+#include <QStringList>
 
 #include <algorithm>
 #include <array>
+#include <map>
 
 namespace wiola::gui {
 
@@ -64,7 +68,7 @@ int TrackTableModel::rowCount(const QModelIndex& parent) const
 
 int TrackTableModel::columnCount(const QModelIndex& parent) const
 {
-    return parent.isValid() ? 0 : Column::num_columns;
+    return parent.isValid() ? 0 : standard_columns + static_cast<int>(tag_columns_.size());
 }
 
 QVariant TrackTableModel::data(const QModelIndex& index, int role) const
@@ -74,6 +78,27 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
         return {};
 
     const engine::Track& track{rows_[static_cast<std::size_t>(index.row())]};
+
+    if (role == Qt::DisplayRole && index.column() >= standard_columns) {
+        const std::size_t column = static_cast<std::size_t>(index.column() - standard_columns);
+        if (repository_ == nullptr || column >= tag_columns_.size())
+            return {};
+
+        const library::TrackRecord* record =
+            repository_->track(library::media_id_for(track.path()));
+        if (record == nullptr)
+            return {};
+
+        const std::string key = library::normalized_tag_text(tag_columns_[column]);
+        QStringList values;
+
+        for (const library::TagRecord& tag : record->tags) {
+            if (library::normalized_tag_text(tag.key) == key)
+                values.push_back(QString::fromStdString(tag.value));
+        }
+
+        return values.join(", ");
+    }
 
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
@@ -119,6 +144,12 @@ QVariant TrackTableModel::headerData(int section, Qt::Orientation orientation, i
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
         return {};
 
+    if (section >= standard_columns) {
+        const std::size_t column = static_cast<std::size_t>(section - standard_columns);
+        return column < tag_columns_.size() ? QString::fromStdString(tag_columns_[column])
+                                            : QVariant{};
+    }
+
     static const std::array labels{QString{}, QString{"Title"}, QString{"Artist"}, QString{"Album"},
         QString{"Length"}};
     return section >= 0 && section < Column::num_columns ? labels[static_cast<std::size_t>(section)]
@@ -146,7 +177,7 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
 
         rows_[row] = tracks[row];
         const QModelIndex first{index(static_cast<int>(row), 0)};
-        const QModelIndex last{index(static_cast<int>(row), Column::num_columns - 1)};
+        const QModelIndex last{index(static_cast<int>(row), columnCount({}) - 1)};
         emit dataChanged(first, last);
     }
 
@@ -160,9 +191,46 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
         const auto row = std::ranges::find(rows_, *id, &engine::Track::id);
         if (row != rows_.end()) {
             const auto position = static_cast<int>(std::distance(rows_.begin(), row));
-            emit dataChanged(index(position, 0), index(position, Column::num_columns - 1));
+            emit dataChanged(index(position, 0), index(position, columnCount({}) - 1));
         }
     }
+}
+
+void TrackTableModel::show_library(const library::LibraryRepository& repository)
+{
+    repository_ = &repository;
+
+    if (rows_.empty() || tag_columns_.empty())
+        return;
+
+    emit dataChanged(index(0, standard_columns),
+        index(static_cast<int>(rows_.size()) - 1, columnCount({}) - 1));
+}
+
+void TrackTableModel::show_tag_keys(std::vector<std::string> keys)
+{
+    std::vector<std::string> columns;
+
+    for (const std::string& key : keys) {
+        const auto valid = library::make_tag_value(key, "value");
+        if (!valid)
+            continue;
+
+        const std::string normalized = library::normalized_tag_text(valid->key);
+        const bool duplicate = std::ranges::any_of(columns, [&](const std::string& present) {
+            return library::normalized_tag_text(present) == normalized;
+        });
+
+        if (!duplicate)
+            columns.push_back(valid->key);
+    }
+
+    if (columns == tag_columns_)
+        return;
+
+    beginResetModel();
+    tag_columns_ = std::move(columns);
+    endResetModel();
 }
 
 std::optional<engine::QueueEntryId> TrackTableModel::track_id(const QModelIndex& index) const
@@ -172,6 +240,24 @@ std::optional<engine::QueueEntryId> TrackTableModel::track_id(const QModelIndex&
         return {};
 
     return rows_[static_cast<std::size_t>(index.row())].id();
+}
+
+std::vector<std::string> custom_tag_keys(const library::LibraryRepository& repository)
+{
+    std::map<std::string, std::string> keys;
+
+    for (const library::TrackRecord& track : repository.tracks()) {
+        for (const library::TagRecord& tag : track.tags)
+            keys.try_emplace(library::normalized_tag_text(tag.key), tag.key);
+    }
+
+    std::vector<std::string> result;
+    result.reserve(keys.size());
+
+    for (const auto& [normalized, key] : keys)
+        result.push_back(key);
+
+    return result;
 }
 
 } // namespace wiola::gui

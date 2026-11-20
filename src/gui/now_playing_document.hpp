@@ -26,6 +26,12 @@
 
 #include <vector>
 
+namespace wiola::library {
+
+class LibraryRepository;
+
+}
+
 namespace wiola::gui {
 
 class TrackTableView;
@@ -37,6 +43,7 @@ public:
     explicit NowPlayingDocument(QWidget* parent = nullptr);
 
     void show_playlist(const engine::Playlist& playlist);
+    void show_library(const library::LibraryRepository& repository);
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:

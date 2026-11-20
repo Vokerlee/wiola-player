@@ -29,10 +29,21 @@
 #include <optional>
 #include <vector>
 
+namespace wiola::library {
+
+class LibraryRepository;
+
+}
+
 namespace wiola::gui {
+
+[[nodiscard]] std::vector<std::string>
+custom_tag_keys(const library::LibraryRepository& repository);
 
 class TrackTableModel final : public QAbstractTableModel {
 public:
+    static constexpr int standard_columns{5};
+
     explicit TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy = {});
 
     int rowCount(const QModelIndex& parent = {}) const override;
@@ -42,6 +53,8 @@ public:
 
     void show_tracks(const std::vector<engine::Track>& tracks,
         std::optional<engine::QueueEntryId> current = {});
+    void show_library(const library::LibraryRepository& repository);
+    void show_tag_keys(std::vector<std::string> keys);
     [[nodiscard]] std::optional<engine::QueueEntryId> track_id(const QModelIndex& index) const;
 
 private:
@@ -49,6 +62,8 @@ private:
     ArtworkCachePolicy policy_;
     std::vector<engine::Track> rows_;
     std::optional<engine::QueueEntryId> current_;
+    const library::LibraryRepository* repository_{nullptr};
+    std::vector<std::string> tag_columns_;
 };
 
 } // namespace wiola::gui
