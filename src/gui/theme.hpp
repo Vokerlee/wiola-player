@@ -21,7 +21,10 @@
 #pragma once
 
 #include <QColor>
+#include <QIcon>
 #include <QPalette>
+#include <QPixmap>
+#include <QStyle>
 
 namespace wiola::gui {
 
@@ -44,6 +47,8 @@ struct ThemeColors {
 
 [[nodiscard]] ThemeColors theme_colors(Theme theme);
 [[nodiscard]] QPalette theme_palette(const ThemeColors& colors);
+[[nodiscard]] QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon);
+[[nodiscard]] QPixmap themed_artwork_placeholder(const QWidget& styled, int size);
 void apply_theme(Theme theme);
 
 } // namespace wiola::gui

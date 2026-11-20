@@ -22,6 +22,10 @@
 
 #include <QApplication>
 #include <QFont>
+#include <QPainter>
+#include <QWidget>
+
+#include <algorithm>
 
 namespace wiola::gui {
 
@@ -108,6 +112,49 @@ QPalette theme_palette(const ThemeColors& colors)
     return palette;
 }
 
+QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon)
+{
+    const QPixmap source = styled.style()->standardIcon(icon).pixmap(24, 24);
+    const auto tinted = [&source](const QColor& color) {
+        QPixmap result{source.size()};
+        result.fill(Qt::transparent);
+        QPainter painter{&result};
+        painter.drawPixmap(0, 0, source);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        painter.fillRect(result.rect(), color);
+        return result;
+    };
+
+    QIcon result;
+    result.addPixmap(tinted(styled.palette().color(QPalette::Active, QPalette::ButtonText)),
+        QIcon::Normal);
+    result.addPixmap(tinted(styled.palette().color(QPalette::Disabled, QPalette::ButtonText)),
+        QIcon::Disabled);
+    return result;
+}
+
+QPixmap themed_artwork_placeholder(const QWidget& styled, int size)
+{
+    QPixmap result{size, size};
+    result.fill(styled.palette().color(QPalette::Base));
+
+    QPainter painter{&result};
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen{styled.palette().color(QPalette::Mid),
+        static_cast<qreal>(std::max(1, size / 48))});
+    painter.drawRoundedRect(QRectF{0.5, 0.5, size - 1.0, size - 1.0}, size / 16.0, size / 16.0);
+
+    const QColor accent = styled.palette().color(QPalette::Highlight);
+    painter.setPen(QPen{accent, static_cast<qreal>(std::max(2, size / 24)), Qt::SolidLine,
+        Qt::RoundCap});
+    const QPointF stem{size * 0.60, size * 0.24};
+    painter.drawLine(stem, QPointF{size * 0.60, size * 0.64});
+    painter.drawLine(stem, QPointF{size * 0.76, size * 0.30});
+    painter.setBrush(accent);
+    painter.drawEllipse(QPointF{size * 0.46, size * 0.68}, size * 0.14, size * 0.10);
+    return result;
+}
+
 void apply_theme(Theme theme)
 {
     const ThemeColors colors = theme_colors(theme);
@@ -123,10 +170,14 @@ void apply_theme(Theme theme)
         "QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus,"
         " QTableView:focus, QTreeView:focus { border: 1px solid %2; }\n"
         "QLineEdit[error=\"true\"], QComboBox[error=\"true\"] { border: 1px solid %3; }\n"
+        "QLabel[status=\"busy\"] { color: %2; }\n"
+        "QLabel[status=\"error\"] { color: %3; }\n"
+        "QLabel[status=\"ready\"] { color: %6; }\n"
         "QToolTip { color: %4; background-color: %5; border: 1px solid %2; }"}
             .arg(control_padding)
             .arg(colors.focus.name(), colors.error.name(), colors.text.name(),
-                colors.surface.name()));
+                colors.surface.name())
+            .arg(colors.muted_text.name()));
 }
 
 } // namespace wiola::gui

@@ -20,6 +20,8 @@
 
 #include "player_actions.hpp"
 
+#include "theme.hpp"
+
 #include <QKeySequence>
 #include <QSignalBlocker>
 #include <QStyle>
@@ -71,14 +73,28 @@ PlayerActions::PlayerActions(QWidget& styled)
         command->setShortcut(description.shortcut);
         command->setCheckable(description.checkable);
 
-        if (description.icon)
-            command->setIcon(styled.style()->standardIcon(*description.icon));
-
         actions_[index_of(description.id)] = command;
     }
 
+    reload_icons(styled);
+}
+
+void PlayerActions::reload_icons(const QWidget& styled)
+{
+    static constexpr std::array icons{
+        std::pair{PlayerAction::open,     QStyle::SP_DirOpenIcon      },
+        std::pair{PlayerAction::previous, QStyle::SP_MediaSkipBackward},
+        std::pair{PlayerAction::play,     QStyle::SP_MediaPlay        },
+        std::pair{PlayerAction::next,     QStyle::SP_MediaSkipForward },
+        std::pair{PlayerAction::stop,     QStyle::SP_MediaStop        },
+    };
+
+    for (const auto& [id, icon] : icons)
+        action(id)->setIcon(themed_standard_icon(styled, icon));
+
     play_icon_ = action(PlayerAction::play)->icon();
-    pause_icon_ = styled.style()->standardIcon(QStyle::SP_MediaPause);
+    pause_icon_ = themed_standard_icon(styled, QStyle::SP_MediaPause);
+    set_playing(action(PlayerAction::play)->text() == "Pause");
 }
 
 QAction* PlayerActions::action(PlayerAction id) const noexcept

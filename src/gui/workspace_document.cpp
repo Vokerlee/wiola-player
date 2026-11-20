@@ -167,11 +167,16 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
     status_->setText(QString{"%1 tracks"}.arg(rows_.tracks().size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
-    if (batch.status == app::WorkspaceScanStatus::failed)
+    if (batch.status == app::WorkspaceScanStatus::failed) {
         status_->setText(status_->text() + " — scan failed");
-    else if (batch.status == app::WorkspaceScanStatus::cancelled)
+        status_->setProperty("status", "error");
+    } else if (batch.status == app::WorkspaceScanStatus::cancelled) {
         status_->setText(status_->text() + " — cancelled");
+        status_->setProperty("status", "ready");
+    }
 
+    status_->style()->unpolish(status_);
+    status_->style()->polish(status_);
     return true;
 }
 
@@ -232,6 +237,9 @@ void WorkspaceDocument::set_busy(bool busy)
     progress_->setRange(0, busy ? 0 : 1);
     rescan_->setEnabled(!busy);
     cancel_->setEnabled(busy);
+    status_->setProperty("status", busy ? "busy" : "ready");
+    status_->style()->unpolish(status_);
+    status_->style()->polish(status_);
 }
 
 void WorkspaceDocument::on_rescan_requested(std::function<void(bool recursive)> observer)
