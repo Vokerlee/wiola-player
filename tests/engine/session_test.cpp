@@ -785,3 +785,29 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
     EXPECT_EQ(session.state(), State::stopped);
     EXPECT_FALSE(session.playing());
 }
+
+TEST(Session, ReloadQuiescesAndRestoresTheCurrentPlayIntent)
+{
+    Fixture fixture;
+    fixture.consuming = false;
+    const auto path = wiola::testing::write_wav("wiola_session_reload.wav");
+
+    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    fixture.session.add({wiola::testing::write_wav("wiola_session_reload_next.wav")});
+    ASSERT_TRUE(fixture.session.play_or_pause());
+
+    fixture.session.seek(units::Time{0.4});
+    ASSERT_TRUE(poll_until(fixture.session,
+        [&fixture] { return fixture.session.time_played().get<units::Sec>() >= 0.4; }));
+
+    EXPECT_EQ(fixture.session.reload_current(), OpenResult::loading);
+    EXPECT_FALSE(fixture.session.loaded());
+
+    ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
+
+    EXPECT_EQ(fixture.session.track(), path);
+    EXPECT_EQ(fixture.session.playlist().position(), 0U);
+    EXPECT_EQ(fixture.session.state(), State::playing);
+    EXPECT_EQ(fixture.num_outputs, 1U);
+    EXPECT_NEAR(fixture.session.time_played().get<units::Sec>(), 0.4, 0.02);
+}

@@ -148,6 +148,10 @@ public:
     /// Ends playback and returns to the beginning of the track.
     void stop() noexcept;
 
+    /// Quiesces the current decoder and reads it again, restoring play intent and position when
+    /// the replacement is ready. Returns immediately while that read continues.
+    OpenResult reload_current();
+
     /// Moves playback to `position`, measured from the start of the track.
     void seek(units::Time position) noexcept;
 
@@ -211,6 +215,7 @@ private:
     /// A track that has been read and not yet put on, with the name it goes by.
     std::unique_ptr<codec::Decoder> ready_;
     std::filesystem::path ready_track_;
+    std::optional<units::Time> restore_position_;
     OpenResult last_result_{OpenResult::opened};
     /// The output outlives its pipeline so transport is joined before the output is disconnected.
     OutputSession out_;
