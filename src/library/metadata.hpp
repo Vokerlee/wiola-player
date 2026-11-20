@@ -37,6 +37,8 @@ struct ResolvedMetadata {
     std::optional<std::uint32_t> disc_number;
     std::vector<TagRecord> tags;
     bool missing{false};
+
+    bool operator==(const ResolvedMetadata&) const = default;
 };
 
 [[nodiscard]] ResolvedMetadata resolve_metadata(const TrackRecord& track);

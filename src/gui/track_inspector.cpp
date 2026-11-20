@@ -83,10 +83,12 @@ TrackInspector::TrackInspector(QWidget* parent)
     fields->addRow("File", availability_);
 
     custom_tags_ = new CustomTagEditor{this};
+    standard_metadata_ = new StandardMetadataEditor{this};
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
+    layout->addWidget(standard_metadata_);
     layout->addWidget(custom_tags_);
     layout->addStretch();
 
@@ -126,6 +128,11 @@ void TrackInspector::show_track(const engine::Track* track)
 void TrackInspector::show_custom_tags(const library::TrackRecord* track)
 {
     custom_tags_->show_track(track);
+}
+
+void TrackInspector::show_standard_metadata(const library::TrackRecord* track)
+{
+    standard_metadata_->show_track(track);
 }
 
 } // namespace wiola::gui

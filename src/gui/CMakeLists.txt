@@ -27,6 +27,7 @@ wiola_add_library(
         saved_playlist_manager.cpp
         saved_playlist_storage.cpp
         seek_bar.cpp
+        standard_metadata_editor.cpp
         volume_control.cpp
         workspace_document.cpp
     LIBS

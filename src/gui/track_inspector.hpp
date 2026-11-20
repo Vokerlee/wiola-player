@@ -22,6 +22,7 @@
 
 #include "artwork_cache.hpp"
 #include "custom_tag_editor.hpp"
+#include "standard_metadata_editor.hpp"
 
 #include <engine/queue/track.hpp>
 
@@ -36,8 +37,14 @@ public:
 
     void show_track(const engine::Track* track);
     void show_custom_tags(const library::TrackRecord* track);
+    void show_standard_metadata(const library::TrackRecord* track);
 
     [[nodiscard]] CustomTagEditor* custom_tags() const noexcept { return custom_tags_; }
+
+    [[nodiscard]] StandardMetadataEditor* standard_metadata() const noexcept
+    {
+        return standard_metadata_;
+    }
 
 private:
     ArtworkCache artwork_;
@@ -49,6 +56,7 @@ private:
     QLabel* duration_{nullptr};
     QLabel* availability_{nullptr};
     CustomTagEditor* custom_tags_{nullptr};
+    StandardMetadataEditor* standard_metadata_{nullptr};
 };
 
 } // namespace wiola::gui

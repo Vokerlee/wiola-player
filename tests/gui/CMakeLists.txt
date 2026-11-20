@@ -35,6 +35,11 @@ wiola_add_test(
     LIBS wiola_gui wiola_library
 )
 wiola_add_test(
+    gui_standard_metadata_editor_test
+    SOURCES standard_metadata_editor_test.cpp
+    LIBS wiola_gui
+)
+wiola_add_test(
     gui_custom_tag_editor_test
     SOURCES custom_tag_editor_test.cpp
     LIBS wiola_gui

@@ -103,9 +103,13 @@ MainWindow::MainWindow(engine::Session& session)
           [this](const library::LibraryRepository& records) {
               return playlist_storage_.save(records) == LibraryJsonError::none;
           }}
-    , tag_commands_{library_, [this](const library::LibraryRepository& records) {
-                        return playlist_storage_.save(records) == LibraryJsonError::none;
-                    }}
+    , tag_commands_{library_,
+          [this](const library::LibraryRepository& records) {
+              return playlist_storage_.save(records) == LibraryJsonError::none;
+          }}
+    , standard_commands_{library_, [this](const library::LibraryRepository& records) {
+                             return playlist_storage_.save(records) == LibraryJsonError::none;
+                         }}
 {
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -263,6 +267,10 @@ MainWindow::MainWindow(engine::Session& session)
     });
     inspector_->custom_tags()->on_remove([this](library::MediaId media, library::TagId tag) {
         finish_custom_tag(tag_commands_.remove(media, tag), "Custom tag removed");
+    });
+    inspector_->standard_metadata()->on_apply([this](library::MediaId media,
+                                                  library::StandardFieldOverrides edit) {
+        finish_standard_metadata(media, std::move(edit));
     });
 
     workspace_scans_ =
@@ -1088,6 +1096,36 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
     show_status(success);
 }
 
+void MainWindow::finish_standard_metadata(library::MediaId media,
+    library::StandardFieldOverrides edit)
+{
+    const app::StandardMetadataResult result = standard_commands_.apply(media, edit);
+
+    if (!result.succeeded()) {
+        const QString message = result.error == app::StandardMetadataError::missing_media
+            ? QString{"The track is no longer in the library"}
+            : result.error == app::StandardMetadataError::empty_edit
+            ? QString{"There are no metadata changes to apply"}
+            : QString{"Could not save the metadata changes"};
+        inspector_->standard_metadata()->show_status(message);
+        show_status(message);
+        return;
+    }
+
+    if (!result.changed) {
+        show_status("No metadata changes to save");
+        return;
+    }
+
+    refresh_playlist_documents();
+
+    for (const auto& [id, document] : workspace_documents_)
+        static_cast<void>(document->show_media_revision(library_, media));
+
+    refresh();
+    show_status("Metadata updated in the application");
+}
+
 void MainWindow::refresh_playlist_documents()
 {
     for (auto it = playlist_documents_.begin(); it != playlist_documents_.end();) {
@@ -1348,10 +1386,11 @@ void MainWindow::refresh()
     now_playing_->show_playlist(presenter_.playlist());
 
     const engine::Track* current = presenter_.playlist().current();
+    const library::TrackRecord* record =
+        current != nullptr ? library_.track(library::media_id_for(current->path())) : nullptr;
     inspector_->show_track(current);
-    inspector_->show_custom_tags(
-        current != nullptr ? library_.track(library::media_id_for(current->path())) : nullptr
-    );
+    inspector_->show_custom_tags(record);
+    inspector_->show_standard_metadata(record);
 
     if (!playback.loaded) {
         show_play_button(false);
