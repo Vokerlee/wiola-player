@@ -73,5 +73,6 @@ enum class LayoutJsonError {
 };
 
 [[nodiscard]] LayoutJsonError read_layout_json(QByteArrayView json, LayoutDocument& output);
+[[nodiscard]] LayoutJsonError validate_layout_document(const LayoutDocument& document);
 
 } // namespace wiola::gui
