@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui/classic_layout.hpp>
 #include <gui/layout_document.hpp>
 
 #include <gtest/gtest.h>
@@ -107,6 +108,13 @@ TEST(LayoutDocument, RejectsMalformedVersionsAndExcessiveInputs)
 
     const QByteArray nested = QByteArray{"{\"version\":1,\"root\":"} + deep + "}";
     EXPECT_EQ(wiola::gui::read_layout_json(nested, document), LayoutJsonError::limit_exceeded);
+}
+
+TEST(LayoutDocument, ClassicPresetIsValidAndComplete)
+{
+    const auto document = wiola::gui::classic_layout_document();
+    EXPECT_GT(document.node_count, 20U);
+    EXPECT_EQ(document.root.id, "classicRoot");
 }
 
 } // namespace

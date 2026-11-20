@@ -112,6 +112,21 @@ TEST(LayoutBuilder, BuildsStackedAndGroupedChildren)
     delete widget;
 }
 
+TEST(LayoutBuilder, ReusesARegisteredWidgetByIdentity)
+{
+    auto* existing = new QPushButton{"Existing"};
+    wiola::gui::LayoutBuilder builder;
+    ASSERT_TRUE(builder.register_widget("play", existing));
+    EXPECT_FALSE(builder.register_widget("play", existing));
+
+    wiola::gui::LayoutNode node;
+    node.id = "play";
+    node.kind = wiola::gui::LayoutComponentKind::button;
+
+    EXPECT_EQ(builder.build(node, {}), existing);
+    delete existing;
+}
+
 } // namespace
 
 int main(int argc, char** argv)

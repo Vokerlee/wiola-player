@@ -20,7 +20,9 @@
 
 #include "main_window.hpp"
 
+#include "classic_layout.hpp"
 #include "clock.hpp"
+#include "layout_builder.hpp"
 #include "player_settings.hpp"
 #include "presentation_tokens.hpp"
 #include "qt_path_adapter.hpp"
@@ -42,8 +44,10 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <optional>
+#include <utility>
 
 namespace wiola::gui {
 
@@ -115,9 +119,6 @@ MainWindow::MainWindow(engine::Session& session)
 {
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
-
-    auto* central = new QWidget{this};
-    setCentralWidget(central);
 
     // Every widget is given this window as its parent, so Qt owns them and destroys them with it.
     open_button_ = new QPushButton{this};
@@ -202,47 +203,6 @@ MainWindow::MainWindow(engine::Session& session)
 
     total_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
-    // What is playing: its name, where it has reached, and how far that is through it.
-    auto* times = new QHBoxLayout;
-    times->addWidget(elapsed_label_);
-    times->addStretch();
-    times->addWidget(total_label_);
-
-    // How it plays. Everything here acts on the track that is on.
-    auto* transport = new QHBoxLayout;
-    transport->setSpacing(tokens.player.control_spacing);
-    transport->addWidget(previous_button_);
-    transport->addWidget(play_button_);
-    transport->addWidget(next_button_);
-    transport->addWidget(stop_button_);
-    transport->addStretch();
-    transport->addWidget(volume_slider_);
-    transport->addWidget(volume_value_);
-    transport->addWidget(boost_button_);
-
-    QGroupBox* playback_group = new QGroupBox{"Now playing", this};
-    playback_group->setObjectName("playbackGroup");
-    QVBoxLayout* playback_layout = new QVBoxLayout{playback_group};
-    playback_layout->addWidget(track_label_);
-    playback_layout->addWidget(position_bar_);
-    playback_layout->addLayout(times);
-    playback_layout->addLayout(transport);
-
-    // What the list does. Repeat and shuffle change what plays next rather than how this one
-    // plays, which is why they are not up there with the transport.
-    auto* list = new QHBoxLayout;
-    list->setSpacing(tokens.player.control_spacing);
-    list->addWidget(open_button_);
-    list->addWidget(repeat_button_);
-    list->addWidget(shuffle_button_);
-    list->addStretch();
-    list->addWidget(equalizer_button_);
-
-    auto* layout = new QVBoxLayout{central};
-    layout->setSpacing(tokens.player.section_spacing);
-    layout->addWidget(playback_group);
-    layout->addLayout(list);
-
     documents_ = new QTabWidget{this};
     documents_->setObjectName("documentTabs");
     documents_->setDocumentMode(true);
@@ -322,7 +282,6 @@ MainWindow::MainWindow(engine::Session& session)
     document_area->setStretchFactor(1, 1);
     document_area->setStretchFactor(2, 0);
     document_area->setSizes({180, 620, 220});
-    layout->addWidget(document_area);
 
     navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
     navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });
@@ -335,20 +294,7 @@ MainWindow::MainWindow(engine::Session& session)
     restore_playlist_documents();
     restore_workspace_documents();
 
-    // What is done to the queue, under the queue it is done to.
-    QGroupBox* queue_group = new QGroupBox{"Queue commands", this};
-    queue_group->setObjectName("queueCommandsGroup");
-    auto* queue = new QHBoxLayout{queue_group};
-    queue->setSpacing(tokens.player.control_spacing);
-    queue->addWidget(add_button_);
-    queue->addWidget(remove_button_);
-    queue->addWidget(clear_button_);
-    queue->addStretch();
-
-    layout->addWidget(queue_group);
-
-    // Kept in the layout while it says nothing, so a message appearing does not resize the window.
-    layout->addWidget(status_label_);
+    build_classic_layout(document_area);
 
     connect(actions_.action(PlayerAction::open), &QAction::triggered, this,
         &MainWindow::choose_tracks);
@@ -425,6 +371,54 @@ MainWindow::MainWindow(engine::Session& session)
 }
 
 MainWindow::~MainWindow() = default;
+
+void MainWindow::build_classic_layout(QWidget* document_area)
+{
+    const LayoutDocument document = classic_layout_document();
+    if (document.node_count == 0) {
+        show_status("Could not construct the Classic layout");
+        return;
+    }
+
+    LayoutBuilder builder;
+    const std::array<std::pair<const char*, QWidget*>, 20> widgets{
+        std::pair{"trackLabel",    track_label_     },
+        std::pair{"positionBar",   position_bar_    },
+        std::pair{"elapsedTime",   elapsed_label_   },
+        std::pair{"totalDuration", total_label_     },
+        std::pair{"previousTrack", previous_button_ },
+        std::pair{"playPause",     play_button_     },
+        std::pair{"nextTrack",     next_button_     },
+        std::pair{"stopPlayback",  stop_button_     },
+        std::pair{"volumeSlider",  volume_slider_   },
+        std::pair{"volumeValue",   volume_value_    },
+        std::pair{"boostButton",   boost_button_    },
+        std::pair{"openTracks",    open_button_     },
+        std::pair{"repeatQueue",   repeat_button_   },
+        std::pair{"shuffleQueue",  shuffle_button_  },
+        std::pair{"equalizer",     equalizer_button_},
+        std::pair{"documentArea",  document_area    },
+        std::pair{"addTracks",     add_button_      },
+        std::pair{"removeTracks",  remove_button_   },
+        std::pair{"clearQueue",    clear_button_    },
+        std::pair{"playerStatus",  status_label_    },
+    };
+
+    for (const auto& [id, widget] : widgets)
+        static_cast<void>(builder.register_widget(QString::fromLatin1(id), widget));
+
+    QWidget* root = builder.build(document.root,
+        {.presenter = &presenter_, .actions = &actions_, .library = &library_}, this);
+    if (root == nullptr) {
+        show_status("Could not construct the Classic layout");
+        return;
+    }
+
+    if (QLayout* layout = root->layout())
+        layout->setSpacing(tokens.player.section_spacing);
+
+    setCentralWidget(root);
+}
 
 void MainWindow::open(std::vector<std::filesystem::path> tracks)
 {

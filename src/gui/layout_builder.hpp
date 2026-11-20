@@ -51,11 +51,13 @@ public:
     LayoutBuilder();
 
     [[nodiscard]] bool register_component(LayoutComponentKind kind, Factory factory);
+    [[nodiscard]] bool register_widget(const QString& id, QWidget* widget);
     [[nodiscard]] QWidget* build(const LayoutNode& node, const LayoutBuildContext& context,
         QWidget* parent = nullptr) const;
 
 private:
     std::map<LayoutComponentKind, Factory> factories_;
+    std::map<QString, QWidget*> widgets_;
 };
 
 } // namespace wiola::gui
