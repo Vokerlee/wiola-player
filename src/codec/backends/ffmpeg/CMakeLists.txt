@@ -4,6 +4,7 @@ wiola_add_library(
         decoder.cpp
         input.cpp
         metadata.cpp
+        metadata_writer.cpp
         packet_decoder.cpp
         pcm_converter.cpp
         qualification.cpp
