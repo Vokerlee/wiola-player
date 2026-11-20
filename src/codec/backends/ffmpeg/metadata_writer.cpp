@@ -29,6 +29,7 @@ extern "C" {
 #include <array>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <system_error>
 
 namespace wiola::codec::ffmpeg {
@@ -126,9 +127,18 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     if (inspected < 0)
         return failed(media::MetadataWriteError::invalid_output, ffmpeg_error(inspected));
 
+    const std::string_view input_formats{input->iformat->name};
+    std::string primary_format{input_formats.substr(0, input_formats.find(','))};
+    if (primary_format == "mov" && av_match_ext(temporary.string().c_str(), "m4a"))
+        primary_format = "ipod";
+    else if (primary_format == "mov" && av_match_ext(temporary.string().c_str(), "mp4"))
+        primary_format = "mp4";
+
+    const AVOutputFormat* muxer = av_guess_format(primary_format.c_str(), nullptr, nullptr);
+
     AVFormatContext* raw_output{nullptr};
     const int allocated =
-        avformat_alloc_output_context2(&raw_output, nullptr, nullptr, temporary.string().c_str());
+        avformat_alloc_output_context2(&raw_output, muxer, nullptr, temporary.string().c_str());
     if (allocated < 0 || raw_output == nullptr)
         return failed(media::MetadataWriteError::invalid_output,
             allocated < 0 ? ffmpeg_error(allocated) : "FFmpeg could not allocate output");
@@ -182,6 +192,20 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         return failed(media::MetadataWriteError::invalid_output, ffmpeg_error(header));
     }
 
+    for (unsigned int index = 0; index < output->nb_streams; ++index) {
+        AVPacket& picture = output->streams[index]->attached_pic;
+        if (picture.size <= 0)
+            continue;
+
+        picture.stream_index = static_cast<int>(index);
+        const int written = av_interleaved_write_frame(output.get(), &picture);
+        if (written < 0) {
+            io.reset();
+            std::filesystem::remove(temporary, filesystem_error);
+            return failed(media::MetadataWriteError::io, ffmpeg_error(written));
+        }
+    }
+
     Packet packet{av_packet_alloc(), [](AVPacket* value) { av_packet_free(&value); }};
     if (!packet) {
         io.reset();
@@ -209,6 +233,12 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
 
         AVStream* incoming = input->streams[packet->stream_index];
         AVStream* outgoing = output->streams[packet->stream_index];
+
+        if (incoming->disposition & AV_DISPOSITION_ATTACHED_PIC) {
+            av_packet_unref(packet.get());
+            continue;
+        }
+
         av_packet_rescale_ts(packet.get(), incoming->time_base, outgoing->time_base);
 
         const int written = av_interleaved_write_frame(output.get(), packet.get());
