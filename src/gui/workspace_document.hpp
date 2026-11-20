@@ -47,6 +47,8 @@ public:
     void show_cancelled();
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
     [[nodiscard]] std::vector<std::filesystem::path> chosen_paths() const;
+    [[nodiscard]] std::vector<std::filesystem::path> displayed_paths() const;
+    void on_apply_order_requested(std::function<void()> observer);
     void on_rescan_requested(std::function<void(bool recursive)> observer);
     void on_cancel_requested(std::function<void()> observer);
     void on_play_requested(std::function<void()> observer);
@@ -75,6 +77,7 @@ private:
     std::function<void()> append_observer_;
     std::function<void()> transfer_active_observer_;
     std::function<void()> transfer_destination_observer_;
+    std::function<void()> apply_order_observer_;
 };
 
 } // namespace wiola::gui

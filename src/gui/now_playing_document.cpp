@@ -50,6 +50,8 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
         &NowPlayingDocument::transfer_active_asked);
     connect(table_, &TrackTableView::transfer_destination_asked, this,
         &NowPlayingDocument::transfer_destination_asked);
+    connect(table_, &TrackTableView::order_application_asked, this,
+        &NowPlayingDocument::order_application_asked);
 }
 
 void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
@@ -63,6 +65,20 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
 void NowPlayingDocument::show_library(const library::LibraryRepository& repository)
 {
     table_->show_library(repository);
+}
+
+std::vector<std::filesystem::path>
+NowPlayingDocument::displayed_paths(const engine::Playlist& playlist) const
+{
+    std::vector<std::filesystem::path> paths;
+
+    for (const engine::QueueEntryId id : table_->displayed_tracks()) {
+        const auto row = playlist.index_of(id);
+        if (row)
+            paths.push_back(playlist.tracks()[*row].path());
+    }
+
+    return paths;
 }
 
 std::vector<engine::QueueEntryId> NowPlayingDocument::chosen_tracks() const

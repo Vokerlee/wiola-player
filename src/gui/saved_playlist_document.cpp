@@ -100,6 +100,11 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
         if (transfer_move_observer_)
             transfer_move_observer_();
     });
+
+    connect(table_, &TrackTableView::order_application_asked, [this] {
+        if (apply_order_observer_)
+            apply_order_observer_();
+    });
 }
 
 bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repository,
@@ -157,6 +162,19 @@ void SavedPlaylistDocument::update_heading()
     heading_->setText(active_destination_ ? name_ + " — Active destination" : name_);
 }
 
+std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
+{
+    std::vector<std::filesystem::path> paths;
+
+    for (const engine::QueueEntryId id : table_->displayed_tracks()) {
+        const auto row = rows_.index_of(id);
+        if (row)
+            paths.push_back(rows_.tracks()[*row].path());
+    }
+
+    return paths;
+}
+
 std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() const
 {
     std::vector<library::PlaylistEntryId> selected;
@@ -198,6 +216,11 @@ void SavedPlaylistDocument::on_transfer_destination_requested(std::function<void
 void SavedPlaylistDocument::on_transfer_move_requested(std::function<void()> observer)
 {
     transfer_move_observer_ = std::move(observer);
+}
+
+void SavedPlaylistDocument::on_apply_order_requested(std::function<void()> observer)
+{
+    apply_order_observer_ = std::move(observer);
 }
 
 } // namespace wiola::gui

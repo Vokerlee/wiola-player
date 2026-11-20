@@ -42,6 +42,7 @@ public:
         std::optional<engine::QueueEntryId> current = {});
     void show_library(const library::LibraryRepository& repository);
     void sort_by(const std::vector<TrackSortKey>& keys);
+    [[nodiscard]] std::vector<engine::QueueEntryId> displayed_tracks() const;
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:
@@ -50,6 +51,7 @@ signals:
     void transfer_active_asked();
     void transfer_destination_asked();
     void transfer_move_asked();
+    void order_application_asked();
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
@@ -57,6 +59,8 @@ protected:
 private:
     void rebuild_tag_actions();
     void update_tag_columns();
+    void sort_column(int column, bool extend);
+    void update_sort_indicator();
     void restore_selection(const std::vector<engine::QueueEntryId>& selected,
         const std::optional<engine::QueueEntryId>& current);
 
@@ -65,6 +69,7 @@ private:
     std::optional<engine::QueueEntryId> current_;
     std::vector<std::string> available_tags_;
     std::vector<std::string> visible_tags_;
+    std::vector<TrackSortKey> sort_keys_;
     std::vector<QAction*> tag_actions_;
 };
 

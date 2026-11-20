@@ -190,6 +190,38 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
     EXPECT_EQ(view.chosen_tracks(), std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
 }
 
+TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
+{
+    wiola::gui::TrackTableView view;
+    wiola::engine::Playlist playlist;
+    playlist.set({wiola::engine::Track::of("b.wav"), wiola::engine::Track::of("a.wav")});
+    playlist.describe(id_at(playlist, 0),
+        {.title = "Zulu", .artist = {}, .album = {}, .duration = {}});
+    playlist.describe(id_at(playlist, 1),
+        {.title = "Alpha", .artist = {}, .album = {}, .duration = {}});
+    wiola::library::InMemoryRepository repository;
+    view.show_library(repository);
+    view.show_tracks(playlist.tracks());
+
+    emit view.horizontalHeader()->sectionClicked(1);
+    EXPECT_EQ(view.displayed_tracks(),
+        (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 1), id_at(playlist, 0)}));
+    EXPECT_EQ(playlist.tracks()[0].path(), "b.wav");
+
+    emit view.horizontalHeader()->sectionClicked(1);
+    EXPECT_EQ(view.displayed_tracks(),
+        (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0), id_at(playlist, 1)}));
+
+    QAction* apply = action(view, "Apply displayed order to playback");
+    ASSERT_NE(apply, nullptr);
+    int requests = 0;
+    QObject::connect(&view, &wiola::gui::TrackTableView::order_application_asked,
+        [&requests] { ++requests; });
+    apply->trigger();
+    EXPECT_EQ(requests, 1);
+    EXPECT_EQ(playlist.tracks()[0].path(), "b.wav");
+}
+
 } // namespace
 
 int main(int argc, char** argv)

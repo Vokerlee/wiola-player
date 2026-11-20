@@ -391,6 +391,8 @@ MainWindow::MainWindow(engine::Session& session)
         [this] { transfer_now_playing(false); });
     connect(now_playing_, &NowPlayingDocument::transfer_destination_asked, this,
         [this] { transfer_now_playing(true); });
+    connect(now_playing_, &NowPlayingDocument::order_application_asked, this,
+        [this] { play_displayed_paths(now_playing_->displayed_paths(session_.playlist())); });
 
     connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
     connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
@@ -605,6 +607,9 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
     document->set_active(active_playlist_.id() == id);
     document->on_active_requested([this, id] { activate_playlist(id); });
     document->on_play_requested([this, id] { play_saved_playlist(id); });
+    document->on_apply_order_requested([this, document] {
+        play_displayed_paths(document->displayed_paths());
+    });
     document->on_transfer_active_requested([this, id, document] {
         transfer_saved_playlist(id, *document, false);
     });
@@ -682,6 +687,9 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
     });
     document->on_play_requested([this, document] { play_workspace_selection(*document); });
     document->on_append_requested([this, document] { append_workspace_selection(*document); });
+    document->on_apply_order_requested([this, document] {
+        play_displayed_paths(document->displayed_paths());
+    });
     document->on_transfer_active_requested([this, document] {
         transfer_workspace(*document, false);
     });
@@ -967,6 +975,23 @@ void MainWindow::play_saved_playlist(const library::PlaylistId& id)
     show_status(result.unavailable == 0
             ? QString{"opening saved playlist..."}
             : QString{"%1 unavailable track(s) skipped"}.arg(result.unavailable));
+    refresh();
+}
+
+void MainWindow::play_displayed_paths(std::vector<std::filesystem::path> tracks)
+{
+    const app::PlaybackQueueResult result =
+        app::PlaybackQueue{}.replace_with_paths(session_, std::move(tracks));
+
+    if (!result.requested) {
+        show_status("The displayed document has no playable tracks");
+        refresh();
+        return;
+    }
+
+    said_ = result.open_result;
+    playlist_.save();
+    show_status("Playing the displayed order");
     refresh();
 }
 

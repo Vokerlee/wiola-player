@@ -44,6 +44,8 @@ public:
 
     void show_playlist(const engine::Playlist& playlist);
     void show_library(const library::LibraryRepository& repository);
+    [[nodiscard]] std::vector<std::filesystem::path>
+    displayed_paths(const engine::Playlist& playlist) const;
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:
@@ -51,6 +53,7 @@ signals:
     void removal_asked();
     void transfer_active_asked();
     void transfer_destination_asked();
+    void order_application_asked();
 
 private:
     TrackTableView* table_{nullptr};
