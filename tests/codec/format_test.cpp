@@ -158,7 +158,7 @@ TEST(FileHead, ComparesBytesRatherThanCharacters)
     EXPECT_FALSE(head.carries(Marker{0, "\x7F\x7B"}));
 }
 
-TEST(FormatWriteCapabilities, OnlyQualifiedMp3FieldsAreWritable)
+TEST(FormatWriteCapabilities, OnlyQualifiedMp3AndFlacFieldsAreWritable)
 {
     const wiola::codec::MediaBackendRegistry registry;
     std::size_t formats = 0;
@@ -166,16 +166,20 @@ TEST(FormatWriteCapabilities, OnlyQualifiedMp3FieldsAreWritable)
     for (const wiola::codec::Backend& backend : registry.backends()) {
         for (const wiola::codec::Format& format : backend.formats) {
             ++formats;
-            EXPECT_EQ(format.metadata_writes.any(), format.name == "MPEG audio Layer III")
-                << format.name;
+            const bool qualified = format.name == "MPEG audio Layer III" || format.name == "FLAC";
+            EXPECT_EQ(format.metadata_writes.any(), qualified) << format.name;
         }
     }
 
     EXPECT_GE(formats, 17U);
 
-    const auto mp3 = registry.metadata_write_capabilities("track.MP3");
-    EXPECT_TRUE(mp3.title && mp3.artist && mp3.album && mp3.genre && mp3.year && mp3.comment &&
-        mp3.composer && mp3.track_number && mp3.disc_number);
+    for (const char* name : {"track.MP3", "track.FLAC"}) {
+        const auto capabilities = registry.metadata_write_capabilities(name);
+        EXPECT_TRUE(capabilities.title && capabilities.artist && capabilities.album &&
+            capabilities.genre && capabilities.year && capabilities.comment &&
+            capabilities.composer && capabilities.track_number && capabilities.disc_number);
+    }
+
     EXPECT_FALSE(registry.metadata_write_capabilities("track.mp2").any());
 }
 

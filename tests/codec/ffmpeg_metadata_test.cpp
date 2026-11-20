@@ -32,6 +32,7 @@ extern "C" {
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string_view>
 #include <vector>
 
@@ -132,6 +133,66 @@ Bytes artwork_frame(const Bytes& drawn)
     append(frame, {0, 3, 0});
     frame.insert(frame.end(), drawn.begin(), drawn.end());
     return frame;
+}
+
+void append_be32(Bytes& out, std::uint32_t value)
+{
+    for (int shift = 24; shift >= 0; shift -= 8)
+        out.push_back(static_cast<std::byte>((value >> shift) & 0xFFU));
+}
+
+std::filesystem::path flac_with_artwork(const char* name, const Bytes& drawn)
+{
+    std::ifstream input{fixtures() / "tone.flac", std::ios::binary};
+    const std::vector<char> encoded{std::istreambuf_iterator<char>{input},
+        std::istreambuf_iterator<char>{}};
+    Bytes file;
+    file.reserve(encoded.size());
+    for (const char value : encoded)
+        file.push_back(static_cast<std::byte>(static_cast<unsigned char>(value)));
+    EXPECT_GE(file.size(), 4U);
+
+    std::size_t offset = 4;
+    while (offset + 4 <= file.size()) {
+        const bool last = (file[offset] & std::byte{0x80}) != std::byte{};
+        const std::size_t size = (std::to_integer<std::size_t>(file[offset + 1]) << 16U) |
+            (std::to_integer<std::size_t>(file[offset + 2]) << 8U) |
+            std::to_integer<std::size_t>(file[offset + 3]);
+
+        if (last) {
+            file[offset] &= std::byte{0x7F};
+            offset += 4 + size;
+            break;
+        }
+
+        offset += 4 + size;
+    }
+
+    Bytes picture;
+    append_be32(picture, 3);
+    append_be32(picture, 9);
+    append(picture, "image/png");
+    append_be32(picture, 0);
+    append_be32(picture, 1);
+    append_be32(picture, 1);
+    append_be32(picture, 24);
+    append_be32(picture, 0);
+    append_be32(picture, static_cast<std::uint32_t>(drawn.size()));
+    picture.insert(picture.end(), drawn.begin(), drawn.end());
+
+    file.insert(file.begin() + static_cast<std::ptrdiff_t>(offset),
+        {std::byte{0x86}, static_cast<std::byte>((picture.size() >> 16U) & 0xFFU),
+            static_cast<std::byte>((picture.size() >> 8U) & 0xFFU),
+            static_cast<std::byte>(picture.size() & 0xFFU)});
+    file.insert(file.begin() + static_cast<std::ptrdiff_t>(offset + 4), picture.begin(),
+        picture.end());
+
+    const auto path = std::filesystem::temp_directory_path() / name;
+    std::ofstream output{path, std::ios::binary};
+    output.write(reinterpret_cast<const char*>(file.data()),
+        static_cast<std::streamsize>(file.size()));
+
+    return path;
 }
 
 std::vector<float> decoded_samples(const std::filesystem::path& path)
@@ -290,6 +351,56 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
     EXPECT_EQ(metadata->track.comment, "Updated comment");
     EXPECT_EQ(metadata->artwork.mime_type, "image/png");
     EXPECT_EQ(metadata->artwork.data, drawn);
+    EXPECT_EQ(decoded_samples(output), original_samples);
+}
+
+TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
+{
+    constexpr char drawn_bytes[]{"\x89PNG\r\n\x1a\n FLAC picture"};
+    Bytes drawn;
+    append(drawn, std::string_view{drawn_bytes, sizeof(drawn_bytes) - 1});
+
+    const auto track = flac_with_artwork("wiola_ffmpeg_write_cover.flac", drawn);
+    const auto original_samples = decoded_samples(track);
+    wiola::codec::LocalMediaProvider provider;
+
+    auto asset = provider.open(track);
+    ASSERT_TRUE(asset);
+    EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
+
+    wiola::media::MetadataWriteRequest first;
+    first.overrides.comment = "Keep this comment";
+    first.overrides.genre = "Jazz";
+    auto outcome = (*asset)->write_metadata(first);
+    ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
+
+    const std::filesystem::path commented = outcome.detail;
+
+    struct RemoveOutput {
+        std::filesystem::path path;
+
+        ~RemoveOutput() { std::filesystem::remove(path); }
+    } cleanup_commented{commented};
+
+    asset = provider.open(commented);
+    ASSERT_TRUE(asset);
+    wiola::media::MetadataWriteRequest second;
+    second.overrides.title = "Updated FLAC";
+    outcome = (*asset)->write_metadata(second);
+    ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
+
+    const std::filesystem::path output = outcome.detail;
+    RemoveOutput cleanup{output};
+    const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+
+    ASSERT_TRUE(metadata) << metadata.error().detail;
+    EXPECT_EQ(metadata->track.title, "Updated FLAC");
+    EXPECT_EQ(metadata->track.comment, "Keep this comment");
+    EXPECT_EQ(metadata->track.genre, "Jazz");
+    EXPECT_EQ(metadata->artwork.mime_type, "image/png");
+    EXPECT_EQ(metadata->artwork.data, drawn);
+    ASSERT_TRUE(metadata->track.duration);
+    EXPECT_GT(*metadata->track.duration, wiola::units::Time{});
     EXPECT_EQ(decoded_samples(output), original_samples);
 }
 
