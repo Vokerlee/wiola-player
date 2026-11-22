@@ -35,11 +35,9 @@ class InMemoryRepository;
 
 namespace wiola::gui {
 
-class PlayerPresenter;
 class PlayerActions;
 
 struct LayoutBuildContext {
-    PlayerPresenter* presenter{nullptr};
     PlayerActions* actions{nullptr};
     library::InMemoryRepository* library{nullptr};
 };

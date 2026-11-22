@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
 #include <engine/session.hpp>
 
@@ -49,6 +50,8 @@ public:
 
     [[nodiscard]] engine::Session& session() noexcept { return session_; }
 
+    [[nodiscard]] PlaybackService& playback() noexcept { return playback_; }
+
     [[nodiscard]] LibrarySession& library() noexcept { return library_; }
 
     /// Connects `window` to application pumping and refreshing until the window is destroyed.
@@ -59,6 +62,7 @@ signals:
 
 private:
     engine::Session session_;
+    PlaybackService playback_{session_};
     LibrarySession library_;
     QTimer pump_timer_;
     QTimer refresh_timer_;

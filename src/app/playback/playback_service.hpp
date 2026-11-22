@@ -21,20 +21,16 @@
 #pragma once
 
 #include "operation_outcome.hpp"
+#include "playback_presentation.hpp"
 #include <engine/session.hpp>
 
-namespace wiola::engine {
+namespace wiola::app {
 
 class PlaybackService {
 public:
-    PlaybackService();
-    explicit PlaybackService(Session& session);
-    explicit PlaybackService(OutputFactory make_output);
-    PlaybackService(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider);
-    PlaybackService(OutputFactory make_output, DecoderOpener open_decoder,
-        MetadataReader read_metadata);
+    explicit PlaybackService(engine::Session& session);
 
-    OperationReceipt open(std::vector<std::filesystem::path> tracks);
+    engine::OperationReceipt open(std::vector<std::filesystem::path> tracks);
     void add(std::vector<std::filesystem::path> tracks);
     bool remove(std::size_t index);
     void clear();
@@ -42,9 +38,9 @@ public:
     bool next_track();
     bool previous_track();
 
-    CommandResult play() noexcept;
-    CommandResult pause() noexcept;
-    CommandResult resume() noexcept;
+    engine::CommandResult play() noexcept;
+    engine::CommandResult pause() noexcept;
+    engine::CommandResult resume() noexcept;
     void stop() noexcept;
     void seek(units::Time position) noexcept;
 
@@ -56,35 +52,37 @@ public:
     [[nodiscard]] float equalizer_band(std::size_t index) const noexcept;
     [[nodiscard]] std::size_t num_equalizer_bands() const noexcept;
 
-    /// Mutable DSP collaborators used by the existing GUI control adapters.
-    [[nodiscard]] audio::Volume& volume_control() noexcept;
-    [[nodiscard]] audio::Equalizer& equalizer_control() noexcept;
+    [[nodiscard]] const audio::VolumePolicy& volume_policy() const noexcept;
+    [[nodiscard]] const audio::EqualizerConfig& equalizer_config() const noexcept;
+    [[nodiscard]] float equalizer_preamp() const noexcept;
+    [[nodiscard]] units::Frequency equalizer_band_center(std::size_t index) const noexcept;
+    engine::CommandResult toggle_playback() noexcept;
+    void seek_to(double fraction) noexcept;
+    void cycle_repeat() noexcept;
 
     /// Drains completions and advances playback; schedulers and headless callers share this pump.
-    PlaybackSnapshot pump();
-    [[nodiscard]] OperationOutcomes take_outcomes();
-    [[nodiscard]] PlaybackSnapshot snapshot() const;
-    void catch_up();
+    engine::PlaybackSnapshot pump();
+    [[nodiscard]] engine::OperationOutcomes take_outcomes();
+    [[nodiscard]] engine::PlaybackSnapshot snapshot() const;
     [[nodiscard]] bool reading() const noexcept;
     [[nodiscard]] bool loaded() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
-    [[nodiscard]] OpenResult open_result() const noexcept;
-    [[nodiscard]] Playback::State state() const noexcept;
+    [[nodiscard]] engine::OpenResult open_result() const noexcept;
+    [[nodiscard]] engine::Playback::State state() const noexcept;
     [[nodiscard]] units::Time time_played() const noexcept;
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
     [[nodiscard]] bool seekable() const noexcept;
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
-    [[nodiscard]] const Playlist& playlist() const noexcept;
+    [[nodiscard]] const engine::Playlist& playlist() const noexcept;
     [[nodiscard]] const std::filesystem::path& track() const noexcept;
 
-    void set_repeat(Playlist::Repeat repeat) noexcept;
-    [[nodiscard]] Playlist::Repeat repeat() const noexcept;
+    void set_repeat(engine::Playlist::Repeat repeat) noexcept;
+    [[nodiscard]] engine::Playlist::Repeat repeat() const noexcept;
     void shuffle(bool on);
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    Session owned_session_;
-    Session* session_{&owned_session_};
+    engine::Session* session_;
 };
 
-} // namespace wiola::engine
+} // namespace wiola::app

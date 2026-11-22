@@ -22,7 +22,7 @@
 
 #include <app/playback/volume_scale.hpp>
 
-#include <audio/dsp/volume.hpp>
+#include <app/playback/playback_service.hpp>
 
 #include <QSettings>
 
@@ -32,7 +32,7 @@ namespace wiola::gui {
 /// one. Nothing else may set the volume, or what it is set to is not what comes back.
 class VolumeControl {
 public:
-    VolumeControl(audio::Volume& volume, QSettings& settings) noexcept;
+    VolumeControl(app::PlaybackService& volume, QSettings& settings) noexcept;
 
     /// Applies startup values without writing them back. The domain clamps the position as usual.
     void apply_restored(int position, bool boosted) noexcept;
@@ -55,7 +55,7 @@ private:
     /// Applies `percent` without keeping it, for a position that came out of the file already.
     void apply_position(int percent);
 
-    audio::Volume& volume_;
+    app::PlaybackService& volume_;
     QSettings& settings_;
     app::VolumeScale scale_;
     int position_;

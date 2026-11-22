@@ -74,3 +74,9 @@ wiola_add_test(
     SOURCES library/search_index_test.cpp
     LIBS wiola_app
 )
+
+wiola_add_test(
+    app_playback_presentation_test
+    SOURCES playback/playback_presentation_test.cpp
+    LIBS wiola_app
+)

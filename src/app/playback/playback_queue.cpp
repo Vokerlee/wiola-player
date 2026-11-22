@@ -22,7 +22,7 @@
 
 namespace wiola::app {
 
-PlaybackQueueResult PlaybackQueue::replace_with_paths(engine::Session& session,
+PlaybackQueueResult PlaybackQueue::replace_with_paths(PlaybackService& session,
     std::vector<std::filesystem::path> tracks) const
 {
     if (tracks.empty())
@@ -30,13 +30,14 @@ PlaybackQueueResult PlaybackQueue::replace_with_paths(engine::Session& session,
 
     PlaybackQueueResult result;
     result.queued = tracks.size();
-    result.open_result = session.open(std::move(tracks));
+    static_cast<void>(session.open(std::move(tracks)));
+    result.open_result = session.open_result();
     result.requested = true;
 
     return result;
 }
 
-PlaybackQueueResult PlaybackQueue::append_paths(engine::Session& session,
+PlaybackQueueResult PlaybackQueue::append_paths(PlaybackService& session,
     std::vector<std::filesystem::path> tracks) const
 {
     if (tracks.empty())
@@ -51,7 +52,7 @@ PlaybackQueueResult PlaybackQueue::append_paths(engine::Session& session,
     return result;
 }
 
-PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(engine::Session& session,
+PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(PlaybackService& session,
     const library::LibraryRepository& repository, const library::PlaylistId& id) const
 {
     const library::PlaylistRecord* playlist = repository.playlist(id);

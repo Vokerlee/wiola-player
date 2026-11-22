@@ -33,7 +33,7 @@ PlayerApplication::PlayerApplication(QObject* parent)
     constexpr gui::PresentationTokens tokens;
 
     connect(&pump_timer_, &QTimer::timeout, this, [this] {
-        session_.catch_up();
+        static_cast<void>(playback_.pump());
         emit pumped();
     });
 

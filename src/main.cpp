@@ -60,7 +60,7 @@ int main(int argc, char** argv)
         qWarning("Could not migrate the queued tracks into the library");
 
     wiola::app::PlayerApplication player;
-    wiola::gui::MainWindow window{player.session(), player.library()};
+    wiola::gui::MainWindow window{player.playback(), player.library()};
 
     player.attach(window);
     window.show();

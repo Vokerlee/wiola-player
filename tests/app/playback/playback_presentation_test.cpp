@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/shell/player_presenter.hpp>
+#include <app/playback/playback_service.hpp>
 
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
@@ -32,17 +32,17 @@
 
 namespace {
 
+using wiola::app::PlayerPresentation;
 using wiola::engine::CommandResult;
 using wiola::engine::Playback;
-using wiola::gui::PlayerPresentation;
-using Presenter = wiola::gui::PlayerPresenter;
+using Presenter = wiola::app::PlaybackService;
 using Repeat = wiola::engine::Playlist::Repeat;
 
-class PlayerPresenter : public testing::Test {
+class PlaybackPresentation : public testing::Test {
 protected:
     void SetUp() override
     {
-        presenter = std::make_unique<Presenter>(
+        session = std::make_unique<wiola::engine::Session>(
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
             [](const std::filesystem::path&) -> wiola::codec::Opened {
                 std::unique_ptr<wiola::codec::Decoder> decoder{
@@ -52,6 +52,7 @@ protected:
             },
             [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
         );
+        presenter = std::make_unique<Presenter>(*session);
     }
 
     static bool wait_for_track(Presenter& presenter, const std::filesystem::path& track)
@@ -59,7 +60,8 @@ protected:
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
 
         while (std::chrono::steady_clock::now() < deadline) {
-            const PlayerPresentation state{presenter.pump()};
+            static_cast<void>(presenter.pump());
+            const PlayerPresentation state{wiola::app::present_playback(presenter)};
 
             if (state.playback.loaded && state.playback.track == track)
                 return true;
@@ -70,12 +72,13 @@ protected:
         return false;
     }
 
+    std::unique_ptr<wiola::engine::Session> session;
     std::unique_ptr<Presenter> presenter;
 };
 
-TEST_F(PlayerPresenter, ReportsUnavailablePlaybackWithoutMedia)
+TEST_F(PlaybackPresentation, ReportsUnavailablePlaybackWithoutMedia)
 {
-    const PlayerPresentation state{presenter->presentation()};
+    const PlayerPresentation state{wiola::app::present_playback(*presenter)};
 
     EXPECT_FALSE(state.playback.loaded);
     EXPECT_FALSE(state.playback.playing);
@@ -89,17 +92,17 @@ TEST_F(PlayerPresenter, ReportsUnavailablePlaybackWithoutMedia)
     presenter->stop();
     presenter->seek_to(0.5);
 
-    EXPECT_EQ(presenter->presentation().playback.state, Playback::State::idle);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::idle);
 }
 
-TEST_F(PlayerPresenter, PumpsALoadIntoOneCoherentPresentation)
+TEST_F(PlaybackPresentation, PumpsALoadIntoOneCoherentPresentation)
 {
     const auto receipt{presenter->open({"track.wav"})};
 
     EXPECT_EQ(receipt.acceptance, CommandResult::accepted);
     ASSERT_TRUE(wait_for_track(*presenter, "track.wav"));
 
-    const PlayerPresentation state{presenter->presentation()};
+    const PlayerPresentation state{wiola::app::present_playback(*presenter)};
 
     EXPECT_TRUE(state.playback.loaded);
     EXPECT_FALSE(state.playback.playing);
@@ -111,29 +114,29 @@ TEST_F(PlayerPresenter, PumpsALoadIntoOneCoherentPresentation)
     EXPECT_EQ(presenter->playlist().tracks().size(), 1U);
 }
 
-TEST_F(PlayerPresenter, TogglesBetweenPlayingPausedAndStopped)
+TEST_F(PlaybackPresentation, TogglesBetweenPlayingPausedAndStopped)
 {
     presenter->open({"track.wav"});
     ASSERT_TRUE(wait_for_track(*presenter, "track.wav"));
 
     EXPECT_EQ(presenter->toggle_playback(), CommandResult::accepted);
-    EXPECT_EQ(presenter->presentation().playback.state, Playback::State::playing);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::playing);
 
     EXPECT_EQ(presenter->toggle_playback(), CommandResult::accepted);
-    EXPECT_EQ(presenter->presentation().playback.state, Playback::State::paused);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::paused);
 
     EXPECT_EQ(presenter->toggle_playback(), CommandResult::accepted);
-    EXPECT_EQ(presenter->presentation().playback.state, Playback::State::playing);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::playing);
 
     presenter->stop();
 
-    const PlayerPresentation stopped{presenter->presentation()};
+    const PlayerPresentation stopped{wiola::app::present_playback(*presenter)};
     EXPECT_EQ(stopped.playback.state, Playback::State::stopped);
     EXPECT_FALSE(stopped.playback.playing);
     EXPECT_EQ(stopped.playback.time_played, wiola::units::Time{});
 }
 
-TEST_F(PlayerPresenter, RoutesQueueCommandsAndPresentsPlaybackPolicy)
+TEST_F(PlaybackPresentation, RoutesQueueCommandsAndPresentsPlaybackPolicy)
 {
     presenter->open({"first.wav", "second.wav", "third.wav"});
     ASSERT_TRUE(wait_for_track(*presenter, "first.wav"));
@@ -148,46 +151,48 @@ TEST_F(PlayerPresenter, RoutesQueueCommandsAndPresentsPlaybackPolicy)
     ASSERT_TRUE(wait_for_track(*presenter, "second.wav"));
 
     presenter->cycle_repeat();
-    EXPECT_EQ(presenter->presentation().repeat, Repeat::all);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).repeat, Repeat::all);
 
     presenter->cycle_repeat();
-    EXPECT_EQ(presenter->presentation().repeat, Repeat::track);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).repeat, Repeat::track);
 
     presenter->cycle_repeat();
-    EXPECT_EQ(presenter->presentation().repeat, Repeat::none);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).repeat, Repeat::none);
 
     presenter->shuffle(true);
 
-    const PlayerPresentation shuffled{presenter->presentation()};
+    const PlayerPresentation shuffled{wiola::app::present_playback(*presenter)};
     EXPECT_TRUE(shuffled.shuffled);
     EXPECT_EQ(shuffled.playback.queue_position, 1U);
 
     EXPECT_TRUE(presenter->remove(0));
     EXPECT_EQ(presenter->playlist().tracks().size(), 2U);
-    EXPECT_EQ(presenter->presentation().playback.track, std::filesystem::path{"second.wav"});
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.track,
+        std::filesystem::path{"second.wav"});
 
     presenter->clear();
 
     EXPECT_TRUE(presenter->playlist().empty());
-    EXPECT_EQ(presenter->presentation().playback.track, std::filesystem::path{"second.wav"});
-    EXPECT_TRUE(presenter->presentation().playback.loaded);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.track,
+        std::filesystem::path{"second.wav"});
+    EXPECT_TRUE(wiola::app::present_playback(*presenter).playback.loaded);
 }
 
-TEST_F(PlayerPresenter, SeeksByFractionOfThePresentedDuration)
+TEST_F(PlaybackPresentation, SeeksByFractionOfThePresentedDuration)
 {
     presenter->open({"track.wav"});
     ASSERT_TRUE(wait_for_track(*presenter, "track.wav"));
 
-    const auto total{presenter->presentation().playback.total_time};
+    const auto total{wiola::app::present_playback(*presenter).playback.total_time};
     ASSERT_TRUE(total.has_value());
 
     presenter->seek_to(0.5);
 
-    const wiola::units::Time elapsed{presenter->presentation().playback.time_played};
+    const wiola::units::Time elapsed{wiola::app::present_playback(*presenter).playback.time_played};
     EXPECT_NEAR(elapsed.get<wiola::units::Sec>(), total->get<wiola::units::Sec>() * 0.5, 0.001);
 }
 
-TEST_F(PlayerPresenter, RoutesVolumeAndEqualizerValues)
+TEST_F(PlaybackPresentation, RoutesVolumeAndEqualizerValues)
 {
     presenter->set_volume(0.25F);
     presenter->set_equalizer_enabled(false);

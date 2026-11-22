@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <engine/session.hpp>
+#include "playback_service.hpp"
 #include <library/repository.hpp>
 
 namespace wiola::app {
@@ -34,11 +34,11 @@ struct PlaybackQueueResult {
 
 class PlaybackQueue final {
 public:
-    [[nodiscard]] PlaybackQueueResult replace_with_paths(engine::Session& session,
+    [[nodiscard]] PlaybackQueueResult replace_with_paths(PlaybackService& session,
         std::vector<std::filesystem::path> tracks) const;
-    [[nodiscard]] PlaybackQueueResult append_paths(engine::Session& session,
+    [[nodiscard]] PlaybackQueueResult append_paths(PlaybackService& session,
         std::vector<std::filesystem::path> tracks) const;
-    [[nodiscard]] PlaybackQueueResult replace_with_saved_playlist(engine::Session& session,
+    [[nodiscard]] PlaybackQueueResult replace_with_saved_playlist(PlaybackService& session,
         const library::LibraryRepository& repository, const library::PlaylistId& id) const;
 };
 

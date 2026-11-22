@@ -33,13 +33,14 @@
 
 namespace {
 
+using wiola::app::PlaybackService;
 using wiola::engine::CommandResult;
-using wiola::engine::PlaybackService;
 
 TEST(PlaybackService, ReportsUnavailableCommandsWithoutLoadedMedia)
 {
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); }};
+    PlaybackService service{service_session};
 
     EXPECT_EQ(service.play(), CommandResult::unavailable);
     EXPECT_EQ(service.pause(), CommandResult::unavailable);
@@ -48,7 +49,7 @@ TEST(PlaybackService, ReportsUnavailableCommandsWithoutLoadedMedia)
 
 TEST(PlaybackService, SeparatesPlayPauseAndResume)
 {
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&) -> wiola::codec::Opened {
             std::unique_ptr<wiola::codec::Decoder> decoder{
@@ -56,11 +57,12 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
             return decoder;
         },
         [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    PlaybackService service{service_session};
 
     service.open({"track.wav"});
     while (service.reading())
         std::this_thread::yield();
-    service.catch_up();
+    static_cast<void>(service.pump());
     ASSERT_TRUE(service.loaded());
 
     EXPECT_EQ(service.play(), CommandResult::accepted);
@@ -74,8 +76,9 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
 
 TEST(PlaybackService, ExposesAudioControlsAsValues)
 {
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); }};
+    PlaybackService service{service_session};
 
     service.set_volume(0.25F);
     service.set_equalizer_enabled(true);
@@ -91,7 +94,7 @@ TEST(PlaybackService, ExposesAudioControlsAsValues)
 
 TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
 {
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&) -> wiola::codec::Opened {
             std::unique_ptr<wiola::codec::Decoder> decoder{
@@ -99,6 +102,7 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
             return decoder;
         },
         [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    PlaybackService service{service_session};
 
     service.open({"headless.wav"});
     while (service.reading())
@@ -114,7 +118,7 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
 
 TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
 {
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&) {
             return wiola::codec::Opened{wiola::media::unexpected{
@@ -122,6 +126,7 @@ TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
                     .detail = "missing codec"}}};
         },
         [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    PlaybackService service{service_session};
 
     const auto receipt{service.open({"unsupported.wav"})};
     ASSERT_EQ(receipt.acceptance, CommandResult::accepted);
@@ -146,7 +151,7 @@ TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
 TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
 {
     wiola::testing::Gate opening;
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [&opening](const std::filesystem::path& path) -> wiola::codec::Opened {
             if (path == "old.wav") {
@@ -160,6 +165,7 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
             return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    PlaybackService service{service_session};
 
     const auto old{service.open({"old.wav"})};
     opening.wait_until_entered();
@@ -190,7 +196,7 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
 TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
 {
     std::atomic<std::size_t> num_metadata_reads{0};
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&) -> wiola::codec::Opened {
             return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
@@ -204,6 +210,7 @@ TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
                                     .detail = "bad tags"}
             };
         }};
+    PlaybackService service{service_session};
 
     const auto receipt{service.open({"playable.wav"})};
     ASSERT_EQ(receipt.acceptance, CommandResult::accepted);
@@ -229,7 +236,7 @@ TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
 TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
 {
     std::atomic<std::size_t> num_metadata_reads{0};
-    PlaybackService service{
+    wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&) -> wiola::codec::Opened {
             return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
@@ -238,6 +245,7 @@ TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
             ++num_metadata_reads;
             return wiola::media::Metadata{};
         }};
+    PlaybackService service{service_session};
     std::vector<std::filesystem::path> tracks;
 
     for (std::size_t index{0}; index < 80; ++index)

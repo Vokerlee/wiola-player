@@ -98,7 +98,7 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     const std::filesystem::path source = track("wiola_application_load.wav");
 
     {
-        wiola::gui::MainWindow window{player.session(), player.library()};
+        wiola::gui::MainWindow window{player.playback(), player.library()};
         player.attach(window);
 
         window.open({source});
@@ -115,7 +115,7 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     const auto media = wiola::library::media_id_for(source);
     ASSERT_TRUE(pump_until([&] { return player.library().repository().track(media) != nullptr; }));
     EXPECT_EQ(player.library().search().size(), 1);
-    wiola::gui::MainWindow replacement{player.session(), player.library()};
+    wiola::gui::MainWindow replacement{player.playback(), player.library()};
     EXPECT_NE(player.library().repository().track(media), nullptr);
 }
 
@@ -138,10 +138,10 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
     }
     const auto revision = library.repository().change_revision();
     {
-        wiola::gui::MainWindow first{player.session(), library};
+        wiola::gui::MainWindow first{player.playback(), library};
         EXPECT_EQ(library.repository().playlists().size(), 1);
     }
-    wiola::gui::MainWindow replacement{player.session(), library};
+    wiola::gui::MainWindow replacement{player.playback(), library};
     EXPECT_EQ(library.active_playlist().id(), playlist);
     ASSERT_NE(library.repository().track(record.id), nullptr);
     EXPECT_EQ(library.repository().track(record.id)->metadata_revision, 17);
