@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/library_storage.hpp>
+#include <persistence/qt/library_storage.hpp>
 
 #include <QCoreApplication>
 #include <QEventLoop>
@@ -33,13 +33,13 @@
 
 namespace {
 
-using namespace wiola::gui;
+using namespace wiola::persistence::qt;
 using wiola::library::TrackRecord;
-using Storage = wiola::gui::LibraryStorage;
+using Storage = wiola::persistence::qt::LibraryStorage;
 
-LibrarySnapshot snapshot(const std::string& title)
+wiola::library::LibrarySnapshot snapshot(const std::string& title)
 {
-    LibrarySnapshot library;
+    wiola::library::LibrarySnapshot library;
     TrackRecord track;
     track.id = {.value = "media-1"};
     track.embedded.title = title;
@@ -74,7 +74,7 @@ protected:
 TEST_F(LibraryStorage, MissingFilesProduceAnEmptyLibrary)
 {
     Storage storage{file()};
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
 
     EXPECT_EQ(storage.load(restored), LibraryJsonError::none);
     EXPECT_TRUE(restored.tracks.empty());
@@ -87,7 +87,7 @@ TEST_F(LibraryStorage, WritesAndReadsACompleteSnapshot)
 
     ASSERT_EQ(storage.save(snapshot("Stored")), LibraryJsonError::none);
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Stored");
@@ -106,7 +106,7 @@ TEST_F(LibraryStorage, RecoversTheLastValidBackupAfterPrimaryCorruption)
     ASSERT_EQ(damaged.write("broken"), 6);
     damaged.close();
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "First");
@@ -126,7 +126,7 @@ TEST_F(LibraryStorage, CoalescesScheduledSnapshotsIntoTheNewestCompleteWrite)
     ASSERT_TRUE(pump_until([&storage] { return !storage.pending(); }));
     EXPECT_EQ(failures, 0);
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "New");
@@ -141,7 +141,7 @@ TEST_F(LibraryStorage, FlushWritesImmediatelyAndClearsThePendingSnapshot)
     EXPECT_EQ(storage.flush(), LibraryJsonError::none);
     EXPECT_FALSE(storage.pending());
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Immediate");
@@ -152,14 +152,14 @@ TEST_F(LibraryStorage, InvalidSnapshotDoesNotReplaceThePreviousFile)
     Storage storage{file()};
     ASSERT_EQ(storage.save(snapshot("Valid")), LibraryJsonError::none);
 
-    LibrarySnapshot invalid{
+    wiola::library::LibrarySnapshot invalid{
         .tracks = {snapshot("One").tracks.front(), snapshot("Two").tracks.front()},
         .playlists = {}
     };
 
     EXPECT_EQ(storage.save(invalid), LibraryJsonError::invalid_record);
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Valid");

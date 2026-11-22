@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/library_json.hpp>
+#include <persistence/qt/library_json.hpp>
 
 #include <QByteArray>
 
@@ -29,7 +29,7 @@
 namespace {
 
 using namespace wiola::library;
-using namespace wiola::gui;
+using namespace wiola::persistence::qt;
 
 TrackRecord track_record()
 {
@@ -66,7 +66,7 @@ TrackRecord track_record()
 
 TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
 {
-    LibrarySnapshot original{.tracks = {track_record()},
+    wiola::library::LibrarySnapshot original{.tracks = {track_record()},
         .playlists = {},
         .workspaces = {WorkspaceRecord{.id = WorkspaceId{"workspace-1"},
             .root = "music",
@@ -83,7 +83,7 @@ TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
     QByteArray json;
     ASSERT_EQ(write_library_json(original, json), LibraryJsonError::none);
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(read_library_json(json, restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     ASSERT_EQ(restored.playlists.size(), 1U);
@@ -129,7 +129,7 @@ TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
 TEST(LibraryJson, SuppliesDefaultsForOptionalFieldsFromAnOlderRecordShape)
 {
     const QByteArray json{R"({"version":1,"tracks":[{"id":"media-1"}],"playlists":[]})"};
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
 
     ASSERT_EQ(read_library_json(json, restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
@@ -146,7 +146,7 @@ TEST(LibraryJson, SuppliesDefaultsForOptionalFieldsFromAnOlderRecordShape)
 
 TEST(LibraryJson, RejectsMalformedInputAndUnknownVersions)
 {
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
 
     EXPECT_EQ(read_library_json("{", restored), LibraryJsonError::malformed);
     EXPECT_EQ(read_library_json("[]", restored), LibraryJsonError::malformed);
@@ -160,14 +160,14 @@ TEST(LibraryJson, RejectsMalformedInputAndUnknownVersions)
 TEST(LibraryJson, RejectsDocumentsBeyondTheByteLimitBeforeParsing)
 {
     const QByteArray oversized(16 * 1024 * 1024 + 1, ' ');
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
 
     EXPECT_EQ(read_library_json(oversized, restored), LibraryJsonError::too_large);
 }
 
 TEST(LibraryJson, RejectsDuplicateTrackIdentities)
 {
-    LibrarySnapshot library{
+    wiola::library::LibrarySnapshot library{
         .tracks = {track_record(), track_record()},
         .playlists = {},
         .workspaces = {}
@@ -179,7 +179,9 @@ TEST(LibraryJson, RejectsDuplicateTrackIdentities)
 
 TEST(LibraryJson, RejectsMoreThan256TagsOnOneTrack)
 {
-    LibrarySnapshot library{.tracks = {track_record()}, .playlists = {}, .workspaces = {}};
+    wiola::library::LibrarySnapshot library{.tracks = {track_record()},
+        .playlists = {},
+        .workspaces = {}};
     library.tracks.front().tags.clear();
 
     for (std::size_t index = 0; index < 257; ++index) {
@@ -196,7 +198,7 @@ TEST(LibraryJson, RejectsNormalizedDuplicateTagsAndTrimsRestoredText)
 {
     const QByteArray duplicates{
         R"({"version":1,"tracks":[{"id":"media-1","tags":[{"id":"tag-1","key":"Genre","value":"Jazz"},{"id":"tag-2","key":"genre","value":"jazz"}]}],"playlists":[]})"};
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
 
     EXPECT_EQ(read_library_json(duplicates, restored), LibraryJsonError::invalid_record);
 
@@ -211,7 +213,7 @@ TEST(LibraryJson, RejectsNormalizedDuplicateTagsAndTrimsRestoredText)
 
 TEST(LibraryJson, RejectsAPlaylistEntryForUnknownMedia)
 {
-    LibrarySnapshot library;
+    wiola::library::LibrarySnapshot library;
     PlaylistRecord playlist;
     playlist.id = {.value = "playlist-1"};
     playlist.name = "Broken";
@@ -228,7 +230,7 @@ TEST(LibraryJson, RejectsANonNumericRevision)
 {
     const QByteArray json{
         R"({"version":1,"tracks":[{"id":"media-1","contentRevision":"latest"}],"playlists":[]})"};
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
 
     EXPECT_EQ(read_library_json(json, restored), LibraryJsonError::invalid_record);
 }

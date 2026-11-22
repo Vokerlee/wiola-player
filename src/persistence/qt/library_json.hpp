@@ -20,20 +20,14 @@
 
 #pragma once
 
-#include <library/records.hpp>
+#include <library/snapshot.hpp>
 
 #include <vector>
 
 class QByteArray;
 class QByteArrayView;
 
-namespace wiola::gui {
-
-struct LibrarySnapshot {
-    std::vector<library::TrackRecord> tracks;
-    std::vector<library::PlaylistRecord> playlists;
-    std::vector<library::WorkspaceRecord> workspaces;
-};
+namespace wiola::persistence::qt {
 
 enum class LibraryJsonError {
     none,
@@ -45,8 +39,9 @@ enum class LibraryJsonError {
     io,
 };
 
-[[nodiscard]] LibraryJsonError write_library_json(const LibrarySnapshot& library,
+[[nodiscard]] LibraryJsonError write_library_json(const library::LibrarySnapshot& library,
     QByteArray& output);
-[[nodiscard]] LibraryJsonError read_library_json(QByteArrayView json, LibrarySnapshot& output);
+[[nodiscard]] LibraryJsonError read_library_json(QByteArrayView json,
+    library::LibrarySnapshot& output);
 
-} // namespace wiola::gui
+} // namespace wiola::persistence::qt

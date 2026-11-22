@@ -30,7 +30,7 @@
 #include <chrono>
 #include <utility>
 
-namespace wiola::gui {
+namespace wiola::persistence::qt {
 
 namespace {
 
@@ -103,7 +103,7 @@ LibraryStorage::~LibraryStorage()
     static_cast<void>(flush());
 }
 
-LibraryJsonError LibraryStorage::load(LibrarySnapshot& output) const
+LibraryJsonError LibraryStorage::load(library::LibrarySnapshot& output) const
 {
     const Candidate primary{read_candidate(file_)};
 
@@ -137,7 +137,7 @@ LibraryJsonError LibraryStorage::load(LibrarySnapshot& output) const
     return LibraryJsonError::none;
 }
 
-LibraryJsonError LibraryStorage::save(const LibrarySnapshot& snapshot)
+LibraryJsonError LibraryStorage::save(const library::LibrarySnapshot& snapshot)
 {
     coalesce_.stop();
     pending_.reset();
@@ -145,7 +145,7 @@ LibraryJsonError LibraryStorage::save(const LibrarySnapshot& snapshot)
     return write(snapshot);
 }
 
-void LibraryStorage::schedule(LibrarySnapshot snapshot)
+void LibraryStorage::schedule(library::LibrarySnapshot snapshot)
 {
     pending_ = std::move(snapshot);
     coalesce_.start();
@@ -171,7 +171,7 @@ void LibraryStorage::on_save_failed(std::function<void(LibraryJsonError)> observ
     failure_observer_ = std::move(observer);
 }
 
-LibraryJsonError LibraryStorage::write(const LibrarySnapshot& snapshot)
+LibraryJsonError LibraryStorage::write(const library::LibrarySnapshot& snapshot)
 {
     QByteArray json;
     const LibraryJsonError serialized{write_library_json(snapshot, json)};
@@ -190,7 +190,7 @@ LibraryJsonError LibraryStorage::write(const LibrarySnapshot& snapshot)
         return current.error;
 
     if (current.exists) {
-        LibrarySnapshot previous;
+        library::LibrarySnapshot previous;
 
         if (read_library_json(current.json, previous) == LibraryJsonError::none) {
             const LibraryJsonError backed_up{write_atomic(backup_, current.json)};
@@ -203,4 +203,16 @@ LibraryJsonError LibraryStorage::write(const LibrarySnapshot& snapshot)
     return write_atomic(file_, json);
 }
 
-} // namespace wiola::gui
+LibraryJsonError restore_repository(const LibraryStorage& storage,
+    library::InMemoryRepository& repository)
+{
+    library::LibrarySnapshot snapshot;
+    const auto error = storage.load(snapshot);
+    if (error != LibraryJsonError::none)
+        return error;
+    return repository.replace_all(snapshot.tracks, snapshot.playlists, snapshot.workspaces)
+        ? LibraryJsonError::none
+        : LibraryJsonError::invalid_record;
+}
+
+} // namespace wiola::persistence::qt

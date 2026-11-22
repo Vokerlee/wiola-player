@@ -9,9 +9,7 @@ wiola_add_library(
         controls/equalizer_control.cpp
         controls/equalizer_panel.cpp
         layout/focused_layout.cpp
-        library_json.cpp
         shell/library_navigation.cpp
-        library_storage.cpp
         layout/layout_document.cpp
         layout/layout_builder.cpp
         layout/layout_editor.cpp
@@ -33,12 +31,12 @@ wiola_add_library(
         shell/player_presenter.cpp
         documents/saved_playlist_document.cpp
         shell/saved_playlist_manager.cpp
-        saved_playlist_storage.cpp
         controls/seek_bar.cpp
         metadata/standard_metadata_editor.cpp
         controls/volume_control.cpp
         documents/workspace_document.cpp
     LIBS
+        wiola_persistence_qt
         wiola_qt_settings
         wiola_qt_platform
         wiola_app

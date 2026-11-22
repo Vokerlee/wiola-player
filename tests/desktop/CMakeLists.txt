@@ -26,7 +26,7 @@ wiola_add_test(
 wiola_add_test(
     app_saved_playlist_commands_test
     SOURCES library/saved_playlist_commands_test.cpp
-    LIBS wiola_saved_playlists wiola_gui
+    LIBS wiola_saved_playlists wiola_persistence_qt
 )
 wiola_add_test(
     app_queue_library_migration_test

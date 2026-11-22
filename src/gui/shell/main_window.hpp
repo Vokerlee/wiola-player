@@ -35,7 +35,7 @@
 #include <gui/documents/workspace_document.hpp>
 #include <gui/layout/layout_document.hpp>
 #include <gui/metadata/track_inspector.hpp>
-#include <gui/saved_playlist_storage.hpp>
+#include <persistence/qt/library_storage.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/metadata/metadata_merge.hpp>
@@ -227,7 +227,7 @@ private:
     VolumeControl volume_;
     EqualizerControl equalizer_;
     library::InMemoryRepository library_;
-    SavedPlaylistStorage playlist_storage_;
+    persistence::qt::LibraryStorage library_storage_;
     app::SavedPlaylistCommands playlist_commands_;
     app::CustomTagCommands tag_commands_;
     app::OptimisticMetadataEdits optimistic_edits_;

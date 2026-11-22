@@ -59,11 +59,6 @@ wiola_add_test(
     LIBS wiola_gui
 )
 wiola_add_test(
-    gui_saved_playlist_storage_test
-    SOURCES saved_playlist_storage_test.cpp
-    LIBS wiola_gui wiola_library
-)
-wiola_add_test(
     gui_saved_playlist_manager_test
     SOURCES shell/saved_playlist_manager_test.cpp
     LIBS wiola_gui wiola_saved_playlists
@@ -115,16 +110,6 @@ wiola_add_test(
     gui_player_actions_test
     SOURCES shell/player_actions_test.cpp
     LIBS wiola_gui
-)
-wiola_add_test(
-    gui_library_json_test
-    SOURCES library_json_test.cpp
-    LIBS wiola_gui wiola_library
-)
-wiola_add_test(
-    gui_library_storage_test
-    SOURCES library_storage_test.cpp
-    LIBS wiola_gui wiola_library
 )
 wiola_add_test(gui_theme_test SOURCES appearance/theme_test.cpp LIBS wiola_gui)
 wiola_add_test(
