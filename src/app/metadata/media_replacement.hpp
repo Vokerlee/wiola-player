@@ -34,6 +34,24 @@ struct MediaReplacementHooks {
     std::function<bool()> before_commit;
 };
 
+struct PreparedMediaReplacement {
+    std::filesystem::path source, temporary;
+    std::string source_fingerprint, output_fingerprint;
+};
+
+struct MediaReplacementValidation {
+    std::optional<PreparedMediaReplacement> prepared;
+    media::MetadataWriteOutcome failure;
+};
+
+[[nodiscard]] MediaReplacementValidation
+prepare_media_replacement(const std::filesystem::path& source,
+    const std::filesystem::path& temporary, media::MediaProvider& provider,
+    std::string_view expected_fingerprint = {}, const media::OperationContext& context = {});
+[[nodiscard]] media::MetadataWriteOutcome
+commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
+    const media::OperationContext& context = {}, MediaReplacementHooks hooks = {});
+
 /// Reopens and compares source/output audio, retains a backup, then atomically renames the
 /// validated output over the source. Validation or conflict failures never replace the source.
 [[nodiscard]] media::MetadataWriteOutcome commit_media_replacement(

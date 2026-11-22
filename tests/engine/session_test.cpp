@@ -811,3 +811,27 @@ TEST(Session, ReloadQuiescesAndRestoresTheCurrentPlayIntent)
     EXPECT_EQ(fixture.num_outputs, 1U);
     EXPECT_NEAR(fixture.session.time_played().get<units::Sec>(), 0.4, 0.02);
 }
+
+TEST(Session, ReplacementHandoffHonorsNewerPauseSeekAndQueueClear)
+{
+    Fixture fixture;
+    fixture.consuming = false;
+    const auto path = wiola::testing::write_wav("wiola_session_handoff.wav");
+    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    ASSERT_TRUE(fixture.session.play());
+    auto handoff = fixture.session.release_media(path);
+    ASSERT_TRUE(handoff);
+    EXPECT_FALSE(fixture.session.loaded());
+    EXPECT_TRUE(fixture.session.pause());
+    fixture.session.seek(units::Time{0.3});
+    EXPECT_EQ(fixture.session.restore_media(*handoff), OpenResult::loading);
+    ASSERT_TRUE(poll_until(fixture.session, [&] { return fixture.session.loaded(); }));
+    EXPECT_FALSE(fixture.session.playing());
+    EXPECT_NEAR(fixture.session.time_played().get<units::Sec>(), 0.3, 0.02);
+    handoff = fixture.session.release_media(path);
+    ASSERT_TRUE(handoff);
+    fixture.session.clear();
+    fixture.session.restore_media(*handoff);
+    EXPECT_TRUE(fixture.session.playlist().tracks().empty());
+    EXPECT_FALSE(fixture.session.play());
+}

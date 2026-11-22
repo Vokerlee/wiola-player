@@ -30,6 +30,7 @@
 #include <app/playback/active_playlist.hpp>
 #include <app/workspace/workspace_reconciliation.hpp>
 #include <desktop/metadata/media_revision_publisher.hpp>
+#include <desktop/metadata/metadata_write_service.hpp>
 #include <desktop/workspace/workspace_scan_publisher.hpp>
 #include <desktop/workspace/workspace_watcher.hpp>
 #include <persistence/qt/library_store.hpp>
@@ -56,6 +57,13 @@ public:
     [[nodiscard]] SavedPlaylistCommands& playlists();
     [[nodiscard]] CustomTagCommands& tags();
     [[nodiscard]] MetadataEditService& metadata_edits();
+
+    [[nodiscard]] MetadataWriteService& file_writes()
+    {
+        check_owner();
+        return writes_;
+    }
+
     [[nodiscard]] ActivePlaylist& active_playlist();
     /// Owned, owner-thread snapshot safe across repository transactions.
     [[nodiscard]] std::optional<library::TrackRecord> snapshot(const library::MediaId& id) const;
@@ -83,6 +91,7 @@ signals:
     void scan_batch(const wiola::app::WorkspaceScanBatch& batch);
     void metadata_outcome(const wiola::app::MetadataEditOutcome& outcome);
     void status_changed(const QString& status);
+    void file_write_outcome(const wiola::app::MetadataWriteResult& result);
     void workspace_changed(const wiola::library::WorkspaceId& id);
 
 private:
@@ -118,6 +127,7 @@ private:
     persistence::qt::LibraryStoreResult restore_result_;
     library::LibraryChanges::Subscription changes_;
     WorkspaceScanPublisher scans_;
+    MetadataWriteService writes_;
     MediaRevisionPublisher metadata_;
     WorkspaceWatcher watcher_;
 };

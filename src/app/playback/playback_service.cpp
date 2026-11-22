@@ -110,6 +110,18 @@ engine::CommandResult PlaybackService::resume() noexcept
                               : engine::CommandResult::unavailable;
 }
 
+std::optional<engine::Session::MediaReplacementState>
+PlaybackService::release_media(const std::filesystem::path& path)
+{
+    return session_->release_media(path);
+}
+
+void PlaybackService::restore_media(const engine::Session::MediaReplacementState& state)
+{
+    if (accepting_)
+        static_cast<void>(session_->restore_media(state));
+}
+
 void PlaybackService::stop() noexcept
 {
     session_->stop();

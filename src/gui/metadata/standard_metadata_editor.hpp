@@ -53,6 +53,10 @@ public:
     void show_status(const QString& status);
     void on_apply(Observer observer);
 
+    void on_file_write(Observer observer) { file_observer_ = std::move(observer); }
+
+    void show_file_status(const QString& status) { file_status_->setText(status); }
+
 private:
     [[nodiscard]] library::ResolvedMetadata current() const;
     [[nodiscard]] library::StandardMetadataPatch patch() const;
@@ -81,6 +85,9 @@ private:
     QPushButton* apply_{nullptr};
     QPushButton* cancel_{nullptr};
     Observer observer_;
+    Observer file_observer_;
+    QPushButton* save_file_{nullptr};
+    QLabel* file_status_{nullptr};
 };
 
 } // namespace wiola::gui

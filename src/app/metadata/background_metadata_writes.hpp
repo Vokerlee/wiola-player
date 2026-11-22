@@ -37,12 +37,13 @@ public:
     ~BackgroundMetadataWrites();
     void stop();
     [[nodiscard]] std::optional<MetadataWriteOperationId> enqueue(MetadataWriteJob job,
-        Observer observer);
+        Observer observer, Observer progress = {});
 
 private:
     struct Pending {
         MetadataWriteJob job;
         Observer observer;
+        Observer progress;
     };
 
     void run();

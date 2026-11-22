@@ -159,6 +159,7 @@ void Session::clear()
 {
     metadata_.cancel();
     playlist_.clear();
+    replacement_.reset();
     stop();
 }
 
@@ -209,6 +210,7 @@ bool Session::shuffled() const noexcept
 
 OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
 {
+    replacement_.reset();
     // Whatever was read and not put on was read for a track nobody is waiting for any more.
     restore_position_.reset();
     ready_.reset();
@@ -400,6 +402,10 @@ bool Session::loaded() const noexcept
 
 bool Session::play_or_pause()
 {
+    if (replacement_) {
+        replacement_->play = !replacement_->play;
+        return true;
+    }
     if (!loaded())
         return false;
 
@@ -417,21 +423,37 @@ bool Session::play_or_pause()
 
 bool Session::play() noexcept
 {
+    if (replacement_) {
+        replacement_->play = true;
+        return true;
+    }
     return loaded() && pipeline_->player().start();
 }
 
 bool Session::pause() noexcept
 {
+    if (replacement_) {
+        replacement_->play = false;
+        return true;
+    }
     return loaded() && state() == Playback::State::playing && pipeline_->player().pause();
 }
 
 bool Session::resume() noexcept
 {
+    if (replacement_) {
+        replacement_->play = true;
+        return true;
+    }
     return loaded() && state() == Playback::State::paused && pipeline_->player().resume();
 }
 
 void Session::stop() noexcept
 {
+    if (replacement_) {
+        replacement_->play = false;
+        replacement_->position = units::Time{};
+    }
     loads_.invalidate();
     ready_.reset();
     ready_track_.clear();
@@ -445,36 +467,55 @@ void Session::stop() noexcept
     pipeline_->player().seek(units::Time{});
 }
 
-OpenResult Session::reload_current()
+std::optional<Session::MediaReplacementState>
+Session::release_media(const std::filesystem::path& path)
 {
     const Track* current = playlist_.current();
-    if (current == nullptr)
-        return last_result_;
-
-    const bool resume = playing();
-    const units::Time position = time_played();
-
+    if (!current || current->path() != path)
+        return {};
+    if (replacement_ && replacement_->entry == current->id())
+        return replacement_;
+    const MediaReplacementState state{current->id(), playing(), time_played()};
     loads_.invalidate();
     ready_.reset();
     ready_track_.clear();
-
     if (loaded()) {
         pipeline_->player().stop();
         pipeline_->player().wait();
     }
-
     out_.disconnect();
     pipeline_.reset();
+    replacement_ = state;
+    return state;
+}
 
-    const OpenResult result =
-        begin_reading(*current, resume ? LoadIntent::play : LoadIntent::install);
-    restore_position_ = position;
-
+OpenResult Session::restore_media(const MediaReplacementState& state)
+{
+    const Track* current = playlist_.current();
+    if (!current || current->id() != state.entry)
+        return last_result_;
+    if (!replacement_ || replacement_->entry != state.entry)
+        return last_result_;
+    const auto intent = *replacement_;
+    const auto result =
+        begin_reading(*current, intent.play ? LoadIntent::play : LoadIntent::install);
+    restore_position_ = intent.position;
     return result;
+}
+
+OpenResult Session::reload_current()
+{
+    const auto state =
+        release_media(playlist_.current() ? playlist_.current()->path() : std::filesystem::path{});
+    return state ? restore_media(*state) : last_result_;
 }
 
 void Session::seek(units::Time position) noexcept
 {
+    if (replacement_) {
+        replacement_->position = position;
+        return;
+    }
     if (loaded())
         pipeline_->player().seek(position);
 }

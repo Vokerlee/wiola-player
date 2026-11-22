@@ -58,6 +58,22 @@ bool QueuedDelivery::post(std::function<void()> delivery)
     return true;
 }
 
+void QueuedDelivery::drain()
+{
+    Q_ASSERT(QThread::currentThread() == thread());
+    for (;;) {
+        std::function<void()> delivery;
+        {
+            std::lock_guard lock{mutex_};
+            if (pending_.empty())
+                return;
+            delivery = std::move(pending_.front());
+            pending_.pop_front();
+        }
+        delivery();
+    }
+}
+
 void QueuedDelivery::customEvent(QEvent* event)
 {
     std::function<void()> delivery;

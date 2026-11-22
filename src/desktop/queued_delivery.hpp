@@ -32,6 +32,7 @@ class QueuedDelivery final : public QObject {
 public:
     explicit QueuedDelivery(QObject& context);
     [[nodiscard]] bool post(std::function<void()> delivery);
+    void drain();
 
 protected:
     void customEvent(QEvent* event) override;

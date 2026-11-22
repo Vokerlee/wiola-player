@@ -57,6 +57,16 @@ PlayerApplication::PlayerApplication(PlayerRuntimeConfig config, QObject* parent
     , library_{config.library_file.empty() ? default_library_file() : config.library_file,
           config.provider, nullptr, std::move(config.library_output)}
 {
+    library_.file_writes().set_handoff(
+        [this](const std::filesystem::path& path) -> MetadataWriteService::Restore {
+            auto state = playback_.release_media(path);
+            if (!state)
+                return {};
+            return [this, state = *state] {
+                playback_.restore_media(state);
+            };
+        }
+    );
     connect(&pump_timer_, &QTimer::timeout, this, [this] {
         static_cast<void>(playback_.pump());
         emit pumped(present_playback(playback_));
