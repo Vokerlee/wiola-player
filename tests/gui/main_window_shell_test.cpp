@@ -21,9 +21,9 @@
 #include <gui/main_window.hpp>
 
 #include <gui/classic_layout.hpp>
-#include <gui/tag_filter_panel.hpp>
 #include <gui/theme_editor.hpp>
-#include <gui/track_table_view.hpp>
+#include <gui/tracks/tag_filter_panel.hpp>
+#include <gui/tracks/track_table_view.hpp>
 
 #include <QApplication>
 #include <QGridLayout>

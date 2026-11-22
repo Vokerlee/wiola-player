@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/track_inspector.hpp>
+#include <gui/metadata/track_inspector.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <engine/queue/playlist.hpp>

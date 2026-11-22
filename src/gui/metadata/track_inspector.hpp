@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include "artwork_cache.hpp"
 #include "custom_tag_editor.hpp"
 #include "metadata_conflict_panel.hpp"
 #include "standard_metadata_editor.hpp"
+#include <gui/artwork_cache.hpp>
 
 #include <engine/queue/track.hpp>
 

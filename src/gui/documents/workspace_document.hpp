@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Read-only saved playlist document with persistent entry identity mapping.
+ * @brief Incrementally populated folder workspace document.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,58 +20,69 @@
 
 #pragma once
 
-#include "track_table_view.hpp"
+#include <gui/tracks/track_table_view.hpp>
+
+#include <app/workspace_scan_publisher.hpp>
 
 #include <engine/queue/playlist.hpp>
 #include <library/repository.hpp>
 
+#include <QCheckBox>
 #include <QLabel>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QWidget>
-
-#include <functional>
 
 namespace wiola::gui {
 
 class TrackSearchPanel;
 class TagFilterPanel;
 
-class SavedPlaylistDocument final : public QWidget {
+class WorkspaceDocument final : public QWidget {
 public:
-    explicit SavedPlaylistDocument(QWidget* parent = nullptr);
+    explicit WorkspaceDocument(QWidget* parent = nullptr);
 
-    bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
-    void set_active(bool active);
+    void begin(const library::WorkspaceRecord& workspace, std::uint64_t generation);
+    bool show_batch(const app::WorkspaceScanBatch& batch);
+    bool show_media_revision(const library::LibraryRepository& repository,
+        const library::MediaId& media);
+    void show_library(const library::LibraryRepository& repository);
+    void show_cancelled();
+    [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
+    [[nodiscard]] std::vector<std::filesystem::path> chosen_paths() const;
     [[nodiscard]] std::vector<std::filesystem::path> displayed_paths() const;
-    [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
     void on_apply_order_requested(std::function<void()> observer);
-    void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
+    void on_rescan_requested(std::function<void(bool recursive)> observer);
+    void on_cancel_requested(std::function<void()> observer);
     void on_play_requested(std::function<void()> observer);
-    void on_active_requested(std::function<void()> observer);
+    void on_append_requested(std::function<void()> observer);
     void on_transfer_active_requested(std::function<void()> observer);
     void on_transfer_destination_requested(std::function<void()> observer);
-    void on_transfer_move_requested(std::function<void()> observer);
 
 private:
-    void update_heading();
+    void set_busy(bool busy);
     void update_results();
 
+    library::WorkspaceId workspace_;
+    std::uint64_t generation_{0};
+    engine::Playlist rows_;
     QLabel* heading_{nullptr};
-    QPushButton* play_button_{nullptr};
-    QPushButton* active_button_{nullptr};
+    QLabel* status_{nullptr};
+    QCheckBox* recursive_{nullptr};
+    QPushButton* rescan_{nullptr};
+    QPushButton* cancel_{nullptr};
+    QPushButton* play_{nullptr};
+    QPushButton* append_{nullptr};
+    QProgressBar* progress_{nullptr};
     TrackTableView* table_{nullptr};
     TrackSearchPanel* search_{nullptr};
     TagFilterPanel* filters_{nullptr};
-    engine::Playlist rows_;
-    std::vector<library::PlaylistEntryRecord> entries_;
-    QString name_;
-    bool active_destination_{false};
-    std::function<void(library::PlaylistEntryId)> entry_observer_;
-    std::function<void()> playback_observer_;
-    std::function<void()> active_observer_;
+    std::function<void(bool)> rescan_observer_;
+    std::function<void()> cancel_observer_;
+    std::function<void()> play_observer_;
+    std::function<void()> append_observer_;
     std::function<void()> transfer_active_observer_;
     std::function<void()> transfer_destination_observer_;
-    std::function<void()> transfer_move_observer_;
     std::function<void()> apply_order_observer_;
 };
 

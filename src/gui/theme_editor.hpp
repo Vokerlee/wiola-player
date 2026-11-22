@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <gui/theme.hpp>
+#include "theme.hpp"
 
 #include <QDialog>
 #include <QLabel>

@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/now_playing_document.hpp>
-#include <gui/track_table_view.hpp>
+#include <gui/documents/now_playing_document.hpp>
+#include <gui/tracks/track_table_view.hpp>
 
 #include <QAction>
 #include <QApplication>

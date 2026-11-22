@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/tag_filter_panel.hpp>
+#include <gui/tracks/tag_filter_panel.hpp>
 
 #include <QApplication>
 

@@ -23,17 +23,17 @@
 #include "equalizer_panel.hpp"
 #include "layout_document.hpp"
 #include "library_navigation.hpp"
-#include "now_playing_document.hpp"
 #include "player_actions.hpp"
 #include "player_presenter.hpp"
 #include "playlist_control.hpp"
-#include "saved_playlist_document.hpp"
 #include "saved_playlist_manager.hpp"
 #include "saved_playlist_storage.hpp"
 #include "seek_bar.hpp"
-#include "track_inspector.hpp"
 #include "volume_control.hpp"
-#include "workspace_document.hpp"
+#include <gui/documents/now_playing_document.hpp>
+#include <gui/documents/saved_playlist_document.hpp>
+#include <gui/documents/workspace_document.hpp>
+#include <gui/metadata/track_inspector.hpp>
 
 #include <app/active_playlist.hpp>
 #include <app/custom_tag_commands.hpp>

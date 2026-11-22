@@ -5,7 +5,7 @@ wiola_add_library(
         artwork_cache.cpp
         button_layout_editor.cpp
         classic_layout.cpp
-        custom_tag_editor.cpp
+        metadata/custom_tag_editor.cpp
         equalizer_control.cpp
         equalizer_panel.cpp
         focused_layout.cpp
@@ -16,29 +16,29 @@ wiola_add_library(
         layout_builder.cpp
         layout_editor.cpp
         main_window.cpp
-        metadata_conflict_panel.cpp
-        now_playing_document.cpp
+        metadata/metadata_conflict_panel.cpp
+        documents/now_playing_document.cpp
         playlist_control.cpp
-        track_inspector.cpp
-        track_table_model.cpp
-        track_table_view.cpp
-        track_sort.cpp
-        track_sorter.cpp
-        track_view_pipeline.cpp
-        track_search_panel.cpp
-        tag_filter_panel.cpp
+        metadata/track_inspector.cpp
+        tracks/track_table_model.cpp
+        tracks/track_table_view.cpp
+        tracks/track_sort.cpp
+        tracks/track_sorter.cpp
+        tracks/track_view_pipeline.cpp
+        tracks/track_search_panel.cpp
+        tracks/tag_filter_panel.cpp
         theme.cpp
         theme_editor.cpp
         player_actions.cpp
         player_presenter.cpp
         player_settings.cpp
-        saved_playlist_document.cpp
+        documents/saved_playlist_document.cpp
         saved_playlist_manager.cpp
         saved_playlist_storage.cpp
         seek_bar.cpp
-        standard_metadata_editor.cpp
+        metadata/standard_metadata_editor.cpp
         volume_control.cpp
-        workspace_document.cpp
+        documents/workspace_document.cpp
     LIBS
         wiola_qt_platform
         wiola_app

@@ -20,8 +20,8 @@
 
 #include "workspace_document.hpp"
 
-#include "tag_filter_panel.hpp"
-#include "track_search_panel.hpp"
+#include <gui/tracks/tag_filter_panel.hpp>
+#include <gui/tracks/track_search_panel.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>

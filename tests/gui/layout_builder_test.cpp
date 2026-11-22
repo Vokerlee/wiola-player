@@ -20,7 +20,7 @@
 
 #include <gui/layout_builder.hpp>
 #include <gui/player_presenter.hpp>
-#include <gui/track_table_view.hpp>
+#include <gui/tracks/track_table_view.hpp>
 
 #include <QApplication>
 #include <QGridLayout>

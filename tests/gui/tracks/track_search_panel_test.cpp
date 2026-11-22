@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/track_search_panel.hpp>
+#include <gui/tracks/track_search_panel.hpp>
 
 #include <QApplication>
 

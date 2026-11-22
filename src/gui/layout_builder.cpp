@@ -21,7 +21,7 @@
 #include "layout_builder.hpp"
 
 #include "player_actions.hpp"
-#include "track_table_view.hpp"
+#include <gui/tracks/track_table_view.hpp>
 
 #include <QAction>
 #include <QBoxLayout>

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/custom_tag_editor.hpp>
+#include <gui/metadata/custom_tag_editor.hpp>
 
 #include <QApplication>
 
