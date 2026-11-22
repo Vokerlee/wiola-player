@@ -129,3 +129,9 @@ wiola_add_test(
     SOURCES main_window_shell_test.cpp
     LIBS wiola_gui
 )
+
+wiola_add_test(
+    gui_document_registry_test
+    SOURCES documents/document_registry_test.cpp
+    LIBS wiola_gui
+)
