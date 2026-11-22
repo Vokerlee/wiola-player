@@ -272,6 +272,8 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
         directory.filePath(QString::fromUtf8("музыка.mp3"))
     );
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+    const auto original_fingerprint = wiola::library::fingerprint_media(path);
+    ASSERT_TRUE(original_fingerprint);
     wiola::app::PlayerRuntimeConfig config;
     config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
     config.library_file =
@@ -328,7 +330,8 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
     EXPECT_EQ(record->overrides.title, "Written through the GUI");
     EXPECT_EQ(record->content_revision, 1);
     EXPECT_EQ(record->fingerprint, wiola::library::fingerprint_media(path));
-    EXPECT_TRUE(std::filesystem::exists(std::filesystem::path{path.string() + ".wiola-backup"}));
+    EXPECT_TRUE(std::filesystem::exists(std::filesystem::path{
+        path.string() + ".wiola-backup." + original_fingerprint->substr(8, 16) + ".1"}));
     EXPECT_EQ(window.findChild<QLabel*>("metadataFileStatus")->text(),
         "Saved embedded metadata to file");
     EXPECT_TRUE(player.shutdown());

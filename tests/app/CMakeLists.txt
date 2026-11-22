@@ -81,3 +81,9 @@ wiola_add_test(
     SOURCES playback/playback_presentation_test.cpp
     LIBS wiola_app
 )
+
+wiola_add_test(
+    platform_file_replacement_test
+    SOURCES metadata/file_replacement_test.cpp
+    LIBS wiola_file_replacement wiola_library
+)

@@ -23,6 +23,7 @@
 #include <media/media.hpp>
 #include <media/operation_context.hpp>
 #include <media/provider.hpp>
+#include <platform/files/file_replacement.hpp>
 
 #include <filesystem>
 #include <functional>
@@ -32,6 +33,8 @@ namespace wiola::app {
 
 struct MediaReplacementHooks {
     std::function<bool()> before_commit;
+    std::shared_ptr<platform::FileReplacement> replacement;
+    std::string backup_suffix;
 };
 
 struct PreparedMediaReplacement {

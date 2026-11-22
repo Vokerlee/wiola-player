@@ -20,5 +20,5 @@ wiola_add_library(
         workspace/workspace_discovery.cpp
         workspace/workspace_reconciliation.cpp
         workspace/workspace_scanner.cpp
-    LIBS wiola_engine wiola_library
+    LIBS wiola_engine wiola_library wiola_file_replacement
 )
