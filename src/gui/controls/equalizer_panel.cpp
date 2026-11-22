@@ -20,7 +20,7 @@
 
 #include "equalizer_panel.hpp"
 
-#include "presentation_tokens.hpp"
+#include <gui/appearance/presentation_tokens.hpp>
 
 #include <utils/units.hpp>
 

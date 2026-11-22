@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/layout_builder.hpp>
-#include <gui/player_presenter.hpp>
+#include <gui/layout/layout_builder.hpp>
+#include <gui/shell/player_presenter.hpp>
 #include <gui/tracks/track_table_view.hpp>
 
 #include <QApplication>

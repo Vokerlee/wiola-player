@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/playlist_control.hpp>
+#include <gui/controls/queue_settings.hpp>
 
-#include <gui/player_presenter.hpp>
+#include <gui/shell/player_presenter.hpp>
 
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
@@ -39,12 +39,12 @@
 namespace {
 
 using Repeat = wiola::engine::Playlist::Repeat;
-using Control = wiola::gui::PlaylistControl;
+using Control = wiola::gui::QueueSettings;
 using Presenter = wiola::gui::PlayerPresenter;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's, and a
 /// presenter that plays nowhere real.
-class PlaylistControl : public testing::Test {
+class QueueSettings : public testing::Test {
 protected:
     static void SetUpTestSuite()
     {
@@ -86,7 +86,7 @@ protected:
 
 } // namespace
 
-TEST_F(PlaylistControl, RestoresNothingFromAnEmptySettingsFile)
+TEST_F(QueueSettings, RestoresNothingFromAnEmptySettingsFile)
 {
     Presenter presenter{nowhere()};
     Control control{presenter, settings};
@@ -95,7 +95,7 @@ TEST_F(PlaylistControl, RestoresNothingFromAnEmptySettingsFile)
     EXPECT_TRUE(presenter.playlist().empty());
 }
 
-TEST_F(PlaylistControl, PutsBackTheQueueTheLastRunLeft)
+TEST_F(QueueSettings, PutsBackTheQueueTheLastRunLeft)
 {
     const std::filesystem::path first{wiola::testing::write_wav("wiola_queue.wav")};
     const std::filesystem::path next{wiola::testing::write_wav("wiola_queue_next.wav")};
@@ -120,7 +120,7 @@ TEST_F(PlaylistControl, PutsBackTheQueueTheLastRunLeft)
 }
 
 /// It stands where it stood, without playing: putting a queue back is not pressing play.
-TEST_F(PlaylistControl, StandsWhereTheLastRunStood)
+TEST_F(QueueSettings, StandsWhereTheLastRunStood)
 {
     const std::filesystem::path first{wiola::testing::write_wav("wiola_queue.wav")};
     const std::filesystem::path next{wiola::testing::write_wav("wiola_queue_next.wav")};
@@ -147,7 +147,7 @@ TEST_F(PlaylistControl, StandsWhereTheLastRunStood)
     EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
-TEST_F(PlaylistControl, PutsBackHowItWasBeingPlayedThrough)
+TEST_F(QueueSettings, PutsBackHowItWasBeingPlayedThrough)
 {
     {
         Presenter presenter{nowhere()};
@@ -170,7 +170,7 @@ TEST_F(PlaylistControl, PutsBackHowItWasBeingPlayedThrough)
 }
 
 /// A queue that cannot be played is worse than a shorter one.
-TEST_F(PlaylistControl, DropsTracksThatHaveGoneSince)
+TEST_F(QueueSettings, DropsTracksThatHaveGoneSince)
 {
     const std::filesystem::path kept{wiola::testing::write_wav("wiola_queue.wav")};
     const std::filesystem::path gone{wiola::testing::write_wav("wiola_queue_gone.wav")};
@@ -195,7 +195,7 @@ TEST_F(PlaylistControl, DropsTracksThatHaveGoneSince)
     EXPECT_EQ(restored.playlist().tracks().front().path(), kept);
 }
 
-TEST_F(PlaylistControl, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
+TEST_F(QueueSettings, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
 {
     const std::filesystem::path repeated{wiola::testing::write_wav("wiola_queue_repeat.wav")};
     const std::filesystem::path other{wiola::testing::write_wav("wiola_queue_other.wav")};
@@ -233,7 +233,7 @@ TEST_F(PlaylistControl, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
     EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
-TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone)
+TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone)
 {
     const std::filesystem::path first{wiola::testing::write_wav("wiola_queue_first.wav")};
     const std::filesystem::path selected{wiola::testing::write_wav("wiola_queue_selected.wav")};
@@ -268,7 +268,7 @@ TEST_F(PlaylistControl, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGo
     EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
-TEST_F(PlaylistControl, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
+TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
 {
     const std::filesystem::path first{wiola::testing::write_wav("wiola_queue_first.wav")};
     const std::filesystem::path selected{wiola::testing::write_wav("wiola_queue_selected.wav")};
@@ -302,7 +302,7 @@ TEST_F(PlaylistControl, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
     EXPECT_FALSE(restored.presentation().playback.playing);
 }
 
-TEST_F(PlaylistControl, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
+TEST_F(QueueSettings, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
 {
     QSettings other{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "another-queue"};
     other.clear();

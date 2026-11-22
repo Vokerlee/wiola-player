@@ -20,7 +20,7 @@
 
 #include "layout_builder.hpp"
 
-#include "player_actions.hpp"
+#include <gui/shell/player_actions.hpp>
 #include <gui/tracks/track_table_view.hpp>
 
 #include <QAction>

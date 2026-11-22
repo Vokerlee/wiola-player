@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/player_presenter.hpp>
+#include <gui/shell/player_presenter.hpp>
 
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>

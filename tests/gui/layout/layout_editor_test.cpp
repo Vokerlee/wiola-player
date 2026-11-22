@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/layout_editor.hpp>
+#include <gui/layout/layout_editor.hpp>
 
 #include <gtest/gtest.h>
 

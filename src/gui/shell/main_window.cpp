@@ -20,15 +20,15 @@
 
 #include "main_window.hpp"
 
-#include "button_layout_editor.hpp"
-#include "classic_layout.hpp"
-#include "clock.hpp"
-#include "focused_layout.hpp"
-#include "layout_builder.hpp"
-#include "player_settings.hpp"
-#include "presentation_tokens.hpp"
-#include "theme.hpp"
-#include "theme_editor.hpp"
+#include <gui/appearance/presentation_tokens.hpp>
+#include <gui/appearance/theme.hpp>
+#include <gui/appearance/theme_editor.hpp>
+#include <gui/controls/clock.hpp>
+#include <gui/controls/player_settings.hpp>
+#include <gui/layout/classic_layout.hpp>
+#include <gui/layout/editor/button_layout_editor.hpp>
+#include <gui/layout/focused_layout.hpp>
+#include <gui/layout/layout_builder.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <codec/provider.hpp>

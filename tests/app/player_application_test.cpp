@@ -19,7 +19,7 @@
  */
 
 #include <app/player_application.hpp>
-#include <gui/main_window.hpp>
+#include <gui/shell/main_window.hpp>
 
 #include <fixtures/wav.hpp>
 

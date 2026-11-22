@@ -18,10 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/main_window.hpp>
+#include <gui/shell/main_window.hpp>
 
-#include <gui/classic_layout.hpp>
-#include <gui/theme_editor.hpp>
+#include <gui/appearance/theme_editor.hpp>
+#include <gui/layout/classic_layout.hpp>
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_table_view.hpp>
 

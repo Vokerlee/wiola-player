@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/library_navigation.hpp>
+#include <gui/shell/library_navigation.hpp>
 
 #include <library/in_memory_repository.hpp>
 

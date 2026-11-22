@@ -20,7 +20,7 @@
 
 #include "track_inspector.hpp"
 
-#include <gui/clock.hpp>
+#include <gui/controls/clock.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>

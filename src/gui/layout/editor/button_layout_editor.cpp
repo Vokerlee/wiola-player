@@ -20,7 +20,7 @@
 
 #include "button_layout_editor.hpp"
 
-#include "layout_builder.hpp"
+#include <gui/layout/layout_builder.hpp>
 
 #include <QDialogButtonBox>
 #include <QDragEnterEvent>

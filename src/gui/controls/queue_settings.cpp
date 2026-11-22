@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "playlist_control.hpp"
+#include "queue_settings.hpp"
 
 #include "player_settings.hpp"
 
@@ -46,13 +46,13 @@ engine::Playlist::Repeat repeat_of(int stored) noexcept
 
 } // namespace
 
-PlaylistControl::PlaylistControl(PlayerPresenter& presenter, QSettings& settings) noexcept
+QueueSettings::QueueSettings(PlayerPresenter& presenter, QSettings& settings) noexcept
     : presenter_{presenter}
     , settings_{settings}
 {
 }
 
-std::size_t PlaylistControl::restore()
+std::size_t QueueSettings::restore()
 {
     PlaylistSettings stored{QtSettingsAdapter{settings_}.read_playlist()};
     std::vector<std::filesystem::path> tracks;
@@ -86,7 +86,7 @@ std::size_t PlaylistControl::restore()
     return gone;
 }
 
-void PlaylistControl::save()
+void QueueSettings::save()
 {
     const PlayerPresentation presentation{presenter_.presentation()};
     PlaylistSettings settings{.tracks = {},

@@ -1,24 +1,24 @@
 wiola_add_library(
     wiola_gui
     SOURCES
-        clock.cpp
-        artwork_cache.cpp
-        button_layout_editor.cpp
-        classic_layout.cpp
+        controls/clock.cpp
+        appearance/artwork_cache.cpp
+        layout/editor/button_layout_editor.cpp
+        layout/classic_layout.cpp
         metadata/custom_tag_editor.cpp
-        equalizer_control.cpp
-        equalizer_panel.cpp
-        focused_layout.cpp
+        controls/equalizer_control.cpp
+        controls/equalizer_panel.cpp
+        layout/focused_layout.cpp
         library_json.cpp
-        library_navigation.cpp
+        shell/library_navigation.cpp
         library_storage.cpp
-        layout_document.cpp
-        layout_builder.cpp
-        layout_editor.cpp
-        main_window.cpp
+        layout/layout_document.cpp
+        layout/layout_builder.cpp
+        layout/layout_editor.cpp
+        shell/main_window.cpp
         metadata/metadata_conflict_panel.cpp
         documents/now_playing_document.cpp
-        playlist_control.cpp
+        controls/queue_settings.cpp
         metadata/track_inspector.cpp
         tracks/track_table_model.cpp
         tracks/track_table_view.cpp
@@ -27,17 +27,17 @@ wiola_add_library(
         tracks/track_view_pipeline.cpp
         tracks/track_search_panel.cpp
         tracks/tag_filter_panel.cpp
-        theme.cpp
-        theme_editor.cpp
-        player_actions.cpp
-        player_presenter.cpp
-        player_settings.cpp
+        appearance/theme.cpp
+        appearance/theme_editor.cpp
+        shell/player_actions.cpp
+        shell/player_presenter.cpp
+        controls/player_settings.cpp
         documents/saved_playlist_document.cpp
-        saved_playlist_manager.cpp
+        shell/saved_playlist_manager.cpp
         saved_playlist_storage.cpp
-        seek_bar.cpp
+        controls/seek_bar.cpp
         metadata/standard_metadata_editor.cpp
-        volume_control.cpp
+        controls/volume_control.cpp
         documents/workspace_document.cpp
     LIBS
         wiola_qt_platform

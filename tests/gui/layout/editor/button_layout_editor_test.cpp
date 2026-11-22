@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/button_layout_editor.hpp>
-#include <gui/classic_layout.hpp>
+#include <gui/layout/classic_layout.hpp>
+#include <gui/layout/editor/button_layout_editor.hpp>
 
 #include <QApplication>
 #include <QDialogButtonBox>

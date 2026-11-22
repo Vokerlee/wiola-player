@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/theme_editor.hpp>
+#include <gui/appearance/theme_editor.hpp>
 
 #include <QApplication>
 #include <QLabel>

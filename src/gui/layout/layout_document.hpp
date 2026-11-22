@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "player_actions.hpp"
+#include <gui/shell/player_actions.hpp>
 
 #include <QByteArray>
 #include <QByteArrayView>

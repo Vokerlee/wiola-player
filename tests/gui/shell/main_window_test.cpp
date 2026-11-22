@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/main_window.hpp>
-#include <gui/seek_bar.hpp>
+#include <gui/controls/seek_bar.hpp>
+#include <gui/shell/main_window.hpp>
 
 #include <fixtures/wav.hpp>
 #include <fixtures/widget_diagnostics.hpp>

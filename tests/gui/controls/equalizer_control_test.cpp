@@ -19,8 +19,8 @@
  */
 
 #include <audio/dsp/equalizer.hpp>
-#include <gui/equalizer_control.hpp>
-#include <gui/player_settings.hpp>
+#include <gui/controls/equalizer_control.hpp>
+#include <gui/controls/player_settings.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
 

@@ -21,7 +21,7 @@
 #pragma once
 
 #include "track_sort.hpp"
-#include <gui/artwork_cache.hpp>
+#include <gui/appearance/artwork_cache.hpp>
 
 #include <engine/queue/track.hpp>
 #include <library/search.hpp>

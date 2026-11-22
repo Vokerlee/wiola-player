@@ -20,8 +20,8 @@
 
 #include "player_application.hpp"
 
-#include <gui/main_window.hpp>
-#include <gui/presentation_tokens.hpp>
+#include <gui/appearance/presentation_tokens.hpp>
+#include <gui/shell/main_window.hpp>
 
 namespace wiola::app {
 

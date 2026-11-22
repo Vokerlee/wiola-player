@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "layout_editor.hpp"
+#include <gui/layout/layout_editor.hpp>
 
 #include <QComboBox>
 #include <QDialog>
