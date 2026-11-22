@@ -518,6 +518,75 @@ TEST(PreparedLayout, RetiringAStructureKeepsOmittedRegisteredCompositeContentsTo
     EXPECT_TRUE(composite->isAncestorOf(content));
 }
 
+TEST(LayoutBuilder, RemovingSizeOverridesRestoresCapturedComponentConstraints)
+{
+    using namespace wiola::gui;
+    QWidget owner;
+    auto* button = new QPushButton{"Live", &owner};
+    button->setMinimumSize(23, 17);
+    button->setMaximumSize(350, 200);
+    LayoutBuilder builder;
+    ASSERT_TRUE(builder.views().add(component_view("live"), button, LayoutComponentKind::button));
+    LayoutNode node{.id = "control",
+        .kind = LayoutComponentKind::button,
+        .width = 100,
+        .height = 70,
+        .min_width = 40,
+        .view = component_view("live")};
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        ASSERT_EQ(builder.build(node, {}, &owner), button);
+        EXPECT_EQ(button->minimumWidth(), 100);
+        EXPECT_EQ(button->maximumWidth(), 100);
+        auto automatic = node;
+        automatic.width.reset();
+        automatic.height.reset();
+        automatic.min_width.reset();
+        ASSERT_EQ(builder.build(automatic, {}, &owner), button);
+        EXPECT_EQ(button->minimumSize(), QSize(23, 17));
+        EXPECT_EQ(button->maximumSize(), QSize(350, 200));
+    }
+    auto invalid = node;
+    invalid.width = 10;
+    EXPECT_EQ(builder.build(invalid, {}, &owner), nullptr);
+    EXPECT_EQ(button->minimumSize(), QSize(23, 17));
+    invalid = node;
+    invalid.min_width = 101;
+    EXPECT_EQ(builder.build(invalid, {}, &owner), nullptr);
+}
+
+TEST(LayoutBuilder, RemovingSplitterOverridesRestoresOrientationAndDefaultWeights)
+{
+    using namespace wiola::gui;
+    QWidget owner;
+    owner.resize(600, 600);
+    auto* splitter = new QSplitter{Qt::Vertical, &owner};
+    splitter->resize(400, 400);
+    LayoutBuilder builder;
+    ASSERT_TRUE(builder.views().add(component_view("split"), splitter,
+        LayoutComponentKind::splitter, true));
+    LayoutNode node{
+        .id = "splitterNode",
+        .kind = LayoutComponentKind::splitter,
+        .orientation = Qt::Horizontal,
+        .sizes = {1,                                                    3},
+        .children = {{.id = "first", .kind = LayoutComponentKind::status},
+                  {.id = "second", .kind = LayoutComponentKind::status}  },
+        .view = component_view("split")
+    };
+    ASSERT_EQ(builder.build(node, {}, &owner), splitter);
+    EXPECT_EQ(splitter->orientation(), Qt::Horizontal);
+    node.orientation.reset();
+    node.sizes.clear();
+    ASSERT_EQ(builder.build(node, {}, &owner), splitter);
+    EXPECT_EQ(splitter->orientation(), Qt::Vertical);
+    owner.show();
+    splitter->show();
+    QApplication::processEvents();
+    const auto sizes = splitter->sizes();
+    ASSERT_EQ(sizes.size(), 2);
+    EXPECT_LE(std::abs(sizes[0] - sizes[1]), 1);
+}
+
 } // namespace
 
 int main(int argc, char** argv)

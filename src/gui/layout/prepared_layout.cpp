@@ -37,7 +37,8 @@ bool PreparedLayout::ready(QWidget* parent) const
     if (!root_)
         return false;
     for (const auto& attachment : attachments_) {
-        if (!attachment.widget || attachment.widget->parentWidget() != attachment.original_parent ||
+        if (!attachment.widget || !accepts_dimensions(*attachment.widget, attachment.node) ||
+            attachment.widget->parentWidget() != attachment.original_parent ||
             (parent && (attachment.widget == parent || attachment.widget->isAncestorOf(parent))))
             return false;
     }
