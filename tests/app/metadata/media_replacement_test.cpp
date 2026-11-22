@@ -22,6 +22,7 @@
 
 #include <codec/backends/ffmpeg/metadata.hpp>
 #include <codec/backends/ffmpeg/metadata_writer.hpp>
+#include <codec/decode/decoder.hpp>
 #include <codec/provider.hpp>
 #include <library/fingerprint.hpp>
 
@@ -188,3 +189,124 @@ TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
     EXPECT_EQ(bytes(source), original);
     EXPECT_FALSE(std::filesystem::exists(backup));
 }
+
+namespace {
+
+class ChunkDecoder final : public wiola::codec::Decoder {
+public:
+    explicit ChunkDecoder(std::size_t chunk, bool changed)
+        : AudioDecoder{wiola::pcm::StreamSpec{}, wiola::pcm::Frames{3000}}
+        , chunk_{chunk}
+        , changed_{changed}
+    {
+    }
+
+protected:
+    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+        wiola::pcm::Frames requested) override
+    {
+        const auto count = wiola::pcm::Frames{std::min(requested.count(), chunk_)};
+        const auto start = spec().samples_per(position_frames());
+        for (std::size_t i = 0; i < spec().samples_per(count); ++i)
+            output[i] = static_cast<float>((start + i) % 17) / 17.0F;
+        if (changed_ && start == 0)
+            output[0] = 100.0F;
+        return wiola::codec::DecodeOutcome{.frames = count};
+    }
+
+    wiola::media::Result<wiola::codec::SeekOutcome> seek_frame(wiola::pcm::Frames frame) override
+    {
+        return wiola::codec::SeekOutcome{frame, frame, true};
+    }
+
+private:
+    std::size_t chunk_;
+    bool changed_;
+};
+
+class ChunkAsset final : public wiola::media::MediaAsset {
+public:
+    ChunkAsset(std::size_t chunk, bool changed)
+        : chunk_{chunk}
+        , changed_{changed}
+    {
+    }
+
+    wiola::media::Result<wiola::media::MediaInfo>
+    inspect(const wiola::media::OperationContext&) override
+    {
+        return wiola::media::MediaInfo{};
+    }
+
+    wiola::media::Result<wiola::media::Metadata>
+    read_metadata(const wiola::media::OperationContext&) override
+    {
+        return wiola::media::Metadata{};
+    }
+
+    wiola::media::Result<std::unique_ptr<wiola::codec::Decoder>>
+    create_decoder(const wiola::media::OperationContext&) override
+    {
+        return std::unique_ptr<wiola::codec::Decoder>{
+            std::make_unique<ChunkDecoder>(chunk_, changed_)};
+    }
+
+private:
+    std::size_t chunk_;
+    bool changed_;
+};
+
+class ChunkProvider final : public wiola::media::MediaProvider {
+public:
+    std::filesystem::path source;
+    bool changed{};
+
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
+    open(const std::filesystem::path& path, const wiola::media::OperationContext&) override
+    {
+        return std::unique_ptr<wiola::media::MediaAsset>{
+            std::make_unique<ChunkAsset>(path == source ? 137 : 701, path != source && changed)};
+    }
+
+    std::vector<std::string> playback_extensions() const override { return {}; }
+};
+
+TEST(MediaReplacement, ComparesOrderedSamplesAcrossDifferentDecoderBlockBoundaries)
+{
+    const auto source = temporary("wiola-variable-source.bin"),
+               output = temporary("wiola-variable-output.bin");
+    Cleanup cleanup{
+        {source, output}
+    };
+    std::ofstream{source} << "source";
+    std::ofstream{output} << "output";
+    ChunkProvider provider;
+    provider.source = source;
+    EXPECT_TRUE(wiola::app::prepare_media_replacement(source, output, provider).prepared);
+    provider.changed = true;
+    const auto invalid = wiola::app::prepare_media_replacement(source, output, provider);
+    EXPECT_FALSE(invalid.prepared);
+    EXPECT_EQ(invalid.failure.error, wiola::media::MetadataWriteError::invalid_output);
+}
+
+TEST(MediaReplacement, RechecksCapturedSourceImmediatelyBeforePreparedCommit)
+{
+    const auto source = temporary("wiola-prepared-source.bin"),
+               output = temporary("wiola-prepared-output.bin");
+    Cleanup cleanup{
+        {source, output}
+    };
+    std::ofstream{source} << "source";
+    std::ofstream{output} << "output";
+    ChunkProvider provider;
+    provider.source = source;
+    const auto validation = wiola::app::prepare_media_replacement(source, output, provider);
+    ASSERT_TRUE(validation.prepared);
+    std::ofstream{source, std::ios::app} << "external metadata";
+    const auto external = bytes(source);
+    const auto result = wiola::app::commit_prepared_media_replacement(*validation.prepared);
+    EXPECT_EQ(result.error, wiola::media::MetadataWriteError::conflicted);
+    EXPECT_EQ(bytes(source), external);
+}
+
+} // namespace

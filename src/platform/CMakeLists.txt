@@ -1,3 +1,7 @@
+wiola_add_library(wiola_file_replacement SOURCES files/file_replacement.cpp)
+if(NOT WIOLA_BUILD_GUI)
+    return()
+endif()
 add_library(wiola_qt_platform INTERFACE)
 target_link_libraries(wiola_qt_platform INTERFACE wiola_core Qt6::Core)
 wiola_add_library(

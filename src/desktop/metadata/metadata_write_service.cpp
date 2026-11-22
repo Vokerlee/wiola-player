@@ -236,7 +236,11 @@ void MetadataWriteService::run()
         auto& result = prepared->result;
         try {
             result.outcome =
-                commit_prepared_media_replacement(*prepared->replacement, result.job.context());
+                commit_prepared_media_replacement(*prepared->replacement, result.job.context(),
+                    {.before_commit = {},
+                        .replacement = {},
+                        .backup_suffix = prepared->replacement->source_fingerprint.substr(8, 16) +
+                            "." + std::to_string(result.job.operation.value)});
         } catch (const std::exception& error) {
             result.outcome = {.state = media::MetadataWriteState::failed,
                 .error = media::MetadataWriteError::io,

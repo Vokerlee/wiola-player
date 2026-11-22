@@ -65,34 +65,54 @@ std::optional<media::MetadataWriteOutcome> compare(media::MediaProvider& provide
     std::array<float, 4096> expected{};
     std::array<float, 4096> actual{};
 
-    for (std::size_t calls = 0; calls < 100000; ++calls) {
+    std::size_t left_size{}, right_size{}, left_offset{}, right_offset{};
+    bool left_end{}, right_end{};
+    std::size_t no_progress{};
+    for (std::size_t calls = 0; calls < 10000000; ++calls) {
         if (context.stop_reason() != media::StopReason::none)
             return failure(media::MetadataWriteError::cancelled, context.error().detail);
-
-        auto left = (*original)->read(expected);
-        auto right = (*output)->read(actual);
-
-        if (!left || !right)
-            return failure(media::MetadataWriteError::invalid_output,
-                "replacement could not be decoded for validation");
-
-        if (left->frames != right->frames)
-            return failure(media::MetadataWriteError::invalid_output,
-                "replacement changed the decoded frame count");
-
-        const std::size_t samples = (*original)->spec().samples_per(left->frames);
-        if (!std::ranges::equal(std::span{expected}.first(samples),
-                std::span{actual}.first(samples)))
+        if (left_offset == left_size && !left_end) {
+            const auto read = (*original)->read(expected);
+            if (!read)
+                return failure(media::MetadataWriteError::invalid_output, "source decoder failed");
+            left_size = (*original)->spec().samples_per(read->frames);
+            left_offset = 0;
+            left_end = read->end_of_stream;
+            if (left_size > expected.size())
+                return failure(media::MetadataWriteError::invalid_output,
+                    "source decoder exceeded its buffer");
+        }
+        if (right_offset == right_size && !right_end) {
+            const auto read = (*output)->read(actual);
+            if (!read)
+                return failure(media::MetadataWriteError::invalid_output, "output decoder failed");
+            right_size = (*output)->spec().samples_per(read->frames);
+            right_offset = 0;
+            right_end = read->end_of_stream;
+            if (right_size > actual.size())
+                return failure(media::MetadataWriteError::invalid_output,
+                    "output decoder exceeded its buffer");
+        }
+        const auto count = std::min(left_size - left_offset, right_size - right_offset);
+        if (!std::ranges::equal(std::span{expected}.subspan(left_offset, count),
+                std::span{actual}.subspan(right_offset, count)))
             return failure(media::MetadataWriteError::invalid_output,
                 "replacement changed decoded audio");
-
-        if (left->end_of_stream || right->end_of_stream) {
-            if (left->end_of_stream && right->end_of_stream)
-                return std::nullopt;
-
+        left_offset += count;
+        right_offset += count;
+        if (count == 0) {
+            if (++no_progress > 64)
+                return failure(media::MetadataWriteError::invalid_output,
+                    "decoder made no validation progress");
+        } else
+            no_progress = 0;
+        const bool left_done = left_end && left_offset == left_size,
+                   right_done = right_end && right_offset == right_size;
+        if (left_done && right_done)
+            return std::nullopt;
+        if ((left_done && right_size > right_offset) || (right_done && left_size > left_offset))
             return failure(media::MetadataWriteError::invalid_output,
                 "replacement ended at a different frame");
-        }
     }
 
     return failure(media::MetadataWriteError::invalid_output,
@@ -154,52 +174,29 @@ commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
         library::fingerprint_media(temporary) != std::optional{prepared.output_fingerprint})
         return failure(media::MetadataWriteError::conflicted,
             "source or staged output changed after validation");
-    std::filesystem::path backup = source;
-    backup += ".wiola-backup";
-
-    std::error_code error;
-    if (std::filesystem::exists(backup, error))
-        return failure(media::MetadataWriteError::invalid_output,
-            "a previous media backup already exists");
-
-    if (error)
-        return failure(media::MetadataWriteError::io, error.message());
-
     if (hooks.before_commit && !hooks.before_commit())
         return failure(media::MetadataWriteError::io,
-            "the source is locked or replacement was refused");
-
-    if (context.stop_reason() != media::StopReason::none)
-        return failure(media::MetadataWriteError::cancelled, context.error().detail);
-    if (library::fingerprint_media(source) != std::optional{prepared.source_fingerprint})
-        return failure(media::MetadataWriteError::conflicted,
-            "source changed at replacement commit");
-
-#ifdef _WIN32
-    std::filesystem::rename(source, backup, error);
-    if (error)
-        return failure(media::MetadataWriteError::io, error.message());
-
-    std::filesystem::rename(temporary, source, error);
-    if (error) {
-        std::error_code rollback;
-        std::filesystem::rename(backup, source, rollback);
-        return failure(media::MetadataWriteError::io, error.message());
+            "source is locked or replacement was refused");
+    auto backup = source;
+    backup += ".wiola-backup";
+    if (!hooks.backup_suffix.empty())
+        backup += "." + hooks.backup_suffix;
+    auto native = platform::native_file_replacement(library::fingerprint_media);
+    auto& port = hooks.replacement ? *hooks.replacement : *native;
+    const auto outcome = port.replace({source, temporary, backup, prepared.source_fingerprint,
+                                          prepared.output_fingerprint},
+        [&] { return context.stop_reason() == media::StopReason::none; });
+    if (outcome.error != platform::FileReplacementError::none) {
+        auto result = failure(outcome.error == platform::FileReplacementError::conflict
+                ? media::MetadataWriteError::conflicted
+                : outcome.error == platform::FileReplacementError::cancelled &&
+                    context.stop_reason() != media::StopReason::none
+                ? media::MetadataWriteError::cancelled
+                : media::MetadataWriteError::io,
+            outcome.detail);
+        result.source_modified = outcome.source_modified;
+        return result;
     }
-#else
-    std::filesystem::copy_file(source, backup, std::filesystem::copy_options::none, error);
-    if (error) {
-        const std::string detail = error.message();
-        std::error_code ignored;
-        std::filesystem::remove(backup, ignored);
-        return failure(media::MetadataWriteError::io, detail);
-    }
-
-    std::filesystem::rename(temporary, source, error);
-    if (error)
-        return failure(media::MetadataWriteError::io, error.message());
-#endif
-
     return {.state = media::MetadataWriteState::written,
         .error = media::MetadataWriteError::none,
         .source_modified = true,
