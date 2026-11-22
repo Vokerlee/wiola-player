@@ -20,6 +20,8 @@
 
 #include "standard_metadata_commands.hpp"
 
+#include <library/repository_transaction.hpp>
+
 namespace wiola::app {
 
 namespace {
@@ -70,19 +72,14 @@ StandardMetadataResult StandardMetadataCommands::apply(const library::MediaId& m
     if (updated.overrides == existing->overrides)
         return {.error = StandardMetadataError::none, .changed = false};
 
-    const auto previous_tracks = repository_.tracks();
-    const auto previous_playlists = repository_.playlists();
-    const auto previous_workspaces = repository_.workspaces();
+    library::RepositoryTransaction transaction{repository_, persist_};
     ++updated.metadata_revision;
 
     if (!repository_.put_track(std::move(updated)))
         return {.error = StandardMetadataError::missing_media, .changed = false};
 
-    if (persist_(repository_))
+    if (transaction.commit())
         return {.error = StandardMetadataError::none, .changed = true};
-
-    static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-        previous_workspaces));
     return {.error = StandardMetadataError::persistence_failed, .changed = false};
 }
 

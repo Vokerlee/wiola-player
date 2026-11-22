@@ -71,14 +71,14 @@ CustomTagResult CustomTagCommands::add(const library::MediaId& media, std::strin
     if (track->tags.size() >= library::max_tags_per_track)
         return failure(CustomTagError::limit_exceeded);
 
-    const Snapshot previous = snapshot();
+    library::RepositoryTransaction transaction{repository_, persist_};
     const library::TagId added =
         repository_.add_tag(media, std::move(candidate->key), std::move(candidate->value));
 
     if (!added.valid())
         return failure(CustomTagError::invalid_value);
 
-    return commit(previous, added);
+    return commit(transaction, added);
 }
 
 CustomTagResult CustomTagCommands::edit(const library::MediaId& media, const library::TagId& tag,
@@ -102,7 +102,7 @@ CustomTagResult CustomTagCommands::edit(const library::MediaId& media, const lib
     if (existing->key == candidate->key && existing->value == candidate->value)
         return {.error = CustomTagError::none, .tag = tag, .changed = false};
 
-    const Snapshot previous = snapshot();
+    library::RepositoryTransaction transaction{repository_, persist_};
     library::TrackRecord updated = *track;
     auto& edited =
         updated.tags[static_cast<std::size_t>(std::distance(track->tags.begin(), existing))];
@@ -113,7 +113,7 @@ CustomTagResult CustomTagCommands::edit(const library::MediaId& media, const lib
     if (!repository_.put_track(std::move(updated)))
         return failure(CustomTagError::invalid_value, tag);
 
-    return commit(previous, tag);
+    return commit(transaction, tag);
 }
 
 CustomTagResult CustomTagCommands::remove(const library::MediaId& media, const library::TagId& tag)
@@ -125,27 +125,18 @@ CustomTagResult CustomTagCommands::remove(const library::MediaId& media, const l
     if (std::ranges::find(track->tags, tag, &library::TagRecord::id) == track->tags.end())
         return failure(CustomTagError::missing_tag, tag);
 
-    const Snapshot previous = snapshot();
+    library::RepositoryTransaction transaction{repository_, persist_};
     if (!repository_.remove_tag(media, tag))
         return failure(CustomTagError::missing_tag, tag);
 
-    return commit(previous, tag);
+    return commit(transaction, tag);
 }
 
-CustomTagCommands::Snapshot CustomTagCommands::snapshot() const
+CustomTagResult CustomTagCommands::commit(library::RepositoryTransaction& transaction,
+    const library::TagId& tag)
 {
-    return {.tracks = repository_.tracks(),
-        .playlists = repository_.playlists(),
-        .workspaces = repository_.workspaces()};
-}
-
-CustomTagResult CustomTagCommands::commit(const Snapshot& previous, const library::TagId& tag)
-{
-    if (persist_(repository_))
+    if (transaction.commit())
         return {.error = CustomTagError::none, .tag = tag, .changed = true};
-
-    static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists,
-        previous.workspaces));
 
     return failure(CustomTagError::persistence_failed, tag);
 }

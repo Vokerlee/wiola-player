@@ -26,3 +26,9 @@ wiola_add_test(
     SOURCES fingerprint_test.cpp
     LIBS wiola_library
 )
+
+wiola_add_test(
+    library_repository_transaction_test
+    SOURCES repository_transaction_test.cpp
+    LIBS wiola_library
+)

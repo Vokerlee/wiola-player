@@ -5,6 +5,7 @@ wiola_add_library(
         in_memory_repository.cpp
         location.cpp
         metadata.cpp
+        repository_transaction.cpp
         search.cpp
         tags.cpp
 )

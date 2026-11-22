@@ -154,21 +154,12 @@ MainWindow::MainWindow(engine::Session& session)
     , volume_{presenter_.volume_control(), settings_}
     , equalizer_{presenter_.equalizer_control(), settings_}
     , library_storage_{library_file(settings_)}
-    , playlist_commands_{library_,
-          [this](const library::LibraryRepository& records) {
-              return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                  persistence::qt::LibraryStoreResult{};
-          }}
-    , tag_commands_{library_,
-          [this](const library::LibraryRepository& records) {
-              return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                  persistence::qt::LibraryStoreResult{};
-          }}
-    , optimistic_edits_{library_,
-          [this](const library::LibraryRepository& records) {
-              return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                  persistence::qt::LibraryStoreResult{};
-          },
+    , persist_library_{[this](const library::LibraryRepository& records) {
+        return library_storage_.save(library::snapshot_of(records)).succeeded();
+    }}
+    , playlist_commands_{library_, persist_library_}
+    , tag_commands_{library_, persist_library_}
+    , optimistic_edits_{library_, persist_library_,
           [this](const app::MetadataEditOutcome& outcome) { publish_metadata_outcome(outcome); }}
 {
     const QString selected_theme = settings_.value("theme/name", "light").toString();
@@ -695,9 +686,7 @@ void MainWindow::import_m3u_playlist()
     }
 
     const QByteArray encoded = input.read(16 * 1024 * 1024 + 1);
-    const auto previous_tracks = library_.tracks();
-    const auto previous_playlists = library_.playlists();
-    const auto previous_workspaces = library_.workspaces();
+    library::RepositoryTransaction transaction{library_, persist_library_};
     library::PlaylistId imported;
     const QFileInfo details{selected};
     const app::M3uError error = app::M3uPlaylist::import_playlist(library_,
@@ -709,10 +698,7 @@ void MainWindow::import_m3u_playlist()
         return;
     }
 
-    if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-        persistence::qt::LibraryStoreResult{}) {
-        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
-            previous_workspaces));
+    if (!transaction.commit()) {
         show_status("Could not save the imported playlist");
         return;
     }
@@ -839,19 +825,14 @@ void MainWindow::open_folder()
     if (selected.isEmpty())
         return;
 
-    const auto previous_tracks = library_.tracks();
-    const auto previous_playlists = library_.playlists();
-    const auto previous_workspaces = library_.workspaces();
+    library::RepositoryTransaction transaction{library_, persist_library_};
     const library::WorkspaceId workspace =
         library_.create_workspace(platform::qt::QtPathAdapter::from_qt(selected));
 
     if (!workspace.valid())
         return;
 
-    if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-        persistence::qt::LibraryStoreResult{}) {
-        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
-            previous_workspaces));
+    if (!transaction.commit()) {
         show_status("Could not save the folder workspace");
         return;
     }
@@ -971,19 +952,14 @@ void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive
     updated.recursive = recursive;
 
     if (recursive != current->recursive) {
-        const auto previous_tracks = library_.tracks();
-        const auto previous_playlists = library_.playlists();
-        const auto previous_workspaces = library_.workspaces();
+        library::RepositoryTransaction transaction{library_, persist_library_};
 
         if (!library_.put_workspace(updated)) {
             show_status("Could not update the folder workspace");
             return;
         }
 
-        if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-            persistence::qt::LibraryStoreResult{}) {
-            static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
-                previous_workspaces));
+        if (!transaction.commit()) {
             show_status("Could not save the workspace settings");
             return;
         }
@@ -1103,11 +1079,7 @@ void MainWindow::choose_move_destination(const library::PlaylistId& id,
         const library::PlaylistId destination = playlist.id;
         destinations.addAction(QString::fromStdString(playlist.name),
             [this, id, destination, entries] {
-                app::PlaylistTransfer transfer{library_, active_playlist_,
-                    [this](const library::LibraryRepository& records) {
-                        return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                            persistence::qt::LibraryStoreResult{};
-                    }};
+                app::PlaylistTransfer transfer{library_, active_playlist_, persist_library_};
                 const auto result = transfer.move_to(id, destination, entries);
 
                 show_status(result.succeeded ? QString{"%1 track(s) moved"}.arg(result.added)
@@ -1155,11 +1127,7 @@ void MainWindow::transfer_to(std::optional<library::PlaylistId> destination,
         return;
     }
 
-    app::PlaylistTransfer transfer{library_, active_playlist_,
-        [this](const library::LibraryRepository& records) {
-            return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                persistence::qt::LibraryStoreResult{};
-        }};
+    app::PlaylistTransfer transfer{library_, active_playlist_, persist_library_};
     const app::PlaylistTransferResult result = transfer.add_to(*destination, media);
 
     if (!result.succeeded) {
@@ -1223,9 +1191,7 @@ void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
         return;
     }
 
-    const auto previous_tracks = library_.tracks();
-    const auto previous_playlists = library_.playlists();
-    const auto previous_workspaces = library_.workspaces();
+    library::RepositoryTransaction transaction{library_, persist_library_};
     bool created = false;
 
     if (library_.track(result.media) == nullptr) {
@@ -1244,10 +1210,7 @@ void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
     if (!created && !merged)
         return;
 
-    if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-        persistence::qt::LibraryStoreResult{}) {
-        static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
-            previous_workspaces));
+    if (!transaction.commit()) {
         show_status("Could not save the learned metadata");
         return;
     }
