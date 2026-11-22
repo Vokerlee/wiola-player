@@ -37,6 +37,7 @@
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
 #include <gui/layout/layout_document.hpp>
+#include <gui/layout/view_registry.hpp>
 #include <gui/metadata/track_inspector.hpp>
 #include <library/metadata_patch.hpp>
 
@@ -215,6 +216,7 @@ private:
 
     /// Shared command objects; buttons and keyboard shortcuts trigger the same actions.
     PlayerActions actions_;
+    ViewRegistry views_;
 
     /// Which of the two it is wearing, or nothing before it wears either.
     std::optional<bool> showing_pause_;

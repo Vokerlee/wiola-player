@@ -20,6 +20,7 @@
 
 #pragma once
 #include "component_descriptor.hpp"
+#include "view_reference.hpp"
 
 #include <gui/shell/player_actions.hpp>
 
@@ -47,10 +48,11 @@ struct LayoutNode {
     /// Grid children fill rows in document order; absent means one column.
     std::optional<int> columns;
     std::vector<LayoutNode> children;
+    std::optional<ViewReference> view;
 };
 
 struct LayoutDocument {
-    int version{1};
+    int version{2};
     LayoutNode root;
     std::size_t node_count{0};
 };

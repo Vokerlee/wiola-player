@@ -561,7 +561,8 @@ void ButtonLayoutEditor::update_preview()
     auto* root = new QWidget{preview_layout_->parentWidget()};
     auto* actions = new PlayerActions{*root};
     actions->setParent(root);
-    auto* built = LayoutBuilder{}.build(editor_.document().root, {.actions = actions}, root);
+    auto* built = LayoutBuilder{}.build(editor_.document().root,
+        {.actions = actions, .isolated_preview = true}, root);
     if (!built) {
         delete root;
         preview_ = nullptr;
