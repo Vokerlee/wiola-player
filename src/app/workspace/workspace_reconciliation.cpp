@@ -22,6 +22,7 @@
 
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <library/repository_transaction.hpp>
 
 #include <algorithm>
 #include <set>
@@ -57,7 +58,9 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
     for (const std::filesystem::path& path : paths)
         current.insert(normalized(path));
 
-    library::InMemoryRepository updated = repository;
+    library::RepositoryTransaction transaction{repository,
+        [](const library::LibraryRepository&) { return true; }};
+    auto& updated = repository;
     WorkspaceReconciliationResult result{.succeeded = true};
 
     for (library::TrackRecord track : updated.tracks()) {
@@ -129,8 +132,7 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
             ++result.learned;
     }
 
-    result.succeeded =
-        repository.replace_all(updated.tracks(), updated.playlists(), updated.workspaces());
+    result.succeeded = transaction.commit();
     return result;
 }
 

@@ -22,6 +22,8 @@
 
 #include <set>
 
+#include <library/repository_transaction.hpp>
+
 namespace wiola::app {
 
 namespace {
@@ -91,9 +93,7 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
     }
 
     const std::set<library::MediaId> unique{media.begin(), media.end()};
-    const auto previous_tracks = repository_.tracks();
-    const auto previous_playlists = repository_.playlists();
-    const auto previous_workspaces = repository_.workspaces();
+    library::RepositoryTransaction transaction{repository_, persist_};
     const MetadataConflictDetector detector;
 
     for (const auto& [id, expected] : expected_states) {
@@ -135,14 +135,11 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
     outcome.state = MetadataEditState::queued;
     observer_(outcome);
 
-    if (outcome.changed == 0 || persist_(repository_)) {
+    if (transaction.commit()) {
         outcome.state = MetadataEditState::succeeded;
         observer_(outcome);
         return outcome;
     }
-
-    static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-        previous_workspaces));
     outcome.state = MetadataEditState::failed;
     outcome.error = StandardMetadataError::persistence_failed;
     outcome.changed = 0;
@@ -153,9 +150,7 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
 MetadataEditOutcome OptimisticMetadataEdits::reset(const std::vector<library::MediaId>& media)
 {
     const std::set<library::MediaId> unique{media.begin(), media.end()};
-    const auto previous_tracks = repository_.tracks();
-    const auto previous_playlists = repository_.playlists();
-    const auto previous_workspaces = repository_.workspaces();
+    library::RepositoryTransaction transaction{repository_, persist_};
     MetadataEditOutcome outcome;
 
     for (const library::MediaId& id : unique) {
@@ -185,14 +180,11 @@ MetadataEditOutcome OptimisticMetadataEdits::reset(const std::vector<library::Me
     outcome.state = MetadataEditState::queued;
     observer_(outcome);
 
-    if (outcome.changed == 0 || persist_(repository_)) {
+    if (transaction.commit()) {
         outcome.state = MetadataEditState::succeeded;
         observer_(outcome);
         return outcome;
     }
-
-    static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-        previous_workspaces));
     outcome.state = MetadataEditState::failed;
     outcome.error = StandardMetadataError::persistence_failed;
     outcome.changed = 0;

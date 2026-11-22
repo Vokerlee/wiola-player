@@ -228,6 +228,7 @@ private:
     EqualizerControl equalizer_;
     library::InMemoryRepository library_;
     persistence::qt::LibraryStore library_storage_;
+    library::RepositoryTransaction::Persist persist_library_;
     app::SavedPlaylistCommands playlist_commands_;
     app::CustomTagCommands tag_commands_;
     app::OptimisticMetadataEdits optimistic_edits_;

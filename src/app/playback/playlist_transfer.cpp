@@ -22,6 +22,8 @@
 
 #include <utility>
 
+#include <library/repository_transaction.hpp>
+
 namespace wiola::app {
 
 PlaylistTransfer::PlaylistTransfer(library::InMemoryRepository& repository,
@@ -43,9 +45,7 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
     if (media.empty() || repository_.playlist(playlist) == nullptr)
         return {};
 
-    const auto previous_tracks = repository_.tracks();
-    const auto previous_playlists = repository_.playlists();
-    const auto previous_workspaces = repository_.workspaces();
+    library::RepositoryTransaction transaction{repository_, persist_};
     PlaylistTransferResult result;
 
     for (const MediaTransfer& item : media) {
@@ -72,10 +72,8 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
     if (result.added == 0)
         return result;
 
-    result.succeeded = persist_(repository_);
+    result.succeeded = transaction.commit();
     if (!result.succeeded) {
-        static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-            previous_workspaces));
         result.added = 0;
     }
 
@@ -89,9 +87,7 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
         repository_.playlist(destination) == nullptr)
         return {};
 
-    const auto previous_tracks = repository_.tracks();
-    const auto previous_playlists = repository_.playlists();
-    const auto previous_workspaces = repository_.workspaces();
+    library::RepositoryTransaction transaction{repository_, persist_};
     PlaylistTransferResult result;
 
     for (const library::PlaylistEntryId& id : entries) {
@@ -104,8 +100,6 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
         const library::MediaId media = entry->media;
         if (!repository_.append_track(destination, media) ||
             !repository_.remove_entry(source, id)) {
-            static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-                previous_workspaces));
             return {};
         }
 
@@ -115,10 +109,8 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
     if (result.added == 0)
         return result;
 
-    result.succeeded = persist_(repository_);
+    result.succeeded = transaction.commit();
     if (!result.succeeded) {
-        static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-            previous_workspaces));
         result.added = 0;
     }
 

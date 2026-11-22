@@ -65,6 +65,8 @@ struct TrackRecord {
     std::uint64_t metadata_revision{0};
     bool missing{false};
 
+    bool operator==(const TrackRecord&) const = default;
+
     [[nodiscard]] const std::string& display_title() const noexcept
     {
         return overrides.title ? *overrides.title : embedded.title;
@@ -84,18 +86,21 @@ struct TrackRecord {
 struct PlaylistEntryRecord {
     PlaylistEntryId id;
     MediaId media;
+    bool operator==(const PlaylistEntryRecord&) const = default;
 };
 
 struct PlaylistRecord {
     PlaylistId id;
     std::string name;
     std::vector<PlaylistEntryRecord> entries;
+    bool operator==(const PlaylistRecord&) const = default;
 };
 
 struct WorkspaceRecord {
     WorkspaceId id;
     std::filesystem::path root;
     bool recursive{true};
+    bool operator==(const WorkspaceRecord&) const = default;
 };
 
 } // namespace wiola::library

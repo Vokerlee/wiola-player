@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <library/in_memory_repository.hpp>
+#include <library/repository_transaction.hpp>
 
 #include <functional>
 
@@ -46,7 +46,7 @@ struct CustomTagResult {
 
 class CustomTagCommands final {
 public:
-    using Persist = std::function<bool(const library::LibraryRepository&)>;
+    using Persist = library::RepositoryTransaction::Persist;
 
     CustomTagCommands(library::InMemoryRepository& repository, Persist persist);
 
@@ -57,14 +57,8 @@ public:
     [[nodiscard]] CustomTagResult remove(const library::MediaId& media, const library::TagId& tag);
 
 private:
-    struct Snapshot {
-        std::vector<library::TrackRecord> tracks;
-        std::vector<library::PlaylistRecord> playlists;
-        std::vector<library::WorkspaceRecord> workspaces;
-    };
-
-    [[nodiscard]] Snapshot snapshot() const;
-    [[nodiscard]] CustomTagResult commit(const Snapshot& previous, const library::TagId& tag);
+    [[nodiscard]] CustomTagResult commit(library::RepositoryTransaction& transaction,
+        const library::TagId& tag);
 
     library::InMemoryRepository& repository_;
     Persist persist_;

@@ -50,10 +50,10 @@ library::PlaylistId SavedPlaylistCommands::create(const std::string& name)
     if (normalized.empty())
         return {};
 
-    const Snapshot previous = snapshot();
+    library::RepositoryTransaction transaction{repository_, persist_};
     const library::PlaylistId id = repository_.create_playlist(normalized);
 
-    return commit(previous) ? id : library::PlaylistId{};
+    return transaction.commit() ? id : library::PlaylistId{};
 }
 
 bool SavedPlaylistCommands::rename(const library::PlaylistId& id, const std::string& name)
@@ -62,8 +62,8 @@ bool SavedPlaylistCommands::rename(const library::PlaylistId& id, const std::str
     if (normalized.empty() || repository_.playlist(id) == nullptr)
         return false;
 
-    const Snapshot previous = snapshot();
-    return repository_.rename_playlist(id, normalized) && commit(previous);
+    library::RepositoryTransaction transaction{repository_, persist_};
+    return repository_.rename_playlist(id, normalized) && transaction.commit();
 }
 
 library::PlaylistId SavedPlaylistCommands::duplicate(const library::PlaylistId& id)
@@ -72,19 +72,17 @@ library::PlaylistId SavedPlaylistCommands::duplicate(const library::PlaylistId& 
     if (source == nullptr)
         return {};
 
-    const Snapshot previous = snapshot();
+    library::RepositoryTransaction transaction{repository_, persist_};
     const library::PlaylistRecord copied = *source;
     const library::PlaylistId duplicate = repository_.create_playlist(copied.name + " copy");
 
     for (const library::PlaylistEntryRecord& entry : copied.entries) {
         if (!repository_.append_track(duplicate, entry.media)) {
-            static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists,
-                previous.workspaces));
             return {};
         }
     }
 
-    return commit(previous) ? duplicate : library::PlaylistId{};
+    return transaction.commit() ? duplicate : library::PlaylistId{};
 }
 
 bool SavedPlaylistCommands::remove(const library::PlaylistId& id)
@@ -92,26 +90,8 @@ bool SavedPlaylistCommands::remove(const library::PlaylistId& id)
     if (repository_.playlist(id) == nullptr)
         return false;
 
-    const Snapshot previous = snapshot();
-    return repository_.delete_playlist(id) && commit(previous);
-}
-
-SavedPlaylistCommands::Snapshot SavedPlaylistCommands::snapshot() const
-{
-    return {.tracks = repository_.tracks(),
-        .playlists = repository_.playlists(),
-        .workspaces = repository_.workspaces()};
-}
-
-bool SavedPlaylistCommands::commit(const Snapshot& previous)
-{
-    if (persist_(repository_))
-        return true;
-
-    static_cast<void>(repository_.replace_all(previous.tracks, previous.playlists,
-        previous.workspaces));
-
-    return false;
+    library::RepositoryTransaction transaction{repository_, persist_};
+    return repository_.delete_playlist(id) && transaction.commit();
 }
 
 } // namespace wiola::app

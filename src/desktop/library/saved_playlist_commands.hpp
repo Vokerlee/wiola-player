@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <library/in_memory_repository.hpp>
+#include <library/repository_transaction.hpp>
 
 #include <functional>
 #include <string>
@@ -29,7 +29,7 @@ namespace wiola::app {
 
 class SavedPlaylistCommands final {
 public:
-    using Persist = std::function<bool(const library::LibraryRepository&)>;
+    using Persist = library::RepositoryTransaction::Persist;
 
     SavedPlaylistCommands(library::InMemoryRepository& repository, Persist persist);
 
@@ -39,15 +39,6 @@ public:
     [[nodiscard]] bool remove(const library::PlaylistId& id);
 
 private:
-    struct Snapshot {
-        std::vector<library::TrackRecord> tracks;
-        std::vector<library::PlaylistRecord> playlists;
-        std::vector<library::WorkspaceRecord> workspaces;
-    };
-
-    [[nodiscard]] Snapshot snapshot() const;
-    [[nodiscard]] bool commit(const Snapshot& previous);
-
     library::InMemoryRepository& repository_;
     Persist persist_;
 };

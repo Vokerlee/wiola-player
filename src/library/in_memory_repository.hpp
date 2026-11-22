@@ -57,6 +57,7 @@ public:
     bool remove_tag(const MediaId& media, const TagId& tag) override;
 
 private:
+    friend class RepositoryTransaction;
     PlaylistId next_playlist_id();
     PlaylistEntryId next_entry_id();
     WorkspaceId next_workspace_id();

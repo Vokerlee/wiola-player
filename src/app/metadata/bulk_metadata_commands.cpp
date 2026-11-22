@@ -22,6 +22,8 @@
 
 #include <set>
 
+#include <library/repository_transaction.hpp>
+
 namespace wiola::app {
 
 namespace {
@@ -67,9 +69,7 @@ BulkMetadataResult BulkMetadataCommands::apply(const std::vector<library::MediaI
         return {.error = StandardMetadataError::empty_edit};
 
     const std::set<library::MediaId> unique{media.begin(), media.end()};
-    const auto previous_tracks = repository_.tracks();
-    const auto previous_playlists = repository_.playlists();
-    const auto previous_workspaces = repository_.workspaces();
+    library::RepositoryTransaction transaction{repository_, persist_};
     BulkMetadataResult result;
 
     for (const library::MediaId& id : unique) {
@@ -99,11 +99,8 @@ BulkMetadataResult BulkMetadataCommands::apply(const std::vector<library::MediaI
     if (result.changed == 0)
         return result;
 
-    if (persist_(repository_))
+    if (transaction.commit())
         return result;
-
-    static_cast<void>(repository_.replace_all(previous_tracks, previous_playlists,
-        previous_workspaces));
     result.error = StandardMetadataError::persistence_failed;
     result.changed = 0;
     return result;
