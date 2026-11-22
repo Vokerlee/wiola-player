@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "component_descriptor.hpp"
 
 #include <gui/shell/player_actions.hpp>
 
@@ -30,24 +31,6 @@
 #include <vector>
 
 namespace wiola::gui {
-
-enum class LayoutComponentKind {
-    row,
-    column,
-    stack,
-    splitter,
-    grid,
-    tabs,
-    group,
-    button,
-    track_table,
-    inspector,
-    search,
-    tags,
-    transport,
-    volume,
-    status,
-};
 
 struct LayoutNode {
     QString id;

@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "action_descriptor.hpp"
 
 #include <engine/queue/playlist.hpp>
 
@@ -34,20 +35,6 @@ class QWidget;
 namespace wiola::gui {
 
 /// Stable command identities used independently of any particular button or menu.
-enum class PlayerAction : std::size_t {
-    open,
-    previous,
-    play,
-    next,
-    stop,
-    repeat,
-    shuffle,
-    add,
-    remove,
-    clear,
-    equalizer,
-    count,
-};
 
 class PlayerActions final : public QObject {
     Q_OBJECT
