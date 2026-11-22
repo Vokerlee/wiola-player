@@ -42,6 +42,9 @@ public:
     engine::CommandResult play() noexcept;
     engine::CommandResult pause() noexcept;
     engine::CommandResult resume() noexcept;
+    [[nodiscard]] std::optional<engine::Session::MediaReplacementState>
+    release_media(const std::filesystem::path& path);
+    void restore_media(const engine::Session::MediaReplacementState& state);
     void stop() noexcept;
     void seek(units::Time position) noexcept;
 

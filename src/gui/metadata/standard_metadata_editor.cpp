@@ -112,6 +112,22 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     QHBoxLayout* commands = new QHBoxLayout;
     commands->addWidget(apply_);
     commands->addWidget(cancel_);
+    save_file_ = new QPushButton{"Apply and save to file", this};
+    save_file_->setObjectName("saveMetadataToFile");
+    save_file_->setAccessibleName("Apply changes and save embedded metadata to file");
+    save_file_->setToolTip("Writes changed fields when the format supports them. Application "
+                           "overrides remain if file writing fails.");
+    commands->addWidget(save_file_);
+    file_status_ = new QLabel{this};
+    file_status_->setObjectName("metadataFileStatus");
+    file_status_->setWordWrap(true);
+    file_status_->setText("File writing is explicit. Format support is checked before writing.");
+    connect(save_file_, &QPushButton::clicked, this, [this] {
+        if (file_observer_ && dirty() && valid_numbers()) {
+            session_.set_draft(patch());
+            file_observer_(session_);
+        }
+    });
     commands->addStretch();
 
     QVBoxLayout* layout = new QVBoxLayout{this};
@@ -119,6 +135,7 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     layout->addLayout(fields);
     layout->addLayout(commands);
     layout->addWidget(status_);
+    layout->addWidget(file_status_);
 
     for (QLineEdit* input : {title_, artist_, album_, genre_, year_, comment_, composer_,
              track_number_, disc_number_}) {
@@ -278,6 +295,7 @@ void StandardMetadataEditor::update_actions()
 
     const bool changed = dirty();
     apply_->setEnabled(changed && valid_numbers());
+    save_file_->setEnabled(changed && valid_numbers());
     cancel_->setEnabled(!touched_.empty());
 
     if (!session_.valid())

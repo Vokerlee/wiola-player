@@ -87,6 +87,7 @@ struct MetadataWriteResult {
     MetadataWriteStage stage{MetadataWriteStage::failed};
     media::MetadataWriteOutcome outcome;
     std::shared_ptr<StagedMetadataOutput> output;
+    std::string source_fingerprint;
 };
 
 } // namespace wiola::app

@@ -22,6 +22,37 @@
 
 namespace wiola::gui {
 
+QString metadata_file_message(const app::MetadataWriteResult& result)
+{
+    switch (result.stage) {
+    case app::MetadataWriteStage::queued:
+        return "File write queued";
+    case app::MetadataWriteStage::remuxing:
+        return "Staging file metadata; the original remains usable";
+    case app::MetadataWriteStage::validating:
+        return "Validating unchanged audio";
+    case app::MetadataWriteStage::ready:
+        return "Staged file validated";
+    case app::MetadataWriteStage::reloading:
+        return "Replacing the file and reloading playback";
+    case app::MetadataWriteStage::complete:
+        return "Saved embedded metadata to file";
+    case app::MetadataWriteStage::conflicted:
+        return "File changed; embedded metadata was not overwritten. Application overrides remain.";
+    case app::MetadataWriteStage::cancelled:
+        return "File write cancelled. Application overrides remain.";
+    case app::MetadataWriteStage::failed:
+        if (result.outcome.source_modified)
+            return QString::fromStdString(result.outcome.detail);
+        if (result.outcome.error == media::MetadataWriteError::unsupported)
+            return "This format does not support the requested file edit. Application overrides "
+                   "remain.";
+        return "Could not write embedded metadata. Application overrides remain. " +
+            QString::fromStdString(result.outcome.detail);
+    }
+    return {};
+}
+
 QString metadata_edit_message(const app::MetadataEditOutcome& outcome)
 {
     switch (outcome.state) {

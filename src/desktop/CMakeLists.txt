@@ -49,6 +49,13 @@ wiola_add_library(
 target_link_libraries(wiola_queue_migration PUBLIC Qt6::Core)
 
 wiola_add_library(
+    wiola_metadata_writes
+    SOURCES metadata/metadata_write_service.cpp
+    LIBS wiola_app wiola_desktop_delivery
+)
+target_link_libraries(wiola_metadata_writes PUBLIC Qt6::Core)
+
+wiola_add_library(
     wiola_library_session
     SOURCES library/library_session.cpp
     LIBS
@@ -56,6 +63,7 @@ wiola_add_library(
         wiola_saved_playlists
         wiola_persistence_qt
         wiola_media_revisions
+        wiola_metadata_writes
         wiola_workspace_scans
         wiola_workspace_watcher
         wiola_codec

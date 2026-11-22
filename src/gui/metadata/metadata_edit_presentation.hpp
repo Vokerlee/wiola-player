@@ -21,9 +21,11 @@
 #pragma once
 #include <QString>
 #include <app/metadata/metadata_edit_service.hpp>
+#include <app/metadata/metadata_write_job.hpp>
 
 namespace wiola::gui {
 
+[[nodiscard]] QString metadata_file_message(const app::MetadataWriteResult& result);
 [[nodiscard]] QString metadata_edit_message(const app::MetadataEditOutcome& outcome);
 
-}
+} // namespace wiola::gui

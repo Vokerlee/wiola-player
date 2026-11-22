@@ -291,6 +291,24 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     inspector_->standard_metadata()->on_apply([this](const app::MetadataEditSession& session) {
         finish_standard_metadata(session);
     });
+    inspector_->standard_metadata()->on_file_write([this](const app::MetadataEditSession& draft) {
+        const auto captured = draft;
+        const auto outcome =
+            metadata_edits_.apply(captured.media(), captured.draft(), captured.expectations());
+        if (!outcome.succeeded()) {
+            inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
+            return;
+        }
+        static_cast<void>(library_session_.file_writes().submit(captured));
+        inspector_->standard_metadata()->discard();
+        refresh_inspector();
+    });
+    connect(&library_session_, &app::LibrarySession::file_write_outcome, this,
+        [this](const app::MetadataWriteResult& result) {
+            const auto message = metadata_file_message(result);
+            inspector_->standard_metadata()->show_file_status(message);
+            show_status(message);
+        });
     inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
         resolve_metadata_conflict(action);
     });

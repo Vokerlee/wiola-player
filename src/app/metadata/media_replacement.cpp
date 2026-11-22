@@ -101,33 +101,59 @@ std::optional<media::MetadataWriteOutcome> compare(media::MediaProvider& provide
 
 } // namespace
 
-media::MetadataWriteOutcome commit_media_replacement(const std::filesystem::path& source,
+MediaReplacementValidation prepare_media_replacement(const std::filesystem::path& source,
     const std::filesystem::path& temporary, media::MediaProvider& provider,
-    std::string_view expected_fingerprint, const media::OperationContext& context,
-    MediaReplacementHooks hooks)
+    std::string_view expected_fingerprint, const media::OperationContext& context)
 {
-    if (source == temporary)
-        return failure(media::MetadataWriteError::invalid_edit,
-            "replacement source and output must be different");
-
-    if (!expected_fingerprint.empty()) {
-        const auto current = library::fingerprint_media(source);
-        if (!current)
-            return failure(media::MetadataWriteError::io,
-                "could not fingerprint the current source");
-
-        if (*current != expected_fingerprint)
-            return failure(media::MetadataWriteError::conflicted,
-                "source changed before replacement");
-    }
-
-    auto invalid = compare(provider, source, temporary, context);
-    if (invalid) {
+    const auto failed = [](media::MetadataWriteOutcome outcome) {
+        return MediaReplacementValidation{.prepared = {}, .failure = std::move(outcome)};
+    };
+    if (source.lexically_normal() == temporary.lexically_normal())
+        return failed(failure(media::MetadataWriteError::invalid_edit,
+            "source and staged output must differ"));
+    const auto original = library::fingerprint_media(source);
+    if (!original)
+        return failed(failure(media::MetadataWriteError::io, "could not fingerprint source"));
+    if (!expected_fingerprint.empty() && *original != expected_fingerprint)
+        return failed(failure(media::MetadataWriteError::conflicted,
+            "source changed before validation"));
+    if (auto invalid = compare(provider, source, temporary, context)) {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);
-        return *invalid;
+        return failed(*invalid);
     }
+    const auto output = library::fingerprint_media(temporary);
+    if (!output)
+        return failed(failure(media::MetadataWriteError::invalid_output,
+            "could not fingerprint staged output"));
+    return {
+        .prepared = PreparedMediaReplacement{source, temporary, *original, *output},
+        .failure = {}
+    };
+}
 
+media::MetadataWriteOutcome commit_media_replacement(const std::filesystem::path& source,
+    const std::filesystem::path& temporary, media::MediaProvider& provider,
+    std::string_view expected, const media::OperationContext& context, MediaReplacementHooks hooks)
+{
+    auto validation = prepare_media_replacement(source, temporary, provider, expected, context);
+    if (!validation.prepared)
+        return validation.failure;
+    return commit_prepared_media_replacement(*validation.prepared, context, std::move(hooks));
+}
+
+media::MetadataWriteOutcome
+commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
+    const media::OperationContext& context, MediaReplacementHooks hooks)
+{
+    const auto& source = prepared.source;
+    const auto& temporary = prepared.temporary;
+    if (context.stop_reason() != media::StopReason::none)
+        return failure(media::MetadataWriteError::cancelled, context.error().detail);
+    if (library::fingerprint_media(source) != std::optional{prepared.source_fingerprint} ||
+        library::fingerprint_media(temporary) != std::optional{prepared.output_fingerprint})
+        return failure(media::MetadataWriteError::conflicted,
+            "source or staged output changed after validation");
     std::filesystem::path backup = source;
     backup += ".wiola-backup";
 
@@ -142,6 +168,12 @@ media::MetadataWriteOutcome commit_media_replacement(const std::filesystem::path
     if (hooks.before_commit && !hooks.before_commit())
         return failure(media::MetadataWriteError::io,
             "the source is locked or replacement was refused");
+
+    if (context.stop_reason() != media::StopReason::none)
+        return failure(media::MetadataWriteError::cancelled, context.error().detail);
+    if (library::fingerprint_media(source) != std::optional{prepared.source_fingerprint})
+        return failure(media::MetadataWriteError::conflicted,
+            "source changed at replacement commit");
 
 #ifdef _WIN32
     std::filesystem::rename(source, backup, error);

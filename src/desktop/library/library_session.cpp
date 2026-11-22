@@ -55,6 +55,8 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , edits_{repository_, persist_,
           [this](const MetadataEditOutcome& outcome) { emit metadata_outcome(outcome); }}
     , scans_{*this, [this](WorkspaceScanBatch batch) { publish_scan(std::move(batch)); }}
+    , writes_{*this, provider, repository_, persist_,
+          [this](const MetadataWriteResult& result) { emit file_write_outcome(result); }}
     , metadata_{*this, std::move(provider),
           [this](BackgroundMetadataResult result) { publish_metadata(std::move(result)); }}
 {
@@ -89,6 +91,7 @@ persistence::qt::LibraryStoreResult LibrarySession::shutdown()
     check_owner();
     if (!accepting_ && shutdown_result_.succeeded())
         return shutdown_result_;
+    writes_.stop();
     accepting_ = false;
     watcher_.stop();
     scans_.stop();

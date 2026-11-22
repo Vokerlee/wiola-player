@@ -150,6 +150,15 @@ public:
 
     /// Quiesces the current decoder and reads it again, restoring play intent and position when
     /// the replacement is ready. Returns immediately while that read continues.
+    struct MediaReplacementState {
+        QueueEntryId entry;
+        bool play;
+        units::Time position;
+    };
+
+    [[nodiscard]] std::optional<MediaReplacementState>
+    release_media(const std::filesystem::path& path);
+    OpenResult restore_media(const MediaReplacementState& state);
     OpenResult reload_current();
 
     /// Moves playback to `position`, measured from the start of the track.
@@ -216,6 +225,7 @@ private:
     std::unique_ptr<codec::Decoder> ready_;
     std::filesystem::path ready_track_;
     std::optional<units::Time> restore_position_;
+    std::optional<MediaReplacementState> replacement_;
     OpenResult last_result_{OpenResult::opened};
     /// The output outlives its pipeline so transport is joined before the output is disconnected.
     OutputSession out_;

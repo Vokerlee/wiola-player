@@ -68,7 +68,7 @@ void BackgroundMetadataWrites::stop()
 }
 
 std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(MetadataWriteJob job,
-    Observer observer)
+    Observer observer, Observer progress)
 {
     if (!job.media.valid() || job.source.empty() || !observer || !job.cancellation)
         return {};
@@ -86,9 +86,9 @@ std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(Metada
         job.operation = id;
         if (previous != jobs_.end()) {
             superseded = std::move(*previous);
-            *previous = {std::move(job), std::move(observer)};
+            *previous = {std::move(job), std::move(observer), std::move(progress)};
         } else
-            jobs_.push_back({std::move(job), std::move(observer)});
+            jobs_.push_back({std::move(job), std::move(observer), std::move(progress)});
     }
     if (superseded)
         cancel(std::move(*superseded));
@@ -115,6 +115,9 @@ void BackgroundMetadataWrites::run()
             .output = {}};
         try {
             const auto& job = pending.job;
+            const auto fingerprint = library::fingerprint_media(job.source);
+            if (fingerprint)
+                result.source_fingerprint = *fingerprint;
             if (job.context().stop_reason() != media::StopReason::none)
                 result.stage = MetadataWriteStage::cancelled;
             else if (!job.expected_source.fingerprint.empty() &&
@@ -123,7 +126,16 @@ void BackgroundMetadataWrites::run()
                 result.stage = MetadataWriteStage::conflicted;
                 result.outcome.error = media::MetadataWriteError::conflicted;
                 result.outcome.detail = "source changed before staging";
+            } else if (!fingerprint) {
+                result.outcome.error = media::MetadataWriteError::io;
+                result.outcome.detail = "could not fingerprint source before staging";
             } else {
+                if (pending.progress)
+                    pending.progress({.job = job,
+                        .stage = MetadataWriteStage::remuxing,
+                        .outcome = {},
+                        .output = {},
+                        .source_fingerprint = *fingerprint});
                 auto patch = library::file_metadata_patch(job.patch);
                 auto asset = provider_->open(job.source, job.context());
                 if (!patch) {

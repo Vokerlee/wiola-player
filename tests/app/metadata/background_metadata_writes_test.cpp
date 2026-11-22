@@ -124,7 +124,12 @@ wiola::app::MetadataWriteJob edit(std::string title)
 {
     wiola::app::MetadataWriteJob job;
     job.media = {"media"};
-    job.source = "track.mp3";
+    static const auto source = [] {
+        const auto path = std::filesystem::temp_directory_path() / "wiola-fake-write-source.mp3";
+        std::ofstream{path} << "fake source";
+        return path;
+    }();
+    job.source = source;
     job.patch.title = std::move(title);
     return job;
 }

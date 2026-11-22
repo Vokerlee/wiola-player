@@ -22,9 +22,13 @@
 #include <gui/shell/main_window.hpp>
 
 #include <QFile>
+#include <QLineEdit>
+#include <QPushButton>
 #include <codec/provider.hpp>
+#include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
+#include <library/fingerprint.hpp>
 #include <library/location.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -37,6 +41,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <memory>
@@ -257,6 +262,120 @@ TEST_F(PlayerApplication, WorkspaceRelocationPreservesSavedReferencesAndCanonica
     EXPECT_EQ(wiola::library::preferred_location(*library.repository().track(media)),
         wiola::platform::qt::QtPathAdapter::from_qt(new_name));
     EXPECT_EQ(library.repository().playlist(playlist)->entries.front().media, media);
+}
+
+TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPlayingIntent)
+{
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const auto path = wiola::platform::qt::QtPathAdapter::from_qt(
+        directory.filePath(QString::fromUtf8("музыка.mp3"))
+    );
+    std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+    wiola::app::PlayerRuntimeConfig config;
+    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.library_file =
+        wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    config.output = [](wiola::audio::Source&) {
+        return std::make_unique<wiola::testing::FakeOutput>();
+    };
+    wiola::app::PlayerApplication player{config};
+    wiola::gui::MainWindow window{player.playback(), player.library(), player.preferences()};
+    player.observe(
+        window, [&](const auto& value) { window.update_after_pump(value); },
+        [&] { window.refresh(); }
+    );
+    window.open({path});
+    const auto media = wiola::library::media_id_for(path);
+    ASSERT_TRUE(pump_until([&] {
+        return player.session().loaded() && player.library().repository().track(media);
+    }));
+    ASSERT_EQ(player.playback().play(), wiola::engine::CommandResult::accepted);
+    window.refresh();
+    std::vector<wiola::app::MetadataWriteStage> stages;
+    QObject::connect(&player.library(), &wiola::app::LibrarySession::file_write_outcome, &window,
+        [&](const auto& value) {
+            EXPECT_EQ(QThread::currentThread(), window.thread());
+            stages.push_back(value.stage);
+        });
+    auto* title = window.findChild<QLineEdit*>("standardTitle");
+    ASSERT_NE(title, nullptr);
+    title->setText("Written through the GUI");
+    auto* save = window.findChild<QPushButton*>("saveMetadataToFile");
+    ASSERT_TRUE(save->isEnabled());
+    save->click();
+    ASSERT_TRUE(pump_until([&] {
+        return std::ranges::find(stages, wiola::app::MetadataWriteStage::complete) !=
+            stages.end() ||
+            std::ranges::find(stages, wiola::app::MetadataWriteStage::failed) != stages.end();
+    }));
+    ASSERT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::complete), stages.end())
+        << window.findChild<QLabel*>("metadataFileStatus")->text().toStdString();
+    ASSERT_TRUE(pump_until([&] {
+        return player.session().loaded() && player.session().playing();
+    }));
+    EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::remuxing), stages.end());
+    EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::validating), stages.end());
+    EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::reloading), stages.end());
+    auto asset = config.provider->open(path);
+    ASSERT_TRUE(asset);
+    auto metadata = (*asset)->read_metadata();
+    ASSERT_TRUE(metadata);
+    EXPECT_EQ(metadata->track.title, "Written through the GUI");
+    const auto* record = player.library().repository().track(media);
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->embedded.title, "Written through the GUI");
+    EXPECT_EQ(record->overrides.title, "Written through the GUI");
+    EXPECT_EQ(record->content_revision, 1);
+    EXPECT_EQ(record->fingerprint, wiola::library::fingerprint_media(path));
+    EXPECT_TRUE(std::filesystem::exists(std::filesystem::path{path.string() + ".wiola-backup"}));
+    EXPECT_EQ(window.findChild<QLabel*>("metadataFileStatus")->text(),
+        "Saved embedded metadata to file");
+    EXPECT_TRUE(player.shutdown());
+}
+
+TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOriginalBytes)
+{
+    QTemporaryDir directory;
+    const auto source = track("wiola-readonly-format.wav");
+    const auto before = wiola::library::fingerprint_media(source);
+    ASSERT_TRUE(before);
+    wiola::app::PlayerRuntimeConfig config;
+    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.output = [](wiola::audio::Source&) {
+        return std::make_unique<wiola::testing::FakeOutput>();
+    };
+    config.library_file =
+        wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    wiola::app::PlayerApplication player{config};
+    wiola::gui::MainWindow window{player.playback(), player.library(), player.preferences()};
+    player.observe(
+        window, [&](const auto& value) { window.update_after_pump(value); },
+        [&] { window.refresh(); }
+    );
+    window.open({source});
+    const auto media = wiola::library::media_id_for(source);
+    ASSERT_TRUE(pump_until([&] {
+        return player.session().loaded() && player.library().repository().track(media);
+    }));
+    window.refresh();
+    std::optional<wiola::app::MetadataWriteResult> terminal;
+    QObject::connect(&player.library(), &wiola::app::LibrarySession::file_write_outcome, &window,
+        [&](const auto& value) {
+            if (value.stage == wiola::app::MetadataWriteStage::failed)
+                terminal = value;
+        });
+    window.findChild<QLineEdit*>("standardTitle")->setText("Application value");
+    window.findChild<QPushButton*>("saveMetadataToFile")->click();
+    ASSERT_TRUE(pump_until([&] { return terminal.has_value(); }));
+    EXPECT_EQ(terminal->outcome.error, wiola::media::MetadataWriteError::unsupported);
+    EXPECT_FALSE(terminal->outcome.source_modified);
+    EXPECT_EQ(wiola::library::fingerprint_media(source), before);
+    EXPECT_EQ(player.library().repository().track(media)->overrides.title, "Application value");
+    EXPECT_TRUE(window.findChild<QLabel*>("metadataFileStatus")
+            ->text()
+            .contains("Application overrides remain"));
+    EXPECT_TRUE(player.shutdown());
 }
 
 } // namespace
