@@ -22,7 +22,7 @@
 
 #include <gui/tracks/track_table_view.hpp>
 
-#include <engine/queue/playlist.hpp>
+#include "saved_playlist_rows.hpp"
 #include <library/repository.hpp>
 
 #include <QLabel>
@@ -41,6 +41,9 @@ public:
     explicit SavedPlaylistDocument(QWidget* parent = nullptr);
 
     bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
+    bool show_media_revision(const library::LibraryRepository& repository,
+        const library::MediaId& media);
+    [[nodiscard]] std::vector<SelectedTrack> selection() const;
     void set_active(bool active);
     [[nodiscard]] std::vector<std::filesystem::path> displayed_paths() const;
     [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
@@ -62,8 +65,7 @@ private:
     TrackTableView* table_{nullptr};
     TrackSearchPanel* search_{nullptr};
     TagFilterPanel* filters_{nullptr};
-    engine::Playlist rows_;
-    std::vector<library::PlaylistEntryRecord> entries_;
+    SavedPlaylistRows source_;
     QString name_;
     bool active_destination_{false};
     std::function<void(library::PlaylistEntryId)> entry_observer_;

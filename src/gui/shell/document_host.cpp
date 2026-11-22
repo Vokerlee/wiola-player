@@ -90,7 +90,7 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
                 static_cast<void>(document->show_batch(batch));
         });
     changes_ = library_.repository().observe([this](const auto& batch) {
-        refresh();
+        refresh(batch);
         for (const auto& [id, document] : registry_.workspaces())
             for (const auto& change : batch.media)
                 static_cast<void>(document->show_media_revision(library_.repository(),
@@ -123,17 +123,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
         delete document;
         return false;
     }
-    registry_.add(id, *document, [this, id, document] {
-        std::vector<SelectedTrack> selected;
-        if (const auto* playlist = library_.repository().playlist(id))
-            for (const auto& entry : document->chosen_entries()) {
-                const auto found =
-                    std::ranges::find(playlist->entries, entry, &library::PlaylistEntryRecord::id);
-                if (found != playlist->entries.end())
-                    selected.push_back({found->media, entry});
-            }
-        return selected;
-    });
+    registry_.add(id, *document, [document] { return document->selection(); });
     document->set_active(library_.active_playlist().id() == id);
     document->on_active_requested([this, id] {
         if (commands_.activate_playlist)
@@ -245,7 +235,7 @@ void DocumentHost::refresh_active_destination()
         document->set_active(library_.active_playlist().id() == id);
 }
 
-void DocumentHost::refresh()
+void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
 {
     for (const auto& [id, document] : registry_.playlists()) {
         const auto* playlist = library_.repository().playlist(id);
@@ -253,8 +243,14 @@ void DocumentHost::refresh()
             static_cast<void>(close(DocumentId::playlist(id)));
             continue;
         }
-        static_cast<void>(document->show_playlist(library_.repository(), id));
-        setTabText(indexOf(document), QString::fromStdString(playlist->name));
+        if (std::ranges::find(batch.playlists, id) != batch.playlists.end()) {
+            static_cast<void>(document->show_playlist(library_.repository(), id));
+            setTabText(indexOf(document), QString::fromStdString(playlist->name));
+        } else {
+            for (const auto& change : batch.media)
+                static_cast<void>(document->show_media_revision(library_.repository(),
+                    change.media));
+        }
     }
     for (const auto& [id, document] : registry_.workspaces())
         if (!library_.repository().workspace(id))

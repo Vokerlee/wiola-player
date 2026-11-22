@@ -61,7 +61,7 @@ public:
     void refresh_active_destination();
 
 private:
-    void refresh();
+    void refresh(const library::LibraryChangeBatch& batch);
     void restore();
     void save();
     app::LibrarySession& library_;

@@ -19,12 +19,9 @@
  */
 
 #include "saved_playlist_document.hpp"
-#include "queue_rows.hpp"
 
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_search_panel.hpp>
-
-#include <library/metadata.hpp>
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -33,19 +30,6 @@
 #include <utility>
 
 namespace wiola::gui {
-
-namespace {
-
-bool same_entries(const std::vector<library::PlaylistEntryRecord>& a,
-    const std::vector<library::PlaylistEntryRecord>& b)
-{
-    return a.size() == b.size() &&
-        std::ranges::equal(a, b, [](const auto& first, const auto& second) {
-            return first.id == second.id && first.media == second.media;
-        });
-}
-
-} // namespace
 
 SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     : QWidget{parent}
@@ -97,10 +81,9 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     });
 
     connect(table_, &TrackTableView::row_chosen, [this](TrackRowId occurrence) {
-        const auto* id = std::get_if<engine::QueueEntryId>(&occurrence);
-        const auto row = id ? rows_.index_of(*id) : std::nullopt;
-        if (row && *row < entries_.size() && entry_observer_)
-            entry_observer_(entries_[*row].id);
+        if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence);
+            id && entry_observer_)
+            entry_observer_(*id);
     });
 
     connect(table_, &TrackTableView::transfer_active_asked, [this] {
@@ -134,45 +117,33 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     name_ = QString::fromStdString(playlist->name);
     update_heading();
 
-    if (!same_entries(entries_, playlist->entries)) {
-        std::vector<engine::Track> tracks;
-        tracks.reserve(playlist->entries.size());
-
-        for (const library::PlaylistEntryRecord& entry : playlist->entries) {
-            const library::TrackRecord* media = repository.track(entry.media);
-            const std::filesystem::path location = media != nullptr && !media->locations.empty()
-                ? media->locations.front()
-                : std::filesystem::path{};
-            tracks.push_back(engine::Track::of(location));
-        }
-
-        rows_.set(std::move(tracks));
-        entries_ = playlist->entries;
-    }
-
-    for (std::size_t row = 0; row < entries_.size(); ++row) {
-        const library::TrackRecord* media = repository.track(entries_[row].media);
-        if (media == nullptr)
-            continue;
-
-        const library::ResolvedMetadata resolved = library::resolve_metadata(*media);
-        static_cast<void>(rows_.describe(rows_.tracks()[row].id(),
-            engine::TrackMetadata{.title = resolved.title,
-                .artist = resolved.artist,
-                .album = resolved.album,
-                .duration = resolved.duration,
-                .genre = resolved.genre,
-                .year = resolved.year,
-                .comment = resolved.comment,
-                .composer = resolved.composer,
-                .track_number = resolved.track_number,
-                .disc_number = resolved.disc_number}));
-    }
+    if (!source_.reconcile(repository, id))
+        return false;
 
     table_->show_library(repository);
-    table_->show_rows(queue_rows(rows_.tracks()));
+    table_->show_rows(source_.rows());
     update_results();
     return true;
+}
+
+bool SavedPlaylistDocument::show_media_revision(const library::LibraryRepository& repository,
+    const library::MediaId& media)
+{
+    const bool changed = source_.update_media(repository, media);
+    table_->show_library(repository);
+    if (changed)
+        table_->show_rows(source_.rows());
+    update_results();
+    return changed;
+}
+
+std::vector<SelectedTrack> SavedPlaylistDocument::selection() const
+{
+    std::vector<SelectedTrack> selected;
+    for (const auto& entry : chosen_entries())
+        if (const auto* row = source_.row(entry))
+            selected.push_back({row->media, row->id});
+    return selected;
 }
 
 void SavedPlaylistDocument::set_active(bool active)
@@ -194,26 +165,19 @@ void SavedPlaylistDocument::update_results()
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
-
-    for (const engine::QueueEntryId id : queue_entry_ids(table_->displayed_rows())) {
-        const auto row = rows_.index_of(id);
-        if (row)
-            paths.push_back(rows_.tracks()[*row].path());
-    }
-
+    for (const auto& occurrence : table_->displayed_rows())
+        if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence))
+            if (const auto* row = source_.row(*id); row && !row->location.empty())
+                paths.push_back(row->location);
     return paths;
 }
 
 std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() const
 {
     std::vector<library::PlaylistEntryId> selected;
-
-    for (const engine::QueueEntryId id : queue_entry_ids(table_->chosen_rows())) {
-        const auto row = rows_.index_of(id);
-        if (row && *row < entries_.size())
-            selected.push_back(entries_[*row].id);
-    }
-
+    for (const auto& occurrence : table_->chosen_rows())
+        if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence))
+            selected.push_back(*id);
     return selected;
 }
 
