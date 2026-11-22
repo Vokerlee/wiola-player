@@ -47,7 +47,6 @@ private:
     std::vector<TrackRow> rows_;
     std::map<library::MediaId, std::size_t> index_;
     std::set<library::MediaId> seen_;
-    std::vector<library::MediaId> order_;
 };
 
 } // namespace wiola::gui

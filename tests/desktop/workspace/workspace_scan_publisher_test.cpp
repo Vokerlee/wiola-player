@@ -27,8 +27,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <condition_variable>
 #include <fstream>
 #include <functional>
+#include <mutex>
+#include <set>
 
 namespace {
 
@@ -76,7 +79,7 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
     }));
     EXPECT_EQ(batches.back().status, wiola::app::WorkspaceScanStatus::complete);
     EXPECT_EQ(tracks.size(), 70);
-    EXPECT_TRUE(std::ranges::is_sorted(tracks));
+    EXPECT_EQ(std::set<std::filesystem::path>(tracks.begin(), tracks.end()).size(), 70);
     EXPECT_EQ(batches.back().generation, generation);
 
     for (const auto& batch : batches)
@@ -85,7 +88,7 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
     std::filesystem::remove_all(root);
 }
 
-TEST(WorkspaceScanPublisher, DropsQueuedResultsFromAnOlderFolder)
+TEST(WorkspaceScanPublisher, SupersedingOneWorkspaceDropsOnlyItsOlderQueuedGeneration)
 {
     const std::filesystem::path base = std::filesystem::temp_directory_path() / "wiola-generations";
     const std::filesystem::path old_root = base / "old";
@@ -99,10 +102,11 @@ TEST(WorkspaceScanPublisher, DropsQueuedResultsFromAnOlderFolder)
         [&](wiola::app::WorkspaceScanBatch batch) { batches.push_back(std::move(batch)); }};
 
     const auto old_generation = publisher.start(
-        {.id = wiola::library::WorkspaceId{"old"}, .root = old_root, .recursive = true}, {".wav"}
+        {.id = wiola::library::WorkspaceId{"workspace"}, .root = old_root, .recursive = true},
+        {".wav"}
     );
     const auto current = publisher.start(
-        {.id = wiola::library::WorkspaceId{"current"}, .root = new_root, .recursive = true},
+        {.id = wiola::library::WorkspaceId{"workspace"}, .root = new_root, .recursive = true},
         {".wav"}
     );
 
@@ -113,7 +117,7 @@ TEST(WorkspaceScanPublisher, DropsQueuedResultsFromAnOlderFolder)
     }));
 
     for (const auto& batch : batches) {
-        EXPECT_EQ(batch.workspace, wiola::library::WorkspaceId{"current"});
+        EXPECT_EQ(batch.workspace, wiola::library::WorkspaceId{"workspace"});
         EXPECT_EQ(batch.generation, current);
     }
 
@@ -138,6 +142,101 @@ TEST(WorkspaceScanPublisher, CancellationInvalidatesAlreadyQueuedBatches)
     QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
 
     EXPECT_TRUE(batches.empty());
+    std::filesystem::remove_all(root);
+}
+
+struct ScanGate {
+    std::mutex mutex;
+    std::condition_variable changed;
+    bool entered{};
+
+    void wait(std::stop_token stop)
+    {
+        std::unique_lock lock{mutex};
+        entered = true;
+        changed.notify_all();
+        std::stop_callback wake{stop, [this] { changed.notify_all(); }};
+        changed.wait(lock, [&] { return stop.stop_requested(); });
+    }
+
+    bool started()
+    {
+        std::lock_guard lock{mutex};
+        return entered;
+    }
+};
+
+TEST(WorkspaceScanPublisher, CancellingOneWorkspaceLeavesAnotherConcurrentScanIntact)
+{
+    const auto root = std::filesystem::temp_directory_path() / "wiola-independent-scans";
+    std::filesystem::remove_all(root);
+    file(root / "first" / "one.wav");
+    file(root / "second" / "two.wav");
+    ScanGate gate;
+    std::vector<wiola::app::WorkspaceScanBatch> batches;
+    wiola::app::WorkspaceScanScheduling policy;
+    policy.scan.after_entry = [&](const auto& path, std::size_t, std::stop_token stop) {
+        if (path.parent_path() == root / "first")
+            gate.wait(stop);
+    };
+    wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
+        [&](auto batch) { batches.push_back(std::move(batch)); }, policy};
+    const auto first = publisher.start({.id = {"first"}, .root = root / "first"}, {".wav"});
+    const auto second = publisher.start({.id = {"second"}, .root = root / "second"}, {".wav"});
+    ASSERT_TRUE(pump_until([&] {
+        return gate.started() && std::ranges::any_of(batches, [&](const auto& batch) {
+            return batch.workspace == wiola::library::WorkspaceId{"second"} &&
+                batch.status == wiola::app::WorkspaceScanStatus::complete;
+        });
+    }));
+    publisher.cancel(wiola::library::WorkspaceId{"first"});
+    publisher.stop();
+    EXPECT_TRUE(std::ranges::none_of(batches, [&](const auto& batch) {
+        return batch.generation == first &&
+            batch.status == wiola::app::WorkspaceScanStatus::complete;
+    }));
+    EXPECT_TRUE(std::ranges::any_of(batches, [&](const auto& batch) {
+        return batch.generation == second &&
+            batch.status == wiola::app::WorkspaceScanStatus::complete && batch.entries.size() == 1;
+    }));
+    std::filesystem::remove_all(root);
+}
+
+TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverflow)
+{
+    const auto root = std::filesystem::temp_directory_path() / "wiola-bounded-scans";
+    std::filesystem::remove_all(root);
+    for (const auto* name : {"first", "second", "third"})
+        file(root / name / "track.wav");
+    ScanGate gate;
+    std::vector<wiola::app::WorkspaceScanBatch> batches;
+    wiola::app::WorkspaceScanScheduling policy;
+    policy.max_active = 1;
+    policy.max_pending = 1;
+    policy.scan.after_entry = [&](const auto& path, std::size_t, std::stop_token stop) {
+        if (path.parent_path() == root / "first")
+            gate.wait(stop);
+    };
+    wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
+        [&](auto batch) { batches.push_back(std::move(batch)); }, policy};
+    publisher.start({.id = {"first"}, .root = root / "first"}, {".wav"});
+    ASSERT_TRUE(pump_until([&] { return gate.started(); }));
+    const auto waiting = publisher.start({.id = {"second"}, .root = root / "second"}, {".wav"});
+    const auto rejected = publisher.start({.id = {"third"}, .root = root / "third"}, {".wav"});
+    ASSERT_TRUE(pump_until([&] {
+        return std::ranges::any_of(batches, [&](const auto& batch) {
+            return batch.generation == rejected &&
+                batch.error == wiola::app::WorkspaceScanError::rejected;
+        });
+    }));
+    publisher.cancel(wiola::library::WorkspaceId{"first"});
+    ASSERT_TRUE(pump_until([&] {
+        return std::ranges::any_of(batches, [&](const auto& batch) {
+            return batch.generation == waiting &&
+                batch.status == wiola::app::WorkspaceScanStatus::complete;
+        });
+    }));
+    publisher.stop();
     std::filesystem::remove_all(root);
 }
 

@@ -149,7 +149,25 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
     if (batch.status == app::WorkspaceScanStatus::failed) {
-        status_->setText(status_->text() + " — scan failed");
+        QString reason;
+        switch (batch.error) {
+        case app::WorkspaceScanError::limit_exceeded:
+            reason = "Scan limit reached; narrow the folder or use a non-recursive scan";
+            break;
+        case app::WorkspaceScanError::permission_denied:
+            reason = "Folder access denied; useful rows were retained";
+            break;
+        case app::WorkspaceScanError::rejected:
+            reason = "Scan queue is full; try again after another scan finishes";
+            break;
+        case app::WorkspaceScanError::unreadable_root:
+            reason = "Folder is unavailable";
+            break;
+        default:
+            reason = "Scan failed; useful rows were retained";
+            break;
+        }
+        status_->setText(status_->text() + " — " + reason);
         status_->setProperty("status", "error");
     } else if (batch.status == app::WorkspaceScanStatus::cancelled) {
         status_->setText(status_->text() + " — cancelled");

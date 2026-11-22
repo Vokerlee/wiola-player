@@ -78,7 +78,7 @@ public:
     [[nodiscard]] const library::RepositoryTransaction::Persist& persistence() const;
     std::uint64_t scan_workspace(const library::WorkspaceId& id,
         std::vector<std::string> extensions);
-    void cancel_workspace_scan();
+    void cancel_workspace_scan(const library::WorkspaceId& id);
     [[nodiscard]] library::MediaId media_at(const std::filesystem::path& location) const;
     [[nodiscard]] WorkspaceWatcher& watcher();
 
@@ -117,12 +117,11 @@ private:
     WorkspaceReconciliation reconciliation_{persist_};
 
     struct PendingScan {
-        library::WorkspaceId workspace;
         std::uint64_t generation;
         std::vector<WorkspaceScanEntry> entries;
     };
 
-    std::optional<PendingScan> pending_scan_;
+    std::map<library::WorkspaceId, PendingScan> pending_scans_;
     QString restore_error_;
     persistence::qt::LibraryStoreResult restore_result_;
     library::LibraryChanges::Subscription changes_;

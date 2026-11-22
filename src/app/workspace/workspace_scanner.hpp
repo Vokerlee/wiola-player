@@ -37,18 +37,34 @@ enum class WorkspaceScanStatus {
     failed,
 };
 
+enum class WorkspaceScanError {
+    none,
+    unreadable_root,
+    permission_denied,
+    limit_exceeded,
+    io,
+    rejected,
+};
+
+struct WorkspaceScanPolicy {
+    std::size_t batch_size{64}, max_tracks{100000}, max_entries{1000000}, max_directories{100000};
+    std::function<void(const std::filesystem::path&, std::size_t, std::stop_token)> after_entry;
+};
+
 struct WorkspaceScanBatch {
     library::WorkspaceId workspace;
     std::uint64_t generation{0};
     std::vector<WorkspaceScanEntry> entries;
     WorkspaceScanStatus status{WorkspaceScanStatus::running};
+    WorkspaceScanError error{WorkspaceScanError::none};
+    std::vector<std::filesystem::path> directories;
 };
 
 class WorkspaceScanner final {
 public:
     using Observer = std::function<void(WorkspaceScanBatch)>;
 
-    WorkspaceScanner() = default;
+    explicit WorkspaceScanner(WorkspaceScanPolicy policy = {});
     ~WorkspaceScanner();
 
     std::uint64_t start(const library::WorkspaceRecord& workspace,
@@ -62,6 +78,7 @@ private:
         std::vector<std::string> supported_extensions, const Observer& observer,
         std::uint64_t generation, const std::vector<library::TrackRecord>& known) const;
 
+    WorkspaceScanPolicy policy_;
     std::jthread worker_;
     std::stop_source stopped_;
     std::uint64_t generation_{0};

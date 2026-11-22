@@ -22,14 +22,12 @@
 
 #include <algorithm>
 #include <cctype>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::app {
 
 namespace {
-
-constexpr std::size_t batch_size{64};
-constexpr std::size_t max_workspace_tracks{100000};
 
 bool supported(const std::filesystem::path& path, const std::vector<std::string>& extensions)
 {
@@ -40,16 +38,15 @@ bool supported(const std::filesystem::path& path, const std::vector<std::string>
     return std::ranges::find(extensions, extension) != extensions.end();
 }
 
-void publish(const WorkspaceScanner::Observer& observer, const library::WorkspaceId& workspace,
-    std::uint64_t generation, std::vector<WorkspaceScanEntry> entries, WorkspaceScanStatus status)
-{
-    observer({.workspace = workspace,
-        .generation = generation,
-        .entries = std::move(entries),
-        .status = status});
-}
-
 } // namespace
+
+WorkspaceScanner::WorkspaceScanner(WorkspaceScanPolicy policy)
+    : policy_{std::move(policy)}
+{
+    if (policy_.batch_size == 0 || policy_.batch_size > 1024 || policy_.max_tracks == 0 ||
+        policy_.max_entries == 0 || policy_.max_directories == 0)
+        throw std::invalid_argument{"invalid workspace scan limits"};
+}
 
 WorkspaceScanner::~WorkspaceScanner()
 {
@@ -81,7 +78,16 @@ std::uint64_t WorkspaceScanner::start(const library::WorkspaceRecord& workspace,
     worker_ = std::jthread{
         [this, workspace, extensions = std::move(supported_extensions),
             observer = std::move(observer), generation, stopped, known = std::move(known)] {
-            scan(stopped, workspace, std::move(extensions), observer, generation, known);
+            try {
+                scan(stopped, workspace, std::move(extensions), observer, generation, known);
+            } catch (const std::runtime_error&) {
+                observer({.workspace = workspace.id,
+                    .generation = generation,
+                    .entries = {},
+                    .status = WorkspaceScanStatus::failed,
+                    .error = WorkspaceScanError::io,
+                    .directories = {}});
+            }
         }};
 
     return generation;
@@ -98,93 +104,95 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
 {
     std::error_code error;
     if (!std::filesystem::is_directory(workspace.root, error) || error) {
-        publish(observer, workspace.id, generation, {}, WorkspaceScanStatus::failed);
+        observer({.workspace = workspace.id,
+            .generation = generation,
+            .entries = {},
+            .status = WorkspaceScanStatus::failed,
+            .error = WorkspaceScanError::unreadable_root,
+            .directories = {}});
         return;
     }
-
-    std::vector<std::filesystem::path> tracks;
-    bool failed = false;
-
-    for (std::string& extension : supported_extensions) {
+    for (auto& extension : supported_extensions)
         std::ranges::transform(extension, extension.begin(),
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    }
-
-    const auto accept = [&tracks, &supported_extensions,
-                            &failed](const std::filesystem::directory_entry& entry) {
-        std::error_code type_error;
-        if (!entry.is_regular_file(type_error) || type_error ||
-            !supported(entry.path(), supported_extensions))
-            return;
-
-        if (tracks.size() >= max_workspace_tracks) {
-            failed = true;
-            return;
-        }
-
-        tracks.push_back(entry.path().lexically_normal());
+    WorkspaceDiscovery discovery{workspace.root, known, stopped};
+    WorkspaceScanBatch batch{.workspace = workspace.id,
+        .generation = generation,
+        .entries = {},
+        .status = WorkspaceScanStatus::running,
+        .error = WorkspaceScanError::none,
+        .directories = {workspace.root}};
+    std::size_t visited{}, tracks{}, directories{1};
+    const auto flush = [&](WorkspaceScanStatus status,
+                           WorkspaceScanError failure = WorkspaceScanError::none) {
+        batch.status = status;
+        batch.error = failure;
+        observer(std::move(batch));
+        batch = {.workspace = workspace.id,
+            .generation = generation,
+            .entries = {},
+            .status = WorkspaceScanStatus::running,
+            .error = WorkspaceScanError::none,
+            .directories = {}};
     };
-
+    WorkspaceScanError failure = WorkspaceScanError::none;
+    const auto accept = [&](const std::filesystem::directory_entry& entry) {
+        if (stopped.stop_requested())
+            return false;
+        if (++visited > policy_.max_entries) {
+            failure = WorkspaceScanError::limit_exceeded;
+            return false;
+        }
+        std::error_code type_error;
+        if (entry.is_directory(type_error) && workspace.recursive) {
+            if (++directories > policy_.max_directories) {
+                failure = WorkspaceScanError::limit_exceeded;
+                return false;
+            }
+            batch.directories.push_back(entry.path().lexically_normal());
+        } else if (!type_error && entry.is_regular_file(type_error) &&
+            supported(entry.path(), supported_extensions)) {
+            if (++tracks > policy_.max_tracks) {
+                failure = WorkspaceScanError::limit_exceeded;
+                return false;
+            }
+            batch.entries.push_back(discovery.resolve(entry.path().lexically_normal()));
+        }
+        if (type_error) {
+            failure = WorkspaceScanError::io;
+            return false;
+        }
+        if (batch.entries.size() >= policy_.batch_size ||
+            batch.directories.size() >= policy_.batch_size)
+            flush(WorkspaceScanStatus::running);
+        if (policy_.after_entry)
+            policy_.after_entry(entry.path(), visited, stopped);
+        return !stopped.stop_requested();
+    };
     if (workspace.recursive) {
-        std::filesystem::recursive_directory_iterator current{workspace.root,
-            std::filesystem::directory_options::skip_permission_denied, error};
-        const std::filesystem::recursive_directory_iterator end;
-
+        std::filesystem::recursive_directory_iterator current{workspace.root, error}, end;
         while (!error && current != end) {
-            if (stopped.stop_requested())
+            if (!accept(*current))
                 break;
-
-            accept(*current);
             current.increment(error);
         }
     } else {
-        std::filesystem::directory_iterator current{workspace.root, error};
-        const std::filesystem::directory_iterator end;
-
+        std::filesystem::directory_iterator current{workspace.root, error}, end;
         while (!error && current != end) {
-            if (stopped.stop_requested())
+            if (!accept(*current))
                 break;
-
-            accept(*current);
             current.increment(error);
         }
     }
-
-    if (error)
-        failed = true;
-
-    if (stopped.stop_requested()) {
-        publish(observer, workspace.id, generation, {}, WorkspaceScanStatus::cancelled);
-        return;
-    }
-
-    std::ranges::sort(tracks);
-    WorkspaceDiscovery discovery{workspace.root, known, tracks};
-
-    for (std::size_t offset = 0; offset < tracks.size(); offset += batch_size) {
-        if (stopped.stop_requested()) {
-            publish(observer, workspace.id, generation, {}, WorkspaceScanStatus::cancelled);
-            return;
-        }
-
-        const auto last = std::min(offset + batch_size, tracks.size());
-        std::vector<WorkspaceScanEntry> entries;
-        entries.reserve(last - offset);
-        for (std::size_t index = offset; index < last; ++index) {
-            if (stopped.stop_requested())
-                break;
-            entries.push_back(discovery.resolve(tracks[index]));
-        }
-        if (stopped.stop_requested()) {
-            publish(observer, workspace.id, generation, {}, WorkspaceScanStatus::cancelled);
-            return;
-        }
-        publish(observer, workspace.id, generation, std::move(entries),
-            WorkspaceScanStatus::running);
-    }
-
-    publish(observer, workspace.id, generation, {},
-        failed ? WorkspaceScanStatus::failed : WorkspaceScanStatus::complete);
+    if (stopped.stop_requested())
+        flush(WorkspaceScanStatus::cancelled);
+    else if (error || failure != WorkspaceScanError::none)
+        flush(WorkspaceScanStatus::failed,
+            error == std::errc::permission_denied     ? WorkspaceScanError::permission_denied
+                : failure == WorkspaceScanError::none ? WorkspaceScanError::io
+                                                      : failure);
+    else
+        flush(WorkspaceScanStatus::complete);
 }
 
 } // namespace wiola::app

@@ -63,7 +63,7 @@ void file(const std::filesystem::path& path)
     std::ofstream{path} << "audio";
 }
 
-TEST(WorkspaceScanner, EnumeratesSupportedFilesInDeterministicWorkerBatches)
+TEST(WorkspaceScanner, StreamsSupportedFilesInBoundedWorkerBatches)
 {
     const std::filesystem::path root =
         std::filesystem::temp_directory_path() / "wiola-scan-recursive";
@@ -86,7 +86,10 @@ TEST(WorkspaceScanner, EnumeratesSupportedFilesInDeterministicWorkerBatches)
 
     ASSERT_TRUE(capture.wait());
     ASSERT_EQ(capture.tracks.size(), 3);
-    EXPECT_TRUE(std::ranges::is_sorted(capture.tracks));
+    std::ranges::sort(capture.tracks);
+    EXPECT_EQ(capture.tracks,
+        (std::vector<std::filesystem::path>{root / "a.MP3", root / "nested" / "b.ogg",
+            root / "z.wav"}));
     EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::complete);
     EXPECT_EQ(capture.batches.back().generation, generation);
 
@@ -182,6 +185,96 @@ TEST(WorkspaceScanner, ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows)
     EXPECT_EQ(discovered.location, new_path);
     EXPECT_TRUE(discovered.relocated());
     EXPECT_EQ(discovered.fingerprint, record.fingerprint);
+    std::filesystem::remove_all(root);
+}
+
+TEST(WorkspaceScanner, PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGatedBoundary)
+{
+    const auto root = std::filesystem::temp_directory_path() / "wiola-stream-gated";
+    std::filesystem::remove_all(root);
+    for (int i = 0; i < 8; ++i)
+        file(root / (std::to_string(i) + ".wav"));
+    std::mutex mutex;
+    std::condition_variable changed;
+    bool gated = false;
+    wiola::app::WorkspaceScanPolicy policy;
+    policy.batch_size = 2;
+    policy.after_entry = [&](const auto&, std::size_t visited, std::stop_token stop) {
+        if (visited != 3)
+            return;
+        std::unique_lock lock{mutex};
+        gated = true;
+        changed.notify_all();
+        std::stop_callback wake{stop, [&] { changed.notify_all(); }};
+        changed.wait(lock, [&] { return stop.stop_requested(); });
+    };
+    ScanCapture capture;
+    wiola::app::WorkspaceScanner scanner{policy};
+    scanner.start({.id = {"stream"}, .root = root}, {".wav"},
+        [&](auto batch) { capture.accept(std::move(batch)); });
+    {
+        std::unique_lock lock{mutex};
+        ASSERT_TRUE(changed.wait_for(lock, std::chrono::seconds{5}, [&] { return gated; }));
+    }
+    {
+        std::lock_guard lock{capture.mutex};
+        ASSERT_EQ(capture.tracks.size(), 2);
+        EXPECT_FALSE(capture.finished);
+        EXPECT_EQ(capture.batches.front().status, wiola::app::WorkspaceScanStatus::running);
+    }
+    scanner.cancel();
+    ASSERT_TRUE(capture.wait());
+    scanner.stop();
+    EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::cancelled);
+    std::filesystem::remove_all(root);
+}
+
+TEST(WorkspaceScanner, StopsAtTrackLimitWithoutClaimingAnAuthoritativeCompletion)
+{
+    const auto root = std::filesystem::temp_directory_path() / "wiola-stream-limit";
+    std::filesystem::remove_all(root);
+    for (int i = 0; i < 4; ++i)
+        file(root / (std::to_string(i) + ".wav"));
+    wiola::app::WorkspaceScanPolicy policy;
+    policy.max_tracks = 2;
+    policy.batch_size = 1;
+    ScanCapture capture;
+    wiola::app::WorkspaceScanner scanner{policy};
+    scanner.start({.id = {"limited"}, .root = root}, {".wav"},
+        [&](auto batch) { capture.accept(std::move(batch)); });
+    ASSERT_TRUE(capture.wait());
+    scanner.stop();
+    EXPECT_EQ(capture.tracks.size(), 2);
+    EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::failed);
+    EXPECT_EQ(capture.batches.back().error, wiola::app::WorkspaceScanError::limit_exceeded);
+    std::filesystem::remove_all(root);
+}
+
+TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
+{
+    const auto root = std::filesystem::temp_directory_path() / "wiola-stream-copies";
+    std::filesystem::remove_all(root);
+    file(root / "existing.wav");
+    file(root / "copy.wav");
+    wiola::library::TrackRecord known;
+    known.id = {"canonical"};
+    known.locations = {root / "existing.wav"};
+    known.fingerprint = *wiola::library::fingerprint_media(known.locations.front());
+    ScanCapture capture;
+    wiola::app::WorkspaceScanner scanner;
+    scanner.start({.id = {"copies"}, .root = root}, {".wav"},
+        [&](auto batch) { capture.accept(std::move(batch)); }, {known});
+    ASSERT_TRUE(capture.wait());
+    scanner.stop();
+    bool found = false;
+    for (const auto& batch : capture.batches)
+        for (const auto& entry : batch.entries)
+            if (entry.location == root / "copy.wav") {
+                found = true;
+                EXPECT_NE(entry.media, known.id);
+                EXPECT_FALSE(entry.relocated());
+            }
+    EXPECT_TRUE(found);
     std::filesystem::remove_all(root);
 }
 
