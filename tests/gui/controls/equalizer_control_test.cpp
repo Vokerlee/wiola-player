@@ -18,7 +18,6 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/equalizer.hpp>
 #include <gui/controls/equalizer_control.hpp>
 #include <pcm/stream_spec.hpp>
 #include <platform/qt/player_settings.hpp>
@@ -37,10 +36,7 @@ namespace {
 
 using namespace wiola::units::literals;
 using Control = wiola::gui::EqualizerControl;
-using wiola::audio::Equalizer;
 using wiola::pcm::StreamSpec;
-
-constexpr StreamSpec stereo{.sample_rate = 48_kHz, .num_channels = 2};
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.
 class EqualizerControl : public testing::Test {
@@ -56,12 +52,14 @@ protected:
     void restore(Control& control)
     {
         const wiola::platform::qt::PlayerSettings restored{
-            wiola::platform::qt::QtSettingsAdapter{settings}.read({}, equalizer.config())};
+            wiola::platform::qt::QtSettingsAdapter{settings}.read({},
+                equalizer.equalizer_config())};
         control.apply_restored(restored.equalizer_enabled, restored.band_gains);
     }
 
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "equalizer"};
-    Equalizer equalizer{stereo};
+    wiola::engine::Session engine;
+    wiola::app::PlaybackService equalizer{engine};
 };
 
 TEST_F(EqualizerControl, StartsFlatAndOn)
@@ -81,7 +79,8 @@ TEST_F(EqualizerControl, GivesBackWhatTheLastRunLeft)
 {
     Control{equalizer, settings}.set_band_gain(2, 6.0F);
 
-    Equalizer next{stereo};
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
     restore(later);
@@ -95,7 +94,8 @@ TEST_F(EqualizerControl, KeepsWhetherItRuns)
 
     control.set_enabled(false);
 
-    Equalizer next{stereo};
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
     restore(later);
@@ -113,7 +113,8 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 
     EXPECT_FLOAT_EQ(control.band_gain(0), limit);
 
-    Equalizer next{stereo};
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
     restore(later);
@@ -124,22 +125,23 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 /// A band this format cannot carry still has a setting, so it is there for the track that can.
 TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
 {
-    Equalizer narrow{
-        StreamSpec{.sample_rate = 8_kHz, .num_channels = 2}
-    };
+    wiola::engine::Session narrow_engine;
+    narrow_engine.equalizer().configure(StreamSpec{.sample_rate = 8_kHz, .num_channels = 2});
+    wiola::app::PlaybackService narrow{narrow_engine};
     Control control{narrow, settings};
 
-    const std::size_t beyond{narrow.num_bands()};
-    ASSERT_LT(beyond, narrow.layout().count);
+    const std::size_t beyond{narrow.num_equalizer_bands()};
+    ASSERT_LT(beyond, narrow.equalizer_config().layout.count);
 
     control.set_band_gain(beyond, 5.0F);
 
-    Equalizer wide{stereo};
+    wiola::engine::Session wide_engine;
+    wiola::app::PlaybackService wide{wide_engine};
     Control later{wide, settings};
 
     restore(later);
 
-    ASSERT_GT(wide.num_bands(), beyond);
+    ASSERT_GT(wide.num_equalizer_bands(), beyond);
     EXPECT_FLOAT_EQ(later.band_gain(beyond), 5.0F);
 }
 
@@ -159,15 +161,16 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
 {
     Control control{equalizer, settings};
 
-    for (std::size_t index = 0; index < equalizer.layout().count; ++index)
+    for (std::size_t index = 0; index < equalizer.equalizer_config().layout.count; ++index)
         control.set_band_gain(index, static_cast<float>(index) - 5.0F);
 
-    Equalizer next{stereo};
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
     restore(later);
 
-    for (std::size_t index = 0; index < equalizer.layout().count; ++index)
+    for (std::size_t index = 0; index < equalizer.equalizer_config().layout.count; ++index)
         EXPECT_FLOAT_EQ(later.band_gain(index), static_cast<float>(index) - 5.0F)
             << "band " << index;
 }

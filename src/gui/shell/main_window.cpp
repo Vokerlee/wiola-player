@@ -137,15 +137,14 @@ QString as_status(engine::OpenResult result)
 
 } // namespace
 
-MainWindow::MainWindow(engine::Session& session, app::LibrarySession& library_session)
+MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySession& library_session)
     // A file of its own on both platforms, rather than the registry on one of them.
-    : session_{session}
-    , presenter_{session}
+    : playback_{playback_service}
     , actions_{*this}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
-    , playlist_{presenter_, settings_}
-    , volume_{presenter_.volume_control(), settings_}
-    , equalizer_{presenter_.equalizer_control(), settings_}
+    , playlist_{playback_, settings_}
+    , volume_{playback_, settings_}
+    , equalizer_{playback_, settings_}
     , library_session_{library_session}
     , library_{library_session.repository()}
     , persist_library_{library_session.persistence()}
@@ -215,7 +214,7 @@ MainWindow::MainWindow(engine::Session& session, app::LibrarySession& library_se
 
     const platform::qt::PlayerSettings restored{
         platform::qt::QtSettingsAdapter{settings_}.read(volume_.scale(),
-            presenter_.equalizer_control().config())};
+            playback_.equalizer_config())};
     volume_.apply_restored(restored.volume_position, restored.boosted);
     equalizer_.apply_restored(restored.equalizer_enabled, restored.band_gains);
     const int position{volume_.position()};
@@ -470,7 +469,7 @@ MainWindow::MainWindow(engine::Session& session, app::LibrarySession& library_se
     connect(now_playing_, &NowPlayingDocument::transfer_destination_asked, this,
         [this] { transfer_now_playing(true); });
     connect(now_playing_, &NowPlayingDocument::order_application_asked, this,
-        [this] { play_displayed_paths(now_playing_->displayed_paths(session_.playlist())); });
+        [this] { play_displayed_paths(now_playing_->displayed_paths(playback_.playlist())); });
 
     connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
     connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
@@ -557,8 +556,8 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
             workspace->findChild<QWidget*>("tagFilterPanel")));
     }
 
-    QWidget* root = builder.build(document.root,
-        {.presenter = &presenter_, .actions = &actions_, .library = &library_}, this);
+    QWidget* root =
+        builder.build(document.root, {.actions = &actions_, .library = &library_}, this);
 
     if (root == nullptr) {
         show_status("Could not construct the layout");
@@ -598,8 +597,8 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
     for (const std::filesystem::path& location : tracks)
         request_metadata(location);
 
-    static_cast<void>(presenter_.open(std::move(tracks)));
-    said_ = presenter_.presentation().playback.open_result;
+    static_cast<void>(playback_.open(std::move(tracks)));
+    said_ = app::present_playback(playback_).playback.open_result;
 
     playlist_.save();
     show_status(QString{"opening "} + first + "...");
@@ -613,7 +612,7 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
 std::vector<std::filesystem::path> MainWindow::ask_for_tracks()
 {
     QStringList patterns;
-    for (const std::string& extension : presenter_.playback_extensions())
+    for (const std::string& extension : playback_.playback_extensions())
         patterns.append(QString::fromStdString("*" + extension));
 
     const QString filter{QString{"Audio (%1);;All files (*)"}.arg(patterns.join(' '))};
@@ -645,7 +644,7 @@ void MainWindow::add_tracks()
     for (const std::filesystem::path& location : tracks)
         request_metadata(location);
 
-    presenter_.add(std::move(tracks));
+    playback_.add(std::move(tracks));
     playlist_.save();
     refresh();
 }
@@ -731,9 +730,9 @@ void MainWindow::export_m3u_playlist()
 void MainWindow::remove_chosen()
 {
     for (const engine::QueueEntryId id : now_playing_->chosen_tracks()) {
-        const auto index = presenter_.playlist().index_of(id);
+        const auto index = playback_.playlist().index_of(id);
         if (index)
-            static_cast<void>(presenter_.remove(*index));
+            static_cast<void>(playback_.remove(*index));
     }
 
     playlist_.save();
@@ -742,7 +741,7 @@ void MainWindow::remove_chosen()
 
 void MainWindow::clear_queue()
 {
-    presenter_.clear();
+    playback_.clear();
     playlist_.save();
 
     // Emptying the queue puts the order back as it was given, shuffle button and all.
@@ -753,9 +752,9 @@ void MainWindow::clear_queue()
 
 void MainWindow::play_chosen(engine::QueueEntryId id)
 {
-    const auto index = presenter_.playlist().index_of(id);
+    const auto index = playback_.playlist().index_of(id);
     if (index)
-        static_cast<void>(presenter_.play_track(*index));
+        static_cast<void>(playback_.play_track(*index));
 
     refresh();
 }
@@ -870,7 +869,7 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
     documents_->setCurrentWidget(document);
 
     const std::uint64_t generation =
-        workspace_scans_->start(*workspace, session_.playback_extensions());
+        workspace_scans_->start(*workspace, playback_.playback_extensions());
     document->begin(*workspace, generation);
     save_workspace_documents();
 }
@@ -878,7 +877,7 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
 void MainWindow::play_workspace_selection(WorkspaceDocument& document)
 {
     const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.replace_with_paths(session_, document.chosen_paths());
+        app::PlaybackQueue{}.replace_with_paths(playback_, document.chosen_paths());
 
     if (!result.requested) {
         show_status("Select workspace tracks to play");
@@ -893,7 +892,7 @@ void MainWindow::play_workspace_selection(WorkspaceDocument& document)
 void MainWindow::append_workspace_selection(WorkspaceDocument& document)
 {
     const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.append_paths(session_, document.chosen_paths());
+        app::PlaybackQueue{}.append_paths(playback_, document.chosen_paths());
 
     if (!result.requested) {
         show_status("Select workspace tracks to add");
@@ -946,7 +945,7 @@ void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive
     static_cast<void>(workspace_watcher_->watch(updated));
 
     const std::uint64_t generation =
-        workspace_scans_->start(updated, session_.playback_extensions());
+        workspace_scans_->start(updated, playback_.playback_extensions());
     document->begin(updated, generation);
 }
 
@@ -998,11 +997,11 @@ void MainWindow::transfer_now_playing(bool choose_destination)
     std::vector<app::MediaTransfer> media;
 
     for (const engine::QueueEntryId id : now_playing_->chosen_tracks()) {
-        const auto row = session_.playlist().index_of(id);
+        const auto row = playback_.playlist().index_of(id);
         if (!row)
             continue;
 
-        const std::filesystem::path& location = session_.playlist().tracks()[*row].path();
+        const std::filesystem::path& location = playback_.playlist().tracks()[*row].path();
         media.push_back({.media = library::media_id_for(location), .location = location});
     }
 
@@ -1120,7 +1119,7 @@ void MainWindow::transfer_to(std::optional<library::PlaylistId> destination,
 void MainWindow::play_saved_playlist(const library::PlaylistId& id)
 {
     const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.replace_with_saved_playlist(session_, library_, id);
+        app::PlaybackQueue{}.replace_with_saved_playlist(playback_, library_, id);
 
     if (!result.requested) {
         show_status("The saved playlist has no playable tracks");
@@ -1139,7 +1138,7 @@ void MainWindow::play_saved_playlist(const library::PlaylistId& id)
 void MainWindow::play_displayed_paths(std::vector<std::filesystem::path> tracks)
 {
     const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.replace_with_paths(session_, std::move(tracks));
+        app::PlaybackQueue{}.replace_with_paths(playback_, std::move(tracks));
 
     if (!result.requested) {
         show_status("The displayed document has no playable tracks");
@@ -1239,11 +1238,11 @@ std::vector<const library::TrackRecord*> MainWindow::selected_records()
 
     if (documents_->currentWidget() == now_playing_) {
         for (const engine::QueueEntryId entry : now_playing_->chosen_tracks()) {
-            const auto row = session_.playlist().index_of(entry);
+            const auto row = playback_.playlist().index_of(entry);
             if (row) {
-                selected.push_back(
-                    library_.track(library::media_id_for(session_.playlist().tracks()[*row].path()))
-                );
+                selected.push_back(library_.track(
+                    library::media_id_for(playback_.playlist().tracks()[*row].path())
+                ));
             }
         }
     }
@@ -1253,7 +1252,7 @@ std::vector<const library::TrackRecord*> MainWindow::selected_records()
     selected.erase(without_missing.begin(), without_missing.end());
 
     if (selected.empty()) {
-        if (const engine::Track* current = session_.playlist().current()) {
+        if (const engine::Track* current = playback_.playlist().current()) {
             if (const library::TrackRecord* record =
                     library_.track(library::media_id_for(current->path())))
                 selected.push_back(record);
@@ -1410,26 +1409,26 @@ void MainWindow::save_playlist_documents()
 
 void MainWindow::play_previous()
 {
-    static_cast<void>(presenter_.previous_track());
+    static_cast<void>(playback_.previous_track());
     refresh();
 }
 
 void MainWindow::play_next()
 {
-    static_cast<void>(presenter_.next_track());
+    static_cast<void>(playback_.next_track());
     refresh();
 }
 
 void MainWindow::cycle_repeat()
 {
-    presenter_.cycle_repeat();
+    playback_.cycle_repeat();
 
     show_list_buttons();
 }
 
 void MainWindow::set_shuffled(bool shuffled)
 {
-    presenter_.shuffle(shuffled);
+    playback_.shuffle(shuffled);
     show_list_buttons();
 }
 
@@ -1471,7 +1470,7 @@ void MainWindow::show_play_button(bool pausing)
 
 void MainWindow::show_list_buttons()
 {
-    const PlayerPresentation presentation{presenter_.presentation()};
+    const app::PlayerPresentation presentation{app::present_playback(playback_)};
 
     actions_.set_repeat(presentation.repeat);
     actions_.set_shuffled(presentation.shuffled);
@@ -1482,7 +1481,7 @@ void MainWindow::show_list_buttons()
 
 void MainWindow::update_after_pump()
 {
-    const engine::PlaybackSnapshot playback{presenter_.presentation().playback};
+    const engine::PlaybackSnapshot playback{app::present_playback(playback_).playback};
     const engine::OpenResult result{playback.open_result};
 
     // Said once: a window that repeated itself every turn would overwrite whatever else it has
@@ -1500,9 +1499,9 @@ void MainWindow::update_after_pump()
 
     // The title follows what is playing, so a list moving on to the next track renames the
     // window without anyone asking it to.
-    if (playback.track != named_ || presenter_.playlist().position() != named_place_) {
+    if (playback.track != named_ || playback_.playlist().position() != named_place_) {
         named_ = playback.track;
-        named_place_ = presenter_.playlist().position();
+        named_place_ = playback_.playlist().position();
 
         const QString name{named_.empty() ? QString{"no track"}
                                           : platform::qt::QtPathAdapter::to_qt(named_.filename())};
@@ -1533,8 +1532,8 @@ void MainWindow::toggle_playback()
         return;
 
     // Pausing cannot fail, so a refusal is always an output that would not open.
-    const bool pausing{presenter_.presentation().playback.playing};
-    const engine::CommandResult result{presenter_.toggle_playback()};
+    const bool pausing{app::present_playback(playback_).playback.playing};
+    const engine::CommandResult result{playback_.toggle_playback()};
 
     show_status(result == engine::CommandResult::accepted || pausing
             ? QString{}
@@ -1546,7 +1545,7 @@ void MainWindow::stop_playback()
     if (!loaded())
         return;
 
-    presenter_.stop();
+    playback_.stop();
 }
 
 void MainWindow::show_equalizer()
@@ -1583,7 +1582,7 @@ void MainWindow::set_boosted(bool boosted)
 
 void MainWindow::seek_to(double fraction)
 {
-    presenter_.seek_to(fraction);
+    playback_.seek_to(fraction);
 }
 
 void MainWindow::show_status(const QString& message)
@@ -1593,7 +1592,7 @@ void MainWindow::show_status(const QString& message)
 
 void MainWindow::refresh()
 {
-    const engine::PlaybackSnapshot playback{presenter_.presentation().playback};
+    const engine::PlaybackSnapshot playback{app::present_playback(playback_).playback};
 
     actions_.set_available(PlayerAction::play, playback.loaded);
     actions_.set_available(PlayerAction::stop, playback.loaded);
@@ -1608,9 +1607,9 @@ void MainWindow::refresh()
         playback.total_time.has_value());
 
     now_playing_->show_library(library_);
-    now_playing_->show_playlist(presenter_.playlist());
+    now_playing_->show_playlist(playback_.playlist());
 
-    const engine::Track* current = presenter_.playlist().current();
+    const engine::Track* current = playback_.playlist().current();
     const library::TrackRecord* record =
         current != nullptr ? library_.track(library::media_id_for(current->path())) : nullptr;
     inspector_->show_track(current);

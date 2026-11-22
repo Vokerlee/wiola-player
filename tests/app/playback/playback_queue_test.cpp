@@ -29,6 +29,7 @@ namespace {
 TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
 {
     wiola::engine::Session session;
+    wiola::app::PlaybackService playback{session};
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord media;
     media.id = wiola::library::MediaId{"media-1"};
@@ -41,7 +42,7 @@ TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
 
     wiola::app::PlaybackQueue queue;
     const wiola::app::PlaybackQueueResult result =
-        queue.replace_with_saved_playlist(session, repository, playlist);
+        queue.replace_with_saved_playlist(playback, repository, playlist);
 
     EXPECT_TRUE(result.requested);
     EXPECT_EQ(result.queued, 2);
@@ -54,6 +55,7 @@ TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
 TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
 {
     wiola::engine::Session session;
+    wiola::app::PlaybackService playback{session};
     session.add({"existing.wav"});
 
     wiola::library::InMemoryRepository repository;
@@ -66,9 +68,9 @@ TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
 
     wiola::app::PlaybackQueue queue;
     const wiola::app::PlaybackQueueResult unavailable_result =
-        queue.replace_with_saved_playlist(session, repository, playlist);
+        queue.replace_with_saved_playlist(playback, repository, playlist);
     const wiola::app::PlaybackQueueResult missing_result =
-        queue.replace_with_saved_playlist(session, repository,
+        queue.replace_with_saved_playlist(playback, repository,
             wiola::library::PlaylistId{"missing"});
 
     EXPECT_FALSE(unavailable_result.requested);
@@ -82,10 +84,11 @@ TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
 TEST(PlaybackQueue, AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue)
 {
     wiola::engine::Session session;
+    wiola::app::PlaybackService playback{session};
     session.add({"existing.wav"});
 
     wiola::app::PlaybackQueue queue;
-    const auto result = queue.append_paths(session, {"one.wav", "two.wav"});
+    const auto result = queue.append_paths(playback, {"one.wav", "two.wav"});
 
     EXPECT_TRUE(result.requested);
     EXPECT_EQ(result.queued, 2);

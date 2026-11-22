@@ -20,39 +20,20 @@
 
 #include "playback_service.hpp"
 
-namespace wiola::engine {
+namespace wiola::app {
 
-PlaybackService::PlaybackService() = default;
-
-PlaybackService::PlaybackService(Session& session)
+PlaybackService::PlaybackService(engine::Session& session)
     : session_{&session}
 {
 }
 
-PlaybackService::PlaybackService(OutputFactory make_output)
-    : owned_session_{std::move(make_output)}
-{
-}
-
-PlaybackService::PlaybackService(OutputFactory make_output,
-    std::shared_ptr<media::MediaProvider> provider)
-    : owned_session_{std::move(make_output), std::move(provider)}
-{
-}
-
-PlaybackService::PlaybackService(OutputFactory make_output, DecoderOpener open_decoder,
-    MetadataReader read_metadata)
-    : owned_session_{std::move(make_output), std::move(open_decoder), std::move(read_metadata)}
-{
-}
-
-OperationReceipt PlaybackService::open(std::vector<std::filesystem::path> tracks)
+engine::OperationReceipt PlaybackService::open(std::vector<std::filesystem::path> tracks)
 {
     session_->open(std::move(tracks));
 
     return {.id = session_->open_request_id(),
-        .operation = OperationKind::open,
-        .acceptance = CommandResult::accepted};
+        .operation = engine::OperationKind::open,
+        .acceptance = engine::CommandResult::accepted};
 }
 
 void PlaybackService::add(std::vector<std::filesystem::path> tracks)
@@ -85,19 +66,20 @@ bool PlaybackService::previous_track()
     return session_->previous_track();
 }
 
-CommandResult PlaybackService::play() noexcept
+engine::CommandResult PlaybackService::play() noexcept
 {
-    return session_->play() ? CommandResult::accepted : CommandResult::unavailable;
+    return session_->play() ? engine::CommandResult::accepted : engine::CommandResult::unavailable;
 }
 
-CommandResult PlaybackService::pause() noexcept
+engine::CommandResult PlaybackService::pause() noexcept
 {
-    return session_->pause() ? CommandResult::accepted : CommandResult::unavailable;
+    return session_->pause() ? engine::CommandResult::accepted : engine::CommandResult::unavailable;
 }
 
-CommandResult PlaybackService::resume() noexcept
+engine::CommandResult PlaybackService::resume() noexcept
 {
-    return session_->resume() ? CommandResult::accepted : CommandResult::unavailable;
+    return session_->resume() ? engine::CommandResult::accepted
+                              : engine::CommandResult::unavailable;
 }
 
 void PlaybackService::stop() noexcept
@@ -145,35 +127,82 @@ std::size_t PlaybackService::num_equalizer_bands() const noexcept
     return session_->equalizer().num_bands();
 }
 
-audio::Volume& PlaybackService::volume_control() noexcept
+const audio::VolumePolicy& PlaybackService::volume_policy() const noexcept
 {
-    return session_->volume();
+    return session_->volume().policy();
 }
 
-audio::Equalizer& PlaybackService::equalizer_control() noexcept
+const audio::EqualizerConfig& PlaybackService::equalizer_config() const noexcept
 {
-    return session_->equalizer();
+    return session_->equalizer().config();
 }
 
-PlaybackSnapshot PlaybackService::pump()
+float PlaybackService::equalizer_preamp() const noexcept
+{
+    return session_->equalizer().preamp();
+}
+
+units::Frequency PlaybackService::equalizer_band_center(std::size_t index) const noexcept
+{
+    return session_->equalizer().band_center(index);
+}
+
+engine::CommandResult PlaybackService::toggle_playback() noexcept
+{
+    switch (state()) {
+    case engine::Playback::State::playing:
+        return pause();
+    case engine::Playback::State::paused:
+        return resume();
+    default:
+        return play();
+    }
+}
+
+void PlaybackService::seek_to(double fraction) noexcept
+{
+    const auto playback = snapshot();
+    if (playback.loaded && playback.seekable && playback.total_time)
+        seek(*playback.total_time * fraction);
+}
+
+void PlaybackService::cycle_repeat() noexcept
+{
+    using Repeat = engine::Playlist::Repeat;
+    switch (repeat()) {
+    case Repeat::none:
+        set_repeat(Repeat::all);
+        break;
+    case Repeat::all:
+        set_repeat(Repeat::track);
+        break;
+    case Repeat::track:
+        set_repeat(Repeat::none);
+        break;
+    }
+}
+
+PlayerPresentation present_playback(const PlaybackService& service)
+{
+    return {.playback = service.snapshot(),
+        .repeat = service.repeat(),
+        .shuffled = service.shuffled()};
+}
+
+engine::PlaybackSnapshot PlaybackService::pump()
 {
     session_->catch_up();
     return session_->snapshot();
 }
 
-OperationOutcomes PlaybackService::take_outcomes()
+engine::OperationOutcomes PlaybackService::take_outcomes()
 {
     return session_->take_outcomes();
 }
 
-PlaybackSnapshot PlaybackService::snapshot() const
+engine::PlaybackSnapshot PlaybackService::snapshot() const
 {
     return session_->snapshot();
-}
-
-void PlaybackService::catch_up()
-{
-    session_->catch_up();
 }
 
 bool PlaybackService::reading() const noexcept
@@ -191,12 +220,12 @@ bool PlaybackService::playing() const noexcept
     return session_->playing();
 }
 
-OpenResult PlaybackService::open_result() const noexcept
+engine::OpenResult PlaybackService::open_result() const noexcept
 {
     return session_->open_result();
 }
 
-Playback::State PlaybackService::state() const noexcept
+engine::Playback::State PlaybackService::state() const noexcept
 {
     return session_->state();
 }
@@ -221,7 +250,7 @@ std::vector<std::string> PlaybackService::playback_extensions() const
     return session_->playback_extensions();
 }
 
-const Playlist& PlaybackService::playlist() const noexcept
+const engine::Playlist& PlaybackService::playlist() const noexcept
 {
     return session_->playlist();
 }
@@ -231,12 +260,12 @@ const std::filesystem::path& PlaybackService::track() const noexcept
     return session_->track();
 }
 
-void PlaybackService::set_repeat(Playlist::Repeat repeat) noexcept
+void PlaybackService::set_repeat(engine::Playlist::Repeat repeat) noexcept
 {
     session_->set_repeat(repeat);
 }
 
-Playlist::Repeat PlaybackService::repeat() const noexcept
+engine::Playlist::Repeat PlaybackService::repeat() const noexcept
 {
     return session_->repeat();
 }
@@ -251,4 +280,4 @@ bool PlaybackService::shuffled() const noexcept
     return session_->shuffled();
 }
 
-} // namespace wiola::engine
+} // namespace wiola::app

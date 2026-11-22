@@ -28,7 +28,6 @@ wiola_add_library(
         appearance/theme.cpp
         appearance/theme_editor.cpp
         shell/player_actions.cpp
-        shell/player_presenter.cpp
         documents/saved_playlist_document.cpp
         shell/saved_playlist_manager.cpp
         controls/seek_bar.cpp

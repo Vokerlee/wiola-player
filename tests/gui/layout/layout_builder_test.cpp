@@ -19,7 +19,6 @@
  */
 
 #include <gui/layout/layout_builder.hpp>
-#include <gui/shell/player_presenter.hpp>
 #include <gui/tracks/track_table_view.hpp>
 
 #include <QApplication>
@@ -61,13 +60,12 @@ TEST(LayoutBuilder, BuildsRegisteredComponentsWithDimensionsAndActions)
     root.min_width = 640;
     root.children = {controls};
 
-    wiola::gui::PlayerPresenter presenter;
     QWidget styled;
     wiola::gui::PlayerActions actions{styled};
     actions.set_available(wiola::gui::PlayerAction::play, true);
 
     wiola::gui::LayoutBuilder builder;
-    QWidget* widget = builder.build(root, {.presenter = &presenter, .actions = &actions});
+    QWidget* widget = builder.build(root, {.actions = &actions});
     ASSERT_NE(widget, nullptr);
 
     EXPECT_EQ(widget->minimumWidth(), 640);

@@ -24,8 +24,8 @@
 #ifndef Q_MOC_RUN
 #include "library_navigation.hpp"
 #include "player_actions.hpp"
-#include "player_presenter.hpp"
 #include "saved_playlist_manager.hpp"
+#include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/queue_settings.hpp>
@@ -83,7 +83,7 @@ class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(engine::Session& session, app::LibrarySession& library);
+    MainWindow(app::PlaybackService& playback, app::LibrarySession& library);
 
     ~MainWindow() override;
 
@@ -200,10 +200,12 @@ private:
     /// so a message stays readable rather than lasting until the next poll.
     void show_status(const QString& message);
 
-    [[nodiscard]] bool loaded() const noexcept { return presenter_.presentation().playback.loaded; }
+    [[nodiscard]] bool loaded() const noexcept
+    {
+        return app::present_playback(playback_).playback.loaded;
+    }
 
-    engine::Session& session_;
-    PlayerPresenter presenter_;
+    app::PlaybackService& playback_;
 
     /// What the window has already said about a load, so that it says it once.
     engine::OpenResult said_{engine::OpenResult::opened};

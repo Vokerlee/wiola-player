@@ -22,8 +22,6 @@
 #include <gui/controls/volume_control.hpp>
 #include <platform/qt/player_settings.hpp>
 
-#include <audio/dsp/volume.hpp>
-
 #include <QSettings>
 #include <QString>
 
@@ -34,7 +32,6 @@
 
 namespace {
 
-using wiola::audio::Volume;
 using Control = wiola::gui::VolumeControl;
 constexpr wiola::app::VolumeScale scale;
 
@@ -60,7 +57,8 @@ protected:
     int restore(Control&& control) { return restore(control); }
 
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "volume"};
-    Volume volume;
+    wiola::engine::Session engine;
+    wiola::app::PlaybackService volume{engine};
 };
 
 TEST_F(VolumeControl, StartsAtFullVolume)
@@ -69,7 +67,7 @@ TEST_F(VolumeControl, StartsAtFullVolume)
 
     EXPECT_EQ(restore(control), scale.full_position);
     EXPECT_EQ(control.position(), scale.full_position);
-    EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 1.0F);
 }
 
 /// The curve is the point of the control: half the travel is a quarter of the gain, not half.
@@ -80,7 +78,7 @@ TEST_F(VolumeControl, AppliesTheCurveToAPosition)
     control.set_position(50);
 
     EXPECT_EQ(control.position(), 50);
-    EXPECT_FLOAT_EQ(volume.gain(), 0.25F);
+    EXPECT_FLOAT_EQ(volume.volume(), 0.25F);
 }
 
 TEST_F(VolumeControl, IsSilentAtTheBottomOfTheTravel)
@@ -89,7 +87,7 @@ TEST_F(VolumeControl, IsSilentAtTheBottomOfTheTravel)
 
     control.set_position(0);
 
-    EXPECT_FLOAT_EQ(volume.gain(), 0.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 0.0F);
 }
 
 TEST_F(VolumeControl, ClampsAPositionOffTheTravel)
@@ -98,11 +96,11 @@ TEST_F(VolumeControl, ClampsAPositionOffTheTravel)
 
     control.set_position(-5);
     EXPECT_EQ(control.position(), 0);
-    EXPECT_FLOAT_EQ(volume.gain(), 0.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 0.0F);
 
     control.set_position(500);
     EXPECT_EQ(control.position(), scale.full_position);
-    EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 1.0F);
 }
 
 /// What the control is for: a run leaves its position for the next one.
@@ -110,11 +108,12 @@ TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
 {
     Control{volume, settings}.set_position(70);
 
-    Volume next;
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
     EXPECT_EQ(restore(later), 70);
-    EXPECT_FLOAT_EQ(next.gain(), 0.49F);
+    EXPECT_FLOAT_EQ(next.volume(), 0.49F);
 }
 
 /// Restoring is applying, not only reading: the volume it was built on is set by it.
@@ -122,14 +121,15 @@ TEST_F(VolumeControl, AppliesWhatItRestores)
 {
     Control{volume, settings}.set_position(50);
 
-    Volume next;
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
 
-    EXPECT_FLOAT_EQ(next.gain(), 1.0F);
+    EXPECT_FLOAT_EQ(next.volume(), 1.0F);
 
     Control control{next, settings};
     restore(control);
 
-    EXPECT_FLOAT_EQ(next.gain(), 0.25F);
+    EXPECT_FLOAT_EQ(next.volume(), 0.25F);
 }
 
 /// The file is text and can be edited, and a typo is not a reason to start silent.
@@ -164,7 +164,7 @@ TEST_F(VolumeControl, StopsAtFullUntilBoosted)
     control.set_position(130);
 
     EXPECT_EQ(control.position(), scale.full_position);
-    EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 1.0F);
 }
 
 /// Past full the slider says what it means: a hundred and forty is what arrived and forty more.
@@ -175,13 +175,13 @@ TEST_F(VolumeControl, LiftsPastWhatArrivedWhenBoosted)
     control.set_boosted(true);
 
     const int boosted{
-        static_cast<int>(std::lround(volume.policy().max_boost * scale.full_position))};
+        static_cast<int>(std::lround(volume.volume_policy().max_boost * scale.full_position))};
     EXPECT_EQ(control.max_position(), boosted);
 
     control.set_position(boosted);
 
     EXPECT_EQ(control.position(), boosted);
-    EXPECT_FLOAT_EQ(volume.gain(), 1.4F);
+    EXPECT_FLOAT_EQ(volume.volume(), 1.4F);
 }
 
 /// The curve is below full only, so full is full either way.
@@ -192,11 +192,11 @@ TEST_F(VolumeControl, LeavesTheTravelBelowFullAlone)
     control.set_boosted(true);
     control.set_position(50);
 
-    EXPECT_FLOAT_EQ(volume.gain(), 0.25F);
+    EXPECT_FLOAT_EQ(volume.volume(), 0.25F);
 
     control.set_position(scale.full_position);
 
-    EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 1.0F);
 }
 
 /// Turning it off is not a way to keep a position the slider can no longer reach.
@@ -209,7 +209,7 @@ TEST_F(VolumeControl, BringsAPositionBackWhenBoostIsTurnedOff)
     control.set_boosted(false);
 
     EXPECT_EQ(control.position(), scale.full_position);
-    EXPECT_FLOAT_EQ(volume.gain(), 1.0F);
+    EXPECT_FLOAT_EQ(volume.volume(), 1.0F);
 }
 
 TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
@@ -219,12 +219,13 @@ TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
     first.set_boosted(true);
     first.set_position(120);
 
-    Volume next;
+    wiola::engine::Session next_engine;
+    wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
     EXPECT_EQ(restore(later), 120);
     EXPECT_TRUE(later.boosted());
-    EXPECT_FLOAT_EQ(next.gain(), 1.2F);
+    EXPECT_FLOAT_EQ(next.volume(), 1.2F);
 }
 
 } // namespace

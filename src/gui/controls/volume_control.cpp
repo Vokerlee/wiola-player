@@ -33,7 +33,7 @@ constexpr auto boosted_key{"volume/boosted"};
 
 } // namespace
 
-VolumeControl::VolumeControl(audio::Volume& volume, QSettings& settings) noexcept
+VolumeControl::VolumeControl(app::PlaybackService& volume, QSettings& settings) noexcept
     : volume_{volume}
     , settings_{settings}
     , position_{scale_.full_position}
@@ -57,7 +57,7 @@ void VolumeControl::apply_position(int percent)
 {
     position_ = std::clamp(percent, 0, max_position());
 
-    volume_.set_gain(scale_.gain_of(position_));
+    volume_.set_volume(scale_.gain_of(position_));
 }
 
 void VolumeControl::set_boosted(bool boosted)
@@ -82,7 +82,7 @@ bool VolumeControl::boosted() const noexcept
 int VolumeControl::max_position() const noexcept
 {
     return boosted_
-        ? static_cast<int>(std::lround(volume_.policy().max_boost * scale_.full_position))
+        ? static_cast<int>(std::lround(volume_.volume_policy().max_boost * scale_.full_position))
         : scale_.full_position;
 }
 

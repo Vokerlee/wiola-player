@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <audio/dsp/equalizer.hpp>
+#include <app/playback/playback_service.hpp>
 #include <utils/units.hpp>
 
 #include <QSettings>
@@ -34,7 +34,7 @@ namespace wiola::gui {
 /// them, or what they are set to is not what comes back.
 class EqualizerControl {
 public:
-    EqualizerControl(audio::Equalizer& equalizer, QSettings& settings) noexcept;
+    EqualizerControl(app::PlaybackService& equalizer, QSettings& settings) noexcept;
 
     /// Applies startup values for every layout band without writing them back. Missing gains are
     /// flat, and the domain applies its own gain bounds.
@@ -52,7 +52,7 @@ public:
     [[nodiscard]] units::Frequency band_center(std::size_t index) const noexcept;
 
 private:
-    audio::Equalizer& equalizer_;
+    app::PlaybackService& equalizer_;
     QSettings& settings_;
 };
 
