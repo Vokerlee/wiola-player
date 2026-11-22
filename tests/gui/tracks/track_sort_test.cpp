@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui/documents/queue_rows.hpp>
+
 #include <gui/tracks/track_sort.hpp>
 
 #include <engine/queue/playlist.hpp>
@@ -57,7 +59,7 @@ protected:
         ASSERT_TRUE(repository.put_track(record));
     }
 
-    const wiola::engine::Track& track() const { return playlist.tracks().front(); }
+    wiola::gui::TrackRow track() const { return wiola::gui::queue_row(playlist.tracks().front()); }
 
     wiola::engine::Playlist playlist;
     wiola::library::InMemoryRepository repository;
@@ -67,15 +69,15 @@ protected:
 TEST_F(TrackSort, ProducesTypedStandardValuesAndDirections)
 {
     const auto title =
-        wiola::gui::track_sort_value(standard(TrackSortField::title), track(), repository);
+        wiola::gui::track_sort_value(standard(TrackSortField::title), track(), &repository);
     const auto artist =
-        wiola::gui::track_sort_value(standard(TrackSortField::artist), track(), repository);
+        wiola::gui::track_sort_value(standard(TrackSortField::artist), track(), &repository);
     const auto album =
-        wiola::gui::track_sort_value(standard(TrackSortField::album), track(), repository);
+        wiola::gui::track_sort_value(standard(TrackSortField::album), track(), &repository);
     const auto duration =
-        wiola::gui::track_sort_value(standard(TrackSortField::duration), track(), repository);
+        wiola::gui::track_sort_value(standard(TrackSortField::duration), track(), &repository);
     const auto path =
-        wiola::gui::track_sort_value(standard(TrackSortField::path), track(), repository);
+        wiola::gui::track_sort_value(standard(TrackSortField::path), track(), &repository);
 
     EXPECT_EQ(std::get<std::string>(title), "my title");
     EXPECT_EQ(std::get<std::string>(artist), "some artist");
@@ -95,11 +97,11 @@ TEST_F(TrackSort, ResolvesCustomTagsWithoutCaseSensitivityAndKeepsMultipleValues
     ASSERT_TRUE(key.valid());
     EXPECT_EQ(key.tag_key, "genre");
 
-    const auto value = wiola::gui::track_sort_value(key, track(), repository);
+    const auto value = wiola::gui::track_sort_value(key, track(), &repository);
     EXPECT_EQ(std::get<std::string>(value), "jazz, fusion");
 
     const TrackSortKey missing = TrackSortKey::for_tag("Mood");
-    EXPECT_EQ(std::get<std::string>(wiola::gui::track_sort_value(missing, track(), repository)),
+    EXPECT_EQ(std::get<std::string>(wiola::gui::track_sort_value(missing, track(), &repository)),
         "");
 }
 
@@ -108,13 +110,13 @@ TEST_F(TrackSort, RejectsMalformedKeysAndRepresentsMissingDuration)
     EXPECT_FALSE(TrackSortKey::for_tag(" ").valid());
     EXPECT_FALSE((TrackSortKey{.field = TrackSortField::title, .tag_key = "unexpected"}.valid()));
     EXPECT_TRUE(std::holds_alternative<std::monostate>(
-        wiola::gui::track_sort_value(TrackSortKey::for_tag(" "), track(), repository)
+        wiola::gui::track_sort_value(TrackSortKey::for_tag(" "), track(), &repository)
     ));
 
     wiola::engine::Track unknown = wiola::engine::Track::of("unknown.wav");
-    EXPECT_TRUE(std::holds_alternative<std::monostate>(
-        wiola::gui::track_sort_value(standard(TrackSortField::duration), unknown, repository)
-    ));
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(wiola::gui::track_sort_value(
+        standard(TrackSortField::duration), wiola::gui::queue_row(unknown), &repository
+    )));
 }
 
 } // namespace

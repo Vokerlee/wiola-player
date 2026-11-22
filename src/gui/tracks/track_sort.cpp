@@ -41,35 +41,34 @@ bool TrackSortKey::valid() const
     return tag_key.empty() && field >= TrackSortField::title && field <= TrackSortField::path;
 }
 
-TrackSortValue track_sort_value(const TrackSortKey& key, const engine::Track& track,
-    const library::LibraryRepository& repository)
+TrackSortValue track_sort_value(const TrackSortKey& key, const TrackRow& track,
+    const library::LibraryRepository* repository)
 {
     if (!key.valid())
         return std::monostate{};
 
     switch (key.field) {
     case TrackSortField::title:
-        return library::normalized_tag_text(track.title());
+        return library::normalized_tag_text(track.metadata.title);
     case TrackSortField::artist:
-        return library::normalized_tag_text(track.artist());
+        return library::normalized_tag_text(track.metadata.artist);
     case TrackSortField::album:
-        return library::normalized_tag_text(track.album());
+        return library::normalized_tag_text(track.metadata.album);
     case TrackSortField::duration:
-        return track.duration() ? TrackSortValue{*track.duration()} : TrackSortValue{};
+        return track.metadata.duration ? TrackSortValue{*track.metadata.duration}
+                                       : TrackSortValue{};
     case TrackSortField::path:
-        return library::media_id_for(track.path()).value;
+        return track.location_key.empty() ? track.location.generic_string() : track.location_key;
     case TrackSortField::custom_tag:
         break;
     }
 
-    const library::TrackRecord* record = repository.track(library::media_id_for(track.path()));
-    if (record == nullptr)
-        return std::string{};
+    const library::TrackRecord* record = repository ? repository->track(track.media) : nullptr;
 
     const std::string expected = library::normalized_tag_text(key.tag_key);
     std::string value;
 
-    for (const library::TagRecord& tag : record->tags) {
+    for (const library::TagRecord& tag : record ? record->tags : track.tags) {
         if (library::normalized_tag_text(tag.key) != expected)
             continue;
 

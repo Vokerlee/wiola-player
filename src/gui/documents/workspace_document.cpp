@@ -19,6 +19,7 @@
  */
 
 #include "workspace_document.hpp"
+#include "queue_rows.hpp"
 
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_search_panel.hpp>
@@ -115,7 +116,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
             append_observer_();
     });
 
-    connect(table_, &TrackTableView::track_chosen, [this](engine::QueueEntryId) {
+    connect(table_, &TrackTableView::row_chosen, [this](TrackRowId) {
         if (play_observer_)
             play_observer_();
     });
@@ -146,7 +147,7 @@ void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::ui
     heading_->setText(platform::qt::QtPathAdapter::to_qt(workspace.root));
     recursive_->setChecked(workspace.recursive);
     status_->setText("Scanning...");
-    table_->show_tracks(rows_.tracks());
+    table_->show_rows(queue_rows(rows_.tracks()));
     set_busy(true);
 }
 
@@ -162,7 +163,7 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
         discovered.push_back(engine::Track::of(path));
 
     rows_.add(std::move(discovered));
-    table_->show_tracks(rows_.tracks());
+    table_->show_rows(queue_rows(rows_.tracks()));
     update_results();
     status_->setText(QString{"%1 tracks"}.arg(rows_.tracks().size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
@@ -209,7 +210,7 @@ bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& re
     }
 
     if (matched)
-        table_->show_tracks(rows_.tracks());
+        table_->show_rows(queue_rows(rows_.tracks()));
 
     table_->show_library(repository);
     return matched;
@@ -254,7 +255,7 @@ void WorkspaceDocument::on_cancel_requested(std::function<void()> observer)
 
 std::vector<engine::QueueEntryId> WorkspaceDocument::chosen_tracks() const
 {
-    return table_->chosen_tracks();
+    return queue_entry_ids(table_->chosen_rows());
 }
 
 std::vector<std::filesystem::path> WorkspaceDocument::chosen_paths() const
@@ -274,7 +275,7 @@ std::vector<std::filesystem::path> WorkspaceDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
 
-    for (const engine::QueueEntryId id : table_->displayed_tracks()) {
+    for (const engine::QueueEntryId id : queue_entry_ids(table_->displayed_rows())) {
         const auto row = rows_.index_of(id);
         if (row)
             paths.push_back(rows_.tracks()[*row].path());

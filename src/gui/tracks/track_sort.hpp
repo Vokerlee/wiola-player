@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <engine/queue/track.hpp>
+#include "track_row.hpp"
 #include <library/repository.hpp>
 #include <utils/units.hpp>
 
@@ -58,7 +58,7 @@ struct TrackSortKey {
 
 using TrackSortValue = std::variant<std::monostate, std::string, units::Time>;
 
-[[nodiscard]] TrackSortValue track_sort_value(const TrackSortKey& key, const engine::Track& track,
-    const library::LibraryRepository& repository);
+[[nodiscard]] TrackSortValue track_sort_value(const TrackSortKey& key, const TrackRow& track,
+    const library::LibraryRepository* repository);
 
 } // namespace wiola::gui

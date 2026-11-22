@@ -19,6 +19,7 @@
  */
 
 #include "saved_playlist_document.hpp"
+#include "queue_rows.hpp"
 
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_search_panel.hpp>
@@ -95,8 +96,9 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
             playback_observer_();
     });
 
-    connect(table_, &TrackTableView::track_chosen, [this](engine::QueueEntryId id) {
-        const auto row = rows_.index_of(id);
+    connect(table_, &TrackTableView::row_chosen, [this](TrackRowId occurrence) {
+        const auto* id = std::get_if<engine::QueueEntryId>(&occurrence);
+        const auto row = id ? rows_.index_of(*id) : std::nullopt;
         if (row && *row < entries_.size() && entry_observer_)
             entry_observer_(entries_[*row].id);
     });
@@ -168,7 +170,7 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     }
 
     table_->show_library(repository);
-    table_->show_tracks(rows_.tracks());
+    table_->show_rows(queue_rows(rows_.tracks()));
     update_results();
     return true;
 }
@@ -193,7 +195,7 @@ std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() cons
 {
     std::vector<std::filesystem::path> paths;
 
-    for (const engine::QueueEntryId id : table_->displayed_tracks()) {
+    for (const engine::QueueEntryId id : queue_entry_ids(table_->displayed_rows())) {
         const auto row = rows_.index_of(id);
         if (row)
             paths.push_back(rows_.tracks()[*row].path());
@@ -206,7 +208,7 @@ std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() co
 {
     std::vector<library::PlaylistEntryId> selected;
 
-    for (const engine::QueueEntryId id : table_->chosen_tracks()) {
+    for (const engine::QueueEntryId id : queue_entry_ids(table_->chosen_rows())) {
         const auto row = rows_.index_of(id);
         if (row && *row < entries_.size())
             selected.push_back(entries_[*row].id);

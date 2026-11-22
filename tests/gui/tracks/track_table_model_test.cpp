@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui/documents/queue_rows.hpp>
+
 #include <gui/tracks/track_table_model.hpp>
 
 #include <engine/queue/playlist.hpp>
@@ -76,7 +78,7 @@ TEST_F(TrackTableModelTest, ChangesOnlyTheRowWhoseMetadataChanged)
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     int changes{0};
     QObject::connect(&model, &QAbstractItemModel::dataChanged,
@@ -91,7 +93,7 @@ TEST_F(TrackTableModelTest, ChangesOnlyTheRowWhoseMetadataChanged)
             .album = {},
             .duration = {},
             .genre = {}});
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     EXPECT_EQ(changes, 1);
     EXPECT_EQ(model.rowCount(), 2);
@@ -103,19 +105,19 @@ TEST_F(TrackTableModelTest, AddressesRowsByStableTrackIdentity)
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
-    EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 0));
-    EXPECT_EQ(model.track_id(model.index(1, 1)), id_at(playlist, 1));
-    EXPECT_FALSE(model.track_id(model.index(2, 0)).has_value());
-    EXPECT_FALSE(model.track_id({}).has_value());
+    EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 0));
+    EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(1, 1))), id_at(playlist, 1));
+    EXPECT_FALSE(wiola::gui::queue_entry_id(model.row_id(model.index(2, 0))).has_value());
+    EXPECT_FALSE(wiola::gui::queue_entry_id(model.row_id({})).has_value());
 
     const auto removed = id_at(playlist, 0);
     playlist.remove(0);
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
-    EXPECT_NE(model.track_id(model.index(0, 0)), removed);
-    EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 0));
+    EXPECT_NE(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), removed);
+    EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 0));
 }
 
 TEST_F(TrackTableModelTest, FollowsTheCurrentIdentityAcrossReordering)
@@ -129,8 +131,8 @@ TEST_F(TrackTableModelTest, FollowsTheCurrentIdentityAcrossReordering)
     reordered[0] = original[1];
     reordered[1] = original[0];
 
-    model.show_tracks(original, id_at(first, 1));
-    model.show_tracks(reordered, id_at(first, 1));
+    model.show_rows(wiola::gui::queue_rows(original), id_at(first, 1));
+    model.show_rows(wiola::gui::queue_rows(reordered), id_at(first, 1));
 
     EXPECT_TRUE(model.data(model.index(0, 1), Qt::FontRole).value<QFont>().bold());
     EXPECT_FALSE(model.data(model.index(1, 1), Qt::FontRole).value<QFont>().bold());
@@ -141,19 +143,19 @@ TEST_F(TrackTableModelTest, UpdatesSelectionWithoutDependingOnPlaylistRevisions)
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
-    model.show_tracks(playlist.tracks(), id_at(playlist, 0));
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()), id_at(playlist, 0));
 
     int changes{0};
     QObject::connect(&model, &QAbstractItemModel::dataChanged,
         [&changes](const QModelIndex&, const QModelIndex&, const QList<int>&) { ++changes; });
 
-    model.show_tracks(playlist.tracks(), id_at(playlist, 1));
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()), id_at(playlist, 1));
 
     EXPECT_EQ(changes, 2);
     EXPECT_FALSE(model.data(model.index(0, 1), Qt::FontRole).value<QFont>().bold());
     EXPECT_TRUE(model.data(model.index(1, 1), Qt::FontRole).value<QFont>().bold());
 
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     EXPECT_FALSE(model.data(model.index(1, 1), Qt::FontRole).value<QFont>().bold());
 }
 
@@ -165,7 +167,7 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
     const std::vector entries{id_at(playlist, 0), id_at(playlist, 1)};
 
     playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::blue));
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     const QPixmap first_blue = cover_at(model, 0);
     const QPixmap second_blue = cover_at(model, 1);
@@ -173,7 +175,7 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
     EXPECT_EQ(first_blue.toImage().pixelColor(0, 0), QColor{Qt::GlobalColor::blue});
 
     playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::red));
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     const QPixmap first_red = cover_at(model, 0);
     const QPixmap second_red = cover_at(model, 1);
@@ -197,7 +199,7 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     model.show_library(repository);
     model.show_tag_keys({"Genre", "genre", "Mood"});
 
@@ -228,7 +230,7 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     };
     model.search_by(query);
     EXPECT_EQ(model.rowCount(), 1);
-    EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 1));
+    EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 1));
 
     model.search_by({});
     EXPECT_EQ(model.rowCount(), 2);
@@ -253,7 +255,7 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
             .duration = {},
             .genre = {}});
     model.show_library(repository);
-    model.show_tracks(playlist.tracks());
+    model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     model.search_by(
         {.title = "song", .artist = "the artist", .album = "great", .tags = {}, .filters = {}}
@@ -261,7 +263,7 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
 
     EXPECT_EQ(model.rowCount(), 1);
     EXPECT_EQ(model.total_count(), 2);
-    EXPECT_EQ(model.track_id(model.index(0, 0)), id_at(playlist, 0));
+    EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 0));
 
     model.search_by(
         {.title = "song", .artist = "missing", .album = "great", .tags = {}, .filters = {}}

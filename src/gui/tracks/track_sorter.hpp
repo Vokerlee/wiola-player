@@ -26,7 +26,7 @@
 
 namespace wiola::gui {
 
-[[nodiscard]] std::vector<engine::Track> sorted_tracks(const std::vector<engine::Track>& tracks,
-    const library::LibraryRepository& repository, const std::vector<TrackSortKey>& keys);
+[[nodiscard]] std::vector<TrackRow> sorted_rows(const std::vector<TrackRow>& tracks,
+    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys);
 
 } // namespace wiola::gui

@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui/documents/queue_rows.hpp>
+
 #include <gui/tracks/track_table_view.hpp>
 
 #include <engine/queue/playlist.hpp>
@@ -76,7 +78,7 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
-    view.show_tracks(playlist.tracks());
+    view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.setCurrentIndex(view.model()->index(1, 0));
 
     QAction* play = action(view, "Play selected track");
@@ -95,8 +97,10 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
     int active_transfers{0};
     int destination_transfers{0};
     int moves{0};
-    QObject::connect(&view, &wiola::gui::TrackTableView::track_chosen,
-        [&chosen](wiola::engine::QueueEntryId id) { chosen = id; });
+    QObject::connect(&view, &wiola::gui::TrackTableView::row_chosen,
+        [&chosen](wiola::gui::TrackRowId id) {
+            chosen = std::get<wiola::engine::QueueEntryId>(id);
+        });
     QObject::connect(&view, &wiola::gui::TrackTableView::removal_asked,
         [&removals] { ++removals; });
     QObject::connect(&view, &wiola::gui::TrackTableView::transfer_active_asked,
@@ -127,7 +131,7 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav"),
         wiola::engine::Track::of("third.wav")});
-    view.show_tracks(playlist.tracks());
+    view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     view.selectionModel()->select(view.model()->index(0, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
@@ -138,9 +142,10 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
 
     std::vector<wiola::engine::Track> reordered{playlist.tracks()};
     std::ranges::reverse(reordered);
-    view.show_tracks(reordered);
+    view.show_rows(wiola::gui::queue_rows(reordered));
 
-    std::vector<wiola::engine::QueueEntryId> selected = view.chosen_tracks();
+    std::vector<wiola::engine::QueueEntryId> selected =
+        wiola::gui::queue_entry_ids(view.chosen_rows());
     std::ranges::sort(selected, {}, &wiola::engine::QueueEntryId::value);
 
     ASSERT_EQ(selected.size(), 2);
@@ -154,7 +159,7 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
     playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
-    view.show_tracks(playlist.tracks());
+    view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.selectionModel()->select(view.model()->index(0, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
 
@@ -173,7 +178,8 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
     genre->setChecked(true);
     EXPECT_EQ(view.model()->columnCount(), 6);
     EXPECT_EQ(view.model()->data(view.model()->index(0, 5), Qt::DisplayRole).toString(), "Jazz");
-    EXPECT_EQ(view.chosen_tracks(), std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.chosen_rows()),
+        std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
 
     record.tags.front().value = "Fusion";
     ++record.metadata_revision;
@@ -188,7 +194,8 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
     ASSERT_NE(genre, nullptr);
     genre->setChecked(false);
     EXPECT_EQ(view.model()->columnCount(), 5);
-    EXPECT_EQ(view.chosen_tracks(), std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.chosen_rows()),
+        std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
 }
 
 TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
@@ -202,15 +209,15 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
         {.title = "Alpha", .artist = {}, .album = {}, .duration = {}});
     wiola::library::InMemoryRepository repository;
     view.show_library(repository);
-    view.show_tracks(playlist.tracks());
+    view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     emit view.horizontalHeader()->sectionClicked(1);
-    EXPECT_EQ(view.displayed_tracks(),
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 1), id_at(playlist, 0)}));
     EXPECT_EQ(playlist.tracks()[0].path(), "b.wav");
 
     emit view.horizontalHeader()->sectionClicked(1);
-    EXPECT_EQ(view.displayed_tracks(),
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0), id_at(playlist, 1)}));
 
     QAction* apply = action(view, "Apply displayed order to playback");
@@ -246,7 +253,7 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
     auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
     ASSERT_NE(genre, nullptr);
     genre->setChecked(true);
-    view.show_tracks(playlist.tracks());
+    view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.selectRow(1);
     view.resize(1000, 400);
     view.show();
@@ -260,15 +267,15 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
     };
     click(1);
     click(2, Qt::ShiftModifier);
-    EXPECT_EQ(view.displayed_tracks(),
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector{id_at(playlist, 2), id_at(playlist, 1), id_at(playlist, 0)}));
     click(2, Qt::ControlModifier);
-    EXPECT_EQ(view.displayed_tracks(),
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
     click(5, Qt::ShiftModifier);
-    EXPECT_EQ(view.displayed_tracks(),
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
-    EXPECT_EQ(view.chosen_tracks(), std::vector{id_at(playlist, 1)});
+    EXPECT_EQ(wiola::gui::queue_entry_ids(view.chosen_rows()), std::vector{id_at(playlist, 1)});
     EXPECT_EQ(playlist.tracks()[0].id(), id_at(playlist, 0));
     EXPECT_EQ(playlist.tracks()[1].path(), "same.wav");
 }

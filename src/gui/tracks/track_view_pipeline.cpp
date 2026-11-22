@@ -26,10 +26,10 @@ namespace wiola::gui {
 
 namespace {
 
-bool matches(const engine::Track& track, const library::LibraryRepository* repository,
+bool matches(const TrackRow& track, const library::LibraryRepository* repository,
     const library::SearchQuery& query)
 {
-    const library::MediaId media = library::media_id_for(track.path());
+    const library::MediaId media = track.media;
     const library::TrackRecord* record = repository != nullptr ? repository->track(media) : nullptr;
 
     if (record != nullptr)
@@ -37,7 +37,8 @@ bool matches(const engine::Track& track, const library::LibraryRepository* repos
 
     library::TrackRecord presented;
     presented.id = media;
-    presented.embedded = track.metadata();
+    presented.embedded = track.metadata;
+    presented.tags = track.tags;
     return library::matches_search(query, presented);
 }
 
@@ -49,20 +50,20 @@ bool track_query_active(const library::SearchQuery& query)
         !query.tags.empty() || !query.filters.empty();
 }
 
-std::vector<engine::Track> apply_track_view(const std::vector<engine::Track>& source,
+std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
     const library::LibraryRepository* repository, const library::SearchQuery& query,
     const std::vector<TrackSortKey>& sort_keys)
 {
-    std::vector<engine::Track> visible;
+    std::vector<TrackRow> visible;
     visible.reserve(source.size());
 
-    for (const engine::Track& track : source) {
+    for (const TrackRow& track : source) {
         if (!track_query_active(query) || matches(track, repository, query))
             visible.push_back(track);
     }
 
-    if (!sort_keys.empty() && repository != nullptr)
-        return sorted_tracks(visible, *repository, sort_keys);
+    if (!sort_keys.empty())
+        return sorted_rows(visible, repository, sort_keys);
 
     return visible;
 }

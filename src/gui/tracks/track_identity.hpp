@@ -19,7 +19,7 @@
  */
 
 #pragma once
-#include <engine/queue/track.hpp>
+#include <engine/queue/queue_entry_id.hpp>
 #include <library/identity.hpp>
 #include <variant>
 

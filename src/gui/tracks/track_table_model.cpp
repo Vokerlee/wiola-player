@@ -22,6 +22,7 @@
 
 #include "track_view_pipeline.hpp"
 #include <gui/controls/clock.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>
 #include <library/repository.hpp>
@@ -48,9 +49,9 @@ enum Column {
     num_columns,
 };
 
-bool same_metadata(const engine::Track& a, const engine::Track& b)
+bool same_metadata(const TrackRow& a, const TrackRow& b)
 {
-    return a.metadata() == b.metadata() && a.artwork() == b.artwork();
+    return a == b;
 }
 
 bool restricted(const library::SearchQuery& query)
@@ -82,22 +83,24 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
         static_cast<std::size_t>(index.row()) >= rows_.size())
         return {};
 
-    const engine::Track& track{rows_[static_cast<std::size_t>(index.row())]};
+    const TrackRow& track{rows_[static_cast<std::size_t>(index.row())]};
+
+    if (role == Qt::ToolTipRole)
+        return platform::qt::QtPathAdapter::to_qt(track.location) +
+            (track.missing ? " — unavailable" : "");
 
     if (role == Qt::DisplayRole && index.column() >= standard_columns) {
         const std::size_t column = static_cast<std::size_t>(index.column() - standard_columns);
-        if (repository_ == nullptr || column >= tag_columns_.size())
+        if (column >= tag_columns_.size())
             return {};
 
         const library::TrackRecord* record =
-            repository_->track(library::media_id_for(track.path()));
-        if (record == nullptr)
-            return {};
+            repository_ ? repository_->track(track.media) : nullptr;
 
         const std::string key = library::normalized_tag_text(tag_columns_[column]);
         QStringList values;
 
-        for (const library::TagRecord& tag : record->tags) {
+        for (const library::TagRecord& tag : record ? record->tags : track.tags) {
             if (library::normalized_tag_text(tag.key) == key)
                 values.push_back(QString::fromStdString(tag.value));
         }
@@ -108,25 +111,24 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case Column::title:
-            return QString::fromStdString(track.title());
+            return QString::fromStdString(track.metadata.title);
         case Column::artist:
-            return QString::fromStdString(track.artist());
+            return QString::fromStdString(track.metadata.artist);
         case Column::album:
-            return QString::fromStdString(track.album());
+            return QString::fromStdString(track.metadata.album);
         case Column::length:
-            return track.duration() ? as_clock(*track.duration()) : QString{};
+            return track.metadata.duration ? as_clock(*track.metadata.duration) : QString{};
         default:
             return {};
         }
     }
 
     if (role == Qt::DecorationRole && index.column() == Column::cover) {
-        return artwork_.cover_of({.media = library::media_id_for(track.path()).value,
-                                     .revision = track.revision()},
-            track.artwork());
+        return artwork_.cover_of({.media = track.media.value, .revision = track.artwork_revision},
+            track.artwork);
     }
 
-    if (current_ != track.id())
+    if (current_ != track.id)
         return {};
 
     if (role == Qt::FontRole) {
@@ -161,15 +163,15 @@ QVariant TrackTableModel::headerData(int section, Qt::Orientation orientation, i
                                                          : QVariant{};
 }
 
-void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
-    std::optional<engine::QueueEntryId> current)
+void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
+    std::optional<TrackRowId> current)
 {
     const bool same_structure = source_rows_.size() == tracks.size() &&
         std::ranges::equal(source_rows_, tracks,
-            [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
+            [](const TrackRow& a, const TrackRow& b) { return a.id == b.id; });
     const bool same_contents = same_structure &&
         std::ranges::equal(source_rows_, tracks,
-            [](const engine::Track& a, const engine::Track& b) { return same_metadata(a, b); });
+            [](const TrackRow& a, const TrackRow& b) { return same_metadata(a, b); });
 
     if (!sort_keys_.empty() || restricted(query_)) {
         if (!same_contents) {
@@ -203,7 +205,7 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
         if (!id)
             continue;
 
-        const auto row = std::ranges::find(rows_, *id, &engine::Track::id);
+        const auto row = std::ranges::find(rows_, *id, &TrackRow::id);
         if (row != rows_.end()) {
             const auto position = static_cast<int>(std::distance(rows_.begin(), row));
             emit dataChanged(index(position, 0), index(position, columnCount({}) - 1));
@@ -214,10 +216,10 @@ void TrackTableModel::show_tracks(const std::vector<engine::Track>& tracks,
 void TrackTableModel::show_library(const library::LibraryRepository& repository)
 {
     repository_ = &repository;
-    std::vector<engine::Track> visible = visible_rows();
+    std::vector<TrackRow> visible = visible_rows();
     const bool different_order = rows_.size() != visible.size() ||
         !std::ranges::equal(rows_, visible,
-            [](const engine::Track& a, const engine::Track& b) { return a.id() == b.id(); });
+            [](const TrackRow& a, const TrackRow& b) { return a.id == b.id; });
 
     if (different_order) {
         beginResetModel();
@@ -294,18 +296,18 @@ void TrackTableModel::search_by(const library::SearchQuery& query)
     endResetModel();
 }
 
-std::vector<engine::Track> TrackTableModel::visible_rows() const
+std::vector<TrackRow> TrackTableModel::visible_rows() const
 {
     return apply_track_view(source_rows_, repository_, query_, sort_keys_);
 }
 
-std::optional<engine::QueueEntryId> TrackTableModel::track_id(const QModelIndex& index) const
+std::optional<TrackRowId> TrackTableModel::row_id(const QModelIndex& index) const
 {
     if (!index.isValid() || index.row() < 0 ||
         static_cast<std::size_t>(index.row()) >= rows_.size())
         return {};
 
-    return rows_[static_cast<std::size_t>(index.row())].id();
+    return rows_[static_cast<std::size_t>(index.row())].id;
 }
 
 std::vector<std::string> custom_tag_keys(const library::LibraryRepository& repository)
