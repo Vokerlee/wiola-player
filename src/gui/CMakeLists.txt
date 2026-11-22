@@ -12,6 +12,7 @@ wiola_add_library(
         layout/layout_document.cpp
         layout/layout_builder.cpp
         layout/layout_editor.cpp
+        shell/document_host.cpp
         shell/main_window.cpp
         metadata/metadata_conflict_panel.cpp
         documents/document_registry.cpp

@@ -172,7 +172,7 @@ TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocumen
     ASSERT_EQ(documents->count(), 2);
 
     EXPECT_EQ(documents->tabText(0), "Now Playing");
-    EXPECT_EQ(documents->tabText(1), "Folder Workspace");
+    EXPECT_EQ(documents->tabText(1), "Open Folder");
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(documents->currentWidget(), now_playing);
     EXPECT_FALSE(play_button->isEnabled());
