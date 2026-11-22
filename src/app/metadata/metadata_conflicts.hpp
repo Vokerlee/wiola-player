@@ -38,6 +38,7 @@ struct ExpectedMediaState {
     std::uint64_t metadata_revision{0};
     std::uint64_t content_revision{0};
     std::string fingerprint;
+    bool operator==(const ExpectedMediaState&) const = default;
 };
 
 class MetadataConflictDetector final {

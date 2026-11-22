@@ -282,9 +282,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     inspector_->custom_tags()->on_remove([this](library::MediaId media, library::TagId tag) {
         finish_custom_tag(tag_commands_.remove(media, tag), "Custom tag removed");
     });
-    inspector_->standard_metadata()->on_apply([this](library::MediaId media,
-                                                  library::StandardMetadataPatch edit) {
-        finish_standard_metadata(media, std::move(edit));
+    inspector_->standard_metadata()->on_apply([this](const app::MetadataEditSession& session) {
+        finish_standard_metadata(session);
     });
     inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
         resolve_metadata_conflict(action);
@@ -1104,22 +1103,14 @@ std::vector<const library::TrackRecord*> MainWindow::selected_records()
     return selected;
 }
 
-void MainWindow::finish_standard_metadata(library::MediaId, library::StandardMetadataPatch edit)
+void MainWindow::finish_standard_metadata(const app::MetadataEditSession& session)
 {
-    std::vector<library::MediaId> selected;
-    std::map<library::MediaId, app::ExpectedMediaState> expected;
-
-    for (const library::TrackRecord* record : selected_records()) {
-        selected.push_back(record->id);
-        expected.emplace(record->id,
-            app::ExpectedMediaState{.metadata_revision = record->metadata_revision,
-                .content_revision = record->content_revision,
-                .fingerprint = record->fingerprint});
+    const auto outcome =
+        optimistic_edits_.submit(session.media(), session.draft(), session.expectations());
+    if (outcome.state == app::MetadataEditState::succeeded) {
+        inspector_->standard_metadata()->discard();
+        refresh();
     }
-
-    pending_metadata_edit_ = PendingMetadataEdit{.media = selected, .edit = edit};
-
-    const auto outcome = optimistic_edits_.submit(selected, edit, expected);
     if (outcome.state == app::MetadataEditState::failed ||
         outcome.state == app::MetadataEditState::conflicted)
         inspector_->standard_metadata()->show_status(outcome.state ==
@@ -1133,27 +1124,24 @@ void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
     if (action == MetadataConflictAction::review)
         return;
 
-    if (!pending_metadata_edit_)
+    auto* editor = inspector_->standard_metadata();
+    const auto session = editor->edit_session();
+    if (!session.valid())
         return;
-
     if (action == MetadataConflictAction::keep) {
-        pending_metadata_edit_.reset();
+        editor->discard();
         inspector_->conflicts()->hide_conflict();
         show_status("Kept current application metadata");
+        refresh();
         return;
     }
-
-    app::MetadataEditOutcome outcome;
-
-    if (action == MetadataConflictAction::reload) {
-        outcome = optimistic_edits_.reset(pending_metadata_edit_->media);
-    } else {
-        outcome =
-            optimistic_edits_.submit(pending_metadata_edit_->media, pending_metadata_edit_->edit);
+    const auto outcome = action == MetadataConflictAction::reload
+        ? optimistic_edits_.reset(session.media())
+        : optimistic_edits_.submit(session.media(), session.draft());
+    if (outcome.state == app::MetadataEditState::succeeded) {
+        editor->discard();
+        refresh();
     }
-
-    if (outcome.state == app::MetadataEditState::succeeded)
-        pending_metadata_edit_.reset();
 }
 
 void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcome)

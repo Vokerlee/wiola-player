@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <app/metadata/metadata_edit_session.hpp>
 #include <library/metadata.hpp>
 #include <library/metadata_patch.hpp>
 
@@ -36,12 +37,19 @@ namespace wiola::gui {
 
 class StandardMetadataEditor final : public QWidget {
 public:
-    using Observer = std::function<void(library::MediaId, library::StandardMetadataPatch)>;
+    using Observer = std::function<void(const app::MetadataEditSession&)>;
 
     explicit StandardMetadataEditor(QWidget* parent = nullptr);
 
     void show_track(const library::TrackRecord* track);
     void show_tracks(const std::vector<const library::TrackRecord*>& tracks);
+    void show_session(app::MetadataEditSession session);
+    void discard();
+
+    [[nodiscard]] bool retains_draft() const { return !touched_.empty(); }
+
+    [[nodiscard]] const app::MetadataEditSession& edit_session() const { return session_; }
+
     void show_status(const QString& status);
     void on_apply(Observer observer);
 
@@ -53,11 +61,9 @@ private:
     void populate();
     void update_actions();
 
-    library::MediaId media_;
-    library::ResolvedMetadata original_;
-    std::string selection_key_;
+    app::MetadataEditSession session_;
+    app::MetadataEditSession offered_;
     bool initialized_{false};
-    bool overrides_present_{false};
     bool populating_{false};
     std::set<QLineEdit*> touched_;
     std::set<QLineEdit*> mixed_;

@@ -18,10 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <app/metadata/optimistic_metadata_edits.hpp>
 #include <gui/metadata/standard_metadata_editor.hpp>
 
 #include <QApplication>
 
+#include <algorithm>
 #include <gtest/gtest.h>
 
 namespace {
@@ -64,9 +66,9 @@ TEST_F(StandardMetadataEditor, ShowsResolvedValuesAndAppliesDirtyOverrides)
             .contains("Application overrides"));
 
     std::optional<wiola::library::StandardMetadataPatch> applied;
-    editor.on_apply([&](wiola::library::MediaId media, wiola::library::StandardMetadataPatch edit) {
-        EXPECT_EQ(media, track.id);
-        applied = std::move(edit);
+    editor.on_apply([&](const wiola::app::MetadataEditSession& session) {
+        EXPECT_EQ(session.media(), std::vector<wiola::library::MediaId>{track.id});
+        applied = session.draft();
     });
 
     field("standardGenre")->setText("Jazz");
@@ -98,7 +100,7 @@ TEST_F(StandardMetadataEditor, RejectsInvalidNumbersAndCancelsCleanly)
     EXPECT_FALSE(button("applyStandardMetadata")->isEnabled());
 }
 
-TEST_F(StandardMetadataEditor, PreservesDirtyInputUntilARevisionChanges)
+TEST_F(StandardMetadataEditor, PreservesDraftAndExpectedTargetAcrossRevisionsAndSelectionChanges)
 {
     field("standardComment")->setText("Unsaved");
     editor.show_track(&track);
@@ -106,6 +108,15 @@ TEST_F(StandardMetadataEditor, PreservesDirtyInputUntilARevisionChanges)
 
     ++track.metadata_revision;
     editor.show_track(&track);
+    EXPECT_EQ(field("standardComment")->text(), "Unsaved");
+    auto other = track;
+    other.id = {"other"};
+    editor.show_track(&other);
+    EXPECT_EQ(field("standardComment")->text(), "Unsaved");
+    EXPECT_EQ(editor.edit_session().media(), std::vector<wiola::library::MediaId>{track.id});
+    EXPECT_EQ(editor.edit_session().expectations().at(track.id).metadata_revision, 1);
+    button("cancelStandardMetadata")->click();
+    EXPECT_EQ(editor.edit_session().media(), std::vector<wiola::library::MediaId>{other.id});
     EXPECT_EQ(field("standardComment")->text(), "Embedded comment");
 
     editor.show_status("Could not save");
@@ -127,8 +138,8 @@ TEST_F(StandardMetadataEditor, MixedValuesRemainUnchangedUnlessExplicitlyEdited)
     EXPECT_EQ(field("standardYear")->placeholderText(), "Mixed values");
 
     std::optional<wiola::library::StandardMetadataPatch> applied;
-    editor.on_apply([&](wiola::library::MediaId, wiola::library::StandardMetadataPatch edit) {
-        applied = std::move(edit);
+    editor.on_apply([&](const wiola::app::MetadataEditSession& session) {
+        applied = session.draft();
     });
     field("standardGenre")->setText("Jazz");
     button("applyStandardMetadata")->click();
@@ -138,6 +149,53 @@ TEST_F(StandardMetadataEditor, MixedValuesRemainUnchangedUnlessExplicitlyEdited)
     EXPECT_EQ(applied->artist.operation(), wiola::library::FieldEditOperation::unchanged);
     EXPECT_EQ(applied->year.operation(), wiola::library::FieldEditOperation::unchanged);
     EXPECT_EQ(applied->title.operation(), wiola::library::FieldEditOperation::unchanged);
+}
+
+TEST_F(StandardMetadataEditor, ApplyAfterExternalChangeChecksOriginalTargetAndExpectations)
+{
+    wiola::library::InMemoryRepository repository;
+    auto other = track;
+    other.id = {"other"};
+    ASSERT_TRUE(repository.put_track(track));
+    ASSERT_TRUE(repository.put_track(other));
+    wiola::app::OptimisticMetadataEdits commands{repository, [](const auto&) { return true; },
+        [](const auto&) { }};
+    field("standardComment")->setText("Draft");
+    track.embedded.artist = "External";
+    ++track.metadata_revision;
+    ASSERT_TRUE(repository.put_track(track));
+    editor.show_track(repository.track(track.id));
+    editor.show_track(repository.track(other.id));
+    std::optional<wiola::app::MetadataEditOutcome> outcome;
+    editor.on_apply([&](const wiola::app::MetadataEditSession& session) {
+        outcome = commands.submit(session.media(), session.draft(), session.expectations());
+    });
+    button("applyStandardMetadata")->click();
+    ASSERT_TRUE(outcome);
+    EXPECT_EQ(outcome->state, wiola::app::MetadataEditState::conflicted);
+    EXPECT_EQ(editor.edit_session().media(), std::vector<wiola::library::MediaId>{track.id});
+    EXPECT_FALSE(repository.track(other.id)->overrides.comment);
+    EXPECT_EQ(field("standardComment")->text(), "Draft");
+}
+
+TEST_F(StandardMetadataEditor, SessionDeduplicatesOccurrencesAndRetainsOwnedOriginalValues)
+{
+    auto other = track;
+    other.id = {"other"};
+    other.embedded.artist = "Different";
+    const auto session =
+        wiola::app::MetadataEditSession::capture({&track, &other, &track, nullptr});
+    ASSERT_EQ(session.targets().size(), 2);
+    EXPECT_TRUE(session.mixed(wiola::app::StandardMetadataField::artist));
+    track.embedded.artist = "Later";
+    track.content_revision = 99;
+    track.fingerprint = "later";
+    const auto found = std::ranges::find(session.targets(), track.id,
+        &wiola::app::MetadataEditSession::Target::media);
+    ASSERT_NE(found, session.targets().end());
+    EXPECT_EQ(found->original.artist, "Embedded artist");
+    EXPECT_EQ(found->expected.content_revision, 0);
+    EXPECT_TRUE(found->expected.fingerprint.empty());
 }
 
 } // namespace

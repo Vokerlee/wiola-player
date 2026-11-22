@@ -11,6 +11,7 @@ wiola_add_library(
         metadata/media_replacement.cpp
         metadata/metadata_conflicts.cpp
         metadata/metadata_merge.cpp
+        metadata/metadata_edit_session.cpp
         metadata/optimistic_metadata_edits.cpp
         metadata/standard_metadata_commands.cpp
         playback/active_playlist.cpp
