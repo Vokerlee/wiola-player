@@ -51,4 +51,8 @@ struct Relocation {
 [[nodiscard]] std::optional<Relocation> reconcile_location(TrackRecord& track,
     const std::filesystem::path& location);
 
+/// Applies facts already read by a worker; this overload performs no file I/O.
+[[nodiscard]] std::optional<Relocation> reconcile_location(TrackRecord& track,
+    const std::filesystem::path& location, std::string fingerprint);
+
 } // namespace wiola::library

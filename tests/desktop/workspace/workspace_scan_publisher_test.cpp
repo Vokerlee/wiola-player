@@ -62,7 +62,8 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
     wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
         [&](wiola::app::WorkspaceScanBatch batch) {
             EXPECT_EQ(QThread::currentThread(), QCoreApplication::instance()->thread());
-            tracks.insert(tracks.end(), batch.tracks.begin(), batch.tracks.end());
+            for (const auto& entry : batch.entries)
+                tracks.push_back(entry.location);
             batches.push_back(std::move(batch));
         }};
     const auto generation = publisher.start(
@@ -79,7 +80,7 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
     EXPECT_EQ(batches.back().generation, generation);
 
     for (const auto& batch : batches)
-        EXPECT_LE(batch.tracks.size(), 64);
+        EXPECT_LE(batch.entries.size(), 64);
 
     std::filesystem::remove_all(root);
 }

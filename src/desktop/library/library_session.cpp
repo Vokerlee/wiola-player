@@ -21,6 +21,7 @@
 #include "library_session.hpp"
 #include <QFileInfo>
 #include <QThread>
+#include <algorithm>
 #include <library/location.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -53,14 +54,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , tags_{repository_, persist_}
     , edits_{repository_, persist_,
           [this](const MetadataEditOutcome& outcome) { emit metadata_outcome(outcome); }}
-    , scans_{*this,
-          [this](WorkspaceScanBatch batch) {
-              if (!accepting_)
-                  return;
-              for (const auto& path : batch.tracks)
-                  request_metadata(path);
-              emit scan_batch(batch);
-          }}
+    , scans_{*this, [this](WorkspaceScanBatch batch) { publish_scan(std::move(batch)); }}
     , metadata_{*this, std::move(provider),
           [this](BackgroundMetadataResult result) { publish_metadata(std::move(result)); }}
 {
@@ -73,7 +67,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     for (const auto& track : repository_.tracks()) {
         search_.upsert(track);
         if (!track.locations.empty())
-            request_metadata(track.locations.front());
+            request_metadata(track.id, library::preferred_location(track));
     }
     changes_ = repository_.observe([this](const library::LibraryChangeBatch& batch) {
         index_changes(batch);
@@ -96,6 +90,7 @@ persistence::qt::LibraryStoreResult LibrarySession::shutdown()
     accepting_ = false;
     watcher_.stop();
     scans_.stop();
+    pending_scan_.reset();
     metadata_.stop();
     shutdown_result_ = !restore_result_.succeeded() && repository_.change_revision() == 0
         ? restore_result_
@@ -159,10 +154,60 @@ const library::RepositoryTransaction::Persist& LibrarySession::persistence() con
     return persist_;
 }
 
-WorkspaceScanPublisher& LibrarySession::scans()
+std::uint64_t LibrarySession::scan_workspace(const library::WorkspaceId& id,
+    std::vector<std::string> extensions)
 {
     check_owner();
-    return scans_;
+    const auto* workspace = repository_.workspace(id);
+    if (!accepting_ || !workspace)
+        return 0;
+    const auto generation = scans_.start(*workspace, std::move(extensions), repository_.tracks());
+    pending_scan_ = PendingScan{id, generation, {}};
+    return generation;
+}
+
+void LibrarySession::cancel_workspace_scan()
+{
+    check_owner();
+    scans_.cancel();
+    pending_scan_.reset();
+}
+
+library::MediaId LibrarySession::media_at(const std::filesystem::path& location) const
+{
+    check_owner();
+    const auto key = library::media_id_for(location);
+    if (repository_.track(key))
+        return key;
+    for (const auto& record : repository_.tracks())
+        for (const auto& known : record.locations)
+            if (library::media_id_for(known) == key)
+                return record.id;
+    return key;
+}
+
+void LibrarySession::publish_scan(WorkspaceScanBatch batch)
+{
+    check_owner();
+    if (!accepting_ || !pending_scan_ || pending_scan_->workspace != batch.workspace ||
+        pending_scan_->generation != batch.generation)
+        return;
+    pending_scan_->entries.insert(pending_scan_->entries.end(), batch.entries.begin(),
+        batch.entries.end());
+    for (const auto& entry : batch.entries)
+        request_metadata(entry.media, entry.location);
+    if (batch.status == WorkspaceScanStatus::complete) {
+        const auto result =
+            reconciliation_.reconcile(repository_, batch.workspace, pending_scan_->entries);
+        if (!result.succeeded) {
+            emit status_changed("Could not save the workspace scan");
+            batch.status = WorkspaceScanStatus::failed;
+        }
+    }
+    const bool finished = batch.status != WorkspaceScanStatus::running;
+    if (finished)
+        pending_scan_.reset();
+    emit scan_batch(batch);
 }
 
 WorkspaceWatcher& LibrarySession::watcher()
@@ -173,10 +218,16 @@ WorkspaceWatcher& LibrarySession::watcher()
 
 void LibrarySession::request_metadata(const std::filesystem::path& path)
 {
+    request_metadata(media_at(path), path);
+}
+
+void LibrarySession::request_metadata(const library::MediaId& media,
+    const std::filesystem::path& path)
+{
     check_owner();
     if (!accepting_)
         return;
-    static_cast<void>(metadata_.enqueue(library::media_id_for(path), path));
+    static_cast<void>(metadata_.enqueue(media, path));
 }
 
 void LibrarySession::publish_metadata(BackgroundMetadataResult result)
@@ -200,6 +251,15 @@ void LibrarySession::publish_metadata(BackgroundMetadataResult result)
             emit status_changed("Could not add the discovered track to the library");
             return;
         }
+    }
+    if (const auto* current = repository_.track(result.media); current &&
+        (current->missing ||
+            std::ranges::find(current->locations, result.location) == current->locations.end())) {
+        auto updated = *current;
+        if (std::ranges::find(updated.locations, result.location) == updated.locations.end())
+            updated.locations.push_back(result.location);
+        updated.missing = false;
+        created = repository_.put_track(std::move(updated)) || created;
     }
     const bool merged = merge_.merge(repository_, result.media, *result.metadata);
     if ((created || merged) && !transaction.commit())

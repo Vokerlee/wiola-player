@@ -24,18 +24,13 @@
 
 namespace wiola::gui {
 
-std::filesystem::path preferred_track_location(const library::TrackRecord& record)
-{
-    return record.locations.empty() ? std::filesystem::path{} : record.locations.front();
-}
-
 TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& record)
 {
     auto values = library::resolve_metadata(record);
     TrackRow row;
     row.id = std::move(occurrence);
     row.media = record.id;
-    row.location = preferred_track_location(record);
+    row.location = library::preferred_location(record);
     row.location_key = library::media_id_for(row.location).value;
     row.metadata = {.title = std::move(values.title),
         .artist = std::move(values.artist),
@@ -48,7 +43,7 @@ TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& recor
         .track_number = values.track_number,
         .disc_number = values.disc_number};
     if (row.metadata.title.empty() && !record.overrides.title) {
-        const auto filename = row.location.filename().u8string();
+        const auto filename = row.location.stem().u8string();
         row.metadata.title.assign(filename.begin(), filename.end());
     }
     row.tags = std::move(values.tags);

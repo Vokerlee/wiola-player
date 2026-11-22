@@ -213,6 +213,52 @@ TEST_F(PlayerApplication, ReportsFailedFlushAndAllowsAnExplicitRetry)
     EXPECT_TRUE(player.shutdown());
 }
 
+TEST_F(PlayerApplication, WorkspaceRelocationPreservesSavedReferencesAndCanonicalMedia)
+{
+    wiola::app::PlayerApplication player;
+    QTemporaryDir workspace_directory;
+    ASSERT_TRUE(workspace_directory.isValid());
+    const auto old_name = workspace_directory.path() + "/old.wav";
+    const auto new_name = workspace_directory.path() + "/new.wav";
+    const auto source = track("wiola_workspace_identity.wav");
+    ASSERT_TRUE(QFile::copy(wiola::platform::qt::QtPathAdapter::to_qt(source), old_name));
+    auto& library = player.library();
+    wiola::library::WorkspaceId workspace;
+    {
+        wiola::library::RepositoryTransaction edit{library.repository(), library.persistence()};
+        workspace = library.repository().create_workspace(
+            wiola::platform::qt::QtPathAdapter::from_qt(workspace_directory.path())
+        );
+        ASSERT_TRUE(edit.commit());
+    }
+    std::uint64_t completed = 0;
+    QObject receiver;
+    QObject::connect(&library, &wiola::app::LibrarySession::scan_batch, &receiver,
+        [&](const auto& batch) {
+            if (batch.status == wiola::app::WorkspaceScanStatus::complete)
+                completed = batch.generation;
+        });
+    const auto first = library.scan_workspace(workspace, {".wav"});
+    ASSERT_TRUE(pump_until([&] { return completed == first; }));
+    ASSERT_EQ(library.repository().tracks().size(), 1);
+    const auto media = library.repository().tracks().front().id;
+    const auto playlist = library.playlists().create("Saved");
+    {
+        wiola::library::RepositoryTransaction edit{library.repository(), library.persistence()};
+        ASSERT_TRUE(library.repository().append_track(playlist, media));
+        ASSERT_TRUE(edit.commit());
+    }
+    ASSERT_TRUE(QFile::rename(old_name, new_name));
+    const auto second = library.scan_workspace(workspace, {".wav"});
+    ASSERT_TRUE(pump_until([&] { return completed == second; }));
+    EXPECT_EQ(library.repository().tracks().size(), 1);
+    EXPECT_EQ(library.media_at(wiola::platform::qt::QtPathAdapter::from_qt(new_name)), media);
+    ASSERT_NE(library.repository().track(media), nullptr);
+    EXPECT_EQ(wiola::library::preferred_location(*library.repository().track(media)),
+        wiola::platform::qt::QtPathAdapter::from_qt(new_name));
+    EXPECT_EQ(library.repository().playlist(playlist)->entries.front().media, media);
+}
+
 } // namespace
 
 int main(int argc, char** argv)

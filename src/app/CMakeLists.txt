@@ -15,6 +15,7 @@ wiola_add_library(
         playback/playback_queue.cpp
         playback/playback_service.cpp
         playback/playlist_transfer.cpp
+        workspace/workspace_discovery.cpp
         workspace/workspace_reconciliation.cpp
         workspace/workspace_scanner.cpp
     LIBS wiola_engine wiola_library

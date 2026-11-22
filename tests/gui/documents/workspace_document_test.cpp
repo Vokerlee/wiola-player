@@ -30,6 +30,19 @@
 
 namespace {
 
+std::vector<wiola::app::WorkspaceScanEntry>
+entries(std::initializer_list<std::filesystem::path> paths)
+{
+    std::vector<wiola::app::WorkspaceScanEntry> result;
+    for (const auto& path : paths) {
+        wiola::app::WorkspaceScanEntry entry;
+        entry.media = wiola::library::media_id_for(path);
+        entry.location = path;
+        result.push_back(std::move(entry));
+    }
+    return result;
+}
+
 TEST(WorkspaceDocument, AppendsCurrentBatchesAndRejectsStaleGenerations)
 {
     wiola::gui::WorkspaceDocument document;
@@ -43,7 +56,7 @@ TEST(WorkspaceDocument, AppendsCurrentBatchesAndRejectsStaleGenerations)
     ASSERT_NE(table, nullptr);
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 7,
-        .tracks = {"a.wav"},
+        .entries = entries({"a.wav"}),
         .status = wiola::app::WorkspaceScanStatus::running}));
 
     table->selectionModel()->select(table->model()->index(0, 0),
@@ -51,27 +64,27 @@ TEST(WorkspaceDocument, AppendsCurrentBatchesAndRejectsStaleGenerations)
 
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 7,
-        .tracks = {"nested/b.flac"},
+        .entries = entries({"nested/b.flac"}),
         .status = wiola::app::WorkspaceScanStatus::running}));
 
     EXPECT_EQ(table->model()->rowCount(), 2);
-    EXPECT_EQ(document.chosen_tracks().size(), 1);
+    EXPECT_EQ(document.chosen_rows().size(), 1);
     EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "2 tracks");
 
     EXPECT_FALSE(document.show_batch({.workspace = workspace.id,
         .generation = 6,
-        .tracks = {"stale.wav"},
+        .entries = entries({"stale.wav"}),
         .status = wiola::app::WorkspaceScanStatus::complete}));
     EXPECT_EQ(table->model()->rowCount(), 2);
 
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 7,
-        .tracks = {},
+        .entries = entries({}),
         .status = wiola::app::WorkspaceScanStatus::complete}));
     EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "2 tracks");
 }
 
-TEST(WorkspaceDocument, ClearsRowsWhenANewScanStarts)
+TEST(WorkspaceDocument, RetainsUsefulRowsWhenANewScanStarts)
 {
     wiola::gui::WorkspaceDocument document;
     const wiola::library::WorkspaceRecord workspace{.id =
@@ -81,13 +94,13 @@ TEST(WorkspaceDocument, ClearsRowsWhenANewScanStarts)
     document.begin(workspace, 1);
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 1,
-        .tracks = {"a.wav"},
+        .entries = entries({"a.wav"}),
         .status = wiola::app::WorkspaceScanStatus::running}));
 
     document.begin(workspace, 2);
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
-    EXPECT_EQ(table->model()->rowCount(), 0);
+    EXPECT_EQ(table->model()->rowCount(), 1);
     EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "Scanning...");
 }
 
@@ -136,12 +149,10 @@ TEST(WorkspaceDocument, RoutesSelectedPathsToPlaybackAndTransferCallbacks)
         .root = "/music",
         .recursive = true};
     document.begin(workspace, 1);
-    ASSERT_TRUE(document.show_batch({
-        .workspace = workspace.id,
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 1,
-        .tracks = {"one.wav", "two.flac"},
-        .status = wiola::app::WorkspaceScanStatus::running
-    }));
+        .entries = entries({"one.wav", "two.flac"}),
+        .status = wiola::app::WorkspaceScanStatus::running}));
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
     table->selectionModel()->select(table->model()->index(1, 0),
@@ -180,17 +191,15 @@ TEST(WorkspaceDocument, AppliesMediaRevisionsByIdentityWithoutLosingSelection)
         .root = "/music",
         .recursive = true};
     document.begin(workspace, 1);
-    ASSERT_TRUE(document.show_batch({
-        .workspace = workspace.id,
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 1,
-        .tracks = {"/music/one.wav", "/music/two.wav"},
-        .status = wiola::app::WorkspaceScanStatus::complete
-    }));
+        .entries = entries({"/music/one.wav", "/music/two.wav"}),
+        .status = wiola::app::WorkspaceScanStatus::complete}));
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
     table->selectionModel()->select(table->model()->index(1, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
-    const std::vector<wiola::engine::QueueEntryId> selected = document.chosen_tracks();
+    const std::vector<wiola::gui::TrackRowId> selected = document.chosen_rows();
 
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
@@ -210,11 +219,122 @@ TEST(WorkspaceDocument, AppliesMediaRevisionsByIdentityWithoutLosingSelection)
     EXPECT_EQ(table->model()->data(table->model()->index(1, 2), Qt::DisplayRole).toString(),
         "Learned artist");
     EXPECT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(), "one");
-    EXPECT_EQ(document.chosen_tracks(), selected);
+    EXPECT_EQ(document.chosen_rows(), selected);
     EXPECT_EQ(repository.track(record.id)->tags.size(), 1);
     EXPECT_EQ(repository.track(record.id)->overrides.title, "User title");
     EXPECT_FALSE(document.show_media_revision(repository,
         wiola::library::media_id_for("/music/missing.wav")));
+}
+
+TEST(WorkspaceDocument, RescanAndKnownRelocationKeepTheSelectedMediaIdentity)
+{
+    wiola::gui::WorkspaceDocument document;
+    const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
+        .root = "/music"};
+    wiola::app::WorkspaceScanEntry entry;
+    entry.media = {"canonical-media"};
+    entry.location = "/music/old.wav";
+    document.begin(workspace, 1);
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 1,
+        .entries = {entry},
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    table->selectRow(0);
+    const auto selected = document.chosen_rows();
+    document.begin(workspace, 2);
+    EXPECT_EQ(document.chosen_rows(), selected);
+    entry.location = "/music/new.wav";
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 2,
+        .entries = {entry},
+        .status = wiola::app::WorkspaceScanStatus::running}));
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 2,
+        .entries = {},
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+    EXPECT_EQ(document.chosen_rows(), selected);
+    ASSERT_EQ(document.selection().size(), 1);
+    EXPECT_EQ(document.selection().front().media, entry.media);
+    EXPECT_EQ(document.chosen_paths(), std::vector{entry.location});
+    EXPECT_FALSE(document.show_batch({.workspace = workspace.id,
+        .generation = 1,
+        .entries = {},
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+}
+
+TEST(WorkspaceDocument, CancellationKeepsUsefulRowsAndRejectsLateCompletion)
+{
+    wiola::gui::WorkspaceDocument document;
+    const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
+        .root = "/music"};
+    document.begin(workspace, 1);
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 1,
+        .entries = entries({"/music/old.wav"}),
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    table->selectRow(0);
+    const auto selected = document.chosen_rows();
+    document.begin(workspace, 2);
+    document.show_cancelled();
+    EXPECT_EQ(document.chosen_rows(), selected);
+    EXPECT_EQ(table->total_count(), 1);
+    EXPECT_FALSE(document.show_batch({.workspace = workspace.id,
+        .generation = 2,
+        .entries = {},
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+    EXPECT_EQ(table->total_count(), 1);
+}
+
+TEST(WorkspaceDocument, RemovesAbsentRowsOnlyAfterTheReplacementGenerationCompletes)
+{
+    wiola::gui::WorkspaceDocument document;
+    const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
+        .root = "/music"};
+    document.begin(workspace, 1);
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 1,
+        .entries = entries({"/music/old.wav"}),
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    table->selectRow(0);
+    const auto selected = document.chosen_rows();
+    document.begin(workspace, 2);
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 2,
+        .entries = entries({"/music/new.wav"}),
+        .status = wiola::app::WorkspaceScanStatus::running}));
+    EXPECT_EQ(document.chosen_rows(), selected);
+    ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
+        .generation = 2,
+        .entries = {},
+        .status = wiola::app::WorkspaceScanStatus::complete}));
+    EXPECT_TRUE(document.chosen_rows().empty());
+    EXPECT_EQ(table->total_count(), 1);
+}
+
+TEST(WorkspaceDocument, ANewScanKeepsAnExplicitlyClearedTitle)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = {"cleared"};
+    record.locations = {"/music/cleared.wav"};
+    record.overrides.title = "";
+    ASSERT_TRUE(repository.put_track(record));
+    wiola::app::WorkspaceScanEntry entry;
+    entry.media = record.id;
+    entry.location = record.locations.front();
+    wiola::gui::WorkspaceDocument document;
+    const wiola::library::WorkspaceId workspace{"workspace"};
+    document.begin({.id = workspace, .root = "/music"}, 1);
+    ASSERT_TRUE(document.show_batch({.workspace = workspace,
+                                        .generation = 1,
+                                        .entries = {entry},
+                                        .status = wiola::app::WorkspaceScanStatus::complete},
+        &repository));
+    const auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    EXPECT_TRUE(table->model()->index(0, 1).data().toString().isEmpty());
 }
 
 } // namespace

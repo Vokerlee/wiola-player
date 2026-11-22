@@ -827,8 +827,8 @@ void MainWindow::transfer_workspace(WorkspaceDocument& document, bool choose_des
 {
     std::vector<app::MediaTransfer> media;
 
-    for (const std::filesystem::path& path : document.chosen_paths())
-        media.push_back({.media = library::media_id_for(path), .location = path});
+    for (const auto& selected : document.selection())
+        media.push_back({.media = selected.media, .location = selected.location});
 
     if (choose_destination)
         choose_transfer_destination(media);
@@ -913,8 +913,9 @@ void MainWindow::transfer_saved_playlist(const library::PlaylistId& id,
 
         const library::TrackRecord* track = library_.track(entry->media);
         media.push_back({.media = entry->media,
-            .location = track != nullptr && !track->locations.empty() ? track->locations.front()
-                                                                      : std::filesystem::path{}});
+            .location = track != nullptr && !track->locations.empty()
+                ? library::preferred_location(*track)
+                : std::filesystem::path{}});
     }
 
     if (choose_destination)

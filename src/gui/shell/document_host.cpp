@@ -50,9 +50,8 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
         std::vector<SelectedTrack> selected;
         for (const auto id : queue_->chosen_tracks())
             if (const auto row = playback_.playlist().index_of(id))
-                selected.push_back(
-                    {library::media_id_for(playback_.playlist().tracks()[*row].path()), id}
-                );
+                selected.push_back({library_.media_at(playback_.playlist().tracks()[*row].path()),
+                    id, playback_.playlist().tracks()[*row].path()});
         return selected;
     });
     static_cast<void>(registry_.activate(DocumentId::queue()));
@@ -87,7 +86,7 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     connect(&library_, &app::LibrarySession::scan_batch, &lifetime_,
         [this](const app::WorkspaceScanBatch& batch) {
             if (auto* document = registry_.workspace(batch.workspace))
-                static_cast<void>(document->show_batch(batch));
+                static_cast<void>(document->show_batch(batch, &library_.repository()));
         });
     changes_ = library_.repository().observe([this](const auto& batch) {
         refresh(batch);
@@ -161,22 +160,13 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
     if (registry_.workspace(id))
         return activate(DocumentId::workspace(id));
     auto* document = new WorkspaceDocument{this};
-    registry_.add(id, *document, [id, document] {
-        std::vector<SelectedTrack> selected;
-        for (const auto& path : document->chosen_paths()) {
-            const auto media = library::media_id_for(path);
-            selected.push_back({
-                media, WorkspaceTrackId{id, media}
-            });
-        }
-        return selected;
-    });
+    registry_.add(id, *document, [document] { return document->selection(); });
     document->on_rescan_requested([this, id](bool recursive) {
         if (commands_.rescan)
             commands_.rescan(id, recursive);
     });
     document->on_cancel_requested([this, document] {
-        library_.scans().cancel();
+        library_.cancel_workspace_scan();
         document->show_cancelled();
     });
     document->on_play_requested([this, document] {
@@ -211,7 +201,7 @@ void DocumentHost::begin_scan(const library::WorkspaceId& id)
     const auto* workspace = library_.repository().workspace(id);
     if (!document || !workspace)
         return;
-    const auto generation = library_.scans().start(*workspace, playback_.playback_extensions());
+    const auto generation = library_.scan_workspace(id, playback_.playback_extensions());
     document->begin(*workspace, generation);
 }
 

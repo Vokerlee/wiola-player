@@ -41,17 +41,20 @@ void WorkspaceScanPublisher::stop()
 }
 
 std::uint64_t WorkspaceScanPublisher::start(const library::WorkspaceRecord& workspace,
-    std::vector<std::string> supported_extensions)
+    std::vector<std::string> supported_extensions, std::vector<library::TrackRecord> known)
 {
     if (stopped_)
         return 0;
     const std::uint64_t generation = state_->generation.fetch_add(1) + 1;
     const std::weak_ptr<State> state = state_;
-    scanner_.start(workspace, std::move(supported_extensions),
+    scanner_.start(
+        workspace, std::move(supported_extensions),
         [state, delivery = &delivery_, generation](WorkspaceScanBatch batch) {
             batch.generation = generation;
             receive(state, delivery, std::move(batch));
-        });
+        },
+        std::move(known)
+    );
 
     return generation;
 }

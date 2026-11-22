@@ -20,6 +20,7 @@
 
 #pragma once
 #include <engine/queue/queue_entry_id.hpp>
+#include <filesystem>
 #include <library/identity.hpp>
 #include <variant>
 
@@ -36,6 +37,7 @@ using TrackRowId = std::variant<engine::QueueEntryId, library::PlaylistEntryId, 
 struct SelectedTrack {
     library::MediaId media;
     TrackRowId occurrence;
+    std::filesystem::path location;
     bool operator==(const SelectedTrack&) const = default;
 };
 

@@ -19,14 +19,12 @@
  */
 
 #include "workspace_document.hpp"
-#include "queue_rows.hpp"
 
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_search_panel.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>
-#include <library/metadata.hpp>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -141,31 +139,25 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
 
 void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::uint64_t generation)
 {
-    workspace_ = workspace.id;
-    generation_ = generation;
-    rows_.clear();
+    if (!source_.begin(workspace, generation))
+        return;
     heading_->setText(platform::qt::QtPathAdapter::to_qt(workspace.root));
     recursive_->setChecked(workspace.recursive);
     status_->setText("Scanning...");
-    table_->show_rows(queue_rows(rows_.tracks()));
+    table_->show_rows(source_.rows());
     set_busy(true);
 }
 
-bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
+bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
+    const library::LibraryRepository* repository)
 {
-    if (batch.workspace != workspace_ || batch.generation != generation_)
+    if (!source_.apply(batch, repository))
         return false;
-
-    std::vector<engine::Track> discovered;
-    discovered.reserve(batch.tracks.size());
-
-    for (const std::filesystem::path& path : batch.tracks)
-        discovered.push_back(engine::Track::of(path));
-
-    rows_.add(std::move(discovered));
-    table_->show_rows(queue_rows(rows_.tracks()));
+    if (repository)
+        table_->show_library(*repository);
+    table_->show_rows(source_.rows());
     update_results();
-    status_->setText(QString{"%1 tracks"}.arg(rows_.tracks().size()));
+    status_->setText(QString{"%1 tracks"}.arg(source_.rows().size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
     if (batch.status == app::WorkspaceScanStatus::failed) {
@@ -184,36 +176,12 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch)
 bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& repository,
     const library::MediaId& media)
 {
-    const library::TrackRecord* record = repository.track(media);
-    if (record == nullptr)
-        return false;
-
-    const library::ResolvedMetadata resolved = library::resolve_metadata(*record);
-    bool matched = false;
-
-    for (const engine::Track& track : rows_.tracks()) {
-        if (library::media_id_for(track.path()) != media)
-            continue;
-
-        static_cast<void>(rows_.describe(track.id(),
-            engine::TrackMetadata{.title = resolved.title,
-                .artist = resolved.artist,
-                .album = resolved.album,
-                .duration = resolved.duration,
-                .genre = resolved.genre,
-                .year = resolved.year,
-                .comment = resolved.comment,
-                .composer = resolved.composer,
-                .track_number = resolved.track_number,
-                .disc_number = resolved.disc_number}));
-        matched = true;
-    }
-
-    if (matched)
-        table_->show_rows(queue_rows(rows_.tracks()));
-
+    const bool changed = source_.update_media(repository, media);
     table_->show_library(repository);
-    return matched;
+    if (changed)
+        table_->show_rows(source_.rows());
+    update_results();
+    return changed;
 }
 
 void WorkspaceDocument::show_library(const library::LibraryRepository& repository)
@@ -229,7 +197,8 @@ void WorkspaceDocument::update_results()
 
 void WorkspaceDocument::show_cancelled()
 {
-    status_->setText(QString{"%1 tracks — cancelled"}.arg(rows_.tracks().size()));
+    source_.cancel();
+    status_->setText(QString{"%1 tracks — cancelled"}.arg(source_.rows().size()));
     set_busy(false);
 }
 
@@ -253,34 +222,35 @@ void WorkspaceDocument::on_cancel_requested(std::function<void()> observer)
     cancel_observer_ = std::move(observer);
 }
 
-std::vector<engine::QueueEntryId> WorkspaceDocument::chosen_tracks() const
+std::vector<TrackRowId> WorkspaceDocument::chosen_rows() const
 {
-    return queue_entry_ids(table_->chosen_rows());
+    return table_->chosen_rows();
+}
+
+std::vector<SelectedTrack> WorkspaceDocument::selection() const
+{
+    std::vector<SelectedTrack> result;
+    for (const auto& id : table_->chosen_rows())
+        if (const auto* row = source_.row(id))
+            result.push_back({row->media, row->id, row->location});
+    return result;
 }
 
 std::vector<std::filesystem::path> WorkspaceDocument::chosen_paths() const
 {
     std::vector<std::filesystem::path> paths;
-
-    for (const engine::QueueEntryId id : chosen_tracks()) {
-        const auto row = rows_.index_of(id);
-        if (row)
-            paths.push_back(rows_.tracks()[*row].path());
-    }
-
+    for (const auto& selected : selection())
+        if (!selected.location.empty())
+            paths.push_back(selected.location);
     return paths;
 }
 
 std::vector<std::filesystem::path> WorkspaceDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
-
-    for (const engine::QueueEntryId id : queue_entry_ids(table_->displayed_rows())) {
-        const auto row = rows_.index_of(id);
-        if (row)
-            paths.push_back(rows_.tracks()[*row].path());
-    }
-
+    for (const auto& id : table_->displayed_rows())
+        if (const auto* row = source_.row(id); row && !row->location.empty())
+            paths.push_back(row->location);
     return paths;
 }
 

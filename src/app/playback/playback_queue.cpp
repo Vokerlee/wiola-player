@@ -19,6 +19,7 @@
  */
 
 #include "playback_queue.hpp"
+#include <library/location.hpp>
 
 namespace wiola::app {
 
@@ -69,7 +70,7 @@ PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(PlaybackService& 
             continue;
         }
 
-        tracks.push_back(media->locations.front());
+        tracks.push_back(library::preferred_location(*media));
     }
 
     if (tracks.empty())

@@ -20,7 +20,8 @@
 
 #pragma once
 
-#include <library/in_memory_repository.hpp>
+#include "workspace_discovery.hpp"
+#include <library/repository_transaction.hpp>
 
 #include <span>
 
@@ -39,8 +40,16 @@ struct WorkspaceReconciliationResult {
 
 class WorkspaceReconciliation final {
 public:
+    explicit WorkspaceReconciliation(library::RepositoryTransaction::Persist persist)
+        : persist_{std::move(persist)}
+    {
+    }
+
     [[nodiscard]] WorkspaceReconciliationResult reconcile(library::InMemoryRepository& repository,
-        const library::WorkspaceId& workspace, std::span<const std::filesystem::path> paths) const;
+        const library::WorkspaceId& workspace, std::span<const WorkspaceScanEntry> entries) const;
+
+private:
+    library::RepositoryTransaction::Persist persist_;
 };
 
 } // namespace wiola::app
