@@ -27,24 +27,24 @@ namespace wiola::gui {
 
 bool DocumentRegistry::add(NowPlayingDocument& document, Selection selection)
 {
-    return add(DocumentId::queue(), document, DocumentCapabilities::queue(), std::move(selection));
+    return add(DocumentId::queue(), document, TrackCapabilities::queue(), std::move(selection));
 }
 
 bool DocumentRegistry::add(const library::PlaylistId& id, SavedPlaylistDocument& document,
     Selection selection)
 {
-    return add(DocumentId::playlist(id), document, DocumentCapabilities::playlist(),
+    return add(DocumentId::playlist(id), document, TrackCapabilities::playlist(),
         std::move(selection));
 }
 
 bool DocumentRegistry::add(const library::WorkspaceId& id, WorkspaceDocument& document,
     Selection selection)
 {
-    return add(DocumentId::workspace(id), document, DocumentCapabilities::workspace(),
+    return add(DocumentId::workspace(id), document, TrackCapabilities::workspace(),
         std::move(selection));
 }
 
-bool DocumentRegistry::add(DocumentId id, QWidget& widget, DocumentCapabilities capabilities,
+bool DocumentRegistry::add(DocumentId id, QWidget& widget, TrackCapabilities capabilities,
     Selection selection)
 {
     if (!id.valid() || view(id) || !selection)
@@ -123,10 +123,10 @@ std::vector<SelectedTrack> DocumentRegistry::selection() const
     return selection();
 }
 
-DocumentCapabilities DocumentRegistry::capabilities(const DocumentId& id) const
+TrackCapabilities DocumentRegistry::capabilities(const DocumentId& id) const
 {
     const auto found = entries_.find(id);
-    return found == entries_.end() || !found->second.view ? DocumentCapabilities{}
+    return found == entries_.end() || !found->second.view ? TrackCapabilities{}
                                                           : found->second.capabilities;
 }
 

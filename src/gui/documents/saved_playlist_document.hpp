@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <gui/tracks/track_table_view.hpp>
-
 #include "saved_playlist_rows.hpp"
 #include <library/repository.hpp>
 
@@ -33,8 +31,7 @@
 
 namespace wiola::gui {
 
-class TrackSearchPanel;
-class TagFilterPanel;
+class TrackBrowser;
 
 class SavedPlaylistDocument final : public QWidget {
 public:
@@ -57,14 +54,11 @@ public:
 
 private:
     void update_heading();
-    void update_results();
 
     QLabel* heading_{nullptr};
     QPushButton* play_button_{nullptr};
     QPushButton* active_button_{nullptr};
-    TrackTableView* table_{nullptr};
-    TrackSearchPanel* search_{nullptr};
-    TagFilterPanel* filters_{nullptr};
+    TrackBrowser* browser_{nullptr};
     SavedPlaylistRows source_;
     QString name_;
     bool active_destination_{false};

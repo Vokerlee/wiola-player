@@ -19,7 +19,6 @@
  */
 
 #pragma once
-#include <initializer_list>
 #include <library/identity.hpp>
 #include <utility>
 #include <variant>
@@ -77,54 +76,6 @@ private:
     }
 
     Value value_;
-};
-enum class TrackCommand : unsigned {
-    play = 1,
-    remove = 2,
-    transfer = 4,
-    move = 8,
-    apply_order = 16,
-    activate_destination = 32,
-    append = 64,
-};
-
-class DocumentCapabilities final {
-public:
-    constexpr DocumentCapabilities() = default;
-
-    constexpr DocumentCapabilities(std::initializer_list<TrackCommand> commands)
-    {
-        for (const auto command : commands)
-            commands_ |= static_cast<unsigned>(command);
-    }
-
-    [[nodiscard]] constexpr bool supports(TrackCommand command) const noexcept
-    {
-        return (commands_ & static_cast<unsigned>(command)) != 0;
-    }
-
-    static constexpr DocumentCapabilities queue() noexcept
-    {
-        return {TrackCommand::play, TrackCommand::remove, TrackCommand::transfer,
-            TrackCommand::apply_order};
-    }
-
-    static constexpr DocumentCapabilities playlist() noexcept
-    {
-        return {TrackCommand::play, TrackCommand::remove, TrackCommand::transfer,
-            TrackCommand::move, TrackCommand::apply_order, TrackCommand::activate_destination};
-    }
-
-    static constexpr DocumentCapabilities workspace() noexcept
-    {
-        return {TrackCommand::play, TrackCommand::transfer, TrackCommand::apply_order,
-            TrackCommand::append};
-    }
-
-    bool operator==(const DocumentCapabilities&) const = default;
-
-private:
-    unsigned commands_{0};
 };
 
 } // namespace wiola::gui

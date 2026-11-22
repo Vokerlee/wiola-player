@@ -24,6 +24,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
+#include <gui/tracks/track_commands.hpp>
 #include <gui/tracks/track_identity.hpp>
 #include <map>
 #include <optional>
@@ -50,7 +51,7 @@ public:
     void activate(const QWidget* widget);
     [[nodiscard]] std::optional<DocumentId> active() const;
     [[nodiscard]] std::vector<SelectedTrack> selection() const;
-    [[nodiscard]] DocumentCapabilities capabilities(const DocumentId& id) const;
+    [[nodiscard]] TrackCapabilities capabilities(const DocumentId& id) const;
     [[nodiscard]] std::vector<std::pair<library::PlaylistId, QPointer<SavedPlaylistDocument>>>
     playlists() const;
     [[nodiscard]] std::vector<std::pair<library::WorkspaceId, QPointer<WorkspaceDocument>>>
@@ -59,12 +60,12 @@ public:
 private:
     struct Entry {
         QPointer<QWidget> view;
-        DocumentCapabilities capabilities;
+        TrackCapabilities capabilities;
         Selection selection;
         std::uint64_t registration;
     };
 
-    bool add(DocumentId id, QWidget& view, DocumentCapabilities capabilities, Selection selection);
+    bool add(DocumentId id, QWidget& view, TrackCapabilities capabilities, Selection selection);
     std::map<DocumentId, Entry> entries_;
     std::optional<DocumentId> active_;
     std::uint64_t next_{0};
