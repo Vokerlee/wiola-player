@@ -94,7 +94,8 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
                 job, [this](MetadataWriteResult result) { staged(std::move(result)); },
                 [this](MetadataWriteResult result) { progress(std::move(result)); }
             )) {
-            finish({
+            auto rejected = std::make_shared<Prepared>();
+            rejected->result = {
                 .job = job,
                 .stage = MetadataWriteStage::failed,
                 .outcome = {.state = media::MetadataWriteState::failed,
@@ -102,7 +103,12 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
                             .source_modified = false,
                             .detail = "write queue rejected the request"},
                 .output = {}
-            });
+            };
+            const std::weak_ptr<Lifetime> weak = lifetime_;
+            static_cast<void>(delivery_.endpoint().post([weak, rejected] {
+                if (auto state = weak.lock(); state && state->owner)
+                    state->owner->ready(rejected);
+            }));
         }
     }
     return accepted;
@@ -150,7 +156,7 @@ void MetadataWriteService::staged(MetadataWriteResult result)
                 }
             }
         }
-    } catch (const std::exception& error) {
+    } catch (const std::runtime_error& error) {
         value.stage = MetadataWriteStage::failed;
         value.outcome.error = media::MetadataWriteError::io;
         value.outcome.detail = error.what();
@@ -241,7 +247,7 @@ void MetadataWriteService::run()
                         .replacement = {},
                         .backup_suffix = prepared->replacement->source_fingerprint.substr(8, 16) +
                             "." + std::to_string(result.job.operation.value)});
-        } catch (const std::exception& error) {
+        } catch (const std::runtime_error& error) {
             result.outcome = {.state = media::MetadataWriteState::failed,
                 .error = media::MetadataWriteError::io,
                 .source_modified = false,

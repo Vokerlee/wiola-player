@@ -49,7 +49,7 @@ std::uint64_t WorkspaceScanPublisher::start(const library::WorkspaceRecord& work
     const std::weak_ptr<State> state = state_;
     scanner_.start(
         workspace, std::move(supported_extensions),
-        [state, delivery = &delivery_, generation](WorkspaceScanBatch batch) {
+        [state, delivery = delivery_.endpoint(), generation](WorkspaceScanBatch batch) {
             batch.generation = generation;
             receive(state, delivery, std::move(batch));
         },
@@ -65,14 +65,14 @@ void WorkspaceScanPublisher::cancel()
     scanner_.cancel();
 }
 
-void WorkspaceScanPublisher::receive(const std::weak_ptr<State>& weak, QueuedDelivery* delivery,
-    WorkspaceScanBatch batch)
+void WorkspaceScanPublisher::receive(const std::weak_ptr<State>& weak,
+    QueuedDelivery::Endpoint delivery, WorkspaceScanBatch batch)
 {
     const auto state = weak.lock();
     if (!state || state->generation.load() != batch.generation)
         return;
 
-    static_cast<void>(delivery->post([weak, batch = std::move(batch)]() mutable {
+    static_cast<void>(delivery.post([weak, batch = std::move(batch)]() mutable {
         const auto current = weak.lock();
         if (current && current->generation.load() == batch.generation)
             current->observer(std::move(batch));

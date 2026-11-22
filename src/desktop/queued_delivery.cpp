@@ -22,7 +22,6 @@
 #include <QCoreApplication>
 #include <QEvent>
 #include <QThread>
-#include <utility>
 
 namespace wiola::app {
 namespace {
@@ -36,59 +35,85 @@ QEvent::Type delivery_event_type()
 } // namespace
 
 QueuedDelivery::QueuedDelivery(QObject& context)
+    : state_{std::make_shared<State>()}
 {
     Q_ASSERT(QThread::currentThread() == context.thread());
+    state_->receiver = this;
     static_cast<void>(delivery_event_type());
-    connect(&context, &QObject::destroyed, this, [this] {
-        std::lock_guard lock{mutex_};
-        accepting_ = false;
-        pending_.clear();
-    });
+    connect(&context, &QObject::destroyed, this, [this] { discard(); });
 }
 
-bool QueuedDelivery::post(std::function<void()> delivery)
+QueuedDelivery::~QueuedDelivery()
+{
+    discard();
+}
+
+bool QueuedDelivery::Endpoint::post(std::function<void()> delivery) const
 {
     if (!delivery)
         return false;
-    std::lock_guard lock{mutex_};
-    if (!accepting_)
+    const auto state = state_.lock();
+    if (!state)
         return false;
-    pending_.push_back(std::move(delivery));
-    QCoreApplication::postEvent(this, new QEvent{delivery_event_type()});
+    std::lock_guard lock{state->mutex};
+    if (!state->accepting || !state->receiver)
+        return false;
+    state->pending.push_back(std::move(delivery));
+    // The receiver destructor takes this mutex before retiring the QObject address.
+    QCoreApplication::postEvent(state->receiver, new QEvent{delivery_event_type()});
     return true;
+}
+
+void QueuedDelivery::stop_accepting()
+{
+    std::lock_guard lock{state_->mutex};
+    state_->accepting = false;
+}
+
+void QueuedDelivery::discard()
+{
+    std::lock_guard lock{state_->mutex};
+    state_->accepting = false;
+    state_->receiver = nullptr;
+    state_->pending.clear();
 }
 
 void QueuedDelivery::drain()
 {
     Q_ASSERT(QThread::currentThread() == thread());
     for (;;) {
-        std::function<void()> delivery;
+        std::function<void()> callback;
         {
-            std::lock_guard lock{mutex_};
-            if (pending_.empty())
+            std::lock_guard lock{state_->mutex};
+            if (state_->pending.empty())
                 return;
-            delivery = std::move(pending_.front());
-            pending_.pop_front();
+            callback = std::move(state_->pending.front());
+            state_->pending.pop_front();
         }
-        delivery();
+        callback();
     }
 }
 
 void QueuedDelivery::customEvent(QEvent* event)
 {
-    std::function<void()> delivery;
+    std::function<void()> callback;
+    bool foreign = false;
     {
-        std::lock_guard lock{mutex_};
-        if (event->type() != delivery_event_type()) {
-            QObject::customEvent(event);
-            return;
+        // Acquire the producer publication before inspecting even the wakeup event. System Qt
+        // may be uninstrumented; all first-party cross-thread payload access uses this boundary.
+        std::lock_guard lock{state_->mutex};
+        foreign = event->type() != delivery_event_type();
+        if (!foreign && !state_->pending.empty()) {
+            callback = std::move(state_->pending.front());
+            state_->pending.pop_front();
         }
-        if (pending_.empty())
-            return;
-        delivery = std::move(pending_.front());
-        pending_.pop_front();
     }
-    delivery();
+    if (foreign) {
+        QObject::customEvent(event);
+        return;
+    }
+    if (callback)
+        callback();
 }
 
 } // namespace wiola::app

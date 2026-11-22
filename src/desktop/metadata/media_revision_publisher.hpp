@@ -50,10 +50,11 @@ private:
 
         std::mutex mutex;
         std::map<library::MediaId, std::uint64_t> requests;
+        std::uint64_t next_request{};
         Observer observer;
     };
 
-    static void receive(const std::weak_ptr<State>& state, QueuedDelivery* delivery,
+    static void receive(const std::weak_ptr<State>& state, QueuedDelivery::Endpoint delivery,
         std::uint64_t request, BackgroundMetadataResult result);
 
     QueuedDelivery delivery_;

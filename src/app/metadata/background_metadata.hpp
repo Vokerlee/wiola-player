@@ -65,6 +65,7 @@ private:
     std::condition_variable available_;
     std::deque<Job> jobs_;
     bool stopping_{false};
+    std::stop_source cancellation_;
     std::jthread worker_;
 };
 

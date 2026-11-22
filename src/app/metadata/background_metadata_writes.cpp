@@ -167,7 +167,7 @@ void BackgroundMetadataWrites::run()
                         result.stage = MetadataWriteStage::cancelled;
                 }
             }
-        } catch (const std::exception& error) {
+        } catch (const std::runtime_error& error) {
             result.outcome = {.state = media::MetadataWriteState::failed,
                 .error = media::MetadataWriteError::io,
                 .source_modified = false,
