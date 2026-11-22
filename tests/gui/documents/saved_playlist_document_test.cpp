@@ -27,6 +27,8 @@
 #include <QApplication>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPersistentModelIndex>
+#include <set>
 
 #include <gtest/gtest.h>
 
@@ -259,6 +261,102 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
     EXPECT_EQ(entries[0].id, *zulu_entry);
     EXPECT_EQ(entries[1].id, *other_entry);
     EXPECT_EQ(entries[2].id, *alpha_entry);
+}
+
+TEST(SavedPlaylistDocument, KeepsSelectedEntryIdentityAcrossMembershipChangesAndRename)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord track;
+    track.id = {"opaque-media"};
+    track.locations = {"/music/saved.flac"};
+    ASSERT_TRUE(repository.put_track(track));
+    const auto playlist = repository.create_playlist("Before");
+    const auto first = repository.append_track(playlist, track.id);
+    const auto selected = repository.append_track(playlist, track.id);
+    ASSERT_TRUE(first && selected);
+    wiola::gui::SavedPlaylistDocument document;
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    ASSERT_NE(table, nullptr);
+    table->selectRow(1);
+    ASSERT_EQ(document.chosen_entries(), std::vector{*selected});
+    ASSERT_TRUE(repository.append_track(playlist, track.id));
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    EXPECT_EQ(document.chosen_entries(), std::vector{*selected});
+    ASSERT_TRUE(repository.remove_entry(playlist, *first));
+    ASSERT_TRUE(repository.rename_playlist(playlist, "After"));
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    EXPECT_EQ(document.chosen_entries(), std::vector{*selected});
+    EXPECT_EQ(document.selection().front().media, track.id);
+}
+
+TEST(SavedPlaylistDocument, UpdatesEverySharedOccurrenceWithoutResettingUnrelatedRows)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord shared, other;
+    shared.id = {"shared"};
+    shared.locations = {"/music/shared.flac"};
+    shared.embedded.title = "Before";
+    other.id = {"other"};
+    other.locations = {"/music/other.flac"};
+    other.embedded.title = "Other";
+    ASSERT_TRUE(repository.put_track(shared));
+    ASSERT_TRUE(repository.put_track(other));
+    const auto playlist = repository.create_playlist("Shared");
+    ASSERT_TRUE(repository.append_track(playlist, shared.id));
+    ASSERT_TRUE(repository.append_track(playlist, other.id));
+    ASSERT_TRUE(repository.append_track(playlist, shared.id));
+    wiola::gui::SavedPlaylistDocument document;
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    ASSERT_NE(table, nullptr);
+    QPersistentModelIndex untouched{table->model()->index(1, 1)};
+    int resets = 0;
+    std::set<int> changed;
+    QObject::connect(table->model(), &QAbstractItemModel::modelReset, [&] { ++resets; });
+    QObject::connect(table->model(), &QAbstractItemModel::dataChanged,
+        [&](const QModelIndex& first, const QModelIndex& last) {
+            for (int row = first.row(); row <= last.row(); ++row)
+                changed.insert(row);
+        });
+    shared.embedded.title = "After";
+    ++shared.metadata_revision;
+    ASSERT_TRUE(repository.put_track(shared));
+    ASSERT_TRUE(document.show_media_revision(repository, shared.id));
+    EXPECT_EQ(resets, 0);
+    EXPECT_EQ(changed, (std::set<int>{0, 2}));
+    EXPECT_TRUE(untouched.isValid());
+    EXPECT_EQ(untouched.data().toString(), "Other");
+    EXPECT_EQ(table->model()->index(0, 1).data().toString(), "After");
+    EXPECT_EQ(table->model()->index(2, 1).data().toString(), "After");
+}
+
+TEST(SavedPlaylistDocument, SearchesTagsThroughTheCanonicalMediaIdentity)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord track;
+    track.id = {"opaque-media-id"};
+    track.locations = {"/music/not-the-media-id.flac"};
+    track.embedded.artist = "Artist";
+    track.tags = {
+        {wiola::library::TagId{"tag"}, "Mood", "Calm"}
+    };
+    ASSERT_TRUE(repository.put_track(track));
+    const auto playlist = repository.create_playlist("Tagged");
+    ASSERT_TRUE(repository.append_track(playlist, track.id));
+    ASSERT_TRUE(repository.append_track(playlist, track.id));
+    wiola::gui::SavedPlaylistDocument document;
+    ASSERT_TRUE(document.show_playlist(repository, playlist));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    ASSERT_NE(table, nullptr);
+    wiola::library::SearchQuery query;
+    query.artist = "Artist";
+    query.tags = "calm";
+    table->search_by(query);
+    EXPECT_EQ(table->visible_count(), 2);
+    query.tags = "brisk";
+    table->search_by(query);
+    EXPECT_EQ(table->visible_count(), 0);
 }
 
 } // namespace
