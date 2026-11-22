@@ -41,7 +41,7 @@ protected:
 
 TEST_F(OptimisticMetadataEdits, PublishesQueuedChangesBeforePersistenceSucceeds)
 {
-    wiola::library::StandardFieldOverrides edit;
+    wiola::library::StandardMetadataPatch edit;
     edit.title = "Optimistic";
     wiola::app::OptimisticMetadataEdits commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; },
@@ -60,7 +60,7 @@ TEST_F(OptimisticMetadataEdits, PublishesQueuedChangesBeforePersistenceSucceeds)
 
 TEST_F(OptimisticMetadataEdits, RollsBackBeforePublishingFailure)
 {
-    wiola::library::StandardFieldOverrides edit;
+    wiola::library::StandardMetadataPatch edit;
     edit.title = "Cannot save";
     wiola::app::OptimisticMetadataEdits commands{repository,
         [](const wiola::library::LibraryRepository&) { return false; },
@@ -75,7 +75,7 @@ TEST_F(OptimisticMetadataEdits, RollsBackBeforePublishingFailure)
 
 TEST_F(OptimisticMetadataEdits, RejectsRevisionConflictsBeforeChangingRecords)
 {
-    wiola::library::StandardFieldOverrides edit;
+    wiola::library::StandardMetadataPatch edit;
     edit.title = "Conflict";
     wiola::app::OptimisticMetadataEdits commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; },
@@ -95,7 +95,7 @@ TEST_F(OptimisticMetadataEdits, RejectsRevisionConflictsBeforeChangingRecords)
 
 TEST_F(OptimisticMetadataEdits, ReloadClearsApplicationOverridesTransactionally)
 {
-    wiola::library::StandardFieldOverrides edit;
+    wiola::library::StandardMetadataPatch edit;
     edit.title = "Application";
     wiola::app::OptimisticMetadataEdits commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; },

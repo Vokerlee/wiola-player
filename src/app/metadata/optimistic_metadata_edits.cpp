@@ -26,36 +26,6 @@
 
 namespace wiola::app {
 
-namespace {
-
-bool empty(const library::StandardFieldOverrides& edit)
-{
-    return !edit.title && !edit.artist && !edit.album && !edit.genre && !edit.comment &&
-        !edit.composer && !edit.year && !edit.track_number && !edit.disc_number;
-}
-
-template<typename T>
-void merge(std::optional<T>& current, const std::optional<T>& edit)
-{
-    if (edit)
-        current = *edit;
-}
-
-void merge(library::StandardFieldOverrides& current, const library::StandardFieldOverrides& edit)
-{
-    merge(current.title, edit.title);
-    merge(current.artist, edit.artist);
-    merge(current.album, edit.album);
-    merge(current.genre, edit.genre);
-    merge(current.comment, edit.comment);
-    merge(current.composer, edit.composer);
-    merge(current.year, edit.year);
-    merge(current.track_number, edit.track_number);
-    merge(current.disc_number, edit.disc_number);
-}
-
-} // namespace
-
 OptimisticMetadataEdits::OptimisticMetadataEdits(library::InMemoryRepository& repository,
     Persist persist, Observer observer)
     : repository_{repository}
@@ -65,7 +35,7 @@ OptimisticMetadataEdits::OptimisticMetadataEdits(library::InMemoryRepository& re
 }
 
 MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::MediaId>& media,
-    const library::StandardFieldOverrides& edit,
+    const library::StandardMetadataPatch& edit,
     const std::map<library::MediaId, std::uint64_t>& expected_revisions)
 {
     std::map<library::MediaId, ExpectedMediaState> expected_states;
@@ -82,10 +52,16 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
 }
 
 MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::MediaId>& media,
-    const library::StandardFieldOverrides& edit,
+    const library::StandardMetadataPatch& edit,
     const std::map<library::MediaId, ExpectedMediaState>& expected_states)
 {
-    if (empty(edit)) {
+    if (!library::valid_metadata_patch(edit)) {
+        MetadataEditOutcome outcome{.state = MetadataEditState::failed,
+            .error = StandardMetadataError::invalid_edit};
+        observer_(outcome);
+        return outcome;
+    }
+    if (library::metadata_patch_empty(edit)) {
         MetadataEditOutcome outcome{.state = MetadataEditState::failed,
             .error = StandardMetadataError::empty_edit};
         observer_(outcome);
@@ -116,7 +92,7 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
         }
 
         library::TrackRecord updated = *existing;
-        merge(updated.overrides, edit);
+        static_cast<void>(library::apply_metadata_patch(updated.overrides, edit));
 
         if (updated.overrides == existing->overrides) {
             ++outcome.unchanged;

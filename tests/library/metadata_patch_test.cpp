@@ -1,0 +1,108 @@
+/**
+ * @file
+ * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @author Roman Glaz
+ * @copyright (c) 2026, <vokerlee@gmail.com>
+ *
+ * Wiola is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Wiola is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <gtest/gtest.h>
+#include <library/metadata.hpp>
+#include <library/metadata_patch.hpp>
+#include <library/tags.hpp>
+
+namespace {
+
+using namespace wiola::library;
+
+TEST(MetadataPatch, KeepsSetClearAndInheritDistinctForText)
+{
+    TrackRecord track;
+    track.embedded.title = "Embedded";
+    track.embedded.artist = "Artist";
+    track.overrides.artist = "Retained";
+    StandardMetadataPatch patch;
+    EXPECT_TRUE(metadata_patch_empty(patch));
+    patch.title = "Application";
+    ASSERT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::changed);
+    EXPECT_EQ(resolve_metadata(track).title, "Application");
+    EXPECT_EQ(resolve_metadata(track).artist, "Retained");
+    patch.title = FieldEdit<std::string>::clear();
+    ASSERT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::changed);
+    EXPECT_TRUE(track.overrides.title.has_value());
+    EXPECT_TRUE(resolve_metadata(track).title.empty());
+    patch.title = FieldEdit<std::string>::inherit();
+    ASSERT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::changed);
+    EXPECT_FALSE(track.overrides.title.has_value());
+    EXPECT_EQ(resolve_metadata(track).title, "Embedded");
+    EXPECT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::unchanged);
+}
+
+TEST(MetadataPatch, NumericZeroClearAndInheritHaveDifferentMeanings)
+{
+    TrackRecord track;
+    track.embedded.year = 2020;
+    StandardMetadataPatch patch;
+    patch.year = 0;
+    ASSERT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::changed);
+    EXPECT_EQ(resolve_metadata(track).year, 0);
+    patch.year = FieldEdit<std::uint32_t>::clear();
+    ASSERT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::changed);
+    ASSERT_TRUE(track.overrides.year.has_value());
+    EXPECT_FALSE(track.overrides.year->has_value());
+    EXPECT_FALSE(resolve_metadata(track).year.has_value());
+    patch.year = FieldEdit<std::uint32_t>::inherit();
+    ASSERT_EQ(apply_metadata_patch(track.overrides, patch), MetadataPatchResult::changed);
+    EXPECT_FALSE(track.overrides.year.has_value());
+    EXPECT_EQ(resolve_metadata(track).year, 2020);
+}
+
+TEST(MetadataPatch, InvalidTextRejectsTheWholePatchBeforeChangingAnyField)
+{
+    StandardFieldOverrides stored;
+    stored.title = "Retained";
+    const auto previous = stored;
+    StandardMetadataPatch patch;
+    patch.title = "Must not apply";
+    patch.comment = std::string(max_tag_value_bytes + 1, 'x');
+    EXPECT_FALSE(valid_metadata_patch(patch));
+    EXPECT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::invalid);
+    EXPECT_EQ(stored, previous);
+    patch.comment = std::string{"bad\0data", 8};
+    EXPECT_FALSE(valid_metadata_patch(patch));
+    EXPECT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::invalid);
+    EXPECT_EQ(stored, previous);
+    EXPECT_FALSE(file_metadata_patch(patch));
+}
+
+TEST(MetadataPatch, FileConversionDoesNotTurnInheritanceIntoEmbeddedDeletion)
+{
+    StandardMetadataPatch patch;
+    patch.title = FieldEdit<std::string>::inherit();
+    patch.artist = "Written";
+    patch.comment = FieldEdit<std::string>::clear();
+    patch.year = 0;
+    auto file = file_metadata_patch(patch);
+    ASSERT_TRUE(file);
+    EXPECT_FALSE(file->title.has_value());
+    EXPECT_EQ(file->artist, "Written");
+    ASSERT_TRUE(file->comment.has_value());
+    EXPECT_TRUE(file->comment->empty());
+    EXPECT_EQ(file->year, 0);
+    patch.year = FieldEdit<std::uint32_t>::clear();
+    EXPECT_FALSE(file_metadata_patch(patch));
+}
+
+} // namespace

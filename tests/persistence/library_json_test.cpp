@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <library/metadata_patch.hpp>
 #include <persistence/qt/library_json.hpp>
 
 #include <QByteArray>
@@ -30,6 +31,36 @@ namespace {
 
 using namespace wiola::library;
 using namespace wiola::persistence::qt;
+
+TEST(LibraryJson, MetadataPatchSemanticsKeepTheExistingStoredSchema)
+{
+    wiola::library::LibrarySnapshot original;
+    TrackRecord track;
+    track.id = MediaId{"media"};
+    track.embedded.title = "Embedded";
+    track.embedded.year = 2020;
+    StandardMetadataPatch clear;
+    clear.title = FieldEdit<std::string>::clear();
+    clear.year = FieldEdit<std::uint32_t>::clear();
+    ASSERT_EQ(apply_metadata_patch(track.overrides, clear), MetadataPatchResult::changed);
+    original.tracks.push_back(track);
+    QByteArray encoded;
+    ASSERT_EQ(write_library_json(original, encoded), LibraryJsonError::none);
+    wiola::library::LibrarySnapshot restored;
+    ASSERT_EQ(read_library_json(encoded, restored), LibraryJsonError::none);
+    ASSERT_EQ(restored.tracks.size(), 1U);
+    EXPECT_EQ(restored.tracks.front(), track);
+    StandardMetadataPatch inherit;
+    inherit.title = FieldEdit<std::string>::inherit();
+    inherit.year = FieldEdit<std::uint32_t>::inherit();
+    ASSERT_EQ(apply_metadata_patch(restored.tracks.front().overrides, inherit),
+        MetadataPatchResult::changed);
+    ASSERT_EQ(write_library_json(restored, encoded), LibraryJsonError::none);
+    ASSERT_EQ(read_library_json(encoded, original), LibraryJsonError::none);
+    EXPECT_FALSE(original.tracks.front().overrides.title.has_value());
+    EXPECT_FALSE(original.tracks.front().overrides.year.has_value());
+    EXPECT_EQ(original.tracks.front().embedded, track.embedded);
+}
 
 TrackRecord track_record()
 {

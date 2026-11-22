@@ -35,6 +35,7 @@
 #include <gui/documents/workspace_document.hpp>
 #include <gui/layout/layout_document.hpp>
 #include <gui/metadata/track_inspector.hpp>
+#include <library/metadata_patch.hpp>
 #include <persistence/qt/library_store.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
@@ -143,7 +144,7 @@ private:
     void request_metadata(const std::filesystem::path& location);
     void publish_media_revision(app::BackgroundMetadataResult result);
     void finish_custom_tag(app::CustomTagResult result, const QString& success);
-    void finish_standard_metadata(library::MediaId media, library::StandardFieldOverrides edit);
+    void finish_standard_metadata(library::MediaId media, library::StandardMetadataPatch edit);
     void publish_metadata_outcome(const app::MetadataEditOutcome& outcome);
     void resolve_metadata_conflict(MetadataConflictAction action);
     [[nodiscard]] std::vector<const library::TrackRecord*> selected_records();
@@ -236,7 +237,7 @@ private:
 
     struct PendingMetadataEdit {
         std::vector<library::MediaId> media;
-        library::StandardFieldOverrides edit;
+        library::StandardMetadataPatch edit;
     };
 
     std::optional<PendingMetadataEdit> pending_metadata_edit_;

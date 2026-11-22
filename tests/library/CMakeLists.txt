@@ -32,3 +32,9 @@ wiola_add_test(
     SOURCES repository_transaction_test.cpp
     LIBS wiola_library
 )
+
+wiola_add_test(
+    library_metadata_patch_test
+    SOURCES metadata_patch_test.cpp
+    LIBS wiola_library
+)

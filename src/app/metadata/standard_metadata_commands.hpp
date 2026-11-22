@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <library/metadata_patch.hpp>
+
 #include <library/in_memory_repository.hpp>
 
 #include <functional>
@@ -30,6 +32,7 @@ enum class StandardMetadataError {
     none,
     missing_media,
     empty_edit,
+    invalid_edit,
     persistence_failed,
 };
 
@@ -47,7 +50,7 @@ public:
     StandardMetadataCommands(library::InMemoryRepository& repository, Persist persist);
 
     [[nodiscard]] StandardMetadataResult apply(const library::MediaId& media,
-        const library::StandardFieldOverrides& edit);
+        const library::StandardMetadataPatch& edit);
 
 private:
     library::InMemoryRepository& repository_;

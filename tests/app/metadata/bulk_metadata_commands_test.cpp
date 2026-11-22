@@ -49,7 +49,7 @@ TEST_F(BulkMetadataCommands, AppliesOnlyChangedRecordsAndReportsMissingTracks)
             ++saves;
             return true;
         }};
-    wiola::library::StandardFieldOverrides edit;
+    wiola::library::StandardMetadataPatch edit;
     edit.genre = "Jazz";
 
     const auto result =
@@ -71,7 +71,7 @@ TEST_F(BulkMetadataCommands, RollsBackEveryChangedRecordWhenSavingFails)
 {
     wiola::app::BulkMetadataCommands commands{repository,
         [](const wiola::library::LibraryRepository&) { return false; }};
-    wiola::library::StandardFieldOverrides edit;
+    wiola::library::StandardMetadataPatch edit;
     edit.title = "Cannot save";
 
     const auto result = commands.apply({first, second}, edit);

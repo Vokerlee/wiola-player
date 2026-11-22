@@ -25,6 +25,7 @@
 #include <QVBoxLayout>
 
 #include <charconv>
+#include <type_traits>
 
 namespace wiola::gui {
 
@@ -139,7 +140,7 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
 
     connect(apply_, &QPushButton::clicked, this, [this] {
         if (observer_ && dirty() && valid_numbers())
-            observer_(media_, overrides());
+            observer_(media_, patch());
     });
     connect(cancel_, &QPushButton::clicked, this, [this] {
         feedback_.clear();
@@ -223,13 +224,18 @@ library::ResolvedMetadata StandardMetadataEditor::current() const
     return current;
 }
 
-library::StandardFieldOverrides StandardMetadataEditor::overrides() const
+library::StandardMetadataPatch StandardMetadataEditor::patch() const
 {
     const library::ResolvedMetadata values = current();
-    library::StandardFieldOverrides result;
+    library::StandardMetadataPatch result;
     const auto assign = [this](QLineEdit* field, auto& target, const auto& value) {
-        if (touched_.contains(field))
+        if (!touched_.contains(field))
+            return;
+        using Edit = std::decay_t<decltype(target)>;
+        if constexpr (std::is_same_v<typename Edit::Value, std::string>)
             target = value;
+        else
+            target = value ? Edit{*value} : Edit::clear();
     };
 
     assign(title_, result.title, values.title);
