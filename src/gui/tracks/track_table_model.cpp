@@ -173,7 +173,7 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
         std::ranges::equal(source_rows_, tracks,
             [](const TrackRow& a, const TrackRow& b) { return same_metadata(a, b); });
 
-    if (!sort_keys_.empty() || restricted(query_)) {
+    if (!state_.sort_keys.empty() || restricted(state_.query)) {
         if (!same_contents) {
             beginResetModel();
             source_rows_ = tracks;
@@ -201,7 +201,7 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
     const auto previous{current_};
     current_ = current;
 
-    for (const auto id : {previous, current_}) {
+    for (const auto& id : {previous, current_}) {
         if (!id)
             continue;
 
@@ -262,43 +262,21 @@ void TrackTableModel::show_tag_keys(std::vector<std::string> keys)
     endResetModel();
 }
 
-void TrackTableModel::sort_by(const std::vector<TrackSortKey>& keys)
+bool TrackTableModel::set_view_state(TrackViewState state)
 {
-    std::vector<TrackSortKey> valid;
-
-    for (const TrackSortKey& key : keys) {
-        if (key.valid())
-            valid.push_back(key);
-    }
-
-    if (valid == sort_keys_)
-        return;
-
+    state = normalized_track_view_state(std::move(state));
+    if (state == state_)
+        return false;
     beginResetModel();
-    sort_keys_ = std::move(valid);
+    state_ = std::move(state);
     rows_ = visible_rows();
     endResetModel();
-}
-
-void TrackTableModel::search_by(const library::SearchQuery& query)
-{
-    const library::SearchQuery normalized = library::normalized_search_query(query);
-    const bool same = query_.title == normalized.title && query_.artist == normalized.artist &&
-        query_.album == normalized.album && query_.tags == normalized.tags &&
-        query_.filters == normalized.filters;
-
-    if (same)
-        return;
-
-    beginResetModel();
-    query_ = normalized;
-    rows_ = visible_rows();
-    endResetModel();
+    return true;
 }
 
 std::vector<TrackRow> TrackTableModel::visible_rows() const
 {
-    return apply_track_view(source_rows_, repository_, query_, sort_keys_);
+    return apply_track_view(source_rows_, repository_, state_.query, state_.sort_keys);
 }
 
 std::optional<TrackRowId> TrackTableModel::row_id(const QModelIndex& index) const

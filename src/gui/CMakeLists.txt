@@ -19,6 +19,7 @@ wiola_add_library(
         documents/document_registry.cpp
         documents/now_playing_document.cpp
         metadata/track_inspector.cpp
+        tracks/track_view_state.cpp
         tracks/track_browser.cpp
         tracks/track_row.cpp
         tracks/track_table_model.cpp

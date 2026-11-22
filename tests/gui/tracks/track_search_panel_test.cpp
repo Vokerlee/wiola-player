@@ -43,14 +43,14 @@ TEST(TrackSearchPanel, EmitsSimultaneousFieldsAndClearsEachIndependently)
     artist->setText(" The Artist ");
     album->setText(" Great Album ");
     ASSERT_TRUE(query.has_value());
-    EXPECT_EQ(query->title, "my song");
-    EXPECT_EQ(query->artist, "the artist");
-    EXPECT_EQ(query->album, "great album");
+    EXPECT_EQ(query->title, " My Song ");
+    EXPECT_EQ(query->artist, " The Artist ");
+    EXPECT_EQ(query->album, " Great Album ");
 
     panel.findChild<QPushButton*>("clearSearchArtist")->click();
-    EXPECT_EQ(query->title, "my song");
+    EXPECT_EQ(query->title, " My Song ");
     EXPECT_TRUE(query->artist.empty());
-    EXPECT_EQ(query->album, "great album");
+    EXPECT_EQ(query->album, " Great Album ");
     EXPECT_EQ(title->text(), " My Song ");
     EXPECT_EQ(album->text(), " Great Album ");
 

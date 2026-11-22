@@ -181,8 +181,6 @@ void TrackTableView::show_rows(const std::vector<TrackRow>& tracks,
 {
     const std::vector<TrackRowId> selected = chosen_rows();
     const auto current_id = model_.row_id(currentIndex());
-    tracks_ = tracks;
-    current_ = current;
 
     model_.show_rows(tracks, current);
     restore_selection(selected, current_id);
@@ -254,26 +252,22 @@ void TrackTableView::update_tag_columns()
         setColumnHidden(TrackTableModel::standard_columns + static_cast<int>(column), false);
 }
 
-void TrackTableView::sort_by(const std::vector<TrackSortKey>& keys)
+bool TrackTableView::set_view_state(TrackViewState state)
 {
-    const std::vector<TrackRowId> selected = chosen_rows();
-    const auto current_id = model_.row_id(currentIndex());
-    std::vector<TrackSortKey> valid;
-
-    for (const TrackSortKey& key : keys) {
-        if (key.valid())
-            valid.push_back(key);
-    }
-
-    sort_keys_ = std::move(valid);
-
-    model_.sort_by(sort_keys_);
-    restore_selection(selected, current_id);
+    const auto selected = chosen_rows();
+    const auto current = model_.row_id(currentIndex());
+    if (!model_.set_view_state(std::move(state)))
+        return false;
+    restore_selection(selected, current);
     update_sort_indicator();
+    emit view_state_changed();
+    return true;
 }
 
 void TrackTableView::sort_column(int column, bool extend)
 {
+    auto state = view_state();
+    auto& keys = state.sort_keys;
     TrackSortKey requested;
 
     if (column >= TrackTableModel::standard_columns) {
@@ -282,7 +276,7 @@ void TrackTableView::sort_column(int column, bool extend)
         if (tag >= visible_tags_.size())
             return;
 
-        requested = TrackSortKey::for_tag(visible_tags_[tag]);
+        requested = TrackSortKey::for_tag(library::normalized_tag_text(visible_tags_[tag]));
     } else {
         switch (column) {
         case Column::title:
@@ -307,36 +301,37 @@ void TrackTableView::sort_column(int column, bool extend)
     };
 
     if (!extend) {
-        if (sort_keys_.size() == 1 && same(sort_keys_.front())) {
-            requested.direction = sort_keys_.front().direction == TrackSortDirection::ascending
+        if (keys.size() == 1 && same(keys.front())) {
+            requested.direction = keys.front().direction == TrackSortDirection::ascending
                 ? TrackSortDirection::descending
                 : TrackSortDirection::ascending;
         }
 
-        sort_by({requested});
+        keys = {requested};
+        set_view_state(std::move(state));
         return;
     }
 
-    const auto existing = std::ranges::find_if(sort_keys_, same);
-    if (existing == sort_keys_.end()) {
-        sort_keys_.push_back(requested);
+    const auto existing = std::ranges::find_if(keys, same);
+    if (existing == keys.end()) {
+        keys.push_back(requested);
     } else {
         existing->direction = existing->direction == TrackSortDirection::ascending
             ? TrackSortDirection::descending
             : TrackSortDirection::ascending;
     }
 
-    sort_by(sort_keys_);
+    set_view_state(std::move(state));
 }
 
 void TrackTableView::update_sort_indicator()
 {
-    if (sort_keys_.empty()) {
+    if (view_state().sort_keys.empty()) {
         horizontalHeader()->setSortIndicatorShown(false);
         return;
     }
 
-    const TrackSortKey& primary = sort_keys_.front();
+    const TrackSortKey& primary = view_state().sort_keys.front();
     int column = -1;
 
     switch (primary.field) {
@@ -353,7 +348,8 @@ void TrackTableView::update_sort_indicator()
         column = Column::length;
         break;
     case TrackSortField::custom_tag: {
-        const auto tag = std::ranges::find(visible_tags_, primary.tag_key);
+        const auto tag = std::ranges::find_if(visible_tags_,
+            [&](const auto& key) { return library::normalized_tag_text(key) == primary.tag_key; });
         if (tag != visible_tags_.end()) {
             column = TrackTableModel::standard_columns +
                 static_cast<int>(std::distance(visible_tags_.begin(), tag));
@@ -388,26 +384,6 @@ void TrackTableView::restore_selection(const std::vector<TrackRowId>& selected,
         if (id && id == current)
             selectionModel()->setCurrentIndex(first, QItemSelectionModel::NoUpdate);
     }
-}
-
-void TrackTableView::search_by(const library::SearchQuery& query)
-{
-    const std::vector<TrackRowId> selected = chosen_rows();
-    const auto current_id = model_.row_id(currentIndex());
-    query_ = query;
-    query_.filters = filters_;
-    model_.search_by(query_);
-    restore_selection(selected, current_id);
-}
-
-void TrackTableView::filter_by(const std::vector<library::TagFilter>& filters)
-{
-    const std::vector<TrackRowId> selected = chosen_rows();
-    const auto current_id = model_.row_id(currentIndex());
-    filters_ = filters;
-    query_.filters = filters_;
-    model_.search_by(query_);
-    restore_selection(selected, current_id);
 }
 
 std::size_t TrackTableView::visible_count() const

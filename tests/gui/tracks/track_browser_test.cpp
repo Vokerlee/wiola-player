@@ -108,6 +108,38 @@ TEST(TrackBrowser, ReparentedQueryControlsDoNotRetainCallbacksToADestroyedBrowse
     EXPECT_EQ(title->text(), "retained control");
 }
 
+TEST(TrackBrowser, NormalizesOnceAndIgnoresEquivalentStateUpdates)
+{
+    TrackBrowser first{TrackCapabilities::queue()}, second{TrackCapabilities::queue()};
+    TrackRow row;
+    row.id = wiola::library::PlaylistEntryId{"one"};
+    row.metadata.title = "Alpha";
+    first.show_rows({row});
+    first.table().selectRow(0);
+    TrackViewState state;
+    state.query.title = "  ALPHA  ";
+    state.query.filters = {
+        {" Genre ", " JAZZ "},
+        {"genre",   "jazz"  }
+    };
+    state.sort_keys = {TrackSortKey::for_tag(" Genre "), TrackSortKey::for_tag("genre")};
+    auto normalized = normalized_track_view_state(state);
+    EXPECT_EQ(normalized.query.title, "alpha");
+    ASSERT_EQ(normalized.query.filters.size(), 1);
+    ASSERT_EQ(normalized.sort_keys.size(), 1);
+    EXPECT_EQ(normalized.sort_keys.front().tag_key, "genre");
+    state.query.filters.clear();
+    first.set_view_state(state);
+    int resets = 0, changes = 0;
+    QObject::connect(first.table().model(), &QAbstractItemModel::modelReset, [&] { ++resets; });
+    QObject::connect(&first.table(), &TrackTableView::view_state_changed, [&] { ++changes; });
+    first.set_view_state(state);
+    EXPECT_EQ(resets, 0);
+    EXPECT_EQ(changes, 0);
+    EXPECT_EQ(first.table().chosen_rows(), std::vector<TrackRowId>{row.id});
+    EXPECT_TRUE(second.view_state().query.title.empty());
+}
+
 } // namespace
 
 int main(int argc, char** argv)

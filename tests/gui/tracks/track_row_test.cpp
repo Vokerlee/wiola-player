@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/track_view.hpp>
+
 #include <QAction>
 #include <QApplication>
 #include <engine/queue/playlist.hpp>
@@ -71,10 +73,11 @@ TEST(TrackRows, SortsAndFiltersSavedAndWorkspaceRowsWithoutAPlaybackQueueOrRepos
     QWidget styled;
     gui::TrackTableModel model{styled};
     model.show_rows({first, second});
-    model.sort_by({
-        {.field = gui::TrackSortField::title,
-         .direction = gui::TrackSortDirection::ascending,
-         .tag_key = {}}
+    wiola::testing::set_track_sort(model,
+        {
+            {.field = gui::TrackSortField::title,
+             .direction = gui::TrackSortDirection::ascending,
+             .tag_key = {}}
     });
     EXPECT_EQ(model.row_id(model.index(0, 0)), second.id);
     EXPECT_EQ(model.row_id(model.index(1, 0)), first.id);
@@ -84,7 +87,7 @@ TEST(TrackRows, SortsAndFiltersSavedAndWorkspaceRowsWithoutAPlaybackQueueOrRepos
     library::SearchQuery query;
     query.artist = "Artist";
     query.tags = "Calm";
-    model.search_by(query);
+    wiola::testing::set_track_query(model, query);
     ASSERT_EQ(model.rowCount(), 1);
     EXPECT_EQ(model.row_id(model.index(0, 0)), first.id);
 }
@@ -126,7 +129,7 @@ TEST(TrackRows, QueueAdapterKeepsDuplicateOccurrencesAndMediaIdentitySeparate)
 int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "minimal");
-    testing::InitGoogleTest(&argc, argv);
+    ::testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
     return RUN_ALL_TESTS();
 }

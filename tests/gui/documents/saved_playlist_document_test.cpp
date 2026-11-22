@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/track_view.hpp>
+
 #include <gui/tracks/track_table_view.hpp>
 
 #include <gui/documents/saved_playlist_document.hpp>
@@ -166,10 +168,11 @@ TEST(SavedPlaylistDocument, SortingPreservesPersistentEntrySelection)
     wiola::gui::SavedPlaylistDocument document;
     ASSERT_TRUE(document.show_playlist(repository, playlist));
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
-    table->sort_by({
-        wiola::gui::TrackSortKey{.field = wiola::gui::TrackSortField::title,
-                                 .direction = wiola::gui::TrackSortDirection::ascending,
-                                 .tag_key = {}}
+    wiola::testing::set_track_sort(*table,
+        {
+            wiola::gui::TrackSortKey{.field = wiola::gui::TrackSortField::title,
+                                     .direction = wiola::gui::TrackSortDirection::ascending,
+                                     .tag_key = {}}
     });
 
     ASSERT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
@@ -235,10 +238,11 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
     document.findChild<QLineEdit*>("tagFilterKey")->setText("Genre");
     document.findChild<QLineEdit*>("tagFilterValue")->setText("Jazz");
     document.findChild<QPushButton*>("includeTagFilter")->click();
-    table->sort_by({
-        wiola::gui::TrackSortKey{.field = wiola::gui::TrackSortField::title,
-                                 .direction = wiola::gui::TrackSortDirection::ascending,
-                                 .tag_key = {}}
+    wiola::testing::set_track_sort(*table,
+        {
+            wiola::gui::TrackSortKey{.field = wiola::gui::TrackSortField::title,
+                                     .direction = wiola::gui::TrackSortDirection::ascending,
+                                     .tag_key = {}}
     });
 
     QLabel* results = document.findChild<QLabel*>("trackSearchResults");
@@ -354,10 +358,10 @@ TEST(SavedPlaylistDocument, SearchesTagsThroughTheCanonicalMediaIdentity)
     wiola::library::SearchQuery query;
     query.artist = "Artist";
     query.tags = "calm";
-    table->search_by(query);
+    wiola::testing::set_track_query(*table, query);
     EXPECT_EQ(table->visible_count(), 2);
     query.tags = "brisk";
-    table->search_by(query);
+    wiola::testing::set_track_query(*table, query);
     EXPECT_EQ(table->visible_count(), 0);
 }
 

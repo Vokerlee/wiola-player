@@ -45,9 +45,10 @@ public:
     void set_capabilities(TrackCapabilities capabilities);
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
     void show_library(const library::LibraryRepository& repository);
-    void sort_by(const std::vector<TrackSortKey>& keys);
-    void search_by(const library::SearchQuery& query);
-    void filter_by(const std::vector<library::TagFilter>& filters);
+    bool set_view_state(TrackViewState state);
+
+    [[nodiscard]] const TrackViewState& view_state() const noexcept { return model_.view_state(); }
+
     [[nodiscard]] std::size_t visible_count() const;
     [[nodiscard]] std::size_t total_count() const;
     [[nodiscard]] std::vector<TrackRowId> displayed_rows() const;
@@ -55,6 +56,7 @@ public:
 
 signals:
     void row_chosen(wiola::gui::TrackRowId id);
+    void view_state_changed();
     void removal_asked();
     void transfer_active_asked();
     void transfer_destination_asked();
@@ -75,13 +77,8 @@ private:
     TrackCapabilities capabilities_{TrackCapabilities::all()};
     std::map<TrackCommand, QAction*> command_actions_;
     TrackTableModel model_;
-    std::vector<TrackRow> tracks_;
-    std::optional<TrackRowId> current_;
     std::vector<std::string> available_tags_;
     std::vector<std::string> visible_tags_;
-    std::vector<TrackSortKey> sort_keys_;
-    library::SearchQuery query_;
-    std::vector<library::TagFilter> filters_;
     std::vector<QAction*> tag_actions_;
 };
 

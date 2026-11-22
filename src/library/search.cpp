@@ -74,7 +74,11 @@ SearchQuery normalized_search_query(SearchQuery query)
 
 bool matches_search(const SearchQuery& query, const TrackRecord& track)
 {
-    const SearchQuery normalized = normalized_search_query(query);
+    return matches_normalized_search(normalized_search_query(query), track);
+}
+
+bool matches_normalized_search(const SearchQuery& normalized, const TrackRecord& track)
+{
     const ResolvedMetadata metadata = resolve_metadata(track);
 
     if (!contains(metadata.title, normalized.title) ||
