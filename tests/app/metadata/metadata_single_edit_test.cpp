@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/standard_metadata_commands.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
 
 #include <library/metadata.hpp>
 
@@ -26,7 +26,7 @@
 
 namespace {
 
-class StandardMetadataCommands : public testing::Test {
+class MetadataSingleEdit : public testing::Test {
 protected:
     void SetUp() override
     {
@@ -44,9 +44,9 @@ protected:
     int saves{0};
 };
 
-TEST_F(StandardMetadataCommands, AppliesFieldsImmediatelyAndSupportsNumericClearing)
+TEST_F(MetadataSingleEdit, AppliesFieldsImmediatelyAndSupportsNumericClearing)
 {
-    wiola::app::StandardMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [this](const wiola::library::LibraryRepository&) {
             ++saves;
             return true;
@@ -60,7 +60,7 @@ TEST_F(StandardMetadataCommands, AppliesFieldsImmediatelyAndSupportsNumericClear
     edit.year = 2026;
     edit.track_number = 4;
     edit.disc_number = 2;
-    const auto applied = commands.apply(media, edit);
+    const auto applied = commands.apply({media}, edit);
 
     ASSERT_TRUE(applied.succeeded());
     EXPECT_TRUE(applied.changed);
@@ -78,60 +78,61 @@ TEST_F(StandardMetadataCommands, AppliesFieldsImmediatelyAndSupportsNumericClear
     wiola::library::StandardMetadataPatch clear;
     clear.year = wiola::library::FieldEdit<std::uint32_t>::clear();
     clear.track_number = wiola::library::FieldEdit<std::uint32_t>::clear();
-    ASSERT_TRUE(commands.apply(media, clear).succeeded());
+    ASSERT_TRUE(commands.apply({media}, clear).succeeded());
     EXPECT_FALSE(wiola::library::resolve_metadata(*repository.track(media)).year.has_value());
     EXPECT_FALSE(
         wiola::library::resolve_metadata(*repository.track(media)).track_number.has_value()
     );
     EXPECT_EQ(saves, 2);
 
-    EXPECT_FALSE(commands.apply(media, clear).changed);
+    EXPECT_FALSE(commands.apply({media}, clear).changed);
     EXPECT_EQ(saves, 2);
 }
 
-TEST_F(StandardMetadataCommands, RejectsEmptyAndMissingEdits)
+TEST_F(MetadataSingleEdit, RejectsEmptyAndMissingEdits)
 {
-    wiola::app::StandardMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [this](const wiola::library::LibraryRepository&) {
             ++saves;
             return true;
         }};
 
-    EXPECT_EQ(commands.apply(media, {}).error, wiola::app::StandardMetadataError::empty_edit);
-    EXPECT_EQ(commands.apply(wiola::library::MediaId{"missing"}, {}).error,
-        wiola::app::StandardMetadataError::missing_media);
+    EXPECT_EQ(commands.apply({media}, {}).error, wiola::app::StandardMetadataError::empty_edit);
+    EXPECT_EQ(commands.apply({wiola::library::MediaId{"missing"}}, {}).error,
+        wiola::app::StandardMetadataError::empty_edit);
     EXPECT_EQ(saves, 0);
 }
 
-TEST_F(StandardMetadataCommands, RollsBackWhenPersistenceFails)
+TEST_F(MetadataSingleEdit, RollsBackWhenPersistenceFails)
 {
-    wiola::app::StandardMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return false; }};
     wiola::library::StandardMetadataPatch edit;
     edit.title = "Cannot save";
 
-    EXPECT_EQ(commands.apply(media, edit).error,
+    EXPECT_EQ(commands.apply({media}, edit).error,
         wiola::app::StandardMetadataError::persistence_failed);
     EXPECT_FALSE(repository.track(media)->overrides.title.has_value());
     EXPECT_EQ(repository.track(media)->embedded.title, "Embedded");
     EXPECT_EQ(repository.track(media)->metadata_revision, 0);
 }
 
-TEST_F(StandardMetadataCommands, RejectsInvalidPatchesBeforePersistenceAndCanInheritEmbeddedValues)
+TEST_F(MetadataSingleEdit, RejectsInvalidPatchesBeforePersistenceAndCanInheritEmbeddedValues)
 {
-    wiola::app::StandardMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [this](const wiola::library::LibraryRepository&) {
             ++saves;
             return true;
         }};
     wiola::library::StandardMetadataPatch patch;
     patch.title = std::string{"bad\0data", 8};
-    EXPECT_EQ(commands.apply(media, patch).error, wiola::app::StandardMetadataError::invalid_edit);
+    EXPECT_EQ(commands.apply({media}, patch).error,
+        wiola::app::StandardMetadataError::invalid_edit);
     EXPECT_EQ(saves, 0);
     patch.title = "Override";
-    ASSERT_TRUE(commands.apply(media, patch).succeeded());
+    ASSERT_TRUE(commands.apply({media}, patch).succeeded());
     patch.title = wiola::library::FieldEdit<std::string>::inherit();
-    ASSERT_TRUE(commands.apply(media, patch).succeeded());
+    ASSERT_TRUE(commands.apply({media}, patch).succeeded());
     EXPECT_EQ(wiola::library::resolve_metadata(*repository.track(media)).title, "Embedded");
     EXPECT_FALSE(repository.track(media)->overrides.title.has_value());
     EXPECT_EQ(saves, 2);

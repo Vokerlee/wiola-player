@@ -1,6 +1,6 @@
 wiola_add_test(
-    app_bulk_metadata_commands_test
-    SOURCES metadata/bulk_metadata_commands_test.cpp
+    app_metadata_batch_edit_test
+    SOURCES metadata/metadata_batch_edit_test.cpp
     LIBS wiola_app
 )
 wiola_add_test(
@@ -25,8 +25,8 @@ wiola_add_test(
     DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
 )
 wiola_add_test(
-    app_optimistic_metadata_edits_test
-    SOURCES metadata/optimistic_metadata_edits_test.cpp
+    app_metadata_edit_service_test
+    SOURCES metadata/metadata_edit_service_test.cpp
     LIBS wiola_app
 )
 wiola_add_test(
@@ -65,8 +65,8 @@ wiola_add_test(
     LIBS wiola_app
 )
 wiola_add_test(
-    app_standard_metadata_commands_test
-    SOURCES metadata/standard_metadata_commands_test.cpp
+    app_metadata_single_edit_test
+    SOURCES metadata/metadata_single_edit_test.cpp
     LIBS wiola_app
 )
 wiola_add_test(

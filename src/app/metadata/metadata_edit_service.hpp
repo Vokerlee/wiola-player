@@ -23,11 +23,19 @@
 #include <library/metadata_patch.hpp>
 
 #include "metadata_conflicts.hpp"
-#include "standard_metadata_commands.hpp"
+#include <library/repository_transaction.hpp>
 
 #include <map>
 
 namespace wiola::app {
+
+enum class StandardMetadataError {
+    none,
+    missing_media,
+    empty_edit,
+    invalid_edit,
+    persistence_failed,
+};
 
 enum class MetadataEditState {
     queued,
@@ -43,25 +51,25 @@ struct MetadataEditOutcome {
     std::size_t changed{0};
     std::size_t unchanged{0};
     std::size_t missing{0};
+
+    [[nodiscard]] bool succeeded() const noexcept { return state == MetadataEditState::succeeded; }
 };
 
-class OptimisticMetadataEdits final {
+class MetadataEditService final {
 public:
-    using Persist = StandardMetadataCommands::Persist;
+    using Persist = library::RepositoryTransaction::Persist;
     using Observer = std::function<void(const MetadataEditOutcome&)>;
 
-    OptimisticMetadataEdits(library::InMemoryRepository& repository, Persist persist,
-        Observer observer);
+    MetadataEditService(library::InMemoryRepository& repository, Persist persist,
+        Observer observer = {});
 
-    [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
+    [[nodiscard]] MetadataEditOutcome apply(const std::vector<library::MediaId>& media,
         const library::StandardMetadataPatch& edit,
-        const std::map<library::MediaId, std::uint64_t>& expected_revisions = {});
-    [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
-        const library::StandardMetadataPatch& edit,
-        const std::map<library::MediaId, ExpectedMediaState>& expected_states);
+        const std::map<library::MediaId, ExpectedMediaState>& expected_states = {});
     [[nodiscard]] MetadataEditOutcome reset(const std::vector<library::MediaId>& media);
 
 private:
+    void publish(const MetadataEditOutcome& outcome) const;
     library::InMemoryRepository& repository_;
     Persist persist_;
     Observer observer_;

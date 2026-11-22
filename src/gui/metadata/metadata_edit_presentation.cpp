@@ -1,0 +1,54 @@
+/**
+ * @file
+ * @brief Owned inspector selection snapshots and explicit playing fallback.
+ * @author Roman Glaz
+ * @copyright (c) 2026, <vokerlee@gmail.com>
+ *
+ * Wiola is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Wiola is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "metadata_edit_presentation.hpp"
+
+namespace wiola::gui {
+
+QString metadata_edit_message(const app::MetadataEditOutcome& outcome)
+{
+    switch (outcome.state) {
+    case app::MetadataEditState::queued:
+        return QString{"Saving application metadata for %1 track(s)"}.arg(outcome.changed);
+    case app::MetadataEditState::conflicted:
+        return "The track changed since editing started; review before applying";
+    case app::MetadataEditState::failed:
+        switch (outcome.error) {
+        case app::StandardMetadataError::empty_edit:
+            return "There are no metadata changes to apply";
+        case app::StandardMetadataError::invalid_edit:
+            return "The metadata values are invalid";
+        default:
+            return "Could not save the metadata changes";
+        }
+    case app::MetadataEditState::succeeded:
+        if (outcome.changed == 0)
+            return outcome.missing ? "No selected tracks are available in the library"
+                                   : "No metadata changes to save";
+        return outcome.missing
+            ? QString{"Application metadata updated for %1 track(s); %2 unavailable"}
+                  .arg(outcome.changed)
+                  .arg(outcome.missing)
+            : QString{"Application metadata updated for %1 track(s)"}.arg(outcome.changed);
+    }
+    return {};
+}
+
+} // namespace wiola::gui

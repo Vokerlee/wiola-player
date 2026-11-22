@@ -21,6 +21,7 @@
 #include "main_window.hpp"
 #include <gui/documents/queue_rows.hpp>
 #include <gui/metadata/inspector_context.hpp>
+#include <gui/metadata/metadata_edit_presentation.hpp>
 
 #include <gui/appearance/presentation_tokens.hpp>
 #include <gui/appearance/theme.hpp>
@@ -140,7 +141,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , persist_library_{library_session.persistence()}
     , playlist_commands_{library_session.playlists()}
     , tag_commands_{library_session.tags()}
-    , optimistic_edits_{library_session.metadata_edits()}
+    , metadata_edits_{library_session.metadata_edits()}
     , active_playlist_{library_session.active_playlist()}
     , workspace_watcher_{&library_session.watcher()}
 {
@@ -1113,17 +1114,13 @@ void MainWindow::refresh_inspector()
 void MainWindow::finish_standard_metadata(const app::MetadataEditSession& session)
 {
     const auto outcome =
-        optimistic_edits_.submit(session.media(), session.draft(), session.expectations());
+        metadata_edits_.apply(session.media(), session.draft(), session.expectations());
     if (outcome.state == app::MetadataEditState::succeeded) {
         inspector_->standard_metadata()->discard();
         refresh();
     }
-    if (outcome.state == app::MetadataEditState::failed ||
-        outcome.state == app::MetadataEditState::conflicted)
-        inspector_->standard_metadata()->show_status(outcome.state ==
-                    app::MetadataEditState::conflicted
-                ? QString{"The track changed since editing started; review before applying"}
-                : QString{"Could not save the metadata changes"});
+    if (!outcome.succeeded())
+        inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
 }
 
 void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
@@ -1143,8 +1140,8 @@ void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
         return;
     }
     const auto outcome = action == MetadataConflictAction::reload
-        ? optimistic_edits_.reset(session.media())
-        : optimistic_edits_.submit(session.media(), session.draft());
+        ? metadata_edits_.reset(session.media())
+        : metadata_edits_.apply(session.media(), session.draft());
     if (outcome.state == app::MetadataEditState::succeeded) {
         editor->discard();
         refresh();
@@ -1153,38 +1150,11 @@ void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
 
 void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcome)
 {
-    switch (outcome.state) {
-    case app::MetadataEditState::queued:
+    if (outcome.state == app::MetadataEditState::conflicted)
+        inspector_->conflicts()->show_conflict(metadata_edit_message(outcome));
+    else
         inspector_->conflicts()->hide_conflict();
-        show_status(QString{"Saving metadata for %1 track(s)"}.arg(outcome.changed));
-        break;
-    case app::MetadataEditState::succeeded:
-        inspector_->conflicts()->hide_conflict();
-        if (outcome.changed == 0) {
-            show_status(outcome.missing == 0
-                    ? QString{"No metadata changes to save"}
-                    : QString{"No selected tracks are available in the library"});
-        } else {
-            show_status(outcome.missing == 0
-                    ? QString{"Metadata updated for %1 track(s)"}.arg(outcome.changed)
-                    : QString{"Metadata updated for %1 track(s); %2 unavailable"}
-                          .arg(outcome.changed)
-                          .arg(outcome.missing));
-        }
-        break;
-    case app::MetadataEditState::failed:
-        inspector_->conflicts()->hide_conflict();
-        show_status(outcome.error == app::StandardMetadataError::empty_edit
-                ? QString{"There are no metadata changes to apply"}
-                : QString{"Could not save the metadata changes"});
-        break;
-    case app::MetadataEditState::conflicted:
-        inspector_->conflicts()->show_conflict(
-            "Embedded metadata changed after editing started. Choose how to resolve it."
-        );
-        show_status("The track changed since editing started; review before applying");
-        break;
-    }
+    show_status(metadata_edit_message(outcome));
 }
 
 void MainWindow::play_previous()

@@ -41,8 +41,8 @@
 #include <library/metadata_patch.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
 #include <app/metadata/metadata_merge.hpp>
-#include <app/metadata/optimistic_metadata_edits.hpp>
 #include <app/playback/active_playlist.hpp>
 #include <app/playback/playback_queue.hpp>
 #include <app/playback/playlist_transfer.hpp>
@@ -231,7 +231,7 @@ private:
     const library::RepositoryTransaction::Persist& persist_library_;
     app::SavedPlaylistCommands& playlist_commands_;
     app::CustomTagCommands& tag_commands_;
-    app::OptimisticMetadataEdits& optimistic_edits_;
+    app::MetadataEditService& metadata_edits_;
     app::ActivePlaylist& active_playlist_;
 
     QPushButton* open_button_{nullptr};

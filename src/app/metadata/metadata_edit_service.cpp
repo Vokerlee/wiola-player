@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "optimistic_metadata_edits.hpp"
+#include "metadata_edit_service.hpp"
 
 #include <set>
 
@@ -26,45 +26,28 @@
 
 namespace wiola::app {
 
-OptimisticMetadataEdits::OptimisticMetadataEdits(library::InMemoryRepository& repository,
-    Persist persist, Observer observer)
+MetadataEditService::MetadataEditService(library::InMemoryRepository& repository, Persist persist,
+    Observer observer)
     : repository_{repository}
     , persist_{std::move(persist)}
     , observer_{std::move(observer)}
 {
 }
 
-MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::MediaId>& media,
-    const library::StandardMetadataPatch& edit,
-    const std::map<library::MediaId, std::uint64_t>& expected_revisions)
-{
-    std::map<library::MediaId, ExpectedMediaState> expected_states;
-
-    for (const auto& [id, revision] : expected_revisions) {
-        const library::TrackRecord* track = repository_.track(id);
-        expected_states.emplace(id,
-            ExpectedMediaState{.metadata_revision = revision,
-                .content_revision = track != nullptr ? track->content_revision : 0,
-                .fingerprint = {}});
-    }
-
-    return submit(media, edit, expected_states);
-}
-
-MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::MediaId>& media,
+MetadataEditOutcome MetadataEditService::apply(const std::vector<library::MediaId>& media,
     const library::StandardMetadataPatch& edit,
     const std::map<library::MediaId, ExpectedMediaState>& expected_states)
 {
     if (!library::valid_metadata_patch(edit)) {
         MetadataEditOutcome outcome{.state = MetadataEditState::failed,
             .error = StandardMetadataError::invalid_edit};
-        observer_(outcome);
+        publish(outcome);
         return outcome;
     }
     if (library::metadata_patch_empty(edit)) {
         MetadataEditOutcome outcome{.state = MetadataEditState::failed,
             .error = StandardMetadataError::empty_edit};
-        observer_(outcome);
+        publish(outcome);
         return outcome;
     }
 
@@ -73,11 +56,13 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
     const MetadataConflictDetector detector;
 
     for (const auto& [id, expected] : expected_states) {
+        if (!unique.contains(id))
+            continue;
         const auto conflict = detector.check(repository_, id, expected);
         if (conflict != MetadataConflictKind::none) {
             MetadataEditOutcome outcome{.state = MetadataEditState::conflicted,
                 .conflict = conflict};
-            observer_(outcome);
+            publish(outcome);
             return outcome;
         }
     }
@@ -108,64 +93,46 @@ MetadataEditOutcome OptimisticMetadataEdits::submit(const std::vector<library::M
         ++outcome.changed;
     }
 
+    if (outcome.changed == 0) {
+        outcome.state = MetadataEditState::succeeded;
+        publish(outcome);
+        return outcome;
+    }
     outcome.state = MetadataEditState::queued;
-    observer_(outcome);
+    publish(outcome);
 
     if (transaction.commit()) {
         outcome.state = MetadataEditState::succeeded;
-        observer_(outcome);
+        publish(outcome);
         return outcome;
     }
+    transaction.rollback();
     outcome.state = MetadataEditState::failed;
     outcome.error = StandardMetadataError::persistence_failed;
     outcome.changed = 0;
-    observer_(outcome);
+    publish(outcome);
     return outcome;
 }
 
-MetadataEditOutcome OptimisticMetadataEdits::reset(const std::vector<library::MediaId>& media)
+MetadataEditOutcome MetadataEditService::reset(const std::vector<library::MediaId>& media)
 {
-    const std::set<library::MediaId> unique{media.begin(), media.end()};
-    library::RepositoryTransaction transaction{repository_, persist_};
-    MetadataEditOutcome outcome;
+    library::StandardMetadataPatch patch;
+    patch.title = library::FieldEdit<std::string>::inherit();
+    patch.artist = library::FieldEdit<std::string>::inherit();
+    patch.album = library::FieldEdit<std::string>::inherit();
+    patch.genre = library::FieldEdit<std::string>::inherit();
+    patch.comment = library::FieldEdit<std::string>::inherit();
+    patch.composer = library::FieldEdit<std::string>::inherit();
+    patch.year = library::FieldEdit<std::uint32_t>::inherit();
+    patch.track_number = library::FieldEdit<std::uint32_t>::inherit();
+    patch.disc_number = library::FieldEdit<std::uint32_t>::inherit();
+    return apply(media, patch);
+}
 
-    for (const library::MediaId& id : unique) {
-        const library::TrackRecord* existing = repository_.track(id);
-        if (existing == nullptr) {
-            ++outcome.missing;
-            continue;
-        }
-
-        if (existing->overrides == library::StandardFieldOverrides{}) {
-            ++outcome.unchanged;
-            continue;
-        }
-
-        library::TrackRecord updated = *existing;
-        updated.overrides = {};
-        ++updated.metadata_revision;
-
-        if (!repository_.put_track(std::move(updated))) {
-            ++outcome.missing;
-            continue;
-        }
-
-        ++outcome.changed;
-    }
-
-    outcome.state = MetadataEditState::queued;
-    observer_(outcome);
-
-    if (transaction.commit()) {
-        outcome.state = MetadataEditState::succeeded;
+void MetadataEditService::publish(const MetadataEditOutcome& outcome) const
+{
+    if (observer_)
         observer_(outcome);
-        return outcome;
-    }
-    outcome.state = MetadataEditState::failed;
-    outcome.error = StandardMetadataError::persistence_failed;
-    outcome.changed = 0;
-    observer_(outcome);
-    return outcome;
 }
 
 } // namespace wiola::app

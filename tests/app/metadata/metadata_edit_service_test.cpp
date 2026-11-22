@@ -18,13 +18,13 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/optimistic_metadata_edits.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
 
 #include <gtest/gtest.h>
 
 namespace {
 
-class OptimisticMetadataEdits : public testing::Test {
+class MetadataEditService : public testing::Test {
 protected:
     void SetUp() override
     {
@@ -39,11 +39,11 @@ protected:
     std::vector<wiola::app::MetadataEditOutcome> outcomes;
 };
 
-TEST_F(OptimisticMetadataEdits, PublishesQueuedChangesBeforePersistenceSucceeds)
+TEST_F(MetadataEditService, PublishesQueuedChangesBeforePersistenceSucceeds)
 {
     wiola::library::StandardMetadataPatch edit;
     edit.title = "Optimistic";
-    wiola::app::OptimisticMetadataEdits commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; },
         [this](const wiola::app::MetadataEditOutcome& outcome) {
             if (outcome.state == wiola::app::MetadataEditState::queued)
@@ -51,41 +51,41 @@ TEST_F(OptimisticMetadataEdits, PublishesQueuedChangesBeforePersistenceSucceeds)
             outcomes.push_back(outcome);
         }};
 
-    const auto result = commands.submit({media}, edit);
+    const auto result = commands.apply({media}, edit);
     ASSERT_EQ(outcomes.size(), 2);
     EXPECT_EQ(outcomes[0].state, wiola::app::MetadataEditState::queued);
     EXPECT_EQ(outcomes[1].state, wiola::app::MetadataEditState::succeeded);
     EXPECT_EQ(result.changed, 1);
 }
 
-TEST_F(OptimisticMetadataEdits, RollsBackBeforePublishingFailure)
+TEST_F(MetadataEditService, RollsBackBeforePublishingFailure)
 {
     wiola::library::StandardMetadataPatch edit;
     edit.title = "Cannot save";
-    wiola::app::OptimisticMetadataEdits commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return false; },
         [this](const wiola::app::MetadataEditOutcome& outcome) { outcomes.push_back(outcome); }};
 
-    const auto result = commands.submit({media}, edit);
+    const auto result = commands.apply({media}, edit);
     ASSERT_EQ(outcomes.size(), 2);
     EXPECT_EQ(outcomes.back().state, wiola::app::MetadataEditState::failed);
     EXPECT_EQ(result.error, wiola::app::StandardMetadataError::persistence_failed);
     EXPECT_FALSE(repository.track(media)->overrides.title.has_value());
 }
 
-TEST_F(OptimisticMetadataEdits, RejectsRevisionConflictsBeforeChangingRecords)
+TEST_F(MetadataEditService, RejectsRevisionConflictsBeforeChangingRecords)
 {
     wiola::library::StandardMetadataPatch edit;
     edit.title = "Conflict";
-    wiola::app::OptimisticMetadataEdits commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; },
         [this](const wiola::app::MetadataEditOutcome& outcome) { outcomes.push_back(outcome); }};
 
-    const auto result = commands.submit(
+    const auto result = commands.apply(
         {
             media
     },
-        edit, {{media, 99}}
+        edit, {{media, wiola::app::ExpectedMediaState{.metadata_revision = 99}}}
     );
     ASSERT_EQ(outcomes.size(), 1);
     EXPECT_EQ(result.state, wiola::app::MetadataEditState::conflicted);
@@ -93,14 +93,14 @@ TEST_F(OptimisticMetadataEdits, RejectsRevisionConflictsBeforeChangingRecords)
     EXPECT_EQ(repository.track(media)->metadata_revision, 0);
 }
 
-TEST_F(OptimisticMetadataEdits, ReloadClearsApplicationOverridesTransactionally)
+TEST_F(MetadataEditService, ReloadClearsApplicationOverridesTransactionally)
 {
     wiola::library::StandardMetadataPatch edit;
     edit.title = "Application";
-    wiola::app::OptimisticMetadataEdits commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; },
         [this](const wiola::app::MetadataEditOutcome& outcome) { outcomes.push_back(outcome); }};
-    ASSERT_EQ(commands.submit({media}, edit).state, wiola::app::MetadataEditState::succeeded);
+    ASSERT_EQ(commands.apply({media}, edit).state, wiola::app::MetadataEditState::succeeded);
     outcomes.clear();
 
     const auto result = commands.reset({media});
@@ -108,6 +108,25 @@ TEST_F(OptimisticMetadataEdits, ReloadClearsApplicationOverridesTransactionally)
     EXPECT_EQ(result.state, wiola::app::MetadataEditState::succeeded);
     EXPECT_EQ(result.changed, 1);
     EXPECT_TRUE(repository.track(media)->overrides == wiola::library::StandardFieldOverrides{});
+}
+
+TEST_F(MetadataEditService, NoopAndResetUseTheSameBatchContractWithoutSaving)
+{
+    int saves = 0;
+    wiola::app::MetadataEditService service{repository,
+        [&](const auto&) {
+            ++saves;
+            return true;
+        },
+        [&](const auto& outcome) { outcomes.push_back(outcome); }};
+    auto result = service.reset({media, media, wiola::library::MediaId{"missing"}});
+    EXPECT_TRUE(result.succeeded());
+    EXPECT_EQ(result.changed, 0);
+    EXPECT_EQ(result.unchanged, 1);
+    EXPECT_EQ(result.missing, 1);
+    EXPECT_EQ(saves, 0);
+    ASSERT_EQ(outcomes.size(), 1);
+    EXPECT_EQ(outcomes.front().state, wiola::app::MetadataEditState::succeeded);
 }
 
 } // namespace
