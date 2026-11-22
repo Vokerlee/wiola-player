@@ -20,7 +20,7 @@
 
 #include "library_storage.hpp"
 
-#include "qt_path_adapter.hpp"
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <QDir>
 #include <QFile>
@@ -43,7 +43,7 @@ struct Candidate {
 Candidate read_candidate(const std::filesystem::path& path)
 {
     Candidate candidate;
-    const QString name{QtPathAdapter::to_qt(path)};
+    const QString name{platform::qt::QtPathAdapter::to_qt(path)};
 
     candidate.exists = QFile::exists(name);
 
@@ -67,7 +67,7 @@ Candidate read_candidate(const std::filesystem::path& path)
 
 LibraryJsonError write_atomic(const std::filesystem::path& path, const QByteArray& json)
 {
-    QSaveFile file{QtPathAdapter::to_qt(path)};
+    QSaveFile file{platform::qt::QtPathAdapter::to_qt(path)};
 
     if (!file.open(QIODevice::WriteOnly))
         return LibraryJsonError::io;
@@ -179,7 +179,7 @@ LibraryJsonError LibraryStorage::write(const LibrarySnapshot& snapshot)
     if (serialized != LibraryJsonError::none)
         return serialized;
 
-    const QString name{QtPathAdapter::to_qt(file_)};
+    const QString name{platform::qt::QtPathAdapter::to_qt(file_)};
 
     if (!QDir{}.mkpath(QFileInfo{name}.absolutePath()))
         return LibraryJsonError::io;

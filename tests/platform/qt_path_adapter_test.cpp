@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief The single native-Unicode conversion boundary between Qt and filesystem paths.
+ * @brief Native Unicode path conversion tests.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,30 +18,17 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <platform/qt/qt_path_adapter.hpp>
 
-#include <QString>
+#include <gtest/gtest.h>
 
-#include <filesystem>
-
-namespace wiola::gui::QtPathAdapter {
-
-[[nodiscard]] inline std::filesystem::path from_qt(const QString& path)
+TEST(QtPathAdapter, PreservesNonAsciiPathsInBothDirections)
 {
-#ifdef _WIN32
-    return std::filesystem::path{path.toStdU16String()};
-#else
-    return std::filesystem::path{path.toStdString()};
-#endif
-}
+    const std::filesystem::path path{wiola::platform::qt::QtPathAdapter::from_qt(
+        QString::fromUtf8("music/Романтика-音楽.flac")
+    )};
 
-[[nodiscard]] inline QString to_qt(const std::filesystem::path& path)
-{
-#ifdef _WIN32
-    return QString::fromStdU16String(path.u16string());
-#else
-    return QString::fromStdString(path.string());
-#endif
+    const QString converted{wiola::platform::qt::QtPathAdapter::to_qt(path)};
+    EXPECT_EQ(converted, QString::fromUtf8("music/Романтика-音楽.flac"));
+    EXPECT_EQ(wiola::platform::qt::QtPathAdapter::from_qt(converted), path);
 }
-
-} // namespace wiola::gui::QtPathAdapter

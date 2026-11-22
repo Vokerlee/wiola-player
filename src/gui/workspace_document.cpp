@@ -20,9 +20,9 @@
 
 #include "workspace_document.hpp"
 
-#include "qt_path_adapter.hpp"
 #include "tag_filter_panel.hpp"
 #include "track_search_panel.hpp"
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>
 #include <library/metadata.hpp>
@@ -143,7 +143,7 @@ void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::ui
     workspace_ = workspace.id;
     generation_ = generation;
     rows_.clear();
-    heading_->setText(QtPathAdapter::to_qt(workspace.root));
+    heading_->setText(platform::qt::QtPathAdapter::to_qt(workspace.root));
     recursive_->setChecked(workspace.recursive);
     status_->setText("Scanning...");
     table_->show_tracks(rows_.tracks());

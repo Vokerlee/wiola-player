@@ -27,9 +27,9 @@
 #include "layout_builder.hpp"
 #include "player_settings.hpp"
 #include "presentation_tokens.hpp"
-#include "qt_path_adapter.hpp"
 #include "theme.hpp"
 #include "theme_editor.hpp"
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <codec/provider.hpp>
 #include <library/location.hpp>
@@ -75,7 +75,8 @@ QWidget* placeholder_document(QWidget* parent, const QString& description)
 
 std::filesystem::path library_file(const QSettings& settings)
 {
-    return QtPathAdapter::from_qt(QFileInfo{settings.fileName()}.absolutePath() + "/library.json");
+    return platform::qt::QtPathAdapter::from_qt(QFileInfo{settings.fileName()}.absolutePath() +
+        "/library.json");
 }
 
 LayoutDocument layout_for(const QString& choice)
@@ -618,7 +619,7 @@ void MainWindow::open(std::vector<std::filesystem::path> tracks)
     if (tracks.empty())
         return;
 
-    const QString first{QtPathAdapter::to_qt(tracks.front().filename())};
+    const QString first{platform::qt::QtPathAdapter::to_qt(tracks.front().filename())};
 
     for (const std::filesystem::path& location : tracks)
         request_metadata(location);
@@ -649,7 +650,7 @@ std::vector<std::filesystem::path> MainWindow::ask_for_tracks()
     tracks.reserve(static_cast<std::size_t>(chosen.size()));
 
     for (const QString& name : chosen)
-        tracks.push_back(QtPathAdapter::from_qt(name));
+        tracks.push_back(platform::qt::QtPathAdapter::from_qt(name));
 
     return tracks;
 }
@@ -694,9 +695,9 @@ void MainWindow::import_m3u_playlist()
     const auto previous_workspaces = library_.workspaces();
     library::PlaylistId imported;
     const QFileInfo details{selected};
-    const app::M3uError error =
-        app::M3uPlaylist::import_playlist(library_, QtPathAdapter::from_qt(details.absolutePath()),
-            details.completeBaseName().toStdString(), encoded, imported);
+    const app::M3uError error = app::M3uPlaylist::import_playlist(library_,
+        platform::qt::QtPathAdapter::from_qt(details.absolutePath()),
+        details.completeBaseName().toStdString(), encoded, imported);
 
     if (error != app::M3uError::none) {
         show_status("Could not import the M3U8 playlist");
@@ -738,7 +739,7 @@ void MainWindow::export_m3u_playlist()
         return;
 
     QByteArray encoded;
-    const std::filesystem::path path = QtPathAdapter::from_qt(file);
+    const std::filesystem::path path = platform::qt::QtPathAdapter::from_qt(file);
     const app::M3uError error =
         app::M3uPlaylist::export_playlist(library_, *selected, path.parent_path(), encoded);
 
@@ -836,7 +837,7 @@ void MainWindow::open_folder()
     const auto previous_playlists = library_.playlists();
     const auto previous_workspaces = library_.workspaces();
     const library::WorkspaceId workspace =
-        library_.create_workspace(QtPathAdapter::from_qt(selected));
+        library_.create_workspace(platform::qt::QtPathAdapter::from_qt(selected));
 
     if (!workspace.valid())
         return;
@@ -898,7 +899,8 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
     });
 
     const std::filesystem::path name = workspace->root.filename();
-    documents_->addTab(document, name.empty() ? "Workspace" : QtPathAdapter::to_qt(name));
+    documents_->addTab(document,
+        name.empty() ? "Workspace" : platform::qt::QtPathAdapter::to_qt(name));
     documents_->setCurrentWidget(document);
 
     const std::uint64_t generation =
@@ -1207,7 +1209,7 @@ void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
 {
     if (!result.metadata) {
         show_status("Could not read metadata for " +
-            QtPathAdapter::to_qt(result.location.filename()));
+            platform::qt::QtPathAdapter::to_qt(result.location.filename()));
         return;
     }
 
@@ -1588,8 +1590,8 @@ void MainWindow::update_after_pump()
         named_ = playback.track;
         named_place_ = presenter_.playlist().position();
 
-        const QString name{
-            named_.empty() ? QString{"no track"} : QtPathAdapter::to_qt(named_.filename())};
+        const QString name{named_.empty() ? QString{"no track"}
+                                          : platform::qt::QtPathAdapter::to_qt(named_.filename())};
 
         setWindowTitle(named_.empty() ? QString{"Wiola Player"} : name);
         track_label_->setText(name);

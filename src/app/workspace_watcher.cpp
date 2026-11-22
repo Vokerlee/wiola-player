@@ -20,7 +20,7 @@
 
 #include "workspace_watcher.hpp"
 
-#include <gui/qt_path_adapter.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <QDir>
 
@@ -50,7 +50,7 @@ bool WorkspaceWatcher::watch(const library::WorkspaceRecord& workspace)
 
     unwatch(workspace.id);
 
-    QStringList paths{gui::QtPathAdapter::to_qt(workspace.root)};
+    QStringList paths{platform::qt::QtPathAdapter::to_qt(workspace.root)};
 
     if (workspace.recursive) {
         std::error_code error;
@@ -61,7 +61,7 @@ bool WorkspaceWatcher::watch(const library::WorkspaceRecord& workspace)
         while (!error && current != end &&
             static_cast<std::size_t>(paths.size()) < max_watched_directories) {
             if (current->is_directory(error) && !error)
-                paths.push_back(gui::QtPathAdapter::to_qt(current->path()));
+                paths.push_back(platform::qt::QtPathAdapter::to_qt(current->path()));
             current.increment(error);
         }
     }

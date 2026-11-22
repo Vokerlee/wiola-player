@@ -20,7 +20,7 @@
 
 #include "m3u_playlist.hpp"
 
-#include <gui/qt_path_adapter.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>
 
@@ -98,7 +98,7 @@ M3uError M3uPlaylist::export_playlist(const library::LibraryRepository& reposito
         if (relative.empty())
             relative = location;
 
-        const QString path = gui::QtPathAdapter::to_qt(relative);
+        const QString path = platform::qt::QtPathAdapter::to_qt(relative);
         if (path.contains('\n') || path.contains('\r'))
             return M3uError::invalid_record;
 
@@ -165,7 +165,7 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
         if (++entries > max_m3u_entries)
             return M3uError::limit_exceeded;
 
-        std::filesystem::path location = gui::QtPathAdapter::from_qt(line);
+        std::filesystem::path location = platform::qt::QtPathAdapter::from_qt(line);
         if (!location.is_absolute())
             location = directory / location;
 

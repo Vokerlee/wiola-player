@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/qt_path_adapter.hpp>
 #include <gui/track_inspector.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <engine/queue/playlist.hpp>
 
@@ -43,7 +43,7 @@ QLabel* field(QWidget& inspector, const QString& name)
 
 std::filesystem::path temporary_path(const QTemporaryDir& directory, const char* name)
 {
-    return wiola::gui::QtPathAdapter::from_qt(directory.filePath(name));
+    return wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath(name));
 }
 
 std::shared_ptr<wiola::media::Artwork> sample_artwork()
