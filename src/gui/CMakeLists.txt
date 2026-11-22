@@ -40,6 +40,7 @@ wiola_add_library(
         volume_control.cpp
         workspace_document.cpp
     LIBS
+        wiola_qt_platform
         wiola_app
         wiola_codec
         wiola_engine

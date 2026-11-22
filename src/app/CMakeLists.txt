@@ -40,10 +40,14 @@ if(WIOLA_BUILD_GUI)
         SOURCES workspace_watcher.cpp
         LIBS wiola_library
     )
-    target_link_libraries(wiola_workspace_watcher PUBLIC Qt6::Core)
+    target_link_libraries(
+        wiola_workspace_watcher
+        PUBLIC Qt6::Core
+        PRIVATE wiola_qt_platform
+    )
 
     wiola_add_library(wiola_m3u SOURCES m3u_playlist.cpp LIBS wiola_library)
-    target_link_libraries(wiola_m3u PUBLIC Qt6::Core)
+    target_link_libraries(wiola_m3u PUBLIC Qt6::Core PRIVATE wiola_qt_platform)
 
     wiola_add_library(
         wiola_player_application
@@ -64,5 +68,9 @@ if(WIOLA_BUILD_GUI)
         SOURCES queue_library_migration.cpp
         LIBS wiola_gui wiola_library
     )
-    target_link_libraries(wiola_queue_migration PUBLIC Qt6::Core)
+    target_link_libraries(
+        wiola_queue_migration
+        PUBLIC Qt6::Core
+        PRIVATE wiola_qt_platform
+    )
 endif()

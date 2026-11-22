@@ -22,8 +22,8 @@
 
 #include <gui/library_storage.hpp>
 #include <gui/player_settings.hpp>
-#include <gui/qt_path_adapter.hpp>
 #include <library/location.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <QFile>
 #include <QFileInfo>
@@ -36,13 +36,13 @@ namespace wiola::app {
 QueueLibraryMigration::QueueLibraryMigration(QSettings& settings)
 {
     const QString directory{QFileInfo{settings.fileName()}.absolutePath()};
-    file_ = gui::QtPathAdapter::from_qt(directory + "/library.json");
+    file_ = platform::qt::QtPathAdapter::from_qt(directory + "/library.json");
 }
 
 gui::LibraryJsonError QueueLibraryMigration::migrate(QSettings& settings) const
 {
     gui::LibraryStorage storage{file_};
-    const QString name{gui::QtPathAdapter::to_qt(file_)};
+    const QString name{platform::qt::QtPathAdapter::to_qt(file_)};
 
     if (QFile::exists(name) || QFile::exists(name + ".bak")) {
         gui::LibrarySnapshot existing;

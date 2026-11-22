@@ -22,8 +22,8 @@
 
 #include <gui/library_storage.hpp>
 #include <gui/player_settings.hpp>
-#include <gui/qt_path_adapter.hpp>
 #include <library/location.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <fixtures/wav.hpp>
 
@@ -80,7 +80,7 @@ protected:
     {
         const QString directory{QFileInfo{settings.fileName()}.absolutePath()};
 
-        return wiola::gui::QtPathAdapter::from_qt(directory + "/library.json");
+        return wiola::platform::qt::QtPathAdapter::from_qt(directory + "/library.json");
     }
 
     inline static std::unique_ptr<QTemporaryDir> settings_directory;

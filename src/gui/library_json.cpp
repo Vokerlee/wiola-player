@@ -20,7 +20,7 @@
 
 #include "library_json.hpp"
 
-#include "qt_path_adapter.hpp"
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/tags.hpp>
 
@@ -245,7 +245,7 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
                 static_cast<std::size_t>(location.toString().toUtf8().size()) > max_id_bytes)
                 return LibraryJsonError::invalid_record;
 
-            output.locations.push_back(QtPathAdapter::from_qt(location.toString()));
+            output.locations.push_back(platform::qt::QtPathAdapter::from_qt(location.toString()));
         }
     }
 
@@ -316,7 +316,7 @@ LibraryJsonError read_workspace(const QJsonValue& value, library::WorkspaceRecor
         !read_text(object, "root", root, max_id_bytes, true) || !output.id.valid() || root.empty())
         return LibraryJsonError::invalid_record;
 
-    output.root = QtPathAdapter::from_qt(QString::fromStdString(root));
+    output.root = platform::qt::QtPathAdapter::from_qt(QString::fromStdString(root));
     output.recursive = true;
 
     if (object.contains("recursive")) {
@@ -391,7 +391,7 @@ QJsonObject write_track(const library::TrackRecord& track)
 
     QJsonArray locations;
     for (const std::filesystem::path& location : track.locations)
-        locations.push_back(QtPathAdapter::to_qt(location));
+        locations.push_back(platform::qt::QtPathAdapter::to_qt(location));
 
     return {
         {"id",               qt(track.id.value)                      },
@@ -426,9 +426,9 @@ QJsonObject write_playlist(const library::PlaylistRecord& playlist)
 QJsonObject write_workspace(const library::WorkspaceRecord& workspace)
 {
     return {
-        {"id",        qt(workspace.id.value)              },
-        {"root",      QtPathAdapter::to_qt(workspace.root)},
-        {"recursive", workspace.recursive                 }
+        {"id",        qt(workspace.id.value)                            },
+        {"root",      platform::qt::QtPathAdapter::to_qt(workspace.root)},
+        {"recursive", workspace.recursive                               }
     };
 }
 

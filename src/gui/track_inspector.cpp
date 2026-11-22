@@ -21,7 +21,7 @@
 #include "track_inspector.hpp"
 
 #include "clock.hpp"
-#include "qt_path_adapter.hpp"
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>
 
@@ -121,7 +121,7 @@ void TrackInspector::show_track(const engine::Track* track)
     title_->setText(fallback(track->title(), "Unknown title"));
     artist_->setText(fallback(track->artist(), "Unknown artist"));
     album_->setText(fallback(track->album(), "Unknown album"));
-    location_->setText(QtPathAdapter::to_qt(track->path()));
+    location_->setText(platform::qt::QtPathAdapter::to_qt(track->path()));
     duration_->setText(track->duration() ? as_clock(*track->duration()) : QString{"Unknown"});
     availability_->setText(missing ? "Missing" : "Available");
     availability_->setProperty("missing", missing);
