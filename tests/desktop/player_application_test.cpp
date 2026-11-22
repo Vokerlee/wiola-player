@@ -418,6 +418,43 @@ TEST_F(PlayerApplication, LibraryReconcilesTwoIndependentWorkspaceGenerations)
     EXPECT_TRUE(library.shutdown().succeeded());
 }
 
+TEST_F(PlayerApplication, RecursiveWorkspaceRefreshContinuesWithoutAWindow)
+{
+    QTemporaryDir directory;
+    const auto base = wiola::platform::qt::QtPathAdapter::from_qt(directory.path()),
+               root = base / "music";
+    std::filesystem::create_directories(root);
+    const auto source = track("wiola-background-watch.wav");
+    std::filesystem::copy_file(source, root / "one.wav");
+    wiola::app::LibrarySession library{base / "library.json",
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    QObject receiver;
+    int completed = 0;
+    QObject::connect(&library, &wiola::app::LibrarySession::scan_batch, &receiver,
+        [&](const auto& batch) {
+            if (batch.status == wiola::app::WorkspaceScanStatus::complete)
+                ++completed;
+        });
+    wiola::library::WorkspaceId workspace;
+    {
+        wiola::library::RepositoryTransaction transaction{library.repository(),
+            library.persistence()};
+        workspace = library.repository().create_workspace(root);
+        ASSERT_TRUE(transaction.commit());
+    }
+    ASSERT_TRUE(pump_until([&] {
+        return completed >= 1 && library.repository().tracks().size() == 1;
+    }));
+    const int initial = completed;
+    std::filesystem::create_directories(root / "new" / "nested");
+    ASSERT_TRUE(pump_until([&] { return completed > initial; }));
+    std::filesystem::copy_file(source, root / "new" / "nested" / "two.wav");
+    ASSERT_TRUE(pump_until([&] { return library.repository().tracks().size() == 2; }));
+    ASSERT_TRUE(library.watcher().coverage(workspace));
+    EXPECT_FALSE(library.watcher().coverage(workspace)->partial);
+    EXPECT_TRUE(library.shutdown().succeeded());
+}
+
 } // namespace
 
 int main(int argc, char** argv)

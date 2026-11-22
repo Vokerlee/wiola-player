@@ -157,6 +157,9 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
         case app::WorkspaceScanError::permission_denied:
             reason = "Folder access denied; useful rows were retained";
             break;
+        case app::WorkspaceScanError::unsupported_formats:
+            reason = "No supported audio formats are configured; useful rows were retained";
+            break;
         case app::WorkspaceScanError::rejected:
             reason = "Scan queue is full; try again after another scan finishes";
             break;

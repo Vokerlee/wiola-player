@@ -90,6 +90,12 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
         if (const auto id = registry_.identify(widget(index)))
             static_cast<void>(close(*id));
     });
+    connect(&library_, &app::LibrarySession::workspace_scan_started, &lifetime_,
+        [this](const auto& id, std::uint64_t generation) {
+            if (auto* view = registry_.workspace(id))
+                if (const auto* workspace = library_.repository().workspace(id))
+                    view->begin(*workspace, generation);
+        });
     connect(&library_, &app::LibrarySession::scan_batch, &lifetime_,
         [this](const app::WorkspaceScanBatch& batch) {
             if (auto* document = registry_.workspace(batch.workspace))
@@ -220,8 +226,7 @@ void DocumentHost::begin_scan(const library::WorkspaceId& id)
     const auto* workspace = library_.repository().workspace(id);
     if (!document || !workspace)
         return;
-    const auto generation = library_.scan_workspace(id, playback_.playback_extensions());
-    document->begin(*workspace, generation);
+    static_cast<void>(library_.scan_workspace(id, playback_.playback_extensions()));
 }
 
 bool DocumentHost::close(const DocumentId& id)

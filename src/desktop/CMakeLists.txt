@@ -19,7 +19,7 @@ target_link_libraries(wiola_media_revisions PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_workspace_watcher
     SOURCES workspace/workspace_watcher.cpp
-    LIBS wiola_library wiola_qt_platform
+    LIBS wiola_app wiola_library wiola_qt_platform
 )
 target_link_libraries(wiola_workspace_watcher PUBLIC Qt6::Core)
 wiola_add_library(

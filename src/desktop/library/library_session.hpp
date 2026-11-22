@@ -93,6 +93,7 @@ signals:
     void status_changed(const QString& status);
     void file_write_outcome(const wiola::app::MetadataWriteResult& result);
     void workspace_changed(const wiola::library::WorkspaceId& id);
+    void workspace_scan_started(const wiola::library::WorkspaceId& id, std::uint64_t generation);
 
 private:
     void check_owner() const;
@@ -129,6 +130,7 @@ private:
     MetadataWriteService writes_;
     MediaRevisionPublisher metadata_;
     WorkspaceWatcher watcher_;
+    std::vector<std::string> workspace_extensions_;
 };
 
 [[nodiscard]] std::filesystem::path default_library_file();

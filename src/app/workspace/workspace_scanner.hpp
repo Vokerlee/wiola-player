@@ -44,6 +44,7 @@ enum class WorkspaceScanError {
     limit_exceeded,
     io,
     rejected,
+    unsupported_formats,
 };
 
 struct WorkspaceScanPolicy {

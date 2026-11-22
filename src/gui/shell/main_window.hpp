@@ -252,7 +252,6 @@ private:
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};
     DocumentHost* document_host_{nullptr};
-    app::WorkspaceWatcher* workspace_watcher_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};

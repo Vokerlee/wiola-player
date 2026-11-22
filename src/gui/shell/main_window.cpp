@@ -143,7 +143,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , tag_commands_{library_session.tags()}
     , metadata_edits_{library_session.metadata_edits()}
     , active_playlist_{library_session.active_playlist()}
-    , workspace_watcher_{&library_session.watcher()}
 {
     const QString selected_theme = settings_.value("theme/name", "light").toString();
     const ThemeColors custom_theme = stored_custom_theme(settings_);
@@ -319,8 +318,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         &MainWindow::show_status);
     connect(&library_session_, &app::LibrarySession::workspace_changed, this,
         [this](const library::WorkspaceId& id) {
-            if (const auto* workspace = library_.workspace(id))
-                rescan_workspace(id, workspace->recursive);
+            if (library_.workspace(id))
+                show_status("Folder changed; refreshing workspace");
         });
 
     library_pane_ = new QWidget{this};
@@ -798,7 +797,6 @@ void MainWindow::open_folder()
         return;
     }
 
-    static_cast<void>(workspace_watcher_->watch(*library_.workspace(workspace)));
     show_workspace_navigation();
     static_cast<void>(document_host_->open_workspace(workspace));
 }
@@ -881,9 +879,8 @@ void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive
             show_status("Could not save the workspace settings");
             return;
         }
+        return; // The committed workspace change starts its application-owned scan.
     }
-
-    static_cast<void>(workspace_watcher_->watch(updated));
 
     document_host_->begin_scan(id);
 }

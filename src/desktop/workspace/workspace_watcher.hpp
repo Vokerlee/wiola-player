@@ -19,35 +19,93 @@
  */
 
 #pragma once
-
-#include <library/records.hpp>
-
-#include <QFileSystemWatcher>
 #include <QTimer>
-
+#include <chrono>
 #include <functional>
+#include <library/records.hpp>
 #include <map>
+#include <memory>
+#include <set>
 
 namespace wiola::app {
 
+class WorkspaceWatchBackend {
+public:
+    using Observer = std::function<void(std::filesystem::path)>;
+    virtual ~WorkspaceWatchBackend() = default;
+    virtual bool add(const std::filesystem::path& path) = 0;
+    virtual void remove(const std::filesystem::path& path) = 0;
+    [[nodiscard]] virtual bool contains(const std::filesystem::path& path) const = 0;
+    virtual void on_changed(Observer observer) = 0;
+};
+
+struct WorkspaceWatchPolicy {
+    std::chrono::milliseconds debounce{200};
+    std::size_t max_paths{4096};
+};
+
+struct WorkspaceWatchCoverage {
+    library::WorkspaceId workspace;
+    bool partial{}, root_missing{}, awaiting_discovery{};
+    std::size_t refused_paths{};
+};
+
+/// Native subscriptions are shared by normalized path; each interested workspace retains its own
+/// debounce.
 class WorkspaceWatcher final : public QObject {
 public:
     explicit WorkspaceWatcher(QObject* parent = nullptr);
+    WorkspaceWatcher(std::unique_ptr<WorkspaceWatchBackend> backend,
+        WorkspaceWatchPolicy policy = {}, QObject* parent = nullptr);
+
+    ~WorkspaceWatcher() override { stop(); }
 
     [[nodiscard]] bool watch(const library::WorkspaceRecord& workspace);
+    void scan_started(const library::WorkspaceId& id);
+    void directories_discovered(const library::WorkspaceId& id,
+        const std::vector<std::filesystem::path>& directories, bool finished, bool successful);
+    [[nodiscard]] std::optional<WorkspaceWatchCoverage>
+    coverage(const library::WorkspaceId& id) const;
     void stop();
-    void unwatch(const library::WorkspaceId& id);
+    void unwatch(library::WorkspaceId id);
     void on_changed(std::function<void(library::WorkspaceId)> observer);
 
-private:
-    void changed(const QString& path);
-    void debounce(const library::WorkspaceId& id);
+    void on_status(std::function<void(WorkspaceWatchCoverage)> observer)
+    {
+        status_ = std::move(observer);
+    }
 
-    bool stopped_{false};
-    QFileSystemWatcher watcher_;
-    std::map<library::WorkspaceId, QStringList> watched_;
+private:
+    struct Registration {
+        library::WorkspaceRecord workspace;
+        std::uint64_t epoch;
+        std::set<std::string> keys, base, discovered;
+        std::map<std::string, std::filesystem::path> refused;
+        bool root_missing{}, awaiting{}, failed{};
+    };
+
+    struct Subscription {
+        std::filesystem::path path;
+        std::set<library::WorkspaceId> interested;
+        bool installed{};
+    };
+
+    bool add(const library::WorkspaceId& id, const std::filesystem::path& path);
+    void remove(const library::WorkspaceId& id, const std::string& key);
+    void fallback_parent(const library::WorkspaceId& id);
+    void changed(const std::filesystem::path& path);
+    void debounce(const library::WorkspaceId& id);
+    void report(const library::WorkspaceId& id);
+    bool stopped_{};
+    WorkspaceWatchPolicy policy_;
+    std::unique_ptr<WorkspaceWatchBackend> backend_;
+    std::map<library::WorkspaceId, Registration> watched_;
+    std::map<std::string, Subscription> paths_;
     std::map<library::WorkspaceId, QTimer*> pending_;
+    std::uint64_t next_epoch_{};
+    std::size_t installed_count_{};
     std::function<void(library::WorkspaceId)> observer_;
+    std::function<void(WorkspaceWatchCoverage)> status_;
 };
 
 } // namespace wiola::app

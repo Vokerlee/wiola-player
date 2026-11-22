@@ -57,7 +57,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , scans_{*this, [this](WorkspaceScanBatch batch) { publish_scan(std::move(batch)); }}
     , writes_{*this, provider, repository_, persist_,
           [this](const MetadataWriteResult& result) { emit file_write_outcome(result); }}
-    , metadata_{*this, std::move(provider),
+    , metadata_{*this, provider,
           [this](BackgroundMetadataResult result) { publish_metadata(std::move(result)); }}
 {
     restore_result_ = persistence::qt::restore_repository(store_, repository_);
@@ -76,9 +76,23 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     changes_ = repository_.observe([this](const library::LibraryChangeBatch& batch) {
         index_changes(batch);
     });
-    watcher_.on_changed([this](library::WorkspaceId id) { emit workspace_changed(id); });
-    for (const auto& workspace : repository_.workspaces())
+    workspace_extensions_ = provider->playback_extensions();
+    watcher_.on_status([this](WorkspaceWatchCoverage coverage) {
+        if (coverage.partial && !coverage.awaiting_discovery)
+            emit status_changed(coverage.root_missing
+                    ? "Folder unavailable; waiting for it to reappear"
+                    : "Automatic folder refresh has partial coverage. Use Rescan to refresh "
+                      "manually.");
+    });
+    watcher_.on_changed([this](library::WorkspaceId id) {
+        if (accepting_ && repository_.workspace(id))
+            static_cast<void>(scan_workspace(id, workspace_extensions_));
+        emit workspace_changed(id);
+    });
+    for (const auto& workspace : repository_.workspaces()) {
         static_cast<void>(watcher_.watch(workspace));
+        static_cast<void>(scan_workspace(workspace.id, workspace_extensions_));
+    }
 }
 
 LibrarySession::~LibrarySession()
@@ -173,8 +187,12 @@ std::uint64_t LibrarySession::scan_workspace(const library::WorkspaceId& id,
     const auto* workspace = repository_.workspace(id);
     if (!accepting_ || !workspace)
         return 0;
+    if (!watcher_.coverage(id))
+        static_cast<void>(watcher_.watch(*workspace));
+    watcher_.scan_started(id);
     const auto generation = scans_.start(*workspace, std::move(extensions), repository_.tracks());
     pending_scans_.insert_or_assign(id, PendingScan{generation, {}});
+    emit workspace_scan_started(id, generation);
     return generation;
 }
 
@@ -202,6 +220,9 @@ void LibrarySession::publish_scan(WorkspaceScanBatch batch)
         batch.entries.end());
     for (const auto& entry : batch.entries)
         request_metadata(entry.media, entry.location);
+    watcher_.directories_discovered(batch.workspace, batch.directories,
+        batch.status != WorkspaceScanStatus::running,
+        batch.status == WorkspaceScanStatus::complete);
     if (batch.status == WorkspaceScanStatus::complete) {
         const auto entries = std::move(pending->second.entries);
         const auto result = reconciliation_.reconcile(repository_, batch.workspace, entries);
@@ -287,6 +308,15 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
         tag_keys_.remove(media);
         locations_.remove(media);
     }
+    for (const auto& id : batch.removed_workspaces) {
+        cancel_workspace_scan(id);
+        watcher_.unwatch(id);
+    }
+    for (const auto& id : batch.workspaces)
+        if (const auto* workspace = repository_.workspace(id)) {
+            static_cast<void>(watcher_.watch(*workspace));
+            static_cast<void>(scan_workspace(id, workspace_extensions_));
+        }
     for (const auto& playlist : batch.removed_playlists)
         if (active_.clear_if(playlist))
             settings_.remove("playlists/active");
