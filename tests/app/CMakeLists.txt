@@ -11,7 +11,8 @@ wiola_add_test(
 wiola_add_test(
     app_background_metadata_writes_test
     SOURCES metadata/background_metadata_writes_test.cpp
-    LIBS wiola_app
+    LIBS wiola_app wiola_codec
+    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
 )
 wiola_add_test(
     app_metadata_conflicts_test

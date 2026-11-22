@@ -6,6 +6,7 @@ wiola_add_library(
         library/tag_key_catalog.cpp
         metadata/background_metadata.cpp
         metadata/background_metadata_writes.cpp
+        metadata/metadata_write_job.cpp
         metadata/custom_tag_commands.cpp
         metadata/media_replacement.cpp
         metadata/metadata_conflicts.cpp

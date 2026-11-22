@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Identity-scoped background metadata writes with coalescing and conflict checks.
+ * @brief Captured metadata edit targets, expected state, mixed fields and draft.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,126 +19,159 @@
  */
 
 #include "background_metadata_writes.hpp"
-
-#include <utility>
+#include <algorithm>
+#include <library/fingerprint.hpp>
 
 namespace wiola::app {
 
-namespace {
-
-constexpr std::size_t max_pending_writes{256};
-
-} // namespace
-
-BackgroundMetadataWrites::BackgroundMetadataWrites(std::shared_ptr<media::MediaProvider> provider,
-    library::InMemoryRepository& repository)
+BackgroundMetadataWrites::BackgroundMetadataWrites(std::shared_ptr<media::MediaProvider> provider)
     : provider_{std::move(provider)}
-    , repository_{repository}
     , worker_{[this] { run(); }}
 {
 }
 
 BackgroundMetadataWrites::~BackgroundMetadataWrites()
 {
+    stop();
+}
+
+void BackgroundMetadataWrites::cancel(Pending pending)
+{
+    pending.job.cancellation->request_stop();
+    if (pending.observer)
+        pending.observer({
+            .job = std::move(pending.job),
+            .stage = MetadataWriteStage::cancelled,
+            .outcome = {.state = media::MetadataWriteState::failed,
+                        .error = media::MetadataWriteError::cancelled,
+                        .source_modified = false,
+                        .detail = "write cancelled or superseded"},
+            .output = {}
+        });
+}
+
+void BackgroundMetadataWrites::stop()
+{
+    std::deque<Pending> cancelled;
     {
         std::lock_guard lock{mutex_};
         stopping_ = true;
-        jobs_.clear();
-        pending_.clear();
+        cancelled.swap(jobs_);
+        if (active_)
+            active_->request_stop();
     }
-
-    available_.notify_one();
+    for (auto& pending : cancelled)
+        cancel(std::move(pending));
+    available_.notify_all();
+    if (worker_.joinable())
+        worker_.join();
 }
 
-bool BackgroundMetadataWrites::conflicts(const Job& job) const
+std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(MetadataWriteJob job,
+    Observer observer)
 {
-    const library::TrackRecord* track = repository_.track(job.media);
-    if (track == nullptr)
-        return true;
-
-    const media::ExpectedMediaState& expected = job.request.expected;
-
-    if (expected.metadata_revision && track->metadata_revision != *expected.metadata_revision)
-        return true;
-
-    if (expected.content_revision && track->content_revision != *expected.content_revision)
-        return true;
-
-    return !expected.fingerprint.empty() && track->fingerprint != expected.fingerprint;
-}
-
-bool BackgroundMetadataWrites::enqueue(const library::MediaId& media, std::filesystem::path path,
-    media::MetadataWriteRequest request, Observer observer)
-{
-    if (!media.valid())
-        return false;
-
-    auto job = std::make_shared<Job>(Job{.media = media,
-        .path = std::move(path),
-        .request = std::move(request),
-        .observer = std::move(observer)});
-
-    if (conflicts(*job)) {
-        job->observer({
-            .media = job->media,
-            .location = job->path,
-            .outcome = {.state = media::MetadataWriteState::failed,
-                        .error = media::MetadataWriteError::conflicted,
-                        .source_modified = false,
-                        .detail = "media changed before the metadata write"}
-        });
-        return true;
-    }
-
+    if (!job.media.valid() || job.source.empty() || !observer || !job.cancellation)
+        return {};
+    std::optional<Pending> superseded;
+    MetadataWriteOperationId id;
     {
         std::lock_guard lock{mutex_};
-        if (stopping_ || jobs_.size() >= max_pending_writes)
-            return false;
-
-        if (const auto pending = pending_.find(media); pending != pending_.end()) {
-            pending->second->path = std::move(job->path);
-            pending->second->request = std::move(job->request);
-            pending->second->observer = std::move(job->observer);
-        } else {
-            pending_.emplace(media, job);
-            jobs_.push_back(std::move(job));
-        }
+        if (stopping_)
+            return {};
+        const auto previous = std::ranges::find_if(jobs_,
+            [&](const auto& item) { return item.job.media == job.media; });
+        if (previous == jobs_.end() && jobs_.size() >= 256)
+            return {};
+        id = job.operation.valid() ? job.operation : MetadataWriteOperationId{++next_operation_};
+        job.operation = id;
+        if (previous != jobs_.end()) {
+            superseded = std::move(*previous);
+            *previous = {std::move(job), std::move(observer)};
+        } else
+            jobs_.push_back({std::move(job), std::move(observer)});
     }
-
+    if (superseded)
+        cancel(std::move(*superseded));
     available_.notify_one();
-    return true;
+    return id;
 }
 
 void BackgroundMetadataWrites::run()
 {
-    while (true) {
-        std::shared_ptr<Job> job;
-
+    for (;;) {
+        Pending pending;
         {
             std::unique_lock lock{mutex_};
             available_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
-
             if (stopping_)
                 return;
-
-            job = std::move(jobs_.front());
+            pending = std::move(jobs_.front());
             jobs_.pop_front();
-            pending_.erase(job->media);
+            active_ = pending.job.cancellation;
         }
-
-        auto asset = provider_->open(job->path);
-        media::MetadataWriteOutcome outcome;
-
-        if (!asset) {
-            outcome = {.state = media::MetadataWriteState::failed,
+        MetadataWriteResult result{.job = pending.job,
+            .stage = MetadataWriteStage::failed,
+            .outcome = {},
+            .output = {}};
+        try {
+            const auto& job = pending.job;
+            if (job.context().stop_reason() != media::StopReason::none)
+                result.stage = MetadataWriteStage::cancelled;
+            else if (!job.expected_source.fingerprint.empty() &&
+                library::fingerprint_media(job.source) !=
+                    std::optional{job.expected_source.fingerprint}) {
+                result.stage = MetadataWriteStage::conflicted;
+                result.outcome.error = media::MetadataWriteError::conflicted;
+                result.outcome.detail = "source changed before staging";
+            } else {
+                auto patch = library::file_metadata_patch(job.patch);
+                auto asset = provider_->open(job.source, job.context());
+                if (!patch) {
+                    result.outcome.error = media::MetadataWriteError::invalid_edit;
+                    result.outcome.detail = patch.error().detail;
+                } else if (!asset) {
+                    result.outcome.error = media::MetadataWriteError::io;
+                    result.outcome.detail = asset.error().detail;
+                } else {
+                    // Application override revisions are deliberately not source-file revisions.
+                    auto expected = job.expected_source;
+                    expected.metadata_revision.reset();
+                    result.job.capabilities = (*asset)->metadata_write_capabilities();
+                    result.outcome =
+                        (*asset)->write_metadata({.overrides = *patch, .expected = expected},
+                            job.context());
+                    if (result.outcome.state == media::MetadataWriteState::written &&
+                        !result.outcome.source_modified) {
+                        const std::filesystem::path path{result.outcome.detail};
+                        if (!path.empty() &&
+                            path.lexically_normal() != job.source.lexically_normal()) {
+                            result.output = std::make_shared<StagedMetadataOutput>(path);
+                            result.stage = job.context().stop_reason() == media::StopReason::none
+                                ? MetadataWriteStage::ready
+                                : MetadataWriteStage::cancelled;
+                        } else
+                            result.outcome.error = media::MetadataWriteError::invalid_output;
+                    } else if (result.outcome.error == media::MetadataWriteError::cancelled)
+                        result.stage = MetadataWriteStage::cancelled;
+                }
+            }
+        } catch (const std::exception& error) {
+            result.outcome = {.state = media::MetadataWriteState::failed,
                 .error = media::MetadataWriteError::io,
                 .source_modified = false,
-                .detail = asset.error().detail};
-        } else {
-            outcome = (*asset)->write_metadata(job->request);
+                .detail = error.what()};
         }
-
-        job->observer({.media = job->media, .location = job->path, .outcome = std::move(outcome)});
+        if (result.stage != MetadataWriteStage::ready) {
+            result.outcome.state = media::MetadataWriteState::failed;
+            if (result.stage == MetadataWriteStage::cancelled)
+                result.outcome.error = media::MetadataWriteError::cancelled;
+            result.output.reset();
+        }
+        {
+            std::lock_guard lock{mutex_};
+            active_.reset();
+        }
+        pending.observer(std::move(result));
     }
 }
 

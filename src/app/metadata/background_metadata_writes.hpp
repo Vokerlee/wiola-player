@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Identity-scoped background metadata writes with coalescing and conflict checks.
+ * @brief Captured metadata edit targets, expected state, mixed fields and draft.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,55 +19,41 @@
  */
 
 #pragma once
-
-#include <library/in_memory_repository.hpp>
-#include <media/provider.hpp>
-
+#include "metadata_write_job.hpp"
 #include <condition_variable>
 #include <deque>
 #include <functional>
-#include <map>
-#include <memory>
+#include <media/provider.hpp>
 #include <mutex>
 #include <thread>
 
 namespace wiola::app {
 
-struct BackgroundMetadataWriteResult {
-    library::MediaId media;
-    std::filesystem::path location;
-    media::MetadataWriteOutcome outcome;
-};
-
+/// One bounded staging worker. Jobs own immutable file expectations; no live repository access.
 class BackgroundMetadataWrites final {
 public:
-    using Observer = std::function<void(BackgroundMetadataWriteResult)>;
-
-    BackgroundMetadataWrites(std::shared_ptr<media::MediaProvider> provider,
-        library::InMemoryRepository& repository);
+    using Observer = std::function<void(MetadataWriteResult)>;
+    explicit BackgroundMetadataWrites(std::shared_ptr<media::MediaProvider> provider);
     ~BackgroundMetadataWrites();
-
-    [[nodiscard]] bool enqueue(const library::MediaId& media, std::filesystem::path path,
-        media::MetadataWriteRequest request, Observer observer);
+    void stop();
+    [[nodiscard]] std::optional<MetadataWriteOperationId> enqueue(MetadataWriteJob job,
+        Observer observer);
 
 private:
-    struct Job {
-        library::MediaId media;
-        std::filesystem::path path;
-        media::MetadataWriteRequest request;
+    struct Pending {
+        MetadataWriteJob job;
         Observer observer;
     };
 
     void run();
-    [[nodiscard]] bool conflicts(const Job& job) const;
-
+    static void cancel(Pending pending);
     std::shared_ptr<media::MediaProvider> provider_;
-    library::InMemoryRepository& repository_;
     std::mutex mutex_;
     std::condition_variable available_;
-    std::deque<std::shared_ptr<Job>> jobs_;
-    std::map<library::MediaId, std::shared_ptr<Job>> pending_;
-    bool stopping_{false};
+    std::deque<Pending> jobs_;
+    std::shared_ptr<std::stop_source> active_;
+    bool stopping_{};
+    std::uint64_t next_operation_{};
     std::jthread worker_;
 };
 
