@@ -35,22 +35,14 @@
 #include <algorithm>
 #include <array>
 #include <map>
+#include <set>
+#include <type_traits>
 
 namespace wiola::gui {
 
 namespace {
 
 using Column = StandardTrackColumn;
-
-bool same_metadata(const TrackRow& a, const TrackRow& b)
-{
-    return a == b;
-}
-
-bool restricted(const library::SearchQuery& query)
-{
-    return track_query_active(query);
-}
 
 } // namespace
 
@@ -166,74 +158,119 @@ TrackColumnDescriptor TrackTableModel::column(int section) const
 void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
     std::optional<TrackRowId> current)
 {
-    const bool same_structure = source_rows_.size() == tracks.size() &&
-        std::ranges::equal(source_rows_, tracks,
-            [](const TrackRow& a, const TrackRow& b) { return a.id == b.id; });
-    const bool same_contents = same_structure &&
-        std::ranges::equal(source_rows_, tracks,
-            [](const TrackRow& a, const TrackRow& b) { return same_metadata(a, b); });
-
-    if (!state_.sort_keys.empty() || restricted(state_.query)) {
-        if (!same_contents) {
-            beginResetModel();
-            source_rows_ = tracks;
-            rows_ = visible_rows();
-            endResetModel();
-        }
-    } else if (!same_structure) {
-        beginResetModel();
-        source_rows_ = tracks;
-        rows_ = tracks;
-        endResetModel();
-    } else {
-        for (std::size_t row = 0; row < rows_.size(); ++row) {
-            if (same_metadata(source_rows_[row], tracks[row]))
-                continue;
-
-            source_rows_[row] = tracks[row];
-            rows_[row] = tracks[row];
-            const QModelIndex first{index(static_cast<int>(row), 0)};
-            const QModelIndex last{index(static_cast<int>(row), columnCount({}) - 1)};
-            emit dataChanged(first, last);
-        }
+    std::set<TrackRowId> seen;
+    source_rows_.clear();
+    source_rows_.reserve(tracks.size());
+    for (const auto& row : tracks) {
+        const bool valid = std::visit(
+            [](const auto& id) {
+                if constexpr (std::is_same_v<std::decay_t<decltype(id)>, WorkspaceTrackId>)
+                    return id.workspace.valid() && id.media.valid();
+                else
+                    return id.valid();
+            },
+            row.id
+        );
+        if (valid && seen.insert(row.id).second)
+            source_rows_.push_back(row);
     }
-
-    const auto previous{current_};
+    reconcile_rows(visible_rows());
+    if (current_ == current)
+        return;
+    const auto previous = current_;
     current_ = current;
-
     for (const auto& id : {previous, current_}) {
         if (!id)
             continue;
+        const auto first = index_of(*id);
+        if (first.isValid())
+            emit dataChanged(first, index(first.row(), columnCount() - 1),
+                {Qt::FontRole, Qt::BackgroundRole});
+    }
+}
 
-        const auto row = std::ranges::find(rows_, *id, &TrackRow::id);
-        if (row != rows_.end()) {
-            const auto position = static_cast<int>(std::distance(rows_.begin(), row));
-            emit dataChanged(index(position, 0), index(position, columnCount({}) - 1));
+void TrackTableModel::rebuild_row_index()
+{
+    row_index_.clear();
+    for (std::size_t i = 0; i < rows_.size(); ++i)
+        row_index_.emplace(rows_[i].id, static_cast<int>(i));
+}
+
+QModelIndex TrackTableModel::index_of(const TrackRowId& id, int column) const
+{
+    const auto found = row_index_.find(id);
+    return found == row_index_.end() ? QModelIndex{} : index(found->second, column);
+}
+
+void TrackTableModel::reconcile_rows(std::vector<TrackRow> next)
+{
+    std::map<TrackRowId, std::size_t> positions;
+    for (std::size_t i = 0; i < next.size(); ++i)
+        positions.emplace(next[i].id, i);
+    // Remove backwards so every emitted range refers to the current model.
+    for (int last = static_cast<int>(rows_.size()) - 1; last >= 0;) {
+        if (positions.contains(rows_[static_cast<std::size_t>(last)].id)) {
+            --last;
+            continue;
         }
+        int first = last;
+        while (first > 0 && !positions.contains(rows_[static_cast<std::size_t>(first - 1)].id))
+            --first;
+        beginRemoveRows({}, first, last);
+        rows_.erase(rows_.begin() + first, rows_.begin() + last + 1);
+        rebuild_row_index();
+        endRemoveRows();
+        last = first - 1;
+    }
+    std::vector<TrackRow> added;
+    for (const auto& row : next)
+        if (!row_index_.contains(row.id))
+            added.push_back(row);
+    if (!added.empty()) {
+        const int first = static_cast<int>(rows_.size());
+        beginInsertRows({}, first, first + static_cast<int>(added.size()) - 1);
+        rows_.insert(rows_.end(), std::make_move_iterator(added.begin()),
+            std::make_move_iterator(added.end()));
+        rebuild_row_index();
+        endInsertRows();
+    }
+    const bool reordered =
+        !std::ranges::equal(rows_, next, [](const auto& a, const auto& b) { return a.id == b.id; });
+    if (reordered) {
+        emit layoutAboutToBeChanged({}, QAbstractItemModel::VerticalSortHint);
+        const auto old = persistentIndexList();
+        QModelIndexList replacement;
+        for (const auto& value : old)
+            replacement.push_back(index(
+                static_cast<int>(positions.at(rows_[static_cast<std::size_t>(value.row())].id)),
+                value.column()
+            ));
+        // Keep old values until dataChanged below so reordering and edits remain distinct.
+        std::vector<TrackRow> ordered;
+        ordered.reserve(next.size());
+        for (const auto& row : next)
+            ordered.push_back(std::move(rows_[static_cast<std::size_t>(row_index_.at(row.id))]));
+        rows_ = std::move(ordered);
+        rebuild_row_index();
+        changePersistentIndexList(old, replacement);
+        emit layoutChanged({}, QAbstractItemModel::VerticalSortHint);
+    }
+    for (std::size_t i = 0; i < next.size(); ++i) {
+        if (rows_[i] == next[i])
+            continue;
+        rows_[i] = std::move(next[i]);
+        emit dataChanged(index(static_cast<int>(i), 0),
+            index(static_cast<int>(i), columnCount() - 1));
     }
 }
 
 void TrackTableModel::show_library(const library::LibraryRepository& repository)
 {
     repository_ = &repository;
-    std::vector<TrackRow> visible = visible_rows();
-    const bool different_order = rows_.size() != visible.size() ||
-        !std::ranges::equal(rows_, visible,
-            [](const TrackRow& a, const TrackRow& b) { return a.id == b.id; });
-
-    if (different_order) {
-        beginResetModel();
-        rows_ = std::move(visible);
-        endResetModel();
-    } else {
-        rows_ = std::move(visible);
-    }
-
-    if (rows_.empty() || tag_columns_.empty())
-        return;
-
-    emit dataChanged(index(0, standard_columns),
-        index(static_cast<int>(rows_.size()) - 1, columnCount({}) - 1));
+    for (auto& row : source_rows_)
+        if (const auto* record = repository.track(row.media))
+            row.tags = record->tags;
+    reconcile_rows(visible_rows());
 }
 
 void TrackTableModel::show_tag_keys(std::vector<std::string> keys)
@@ -257,9 +294,17 @@ void TrackTableModel::show_tag_keys(std::vector<std::string> keys)
     if (columns == tag_columns_)
         return;
 
-    beginResetModel();
-    tag_columns_ = std::move(columns);
-    endResetModel();
+    if (!tag_columns_.empty()) {
+        beginRemoveColumns({}, standard_columns, columnCount() - 1);
+        tag_columns_.clear();
+        endRemoveColumns();
+    }
+    if (!columns.empty()) {
+        beginInsertColumns({}, standard_columns,
+            standard_columns + static_cast<int>(columns.size()) - 1);
+        tag_columns_ = std::move(columns);
+        endInsertColumns();
+    }
 }
 
 bool TrackTableModel::set_view_state(TrackViewState state)
@@ -267,10 +312,8 @@ bool TrackTableModel::set_view_state(TrackViewState state)
     state = normalized_track_view_state(std::move(state));
     if (state == state_)
         return false;
-    beginResetModel();
     state_ = std::move(state);
-    rows_ = visible_rows();
-    endResetModel();
+    reconcile_rows(visible_rows());
     return true;
 }
 

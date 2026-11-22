@@ -28,6 +28,7 @@
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QPainter>
+#include <QScrollBar>
 #include <QStyledItemDelegate>
 
 #include <algorithm>
@@ -177,19 +178,24 @@ void TrackTableView::set_capabilities(TrackCapabilities capabilities)
 void TrackTableView::show_rows(const std::vector<TrackRow>& tracks,
     std::optional<TrackRowId> current)
 {
-    const std::vector<TrackRowId> selected = chosen_rows();
     const auto current_id = model_.row_id(currentIndex());
-
+    const QPersistentModelIndex anchor = indexAt(QPoint{0, 0});
+    const int offset = anchor.isValid() ? visualRect(anchor).top() : 0;
     model_.show_rows(tracks, current);
-    restore_selection(selected, current_id);
+    if (current_id && !model_.index_of(*current_id).isValid())
+        selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
+    if (anchor.isValid()) {
+        scrollTo(anchor, QAbstractItemView::PositionAtTop);
+        verticalScrollBar()->setValue(verticalScrollBar()->value() - offset);
+    }
 }
 
 void TrackTableView::show_library(const library::LibraryRepository& repository)
 {
-    const std::vector<TrackRowId> selected = chosen_rows();
     const auto current_id = model_.row_id(currentIndex());
     model_.show_library(repository);
-    restore_selection(selected, current_id);
+    if (current_id && !model_.index_of(*current_id).isValid())
+        selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
 
     std::vector<std::string> available;
     if (tag_catalog_)
@@ -307,11 +313,11 @@ void TrackTableView::update_tag_columns()
 
 bool TrackTableView::set_view_state(TrackViewState state)
 {
-    const auto selected = chosen_rows();
     const auto current = model_.row_id(currentIndex());
     if (!model_.set_view_state(std::move(state)))
         return false;
-    restore_selection(selected, current);
+    if (current && !model_.index_of(*current).isValid())
+        selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
     update_sort_indicator();
     emit view_state_changed();
     return true;
@@ -386,19 +392,16 @@ void TrackTableView::update_sort_indicator()
 void TrackTableView::restore_selection(const std::vector<TrackRowId>& selected,
     const std::optional<TrackRowId>& current)
 {
+    // Used for schema changes only. Ordinary row updates preserve Qt persistent selections.
     selectionModel()->clearSelection();
-
-    for (int row = 0; row < model_.rowCount(); ++row) {
-        const QModelIndex first = model_.index(row, 0);
-        const auto id = model_.row_id(first);
-
-        if (id && std::ranges::find(selected, *id) != selected.end())
+    for (const auto& id : selected) {
+        const auto first = model_.index_of(id);
+        if (first.isValid())
             selectionModel()->select(first,
                 QItemSelectionModel::Select | QItemSelectionModel::Rows);
-
-        if (id && id == current)
-            selectionModel()->setCurrentIndex(first, QItemSelectionModel::NoUpdate);
     }
+    selectionModel()->setCurrentIndex(current ? model_.index_of(*current) : QModelIndex{},
+        QItemSelectionModel::NoUpdate);
 }
 
 std::size_t TrackTableView::visible_count() const

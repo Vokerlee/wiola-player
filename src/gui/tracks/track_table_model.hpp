@@ -59,6 +59,7 @@ public:
     [[nodiscard]] const TrackViewState& view_state() const noexcept { return state_; }
 
     [[nodiscard]] std::vector<library::MediaId> media_ids() const;
+    [[nodiscard]] QModelIndex index_of(const TrackRowId& id, int column = 0) const;
     [[nodiscard]] TrackColumnDescriptor column(int section) const;
     [[nodiscard]] std::optional<TrackRowId> row_id(const QModelIndex& index) const;
 
@@ -67,6 +68,9 @@ public:
 private:
     [[nodiscard]] std::vector<TrackRow> visible_rows() const;
 
+    void reconcile_rows(std::vector<TrackRow> next);
+    void rebuild_row_index();
+    std::map<TrackRowId, int> row_index_;
     mutable ArtworkCache artwork_;
     ArtworkCachePolicy policy_;
     std::vector<TrackRow> source_rows_;
