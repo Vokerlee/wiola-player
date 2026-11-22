@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <persistence/qt/library_json.hpp>
+#include <persistence/qt/library_store.hpp>
 
 #include <QSettings>
 
@@ -34,7 +34,7 @@ public:
     explicit QueueLibraryMigration(QSettings& settings);
 
     /// Preserves an existing valid library; otherwise imports the queue without deleting it.
-    persistence::qt::LibraryJsonError migrate(QSettings& settings) const;
+    persistence::qt::LibraryStoreResult migrate(QSettings& settings) const;
 
 private:
     std::filesystem::path file_;

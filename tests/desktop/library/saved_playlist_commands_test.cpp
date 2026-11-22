@@ -20,7 +20,7 @@
 
 #include <desktop/library/saved_playlist_commands.hpp>
 
-#include <persistence/qt/library_storage.hpp>
+#include <persistence/qt/library_store.hpp>
 
 #include <QCoreApplication>
 #include <QDir>
@@ -43,10 +43,10 @@ protected:
 
 TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlaylists)
 {
-    wiola::persistence::qt::LibraryStorage storage{file()};
+    wiola::persistence::qt::LibraryStore storage{file()};
     auto persist = [&storage](const wiola::library::LibraryRepository& records) {
         return storage.save(wiola::library::snapshot_of(records)) ==
-            wiola::persistence::qt::LibraryJsonError::none;
+            wiola::persistence::qt::LibraryStoreResult{};
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
     const wiola::library::MediaId media{"media-1"};
@@ -60,7 +60,7 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
     ASSERT_TRUE(repository.append_track(original, media));
     ASSERT_TRUE(repository.append_track(original, media));
     ASSERT_EQ(storage.save(wiola::library::snapshot_of(repository)),
-        wiola::persistence::qt::LibraryJsonError::none);
+        wiola::persistence::qt::LibraryStoreResult{});
 
     ASSERT_TRUE(commands.rename(original, "Evening"));
     const auto copy = commands.duplicate(original);
@@ -83,7 +83,7 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
 
     wiola::library::InMemoryRepository restored;
     ASSERT_EQ(wiola::persistence::qt::restore_repository(storage, restored),
-        wiola::persistence::qt::LibraryJsonError::none);
+        wiola::persistence::qt::LibraryStoreResult{});
     EXPECT_EQ(restored.playlist(original), nullptr);
     ASSERT_NE(restored.playlist(copy), nullptr);
     EXPECT_EQ(restored.playlist(copy)->entries.size(), 2);
@@ -91,10 +91,10 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
 
 TEST_F(SavedPlaylistCommands, RejectsBlankNamesAndMissingPlaylists)
 {
-    wiola::persistence::qt::LibraryStorage storage{file()};
+    wiola::persistence::qt::LibraryStore storage{file()};
     auto persist = [&storage](const wiola::library::LibraryRepository& records) {
         return storage.save(wiola::library::snapshot_of(records)) ==
-            wiola::persistence::qt::LibraryJsonError::none;
+            wiola::persistence::qt::LibraryStoreResult{};
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
 
@@ -114,10 +114,10 @@ TEST_F(SavedPlaylistCommands, RollsBackRepositoryChangesWhenPersistenceFails)
 {
     ASSERT_TRUE(QDir{directory.path()}.mkdir("blocked"));
 
-    wiola::persistence::qt::LibraryStorage storage{file("blocked")};
+    wiola::persistence::qt::LibraryStore storage{file("blocked")};
     auto persist = [&storage](const wiola::library::LibraryRepository& records) {
         return storage.save(wiola::library::snapshot_of(records)) ==
-            wiola::persistence::qt::LibraryJsonError::none;
+            wiola::persistence::qt::LibraryStoreResult{};
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
 

@@ -41,7 +41,7 @@ namespace wiola::persistence::qt {
 
 namespace {
 
-constexpr std::size_t max_document_bytes{16 * 1024 * 1024};
+constexpr std::size_t max_document_bytes{max_library_document_bytes};
 constexpr std::size_t max_tracks{10000};
 constexpr std::size_t max_playlists{1000};
 constexpr std::size_t max_workspaces{1000};
