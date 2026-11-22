@@ -32,6 +32,7 @@
 #include <desktop/playback/volume_control.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
+#include <gui/documents/document_registry.hpp>
 #include <gui/documents/now_playing_document.hpp>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
@@ -264,8 +265,7 @@ private:
     QSplitter* document_area_{nullptr};
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};
-    std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
-    std::map<library::WorkspaceId, WorkspaceDocument*> workspace_documents_;
+    DocumentRegistry registry_;
     app::WorkspaceScanPublisher* workspace_scans_;
     app::WorkspaceWatcher* workspace_watcher_;
     TrackInspector* inspector_{nullptr};

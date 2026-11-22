@@ -14,6 +14,7 @@ wiola_add_library(
         layout/layout_editor.cpp
         shell/main_window.cpp
         metadata/metadata_conflict_panel.cpp
+        documents/document_registry.cpp
         documents/now_playing_document.cpp
         metadata/track_inspector.cpp
         tracks/track_table_model.cpp

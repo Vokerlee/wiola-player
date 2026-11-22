@@ -246,6 +246,18 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     documents_->setObjectName("documentTabs");
     documents_->setDocumentMode(true);
     documents_->addTab(now_playing_, "Now Playing");
+    registry_.add(*now_playing_, [this] {
+        std::vector<SelectedTrack> selected;
+        for (const auto occurrence : now_playing_->chosen_tracks()) {
+            const auto row = playback_.playlist().index_of(occurrence);
+            if (row)
+                selected.push_back(
+                    {library::media_id_for(playback_.playlist().tracks()[*row].path()), occurrence}
+                );
+        }
+        return selected;
+    });
+    static_cast<void>(registry_.activate(DocumentId::queue()));
     documents_->addTab(placeholder_document(documents_,
                            "Folder workspaces will open here without changing the playback queue."),
         "Folder Workspace");
@@ -279,9 +291,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
     connect(&library_session_, &app::LibrarySession::scan_batch, this,
         [this](const app::WorkspaceScanBatch& batch) {
-            const auto found = workspace_documents_.find(batch.workspace);
-            if (found != workspace_documents_.end())
-                static_cast<void>(found->second->show_batch(batch));
+            if (auto* document = registry_.workspace(batch.workspace))
+                static_cast<void>(document->show_batch(batch));
         });
     connect(&library_session_, &app::LibrarySession::metadata_outcome, this,
         &MainWindow::publish_metadata_outcome);
@@ -311,6 +322,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
     navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });
     connect(documents_, &QTabWidget::currentChanged, this, [this](int) {
+        registry_.activate(documents_->currentWidget());
         save_playlist_documents();
         save_workspace_documents();
     });
@@ -534,7 +546,7 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
     static_cast<void>(builder.register_widget("nowPlayingFilters",
         now_playing_->findChild<QWidget*>("tagFilterPanel")));
 
-    for (const auto& [id, saved] : playlist_documents_) {
+    for (const auto& [id, saved] : registry_.playlists()) {
         const QString identity = QString::fromStdString(id.value);
         static_cast<void>(builder.register_widget("playlistDocument:" + identity, saved));
         static_cast<void>(builder.register_widget("playlistSearch:" + identity,
@@ -543,7 +555,7 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
             saved->findChild<QWidget*>("tagFilterPanel")));
     }
 
-    for (const auto& [id, workspace] : workspace_documents_) {
+    for (const auto& [id, workspace] : registry_.workspaces()) {
         const QString identity = QString::fromStdString(id.value);
         static_cast<void>(builder.register_widget("workspaceDocument:" + identity, workspace));
         static_cast<void>(builder.register_widget("workspaceSearch:" + identity,
@@ -685,10 +697,8 @@ void MainWindow::export_m3u_playlist()
 {
     std::optional<library::PlaylistId> selected;
 
-    for (const auto& [id, document] : playlist_documents_) {
-        if (documents_->currentWidget() == document)
-            selected = id;
-    }
+    if (const auto current = registry_.active(); current && current->playlist())
+        selected = *current->playlist();
 
     if (!selected)
         selected = active_playlist_.id();
@@ -757,8 +767,8 @@ void MainWindow::play_chosen(engine::QueueEntryId id)
 
 void MainWindow::open_playlist(const library::PlaylistId& id)
 {
-    if (const auto found = playlist_documents_.find(id); found != playlist_documents_.end()) {
-        documents_->setCurrentWidget(found->second);
+    if (auto* existing = registry_.playlist(id)) {
+        documents_->setCurrentWidget(existing);
         save_playlist_documents();
         return;
     }
@@ -769,7 +779,18 @@ void MainWindow::open_playlist(const library::PlaylistId& id)
         return;
     }
 
-    playlist_documents_.emplace(id, document);
+    registry_.add(id, *document, [this, id, document] {
+        std::vector<SelectedTrack> selected;
+        if (const auto* playlist = library_.playlist(id)) {
+            for (const auto& entry : document->chosen_entries()) {
+                const auto found =
+                    std::ranges::find(playlist->entries, entry, &library::PlaylistEntryRecord::id);
+                if (found != playlist->entries.end())
+                    selected.push_back({found->media, entry});
+            }
+        }
+        return selected;
+    });
     document->set_active(active_playlist_.id() == id);
     document->on_active_requested([this, id] { activate_playlist(id); });
     document->on_play_requested([this, id] { play_saved_playlist(id); });
@@ -834,14 +855,23 @@ void MainWindow::open_workspace(const library::WorkspaceId& id)
     if (workspace == nullptr)
         return;
 
-    if (const auto found = workspace_documents_.find(id); found != workspace_documents_.end()) {
-        documents_->setCurrentWidget(found->second);
+    if (auto* existing = registry_.workspace(id)) {
+        documents_->setCurrentWidget(existing);
         save_workspace_documents();
         return;
     }
 
     WorkspaceDocument* document = new WorkspaceDocument{this};
-    workspace_documents_.emplace(id, document);
+    registry_.add(id, *document, [id, document] {
+        std::vector<SelectedTrack> selected;
+        for (const auto& path : document->chosen_paths()) {
+            const auto media = library::media_id_for(path);
+            selected.push_back({
+                media, WorkspaceTrackId{id, media}
+            });
+        }
+        return selected;
+    });
     document->on_rescan_requested([this, id](bool recursive) { rescan_workspace(id, recursive); });
     document->on_cancel_requested([this, document] {
         workspace_scans_->cancel();
@@ -916,8 +946,7 @@ void MainWindow::transfer_workspace(WorkspaceDocument& document, bool choose_des
 void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive)
 {
     const library::WorkspaceRecord* current = library_.workspace(id);
-    WorkspaceDocument* document =
-        workspace_documents_.contains(id) ? workspace_documents_.at(id) : nullptr;
+    WorkspaceDocument* document = registry_.workspace(id);
     if (current == nullptr || document == nullptr)
         return;
 
@@ -954,9 +983,8 @@ void MainWindow::restore_workspace_documents()
     for (const QString& id : open)
         open_workspace(library::WorkspaceId{id.toStdString()});
 
-    const auto current = workspace_documents_.find(current_id);
-    if (current != workspace_documents_.end())
-        documents_->setCurrentWidget(current->second);
+    if (auto* current = registry_.workspace(current_id))
+        documents_->setCurrentWidget(current);
 }
 
 void MainWindow::save_workspace_documents()
@@ -964,7 +992,7 @@ void MainWindow::save_workspace_documents()
     QStringList open;
     QString current;
 
-    for (const auto& [id, document] : workspace_documents_) {
+    for (const auto& [id, document] : registry_.workspaces()) {
         open.push_back(QString::fromStdString(id.value));
         if (documents_->currentWidget() == document)
             current = QString::fromStdString(id.value);
@@ -984,7 +1012,7 @@ void MainWindow::activate_playlist(const library::PlaylistId& id)
     settings_.setValue("playlists/active", QString::fromStdString(id.value));
     settings_.sync();
 
-    for (const auto& [playlist, document] : playlist_documents_)
+    for (const auto& [playlist, document] : registry_.playlists())
         document->set_active(playlist == id);
 }
 
@@ -1164,7 +1192,7 @@ void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
     if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
         show_workspace_navigation();
     refresh_playlist_documents();
-    for (const auto& [id, document] : workspace_documents_) {
+    for (const auto& [id, document] : registry_.workspaces()) {
         for (const auto& change : batch.media)
             static_cast<void>(document->show_media_revision(library_, change.media));
     }
@@ -1211,50 +1239,14 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
 std::vector<const library::TrackRecord*> MainWindow::selected_records()
 {
     std::vector<const library::TrackRecord*> selected;
-
-    for (const auto& [id, document] : playlist_documents_) {
-        if (documents_->currentWidget() != document)
-            continue;
-
-        for (const library::PlaylistEntryId& entry : document->chosen_entries()) {
-            const auto& entries = library_.playlist(id)->entries;
-            const auto found = std::ranges::find(entries, entry, &library::PlaylistEntryRecord::id);
-            if (found != entries.end())
-                selected.push_back(library_.track(found->media));
-        }
-    }
-
-    for (const auto& [id, document] : workspace_documents_) {
-        if (documents_->currentWidget() != document)
-            continue;
-
-        for (const std::filesystem::path& path : document->chosen_paths())
-            selected.push_back(library_.track(library::media_id_for(path)));
-    }
-
-    if (documents_->currentWidget() == now_playing_) {
-        for (const engine::QueueEntryId entry : now_playing_->chosen_tracks()) {
-            const auto row = playback_.playlist().index_of(entry);
-            if (row) {
-                selected.push_back(library_.track(
-                    library::media_id_for(playback_.playlist().tracks()[*row].path())
-                ));
-            }
-        }
-    }
-
-    const auto without_missing = std::ranges::remove_if(selected,
-        [](const library::TrackRecord* track) { return track == nullptr; });
-    selected.erase(without_missing.begin(), without_missing.end());
-
+    for (const auto& item : registry_.selection())
+        if (const auto* record = library_.track(item.media))
+            selected.push_back(record);
     if (selected.empty()) {
-        if (const engine::Track* current = playback_.playlist().current()) {
-            if (const library::TrackRecord* record =
-                    library_.track(library::media_id_for(current->path())))
+        if (const auto* current = playback_.playlist().current())
+            if (const auto* record = library_.track(library::media_id_for(current->path())))
                 selected.push_back(record);
-        }
     }
-
     return selected;
 }
 
@@ -1348,27 +1340,18 @@ void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcom
 
 void MainWindow::refresh_playlist_documents()
 {
-    for (auto it = playlist_documents_.begin(); it != playlist_documents_.end();) {
-        const library::PlaylistRecord* playlist = library_.playlist(it->first);
-        SavedPlaylistDocument* document = it->second;
-
-        if (playlist == nullptr) {
+    for (const auto& [id, document] : registry_.playlists()) {
+        const auto* playlist = library_.playlist(id);
+        if (!playlist) {
+            registry_.remove(DocumentId::playlist(id));
             documents_->removeTab(documents_->indexOf(document));
             document->deleteLater();
-
-            if (active_playlist_.clear_if(it->first))
-                settings_.remove("playlists/active");
-
-            it = playlist_documents_.erase(it);
             continue;
         }
-
-        static_cast<void>(document->show_playlist(library_, it->first));
+        static_cast<void>(document->show_playlist(library_, id));
         documents_->setTabText(documents_->indexOf(document),
             QString::fromStdString(playlist->name));
-        ++it;
     }
-
     save_playlist_documents();
 }
 
@@ -1380,9 +1363,8 @@ void MainWindow::restore_playlist_documents()
     for (const QString& id : open)
         open_playlist(library::PlaylistId{id.toStdString()});
 
-    const auto current = playlist_documents_.find(current_id);
-    if (current != playlist_documents_.end())
-        documents_->setCurrentWidget(current->second);
+    if (auto* current = registry_.playlist(current_id))
+        documents_->setCurrentWidget(current);
     else
         documents_->setCurrentIndex(0);
 }
@@ -1392,7 +1374,7 @@ void MainWindow::save_playlist_documents()
     QStringList open;
     QString current;
 
-    for (const auto& [id, document] : playlist_documents_) {
+    for (const auto& [id, document] : registry_.playlists()) {
         open.push_back(QString::fromStdString(id.value));
         if (documents_->currentWidget() == document)
             current = QString::fromStdString(id.value);
