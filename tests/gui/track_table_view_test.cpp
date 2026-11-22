@@ -27,6 +27,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QHeaderView>
+#include <QTest>
 
 #include <gtest/gtest.h>
 
@@ -222,11 +223,66 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
     EXPECT_EQ(playlist.tracks()[0].path(), "b.wav");
 }
 
+TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQueue)
+{
+    wiola::gui::TrackTableView view;
+    wiola::engine::Playlist playlist;
+    playlist.set({wiola::engine::Track::of("same.wav"), wiola::engine::Track::of("same.wav"),
+        wiola::engine::Track::of("other.wav")});
+    playlist.describe(id_at(playlist, 0),
+        {.title = "Same", .artist = "Zulu", .album = {}, .duration = {}});
+    playlist.describe(id_at(playlist, 1),
+        {.title = "Same", .artist = "Alpha", .album = {}, .duration = {}});
+    playlist.describe(id_at(playlist, 2),
+        {.title = "Last", .artist = "Beta", .album = {}, .duration = {}});
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = wiola::library::media_id_for("same.wav");
+    record.tags = {
+        {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"}
+    };
+    ASSERT_TRUE(repository.put_track(record));
+    view.show_library(repository);
+    auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
+    ASSERT_NE(genre, nullptr);
+    genre->setChecked(true);
+    view.show_tracks(playlist.tracks());
+    view.selectRow(1);
+    view.resize(1000, 400);
+    view.show();
+    QApplication::processEvents();
+    const auto click = [&view](int column, Qt::KeyboardModifiers modifiers = Qt::NoModifier) {
+        auto* header = view.horizontalHeader();
+        const QPoint point{header->sectionViewportPosition(column) +
+                header->sectionSize(column) / 2,
+            header->height() / 2};
+        QTest::mouseClick(header->viewport(), Qt::LeftButton, modifiers, point);
+    };
+    click(1);
+    click(2, Qt::ShiftModifier);
+    EXPECT_EQ(view.displayed_tracks(),
+        (std::vector{id_at(playlist, 2), id_at(playlist, 1), id_at(playlist, 0)}));
+    click(2, Qt::ControlModifier);
+    EXPECT_EQ(view.displayed_tracks(),
+        (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
+    click(5, Qt::ShiftModifier);
+    EXPECT_EQ(view.displayed_tracks(),
+        (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
+    EXPECT_EQ(view.chosen_tracks(), std::vector{id_at(playlist, 1)});
+    EXPECT_EQ(playlist.tracks()[0].id(), id_at(playlist, 0));
+    EXPECT_EQ(playlist.tracks()[1].path(), "same.wav");
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
+#ifdef WIOLA_TEST_TSAN
+    // Avoid native font discovery threads in the uninstrumented system Qt build.
+    qputenv("QT_QPA_PLATFORM", "minimal");
+#else
     qputenv("QT_QPA_PLATFORM", "offscreen");
+#endif
     testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
 
