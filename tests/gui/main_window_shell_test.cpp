@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <codec/provider.hpp>
 #include <gui/shell/main_window.hpp>
 
 #include <gui/appearance/theme_editor.hpp>
@@ -102,7 +103,8 @@ protected:
 TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
 {
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
 
     ASSERT_NE(window.centralWidget(), nullptr);
 
@@ -153,7 +155,8 @@ TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
 TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocument)
 {
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     QTabWidget* documents = window.findChild<QTabWidget*>("documentTabs");
     wiola::gui::NowPlayingDocument* now_playing =
         window.findChild<wiola::gui::NowPlayingDocument*>();
@@ -184,7 +187,9 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 
     {
         wiola::engine::Session session;
-        wiola::gui::MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::gui::MainWindow window{session, window_library};
         wiola::gui::SavedPlaylistManager* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
             window.findChild<QWidget*>("savedPlaylistManager")
         );
@@ -218,7 +223,9 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 
     SCOPED_TRACE("restore the second window");
     wiola::engine::Session restored_session;
-    wiola::gui::MainWindow restored{restored_session};
+    wiola::app::LibrarySession restored_library{
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow restored{restored_session, restored_library};
     QTabWidget* documents = restored.findChild<QTabWidget*>("documentTabs");
     QPushButton* play_button = button(restored, "Play");
 
@@ -237,7 +244,8 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 TEST_F(MainWindowShell, GroupsControlsAndExposesTheirPurposeAndKeyboardFocus)
 {
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     QGroupBox* playback = window.findChild<QGroupBox*>("playbackGroup");
     QGroupBox* queue = window.findChild<QGroupBox*>("queueCommandsGroup");
     QPushButton* play = button(window, "Play");
@@ -275,7 +283,8 @@ TEST_F(MainWindowShell, LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocum
     const std::filesystem::path first{"/tmp/wiola-layout-first.mp3"};
     const std::filesystem::path second{"/tmp/wiola-layout-second.mp3"};
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     window.open({first, second});
 
     auto* now_playing = window.findChild<wiola::gui::NowPlayingDocument*>();
@@ -328,7 +337,8 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     using wiola::gui::LayoutComponentKind;
     using wiola::gui::LayoutNode;
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     window.open({"/tmp/wiola-nested-layout.mp3"});
 
     auto* documents = window.findChild<QTabWidget*>("documentTabs");
@@ -389,7 +399,8 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
 TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
 {
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     auto* documents = window.findChild<QTabWidget*>("documentTabs");
     QWidget* document_area = window.findChild<QWidget*>("documentArea");
     QWidget* root = window.centralWidget();
@@ -424,7 +435,8 @@ TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
 TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
 {
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     auto* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
         window.findChild<QWidget*>("savedPlaylistManager")
     );
@@ -477,7 +489,9 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
 {
     {
         wiola::engine::Session session;
-        wiola::gui::MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::gui::MainWindow window{session, window_library};
         auto* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
             window.findChild<QWidget*>("savedPlaylistManager")
         );
@@ -492,7 +506,9 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
 
     {
         wiola::engine::Session session;
-        wiola::gui::MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::gui::MainWindow window{session, window_library};
         auto* documents = window.findChild<QTabWidget*>("documentTabs");
         ASSERT_NE(documents, nullptr);
         ASSERT_EQ(documents->count(), 3);
@@ -505,7 +521,9 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
     }
 
     wiola::engine::Session session;
-    wiola::gui::MainWindow restored{session};
+    wiola::app::LibrarySession restored_library{
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow restored{session, restored_library};
     auto* documents = restored.findChild<QTabWidget*>("documentTabs");
     ASSERT_NE(documents, nullptr);
     ASSERT_EQ(documents->count(), 3);
@@ -519,13 +537,17 @@ TEST_F(MainWindowShell, RestoresTheNativeThemeChoice)
 {
     {
         wiola::engine::Session session;
-        wiola::gui::MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::gui::MainWindow window{session, window_library};
         action(*menu(window, "&View"), "Dark theme")->trigger();
         EXPECT_TRUE(action(*menu(window, "&View"), "Dark theme")->isChecked());
     }
 
     wiola::engine::Session session;
-    wiola::gui::MainWindow restored{session};
+    wiola::app::LibrarySession restored_library{
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow restored{session, restored_library};
     EXPECT_TRUE(action(*menu(restored, "&View"), "Dark theme")->isChecked());
     EXPECT_EQ(restored.palette().color(QPalette::Window), QColor{"#202124"});
 }
@@ -534,7 +556,9 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
 {
     {
         wiola::engine::Session session;
-        wiola::gui::MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::gui::MainWindow window{session, window_library};
         action(*menu(window, "&Tools"), "Edit theme...")->trigger();
 
         auto* dialog = window.findChild<QDialog*>("themeEditor");
@@ -546,14 +570,17 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
     }
 
     wiola::engine::Session session;
-    wiola::gui::MainWindow restored{session};
+    wiola::app::LibrarySession restored_library{
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow restored{session, restored_library};
     EXPECT_EQ(restored.palette().color(QPalette::Window), QColor{"#f0f0f0"});
 }
 
 TEST_F(MainWindowShell, LayoutPreviewCommandsAndCancelDoNotTouchPlayerState)
 {
     wiola::engine::Session session;
-    wiola::gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::gui::MainWindow window{session, window_library};
     window.open({"/tmp/wiola-preview-queue.mp3"});
     auto* manager = static_cast<wiola::gui::SavedPlaylistManager*>(
         window.findChild<QWidget*>("savedPlaylistManager")
@@ -620,7 +647,8 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
 
     engine::Session session;
     session.add({path});
-    gui::MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    gui::MainWindow window{session, window_library};
     auto* navigation =
         static_cast<gui::LibraryNavigation*>(window.findChild<QWidget*>("libraryNavigation"));
     auto* documents = window.findChild<QTabWidget*>("documentTabs");

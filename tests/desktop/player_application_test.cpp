@@ -22,6 +22,8 @@
 #include <gui/shell/main_window.hpp>
 
 #include <fixtures/wav.hpp>
+#include <gui/shell/saved_playlist_manager.hpp>
+#include <library/location.hpp>
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -96,7 +98,7 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     const std::filesystem::path source = track("wiola_application_load.wav");
 
     {
-        wiola::gui::MainWindow window{player.session()};
+        wiola::gui::MainWindow window{player.session(), player.library()};
         player.attach(window);
 
         window.open({source});
@@ -110,6 +112,41 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     EXPECT_EQ(player.session().track(), source);
     EXPECT_EQ(player.session().open_result(), wiola::engine::OpenResult::opened);
     EXPECT_FALSE(player.session().playing());
+    const auto media = wiola::library::media_id_for(source);
+    ASSERT_TRUE(pump_until([&] { return player.library().repository().track(media) != nullptr; }));
+    EXPECT_EQ(player.library().search().size(), 1);
+    wiola::gui::MainWindow replacement{player.session(), player.library()};
+    EXPECT_NE(player.library().repository().track(media), nullptr);
+}
+
+TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestination)
+{
+    wiola::app::PlayerApplication player;
+    auto& library = player.library();
+    const auto playlist = library.playlists().create("Retained");
+    ASSERT_TRUE(playlist.valid());
+    ASSERT_TRUE(library.active_playlist().set(playlist));
+    wiola::library::TrackRecord record;
+    record.id = {"retained-media"};
+    record.embedded.title = "Only in memory";
+    record.metadata_revision = 17;
+    {
+        wiola::library::RepositoryTransaction edit{library.repository(),
+            [](const auto&) { return true; }};
+        ASSERT_TRUE(library.repository().put_track(record));
+        ASSERT_TRUE(edit.commit());
+    }
+    const auto revision = library.repository().change_revision();
+    {
+        wiola::gui::MainWindow first{player.session(), library};
+        EXPECT_EQ(library.repository().playlists().size(), 1);
+    }
+    wiola::gui::MainWindow replacement{player.session(), library};
+    EXPECT_EQ(library.active_playlist().id(), playlist);
+    ASSERT_NE(library.repository().track(record.id), nullptr);
+    EXPECT_EQ(library.repository().track(record.id)->metadata_revision, 17);
+    EXPECT_EQ(library.repository().change_revision(), revision);
+    EXPECT_EQ(library.search().query({.title = "Only in memory"}), std::vector{record.id});
 }
 
 } // namespace

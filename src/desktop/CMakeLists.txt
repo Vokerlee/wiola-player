@@ -47,3 +47,19 @@ wiola_add_library(
     LIBS wiola_persistence_qt wiola_library wiola_qt_platform wiola_qt_settings
 )
 target_link_libraries(wiola_queue_migration PUBLIC Qt6::Core)
+
+wiola_add_library(
+    wiola_library_session
+    SOURCES library/library_session.cpp
+    LIBS
+        wiola_app
+        wiola_saved_playlists
+        wiola_persistence_qt
+        wiola_media_revisions
+        wiola_workspace_scans
+        wiola_workspace_watcher
+        wiola_codec
+        wiola_qt_platform
+)
+set_target_properties(wiola_library_session PROPERTIES AUTOMOC ON)
+target_link_libraries(wiola_library_session PUBLIC Qt6::Core)

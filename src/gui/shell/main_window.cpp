@@ -31,7 +31,6 @@
 #include <platform/qt/player_settings.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
-#include <codec/provider.hpp>
 #include <library/location.hpp>
 #include <library/metadata.hpp>
 
@@ -71,12 +70,6 @@ QWidget* placeholder_document(QWidget* parent, const QString& description)
     layout->addWidget(label);
 
     return document;
-}
-
-std::filesystem::path library_file(const QSettings& settings)
-{
-    return platform::qt::QtPathAdapter::from_qt(QFileInfo{settings.fileName()}.absolutePath() +
-        "/library.json");
 }
 
 LayoutDocument layout_for(const QString& choice)
@@ -144,7 +137,7 @@ QString as_status(engine::OpenResult result)
 
 } // namespace
 
-MainWindow::MainWindow(engine::Session& session)
+MainWindow::MainWindow(engine::Session& session, app::LibrarySession& library_session)
     // A file of its own on both platforms, rather than the registry on one of them.
     : session_{session}
     , presenter_{session}
@@ -153,14 +146,15 @@ MainWindow::MainWindow(engine::Session& session)
     , playlist_{presenter_, settings_}
     , volume_{presenter_.volume_control(), settings_}
     , equalizer_{presenter_.equalizer_control(), settings_}
-    , library_storage_{library_file(settings_)}
-    , persist_library_{[this](const library::LibraryRepository& records) {
-        return library_storage_.save(library::snapshot_of(records)).succeeded();
-    }}
-    , playlist_commands_{library_, persist_library_}
-    , tag_commands_{library_, persist_library_}
-    , optimistic_edits_{library_, persist_library_,
-          [this](const app::MetadataEditOutcome& outcome) { publish_metadata_outcome(outcome); }}
+    , library_session_{library_session}
+    , library_{library_session.repository()}
+    , persist_library_{library_session.persistence()}
+    , playlist_commands_{library_session.playlists()}
+    , tag_commands_{library_session.tags()}
+    , optimistic_edits_{library_session.metadata_edits()}
+    , active_playlist_{library_session.active_playlist()}
+    , workspace_scans_{&library_session.scans()}
+    , workspace_watcher_{&library_session.watcher()}
 {
     const QString selected_theme = settings_.value("theme/name", "light").toString();
     const ThemeColors custom_theme = stored_custom_theme(settings_);
@@ -216,13 +210,8 @@ MainWindow::MainWindow(engine::Session& session)
     status_label_ = new QLabel{this};
     volume_slider_ = new QSlider{Qt::Horizontal, this};
 
-    if (wiola::persistence::qt::restore_repository(library_storage_, library_) !=
-        persistence::qt::LibraryStoreResult{})
-        show_status("Could not restore the saved library");
-
-    const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
-    if (library_.playlist(active) != nullptr)
-        static_cast<void>(active_playlist_.set(active));
+    if (!library_session_.restore_error().isEmpty())
+        show_status(library_session_.restore_error());
 
     const platform::qt::PlayerSettings restored{
         platform::qt::QtSettingsAdapter{settings_}.read(volume_.scale(),
@@ -293,34 +282,21 @@ MainWindow::MainWindow(engine::Session& session)
         resolve_metadata_conflict(action);
     });
 
-    workspace_scans_ =
-        std::make_unique<app::WorkspaceScanPublisher>(*this, [this](app::WorkspaceScanBatch batch) {
+    connect(&library_session_, &app::LibrarySession::scan_batch, this,
+        [this](const app::WorkspaceScanBatch& batch) {
             const auto found = workspace_documents_.find(batch.workspace);
-            if (found == workspace_documents_.end() || !found->second->show_batch(batch))
-                return;
-
-            for (const std::filesystem::path& location : batch.tracks)
-                request_metadata(location);
+            if (found != workspace_documents_.end())
+                static_cast<void>(found->second->show_batch(batch));
         });
-
-    media_revisions_ = std::make_unique<app::MediaRevisionPublisher>(
-        *this, std::make_shared<codec::LocalMediaProvider>(),
-        [this](app::BackgroundMetadataResult result) { publish_media_revision(std::move(result)); }
-    );
-
-    for (const library::TrackRecord& track : library_.tracks()) {
-        if (!track.locations.empty())
-            request_metadata(track.locations.front());
-    }
-
-    workspace_watcher_ = std::make_unique<app::WorkspaceWatcher>(this);
-    workspace_watcher_->on_changed([this](library::WorkspaceId id) {
-        if (const library::WorkspaceRecord* workspace = library_.workspace(id))
-            rescan_workspace(id, workspace->recursive);
-    });
-
-    for (const library::WorkspaceRecord& workspace : library_.workspaces())
-        static_cast<void>(workspace_watcher_->watch(workspace));
+    connect(&library_session_, &app::LibrarySession::metadata_outcome, this,
+        &MainWindow::publish_metadata_outcome);
+    connect(&library_session_, &app::LibrarySession::status_changed, this,
+        &MainWindow::show_status);
+    connect(&library_session_, &app::LibrarySession::workspace_changed, this,
+        [this](const library::WorkspaceId& id) {
+            if (const auto* workspace = library_.workspace(id))
+                rescan_workspace(id, workspace->recursive);
+        });
 
     library_pane_ = new QWidget{this};
     QVBoxLayout* library_layout = new QVBoxLayout{library_pane_};
@@ -1179,43 +1155,7 @@ void MainWindow::play_displayed_paths(std::vector<std::filesystem::path> tracks)
 
 void MainWindow::request_metadata(const std::filesystem::path& location)
 {
-    if (!media_revisions_)
-        return;
-
-    static_cast<void>(media_revisions_->enqueue(library::media_id_for(location), location));
-}
-
-void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
-{
-    if (!result.metadata) {
-        show_status("Could not read metadata for " +
-            platform::qt::QtPathAdapter::to_qt(result.location.filename()));
-        return;
-    }
-
-    library::RepositoryTransaction transaction{library_, persist_library_};
-    bool created = false;
-
-    if (library_.track(result.media) == nullptr) {
-        library::TrackRecord record;
-        record.id = result.media;
-        record.locations = {result.location};
-        created = library_.put_track(std::move(record));
-
-        if (!created) {
-            show_status("Could not add the discovered track to the library");
-            return;
-        }
-    }
-
-    const bool merged = metadata_merge_.merge(library_, result.media, *result.metadata);
-    if (!created && !merged)
-        return;
-
-    if (!transaction.commit()) {
-        show_status("Could not save the learned metadata");
-        return;
-    }
+    library_session_.request_metadata(location);
 }
 
 void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)

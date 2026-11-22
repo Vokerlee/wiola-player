@@ -36,6 +36,7 @@ wiola_add_library(
         controls/volume_control.cpp
         documents/workspace_document.cpp
     LIBS
+        wiola_library_session
         wiola_persistence_qt
         wiola_qt_settings
         wiola_qt_platform

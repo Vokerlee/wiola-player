@@ -52,7 +52,6 @@ int main(int argc, char** argv)
     }
 
     const QApplication app{argc, argv};
-    wiola::app::PlayerApplication player;
 
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
     const wiola::app::QueueLibraryMigration migration{settings};
@@ -60,7 +59,8 @@ int main(int argc, char** argv)
     if (migration.migrate(settings) != wiola::persistence::qt::LibraryStoreResult{})
         qWarning("Could not migrate the queued tracks into the library");
 
-    wiola::gui::MainWindow window{player.session()};
+    wiola::app::PlayerApplication player;
+    wiola::gui::MainWindow window{player.session(), player.library()};
 
     player.attach(window);
     window.show();
