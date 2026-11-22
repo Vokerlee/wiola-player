@@ -33,13 +33,13 @@ bool matches(const TrackRow& track, const library::LibraryRepository* repository
     const library::TrackRecord* record = repository != nullptr ? repository->track(media) : nullptr;
 
     if (record != nullptr)
-        return library::matches_search(query, *record);
+        return library::matches_normalized_search(query, *record);
 
     library::TrackRecord presented;
     presented.id = media;
     presented.embedded = track.metadata;
     presented.tags = track.tags;
-    return library::matches_search(query, presented);
+    return library::matches_normalized_search(query, presented);
 }
 
 } // namespace

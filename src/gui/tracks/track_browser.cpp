@@ -20,6 +20,7 @@
 
 #include "track_browser.hpp"
 #include <QVBoxLayout>
+#include <algorithm>
 
 namespace wiola::gui {
 
@@ -32,11 +33,21 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
     setObjectName("trackBrowser");
     table_->set_capabilities(capabilities);
     search_->on_changed([this](library::SearchQuery query) {
-        table_->search_by(query);
-        update_results();
+        auto state = table_->view_state();
+        query.filters = state.query.filters;
+        state.query = std::move(query);
+        table_->set_view_state(std::move(state));
     });
-    filters_->on_changed([this](std::vector<library::TagFilter> filters) {
-        table_->filter_by(filters);
+    filters_->on_edit([this](TagFilterEdit edit) {
+        auto state = table_->view_state();
+        if (edit.kind == TagFilterEdit::Kind::add)
+            state.query.filters.push_back(std::move(edit.filter));
+        else
+            std::erase(state.query.filters, edit.filter);
+        table_->set_view_state(std::move(state));
+    });
+    connect(table_.data(), &TrackTableView::view_state_changed, &lifetime_, [this] {
+        filters_->show_filters(table_->view_state().query.filters);
         update_results();
     });
     auto* layout = new QVBoxLayout{this};
@@ -66,7 +77,15 @@ TrackBrowser::~TrackBrowser()
     if (search_)
         search_->on_changed({});
     if (filters_)
-        filters_->on_changed({});
+        filters_->on_edit({});
+}
+
+void TrackBrowser::set_view_state(TrackViewState state)
+{
+    table_->set_view_state(std::move(state));
+    search_->show_query(table_->view_state().query);
+    filters_->show_filters(table_->view_state().query.filters);
+    update_results();
 }
 
 void TrackBrowser::show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current)

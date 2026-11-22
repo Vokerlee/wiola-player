@@ -85,7 +85,7 @@ TagFilterPanel::TagFilterPanel(QWidget* parent)
 void TagFilterPanel::add(library::TagFilterMode mode)
 {
     const auto clean_key = library::make_tag_value(key_->text().toStdString(), "value");
-    if (!clean_key || filters_.size() >= max_filters)
+    if (!clean_key || shown_.size() >= max_filters)
         return;
 
     const QString raw_value = value_->text();
@@ -101,23 +101,18 @@ void TagFilterPanel::add(library::TagFilterMode mode)
 
     library::TagFilter filter{.key = clean_key->key, .value = clean_value, .mode = mode};
 
-    const bool duplicate = std::ranges::any_of(filters_, [&](const library::TagFilter& present) {
-        return present.mode == filter.mode &&
-            library::normalized_tag_text(present.key) == library::normalized_tag_text(filter.key) &&
-            library::normalized_tag_text(present.value) ==
-            library::normalized_tag_text(filter.value);
-    });
-
-    if (duplicate)
-        return;
-
-    filters_.push_back(std::move(filter));
     key_->clear();
     value_->clear();
-    rebuild_chips();
-
     if (observer_)
-        observer_(filters_);
+        observer_({TagFilterEdit::Kind::add, std::move(filter)});
+}
+
+void TagFilterPanel::show_filters(std::vector<library::TagFilter> filters)
+{
+    if (filters == shown_)
+        return;
+    shown_ = std::move(filters);
+    rebuild_chips();
 }
 
 void TagFilterPanel::rebuild_chips()
@@ -129,8 +124,8 @@ void TagFilterPanel::rebuild_chips()
 
     chip_buttons_.clear();
 
-    for (std::size_t index = 0; index < filters_.size(); ++index) {
-        const library::TagFilter& filter = filters_[index];
+    for (std::size_t index = 0; index < shown_.size(); ++index) {
+        const library::TagFilter& filter = shown_[index];
         const QString label = (filter.mode == library::TagFilterMode::include ? "+ " : "- ") +
             qt(filter.key) + (filter.value.empty() ? QString{} : ": " + qt(filter.value));
         QPushButton* chip = new QPushButton{label, this};
@@ -139,17 +134,14 @@ void TagFilterPanel::rebuild_chips()
         chips_->insertWidget(static_cast<int>(chip_buttons_.size()), chip);
         chip_buttons_.push_back(chip);
 
-        connect(chip, &QPushButton::clicked, this, [this, index] {
-            filters_.erase(filters_.begin() + static_cast<std::ptrdiff_t>(index));
-            rebuild_chips();
-
+        connect(chip, &QPushButton::clicked, this, [this, filter] {
             if (observer_)
-                observer_(filters_);
+                observer_({TagFilterEdit::Kind::remove, filter});
         });
     }
 }
 
-void TagFilterPanel::on_changed(Observer observer)
+void TagFilterPanel::on_edit(Observer observer)
 {
     observer_ = std::move(observer);
 }

@@ -19,6 +19,7 @@
  */
 
 #include "track_search_panel.hpp"
+#include <QSignalBlocker>
 
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -106,11 +107,19 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
 
 library::SearchQuery TrackSearchPanel::query() const
 {
-    return library::normalized_search_query({.title = title_->text().toStdString(),
+    return {.title = title_->text().toStdString(),
         .artist = artist_->text().toStdString(),
         .album = album_->text().toStdString(),
         .tags = {},
-        .filters = {}});
+        .filters = {}};
+}
+
+void TrackSearchPanel::show_query(const library::SearchQuery& query)
+{
+    const QSignalBlocker title{title_}, artist{artist_}, album{album_};
+    title_->setText(QString::fromStdString(query.title));
+    artist_->setText(QString::fromStdString(query.artist));
+    album_->setText(QString::fromStdString(query.album));
 }
 
 void TrackSearchPanel::show_results(std::size_t visible, std::size_t total)
@@ -125,9 +134,9 @@ void TrackSearchPanel::on_changed(Observer observer)
 
 void TrackSearchPanel::reset()
 {
-    title_->clear();
-    artist_->clear();
-    album_->clear();
+    show_query({});
+    if (observer_)
+        observer_(query());
 }
 
 } // namespace wiola::gui

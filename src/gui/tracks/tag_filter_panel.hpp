@@ -31,13 +31,23 @@
 
 namespace wiola::gui {
 
+struct TagFilterEdit {
+    enum class Kind {
+        add,
+        remove,
+    };
+    Kind kind;
+    library::TagFilter filter;
+};
+
 class TagFilterPanel final : public QWidget {
 public:
-    using Observer = std::function<void(std::vector<library::TagFilter>)>;
+    using Observer = std::function<void(TagFilterEdit)>;
 
     explicit TagFilterPanel(QWidget* parent = nullptr);
 
-    void on_changed(Observer observer);
+    void on_edit(Observer observer);
+    void show_filters(std::vector<library::TagFilter> filters);
 
 private:
     void add(library::TagFilterMode mode);
@@ -48,7 +58,7 @@ private:
     QPushButton* include_{nullptr};
     QPushButton* exclude_{nullptr};
     QHBoxLayout* chips_{nullptr};
-    std::vector<library::TagFilter> filters_;
+    std::vector<library::TagFilter> shown_;
     std::vector<QPushButton*> chip_buttons_;
     Observer observer_;
 };

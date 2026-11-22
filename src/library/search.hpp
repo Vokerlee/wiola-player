@@ -46,12 +46,15 @@ struct SearchQuery {
     std::string album;
     std::string tags;
     std::vector<TagFilter> filters;
+    bool operator==(const SearchQuery&) const = default;
 };
 
 /// Trims and case-folds every field independently; empty fields do not restrict results.
 [[nodiscard]] SearchQuery normalized_search_query(SearchQuery query);
 
 /// Every non-empty field group must match; a tag term matches either a key or a value.
+[[nodiscard]] bool matches_normalized_search(const SearchQuery& query, const TrackRecord& track);
+
 [[nodiscard]] bool matches_search(const SearchQuery& query, const TrackRecord& track);
 
 } // namespace wiola::library

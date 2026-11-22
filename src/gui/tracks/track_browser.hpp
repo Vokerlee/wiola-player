@@ -35,6 +35,10 @@ public:
     TrackBrowser(TrackCapabilities capabilities, QWidget* parent = nullptr);
     ~TrackBrowser() override;
     void show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current = {});
+    void set_view_state(TrackViewState state);
+
+    [[nodiscard]] const TrackViewState& view_state() const noexcept { return table_->view_state(); }
+
     void show_library(const library::LibraryRepository& repository);
 
     [[nodiscard]] TrackTableView& table() noexcept { return *table_; }

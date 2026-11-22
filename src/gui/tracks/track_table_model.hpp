@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "track_sort.hpp"
+#include "track_view_state.hpp"
 #include <gui/appearance/artwork_cache.hpp>
 
 #include "track_row.hpp"
@@ -56,8 +56,10 @@ public:
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
     void show_library(const library::LibraryRepository& repository);
     void show_tag_keys(std::vector<std::string> keys);
-    void sort_by(const std::vector<TrackSortKey>& keys);
-    void search_by(const library::SearchQuery& query);
+    bool set_view_state(TrackViewState state);
+
+    [[nodiscard]] const TrackViewState& view_state() const noexcept { return state_; }
+
     [[nodiscard]] std::optional<TrackRowId> row_id(const QModelIndex& index) const;
 
     [[nodiscard]] std::size_t total_count() const { return source_rows_.size(); }
@@ -72,8 +74,7 @@ private:
     std::optional<TrackRowId> current_;
     const library::LibraryRepository* repository_{nullptr};
     std::vector<std::string> tag_columns_;
-    std::vector<TrackSortKey> sort_keys_;
-    library::SearchQuery query_;
+    TrackViewState state_;
 };
 
 } // namespace wiola::gui

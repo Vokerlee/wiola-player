@@ -22,7 +22,9 @@
 
 #include <QApplication>
 
+#include <algorithm>
 #include <gtest/gtest.h>
+#include <gui/tracks/track_view_state.hpp>
 
 namespace {
 
@@ -35,8 +37,15 @@ TEST(TagFilterPanel, AddsIncludeExcludeAndRemovableChips)
     ASSERT_NE(value, nullptr);
 
     std::vector<wiola::library::TagFilter> filters;
-    panel.on_changed([&](std::vector<wiola::library::TagFilter> changed) {
-        filters = std::move(changed);
+    panel.on_edit([&](wiola::gui::TagFilterEdit edit) {
+        if (edit.kind == wiola::gui::TagFilterEdit::Kind::add)
+            filters.push_back(edit.filter);
+        else
+            std::erase(filters, edit.filter);
+        wiola::gui::TrackViewState state;
+        state.query.filters = filters;
+        filters = wiola::gui::normalized_track_view_state(std::move(state)).query.filters;
+        panel.show_filters(filters);
     });
 
     key->setText(" Genre ");
@@ -44,8 +53,8 @@ TEST(TagFilterPanel, AddsIncludeExcludeAndRemovableChips)
     panel.findChild<QPushButton*>("includeTagFilter")->click();
 
     ASSERT_EQ(filters.size(), 1);
-    EXPECT_EQ(filters[0].key, "Genre");
-    EXPECT_EQ(filters[0].value, "Jazz");
+    EXPECT_EQ(filters[0].key, "genre");
+    EXPECT_EQ(filters[0].value, "jazz");
     EXPECT_EQ(filters[0].mode, wiola::library::TagFilterMode::include);
 
     key->setText("Mood");
@@ -53,7 +62,7 @@ TEST(TagFilterPanel, AddsIncludeExcludeAndRemovableChips)
     panel.findChild<QPushButton*>("excludeTagFilter")->click();
 
     ASSERT_EQ(filters.size(), 2);
-    EXPECT_EQ(filters[1].key, "Mood");
+    EXPECT_EQ(filters[1].key, "mood");
     EXPECT_TRUE(filters[1].value.empty());
     EXPECT_EQ(filters[1].mode, wiola::library::TagFilterMode::exclude);
 
@@ -62,7 +71,7 @@ TEST(TagFilterPanel, AddsIncludeExcludeAndRemovableChips)
     ASSERT_EQ(chips.size(), 2);
     chips.front()->click();
     ASSERT_EQ(filters.size(), 1);
-    EXPECT_EQ(filters.front().key, "Mood");
+    EXPECT_EQ(filters.front().key, "mood");
 }
 
 TEST(TagFilterPanel, RejectsBlankAndNormalizedDuplicateFilters)
@@ -72,7 +81,16 @@ TEST(TagFilterPanel, RejectsBlankAndNormalizedDuplicateFilters)
     QLineEdit* value = panel.findChild<QLineEdit*>("tagFilterValue");
 
     int changes = 0;
-    panel.on_changed([&](std::vector<wiola::library::TagFilter>) { ++changes; });
+    wiola::gui::TrackViewState state;
+    panel.on_edit([&](wiola::gui::TagFilterEdit edit) {
+        auto next = state;
+        next.query.filters.push_back(edit.filter);
+        next = wiola::gui::normalized_track_view_state(std::move(next));
+        if (next != state)
+            ++changes;
+        state = std::move(next);
+        panel.show_filters(state.query.filters);
+    });
 
     key->setText(" ");
     panel.findChild<QPushButton*>("includeTagFilter")->click();

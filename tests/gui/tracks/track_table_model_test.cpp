@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/track_view.hpp>
+
 #include <gui/documents/queue_rows.hpp>
 
 #include <gui/tracks/track_table_model.hpp>
@@ -222,17 +224,17 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     query.filters = {
         {.key = "genre", .value = "live", .mode = wiola::library::TagFilterMode::include}
     };
-    model.search_by(query);
+    wiola::testing::set_track_query(model, query);
     EXPECT_EQ(model.rowCount(), 1);
 
     query.filters = {
         {.key = "mood", .value = "calm", .mode = wiola::library::TagFilterMode::exclude}
     };
-    model.search_by(query);
+    wiola::testing::set_track_query(model, query);
     EXPECT_EQ(model.rowCount(), 1);
     EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 1));
 
-    model.search_by({});
+    wiola::testing::set_track_query(model, {});
     EXPECT_EQ(model.rowCount(), 2);
 }
 
@@ -257,21 +259,19 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
     model.show_library(repository);
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
-    model.search_by(
-        {.title = "song", .artist = "the artist", .album = "great", .tags = {}, .filters = {}}
-    );
+    wiola::testing::set_track_query(model,
+        {.title = "song", .artist = "the artist", .album = "great", .tags = {}, .filters = {}});
 
     EXPECT_EQ(model.rowCount(), 1);
     EXPECT_EQ(model.total_count(), 2);
     EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 0));
 
-    model.search_by(
-        {.title = "song", .artist = "missing", .album = "great", .tags = {}, .filters = {}}
-    );
+    wiola::testing::set_track_query(model,
+        {.title = "song", .artist = "missing", .album = "great", .tags = {}, .filters = {}});
     EXPECT_EQ(model.rowCount(), 0);
     EXPECT_EQ(model.total_count(), 2);
 
-    model.search_by({});
+    wiola::testing::set_track_query(model, {});
     EXPECT_EQ(model.rowCount(), 2);
 }
 
