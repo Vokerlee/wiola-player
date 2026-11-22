@@ -142,7 +142,7 @@ std::vector<SelectedTrack> SavedPlaylistDocument::selection() const
     std::vector<SelectedTrack> selected;
     for (const auto& entry : chosen_entries())
         if (const auto* row = source_.row(entry))
-            selected.push_back({row->media, row->id});
+            selected.push_back({row->media, row->id, row->location});
     return selected;
 }
 

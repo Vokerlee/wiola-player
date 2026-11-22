@@ -37,7 +37,8 @@ public:
     ~WorkspaceScanPublisher();
 
     std::uint64_t start(const library::WorkspaceRecord& workspace,
-        std::vector<std::string> supported_extensions);
+        std::vector<std::string> supported_extensions,
+        std::vector<library::TrackRecord> known = {});
     void cancel();
     void stop();
 

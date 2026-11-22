@@ -26,6 +26,10 @@
 
 namespace wiola::library {
 
+struct TrackRecord;
+/// Returns the cached preferred location without probing the filesystem.
+[[nodiscard]] std::filesystem::path preferred_location(const TrackRecord& record);
+
 enum class MediaPathCase {
     native,
     sensitive,

@@ -41,11 +41,11 @@ bool supported(const std::filesystem::path& path, const std::vector<std::string>
 }
 
 void publish(const WorkspaceScanner::Observer& observer, const library::WorkspaceId& workspace,
-    std::uint64_t generation, std::vector<std::filesystem::path> tracks, WorkspaceScanStatus status)
+    std::uint64_t generation, std::vector<WorkspaceScanEntry> entries, WorkspaceScanStatus status)
 {
     observer({.workspace = workspace,
         .generation = generation,
-        .tracks = std::move(tracks),
+        .entries = std::move(entries),
         .status = status});
 }
 
@@ -65,7 +65,8 @@ void WorkspaceScanner::stop()
 }
 
 std::uint64_t WorkspaceScanner::start(const library::WorkspaceRecord& workspace,
-    std::vector<std::string> supported_extensions, Observer observer)
+    std::vector<std::string> supported_extensions, Observer observer,
+    std::vector<library::TrackRecord> known)
 {
     if (stopped_permanently_)
         return 0;
@@ -77,10 +78,11 @@ std::uint64_t WorkspaceScanner::start(const library::WorkspaceRecord& workspace,
     stopped_ = {};
     const std::uint64_t generation = ++generation_;
     const std::stop_token stopped = stopped_.get_token();
-    worker_ = std::jthread{[this, workspace, extensions = std::move(supported_extensions),
-                               observer = std::move(observer), generation, stopped] {
-        scan(stopped, workspace, std::move(extensions), observer, generation);
-    }};
+    worker_ = std::jthread{
+        [this, workspace, extensions = std::move(supported_extensions),
+            observer = std::move(observer), generation, stopped, known = std::move(known)] {
+            scan(stopped, workspace, std::move(extensions), observer, generation, known);
+        }};
 
     return generation;
 }
@@ -92,7 +94,7 @@ void WorkspaceScanner::cancel()
 
 void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRecord& workspace,
     std::vector<std::string> supported_extensions, const Observer& observer,
-    std::uint64_t generation) const
+    std::uint64_t generation, const std::vector<library::TrackRecord>& known) const
 {
     std::error_code error;
     if (!std::filesystem::is_directory(workspace.root, error) || error) {
@@ -157,6 +159,7 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
     }
 
     std::ranges::sort(tracks);
+    WorkspaceDiscovery discovery{workspace.root, known, tracks};
 
     for (std::size_t offset = 0; offset < tracks.size(); offset += batch_size) {
         if (stopped.stop_requested()) {
@@ -165,9 +168,18 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
         }
 
         const auto last = std::min(offset + batch_size, tracks.size());
-        publish(observer, workspace.id, generation,
-            std::vector<std::filesystem::path>{tracks.begin() + static_cast<std::ptrdiff_t>(offset),
-                tracks.begin() + static_cast<std::ptrdiff_t>(last)},
+        std::vector<WorkspaceScanEntry> entries;
+        entries.reserve(last - offset);
+        for (std::size_t index = offset; index < last; ++index) {
+            if (stopped.stop_requested())
+                break;
+            entries.push_back(discovery.resolve(tracks[index]));
+        }
+        if (stopped.stop_requested()) {
+            publish(observer, workspace.id, generation, {}, WorkspaceScanStatus::cancelled);
+            return;
+        }
+        publish(observer, workspace.id, generation, std::move(entries),
             WorkspaceScanStatus::running);
     }
 

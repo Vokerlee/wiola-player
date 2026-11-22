@@ -29,109 +29,81 @@
 
 namespace wiola::app {
 
-namespace {
-
-std::filesystem::path normalized(const std::filesystem::path& path)
-{
-    return std::filesystem::absolute(path).lexically_normal();
-}
-
-bool within(const std::filesystem::path& root, const std::filesystem::path& path)
-{
-    const std::filesystem::path relative = normalized(path).lexically_relative(normalized(root));
-    return !relative.empty() && *relative.begin() != "..";
-}
-
-} // namespace
-
 WorkspaceReconciliationResult
 WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
-    const library::WorkspaceId& workspace, std::span<const std::filesystem::path> paths) const
+    const library::WorkspaceId& workspace, std::span<const WorkspaceScanEntry> entries) const
 {
-    const library::WorkspaceRecord* record = repository.workspace(workspace);
-    if (record == nullptr)
+    const auto* definition = repository.workspace(workspace);
+    if (!definition)
         return {};
-
-    const std::filesystem::path root = record->root;
-    std::set<std::filesystem::path> current;
-
-    for (const std::filesystem::path& path : paths)
-        current.insert(normalized(path));
-
-    library::RepositoryTransaction transaction{repository,
-        [](const library::LibraryRepository&) { return true; }};
-    auto& updated = repository;
-    WorkspaceReconciliationResult result{.succeeded = true};
-
-    for (library::TrackRecord track : updated.tracks()) {
-        const bool in_workspace = std::ranges::any_of(track.locations,
-            [&root](const std::filesystem::path& location) { return within(root, location); });
-        const bool present =
-            std::ranges::any_of(track.locations, [&current](const std::filesystem::path& location) {
-                return current.contains(normalized(location));
-            });
-
-        if (in_workspace && !present && !track.missing) {
-            ++result.missing;
-            track.missing = true;
-            static_cast<void>(updated.put_track(std::move(track)));
-        }
-    }
-
-    for (const std::filesystem::path& path : paths) {
-        if (!within(root, path)) {
+    const auto root = definition->root;
+    library::RepositoryTransaction transaction{repository, persist_};
+    WorkspaceReconciliationResult result;
+    std::set<library::MediaId> seen;
+    for (const auto& entry : entries) {
+        if (!workspace_contains(root, entry.location)) {
             ++result.outside;
             continue;
         }
-
-        const std::filesystem::path location = normalized(path);
-        const library::MediaId identity = library::media_id_for(location);
-        library::TrackRecord track;
-        bool relocated = false;
-
-        if (const library::TrackRecord* known = updated.track(identity)) {
-            track = *known;
-        } else {
-            std::vector<library::TrackRecord> candidates;
-
-            for (const library::TrackRecord& candidate : updated.tracks()) {
-                if (candidate.missing &&
-                    std::ranges::any_of(candidate.locations,
-                        [&root](const std::filesystem::path& previous) {
-                            return within(root, previous);
-                        }))
-                    candidates.push_back(candidate);
-            }
-
-            const auto match = library::match_relocation(candidates, location);
-            if (match) {
-                track = *updated.track(*match);
-                relocated = true;
-            } else {
-                track.id = identity;
-            }
-        }
-
-        const bool was_missing = track.missing;
-        const auto change = library::reconcile_location(track, location);
-
-        if (!change) {
+        if (!entry.media.valid()) {
             ++result.failed;
             continue;
         }
-
-        if (!updated.put_track(std::move(track)))
+        seen.insert(entry.media);
+        const auto* current = repository.track(entry.media);
+        if ((entry.known() && !current) ||
+            (current && current->content_revision != entry.expected_content_revision)) {
             ++result.failed;
-        else if (relocated)
-            ++result.relocated;
-        else if (was_missing)
-            ++result.restored;
-        else if (change->kind == library::RelocationKind::edited)
-            ++result.edited;
-        else if (change->kind == library::RelocationKind::learned)
-            ++result.learned;
+            continue;
+        }
+        library::TrackRecord track;
+        if (current)
+            track = *current;
+        else
+            track.id = entry.media;
+        const bool was_missing = track.missing;
+        const bool relocated = entry.relocated();
+        if (entry.fingerprint) {
+            const auto change =
+                library::reconcile_location(track, entry.location, *entry.fingerprint);
+            if (!change) {
+                ++result.failed;
+                continue;
+            }
+            if (relocated)
+                ++result.relocated;
+            else if (was_missing)
+                ++result.restored;
+            else if (change->kind == library::RelocationKind::edited)
+                ++result.edited;
+            else if (change->kind == library::RelocationKind::learned)
+                ++result.learned;
+        } else {
+            if (std::ranges::find(track.locations, entry.location) == track.locations.end())
+                track.locations.push_back(entry.location);
+            track.missing = entry.unreadable;
+            if (entry.unreadable)
+                ++result.failed;
+        }
+        if (entry.relocated()) {
+            const auto preferred = std::ranges::find(track.locations, entry.location);
+            if (preferred != track.locations.end())
+                std::rotate(track.locations.begin(), preferred, preferred + 1);
+        }
+        if (!repository.put_track(std::move(track)))
+            ++result.failed;
     }
-
+    for (auto track : repository.tracks()) {
+        if (seen.contains(track.id) || track.missing)
+            continue;
+        if (!track.locations.empty() && std::ranges::all_of(track.locations, [&](const auto& path) {
+                return workspace_contains(root, path);
+            })) {
+            track.missing = true;
+            if (repository.put_track(std::move(track)))
+                ++result.missing;
+        }
+    }
     result.succeeded = transaction.commit();
     return result;
 }

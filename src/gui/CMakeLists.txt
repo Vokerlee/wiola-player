@@ -35,6 +35,7 @@ wiola_add_library(
         shell/saved_playlist_manager.cpp
         controls/seek_bar.cpp
         metadata/standard_metadata_editor.cpp
+        documents/workspace_rows.cpp
         documents/workspace_document.cpp
     LIBS
         wiola_playback_preferences

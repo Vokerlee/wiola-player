@@ -62,7 +62,7 @@ TEST(DocumentRegistry, RejectsDuplicateViewsAndReturnsOwnedOccurrenceSelections)
     SavedPlaylistDocument duplicate;
     const PlaylistId playlist{"saved"};
     std::vector<SelectedTrack> selected{
-        {wiola::library::MediaId{"media"}, wiola::library::PlaylistEntryId{"entry"}}
+        {wiola::library::MediaId{"media"}, wiola::library::PlaylistEntryId{"entry"}, {}}
     };
     ASSERT_TRUE(registry.add(playlist, first, [&] { return selected; }));
     EXPECT_FALSE(registry.add(playlist, duplicate, [] { return std::vector<SelectedTrack>{}; }));

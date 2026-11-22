@@ -24,7 +24,7 @@
 
 #include <desktop/workspace/workspace_scan_publisher.hpp>
 
-#include <engine/queue/playlist.hpp>
+#include "workspace_rows.hpp"
 #include <library/repository.hpp>
 
 #include <QCheckBox>
@@ -43,12 +43,14 @@ public:
     explicit WorkspaceDocument(QWidget* parent = nullptr);
 
     void begin(const library::WorkspaceRecord& workspace, std::uint64_t generation);
-    bool show_batch(const app::WorkspaceScanBatch& batch);
+    bool show_batch(const app::WorkspaceScanBatch& batch,
+        const library::LibraryRepository* repository = nullptr);
     bool show_media_revision(const library::LibraryRepository& repository,
         const library::MediaId& media);
     void show_library(const library::LibraryRepository& repository);
     void show_cancelled();
-    [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
+    [[nodiscard]] std::vector<TrackRowId> chosen_rows() const;
+    [[nodiscard]] std::vector<SelectedTrack> selection() const;
     [[nodiscard]] std::vector<std::filesystem::path> chosen_paths() const;
     [[nodiscard]] std::vector<std::filesystem::path> displayed_paths() const;
     void on_apply_order_requested(std::function<void()> observer);
@@ -63,9 +65,7 @@ private:
     void set_busy(bool busy);
     void update_results();
 
-    library::WorkspaceId workspace_;
-    std::uint64_t generation_{0};
-    engine::Playlist rows_;
+    WorkspaceRows source_;
     QLabel* heading_{nullptr};
     QLabel* status_{nullptr};
     QCheckBox* recursive_{nullptr};

@@ -71,7 +71,11 @@ TEST(TrackRows, SortsAndFiltersSavedAndWorkspaceRowsWithoutAPlaybackQueueOrRepos
     QWidget styled;
     gui::TrackTableModel model{styled};
     model.show_rows({first, second});
-    model.sort_by({{.field = gui::TrackSortField::title}});
+    model.sort_by({
+        {.field = gui::TrackSortField::title,
+         .direction = gui::TrackSortDirection::ascending,
+         .tag_key = {}}
+    });
     EXPECT_EQ(model.row_id(model.index(0, 0)), second.id);
     EXPECT_EQ(model.row_id(model.index(1, 0)), first.id);
     EXPECT_TRUE(model.data(model.index(0, 0), Qt::ToolTipRole).toString().contains("unavailable"));

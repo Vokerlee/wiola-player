@@ -41,8 +41,6 @@ struct TrackRow {
     bool operator==(const TrackRow&) const = default;
 };
 
-/// Uses stored availability and locations, without probing the filesystem during paint/refresh.
-[[nodiscard]] std::filesystem::path preferred_track_location(const library::TrackRecord& record);
 [[nodiscard]] TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& record);
 
 } // namespace wiola::gui

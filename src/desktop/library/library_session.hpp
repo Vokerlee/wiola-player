@@ -26,6 +26,7 @@
 #include <app/metadata/metadata_merge.hpp>
 #include <app/metadata/optimistic_metadata_edits.hpp>
 #include <app/playback/active_playlist.hpp>
+#include <app/workspace/workspace_reconciliation.hpp>
 #include <desktop/metadata/media_revision_publisher.hpp>
 #include <desktop/workspace/workspace_scan_publisher.hpp>
 #include <desktop/workspace/workspace_watcher.hpp>
@@ -56,12 +57,16 @@ public:
     [[nodiscard]] ActivePlaylist& active_playlist();
     [[nodiscard]] const SearchIndex& search() const;
     [[nodiscard]] const library::RepositoryTransaction::Persist& persistence() const;
-    [[nodiscard]] WorkspaceScanPublisher& scans();
+    std::uint64_t scan_workspace(const library::WorkspaceId& id,
+        std::vector<std::string> extensions);
+    void cancel_workspace_scan();
+    [[nodiscard]] library::MediaId media_at(const std::filesystem::path& location) const;
     [[nodiscard]] WorkspaceWatcher& watcher();
 
     [[nodiscard]] const QString& restore_error() const noexcept { return restore_error_; }
 
     void request_metadata(const std::filesystem::path& path);
+    void request_metadata(const library::MediaId& media, const std::filesystem::path& path);
 
 signals:
     void scan_batch(const wiola::app::WorkspaceScanBatch& batch);
@@ -72,6 +77,7 @@ signals:
 private:
     void check_owner() const;
     void publish_metadata(BackgroundMetadataResult result);
+    void publish_scan(WorkspaceScanBatch batch);
     void index_changes(const library::LibraryChangeBatch& batch);
 
     bool accepting_{true};
@@ -86,6 +92,15 @@ private:
     ActivePlaylist active_;
     SearchIndex search_;
     MetadataMerge merge_;
+    WorkspaceReconciliation reconciliation_{persist_};
+
+    struct PendingScan {
+        library::WorkspaceId workspace;
+        std::uint64_t generation;
+        std::vector<WorkspaceScanEntry> entries;
+    };
+
+    std::optional<PendingScan> pending_scan_;
     QString restore_error_;
     persistence::qt::LibraryStoreResult restore_result_;
     library::LibraryChanges::Subscription changes_;

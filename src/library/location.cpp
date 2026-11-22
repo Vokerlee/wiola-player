@@ -19,6 +19,7 @@
  */
 
 #include "location.hpp"
+#include "records.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -26,6 +27,11 @@
 #include <utility>
 
 namespace wiola::library {
+
+std::filesystem::path preferred_location(const TrackRecord& record)
+{
+    return record.locations.empty() ? std::filesystem::path{} : record.locations.front();
+}
 
 namespace {
 

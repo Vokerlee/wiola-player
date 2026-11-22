@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <library/records.hpp>
+#include "workspace_discovery.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -40,7 +40,7 @@ enum class WorkspaceScanStatus {
 struct WorkspaceScanBatch {
     library::WorkspaceId workspace;
     std::uint64_t generation{0};
-    std::vector<std::filesystem::path> tracks;
+    std::vector<WorkspaceScanEntry> entries;
     WorkspaceScanStatus status{WorkspaceScanStatus::running};
 };
 
@@ -52,14 +52,15 @@ public:
     ~WorkspaceScanner();
 
     std::uint64_t start(const library::WorkspaceRecord& workspace,
-        std::vector<std::string> supported_extensions, Observer observer);
+        std::vector<std::string> supported_extensions, Observer observer,
+        std::vector<library::TrackRecord> known = {});
     void cancel();
     void stop();
 
 private:
     void scan(std::stop_token stopped, const library::WorkspaceRecord& workspace,
         std::vector<std::string> supported_extensions, const Observer& observer,
-        std::uint64_t generation) const;
+        std::uint64_t generation, const std::vector<library::TrackRecord>& known) const;
 
     std::jthread worker_;
     std::stop_source stopped_;

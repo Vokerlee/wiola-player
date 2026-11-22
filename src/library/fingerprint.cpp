@@ -99,16 +99,24 @@ std::optional<Relocation> reconcile_location(TrackRecord& track,
     if (!fingerprint)
         return std::nullopt;
 
+    return reconcile_location(track, location, std::move(*fingerprint));
+}
+
+std::optional<Relocation> reconcile_location(TrackRecord& track,
+    const std::filesystem::path& location, std::string fingerprint)
+{
+    if (!track.id.valid() || fingerprint.empty())
+        return std::nullopt;
     RelocationKind kind{RelocationKind::unchanged};
 
     if (track.fingerprint.empty()) {
         kind = RelocationKind::learned;
-    } else if (track.fingerprint != *fingerprint) {
+    } else if (track.fingerprint != fingerprint) {
         kind = RelocationKind::edited;
         ++track.content_revision;
     }
 
-    track.fingerprint = std::move(*fingerprint);
+    track.fingerprint = std::move(fingerprint);
     track.missing = false;
 
     if (std::ranges::find(track.locations, location) == track.locations.end())
