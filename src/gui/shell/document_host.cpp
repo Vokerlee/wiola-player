@@ -43,8 +43,7 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     , empty_{new QWidget{this}}
     , queue_{new NowPlayingDocument{this}}
 {
-    queue_->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
-    queue_->findChild<TrackBrowser*>()->table().set_search_index(&library_.search());
+    configure_browser(queue_->browser());
     queue_->set_media_resolver([this](const std::filesystem::path& path) {
         return library_.media_at(path);
     });
@@ -84,6 +83,8 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     connect(this, &QTabWidget::currentChanged, &lifetime_, [this](int) {
         registry_.activate(currentWidget());
         save();
+        if (commands_.selection_changed)
+            commands_.selection_changed();
     });
     connect(this, &QTabWidget::tabCloseRequested, &lifetime_, [this](int index) {
         if (const auto id = registry_.identify(widget(index)))
@@ -111,6 +112,16 @@ DocumentHost::~DocumentHost()
     save();
 }
 
+void DocumentHost::configure_browser(TrackBrowser& browser)
+{
+    browser.table().set_tag_catalog(&library_.tag_keys());
+    browser.table().set_search_index(&library_.search());
+    connect(&browser, &TrackBrowser::selection_changed, &lifetime_, [this] {
+        if (commands_.selection_changed)
+            commands_.selection_changed();
+    });
+}
+
 bool DocumentHost::activate(const DocumentId& id)
 {
     if (!registry_.activate(id))
@@ -124,8 +135,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
     if (registry_.playlist(id))
         return activate(DocumentId::playlist(id));
     auto* document = new SavedPlaylistDocument{this};
-    document->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
-    document->findChild<TrackBrowser*>()->table().set_search_index(&library_.search());
+    configure_browser(document->browser());
     if (!document->show_playlist(library_.repository(), id)) {
         delete document;
         return false;
@@ -168,8 +178,7 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
     if (registry_.workspace(id))
         return activate(DocumentId::workspace(id));
     auto* document = new WorkspaceDocument{this};
-    document->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
-    document->findChild<TrackBrowser*>()->table().set_search_index(&library_.search());
+    configure_browser(document->browser());
     registry_.add(id, *document, [document] { return document->selection(); });
     document->on_rescan_requested([this, id](bool recursive) {
         if (commands_.rescan)

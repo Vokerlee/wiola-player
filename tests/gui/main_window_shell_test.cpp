@@ -699,6 +699,7 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
     auto* second_table = active->findChild<gui::TrackTableView*>();
     ASSERT_NE(second_table, nullptr);
     ASSERT_EQ(second_table->total_count(), 1U);
+    second_table->selectRow(0);
     auto* key = window.findChild<QLineEdit*>("customTagKey");
     auto* value = window.findChild<QLineEdit*>("customTagValue");
     auto* add = window.findChild<QPushButton*>("addCustomTag");
@@ -725,6 +726,52 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
     ASSERT_EQ(restored.tracks.size(), 1U);
     ASSERT_EQ(restored.tracks.front().tags.size(), 1U);
     EXPECT_EQ(restored.tracks.front().tags.front().value, "Calm");
+}
+
+TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPlays)
+{
+    using namespace wiola;
+    QTemporaryDir directory;
+    app::LibrarySession library{
+        platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")),
+        std::make_shared<codec::LocalMediaProvider>()};
+    library::TrackRecord selected, playing;
+    selected.id = {"selected"};
+    selected.locations = {"selected.wav"};
+    selected.embedded.title = "Selected";
+    playing.id = {"playing"};
+    playing.locations = {"playing.wav"};
+    playing.embedded.title = "Playing";
+    ASSERT_TRUE(library.repository().put_track(selected));
+    ASSERT_TRUE(library.repository().put_track(playing));
+    const auto playlist = library.repository().create_playlist("Selected playlist");
+    ASSERT_TRUE(library.repository().append_track(playlist, selected.id));
+    engine::Session session;
+    session.add(playing.locations);
+    app::PlaybackService playback{session};
+    app::PlaybackPreferences preferences{playback};
+    gui::MainWindow window{playback, library, preferences};
+    auto* navigation =
+        static_cast<gui::LibraryNavigation*>(window.findChild<QWidget*>("libraryNavigation"));
+    ASSERT_TRUE(navigation->select_playlist(playlist));
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    auto* table = documents->currentWidget()->findChild<gui::TrackTableView*>();
+    ASSERT_NE(table, nullptr);
+    table->selectRow(0);
+    EXPECT_EQ(window.findChild<QLabel*>("inspectorTitle")->text(), "Selected");
+    auto* title = window.findChild<QLineEdit*>("standardTitle");
+    EXPECT_EQ(title->text(), "Selected");
+    window.findChild<QLineEdit*>("customTagKey")->setText("Mood");
+    window.findChild<QLineEdit*>("customTagValue")->setText("Calm");
+    window.findChild<QPushButton*>("addCustomTag")->click();
+    ASSERT_EQ(library.repository().track(selected.id)->tags.size(), 1);
+    EXPECT_TRUE(library.repository().track(playing.id)->tags.empty());
+    title->setText("Edited selection");
+    window.findChild<QPushButton*>("applyStandardMetadata")->click();
+    EXPECT_EQ(library.repository().track(selected.id)->overrides.title, "Edited selection");
+    EXPECT_FALSE(library.repository().track(playing.id)->overrides.title);
+    ASSERT_NE(session.playlist().current(), nullptr);
+    EXPECT_EQ(session.playlist().current()->path(), playing.locations.front());
 }
 
 } // namespace

@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief One normalized search, filter, and sort state for each track browser.
+ * @brief Typed track column identities and shared presentation descriptors.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

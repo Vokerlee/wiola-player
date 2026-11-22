@@ -146,7 +146,7 @@ private:
     void finish_standard_metadata(const app::MetadataEditSession& session);
     void publish_metadata_outcome(const app::MetadataEditOutcome& outcome);
     void resolve_metadata_conflict(MetadataConflictAction action);
-    [[nodiscard]] std::vector<const library::TrackRecord*> selected_records();
+    void refresh_inspector();
 
     /// Plays the track before or after this one in the list.
     void play_previous();

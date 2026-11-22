@@ -144,6 +144,13 @@ ActivePlaylist& LibrarySession::active_playlist()
     return active_;
 }
 
+std::optional<library::TrackRecord> LibrarySession::snapshot(const library::MediaId& id) const
+{
+    check_owner();
+    const auto* record = repository_.track(id);
+    return record ? std::optional{*record} : std::nullopt;
+}
+
 const SearchIndex& LibrarySession::search() const
 {
     check_owner();

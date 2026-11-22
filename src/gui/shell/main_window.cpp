@@ -19,6 +19,8 @@
  */
 
 #include "main_window.hpp"
+#include <gui/documents/queue_rows.hpp>
+#include <gui/metadata/inspector_context.hpp>
 
 #include <gui/appearance/presentation_tokens.hpp>
 #include <gui/appearance/theme.hpp>
@@ -228,6 +230,9 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     total_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     DocumentCommands document_commands;
+    document_commands.selection_changed = [this] {
+        refresh_inspector();
+    };
     document_commands.open_folder = [this] {
         open_folder();
     };
@@ -1089,18 +1094,20 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
     show_status(success);
 }
 
-std::vector<const library::TrackRecord*> MainWindow::selected_records()
+void MainWindow::refresh_inspector()
 {
-    std::vector<const library::TrackRecord*> selected;
-    for (const auto& item : document_host_->registry().selection())
-        if (const auto* record = library_.track(item.media))
-            selected.push_back(record);
-    if (selected.empty()) {
-        if (const auto* current = playback_.playlist().current())
-            if (const auto* record = library_.track(library::media_id_for(current->path())))
-                selected.push_back(record);
-    }
-    return selected;
+    if (!inspector_)
+        return;
+    const auto active = document_host_->registry().active();
+    std::optional<TrackRow> playing;
+    // Only Now Playing opts into a labeled fallback. An empty saved/workspace view stays empty.
+    if (active && active->is_queue())
+        if (const auto* current = playback_.playlist().current()) {
+            playing = queue_row(*current);
+            playing->media = library_session_.media_at(current->path());
+        }
+    inspector_->show_context(inspector_context(library_session_,
+        document_host_->registry().selection(), std::move(playing)));
 }
 
 void MainWindow::finish_standard_metadata(const app::MetadataEditSession& session)
@@ -1382,12 +1389,7 @@ void MainWindow::refresh()
     now_playing_->show_library(library_);
     now_playing_->show_playlist(playback_.playlist());
 
-    const engine::Track* current = playback_.playlist().current();
-    const library::TrackRecord* record =
-        current != nullptr ? library_.track(library::media_id_for(current->path())) : nullptr;
-    inspector_->show_track(current);
-    inspector_->show_custom_tags(record);
-    inspector_->show_standard_metadata(selected_records());
+    refresh_inspector();
 
     if (!playback.loaded) {
         show_play_button(false);
