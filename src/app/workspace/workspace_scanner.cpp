@@ -31,6 +31,9 @@ namespace {
 
 bool supported(const std::filesystem::path& path, const std::vector<std::string>& extensions)
 {
+    const auto stem = path.stem().u8string();
+    if (stem.ends_with(u8".wiola-writing"))
+        return false;
     std::string extension = path.extension().string();
     std::ranges::transform(extension, extension.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -109,6 +112,15 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
             .entries = {},
             .status = WorkspaceScanStatus::failed,
             .error = WorkspaceScanError::unreadable_root,
+            .directories = {}});
+        return;
+    }
+    if (supported_extensions.empty()) {
+        observer({.workspace = workspace.id,
+            .generation = generation,
+            .entries = {},
+            .status = WorkspaceScanStatus::failed,
+            .error = WorkspaceScanError::unsupported_formats,
             .directories = {}});
         return;
     }

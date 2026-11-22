@@ -278,4 +278,20 @@ TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
     std::filesystem::remove_all(root);
 }
 
+TEST(WorkspaceScanner, EmptyQualificationNeverClaimsAllKnownMediaAreMissing)
+{
+    const auto root = std::filesystem::temp_directory_path() / "wiola-empty-qualification";
+    std::filesystem::remove_all(root);
+    file(root / "present.wav");
+    ScanCapture capture;
+    wiola::app::WorkspaceScanner scanner;
+    scanner.start({.id = {"workspace"}, .root = root}, {},
+        [&](auto batch) { capture.accept(std::move(batch)); });
+    ASSERT_TRUE(capture.wait());
+    scanner.stop();
+    EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::failed);
+    EXPECT_EQ(capture.batches.back().error, wiola::app::WorkspaceScanError::unsupported_formats);
+    std::filesystem::remove_all(root);
+}
+
 } // namespace
