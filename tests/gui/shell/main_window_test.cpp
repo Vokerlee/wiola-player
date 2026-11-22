@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <codec/provider.hpp>
 #include <gui/controls/seek_bar.hpp>
 #include <gui/shell/main_window.hpp>
 
@@ -183,7 +184,8 @@ protected:
 TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
 {
     wiola::engine::Session session;
-    MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    MainWindow window{session, window_library};
 
     const QPushButton* open = command(window, "Open tracks");
     const QPushButton* previous = command(window, "Previous track");
@@ -214,7 +216,8 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
     const std::filesystem::path first = track("wiola_window_first.wav");
     const std::filesystem::path second = track("wiola_window_second.wav");
     wiola::engine::Session session;
-    MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    MainWindow window{session, window_library};
 
     QPushButton* previous = command(window, "Previous track");
     QPushButton* play = command(window, "Play");
@@ -264,7 +267,8 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 {
     const std::filesystem::path source = track("wiola_window_seek.wav");
     wiola::engine::Session session;
-    MainWindow window{session};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    MainWindow window{session, window_library};
     SeekBar* position = window.findChild<SeekBar*>();
 
     ASSERT_NE(position, nullptr);
@@ -293,7 +297,9 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 {
     {
         wiola::engine::Session session;
-        MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        MainWindow window{session, window_library};
         QSlider* volume = volume_slider(window);
         QPushButton* boost = with_text<QPushButton>(window, "+");
 
@@ -316,7 +322,9 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
     EXPECT_TRUE(stored("volume/boosted").toBool());
 
     wiola::engine::Session session;
-    MainWindow restored{session};
+    wiola::app::LibrarySession restored_library{
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    MainWindow restored{session, restored_library};
     const QSlider* volume = volume_slider(restored);
     const QPushButton* boost = with_text<QPushButton>(restored, "+");
 
@@ -332,7 +340,9 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
 {
     {
         wiola::engine::Session session;
-        MainWindow window{session};
+        wiola::app::LibrarySession window_library{
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
+        MainWindow window{session, window_library};
         QPushButton* equalizer = with_text<QPushButton>(window, "EQ");
 
         ASSERT_NE(equalizer, nullptr);
@@ -358,7 +368,9 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     EXPECT_FLOAT_EQ(stored("equalizer/band/2").toFloat(), 6.0F);
 
     wiola::engine::Session session;
-    MainWindow restored{session};
+    wiola::app::LibrarySession restored_library{
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    MainWindow restored{session, restored_library};
     QPushButton* equalizer = with_text<QPushButton>(restored, "EQ");
 
     ASSERT_NE(equalizer, nullptr);

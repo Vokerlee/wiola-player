@@ -26,6 +26,7 @@
 #include "player_actions.hpp"
 #include "player_presenter.hpp"
 #include "saved_playlist_manager.hpp"
+#include <desktop/library/library_session.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/queue_settings.hpp>
 #include <gui/controls/seek_bar.hpp>
@@ -36,7 +37,6 @@
 #include <gui/layout/layout_document.hpp>
 #include <gui/metadata/track_inspector.hpp>
 #include <library/metadata_patch.hpp>
-#include <persistence/qt/library_store.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/metadata/metadata_merge.hpp>
@@ -83,7 +83,7 @@ class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(engine::Session& session);
+    MainWindow(engine::Session& session, app::LibrarySession& library);
 
     ~MainWindow() override;
 
@@ -142,7 +142,6 @@ private:
     void play_saved_playlist(const library::PlaylistId& id);
     void play_displayed_paths(std::vector<std::filesystem::path> tracks);
     void request_metadata(const std::filesystem::path& location);
-    void publish_media_revision(app::BackgroundMetadataResult result);
     void apply_library_changes(const library::LibraryChangeBatch& batch);
     void finish_custom_tag(app::CustomTagResult result, const QString& success);
     void finish_standard_metadata(library::MediaId media, library::StandardMetadataPatch edit);
@@ -228,14 +227,14 @@ private:
     QueueSettings playlist_;
     VolumeControl volume_;
     EqualizerControl equalizer_;
-    library::InMemoryRepository library_;
+    app::LibrarySession& library_session_;
+    library::InMemoryRepository& library_;
     library::LibraryChanges::Subscription library_changes_;
-    persistence::qt::LibraryStore library_storage_;
-    library::RepositoryTransaction::Persist persist_library_;
-    app::SavedPlaylistCommands playlist_commands_;
-    app::CustomTagCommands tag_commands_;
-    app::OptimisticMetadataEdits optimistic_edits_;
-    app::ActivePlaylist active_playlist_;
+    const library::RepositoryTransaction::Persist& persist_library_;
+    app::SavedPlaylistCommands& playlist_commands_;
+    app::CustomTagCommands& tag_commands_;
+    app::OptimisticMetadataEdits& optimistic_edits_;
+    app::ActivePlaylist& active_playlist_;
 
     struct PendingMetadataEdit {
         std::vector<library::MediaId> media;
@@ -263,10 +262,8 @@ private:
     SavedPlaylistManager* playlist_manager_{nullptr};
     std::map<library::PlaylistId, SavedPlaylistDocument*> playlist_documents_;
     std::map<library::WorkspaceId, WorkspaceDocument*> workspace_documents_;
-    std::unique_ptr<app::WorkspaceScanPublisher> workspace_scans_;
-    app::MetadataMerge metadata_merge_;
-    std::unique_ptr<app::MediaRevisionPublisher> media_revisions_;
-    std::unique_ptr<app::WorkspaceWatcher> workspace_watcher_;
+    app::WorkspaceScanPublisher* workspace_scans_;
+    app::WorkspaceWatcher* workspace_watcher_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};
     QLabel* volume_value_{nullptr};

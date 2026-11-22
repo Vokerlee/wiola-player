@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <desktop/library/library_session.hpp>
 #include <engine/session.hpp>
 
 #include <QObject>
@@ -48,6 +49,8 @@ public:
 
     [[nodiscard]] engine::Session& session() noexcept { return session_; }
 
+    [[nodiscard]] LibrarySession& library() noexcept { return library_; }
+
     /// Connects `window` to application pumping and refreshing until the window is destroyed.
     void attach(gui::MainWindow& window);
 
@@ -56,6 +59,7 @@ signals:
 
 private:
     engine::Session session_;
+    LibrarySession library_;
     QTimer pump_timer_;
     QTimer refresh_timer_;
 };

@@ -19,6 +19,7 @@
  */
 
 #include "player_application.hpp"
+#include <codec/provider.hpp>
 
 #include <gui/appearance/presentation_tokens.hpp>
 #include <gui/shell/main_window.hpp>
@@ -27,6 +28,7 @@ namespace wiola::app {
 
 PlayerApplication::PlayerApplication(QObject* parent)
     : QObject{parent}
+    , library_{std::make_shared<codec::LocalMediaProvider>()}
 {
     constexpr gui::PresentationTokens tokens;
 
