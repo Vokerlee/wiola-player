@@ -432,6 +432,92 @@ TEST(LayoutBuilder, OpaqueDocumentHostAndTypedDocumentReferencesKeepTheirKindsAn
     EXPECT_EQ(builder.build(restored.root, {}, &owner), saved);
 }
 
+TEST(PreparedLayout, AbandonmentAndDestroyedBorrowedViewsDoNotAttachAnyLiveWidget)
+{
+    using namespace wiola::gui;
+    QWidget owner;
+    auto* first = new QPushButton{"First", &owner};
+    auto* second = new QPushButton{"Second", &owner};
+    auto* old = new QHBoxLayout{&owner};
+    old->addWidget(first);
+    old->addWidget(second);
+    LayoutBuilder builder;
+    ASSERT_TRUE(builder.views().add(component_view("first"), first, LayoutComponentKind::button));
+    ASSERT_TRUE(builder.views().add(component_view("second"), second, LayoutComponentKind::button));
+    LayoutNode root{
+        .id = "root",
+        .kind = LayoutComponentKind::column,
+        .children = {
+                     {.id = "one", .kind = LayoutComponentKind::button, .view = component_view("first")},
+                     {.id = "two", .kind = LayoutComponentKind::button, .view = component_view("second")}}
+    };
+    {
+        auto candidate = builder.prepare(root, {}, &owner);
+        ASSERT_NE(candidate, nullptr);
+        EXPECT_TRUE(candidate->ready(&owner));
+        EXPECT_EQ(first->parentWidget(), &owner);
+        EXPECT_EQ(old->indexOf(first), 0);
+    }
+    EXPECT_EQ(first->parentWidget(), &owner);
+    auto candidate = builder.prepare(root, {}, &owner);
+    ASSERT_NE(candidate, nullptr);
+    delete second;
+    EXPECT_FALSE(candidate->ready(&owner));
+    EXPECT_EQ(candidate->attach(&owner), nullptr);
+    EXPECT_EQ(first->parentWidget(), &owner);
+    EXPECT_EQ(old->indexOf(first), 0);
+}
+
+TEST(PreparedLayout, DetectsChangedBorrowedOwnershipAndCanOnlyAttachOnce)
+{
+    using namespace wiola::gui;
+    QWidget owner, other;
+    auto* button = new QPushButton{"Live", &owner};
+    LayoutBuilder builder;
+    ASSERT_TRUE(builder.views().add(component_view("live"), button, LayoutComponentKind::button));
+    LayoutNode node{.id = "renamed",
+        .kind = LayoutComponentKind::button,
+        .view = component_view("live")};
+    auto pending = builder.prepare(node, {}, &owner);
+    ASSERT_NE(pending, nullptr);
+    button->setParent(&other);
+    EXPECT_EQ(pending->attach(&owner), nullptr);
+    EXPECT_EQ(button->parentWidget(), &other);
+    auto accepted = builder.prepare(node, {}, &owner);
+    ASSERT_NE(accepted, nullptr);
+    EXPECT_EQ(accepted->attach(&owner), button);
+    EXPECT_EQ(accepted->attach(&owner), nullptr);
+    EXPECT_FALSE(accepted->ready(&owner));
+}
+
+TEST(PreparedLayout, RetiringAStructureKeepsOmittedRegisteredCompositeContentsTogether)
+{
+    using namespace wiola::gui;
+    QWidget owner;
+    auto* root = new QSplitter{&owner};
+    auto* composite = new QTabWidget;
+    auto* content = new QWidget;
+    composite->addTab(content, "Retained");
+    root->addWidget(composite);
+    LayoutBuilder builder;
+    ASSERT_TRUE(builder.views().add(component_view("root"), root, LayoutComponentKind::splitter,
+        true));
+    ASSERT_TRUE(builder.views().add(component_view("zparent"), composite,
+        LayoutComponentKind::document_host));
+    ASSERT_TRUE(builder.views().add(component_view("achild"), content,
+        LayoutComponentKind::status));
+    LayoutNode node{.id = "newRoot",
+        .kind = LayoutComponentKind::splitter,
+        .children = {{.id = "replacement", .kind = LayoutComponentKind::status}},
+        .view = component_view("root")};
+    auto prepared = builder.prepare(node, {}, &owner);
+    ASSERT_NE(prepared, nullptr);
+    ASSERT_EQ(prepared->attach(&owner), root);
+    EXPECT_EQ(composite->parentWidget(), &owner);
+    EXPECT_EQ(composite->widget(0), content);
+    EXPECT_TRUE(composite->isAncestorOf(content));
+}
+
 } // namespace
 
 int main(int argc, char** argv)

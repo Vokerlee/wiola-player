@@ -14,6 +14,8 @@ wiola_add_library(
         layout/view_registry.cpp
         layout/component_descriptor.cpp
         layout/layout_builder.cpp
+        layout/prepared_layout.cpp
+        layout/layout_widget_operations.cpp
         layout/layout_editor.cpp
         shell/document_host.cpp
         shell/main_window.cpp
