@@ -20,8 +20,8 @@
 
 #pragma once
 
+#include "volume_scale.hpp"
 #include <audio/dsp/equalizer_config.hpp>
-#include <gui/volume_scale.hpp>
 
 #include <QSettings>
 

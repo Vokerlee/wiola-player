@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <gui/player_presenter.hpp>
+#include "player_presenter.hpp"
 
 #include <QSettings>
 

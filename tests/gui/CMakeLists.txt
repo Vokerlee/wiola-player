@@ -1,32 +1,36 @@
-wiola_add_test(gui_track_sort_test SOURCES track_sort_test.cpp LIBS wiola_gui)
+wiola_add_test(
+    gui_track_sort_test
+    SOURCES tracks/track_sort_test.cpp
+    LIBS wiola_gui
+)
 wiola_add_test(
     gui_track_sorter_test
-    SOURCES track_sorter_test.cpp
+    SOURCES tracks/track_sorter_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_track_search_panel_test
-    SOURCES track_search_panel_test.cpp
+    SOURCES tracks/track_search_panel_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_tag_filter_panel_test
-    SOURCES tag_filter_panel_test.cpp
+    SOURCES tracks/tag_filter_panel_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_track_table_model_test
-    SOURCES track_table_model_test.cpp
+    SOURCES tracks/track_table_model_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_track_table_view_test
-    SOURCES track_table_view_test.cpp
+    SOURCES tracks/track_table_view_test.cpp
     LIBS wiola_gui Qt6::Test
 )
 wiola_add_test(
     gui_now_playing_document_test
-    SOURCES now_playing_document_test.cpp
+    SOURCES documents/now_playing_document_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
@@ -36,22 +40,22 @@ wiola_add_test(
 )
 wiola_add_test(
     gui_metadata_conflict_panel_test
-    SOURCES metadata_conflict_panel_test.cpp
+    SOURCES metadata/metadata_conflict_panel_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_standard_metadata_editor_test
-    SOURCES standard_metadata_editor_test.cpp
+    SOURCES metadata/standard_metadata_editor_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_custom_tag_editor_test
-    SOURCES custom_tag_editor_test.cpp
+    SOURCES metadata/custom_tag_editor_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_track_inspector_test
-    SOURCES track_inspector_test.cpp
+    SOURCES metadata/track_inspector_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
@@ -66,12 +70,12 @@ wiola_add_test(
 )
 wiola_add_test(
     gui_workspace_document_test
-    SOURCES workspace_document_test.cpp
+    SOURCES documents/workspace_document_test.cpp
     LIBS wiola_gui wiola_workspace_scans
 )
 wiola_add_test(
     gui_saved_playlist_document_test
-    SOURCES saved_playlist_document_test.cpp
+    SOURCES documents/saved_playlist_document_test.cpp
     LIBS wiola_gui wiola_library
 )
 wiola_add_test(

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/standard_metadata_editor.hpp>
+#include <gui/metadata/standard_metadata_editor.hpp>
 
 #include <QApplication>
 

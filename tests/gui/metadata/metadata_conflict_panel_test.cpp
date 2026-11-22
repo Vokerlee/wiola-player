@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/metadata_conflict_panel.hpp>
+#include <gui/metadata/metadata_conflict_panel.hpp>
 
 #include <QApplication>
 

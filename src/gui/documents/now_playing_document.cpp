@@ -20,9 +20,9 @@
 
 #include "now_playing_document.hpp"
 
-#include "tag_filter_panel.hpp"
-#include "track_search_panel.hpp"
-#include "track_table_view.hpp"
+#include <gui/tracks/tag_filter_panel.hpp>
+#include <gui/tracks/track_search_panel.hpp>
+#include <gui/tracks/track_table_view.hpp>
 
 #include <QLabel>
 #include <QVBoxLayout>

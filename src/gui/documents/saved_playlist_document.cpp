@@ -20,8 +20,8 @@
 
 #include "saved_playlist_document.hpp"
 
-#include "tag_filter_panel.hpp"
-#include "track_search_panel.hpp"
+#include <gui/tracks/tag_filter_panel.hpp>
+#include <gui/tracks/track_search_panel.hpp>
 
 #include <library/metadata.hpp>
 

@@ -20,8 +20,8 @@
 
 #include "track_table_model.hpp"
 
-#include "clock.hpp"
 #include "track_view_pipeline.hpp"
+#include <gui/clock.hpp>
 
 #include <library/location.hpp>
 #include <library/repository.hpp>

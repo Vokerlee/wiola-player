@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <gui/layout_document.hpp>
+#include "layout_document.hpp"
 
 #include <functional>
 #include <map>

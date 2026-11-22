@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/workspace_document.hpp>
+#include <gui/documents/workspace_document.hpp>
 
 #include <library/in_memory_repository.hpp>
 #include <library/location.hpp>
