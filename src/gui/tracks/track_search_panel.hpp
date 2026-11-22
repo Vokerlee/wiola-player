@@ -48,6 +48,8 @@ private:
     QLineEdit* title_{nullptr};
     QLineEdit* artist_{nullptr};
     QLineEdit* album_{nullptr};
+    QLineEdit* tags_{nullptr};
+    QPushButton* clear_tags_{nullptr};
     QPushButton* clear_title_{nullptr};
     QPushButton* clear_artist_{nullptr};
     QPushButton* clear_album_{nullptr};

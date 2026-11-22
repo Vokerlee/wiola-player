@@ -24,12 +24,18 @@
 
 #include <library/search.hpp>
 
+namespace wiola::app {
+
+class SearchIndex;
+
+}
+
 namespace wiola::gui {
 
 [[nodiscard]] bool track_query_active(const library::SearchQuery& query);
 
 [[nodiscard]] std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
     const library::LibraryRepository* repository, const library::SearchQuery& query,
-    const std::vector<TrackSortKey>& sort_keys);
+    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search = nullptr);
 
 } // namespace wiola::gui

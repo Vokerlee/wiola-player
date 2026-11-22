@@ -21,6 +21,7 @@
 #pragma once
 #ifndef Q_MOC_RUN
 #include "saved_playlist_commands.hpp"
+#include <app/library/location_index.hpp>
 #include <app/library/search_index.hpp>
 #include <app/library/tag_key_catalog.hpp>
 #include <app/metadata/custom_tag_commands.hpp>
@@ -99,6 +100,7 @@ private:
     OptimisticMetadataEdits edits_;
     ActivePlaylist active_;
     SearchIndex search_;
+    LocationIndex locations_;
     TagKeyCatalog tag_keys_;
     MetadataMerge merge_;
     WorkspaceReconciliation reconciliation_{persist_};

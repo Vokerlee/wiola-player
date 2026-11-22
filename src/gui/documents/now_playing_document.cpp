@@ -74,7 +74,11 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
     const auto current = playlist.current()
         ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
         : std::nullopt;
-    browser_->show_rows(queue_rows(playlist.tracks()), current);
+    auto rows = queue_rows(playlist.tracks());
+    if (resolve_media_)
+        for (auto& row : rows)
+            row.media = resolve_media_(row.location);
+    browser_->show_rows(rows, current);
 }
 
 void NowPlayingDocument::show_library(const library::LibraryRepository& repository)

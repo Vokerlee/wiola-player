@@ -38,6 +38,12 @@ class LibraryRepository;
 
 }
 
+namespace wiola::app {
+
+class SearchIndex;
+
+}
+
 namespace wiola::gui {
 
 class TrackTableModel final : public QAbstractTableModel {
@@ -50,6 +56,8 @@ public:
     int columnCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+
+    void set_search_index(const app::SearchIndex* index) { search_ = index; }
 
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
     void show_library(const library::LibraryRepository& repository);
@@ -79,6 +87,7 @@ private:
     const library::LibraryRepository* repository_{nullptr};
     std::vector<std::string> tag_columns_;
     TrackViewState state_;
+    const app::SearchIndex* search_{nullptr};
 };
 
 } // namespace wiola::gui

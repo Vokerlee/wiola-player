@@ -23,6 +23,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <app/library/search_index.hpp>
 #include <array>
 #include <gtest/gtest.h>
 #include <gui/tracks/track_browser.hpp>
@@ -138,6 +139,36 @@ TEST(TrackBrowser, NormalizesOnceAndIgnoresEquivalentStateUpdates)
     EXPECT_EQ(changes, 0);
     EXPECT_EQ(first.table().chosen_rows(), std::vector<TrackRowId>{row.id});
     EXPECT_TRUE(second.view_state().query.title.empty());
+}
+
+TEST(TrackBrowser, IndexedSearchUsesCanonicalMediaAndPreservesOccurrenceDuplicates)
+{
+    wiola::app::SearchIndex index;
+    wiola::library::TrackRecord record;
+    record.id = {"canonical"};
+    record.embedded.title = "Library title";
+    record.embedded.artist = "Artist";
+    record.tags = {
+        {.id = {"tag"}, .key = "Mood", .value = "Calm"}
+    };
+    index.upsert(record);
+    TrackRow first, second;
+    first.id = wiola::library::PlaylistEntryId{"one"};
+    first.media = record.id;
+    first.metadata.title = "Stale row title";
+    second = first;
+    second.id = wiola::library::PlaylistEntryId{"two"};
+    TrackBrowser browser{TrackCapabilities::playlist()};
+    browser.table().set_search_index(&index);
+    browser.show_rows({second, first});
+    browser.findChild<QLineEdit*>("searchTitle")->setText("library");
+    browser.findChild<QLineEdit*>("searchArtist")->setText("artist");
+    browser.findChild<QLineEdit*>("searchTags")->setText("calm");
+    EXPECT_EQ(browser.table().displayed_rows(), (std::vector<TrackRowId>{second.id, first.id}));
+    record.tags.front().value = "Loud";
+    index.upsert(record);
+    browser.show_rows({second, first});
+    EXPECT_EQ(browser.table().visible_count(), 0);
 }
 
 } // namespace

@@ -20,93 +20,52 @@
 
 #include "search_index.hpp"
 
-#include <library/tags.hpp>
-
-#include <algorithm>
-
 namespace wiola::app {
-
-namespace {
-
-void normalize(std::optional<std::string>& value)
-{
-    if (value)
-        *value = library::normalized_tag_text(*value);
-}
-
-library::TrackRecord normalized_fields(const library::TrackRecord& track)
-{
-    library::TrackRecord normalized;
-    normalized.id = track.id;
-    normalized.embedded.title = library::normalized_tag_text(track.embedded.title);
-    normalized.embedded.artist = library::normalized_tag_text(track.embedded.artist);
-    normalized.embedded.album = library::normalized_tag_text(track.embedded.album);
-    normalized.overrides = track.overrides;
-
-    normalize(normalized.overrides.title);
-    normalize(normalized.overrides.artist);
-    normalize(normalized.overrides.album);
-
-    normalized.tags.reserve(track.tags.size());
-
-    for (const library::TagRecord& tag : track.tags) {
-        normalized.tags.push_back({.id = tag.id,
-            .key = library::normalized_tag_text(tag.key),
-            .value = library::normalized_tag_text(tag.value)});
-    }
-
-    return normalized;
-}
-
-bool same_fields(const library::TrackRecord& first, const library::TrackRecord& second)
-{
-    return first.embedded.title == second.embedded.title &&
-        first.embedded.artist == second.embedded.artist &&
-        first.embedded.album == second.embedded.album &&
-        first.overrides.title == second.overrides.title &&
-        first.overrides.artist == second.overrides.artist &&
-        first.overrides.album == second.overrides.album && first.tags == second.tags;
-}
-
-} // namespace
 
 bool SearchIndex::upsert(const library::TrackRecord& track)
 {
     if (!track.id.valid())
         return false;
-
-    library::TrackRecord normalized = normalized_fields(track);
-    const auto existing = std::ranges::find(entries_, track.id, &Entry::media);
-
-    if (existing != entries_.end()) {
-        if (same_fields(existing->normalized, normalized))
-            return false;
-
-        existing->normalized = std::move(normalized);
-        return true;
-    }
-
-    entries_.push_back({.media = track.id, .normalized = std::move(normalized)});
+    auto fields = library::search_fields_of(track);
+    const auto found = entries_.find(track.id);
+    if (found != entries_.end() && found->second == fields)
+        return false;
+    entries_.insert_or_assign(track.id, std::move(fields));
+    cached_query_.reset();
     return true;
 }
 
-bool SearchIndex::remove(const library::MediaId& media)
+bool SearchIndex::remove(const library::MediaId& id)
 {
-    return std::erase_if(entries_, [&media](const Entry& entry) { return entry.media == media; }) !=
-        0;
+    if (entries_.erase(id) == 0)
+        return false;
+    cached_query_.reset();
+    return true;
+}
+
+void SearchIndex::clear()
+{
+    entries_.clear();
+    cached_query_.reset();
+    cached_matches_.clear();
 }
 
 std::vector<library::MediaId> SearchIndex::query(const library::SearchQuery& query) const
 {
-    const library::SearchQuery normalized = library::normalized_search_query(query);
-    std::vector<library::MediaId> matches;
+    return query_normalized(library::normalized_search_query(query));
+}
 
-    for (const Entry& entry : entries_) {
-        if (library::matches_search(normalized, entry.normalized))
-            matches.push_back(entry.media);
-    }
-
-    return matches;
+const std::vector<library::MediaId>&
+SearchIndex::query_normalized(const library::SearchQuery& query) const
+{
+    if (cached_query_ && *cached_query_ == query)
+        return cached_matches_;
+    cached_matches_.clear();
+    for (const auto& [id, fields] : entries_)
+        if (library::matches_search_fields(query, fields))
+            cached_matches_.push_back(id);
+    cached_query_ = query;
+    return cached_matches_;
 }
 
 } // namespace wiola::app

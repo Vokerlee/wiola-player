@@ -319,7 +319,7 @@ bool TrackTableModel::set_view_state(TrackViewState state)
 
 std::vector<TrackRow> TrackTableModel::visible_rows() const
 {
-    return apply_track_view(source_rows_, repository_, state_.query, state_.sort_keys);
+    return apply_track_view(source_rows_, repository_, state_.query, state_.sort_keys, search_);
 }
 
 std::optional<TrackRowId> TrackTableModel::row_id(const QModelIndex& index) const

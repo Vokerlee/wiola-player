@@ -19,6 +19,8 @@
  */
 
 #include "track_view_pipeline.hpp"
+#include <app/library/search_index.hpp>
+#include <set>
 
 #include <library/location.hpp>
 
@@ -52,13 +54,22 @@ bool track_query_active(const library::SearchQuery& query)
 
 std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
     const library::LibraryRepository* repository, const library::SearchQuery& query,
-    const std::vector<TrackSortKey>& sort_keys)
+    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search)
 {
     std::vector<TrackRow> visible;
     visible.reserve(source.size());
 
+    std::set<library::MediaId> matching;
+    const bool active = track_query_active(query);
+    if (search && active) {
+        const auto& ids = search->query_normalized(query);
+        matching.insert(ids.begin(), ids.end());
+    }
     for (const TrackRow& track : source) {
-        if (!track_query_active(query) || matches(track, repository, query))
+        const bool accepted = !active ||
+            (search && search->contains(track.media) ? matching.contains(track.media)
+                                                     : matches(track, repository, query));
+        if (accepted)
             visible.push_back(track);
     }
 
