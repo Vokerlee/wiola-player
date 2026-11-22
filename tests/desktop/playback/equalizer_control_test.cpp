@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/controls/equalizer_control.hpp>
+#include <desktop/playback/equalizer_control.hpp>
 #include <pcm/stream_spec.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <utils/units.hpp>
@@ -35,7 +35,7 @@
 namespace {
 
 using namespace wiola::units::literals;
-using Control = wiola::gui::EqualizerControl;
+using Control = wiola::app::EqualizerControl;
 using wiola::pcm::StreamSpec;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.

@@ -27,8 +27,18 @@ PlaybackService::PlaybackService(engine::Session& session)
 {
 }
 
+void PlaybackService::stop_accepting() noexcept
+{
+    accepting_ = false;
+    session_->stop();
+}
+
 engine::OperationReceipt PlaybackService::open(std::vector<std::filesystem::path> tracks)
 {
+    if (!accepting_)
+        return {.id = 0,
+            .operation = engine::OperationKind::open,
+            .acceptance = engine::CommandResult::unavailable};
     session_->open(std::move(tracks));
 
     return {.id = session_->open_request_id(),
@@ -38,46 +48,64 @@ engine::OperationReceipt PlaybackService::open(std::vector<std::filesystem::path
 
 void PlaybackService::add(std::vector<std::filesystem::path> tracks)
 {
+    if (!accepting_)
+        return;
     session_->add(std::move(tracks));
 }
 
 bool PlaybackService::remove(std::size_t index)
 {
+    if (!accepting_)
+        return false;
     return session_->remove(index);
 }
 
 void PlaybackService::clear()
 {
+    if (!accepting_)
+        return;
     session_->clear();
 }
 
 bool PlaybackService::play_track(std::size_t index)
 {
+    if (!accepting_)
+        return false;
     return session_->play_track(index);
 }
 
 bool PlaybackService::next_track()
 {
+    if (!accepting_)
+        return false;
     return session_->next_track();
 }
 
 bool PlaybackService::previous_track()
 {
+    if (!accepting_)
+        return false;
     return session_->previous_track();
 }
 
 engine::CommandResult PlaybackService::play() noexcept
 {
+    if (!accepting_)
+        return engine::CommandResult::unavailable;
     return session_->play() ? engine::CommandResult::accepted : engine::CommandResult::unavailable;
 }
 
 engine::CommandResult PlaybackService::pause() noexcept
 {
+    if (!accepting_)
+        return engine::CommandResult::unavailable;
     return session_->pause() ? engine::CommandResult::accepted : engine::CommandResult::unavailable;
 }
 
 engine::CommandResult PlaybackService::resume() noexcept
 {
+    if (!accepting_)
+        return engine::CommandResult::unavailable;
     return session_->resume() ? engine::CommandResult::accepted
                               : engine::CommandResult::unavailable;
 }
@@ -89,11 +117,15 @@ void PlaybackService::stop() noexcept
 
 void PlaybackService::seek(units::Time position) noexcept
 {
+    if (!accepting_)
+        return;
     session_->seek(position);
 }
 
 void PlaybackService::set_volume(float gain) noexcept
 {
+    if (!accepting_)
+        return;
     session_->volume().set_gain(gain);
 }
 
@@ -104,6 +136,8 @@ float PlaybackService::volume() const noexcept
 
 void PlaybackService::set_equalizer_enabled(bool enabled) noexcept
 {
+    if (!accepting_)
+        return;
     session_->equalizer().set_enabled(enabled);
 }
 
@@ -114,6 +148,8 @@ bool PlaybackService::equalizer_enabled() const noexcept
 
 void PlaybackService::set_equalizer_band(std::size_t index, float db) noexcept
 {
+    if (!accepting_)
+        return;
     session_->equalizer().set_band_gain(index, db);
 }
 
@@ -262,6 +298,8 @@ const std::filesystem::path& PlaybackService::track() const noexcept
 
 void PlaybackService::set_repeat(engine::Playlist::Repeat repeat) noexcept
 {
+    if (!accepting_)
+        return;
     session_->set_repeat(repeat);
 }
 
@@ -272,6 +310,8 @@ engine::Playlist::Repeat PlaybackService::repeat() const noexcept
 
 void PlaybackService::shuffle(bool on)
 {
+    if (!accepting_)
+        return;
     session_->shuffle(on);
 }
 

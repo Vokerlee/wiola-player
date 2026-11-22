@@ -37,10 +37,10 @@ target_link_libraries(wiola_saved_playlists PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_player_application
     SOURCES player_application.cpp
-    LIBS wiola_gui
+    LIBS wiola_library_session wiola_playback_preferences wiola_codec
 )
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_player_application PUBLIC Qt6::Widgets)
+target_link_libraries(wiola_player_application PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_queue_migration
     SOURCES library/queue_library_migration.cpp
@@ -63,3 +63,14 @@ wiola_add_library(
 )
 set_target_properties(wiola_library_session PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_library_session PUBLIC Qt6::Core)
+
+wiola_add_library(
+    wiola_playback_preferences
+    SOURCES
+        playback/playback_preferences.cpp
+        playback/queue_settings.cpp
+        playback/volume_control.cpp
+        playback/equalizer_control.cpp
+    LIBS wiola_app wiola_qt_settings
+)
+target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core)

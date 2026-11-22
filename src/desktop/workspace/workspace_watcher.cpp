@@ -44,7 +44,7 @@ WorkspaceWatcher::WorkspaceWatcher(QObject* parent)
 
 bool WorkspaceWatcher::watch(const library::WorkspaceRecord& workspace)
 {
-    if (!workspace.id.valid() || workspace.root.empty() ||
+    if (stopped_ || !workspace.id.valid() || workspace.root.empty() ||
         !std::filesystem::is_directory(workspace.root))
         return false;
 
@@ -70,6 +70,16 @@ bool WorkspaceWatcher::watch(const library::WorkspaceRecord& workspace)
     watcher_.addPaths(paths);
 
     return true;
+}
+
+void WorkspaceWatcher::stop()
+{
+    stopped_ = true;
+    while (!watched_.empty()) {
+        const auto id = watched_.begin()->first;
+        unwatch(id);
+    }
+    observer_ = {};
 }
 
 void WorkspaceWatcher::unwatch(const library::WorkspaceId& id)

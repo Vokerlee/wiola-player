@@ -40,13 +40,14 @@ LibrarySession::LibrarySession(std::shared_ptr<media::MediaProvider> provider, Q
 }
 
 LibrarySession::LibrarySession(std::filesystem::path file,
-    std::shared_ptr<media::MediaProvider> provider, QObject* parent)
+    std::shared_ptr<media::MediaProvider> provider, QObject* parent,
+    persistence::qt::AtomicFileStore::OutputFactory output)
     : QObject{parent}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
-    , store_{std::move(file)}
+    , store_{std::move(file), std::move(output)}
     , persist_{[this](const library::LibraryRepository& records) {
         check_owner();
-        return store_.save(library::snapshot_of(records)).succeeded();
+        return accepting_ && store_.save(library::snapshot_of(records)).succeeded();
     }}
     , playlists_{repository_, persist_}
     , tags_{repository_, persist_}
@@ -54,6 +55,8 @@ LibrarySession::LibrarySession(std::filesystem::path file,
           [this](const MetadataEditOutcome& outcome) { emit metadata_outcome(outcome); }}
     , scans_{*this,
           [this](WorkspaceScanBatch batch) {
+              if (!accepting_)
+                  return;
               for (const auto& path : batch.tracks)
                   request_metadata(path);
               emit scan_batch(batch);
@@ -61,7 +64,8 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , metadata_{*this, std::move(provider),
           [this](BackgroundMetadataResult result) { publish_metadata(std::move(result)); }}
 {
-    if (!persistence::qt::restore_repository(store_, repository_).succeeded())
+    restore_result_ = persistence::qt::restore_repository(store_, repository_);
+    if (!restore_result_.succeeded())
         restore_error_ = "Could not restore the saved library";
     const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
     if (repository_.playlist(active))
@@ -79,7 +83,28 @@ LibrarySession::LibrarySession(std::filesystem::path file,
         static_cast<void>(watcher_.watch(workspace));
 }
 
-LibrarySession::~LibrarySession() = default;
+LibrarySession::~LibrarySession()
+{
+    static_cast<void>(shutdown());
+}
+
+persistence::qt::LibraryStoreResult LibrarySession::shutdown()
+{
+    check_owner();
+    if (!accepting_ && shutdown_result_.succeeded())
+        return shutdown_result_;
+    accepting_ = false;
+    watcher_.stop();
+    scans_.stop();
+    metadata_.stop();
+    shutdown_result_ = !restore_result_.succeeded() && repository_.change_revision() == 0
+        ? restore_result_
+        : store_.save(library::snapshot_of(repository_));
+    settings_.sync();
+    if (shutdown_result_.succeeded() && settings_.status() != QSettings::NoError)
+        shutdown_result_.io = persistence::qt::FileStoreError::io;
+    return shutdown_result_;
+}
 
 void LibrarySession::check_owner() const
 {
@@ -149,12 +174,16 @@ WorkspaceWatcher& LibrarySession::watcher()
 void LibrarySession::request_metadata(const std::filesystem::path& path)
 {
     check_owner();
+    if (!accepting_)
+        return;
     static_cast<void>(metadata_.enqueue(library::media_id_for(path), path));
 }
 
 void LibrarySession::publish_metadata(BackgroundMetadataResult result)
 {
     check_owner();
+    if (!accepting_)
+        return;
     if (!result.metadata) {
         emit status_changed("Could not read metadata for " +
             platform::qt::QtPathAdapter::to_qt(result.location.filename()));

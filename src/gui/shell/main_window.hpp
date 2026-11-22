@@ -27,10 +27,11 @@
 #include "saved_playlist_manager.hpp"
 #include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
+#include <desktop/playback/playback_preferences.hpp>
+#include <desktop/playback/queue_settings.hpp>
+#include <desktop/playback/volume_control.hpp>
 #include <gui/controls/equalizer_panel.hpp>
-#include <gui/controls/queue_settings.hpp>
 #include <gui/controls/seek_bar.hpp>
-#include <gui/controls/volume_control.hpp>
 #include <gui/documents/now_playing_document.hpp>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
@@ -83,7 +84,8 @@ class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(app::PlaybackService& playback, app::LibrarySession& library);
+    MainWindow(app::PlaybackService& playback, app::LibrarySession& library,
+        app::PlaybackPreferences& preferences);
 
     ~MainWindow() override;
 
@@ -92,7 +94,7 @@ public:
     void open(std::vector<std::filesystem::path> tracks);
 
     /// Takes up the result of an application pump and reflects a changed track or playback fault.
-    void update_after_pump();
+    void update_after_pump(const app::PlayerPresentation& presentation);
 
     /// Reads the application-owned session and refreshes what is shown.
     void refresh();
@@ -226,9 +228,9 @@ private:
 
     /// The file a run leaves things in.
     QSettings settings_;
-    QueueSettings playlist_;
-    VolumeControl volume_;
-    EqualizerControl equalizer_;
+    app::QueueSettings& playlist_;
+    app::VolumeControl& volume_;
+    app::EqualizerControl& equalizer_;
     app::LibrarySession& library_session_;
     library::InMemoryRepository& library_;
     library::LibraryChanges::Subscription library_changes_;

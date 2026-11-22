@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Application-owned playback state and widget-independent pumping.
+ * @brief Desktop runtime composition, observation, and explicit shutdown.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,34 +19,36 @@
  */
 
 #pragma once
-
+#ifndef Q_MOC_RUN
 #include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
+#include <desktop/playback/playback_preferences.hpp>
 #include <engine/session.hpp>
-
+#include <functional>
+#endif
 #include <QObject>
 #include <QTimer>
-
-namespace wiola::gui {
-
-class MainWindow;
-
-}
+#include <chrono>
 
 namespace wiola::app {
 
-/**
- * Owns playback for the whole application rather than for one arrangement of widgets.
- *
- * The pump keeps accepting decoder and metadata completions without a window. A window attached to
- * it observes those completions and refreshes itself; Qt disconnects that window when it is
- * destroyed, leaving the session and both timers alive.
- */
+struct PlayerRuntimeConfig {
+    std::shared_ptr<media::MediaProvider> provider;
+    engine::OutputFactory output;
+    std::filesystem::path library_file;
+    persistence::qt::AtomicFileStore::OutputFactory library_output;
+    std::chrono::milliseconds pump_interval{20};
+    std::chrono::milliseconds presentation_interval{100};
+};
+
+/// Owns runtime services without depending on any window class. View connections are scoped by
+/// their QObject receiver. Quit cancels optional reads/scans before flushing required state.
 class PlayerApplication final : public QObject {
     Q_OBJECT
-
 public:
     explicit PlayerApplication(QObject* parent = nullptr);
+    explicit PlayerApplication(PlayerRuntimeConfig config, QObject* parent = nullptr);
+    ~PlayerApplication() override;
 
     [[nodiscard]] engine::Session& session() noexcept { return session_; }
 
@@ -54,16 +56,21 @@ public:
 
     [[nodiscard]] LibrarySession& library() noexcept { return library_; }
 
-    /// Connects `window` to application pumping and refreshing until the window is destroyed.
-    void attach(gui::MainWindow& window);
+    [[nodiscard]] PlaybackPreferences& preferences() noexcept { return preferences_; }
+
+    void observe(QObject& receiver, std::function<void(const PlayerPresentation&)> playback,
+        std::function<void()> refresh);
+    [[nodiscard]] bool shutdown();
 
 signals:
-    void pumped();
+    void pumped(const wiola::app::PlayerPresentation& presentation);
+    void refresh_requested();
 
 private:
     engine::Session session_;
     PlaybackService playback_{session_};
     LibrarySession library_;
+    PlaybackPreferences preferences_{playback_};
     QTimer pump_timer_;
     QTimer refresh_timer_;
 };

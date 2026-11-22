@@ -22,7 +22,7 @@
 
 #include <QString>
 
-namespace wiola::gui {
+namespace wiola::app {
 
 namespace {
 
@@ -93,4 +93,4 @@ units::Frequency EqualizerControl::band_center(std::size_t index) const noexcept
     return equalizer_.equalizer_band_center(index);
 }
 
-} // namespace wiola::gui
+} // namespace wiola::app

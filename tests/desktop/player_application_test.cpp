@@ -21,9 +21,12 @@
 #include <desktop/player_application.hpp>
 #include <gui/shell/main_window.hpp>
 
+#include <QFile>
+#include <codec/provider.hpp>
 #include <fixtures/wav.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
 #include <library/location.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -98,8 +101,11 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     const std::filesystem::path source = track("wiola_application_load.wav");
 
     {
-        wiola::gui::MainWindow window{player.playback(), player.library()};
-        player.attach(window);
+        wiola::gui::MainWindow window{player.playback(), player.library(), player.preferences()};
+        player.observe(
+            window, [&window](const auto& presentation) { window.update_after_pump(presentation); },
+            [&window] { window.refresh(); }
+        );
 
         window.open({source});
 
@@ -115,7 +121,7 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     const auto media = wiola::library::media_id_for(source);
     ASSERT_TRUE(pump_until([&] { return player.library().repository().track(media) != nullptr; }));
     EXPECT_EQ(player.library().search().size(), 1);
-    wiola::gui::MainWindow replacement{player.playback(), player.library()};
+    wiola::gui::MainWindow replacement{player.playback(), player.library(), player.preferences()};
     EXPECT_NE(player.library().repository().track(media), nullptr);
 }
 
@@ -138,15 +144,73 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
     }
     const auto revision = library.repository().change_revision();
     {
-        wiola::gui::MainWindow first{player.playback(), library};
+        wiola::gui::MainWindow first{player.playback(), library, player.preferences()};
         EXPECT_EQ(library.repository().playlists().size(), 1);
     }
-    wiola::gui::MainWindow replacement{player.playback(), library};
+    wiola::gui::MainWindow replacement{player.playback(), library, player.preferences()};
     EXPECT_EQ(library.active_playlist().id(), playlist);
     ASSERT_NE(library.repository().track(record.id), nullptr);
     EXPECT_EQ(library.repository().track(record.id)->metadata_revision, 17);
     EXPECT_EQ(library.repository().change_revision(), revision);
-    EXPECT_EQ(library.search().query({.title = "Only in memory"}), std::vector{record.id});
+    wiola::library::SearchQuery query;
+    query.title = "Only in memory";
+    EXPECT_EQ(library.search().query(query), std::vector{record.id});
+}
+
+TEST_F(PlayerApplication, RecreatingAWindowDoesNotRestoreOrDuplicateTheQueueAgain)
+{
+    wiola::app::PlayerApplication player;
+    const auto source = track("wiola_runtime_recreate.wav");
+    player.playback().add({source, source});
+    ASSERT_TRUE(pump_until([&] { return player.session().loaded(); }));
+    const auto& before = player.playback().playlist().tracks();
+    const auto first = before[0].id();
+    const auto second = before[1].id();
+    for (int count = 0; count < 2; ++count) {
+        wiola::gui::MainWindow window{player.playback(), player.library(), player.preferences()};
+        ASSERT_EQ(player.playback().playlist().tracks().size(), 2);
+        EXPECT_EQ(player.playback().playlist().tracks()[0].id(), first);
+        EXPECT_EQ(player.playback().playlist().tracks()[1].id(), second);
+    }
+}
+
+TEST_F(PlayerApplication, ObserverLifetimeAndShutdownDoNotLeaveLiveCallbacksOrCommands)
+{
+    wiola::app::PlayerApplication player;
+    int calls = 0;
+    {
+        QObject view;
+        player.observe(view, [&](const auto&) { ++calls; }, [] { });
+        ASSERT_TRUE(pump_until([&] { return calls != 0; }));
+    }
+    const int last = calls;
+    EXPECT_TRUE(player.shutdown());
+    QCoreApplication::processEvents();
+    EXPECT_EQ(calls, last);
+    EXPECT_EQ(player.playback().open({"after-quit.wav"}).acceptance,
+        wiola::engine::CommandResult::unavailable);
+    EXPECT_FALSE(player.library().playlists().create("After quit").valid());
+    EXPECT_TRUE(player.shutdown());
+}
+
+TEST_F(PlayerApplication, ReportsFailedFlushAndAllowsAnExplicitRetry)
+{
+    QTemporaryDir destination;
+    ASSERT_TRUE(destination.isValid());
+    const auto blocker = destination.path() + "/blocked";
+    QFile file{blocker};
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.close();
+    wiola::app::PlayerRuntimeConfig config;
+    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.output = [](wiola::audio::Source&) {
+        return std::unique_ptr<wiola::audio::Output>{};
+    };
+    config.library_file = wiola::platform::qt::QtPathAdapter::from_qt(blocker + "/library.json");
+    wiola::app::PlayerApplication player{std::move(config)};
+    EXPECT_FALSE(player.shutdown());
+    ASSERT_TRUE(QFile::remove(blocker));
+    EXPECT_TRUE(player.shutdown());
 }
 
 } // namespace

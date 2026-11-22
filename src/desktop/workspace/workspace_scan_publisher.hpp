@@ -39,6 +39,7 @@ public:
     std::uint64_t start(const library::WorkspaceRecord& workspace,
         std::vector<std::string> supported_extensions);
     void cancel();
+    void stop();
 
 private:
     struct State {
@@ -57,6 +58,7 @@ private:
     QueuedDelivery delivery_;
     std::shared_ptr<State> state_;
     WorkspaceScanner scanner_;
+    bool stopped_{false};
 };
 
 } // namespace wiola::app

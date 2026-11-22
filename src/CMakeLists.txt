@@ -21,6 +21,7 @@ target_link_libraries(
     PRIVATE
         wiola_core
         wiola_coverage
+        wiola_gui
         wiola_player_application
         wiola_queue_migration
         wiola_sanitizer

@@ -28,7 +28,7 @@
 #include <cstddef>
 #include <span>
 
-namespace wiola::gui {
+namespace wiola::app {
 
 /// Settings applied to `equalizer` and kept for the runs after this one. Nothing else may set
 /// them, or what they are set to is not what comes back.
@@ -56,4 +56,4 @@ private:
     QSettings& settings_;
 };
 
-} // namespace wiola::gui
+} // namespace wiola::app

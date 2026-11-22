@@ -38,6 +38,11 @@ BackgroundMetadata::BackgroundMetadata(std::shared_ptr<media::MediaProvider> pro
 
 BackgroundMetadata::~BackgroundMetadata()
 {
+    stop();
+}
+
+void BackgroundMetadata::stop()
+{
     {
         std::lock_guard lock{mutex_};
         stopping_ = true;
@@ -45,6 +50,8 @@ BackgroundMetadata::~BackgroundMetadata()
     }
 
     available_.notify_one();
+    if (worker_.joinable())
+        worker_.join();
 }
 
 bool BackgroundMetadata::enqueue(const library::MediaId& media, std::filesystem::path path,

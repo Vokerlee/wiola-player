@@ -37,6 +37,7 @@ public:
     MediaRevisionPublisher(QObject& gui_context, std::shared_ptr<media::MediaProvider> provider,
         Observer observer);
     ~MediaRevisionPublisher();
+    void stop();
 
     [[nodiscard]] bool enqueue(const library::MediaId& media, std::filesystem::path path);
 

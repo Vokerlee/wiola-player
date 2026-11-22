@@ -137,14 +137,15 @@ QString as_status(engine::OpenResult result)
 
 } // namespace
 
-MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySession& library_session)
+MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySession& library_session,
+    app::PlaybackPreferences& preferences)
     // A file of its own on both platforms, rather than the registry on one of them.
     : playback_{playback_service}
     , actions_{*this}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
-    , playlist_{playback_, settings_}
-    , volume_{playback_, settings_}
-    , equalizer_{playback_, settings_}
+    , playlist_{preferences.queue()}
+    , volume_{preferences.volume()}
+    , equalizer_{preferences.equalizer()}
     , library_session_{library_session}
     , library_{library_session.repository()}
     , persist_library_{library_session.persistence()}
@@ -212,11 +213,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     if (!library_session_.restore_error().isEmpty())
         show_status(library_session_.restore_error());
 
-    const platform::qt::PlayerSettings restored{
-        platform::qt::QtSettingsAdapter{settings_}.read(volume_.scale(),
-            playback_.equalizer_config())};
-    volume_.apply_restored(restored.volume_position, restored.boosted);
-    equalizer_.apply_restored(restored.equalizer_enabled, restored.band_gains);
     const int position{volume_.position()};
 
     boost_button_->setCheckable(true);
@@ -479,7 +475,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     // The clock follows the drag rather than waiting for the next poll.
     connect(position_bar_, &SeekBar::dragged, this, &MainWindow::refresh);
 
-    if (const std::size_t gone{playlist_.restore()}; gone != 0)
+    if (const std::size_t gone{preferences.missing_tracks()}; gone != 0)
         show_status(QString{"%1 queued track(s) are no longer where they were"}.arg(gone));
 
     // What was put back settles both of these, without either button having been pressed.
@@ -1479,9 +1475,9 @@ void MainWindow::show_list_buttons()
     shuffle_button_->setChecked(actions_.action(PlayerAction::shuffle)->isChecked());
 }
 
-void MainWindow::update_after_pump()
+void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
 {
-    const engine::PlaybackSnapshot playback{app::present_playback(playback_).playback};
+    const engine::PlaybackSnapshot& playback = presentation.playback;
     const engine::OpenResult result{playback.open_result};
 
     // Said once: a window that repeated itself every turn would overwrite whatever else it has
