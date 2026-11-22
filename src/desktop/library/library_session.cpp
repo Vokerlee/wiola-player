@@ -95,7 +95,7 @@ persistence::qt::LibraryStoreResult LibrarySession::shutdown()
     accepting_ = false;
     watcher_.stop();
     scans_.stop();
-    pending_scan_.reset();
+    pending_scans_.clear();
     metadata_.stop();
     shutdown_result_ = !restore_result_.succeeded() && repository_.change_revision() == 0
         ? restore_result_
@@ -174,15 +174,15 @@ std::uint64_t LibrarySession::scan_workspace(const library::WorkspaceId& id,
     if (!accepting_ || !workspace)
         return 0;
     const auto generation = scans_.start(*workspace, std::move(extensions), repository_.tracks());
-    pending_scan_ = PendingScan{id, generation, {}};
+    pending_scans_.insert_or_assign(id, PendingScan{generation, {}});
     return generation;
 }
 
-void LibrarySession::cancel_workspace_scan()
+void LibrarySession::cancel_workspace_scan(const library::WorkspaceId& id)
 {
     check_owner();
-    scans_.cancel();
-    pending_scan_.reset();
+    scans_.cancel(id);
+    pending_scans_.erase(id);
 }
 
 library::MediaId LibrarySession::media_at(const std::filesystem::path& location) const
@@ -194,16 +194,17 @@ library::MediaId LibrarySession::media_at(const std::filesystem::path& location)
 void LibrarySession::publish_scan(WorkspaceScanBatch batch)
 {
     check_owner();
-    if (!accepting_ || !pending_scan_ || pending_scan_->workspace != batch.workspace ||
-        pending_scan_->generation != batch.generation)
+    const auto pending = pending_scans_.find(batch.workspace);
+    if (!accepting_ || pending == pending_scans_.end() ||
+        pending->second.generation != batch.generation)
         return;
-    pending_scan_->entries.insert(pending_scan_->entries.end(), batch.entries.begin(),
+    pending->second.entries.insert(pending->second.entries.end(), batch.entries.begin(),
         batch.entries.end());
     for (const auto& entry : batch.entries)
         request_metadata(entry.media, entry.location);
     if (batch.status == WorkspaceScanStatus::complete) {
-        const auto result =
-            reconciliation_.reconcile(repository_, batch.workspace, pending_scan_->entries);
+        const auto entries = std::move(pending->second.entries);
+        const auto result = reconciliation_.reconcile(repository_, batch.workspace, entries);
         if (!result.succeeded) {
             emit status_changed("Could not save the workspace scan");
             batch.status = WorkspaceScanStatus::failed;
@@ -211,7 +212,9 @@ void LibrarySession::publish_scan(WorkspaceScanBatch batch)
     }
     const bool finished = batch.status != WorkspaceScanStatus::running;
     if (finished)
-        pending_scan_.reset();
+        if (const auto current = pending_scans_.find(batch.workspace);
+            current != pending_scans_.end() && current->second.generation == batch.generation)
+            pending_scans_.erase(current);
     emit scan_batch(batch);
 }
 

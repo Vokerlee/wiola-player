@@ -23,6 +23,7 @@
 #include <map>
 #include <set>
 #include <span>
+#include <stop_token>
 
 namespace wiola::app {
 
@@ -58,12 +59,23 @@ public:
     WorkspaceDiscovery(const std::filesystem::path& root,
         std::span<const library::TrackRecord> known,
         std::span<const std::filesystem::path> current);
+    WorkspaceDiscovery(const std::filesystem::path& root,
+        std::span<const library::TrackRecord> known, std::stop_token stop = {});
     [[nodiscard]] WorkspaceScanEntry resolve(const std::filesystem::path& location);
 
 private:
+    void index(const std::filesystem::path& root, std::span<const library::TrackRecord> known);
+
+    struct Candidate {
+        library::MediaId media;
+        std::vector<std::filesystem::path> locations;
+    };
+
+    std::optional<std::set<std::string>> present_;
+    std::map<std::string, std::vector<Candidate>> candidates_;
+    std::stop_token stop_;
     std::map<std::string, library::MediaId> locations_;
     std::map<library::MediaId, std::uint64_t> revisions_;
-    std::map<std::string, std::optional<library::MediaId>> missing_;
     std::set<library::MediaId> relocated_;
 };
 

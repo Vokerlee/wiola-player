@@ -45,6 +45,7 @@
 #include <chrono>
 #include <filesystem>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace {
@@ -379,6 +380,42 @@ TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOr
             ->text()
             .contains("Application overrides remain"));
     EXPECT_TRUE(player.shutdown());
+}
+
+TEST_F(PlayerApplication, LibraryReconcilesTwoIndependentWorkspaceGenerations)
+{
+    QTemporaryDir directory;
+    const auto root = wiola::platform::qt::QtPathAdapter::from_qt(directory.path());
+    std::filesystem::create_directories(root / "first");
+    std::filesystem::create_directories(root / "second");
+    const auto source = track("wiola-independent-library.wav");
+    std::filesystem::copy_file(source, root / "first" / "one.wav");
+    std::filesystem::copy_file(source, root / "second" / "two.wav");
+    wiola::app::LibrarySession library{root / "library.json",
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::library::WorkspaceId first, second;
+    {
+        wiola::library::RepositoryTransaction transaction{library.repository(),
+            library.persistence()};
+        first = library.repository().create_workspace(root / "first");
+        second = library.repository().create_workspace(root / "second");
+        ASSERT_TRUE(transaction.commit());
+    }
+    std::set<wiola::library::WorkspaceId> completed;
+    QObject receiver;
+    QObject::connect(&library, &wiola::app::LibrarySession::scan_batch, &receiver,
+        [&](const auto& batch) {
+            if (batch.status == wiola::app::WorkspaceScanStatus::complete)
+                completed.insert(batch.workspace);
+        });
+    const auto one = library.scan_workspace(first, {".wav"}),
+               two = library.scan_workspace(second, {".wav"});
+    EXPECT_NE(one, two);
+    ASSERT_TRUE(pump_until([&] { return completed.size() == 2; }));
+    EXPECT_EQ(library.repository().tracks().size(), 2);
+    ASSERT_NE(library.repository().track(library.media_at(root / "first" / "one.wav")), nullptr);
+    ASSERT_NE(library.repository().track(library.media_at(root / "second" / "two.wav")), nullptr);
+    EXPECT_TRUE(library.shutdown().succeeded());
 }
 
 } // namespace

@@ -339,6 +339,28 @@ TEST(WorkspaceDocument, ANewScanKeepsAnExplicitlyClearedTitle)
     EXPECT_TRUE(table->model()->index(0, 1).data().toString().isEmpty());
 }
 
+TEST(WorkspaceDocument, StreamsInStablePathOrderAndReportsScanLimitsWithoutDroppingUsefulRows)
+{
+    wiola::gui::WorkspaceDocument document;
+    document.begin({.id = {"workspace"}, .root = "folder"}, 1);
+    ASSERT_TRUE(document.show_batch({.workspace = {"workspace"},
+        .generation = 1,
+        .entries = entries({"folder/z.wav", "folder/a.wav"}),
+        .status = wiola::app::WorkspaceScanStatus::running}));
+    auto* table = document.findChild<wiola::gui::TrackTableView*>();
+    ASSERT_NE(table, nullptr);
+    EXPECT_EQ(table->model()->index(0, 1).data().toString(), "a");
+    ASSERT_TRUE(document.show_batch({.workspace = {"workspace"},
+        .generation = 1,
+        .entries = {},
+        .status = wiola::app::WorkspaceScanStatus::failed,
+        .error = wiola::app::WorkspaceScanError::limit_exceeded}));
+    EXPECT_EQ(table->total_count(), 2);
+    EXPECT_TRUE(
+        document.findChild<QLabel*>("workspaceStatus")->text().contains("Scan limit reached")
+    );
+}
+
 } // namespace
 
 int main(int argc, char** argv)

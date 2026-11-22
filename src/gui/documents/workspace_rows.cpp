@@ -37,7 +37,6 @@ bool WorkspaceRows::begin(const library::WorkspaceRecord& workspace, std::uint64
     generation_ = generation;
     accepting_ = true;
     seen_.clear();
-    order_.clear();
     return true;
 }
 
@@ -49,7 +48,6 @@ bool WorkspaceRows::apply(const app::WorkspaceScanBatch& batch,
     for (const auto& entry : batch.entries) {
         if (!entry.media.valid() || !seen_.insert(entry.media).second)
             continue;
-        order_.push_back(entry.media);
         TrackRow row;
         const auto* record = repository ? repository->track(entry.media) : nullptr;
         if (record)
@@ -70,14 +68,10 @@ bool WorkspaceRows::apply(const app::WorkspaceScanBatch& batch,
             rows_.push_back(std::move(row));
         }
     }
-    if (batch.status == app::WorkspaceScanStatus::complete) {
-        std::vector<TrackRow> rows;
-        rows.reserve(order_.size());
-        for (const auto& media : order_)
-            rows.push_back(std::move(rows_[index_.at(media)]));
-        rows_ = std::move(rows);
-        index_rows();
-    }
+    if (batch.status == app::WorkspaceScanStatus::complete)
+        std::erase_if(rows_, [&](const auto& row) { return !seen_.contains(row.media); });
+    std::ranges::stable_sort(rows_, {}, &TrackRow::location_key);
+    index_rows();
     if (batch.status != app::WorkspaceScanStatus::running)
         accepting_ = false;
     return true;

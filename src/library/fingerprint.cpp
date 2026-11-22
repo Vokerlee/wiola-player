@@ -30,7 +30,8 @@
 
 namespace wiola::library {
 
-std::optional<std::string> fingerprint_media(const std::filesystem::path& file)
+std::optional<std::string> fingerprint_media_cancellable(const std::filesystem::path& file,
+    std::stop_token stop)
 {
     std::ifstream input{file, std::ios::binary};
 
@@ -44,6 +45,8 @@ std::optional<std::string> fingerprint_media(const std::filesystem::path& file)
     std::array<char, 64 * 1024> buffer;
 
     while (input) {
+        if (stop.stop_requested())
+            return {};
         input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const std::streamsize count{input.gcount()};
 
@@ -63,6 +66,11 @@ std::optional<std::string> fingerprint_media(const std::filesystem::path& file)
             << std::setw(16) << bytes;
 
     return encoded.str();
+}
+
+std::optional<std::string> fingerprint_media(const std::filesystem::path& file)
+{
+    return fingerprint_media_cancellable(file, {});
 }
 
 std::optional<MediaId> match_relocation(std::span<const TrackRecord> tracks,

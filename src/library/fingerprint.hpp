@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include <stop_token>
 
 #include <library/records.hpp>
 
@@ -41,6 +42,8 @@ struct Relocation {
 };
 
 /// Streams the file; the fingerprint is for identity matching, not cryptographic authentication.
+[[nodiscard]] std::optional<std::string>
+fingerprint_media_cancellable(const std::filesystem::path& file, std::stop_token stop);
 [[nodiscard]] std::optional<std::string> fingerprint_media(const std::filesystem::path& file);
 
 /// Returns an identity only when exactly one stored fingerprint matches the candidate.

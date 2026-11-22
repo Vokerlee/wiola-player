@@ -27,32 +27,45 @@ namespace wiola::app {
 
 bool workspace_contains(const std::filesystem::path& root, const std::filesystem::path& path)
 {
-    const auto relative = std::filesystem::absolute(path).lexically_normal().lexically_relative(
-        std::filesystem::absolute(root).lexically_normal()
-    );
+    std::error_code error;
+    const auto absolute = std::filesystem::absolute(path, error).lexically_normal();
+    if (error)
+        return false;
+    const auto parent = std::filesystem::absolute(root, error).lexically_normal();
+    if (error)
+        return false;
+    const auto relative = absolute.lexically_relative(parent);
     return !relative.empty() && *relative.begin() != "..";
 }
 
 WorkspaceDiscovery::WorkspaceDiscovery(const std::filesystem::path& root,
     std::span<const library::TrackRecord> known, std::span<const std::filesystem::path> current)
 {
-    std::set<std::string> present;
+    present_.emplace();
     for (const auto& path : current)
-        present.insert(library::media_id_for(path).value);
+        present_->insert(library::media_id_for(path).value);
+    index(root, known);
+}
+
+WorkspaceDiscovery::WorkspaceDiscovery(const std::filesystem::path& root,
+    std::span<const library::TrackRecord> known, std::stop_token stop)
+    : stop_{stop}
+{
+    index(root, known);
+}
+
+void WorkspaceDiscovery::index(const std::filesystem::path& root,
+    std::span<const library::TrackRecord> known)
+{
     for (const auto& record : known) {
-        bool within = false, found = false;
+        bool within = false;
         revisions_.emplace(record.id, record.content_revision);
         for (const auto& location : record.locations) {
-            const auto key = library::media_id_for(location).value;
-            locations_.try_emplace(key, record.id);
+            locations_.try_emplace(library::media_id_for(location).value, record.id);
             within = within || workspace_contains(root, location);
-            found = found || present.contains(key);
         }
-        if (within && !found && !record.fingerprint.empty()) {
-            const auto [entry, unique] = missing_.try_emplace(record.fingerprint, record.id);
-            if (!unique && entry->second != record.id)
-                entry->second.reset();
-        }
+        if (within && !record.fingerprint.empty())
+            candidates_[record.fingerprint].push_back({record.id, record.locations});
     }
 }
 
@@ -61,17 +74,42 @@ WorkspaceScanEntry WorkspaceDiscovery::resolve(const std::filesystem::path& loca
     WorkspaceScanEntry result;
     result.location = location;
     result.media = library::media_id_for(location);
-    result.fingerprint = library::fingerprint_media(location);
+    result.fingerprint = library::fingerprint_media_cancellable(location, stop_);
     result.unreadable = !result.fingerprint;
     if (const auto known = locations_.find(result.media.value); known != locations_.end()) {
         result.media = known->second;
         result.kind = WorkspaceDiscoveryKind::known_location;
     } else if (result.fingerprint) {
-        const auto missing = missing_.find(*result.fingerprint);
-        if (missing != missing_.end() && missing->second &&
-            relocated_.insert(*missing->second).second) {
-            result.media = *missing->second;
-            result.kind = WorkspaceDiscoveryKind::relocation;
+        if (const auto candidates = candidates_.find(*result.fingerprint);
+            candidates != candidates_.end()) {
+            std::optional<library::MediaId> unique;
+            bool ambiguous = false;
+            for (const auto& candidate : candidates->second) {
+                if (relocated_.contains(candidate.media))
+                    continue;
+                bool present = false;
+                for (const auto& path : candidate.locations) {
+                    if (present_)
+                        present = present || present_->contains(library::media_id_for(path).value);
+                    else {
+                        std::error_code error;
+                        const bool exists = std::filesystem::exists(path, error);
+                        present = present || exists || static_cast<bool>(error);
+                    }
+                }
+                if (present)
+                    continue;
+                if (unique && *unique != candidate.media) {
+                    ambiguous = true;
+                    break;
+                }
+                unique = candidate.media;
+            }
+            if (unique && !ambiguous) {
+                result.media = *unique;
+                result.kind = WorkspaceDiscoveryKind::relocation;
+                relocated_.insert(*unique);
+            }
         }
     }
     if (result.known())

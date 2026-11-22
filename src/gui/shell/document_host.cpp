@@ -184,8 +184,8 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
         if (commands_.rescan)
             commands_.rescan(id, recursive);
     });
-    document->on_cancel_requested([this, document] {
-        library_.cancel_workspace_scan();
+    document->on_cancel_requested([this, id, document] {
+        library_.cancel_workspace_scan(id);
         document->show_cancelled();
     });
     document->on_play_requested([this, document] {
