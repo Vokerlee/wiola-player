@@ -254,9 +254,20 @@ void LibrarySession::request_metadata(const library::MediaId& media,
     const std::filesystem::path& path)
 {
     check_owner();
-    if (!accepting_)
+    if (!accepting_ || !media.valid() || path.empty())
         return;
+    const auto* current = repository_.track(media);
+    metadata_pending_.insert_or_assign(media, current ? current->content_revision : 0);
     static_cast<void>(metadata_.enqueue(media, path));
+}
+
+void LibrarySession::request_artwork(const library::MediaId& id)
+{
+    check_owner();
+    if (!accepting_ || metadata_pending_.contains(id) || artwork_.get(id).known())
+        return;
+    if (const auto* record = repository_.track(id))
+        request_metadata(id, library::preferred_location(*record));
 }
 
 void LibrarySession::publish_metadata(BackgroundMetadataResult result)
@@ -264,7 +275,21 @@ void LibrarySession::publish_metadata(BackgroundMetadataResult result)
     check_owner();
     if (!accepting_)
         return;
+    const auto pending = metadata_pending_.find(result.media);
+    if (pending == metadata_pending_.end())
+        return;
+    const auto* current = repository_.track(result.media);
+    const auto revision = current ? current->content_revision : 0;
+    if (revision != pending->second) {
+        metadata_pending_.erase(pending);
+        if (current)
+            request_metadata(result.media, library::preferred_location(*current));
+        return;
+    }
     if (!result.metadata) {
+        metadata_pending_.erase(result.media);
+        if (artwork_.fail(result.media))
+            emit artwork_changed(result.media);
         emit status_changed("Could not read metadata for " +
             platform::qt::QtPathAdapter::to_qt(result.location.filename()));
         return;
@@ -277,6 +302,7 @@ void LibrarySession::publish_metadata(BackgroundMetadataResult result)
         record.locations = {result.location};
         created = repository_.put_track(std::move(record));
         if (!created) {
+            metadata_pending_.erase(result.media);
             emit status_changed("Could not add the discovered track to the library");
             return;
         }
@@ -293,6 +319,11 @@ void LibrarySession::publish_metadata(BackgroundMetadataResult result)
     const bool merged = merge_.merge(repository_, result.media, *result.metadata);
     if ((created || merged) && !transaction.commit())
         emit status_changed("Could not save the learned metadata");
+    auto image = std::make_shared<const media::Artwork>(std::move(result.metadata->artwork));
+    const bool changed = artwork_.put(result.media, std::move(image));
+    metadata_pending_.erase(result.media);
+    if (changed)
+        emit artwork_changed(result.media);
 }
 
 void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
@@ -302,11 +333,17 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
             search_.upsert(*track);
             tag_keys_.upsert(*track);
             locations_.upsert(*track);
+            if (change.includes(library::MediaChangeFields::content)) {
+                artwork_.remove(change.media);
+                emit artwork_changed(change.media);
+            }
         }
     for (const auto& media : batch.removed_media) {
         search_.remove(media);
         tag_keys_.remove(media);
         locations_.remove(media);
+        artwork_.remove(media);
+        metadata_pending_.erase(media);
     }
     for (const auto& id : batch.removed_workspaces) {
         cancel_workspace_scan(id);

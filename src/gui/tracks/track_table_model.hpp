@@ -22,7 +22,7 @@
 
 #include "track_column.hpp"
 #include "track_view_state.hpp"
-#include <gui/appearance/artwork_cache.hpp>
+#include <gui/appearance/artwork_presentation.hpp>
 
 #include "track_row.hpp"
 #include <library/search.hpp>
@@ -50,12 +50,21 @@ class TrackTableModel final : public QAbstractTableModel {
 public:
     static constexpr int standard_columns{StandardTrackColumn::num_columns};
 
-    explicit TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy = {});
+    explicit TrackTableModel(const QWidget& styled, ArtworkRequest policy = {});
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+
+    void set_artwork_source(std::function<media::ArtworkReference(const library::MediaId&)> source,
+        std::function<void(const library::MediaId&)> request)
+    {
+        artwork_source_ = std::move(source);
+        artwork_request_ = std::move(request);
+    }
+
+    void refresh_artwork(const library::MediaId& media);
 
     void set_search_index(const app::SearchIndex* index) { search_ = index; }
 
@@ -79,8 +88,12 @@ private:
     void reconcile_rows(std::vector<TrackRow> next);
     void rebuild_row_index();
     std::map<TrackRowId, int> row_index_;
-    mutable ArtworkCache artwork_;
-    ArtworkCachePolicy policy_;
+    const QWidget& styled_;
+    std::shared_ptr<ArtworkPresentationService> artwork_{ArtworkPresentationService::acquire()};
+    ArtworkRequest artwork_request_value_;
+    std::function<media::ArtworkReference(const library::MediaId&)> artwork_source_;
+    std::function<void(const library::MediaId&)> artwork_request_;
+    std::map<library::MediaId, std::vector<std::size_t>> source_media_;
     std::vector<TrackRow> source_rows_;
     std::vector<TrackRow> rows_;
     std::optional<TrackRowId> current_;

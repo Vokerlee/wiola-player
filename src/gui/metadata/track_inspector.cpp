@@ -25,6 +25,7 @@
 
 #include <library/location.hpp>
 
+#include <QEvent>
 #include <QFormLayout>
 #include <QVBoxLayout>
 
@@ -53,7 +54,6 @@ QString fallback(const std::string& text, const QString& empty)
 
 TrackInspector::TrackInspector(QWidget* parent)
     : QWidget{parent}
-    , artwork_{*this, {.cover_size = 96}}
 {
     setObjectName("trackInspector");
     setAccessibleName("Track inspector");
@@ -132,7 +132,8 @@ void TrackInspector::show_context(InspectorContext next)
             ? QString{"Selection — %1 track(s)"}.arg(context_.tracks.size())
             : "No selection");
     if (!single) {
-        artwork_label_->setPixmap(artwork_.cover_of({}, {}));
+        artwork_label_->setPixmap(artwork_->cover(*this, {}, media::ArtworkReference{},
+            {.cover_size = 96}));
         title_->setText(context_.tracks.empty()
                 ? "No track selected"
                 : QString{"%1 selected tracks — mixed values"}.arg(context_.tracks.size()));
@@ -145,9 +146,7 @@ void TrackInspector::show_context(InspectorContext next)
         return;
     }
     const auto& track = context_.tracks.front();
-    artwork_label_->setPixmap(artwork_.cover_of(
-        {.media = track.media.value, .revision = track.artwork_revision}, track.artwork
-    ));
+    show_artwork();
     title_->setText(fallback(track.metadata.title, "Unknown title"));
     artist_->setText(fallback(track.metadata.artist, "Unknown artist"));
     album_->setText(fallback(track.metadata.album, "Unknown album"));
@@ -157,6 +156,39 @@ void TrackInspector::show_context(InspectorContext next)
     const bool known = editable != nullptr;
     availability_->setText(known ? (track.missing ? "Missing" : "Available") : "Not checked");
     availability_->setProperty("missing", known && track.missing);
+}
+
+void TrackInspector::show_artwork()
+{
+    if (!artwork_label_)
+        return;
+    if (context_.tracks.size() != 1)
+        artwork_label_->setPixmap(artwork_->cover(*this, {}, media::ArtworkReference{},
+            {.cover_size = 96}));
+    else {
+        const auto& row = context_.tracks.front();
+        artwork_label_->setPixmap(artwork_->cover(*this, row.media, row.artwork, {.cover_size = 96},
+            [this, id = row.media] {
+                if (artwork_request_)
+                    artwork_request_(id);
+            }));
+    }
+}
+
+void TrackInspector::refresh_artwork(const library::MediaId& media, media::ArtworkReference artwork)
+{
+    for (auto& row : context_.tracks)
+        if (row.media == media &&
+            (artwork.availability() != media::ArtworkAvailability::failed || !row.artwork))
+            row.artwork = artwork;
+    show_artwork();
+}
+
+void TrackInspector::changeEvent(QEvent* event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange)
+        show_artwork();
 }
 
 } // namespace wiola::gui

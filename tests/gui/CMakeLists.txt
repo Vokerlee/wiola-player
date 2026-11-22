@@ -153,3 +153,9 @@ wiola_add_test(
     SOURCES tracks/track_browser_test.cpp
     LIBS wiola_gui
 )
+
+wiola_add_test(
+    gui_artwork_presentation_test
+    SOURCES appearance/artwork_presentation_test.cpp
+    LIBS wiola_gui
+)

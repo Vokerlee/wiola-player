@@ -308,6 +308,16 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
             inspector_->standard_metadata()->show_file_status(message);
             show_status(message);
         });
+    const QPointer<app::LibrarySession> artwork_library{&library_session_};
+    inspector_->set_artwork_requester([artwork_library](const auto& id) {
+        if (artwork_library)
+            artwork_library->request_artwork(id);
+    });
+    connect(&library_session_, &app::LibrarySession::artwork_changed, inspector_,
+        [artwork_library, inspector = inspector_](const auto& media) {
+            if (artwork_library)
+                inspector->refresh_artwork(media, artwork_library->artwork(media));
+        });
     inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
         resolve_metadata_conflict(action);
     });

@@ -44,6 +44,7 @@ InspectorContext inspector_context(const app::LibrarySession& library,
         if (auto snapshot = library.snapshot(item.media)) {
             registered = true;
             row = present_record(item.occurrence, *snapshot);
+            row.artwork = library.artwork(item.media);
             context.editable.push_back(std::move(*snapshot));
         } else {
             row.id = item.occurrence;
@@ -58,8 +59,10 @@ InspectorContext inspector_context(const app::LibrarySession& library,
         if (playing && playing->media == row.media) {
             if (!registered)
                 row.metadata = playing->metadata;
-            row.artwork = playing->artwork;
-            row.artwork_revision = playing->artwork_revision;
+            if (!row.artwork.known() ||
+                (row.artwork.availability() == media::ArtworkAvailability::failed &&
+                    playing->artwork))
+                row.artwork = playing->artwork;
         }
         context.tracks.push_back(std::move(row));
     }

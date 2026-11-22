@@ -32,7 +32,6 @@ TrackRow queue_row(const engine::Track& track)
     row.location_key = row.media.value;
     row.metadata = track.metadata();
     row.artwork = track.artwork();
-    row.artwork_revision = track.revision();
     row.metadata_revision = track.revision();
     return row;
 }

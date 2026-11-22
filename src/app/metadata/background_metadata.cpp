@@ -19,6 +19,7 @@
  */
 
 #include "background_metadata.hpp"
+#include <media/artwork_reference.hpp>
 
 #include <stdexcept>
 #include <utility>
@@ -118,6 +119,12 @@ void BackgroundMetadata::run()
             result.error = context.error();
         }
 
+        if (result.metadata &&
+            result.metadata->artwork.data.size() > media::max_encoded_artwork_bytes)
+            result.metadata->artwork = {};
+        if (result.metadata)
+            result.metadata->artwork.content_id =
+                media::artwork_content_id(result.metadata->artwork);
         job.observer(std::move(result));
     }
 }

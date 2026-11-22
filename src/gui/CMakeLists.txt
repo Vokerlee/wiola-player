@@ -2,7 +2,7 @@ wiola_add_library(
     wiola_gui
     SOURCES
         controls/clock.cpp
-        appearance/artwork_cache.cpp
+        appearance/artwork_presentation.cpp
         layout/editor/button_layout_editor.cpp
         layout/classic_layout.cpp
         metadata/custom_tag_editor.cpp
