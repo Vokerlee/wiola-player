@@ -24,6 +24,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <charconv>
 #include <type_traits>
 
@@ -66,13 +67,6 @@ QLineEdit* field(QWidget* parent, const char* name, const QString& placeholder)
     input->setPlaceholderText(placeholder);
     input->setMaxLength(1024);
     return input;
-}
-
-bool any_override(const library::StandardFieldOverrides& overrides)
-{
-    return overrides.title || overrides.artist || overrides.album || overrides.genre ||
-        overrides.comment || overrides.composer || overrides.year || overrides.track_number ||
-        overrides.disc_number;
 }
 
 } // namespace
@@ -134,18 +128,19 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
 
             touched_.insert(input);
             feedback_.clear();
+            if (valid_numbers())
+                session_.set_draft(patch());
             update_actions();
         });
     }
 
     connect(apply_, &QPushButton::clicked, this, [this] {
-        if (observer_ && dirty() && valid_numbers())
-            observer_(media_, patch());
+        if (observer_ && dirty() && valid_numbers()) {
+            session_.set_draft(patch());
+            observer_(session_);
+        }
     });
-    connect(cancel_, &QPushButton::clicked, this, [this] {
-        feedback_.clear();
-        populate();
-    });
+    connect(cancel_, &QPushButton::clicked, this, [this] { discard(); });
 
     show_track(nullptr);
 }
@@ -158,60 +153,50 @@ void StandardMetadataEditor::show_track(const library::TrackRecord* track)
 
 void StandardMetadataEditor::show_tracks(const std::vector<const library::TrackRecord*>& tracks)
 {
-    std::vector<library::ResolvedMetadata> resolved;
-    std::string next_key;
-    library::MediaId next_media;
-    bool next_overrides = false;
+    show_session(app::MetadataEditSession::capture(tracks));
+}
 
-    for (const library::TrackRecord* track : tracks) {
-        if (track == nullptr)
-            continue;
-
-        if (!next_media.valid())
-            next_media = track->id;
-
-        next_key += track->id.value + ":" + std::to_string(track->metadata_revision) + ";";
-        next_overrides = next_overrides || any_override(track->overrides);
-        resolved.push_back(library::resolve_metadata(*track));
-    }
-
-    if (initialized_ && selection_key_ == next_key)
+void StandardMetadataEditor::show_session(app::MetadataEditSession next)
+{
+    offered_ = std::move(next);
+    if (retains_draft()) {
+        if (!session_.same_targets(offered_))
+            show_status(
+                "Draft retained for the original selection. Apply to that selection, or Cancel to "
+                "inspect the current selection. External changes are checked on Apply."
+            );
         return;
-
-    media_ = next_media;
-    selection_key_ = next_key;
-    initialized_ = true;
-    overrides_present_ = next_overrides;
-    original_ = resolved.empty() ? library::ResolvedMetadata{} : resolved.front();
-    mixed_.clear();
-
-    for (std::size_t index = 1; index < resolved.size(); ++index) {
-        const auto& current = resolved[index];
-        const auto mix = [this](QLineEdit* field, auto& original, const auto& value) {
-            if (original != value) {
-                original = std::decay_t<decltype(original)>{};
-                mixed_.insert(field);
-            }
-        };
-
-        mix(title_, original_.title, current.title);
-        mix(artist_, original_.artist, current.artist);
-        mix(album_, original_.album, current.album);
-        mix(genre_, original_.genre, current.genre);
-        mix(year_, original_.year, current.year);
-        mix(comment_, original_.comment, current.comment);
-        mix(composer_, original_.composer, current.composer);
-        mix(track_number_, original_.track_number, current.track_number);
-        mix(disc_number_, original_.disc_number, current.disc_number);
     }
+    if (initialized_ && session_.same_targets(offered_))
+        return;
+    discard();
+}
 
+void StandardMetadataEditor::discard()
+{
+    session_ = offered_;
+    initialized_ = true;
+    mixed_.clear();
+    const auto mix = [&](QLineEdit* field, app::StandardMetadataField id) {
+        if (session_.mixed(id))
+            mixed_.insert(field);
+    };
+    mix(title_, app::StandardMetadataField::title);
+    mix(artist_, app::StandardMetadataField::artist);
+    mix(album_, app::StandardMetadataField::album);
+    mix(genre_, app::StandardMetadataField::genre);
+    mix(year_, app::StandardMetadataField::year);
+    mix(comment_, app::StandardMetadataField::comment);
+    mix(composer_, app::StandardMetadataField::composer);
+    mix(track_number_, app::StandardMetadataField::track_number);
+    mix(disc_number_, app::StandardMetadataField::disc_number);
     feedback_.clear();
     populate();
 }
 
 library::ResolvedMetadata StandardMetadataEditor::current() const
 {
-    library::ResolvedMetadata current = original_;
+    library::ResolvedMetadata current = session_.common();
     current.title = title_->text().toStdString();
     current.artist = artist_->text().toStdString();
     current.album = album_->text().toStdString();
@@ -258,7 +243,9 @@ bool StandardMetadataEditor::valid_numbers() const
 
 bool StandardMetadataEditor::dirty() const
 {
-    return media_.valid() && !touched_.empty() && current() != original_;
+    return session_.valid() && !touched_.empty() &&
+        (current() != session_.common() ||
+            std::ranges::any_of(touched_, [this](auto* field) { return mixed_.contains(field); }));
 }
 
 void StandardMetadataEditor::populate()
@@ -270,15 +257,15 @@ void StandardMetadataEditor::populate()
         {title_, artist_, album_, genre_, year_, comment_, composer_, track_number_, disc_number_})
         input->setPlaceholderText(mixed_.contains(input) ? "Mixed values" : QString{});
 
-    title_->setText(qt(original_.title));
-    artist_->setText(qt(original_.artist));
-    album_->setText(qt(original_.album));
-    genre_->setText(qt(original_.genre));
-    year_->setText(number(original_.year));
-    comment_->setText(qt(original_.comment));
-    composer_->setText(qt(original_.composer));
-    track_number_->setText(number(original_.track_number));
-    disc_number_->setText(number(original_.disc_number));
+    title_->setText(qt(session_.common().title));
+    artist_->setText(qt(session_.common().artist));
+    album_->setText(qt(session_.common().album));
+    genre_->setText(qt(session_.common().genre));
+    year_->setText(number(session_.common().year));
+    comment_->setText(qt(session_.common().comment));
+    composer_->setText(qt(session_.common().composer));
+    track_number_->setText(number(session_.common().track_number));
+    disc_number_->setText(number(session_.common().disc_number));
     populating_ = false;
     update_actions();
 }
@@ -287,13 +274,13 @@ void StandardMetadataEditor::update_actions()
 {
     for (QLineEdit* input :
         {title_, artist_, album_, genre_, year_, comment_, composer_, track_number_, disc_number_})
-        input->setEnabled(media_.valid());
+        input->setEnabled(session_.valid());
 
     const bool changed = dirty();
     apply_->setEnabled(changed && valid_numbers());
     cancel_->setEnabled(!touched_.empty());
 
-    if (!media_.valid())
+    if (!session_.valid())
         status_->setText("Select a track to edit standard metadata.");
     else if (!feedback_.isEmpty())
         status_->setText(feedback_);
@@ -301,7 +288,7 @@ void StandardMetadataEditor::update_actions()
         status_->setText("Year and track/disc numbers must be non-negative integers.");
     else if (changed)
         status_->setText("Unsaved application changes. Embedded file data is unchanged.");
-    else if (overrides_present_)
+    else if (session_.overrides_present())
         status_->setText("Application overrides are active. Embedded file data is unchanged.");
     else
         status_->setText("Embedded values. Edits are stored in the application.");
