@@ -135,3 +135,9 @@ wiola_add_test(
     SOURCES documents/document_registry_test.cpp
     LIBS wiola_gui
 )
+
+wiola_add_test(
+    gui_document_host_test
+    SOURCES shell/document_host_test.cpp
+    LIBS wiola_gui
+)

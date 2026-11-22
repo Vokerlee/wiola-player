@@ -22,6 +22,7 @@
 
 // moc only needs the Qt declaration; the collaborators include C++23 concepts it cannot parse.
 #ifndef Q_MOC_RUN
+#include "document_host.hpp"
 #include "library_navigation.hpp"
 #include "player_actions.hpp"
 #include "saved_playlist_manager.hpp"
@@ -32,7 +33,6 @@
 #include <desktop/playback/volume_control.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
-#include <gui/documents/document_registry.hpp>
 #include <gui/documents/now_playing_document.hpp>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
@@ -124,16 +124,12 @@ private:
     /// Plays the track the listener picked out of the queue.
     void play_chosen(engine::QueueEntryId id);
 
-    void open_playlist(const library::PlaylistId& id);
     void open_folder();
-    void open_workspace(const library::WorkspaceId& id);
     void rescan_workspace(const library::WorkspaceId& id, bool recursive);
     void play_workspace_selection(WorkspaceDocument& document);
     void append_workspace_selection(WorkspaceDocument& document);
     void transfer_workspace(WorkspaceDocument& document, bool choose_destination);
     void show_workspace_navigation();
-    void restore_workspace_documents();
-    void save_workspace_documents();
     void activate_playlist(const library::PlaylistId& id);
     void transfer_now_playing(bool choose_destination);
     void transfer_saved_playlist(const library::PlaylistId& id, SavedPlaylistDocument& document,
@@ -151,9 +147,6 @@ private:
     void publish_metadata_outcome(const app::MetadataEditOutcome& outcome);
     void resolve_metadata_conflict(MetadataConflictAction action);
     [[nodiscard]] std::vector<const library::TrackRecord*> selected_records();
-    void refresh_playlist_documents();
-    void restore_playlist_documents();
-    void save_playlist_documents();
 
     /// Plays the track before or after this one in the list.
     void play_previous();
@@ -265,8 +258,7 @@ private:
     QSplitter* document_area_{nullptr};
     LibraryNavigation* navigation_{nullptr};
     SavedPlaylistManager* playlist_manager_{nullptr};
-    DocumentRegistry registry_;
-    app::WorkspaceScanPublisher* workspace_scans_;
+    DocumentHost* document_host_{nullptr};
     app::WorkspaceWatcher* workspace_watcher_;
     TrackInspector* inspector_{nullptr};
     QSlider* volume_slider_{nullptr};

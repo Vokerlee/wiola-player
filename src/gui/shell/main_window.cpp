@@ -59,19 +59,6 @@ namespace {
 
 constexpr PresentationTokens tokens;
 
-QWidget* placeholder_document(QWidget* parent, const QString& description)
-{
-    QWidget* document = new QWidget{parent};
-    QLabel* label = new QLabel{description, document};
-    label->setAlignment(Qt::AlignCenter);
-    label->setWordWrap(true);
-
-    QVBoxLayout* layout = new QVBoxLayout{document};
-    layout->addWidget(label);
-
-    return document;
-}
-
 LayoutDocument layout_for(const QString& choice)
 {
     if (choice == "library-focus")
@@ -153,7 +140,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , tag_commands_{library_session.tags()}
     , optimistic_edits_{library_session.metadata_edits()}
     , active_playlist_{library_session.active_playlist()}
-    , workspace_scans_{&library_session.scans()}
     , workspace_watcher_{&library_session.watcher()}
 {
     const QString selected_theme = settings_.value("theme/name", "light").toString();
@@ -203,7 +189,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     boost_button_ = new QPushButton{"+", this};
     volume_value_ = new QLabel{this};
     position_bar_ = new SeekBar{this};
-    now_playing_ = new NowPlayingDocument{this};
     track_label_ = new QLabel{this};
     elapsed_label_ = new QLabel{this};
     total_label_ = new QLabel{this};
@@ -242,25 +227,41 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
     total_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
-    documents_ = new QTabWidget{this};
-    documents_->setObjectName("documentTabs");
-    documents_->setDocumentMode(true);
-    documents_->addTab(now_playing_, "Now Playing");
-    registry_.add(*now_playing_, [this] {
-        std::vector<SelectedTrack> selected;
-        for (const auto occurrence : now_playing_->chosen_tracks()) {
-            const auto row = playback_.playlist().index_of(occurrence);
-            if (row)
-                selected.push_back(
-                    {library::media_id_for(playback_.playlist().tracks()[*row].path()), occurrence}
-                );
-        }
-        return selected;
-    });
-    static_cast<void>(registry_.activate(DocumentId::queue()));
-    documents_->addTab(placeholder_document(documents_,
-                           "Folder workspaces will open here without changing the playback queue."),
-        "Folder Workspace");
+    DocumentCommands document_commands;
+    document_commands.open_folder = [this] {
+        open_folder();
+    };
+    document_commands.activate_playlist = [this](const auto& id) {
+        activate_playlist(id);
+    };
+    document_commands.play_playlist = [this](const auto& id) {
+        play_saved_playlist(id);
+    };
+    document_commands.transfer_playlist = [this](const auto& id, auto& document, bool choose) {
+        transfer_saved_playlist(id, document, choose);
+    };
+    document_commands.move_playlist = [this](const auto& id, auto& document) {
+        choose_move_destination(id, document);
+    };
+    document_commands.rescan = [this](const auto& id, bool recursive) {
+        rescan_workspace(id, recursive);
+    };
+    document_commands.play_workspace = [this](auto& document) {
+        play_workspace_selection(document);
+    };
+    document_commands.append_workspace = [this](auto& document) {
+        append_workspace_selection(document);
+    };
+    document_commands.transfer_workspace = [this](auto& document, bool choose) {
+        transfer_workspace(document, choose);
+    };
+    document_commands.apply_order = [this](auto paths) {
+        play_displayed_paths(std::move(paths));
+    };
+    document_host_ =
+        new DocumentHost{library_session_, playback_, std::move(document_commands), this};
+    documents_ = &document_host_->tabs();
+    now_playing_ = &document_host_->queue();
 
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
@@ -289,11 +290,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         resolve_metadata_conflict(action);
     });
 
-    connect(&library_session_, &app::LibrarySession::scan_batch, this,
-        [this](const app::WorkspaceScanBatch& batch) {
-            if (auto* document = registry_.workspace(batch.workspace))
-                static_cast<void>(document->show_batch(batch));
-        });
     connect(&library_session_, &app::LibrarySession::metadata_outcome, this,
         &MainWindow::publish_metadata_outcome);
     connect(&library_session_, &app::LibrarySession::status_changed, this,
@@ -313,22 +309,18 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     document_area_ = new QSplitter{this};
     document_area_->setObjectName("documentArea");
     document_area_->addWidget(library_pane_);
-    document_area_->addWidget(documents_);
+    document_area_->addWidget(document_host_);
     document_area_->addWidget(inspector_);
     document_area_->setStretchFactor(0, 0);
     document_area_->setStretchFactor(1, 1);
     document_area_->setStretchFactor(2, 0);
 
-    navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
-    navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });
-    connect(documents_, &QTabWidget::currentChanged, this, [this](int) {
-        registry_.activate(documents_->currentWidget());
-        save_playlist_documents();
-        save_workspace_documents();
+    navigation_->on_playlist_chosen([this](const auto& id) {
+        static_cast<void>(document_host_->open_playlist(id));
     });
-
-    restore_playlist_documents();
-    restore_workspace_documents();
+    navigation_->on_workspace_chosen([this](const auto& id) {
+        static_cast<void>(document_host_->open_workspace(id));
+    });
 
     const QString selected_layout = settings_.value("layout/preset", "classic").toString();
     static_cast<void>(switch_layout(layout_for(selected_layout)));
@@ -529,7 +521,7 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
         std::pair{"libraryPane",          library_pane_    },
         std::pair{"libraryNavigation",    navigation_      },
         std::pair{"savedPlaylistManager", playlist_manager_},
-        std::pair{"documentTabs",         documents_       },
+        std::pair{"documentTabs",         document_host_   },
         std::pair{"trackInspector",       inspector_       },
         std::pair{"nowPlayingDocument",   now_playing_     },
         std::pair{"addTracks",            add_button_      },
@@ -546,7 +538,7 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
     static_cast<void>(builder.register_widget("nowPlayingFilters",
         now_playing_->findChild<QWidget*>("tagFilterPanel")));
 
-    for (const auto& [id, saved] : registry_.playlists()) {
+    for (const auto& [id, saved] : document_host_->registry().playlists()) {
         const QString identity = QString::fromStdString(id.value);
         static_cast<void>(builder.register_widget("playlistDocument:" + identity, saved));
         static_cast<void>(builder.register_widget("playlistSearch:" + identity,
@@ -555,7 +547,7 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
             saved->findChild<QWidget*>("tagFilterPanel")));
     }
 
-    for (const auto& [id, workspace] : registry_.workspaces()) {
+    for (const auto& [id, workspace] : document_host_->registry().workspaces()) {
         const QString identity = QString::fromStdString(id.value);
         static_cast<void>(builder.register_widget("workspaceDocument:" + identity, workspace));
         static_cast<void>(builder.register_widget("workspaceSearch:" + identity,
@@ -689,7 +681,7 @@ void MainWindow::import_m3u_playlist()
     }
 
     navigation_->show_repository(library_);
-    open_playlist(imported);
+    static_cast<void>(document_host_->open_playlist(imported));
     show_status("M3U8 playlist imported");
 }
 
@@ -697,7 +689,7 @@ void MainWindow::export_m3u_playlist()
 {
     std::optional<library::PlaylistId> selected;
 
-    if (const auto current = registry_.active(); current && current->playlist())
+    if (const auto current = document_host_->registry().active(); current && current->playlist())
         selected = *current->playlist();
 
     if (!selected)
@@ -765,54 +757,6 @@ void MainWindow::play_chosen(engine::QueueEntryId id)
     refresh();
 }
 
-void MainWindow::open_playlist(const library::PlaylistId& id)
-{
-    if (auto* existing = registry_.playlist(id)) {
-        documents_->setCurrentWidget(existing);
-        save_playlist_documents();
-        return;
-    }
-
-    SavedPlaylistDocument* document = new SavedPlaylistDocument{this};
-    if (!document->show_playlist(library_, id)) {
-        delete document;
-        return;
-    }
-
-    registry_.add(id, *document, [this, id, document] {
-        std::vector<SelectedTrack> selected;
-        if (const auto* playlist = library_.playlist(id)) {
-            for (const auto& entry : document->chosen_entries()) {
-                const auto found =
-                    std::ranges::find(playlist->entries, entry, &library::PlaylistEntryRecord::id);
-                if (found != playlist->entries.end())
-                    selected.push_back({found->media, entry});
-            }
-        }
-        return selected;
-    });
-    document->set_active(active_playlist_.id() == id);
-    document->on_active_requested([this, id] { activate_playlist(id); });
-    document->on_play_requested([this, id] { play_saved_playlist(id); });
-    document->on_apply_order_requested([this, document] {
-        play_displayed_paths(document->displayed_paths());
-    });
-    document->on_transfer_active_requested([this, id, document] {
-        transfer_saved_playlist(id, *document, false);
-    });
-    document->on_transfer_destination_requested([this, id, document] {
-        transfer_saved_playlist(id, *document, true);
-    });
-    document->on_transfer_move_requested([this, id, document] {
-        choose_move_destination(id, *document);
-    });
-
-    const QString name = QString::fromStdString(library_.playlist(id)->name);
-    documents_->addTab(document, name);
-    documents_->setCurrentWidget(document);
-    save_playlist_documents();
-}
-
 void MainWindow::open_folder()
 {
     const QString selected = QFileDialog::getExistingDirectory(this, "Open folder workspace");
@@ -833,7 +777,7 @@ void MainWindow::open_folder()
 
     static_cast<void>(workspace_watcher_->watch(*library_.workspace(workspace)));
     show_workspace_navigation();
-    open_workspace(workspace);
+    static_cast<void>(document_host_->open_workspace(workspace));
 }
 
 void MainWindow::show_workspace_navigation()
@@ -847,57 +791,6 @@ void MainWindow::show_workspace_navigation()
     }
 
     navigation_->show_workspaces(entries);
-}
-
-void MainWindow::open_workspace(const library::WorkspaceId& id)
-{
-    const library::WorkspaceRecord* workspace = library_.workspace(id);
-    if (workspace == nullptr)
-        return;
-
-    if (auto* existing = registry_.workspace(id)) {
-        documents_->setCurrentWidget(existing);
-        save_workspace_documents();
-        return;
-    }
-
-    WorkspaceDocument* document = new WorkspaceDocument{this};
-    registry_.add(id, *document, [id, document] {
-        std::vector<SelectedTrack> selected;
-        for (const auto& path : document->chosen_paths()) {
-            const auto media = library::media_id_for(path);
-            selected.push_back({
-                media, WorkspaceTrackId{id, media}
-            });
-        }
-        return selected;
-    });
-    document->on_rescan_requested([this, id](bool recursive) { rescan_workspace(id, recursive); });
-    document->on_cancel_requested([this, document] {
-        workspace_scans_->cancel();
-        document->show_cancelled();
-    });
-    document->on_play_requested([this, document] { play_workspace_selection(*document); });
-    document->on_append_requested([this, document] { append_workspace_selection(*document); });
-    document->on_apply_order_requested([this, document] {
-        play_displayed_paths(document->displayed_paths());
-    });
-    document->on_transfer_active_requested([this, document] {
-        transfer_workspace(*document, false);
-    });
-    document->on_transfer_destination_requested([this, document] {
-        transfer_workspace(*document, true);
-    });
-
-    const std::filesystem::path name = workspace->root.filename();
-    documents_->addTab(document,
-        name.empty() ? "Workspace" : platform::qt::QtPathAdapter::to_qt(name));
-    documents_->setCurrentWidget(document);
-
-    const std::uint64_t generation =
-        workspace_scans_->start(*workspace, playback_.playback_extensions());
-    document->begin(*workspace, generation);
-    save_workspace_documents();
 }
 
 void MainWindow::play_workspace_selection(WorkspaceDocument& document)
@@ -946,7 +839,7 @@ void MainWindow::transfer_workspace(WorkspaceDocument& document, bool choose_des
 void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive)
 {
     const library::WorkspaceRecord* current = library_.workspace(id);
-    WorkspaceDocument* document = registry_.workspace(id);
+    WorkspaceDocument* document = document_host_->registry().workspace(id);
     if (current == nullptr || document == nullptr)
         return;
 
@@ -969,38 +862,7 @@ void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive
 
     static_cast<void>(workspace_watcher_->watch(updated));
 
-    const std::uint64_t generation =
-        workspace_scans_->start(updated, playback_.playback_extensions());
-    document->begin(updated, generation);
-}
-
-void MainWindow::restore_workspace_documents()
-{
-    const library::WorkspaceId current_id{
-        settings_.value("documents/current_workspace").toString().toStdString()};
-    const QStringList open = settings_.value("documents/open_workspaces").toStringList();
-
-    for (const QString& id : open)
-        open_workspace(library::WorkspaceId{id.toStdString()});
-
-    if (auto* current = registry_.workspace(current_id))
-        documents_->setCurrentWidget(current);
-}
-
-void MainWindow::save_workspace_documents()
-{
-    QStringList open;
-    QString current;
-
-    for (const auto& [id, document] : registry_.workspaces()) {
-        open.push_back(QString::fromStdString(id.value));
-        if (documents_->currentWidget() == document)
-            current = QString::fromStdString(id.value);
-    }
-
-    settings_.setValue("documents/open_workspaces", open);
-    settings_.setValue("documents/current_workspace", current);
-    settings_.sync();
+    document_host_->begin_scan(id);
 }
 
 void MainWindow::activate_playlist(const library::PlaylistId& id)
@@ -1012,8 +874,7 @@ void MainWindow::activate_playlist(const library::PlaylistId& id)
     settings_.setValue("playlists/active", QString::fromStdString(id.value));
     settings_.sync();
 
-    for (const auto& [playlist, document] : registry_.playlists())
-        document->set_active(playlist == id);
+    document_host_->refresh_active_destination();
 }
 
 void MainWindow::transfer_now_playing(bool choose_destination)
@@ -1085,8 +946,6 @@ void MainWindow::choose_move_destination(const library::PlaylistId& id,
 
                 show_status(result.succeeded ? QString{"%1 track(s) moved"}.arg(result.added)
                                              : QString{"Could not save the playlist move"});
-                if (result.succeeded)
-                    refresh_playlist_documents();
             });
     }
 
@@ -1137,7 +996,6 @@ void MainWindow::transfer_to(std::optional<library::PlaylistId> destination,
     }
 
     show_status(QString{"%1 track(s) added"}.arg(result.added));
-    refresh_playlist_documents();
 }
 
 void MainWindow::play_saved_playlist(const library::PlaylistId& id)
@@ -1191,11 +1049,6 @@ void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
         navigation_->show_repository(library_);
     if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
         show_workspace_navigation();
-    refresh_playlist_documents();
-    for (const auto& [id, document] : registry_.workspaces()) {
-        for (const auto& change : batch.media)
-            static_cast<void>(document->show_media_revision(library_, change.media));
-    }
     refresh();
 }
 
@@ -1239,7 +1092,7 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
 std::vector<const library::TrackRecord*> MainWindow::selected_records()
 {
     std::vector<const library::TrackRecord*> selected;
-    for (const auto& item : registry_.selection())
+    for (const auto& item : document_host_->registry().selection())
         if (const auto* record = library_.track(item.media))
             selected.push_back(record);
     if (selected.empty()) {
@@ -1336,53 +1189,6 @@ void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcom
         show_status("The track changed since editing started; review before applying");
         break;
     }
-}
-
-void MainWindow::refresh_playlist_documents()
-{
-    for (const auto& [id, document] : registry_.playlists()) {
-        const auto* playlist = library_.playlist(id);
-        if (!playlist) {
-            registry_.remove(DocumentId::playlist(id));
-            documents_->removeTab(documents_->indexOf(document));
-            document->deleteLater();
-            continue;
-        }
-        static_cast<void>(document->show_playlist(library_, id));
-        documents_->setTabText(documents_->indexOf(document),
-            QString::fromStdString(playlist->name));
-    }
-    save_playlist_documents();
-}
-
-void MainWindow::restore_playlist_documents()
-{
-    const library::PlaylistId current_id{
-        settings_.value("documents/current_playlist").toString().toStdString()};
-    const QStringList open = settings_.value("documents/open_playlists").toStringList();
-    for (const QString& id : open)
-        open_playlist(library::PlaylistId{id.toStdString()});
-
-    if (auto* current = registry_.playlist(current_id))
-        documents_->setCurrentWidget(current);
-    else
-        documents_->setCurrentIndex(0);
-}
-
-void MainWindow::save_playlist_documents()
-{
-    QStringList open;
-    QString current;
-
-    for (const auto& [id, document] : registry_.playlists()) {
-        open.push_back(QString::fromStdString(id.value));
-        if (documents_->currentWidget() == document)
-            current = QString::fromStdString(id.value);
-    }
-
-    settings_.setValue("documents/open_playlists", open);
-    settings_.setValue("documents/current_playlist", current);
-    settings_.sync();
 }
 
 void MainWindow::play_previous()
