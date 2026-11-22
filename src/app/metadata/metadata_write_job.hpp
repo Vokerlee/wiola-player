@@ -60,7 +60,7 @@ struct MetadataWriteJob {
 
     [[nodiscard]] media::OperationContext context() const
     {
-        return {.stop = cancellation->get_token()};
+        return {.stop = cancellation->get_token(), .deadline = {}};
     }
 };
 

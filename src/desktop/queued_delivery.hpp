@@ -22,25 +22,58 @@
 #include <QObject>
 #include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
 
 namespace wiola::app {
 
-/// Moves payloads through an instrumented mutex, using Qt events only as wakeups. Producers must
-/// stop before this owner-thread receiver is destroyed. Context destruction discards deliveries.
+/// Owner-thread receiver with weak producer endpoints. Endpoints remain safe after destruction.
 class QueuedDelivery final : public QObject {
+    struct State;
+
 public:
+    class Endpoint {
+    public:
+        [[nodiscard]] bool post(std::function<void()> delivery) const;
+
+    private:
+        friend class QueuedDelivery;
+
+        explicit Endpoint(const std::shared_ptr<State>& state)
+            : state_{state}
+        {
+        }
+
+        std::weak_ptr<State> state_;
+    };
+
     explicit QueuedDelivery(QObject& context);
-    [[nodiscard]] bool post(std::function<void()> delivery);
+    ~QueuedDelivery() override;
+
+    [[nodiscard]] Endpoint endpoint() const { return Endpoint{state_}; }
+
+    [[nodiscard]] bool post(std::function<void()> delivery)
+    {
+        return endpoint().post(std::move(delivery));
+    }
+
+    /// Stop accepting new payloads; queued payloads may still drain on the owner thread.
+    void stop_accepting();
+    void discard();
     void drain();
 
 protected:
     void customEvent(QEvent* event) override;
 
 private:
-    std::mutex mutex_;
-    std::deque<std::function<void()>> pending_;
-    bool accepting_{true};
+    struct State {
+        std::mutex mutex;
+        std::deque<std::function<void()>> pending;
+        bool accepting{true};
+        QueuedDelivery* receiver;
+    };
+
+    std::shared_ptr<State> state_;
 };
 
 } // namespace wiola::app

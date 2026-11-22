@@ -53,7 +53,7 @@ private:
         Observer observer;
     };
 
-    static void receive(const std::weak_ptr<State>& state, QueuedDelivery* delivery,
+    static void receive(const std::weak_ptr<State>& state, QueuedDelivery::Endpoint delivery,
         WorkspaceScanBatch batch);
 
     QueuedDelivery delivery_;

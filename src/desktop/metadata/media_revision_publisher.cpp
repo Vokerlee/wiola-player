@@ -51,28 +51,32 @@ bool MediaRevisionPublisher::enqueue(const library::MediaId& media, std::filesys
 
     {
         std::lock_guard lock{state_->mutex};
-        request = ++state_->requests[media];
+        request = ++state_->next_request;
+        state_->requests[media] = request;
     }
 
     const std::weak_ptr<State> state = state_;
-    const bool accepted = reader_.enqueue(media, std::move(path),
-        [state, delivery = &delivery_, request](BackgroundMetadataResult result) {
+    const bool accepted = reader_.enqueue(media, path,
+        [state, delivery = delivery_.endpoint(), request](BackgroundMetadataResult result) {
             receive(state, delivery, request, std::move(result));
         });
 
     if (!accepted) {
-        std::lock_guard lock{state_->mutex};
-        const auto current = state_->requests.find(media);
-
-        if (current != state_->requests.end() && current->second == request)
-            state_->requests.erase(current);
+        receive(state, delivery_.endpoint(), request,
+            {
+                .media = media,
+                .location = std::move(path),
+                .metadata = {},
+                .error = media::Error{.category = media::ErrorCategory::limit_exceeded,
+                             .detail = "metadata reader rejected the request (stopped or full)"}
+        });
     }
 
     return accepted;
 }
 
-void MediaRevisionPublisher::receive(const std::weak_ptr<State>& weak, QueuedDelivery* delivery,
-    std::uint64_t request, BackgroundMetadataResult result)
+void MediaRevisionPublisher::receive(const std::weak_ptr<State>& weak,
+    QueuedDelivery::Endpoint delivery, std::uint64_t request, BackgroundMetadataResult result)
 {
     const auto state = weak.lock();
     if (!state)
@@ -88,7 +92,7 @@ void MediaRevisionPublisher::receive(const std::weak_ptr<State>& weak, QueuedDel
             return;
     }
 
-    static_cast<void>(delivery->post([weak, media, request, result = std::move(result)]() mutable {
+    static_cast<void>(delivery.post([weak, media, request, result = std::move(result)]() mutable {
         const auto current = weak.lock();
         if (!current)
             return;

@@ -24,7 +24,10 @@
 #include <QEventLoop>
 #include <QThread>
 
+#include <condition_variable>
 #include <gtest/gtest.h>
+#include <mutex>
+#include <stdexcept>
 
 #include <functional>
 
@@ -71,6 +74,8 @@ public:
     wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
     open(const std::filesystem::path& path, const wiola::media::OperationContext&) override
     {
+        if (path == "throws.wav")
+            throw std::runtime_error{"injected read failure"};
         if (path == "error.wav") {
             return wiola::media::unexpected{
                 wiola::media::Error{wiola::media::ErrorCategory::unreadable, "test"}
@@ -146,6 +151,82 @@ TEST(MediaRevisionPublisher, DestructionDropsAlreadyQueuedResults)
 
     QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
     EXPECT_EQ(publications, 0);
+}
+
+TEST(MediaRevisionPublisher, EnqueueRejectionUsesQueuedOwnerDelivery)
+{
+    std::optional<wiola::app::BackgroundMetadataResult> result;
+    wiola::app::MediaRevisionPublisher publisher{*QCoreApplication::instance(),
+        std::make_shared<FakeProvider>(), [&](auto value) {
+            EXPECT_EQ(QThread::currentThread(), QCoreApplication::instance()->thread());
+            result = std::move(value);
+        }};
+    publisher.stop();
+    EXPECT_FALSE(publisher.enqueue(wiola::library::MediaId{"rejected"}, "track.wav"));
+    EXPECT_FALSE(result);
+    ASSERT_TRUE(pump_until([&] { return result.has_value(); }));
+    ASSERT_TRUE(result->error);
+    EXPECT_EQ(result->error->category, wiola::media::ErrorCategory::limit_exceeded);
+    EXPECT_FALSE(result->metadata);
+    EXPECT_EQ(result->location, "track.wav");
+}
+
+TEST(MediaRevisionPublisher, WorkerIoExceptionsBecomeTypedFailures)
+{
+    std::optional<wiola::app::BackgroundMetadataResult> result;
+    wiola::app::MediaRevisionPublisher publisher{*QCoreApplication::instance(),
+        std::make_shared<FakeProvider>(), [&](auto value) { result = std::move(value); }};
+    ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"exception"}, "throws.wav"));
+    ASSERT_TRUE(pump_until([&] { return result.has_value(); }));
+    ASSERT_TRUE(result->error);
+    EXPECT_EQ(result->error->category, wiola::media::ErrorCategory::read_failed);
+    EXPECT_EQ(result->error->detail, "injected read failure");
+}
+
+class CancellableProvider final : public wiola::media::MediaProvider {
+public:
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
+    open(const std::filesystem::path&, const wiola::media::OperationContext& context) override
+    {
+        std::unique_lock lock{mutex};
+        entered = true;
+        changed.notify_all();
+        std::stop_callback wake{context.stop, [this] { changed.notify_all(); }};
+        changed.wait(lock, [&] { return context.stop.stop_requested(); });
+        return wiola::media::unexpected{context.error()};
+    }
+
+    std::vector<std::string> playback_extensions() const override { return {}; }
+
+    std::mutex mutex;
+    std::condition_variable changed;
+    bool entered{};
+};
+
+TEST(MediaRevisionPublisher, BoundedQueueReportsRejectionAndGatedShutdownCancelsWithoutDelivery)
+{
+    auto provider = std::make_shared<CancellableProvider>();
+    std::vector<wiola::app::BackgroundMetadataResult> results;
+    wiola::app::MediaRevisionPublisher publisher{*QCoreApplication::instance(), provider,
+        [&](auto result) { results.push_back(std::move(result)); }};
+    ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"active"}, "gated.wav"));
+    {
+        std::unique_lock lock{provider->mutex};
+        ASSERT_TRUE(provider->changed.wait_for(lock, std::chrono::seconds{5},
+            [&] { return provider->entered; }));
+    }
+    for (int i = 0; i < 256; ++i)
+        ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"queued-" + std::to_string(i)},
+            "queued.wav"));
+    EXPECT_FALSE(publisher.enqueue(wiola::library::MediaId{"overflow"}, "overflow.wav"));
+    EXPECT_TRUE(results.empty());
+    ASSERT_TRUE(pump_until([&] { return !results.empty(); }));
+    ASSERT_EQ(results.size(), 1);
+    ASSERT_TRUE(results.front().error);
+    EXPECT_EQ(results.front().error->category, wiola::media::ErrorCategory::limit_exceeded);
+    publisher.stop();
+    QCoreApplication::processEvents();
+    EXPECT_EQ(results.size(), 1);
 }
 
 } // namespace

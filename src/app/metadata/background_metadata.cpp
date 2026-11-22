@@ -20,6 +20,7 @@
 
 #include "background_metadata.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::app {
@@ -46,7 +47,7 @@ void BackgroundMetadata::stop()
     {
         std::lock_guard lock{mutex_};
         stopping_ = true;
-        jobs_.clear();
+        cancellation_.request_stop();
     }
 
     available_.notify_one();
@@ -57,7 +58,7 @@ void BackgroundMetadata::stop()
 bool BackgroundMetadata::enqueue(const library::MediaId& media, std::filesystem::path path,
     Observer observer)
 {
-    if (!media.valid())
+    if (!media.valid() || !observer || path.empty())
         return false;
 
     {
@@ -81,7 +82,7 @@ void BackgroundMetadata::run()
             std::unique_lock lock{mutex_};
             available_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
 
-            if (stopping_)
+            if (stopping_ && jobs_.empty())
                 return;
 
             job = std::move(jobs_.front());
@@ -92,17 +93,29 @@ void BackgroundMetadata::run()
             .location = job.path,
             .metadata = {},
             .error = {}};
-        media::Result<std::unique_ptr<media::MediaAsset>> asset = provider_->open(job.path);
-
-        if (!asset) {
-            result.error = asset.error();
-        } else {
-            media::Result<media::Metadata> metadata = (*asset)->read_metadata();
-
-            if (metadata)
-                result.metadata = std::move(metadata).value();
-            else
-                result.error = metadata.error();
+        const media::OperationContext context{.stop = cancellation_.get_token(), .deadline = {}};
+        try {
+            if (context.stop_reason() != media::StopReason::none)
+                result.error = context.error();
+            else {
+                auto asset = provider_->open(job.path, context);
+                if (!asset)
+                    result.error = asset.error();
+                else {
+                    auto metadata = (*asset)->read_metadata(context);
+                    if (metadata)
+                        result.metadata = std::move(metadata).value();
+                    else
+                        result.error = metadata.error();
+                }
+            }
+        } catch (const std::runtime_error& error) {
+            result.error =
+                media::Error{.category = media::ErrorCategory::read_failed, .detail = error.what()};
+        }
+        if (context.stop_reason() != media::StopReason::none) {
+            result.metadata.reset();
+            result.error = context.error();
         }
 
         job.observer(std::move(result));

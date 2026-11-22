@@ -19,6 +19,7 @@
  */
 
 #include <QCoreApplication>
+#include <QEvent>
 #include <QEventLoop>
 #include <chrono>
 #include <desktop/queued_delivery.hpp>
@@ -74,6 +75,51 @@ TEST(QueuedDelivery, ReceiverDestructionDiscardsPostedDeliveries)
     }
     QCoreApplication::sendPostedEvents();
     EXPECT_EQ(calls, 0);
+}
+
+TEST(QueuedDelivery, DetachedWorkerEndpointIsSafeAfterReceiverDestruction)
+{
+    auto receiver = std::make_unique<wiola::app::QueuedDelivery>(*QCoreApplication::instance());
+    const auto endpoint = receiver->endpoint();
+    std::latch entered{1}, release{1};
+    bool accepted = true;
+    std::jthread worker{[&] {
+        entered.count_down();
+        release.wait();
+        accepted = endpoint.post([] { FAIL() << "dead receiver called"; });
+    }};
+    entered.wait();
+    receiver.reset();
+    release.count_down();
+    worker.join();
+    EXPECT_FALSE(accepted);
+}
+
+TEST(QueuedDelivery, StopAcceptingAndDrainPreserveOnlyAlreadyAcceptedPayloads)
+{
+    wiola::app::QueuedDelivery receiver{*QCoreApplication::instance()};
+    const auto endpoint = receiver.endpoint();
+    int calls = 0;
+    EXPECT_TRUE(endpoint.post([&] { ++calls; }));
+    receiver.stop_accepting();
+    EXPECT_FALSE(endpoint.post([&] { calls += 10; }));
+    receiver.drain();
+    EXPECT_EQ(calls, 1);
+    QCoreApplication::sendPostedEvents(&receiver);
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(QueuedDelivery, UnrelatedEventsDoNotConsumeAcceptedPayloads)
+{
+    wiola::app::QueuedDelivery receiver{*QCoreApplication::instance()};
+    int calls = 0;
+    EXPECT_TRUE(receiver.post([&] { ++calls; }));
+    QEvent unrelated{QEvent::User};
+    QCoreApplication::sendEvent(&receiver, &unrelated);
+    EXPECT_EQ(calls, 0);
+    receiver.stop_accepting();
+    receiver.drain();
+    EXPECT_EQ(calls, 1);
 }
 
 } // namespace
