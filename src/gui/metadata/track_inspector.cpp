@@ -28,7 +28,7 @@
 #include <QFormLayout>
 #include <QVBoxLayout>
 
-#include <filesystem>
+#include <algorithm>
 
 namespace wiola::gui {
 
@@ -59,6 +59,7 @@ TrackInspector::TrackInspector(QWidget* parent)
     setAccessibleName("Track inspector");
     setMinimumWidth(200);
 
+    context_label_ = value(this, "inspectorContext");
     artwork_label_ = new QLabel{this};
     artwork_label_->setObjectName("inspectorArtwork");
     artwork_label_->setAlignment(Qt::AlignCenter);
@@ -87,6 +88,7 @@ TrackInspector::TrackInspector(QWidget* parent)
     conflicts_ = new MetadataConflictPanel{this};
 
     QVBoxLayout* layout = new QVBoxLayout{this};
+    layout->addWidget(context_label_);
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
     layout->addWidget(standard_metadata_);
@@ -94,14 +96,46 @@ TrackInspector::TrackInspector(QWidget* parent)
     layout->addWidget(custom_tags_);
     layout->addStretch();
 
-    show_track(nullptr);
+    connect(standard_metadata_->findChild<QPushButton*>("cancelStandardMetadata"),
+        &QPushButton::clicked, this, [this] {
+            if (pending_context_) {
+                auto next = std::move(*pending_context_);
+                pending_context_.reset();
+                show_context(std::move(next));
+            }
+        });
+    show_context({});
 }
 
-void TrackInspector::show_track(const engine::Track* track)
+void TrackInspector::show_context(InspectorContext next)
 {
-    if (track == nullptr) {
+    std::vector<const library::TrackRecord*> records;
+    for (const auto& record : next.editable)
+        records.push_back(&record);
+    standard_metadata_->show_tracks(records);
+    if (standard_metadata_->retains_draft()) {
+        pending_context_ = std::move(next);
+        context_label_->setText(
+            "Editing original selection — draft retained. Cancel to inspect the current selection."
+        );
+        return;
+    }
+    context_ = std::move(next);
+    pending_context_.reset();
+    const bool single = context_.tracks.size() == 1;
+    const auto* editable =
+        single && context_.editable.size() == 1 ? &context_.editable.front() : nullptr;
+    custom_tags_->show_track(editable);
+    context_label_->setText(context_.origin == InspectorContext::Origin::playing
+            ? "Now Playing — no explicit selection"
+            : context_.origin == InspectorContext::Origin::selection
+            ? QString{"Selection — %1 track(s)"}.arg(context_.tracks.size())
+            : "No selection");
+    if (!single) {
         artwork_label_->setPixmap(artwork_.cover_of({}, {}));
-        title_->setText("No track selected");
+        title_->setText(context_.tracks.empty()
+                ? "No track selected"
+                : QString{"%1 selected tracks — mixed values"}.arg(context_.tracks.size()));
         artist_->clear();
         album_->clear();
         location_->clear();
@@ -110,31 +144,19 @@ void TrackInspector::show_track(const engine::Track* track)
         availability_->setProperty("missing", false);
         return;
     }
-
-    std::error_code error;
-    const bool missing = !std::filesystem::exists(track->path(), error);
-
+    const auto& track = context_.tracks.front();
     artwork_label_->setPixmap(artwork_.cover_of(
-        {.media = library::media_id_for(track->path()).value, .revision = track->revision()},
-        track->artwork()
+        {.media = track.media.value, .revision = track.artwork_revision}, track.artwork
     ));
-    title_->setText(fallback(track->title(), "Unknown title"));
-    artist_->setText(fallback(track->artist(), "Unknown artist"));
-    album_->setText(fallback(track->album(), "Unknown album"));
-    location_->setText(platform::qt::QtPathAdapter::to_qt(track->path()));
-    duration_->setText(track->duration() ? as_clock(*track->duration()) : QString{"Unknown"});
-    availability_->setText(missing ? "Missing" : "Available");
-    availability_->setProperty("missing", missing);
-}
-
-void TrackInspector::show_custom_tags(const library::TrackRecord* track)
-{
-    custom_tags_->show_track(track);
-}
-
-void TrackInspector::show_standard_metadata(const std::vector<const library::TrackRecord*>& tracks)
-{
-    standard_metadata_->show_tracks(tracks);
+    title_->setText(fallback(track.metadata.title, "Unknown title"));
+    artist_->setText(fallback(track.metadata.artist, "Unknown artist"));
+    album_->setText(fallback(track.metadata.album, "Unknown album"));
+    location_->setText(platform::qt::QtPathAdapter::to_qt(track.location));
+    duration_->setText(track.metadata.duration ? as_clock(*track.metadata.duration)
+                                               : QString{"Unknown"});
+    const bool known = editable != nullptr;
+    availability_->setText(known ? (track.missing ? "Missing" : "Available") : "Not checked");
+    availability_->setProperty("missing", known && track.missing);
 }
 
 } // namespace wiola::gui

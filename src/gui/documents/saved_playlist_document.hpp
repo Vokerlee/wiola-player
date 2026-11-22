@@ -37,6 +37,8 @@ class SavedPlaylistDocument final : public QWidget {
 public:
     explicit SavedPlaylistDocument(QWidget* parent = nullptr);
 
+    [[nodiscard]] TrackBrowser& browser() noexcept { return *browser_; }
+
     bool show_playlist(const library::LibraryRepository& repository, const library::PlaylistId& id);
     bool show_media_revision(const library::LibraryRepository& repository,
         const library::MediaId& media);

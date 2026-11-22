@@ -57,6 +57,8 @@ public:
     [[nodiscard]] CustomTagCommands& tags();
     [[nodiscard]] OptimisticMetadataEdits& metadata_edits();
     [[nodiscard]] ActivePlaylist& active_playlist();
+    /// Owned, owner-thread snapshot safe across repository transactions.
+    [[nodiscard]] std::optional<library::TrackRecord> snapshot(const library::MediaId& id) const;
     [[nodiscard]] const SearchIndex& search() const;
 
     [[nodiscard]] const TagKeyCatalog& tag_keys() const

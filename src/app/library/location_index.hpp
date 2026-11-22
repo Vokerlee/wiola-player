@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Incrementally maintained normalized track search fields.
+ * @brief Incremental canonical media lookup by normalized location.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

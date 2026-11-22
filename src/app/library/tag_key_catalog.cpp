@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief One normalized search, filter, and sort state for each track browser.
+ * @brief Incremental catalog of normalized custom-tag keys.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

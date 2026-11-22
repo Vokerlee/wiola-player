@@ -44,6 +44,8 @@ class NowPlayingDocument final : public QWidget {
 public:
     explicit NowPlayingDocument(QWidget* parent = nullptr);
 
+    [[nodiscard]] TrackBrowser& browser() noexcept { return *browser_; }
+
     void set_media_resolver(std::function<library::MediaId(const std::filesystem::path&)> resolver)
     {
         resolve_media_ = std::move(resolver);

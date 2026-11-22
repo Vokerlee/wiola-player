@@ -39,6 +39,8 @@ class WorkspaceDocument final : public QWidget {
 public:
     explicit WorkspaceDocument(QWidget* parent = nullptr);
 
+    [[nodiscard]] TrackBrowser& browser() noexcept { return *browser_; }
+
     void begin(const library::WorkspaceRecord& workspace, std::uint64_t generation);
     bool show_batch(const app::WorkspaceScanBatch& batch,
         const library::LibraryRepository* repository = nullptr);

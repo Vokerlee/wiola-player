@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Incrementally maintained normalized track search fields.
+ * @brief Captured metadata edit targets, expected state, mixed fields and draft.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

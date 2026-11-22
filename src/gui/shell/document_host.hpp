@@ -28,8 +28,11 @@
 
 namespace wiola::gui {
 
+class TrackBrowser;
+
 struct DocumentCommands {
     std::function<void()> open_folder;
+    std::function<void()> selection_changed;
     std::function<void(library::PlaylistId)> activate_playlist;
     std::function<void(library::PlaylistId)> play_playlist;
     std::function<void(library::PlaylistId, SavedPlaylistDocument&, bool)> transfer_playlist;
@@ -61,6 +64,7 @@ public:
     void refresh_active_destination();
 
 private:
+    void configure_browser(TrackBrowser& browser);
     void refresh(const library::LibraryChangeBatch& batch);
     void restore();
     void save();

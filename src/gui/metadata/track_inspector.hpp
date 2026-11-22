@@ -21,11 +21,10 @@
 #pragma once
 
 #include "custom_tag_editor.hpp"
+#include "inspector_context.hpp"
 #include "metadata_conflict_panel.hpp"
 #include "standard_metadata_editor.hpp"
 #include <gui/appearance/artwork_cache.hpp>
-
-#include <engine/queue/track.hpp>
 
 #include <QLabel>
 #include <QWidget>
@@ -36,9 +35,9 @@ class TrackInspector final : public QWidget {
 public:
     explicit TrackInspector(QWidget* parent = nullptr);
 
-    void show_track(const engine::Track* track);
-    void show_custom_tags(const library::TrackRecord* track);
-    void show_standard_metadata(const std::vector<const library::TrackRecord*>& tracks);
+    void show_context(InspectorContext context);
+
+    [[nodiscard]] const InspectorContext& context() const { return context_; }
 
     [[nodiscard]] CustomTagEditor* custom_tags() const noexcept { return custom_tags_; }
 
@@ -50,6 +49,9 @@ public:
     [[nodiscard]] MetadataConflictPanel* conflicts() const noexcept { return conflicts_; }
 
 private:
+    InspectorContext context_;
+    std::optional<InspectorContext> pending_context_;
+    QLabel* context_label_{nullptr};
     ArtworkCache artwork_;
     QLabel* artwork_label_{nullptr};
     QLabel* title_{nullptr};
