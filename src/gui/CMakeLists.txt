@@ -10,6 +10,7 @@ wiola_add_library(
         layout/focused_layout.cpp
         shell/library_navigation.cpp
         layout/layout_document.cpp
+        layout/component_descriptor.cpp
         layout/layout_builder.cpp
         layout/layout_editor.cpp
         shell/document_host.cpp
@@ -35,6 +36,7 @@ wiola_add_library(
         appearance/theme.cpp
         appearance/theme_editor.cpp
         shell/player_actions.cpp
+        shell/action_descriptor.cpp
         shell/action_button_binding.cpp
         documents/saved_playlist_rows.cpp
         documents/saved_playlist_document.cpp

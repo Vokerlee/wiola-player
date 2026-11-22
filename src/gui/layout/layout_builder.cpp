@@ -199,7 +199,7 @@ LayoutBuilder::LayoutBuilder()
 
 bool LayoutBuilder::register_component(LayoutComponentKind kind, Factory factory)
 {
-    if (!factory || factories_.contains(kind))
+    if (!factory || !component_descriptor(kind) || factories_.contains(kind))
         return false;
     factories_.emplace(kind, std::move(factory));
     return true;

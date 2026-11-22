@@ -46,46 +46,6 @@ constexpr auto component_mime = "application/x-wiola-layout-component";
 constexpr int identity_role = Qt::UserRole;
 constexpr int action_role = Qt::UserRole + 1;
 
-struct ActionName {
-    PlayerAction action;
-    const char* name;
-    const char* label;
-};
-
-constexpr std::array available_actions{
-    ActionName{PlayerAction::open,      "open",      "Open tracks"   },
-    ActionName{PlayerAction::previous,  "previous",  "Previous track"},
-    ActionName{PlayerAction::play,      "play",      "Play / pause"  },
-    ActionName{PlayerAction::next,      "next",      "Next track"    },
-    ActionName{PlayerAction::stop,      "stop",      "Stop"          },
-    ActionName{PlayerAction::repeat,    "repeat",    "Repeat"        },
-    ActionName{PlayerAction::shuffle,   "shuffle",   "Shuffle"       },
-    ActionName{PlayerAction::add,       "add",       "Add tracks"    },
-    ActionName{PlayerAction::remove,    "remove",    "Remove tracks" },
-    ActionName{PlayerAction::clear,     "clear",     "Clear queue"   },
-    ActionName{PlayerAction::equalizer, "equalizer", "Equalizer"     },
-};
-
-std::optional<PlayerAction> parse_action(const QString& name)
-{
-    for (const ActionName& entry : available_actions) {
-        if (name == entry.name)
-            return entry.action;
-    }
-
-    return std::nullopt;
-}
-
-QString action_name(PlayerAction action)
-{
-    for (const ActionName& entry : available_actions) {
-        if (entry.action == action)
-            return QString::fromLatin1(entry.name);
-    }
-
-    return {};
-}
-
 bool container(LayoutComponentKind kind)
 {
     return is_layout_container(kind);
@@ -198,9 +158,9 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     palette_->setDragDropMode(QAbstractItemView::DragOnly);
     palette_->setAccessibleName("Button action palette");
 
-    for (const ActionName& entry : available_actions) {
+    for (const ActionDescriptor& entry : action_descriptors()) {
         auto* item = new QListWidgetItem{entry.label, palette_};
-        item->setData(action_role, entry.name);
+        item->setData(action_role, entry.key);
         item->setToolTip("Drag onto a container, or select it and press Add");
     }
 
@@ -224,10 +184,10 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
 
     container_kind_ = new QComboBox{this};
     container_kind_->setObjectName("layoutContainerType");
-    for (const auto kind :
-        {LayoutComponentKind::row, LayoutComponentKind::column, LayoutComponentKind::group,
-            LayoutComponentKind::splitter, LayoutComponentKind::grid, LayoutComponentKind::tabs})
-        container_kind_->addItem(layout_component_name(kind), static_cast<int>(kind));
+    for (const auto& descriptor : component_descriptors())
+        if (descriptor.container)
+            container_kind_->addItem(QString::fromLatin1(descriptor.key),
+                static_cast<int>(descriptor.kind));
     auto* add_container_button = new QPushButton{"Add container", this};
     add_container_button->setObjectName("addLayoutContainer");
 
@@ -240,8 +200,8 @@ ButtonLayoutEditor::ButtonLayoutEditor(LayoutDocument document, QWidget* parent)
     action_ = new QComboBox{this};
     action_->setObjectName("layoutComponentAction");
 
-    for (const ActionName& entry : available_actions)
-        action_->addItem(entry.label, entry.name);
+    for (const ActionDescriptor& entry : action_descriptors())
+        action_->addItem(entry.label, entry.key);
 
     orientation_ = new QComboBox{this};
     orientation_->setObjectName("layoutComponentOrientation");

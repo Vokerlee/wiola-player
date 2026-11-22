@@ -174,4 +174,36 @@ TEST(LayoutDocument, RejectsInvalidContainerPropertiesTransactionally)
     EXPECT_TRUE(wiola::gui::write_layout_json(document).isEmpty());
 }
 
+TEST(LayoutDocument, DescriptorsRoundTripEveryStableComponentAndActionKey)
+{
+    using namespace wiola::gui;
+    for (const auto& component : component_descriptors()) {
+        LayoutDocument document{
+            .root = {.id = "root", .kind = component.kind},
+            .node_count = 1
+        };
+        auto encoded = write_layout_json(document);
+        ASSERT_FALSE(encoded.isEmpty());
+        LayoutDocument decoded;
+        ASSERT_EQ(read_layout_json(encoded, decoded), LayoutJsonError::none);
+        EXPECT_EQ(decoded.root.kind, component.kind);
+        EXPECT_EQ(parse_component(component.key), component.kind);
+    }
+    for (const auto& action : action_descriptors()) {
+        LayoutDocument document{
+            .root = {.id = "button", .kind = LayoutComponentKind::button, .action = action.id},
+            .node_count = 1
+        };
+        const auto encoded = write_layout_json(document);
+        ASSERT_FALSE(encoded.isEmpty());
+        LayoutDocument decoded;
+        ASSERT_EQ(read_layout_json(encoded, decoded), LayoutJsonError::none);
+        EXPECT_EQ(decoded.root.action, action.id);
+        EXPECT_EQ(parse_action(action.key), action.id);
+    }
+    EXPECT_FALSE(parse_component("QWidget"));
+    EXPECT_FALSE(parse_action("execute"));
+    EXPECT_EQ(action_descriptors().size(), static_cast<std::size_t>(PlayerAction::count));
+}
+
 } // namespace

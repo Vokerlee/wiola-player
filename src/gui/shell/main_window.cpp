@@ -145,8 +145,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , metadata_edits_{library_session.metadata_edits()}
     , active_playlist_{library_session.active_playlist()}
 {
-    for (std::size_t i = 0; i < static_cast<std::size_t>(PlayerAction::count); ++i)
-        addAction(actions_.action(static_cast<PlayerAction>(i)));
+    for (const auto& descriptor : action_descriptors())
+        addAction(actions_.action(descriptor.id));
     const QString selected_theme = settings_.value("theme/name", "light").toString();
     const ThemeColors custom_theme = stored_custom_theme(settings_);
 

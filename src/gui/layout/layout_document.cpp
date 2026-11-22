@@ -56,55 +56,19 @@ bool valid_id(const QString& id)
 
 bool component_kind(const QString& text, LayoutComponentKind& output)
 {
-    static constexpr std::array kinds{
-        std::pair{"row",         LayoutComponentKind::row        },
-        std::pair{"column",      LayoutComponentKind::column     },
-        std::pair{"stack",       LayoutComponentKind::stack      },
-        std::pair{"splitter",    LayoutComponentKind::splitter   },
-        std::pair{"grid",        LayoutComponentKind::grid       },
-        std::pair{"tabs",        LayoutComponentKind::tabs       },
-        std::pair{"group",       LayoutComponentKind::group      },
-        std::pair{"button",      LayoutComponentKind::button     },
-        std::pair{"track_table", LayoutComponentKind::track_table},
-        std::pair{"inspector",   LayoutComponentKind::inspector  },
-        std::pair{"search",      LayoutComponentKind::search     },
-        std::pair{"tags",        LayoutComponentKind::tags       },
-        std::pair{"transport",   LayoutComponentKind::transport  },
-        std::pair{"volume",      LayoutComponentKind::volume     },
-        std::pair{"status",      LayoutComponentKind::status     },
-    };
-
-    const auto found =
-        std::ranges::find_if(kinds, [&text](const auto& entry) { return text == entry.first; });
-    if (found == kinds.end())
+    const auto found = parse_component(text);
+    if (!found)
         return false;
-
-    output = found->second;
+    output = *found;
     return true;
 }
 
 bool player_action(const QString& text, PlayerAction& output)
 {
-    static constexpr std::array actions{
-        std::pair{"open",      PlayerAction::open     },
-        std::pair{"previous",  PlayerAction::previous },
-        std::pair{"play",      PlayerAction::play     },
-        std::pair{"next",      PlayerAction::next     },
-        std::pair{"stop",      PlayerAction::stop     },
-        std::pair{"repeat",    PlayerAction::repeat   },
-        std::pair{"shuffle",   PlayerAction::shuffle  },
-        std::pair{"add",       PlayerAction::add      },
-        std::pair{"remove",    PlayerAction::remove   },
-        std::pair{"clear",     PlayerAction::clear    },
-        std::pair{"equalizer", PlayerAction::equalizer},
-    };
-
-    const auto found =
-        std::ranges::find_if(actions, [&text](const auto& entry) { return text == entry.first; });
-    if (found == actions.end())
+    const auto found = parse_action(text);
+    if (!found)
         return false;
-
-    output = found->second;
+    output = *found;
     return true;
 }
 
@@ -125,17 +89,21 @@ bool read_dimension(const QJsonObject& object, const char* key, std::optional<in
 
 bool valid_container_properties(const LayoutNode& node)
 {
+    const auto* descriptor = component_descriptor(node.kind);
+    if (!descriptor)
+        return false;
     if (node.orientation &&
-        (node.kind != LayoutComponentKind::splitter ||
+        (!descriptor->supports(ComponentProperty::orientation) ||
             (*node.orientation != Qt::Horizontal && *node.orientation != Qt::Vertical)))
         return false;
     if (!node.sizes.empty() &&
-        (node.kind != LayoutComponentKind::splitter || node.sizes.size() != node.children.size() ||
+        (!descriptor->supports(ComponentProperty::weights) ||
+            node.sizes.size() != node.children.size() ||
             !std::ranges::all_of(node.sizes,
                 [](int size) { return size > 0 && size <= max_dimension; })))
         return false;
     if (node.columns &&
-        (node.kind != LayoutComponentKind::grid || *node.columns < 1 ||
+        (!descriptor->supports(ComponentProperty::columns) || *node.columns < 1 ||
             *node.columns > static_cast<int>(max_children)))
         return false;
     return node.children.empty() || is_layout_container(node.kind);
@@ -292,18 +260,12 @@ LayoutJsonError validate_layout_document(const LayoutDocument& document)
         if (!valid_id(node.id) || identities.contains(node.id) || node.title.toUtf8().size() > 128)
             return LayoutJsonError::invalid_component;
 
-        const int kind = static_cast<int>(node.kind);
-        if (kind < static_cast<int>(LayoutComponentKind::row) ||
-            kind > static_cast<int>(LayoutComponentKind::status))
+        const auto* descriptor = component_descriptor(node.kind);
+        if (!descriptor)
             return LayoutJsonError::invalid_component;
-
-        if (node.action) {
-            const int action = static_cast<int>(*node.action);
-            if (node.kind != LayoutComponentKind::button ||
-                action < static_cast<int>(PlayerAction::open) ||
-                action > static_cast<int>(PlayerAction::equalizer))
-                return LayoutJsonError::invalid_component;
-        }
+        if (node.action &&
+            (!descriptor->supports(ComponentProperty::action) || !action_descriptor(*node.action)))
+            return LayoutJsonError::invalid_component;
 
         for (const auto* dimension :
             {&node.width, &node.height, &node.min_width, &node.min_height}) {
@@ -338,22 +300,14 @@ LayoutJsonError validate_layout_document(const LayoutDocument& document)
 
 bool is_layout_container(LayoutComponentKind kind) noexcept
 {
-    return kind == LayoutComponentKind::row || kind == LayoutComponentKind::column ||
-        kind == LayoutComponentKind::stack || kind == LayoutComponentKind::group ||
-        kind == LayoutComponentKind::splitter || kind == LayoutComponentKind::grid ||
-        kind == LayoutComponentKind::tabs;
+    const auto* descriptor = component_descriptor(kind);
+    return descriptor && descriptor->container;
 }
 
 QString layout_component_name(LayoutComponentKind kind)
 {
-    for (const char* name :
-        {"row", "column", "stack", "splitter", "grid", "tabs", "group", "button", "track_table",
-            "inspector", "search", "tags", "transport", "volume", "status"}) {
-        LayoutComponentKind candidate;
-        if (component_kind(QString::fromLatin1(name), candidate) && candidate == kind)
-            return QString::fromLatin1(name);
-    }
-    return {};
+    const auto* descriptor = component_descriptor(kind);
+    return descriptor ? QString::fromLatin1(descriptor->key) : QString{};
 }
 
 QByteArray write_layout_json(const LayoutDocument& document)
@@ -368,15 +322,8 @@ QByteArray write_layout_json(const LayoutDocument& document)
         };
         if (!node.title.isEmpty())
             result.insert("title", node.title);
-        if (node.action) {
-            for (const char* name : {"open", "previous", "play", "next", "stop", "repeat",
-                     "shuffle", "add", "remove", "clear", "equalizer"}) {
-                PlayerAction candidate;
-                if (player_action(QString::fromLatin1(name), candidate) &&
-                    candidate == *node.action)
-                    result.insert("action", QString::fromLatin1(name));
-            }
-        }
+        if (node.action)
+            result.insert("action", action_name(*node.action));
         QJsonObject size;
         for (const auto& [key, value] : {
                  std::pair{"width",     node.width     },
