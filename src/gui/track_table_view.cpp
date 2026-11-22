@@ -106,7 +106,9 @@ TrackTableView::TrackTableView(QWidget* parent)
     horizontalHeader()->setSortIndicatorShown(true);
 
     connect(horizontalHeader(), &QHeaderView::sectionClicked, this, [this](int column) {
-        sort_column(column, QGuiApplication::keyboardModifiers().testFlag(Qt::ControlModifier));
+        sort_column(column,
+            QGuiApplication::keyboardModifiers().testAnyFlags(Qt::ControlModifier |
+                Qt::ShiftModifier));
     });
 
     for (int column = Column::title; column < Column::num_columns; ++column) {
@@ -237,12 +239,14 @@ void TrackTableView::sort_by(const std::vector<TrackSortKey>& keys)
 {
     const std::vector<engine::QueueEntryId> selected = chosen_tracks();
     const auto current_id = model_.track_id(currentIndex());
-    sort_keys_.clear();
+    std::vector<TrackSortKey> valid;
 
     for (const TrackSortKey& key : keys) {
         if (key.valid())
-            sort_keys_.push_back(key);
+            valid.push_back(key);
     }
+
+    sort_keys_ = std::move(valid);
 
     model_.sort_by(sort_keys_);
     restore_selection(selected, current_id);

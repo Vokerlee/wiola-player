@@ -26,6 +26,9 @@ FetchContent_MakeAvailable(miniaudio)
 
 # Nothing but the tests needs this, and a build without them should not go to the network for it.
 if(WIOLA_BUILD_TESTS)
+    if(WIOLA_BUILD_GUI)
+        find_package(Qt6 REQUIRED COMPONENTS Test)
+    endif()
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
