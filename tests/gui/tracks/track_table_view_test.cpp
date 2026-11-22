@@ -20,6 +20,7 @@
 
 #include <gui/documents/queue_rows.hpp>
 
+#include <fixtures/track_view.hpp>
 #include <gui/tracks/track_table_view.hpp>
 
 #include <engine/queue/playlist.hpp>
@@ -252,6 +253,32 @@ TEST(TrackTableView, RetainsTagWidthAndOrderWhenHiddenAndReappearing)
     EXPECT_EQ(view.columnWidth(5), 237);
     EXPECT_EQ(view.horizontalHeader()->visualIndex(5), 1);
     EXPECT_EQ(wiola::gui::tag_track_column(" Genre ").id, wiola::gui::tag_track_column("genre").id);
+}
+
+TEST(TrackTableView, MetadataRefreshKeepsSelectionAndFilteringClearsHiddenSelections)
+{
+    wiola::gui::TrackTableView view;
+    wiola::gui::TrackRow first, second;
+    first.id = wiola::library::PlaylistEntryId{"one"};
+    first.metadata.title = "Alpha";
+    second.id = wiola::library::PlaylistEntryId{"two"};
+    second.metadata.title = "Beta";
+    view.show_rows({first, second});
+    view.selectRow(0);
+    int changes = 0;
+    QObject::connect(view.selectionModel(), &QItemSelectionModel::selectionChanged,
+        [&] { ++changes; });
+    first.metadata.artist = "Changed";
+    view.show_rows({first, second});
+    EXPECT_EQ(changes, 0);
+    EXPECT_EQ(view.chosen_rows(), std::vector<wiola::gui::TrackRowId>{first.id});
+    wiola::library::SearchQuery query;
+    query.title = "beta";
+    wiola::testing::set_track_query(view, query);
+    EXPECT_TRUE(view.chosen_rows().empty());
+    EXPECT_FALSE(view.currentIndex().isValid());
+    wiola::testing::set_track_query(view, {});
+    EXPECT_TRUE(view.chosen_rows().empty());
 }
 
 TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)

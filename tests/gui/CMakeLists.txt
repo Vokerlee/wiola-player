@@ -21,7 +21,7 @@ wiola_add_test(
 wiola_add_test(
     gui_track_table_model_test
     SOURCES tracks/track_table_model_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui Qt6::Test
 )
 wiola_add_test(
     gui_track_table_view_test

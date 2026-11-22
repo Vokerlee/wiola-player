@@ -34,6 +34,8 @@
 #include <QImage>
 #include <QPixmap>
 
+#include <QAbstractItemModelTester>
+#include <QPersistentModelIndex>
 #include <gtest/gtest.h>
 
 #include <cstring>
@@ -71,6 +73,54 @@ std::shared_ptr<wiola::media::Artwork> sample_artwork(Qt::GlobalColor color)
 QPixmap cover_at(wiola::gui::TrackTableModel& model, int row)
 {
     return model.data(model.index(row, 0), Qt::DecorationRole).value<QPixmap>();
+}
+
+TEST_F(TrackTableModelTest, KeepsPersistentIndexesThroughInsertRemoveSortAndFilter)
+{
+    wiola::gui::TrackTableModel model{styled};
+    QAbstractItemModelTester tester{&model, QAbstractItemModelTester::FailureReportingMode::Fatal};
+    wiola::gui::TrackRow first, second, third;
+    first.id = wiola::library::PlaylistEntryId{"one"};
+    first.metadata.title = "Beta";
+    second.id = wiola::library::PlaylistEntryId{"two"};
+    second.metadata.title = "Alpha";
+    third.id = wiola::library::PlaylistEntryId{"three"};
+    third.metadata.title = "Gamma";
+    model.show_rows({first, second});
+    QPersistentModelIndex retained = model.index(1, 1);
+    int resets = 0;
+    QObject::connect(&model, &QAbstractItemModel::modelReset, [&] { ++resets; });
+    model.show_rows({third, second, first});
+    EXPECT_TRUE(retained.isValid());
+    EXPECT_EQ(model.row_id(retained), second.id);
+    wiola::testing::set_track_sort(model, {{.field = wiola::gui::TrackSortField::title}});
+    EXPECT_EQ(retained.row(), 0);
+    model.show_rows({second, third});
+    EXPECT_EQ(model.row_id(retained), second.id);
+    second.metadata.title = "Edited";
+    model.show_rows({second, third});
+    EXPECT_EQ(retained.data().toString(), "Edited");
+    wiola::library::SearchQuery query;
+    query.title = "gamma";
+    wiola::testing::set_track_query(model, query);
+    EXPECT_FALSE(retained.isValid());
+    EXPECT_EQ(resets, 0);
+    model.show_tag_keys({"Genre", "Mood"});
+    model.show_tag_keys({"Mood"});
+}
+
+TEST_F(TrackTableModelTest, RejectsInvalidAndDuplicateOccurrenceIdentities)
+{
+    wiola::gui::TrackTableModel model{styled};
+    QAbstractItemModelTester tester{&model, QAbstractItemModelTester::FailureReportingMode::Fatal};
+    wiola::gui::TrackRow invalid, first, copy;
+    first.id = wiola::library::PlaylistEntryId{"one"};
+    first.metadata.title = "Original";
+    copy = first;
+    copy.metadata.title = "Duplicate";
+    model.show_rows({invalid, first, copy});
+    EXPECT_EQ(model.rowCount(), 1);
+    EXPECT_EQ(model.index(0, 1).data().toString(), "Original");
 }
 
 } // namespace
