@@ -45,6 +45,8 @@ public:
 
     explicit BackgroundMetadata(std::shared_ptr<media::MediaProvider> provider);
     ~BackgroundMetadata();
+    /// Reject new reads, discard pending reads, and join the current read. Owner thread only.
+    void stop();
 
     [[nodiscard]] bool enqueue(const library::MediaId& media, std::filesystem::path path,
         Observer observer);

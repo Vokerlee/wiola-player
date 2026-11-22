@@ -29,6 +29,7 @@ namespace wiola::app {
 class PlaybackService {
 public:
     explicit PlaybackService(engine::Session& session);
+    void stop_accepting() noexcept;
 
     engine::OperationReceipt open(std::vector<std::filesystem::path> tracks);
     void add(std::vector<std::filesystem::path> tracks);
@@ -83,6 +84,7 @@ public:
 
 private:
     engine::Session* session_;
+    bool accepting_{true};
 };
 
 } // namespace wiola::app

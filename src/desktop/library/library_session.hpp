@@ -44,8 +44,9 @@ public:
     explicit LibrarySession(std::shared_ptr<media::MediaProvider> provider,
         QObject* parent = nullptr);
     LibrarySession(std::filesystem::path file, std::shared_ptr<media::MediaProvider> provider,
-        QObject* parent = nullptr);
+        QObject* parent = nullptr, persistence::qt::AtomicFileStore::OutputFactory output = {});
     ~LibrarySession() override;
+    [[nodiscard]] persistence::qt::LibraryStoreResult shutdown();
 
     [[nodiscard]] library::InMemoryRepository& repository();
     [[nodiscard]] const library::InMemoryRepository& repository() const;
@@ -73,6 +74,8 @@ private:
     void publish_metadata(BackgroundMetadataResult result);
     void index_changes(const library::LibraryChangeBatch& batch);
 
+    bool accepting_{true};
+    persistence::qt::LibraryStoreResult shutdown_result_;
     QSettings settings_;
     persistence::qt::LibraryStore store_;
     library::InMemoryRepository repository_;
@@ -84,6 +87,7 @@ private:
     SearchIndex search_;
     MetadataMerge merge_;
     QString restore_error_;
+    persistence::qt::LibraryStoreResult restore_result_;
     library::LibraryChanges::Subscription changes_;
     WorkspaceScanPublisher scans_;
     MediaRevisionPublisher metadata_;

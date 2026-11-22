@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/controls/queue_settings.hpp>
+#include <desktop/playback/queue_settings.hpp>
 
 #include <app/playback/playback_service.hpp>
 
@@ -39,7 +39,7 @@
 namespace {
 
 using Repeat = wiola::engine::Playlist::Repeat;
-using Control = wiola::gui::QueueSettings;
+using Control = wiola::app::QueueSettings;
 using Presenter = wiola::app::PlaybackService;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's, and a

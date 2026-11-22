@@ -66,14 +66,14 @@ int as_steps(float db)
     return static_cast<int>(std::lround(db * tokens.equalizer.gain_steps_per_db));
 }
 
-int band_limit(const EqualizerControl& equalizer) noexcept
+int band_limit(const app::EqualizerControl& equalizer) noexcept
 {
     return static_cast<int>(equalizer.max_band_gain()) * tokens.equalizer.gain_steps_per_db;
 }
 
 } // namespace
 
-EqualizerPanel::EqualizerPanel(EqualizerControl& equalizer, QWidget* parent)
+EqualizerPanel::EqualizerPanel(app::EqualizerControl& equalizer, QWidget* parent)
     : QWidget{parent, Qt::Window}
     , equalizer_{equalizer}
 {

@@ -60,10 +60,18 @@ int main(int argc, char** argv)
         qWarning("Could not migrate the queued tracks into the library");
 
     wiola::app::PlayerApplication player;
-    wiola::gui::MainWindow window{player.playback(), player.library()};
+    wiola::gui::MainWindow window{player.playback(), player.library(), player.preferences()};
 
-    player.attach(window);
+    player.observe(
+        window, [&window](const auto& presentation) { window.update_after_pump(presentation); },
+        [&window] { window.refresh(); }
+    );
     window.show();
 
-    return QApplication::exec();
+    const int result = QApplication::exec();
+    if (!player.shutdown()) {
+        qCritical("Could not flush player data during shutdown");
+        return 1;
+    }
+    return result;
 }

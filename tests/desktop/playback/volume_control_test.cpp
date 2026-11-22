@@ -19,7 +19,7 @@
  */
 
 #include <app/playback/volume_scale.hpp>
-#include <gui/controls/volume_control.hpp>
+#include <desktop/playback/volume_control.hpp>
 #include <platform/qt/player_settings.hpp>
 
 #include <QSettings>
@@ -32,7 +32,7 @@
 
 namespace {
 
-using Control = wiola::gui::VolumeControl;
+using Control = wiola::app::VolumeControl;
 constexpr wiola::app::VolumeScale scale;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.

@@ -26,7 +26,7 @@
 
 #include <cstddef>
 
-namespace wiola::gui {
+namespace wiola::app {
 
 /**
  * What was queued when a run ended, put back when the next one begins.
@@ -51,4 +51,4 @@ private:
     QSettings& settings_;
 };
 
-} // namespace wiola::gui
+} // namespace wiola::app

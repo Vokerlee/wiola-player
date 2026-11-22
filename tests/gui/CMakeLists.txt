@@ -73,21 +73,7 @@ wiola_add_test(
     SOURCES documents/saved_playlist_document_test.cpp
     LIBS wiola_gui wiola_library
 )
-wiola_add_test(
-    gui_playlist_control_test
-    SOURCES controls/queue_settings_test.cpp
-    LIBS wiola_gui
-)
-wiola_add_test(
-    gui_equalizer_control_test
-    SOURCES controls/equalizer_control_test.cpp
-    LIBS wiola_gui
-)
-wiola_add_test(
-    gui_volume_control_test
-    SOURCES controls/volume_control_test.cpp
-    LIBS wiola_gui
-)
+
 wiola_add_test(
     gui_main_window_test
     SOURCES shell/main_window_test.cpp

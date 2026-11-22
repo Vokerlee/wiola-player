@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 
-namespace wiola::gui {
+namespace wiola::app {
 
 namespace {
 
@@ -104,4 +104,4 @@ void QueueSettings::save()
     platform::qt::QtSettingsAdapter{settings_}.write_playlist(settings);
 }
 
-} // namespace wiola::gui
+} // namespace wiola::app

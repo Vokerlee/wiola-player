@@ -54,6 +54,7 @@ public:
     std::uint64_t start(const library::WorkspaceRecord& workspace,
         std::vector<std::string> supported_extensions, Observer observer);
     void cancel();
+    void stop();
 
 private:
     void scan(std::stop_token stopped, const library::WorkspaceRecord& workspace,
@@ -63,6 +64,7 @@ private:
     std::jthread worker_;
     std::stop_source stopped_;
     std::uint64_t generation_{0};
+    bool stopped_permanently_{false};
 };
 
 } // namespace wiola::app

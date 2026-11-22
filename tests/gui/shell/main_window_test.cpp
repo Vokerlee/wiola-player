@@ -98,7 +98,9 @@ bool pump_until(MainWindow& window, wiola::engine::Session& session, Predicate&&
 
     while (!predicate() && std::chrono::steady_clock::now() < deadline) {
         session.catch_up();
-        window.update_after_pump();
+        window.update_after_pump({.playback = session.snapshot(),
+            .repeat = session.repeat(),
+            .shuffled = session.shuffled()});
         window.refresh();
         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
         QThread::msleep(1);
@@ -186,7 +188,8 @@ TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
     wiola::engine::Session session;
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService window_playback{session};
-    MainWindow window{window_playback, window_library};
+    wiola::app::PlaybackPreferences window_preferences{window_playback};
+    MainWindow window{window_playback, window_library, window_preferences};
 
     const QPushButton* open = command(window, "Open tracks");
     const QPushButton* previous = command(window, "Previous track");
@@ -219,7 +222,8 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
     wiola::engine::Session session;
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService window_playback{session};
-    MainWindow window{window_playback, window_library};
+    wiola::app::PlaybackPreferences window_preferences{window_playback};
+    MainWindow window{window_playback, window_library, window_preferences};
 
     QPushButton* previous = command(window, "Previous track");
     QPushButton* play = command(window, "Play");
@@ -271,7 +275,8 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
     wiola::engine::Session session;
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService window_playback{session};
-    MainWindow window{window_playback, window_library};
+    wiola::app::PlaybackPreferences window_preferences{window_playback};
+    MainWindow window{window_playback, window_library, window_preferences};
     SeekBar* position = window.findChild<SeekBar*>();
 
     ASSERT_NE(position, nullptr);
@@ -303,7 +308,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
         wiola::app::LibrarySession window_library{
             std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::PlaybackService window_playback{session};
-        MainWindow window{window_playback, window_library};
+        wiola::app::PlaybackPreferences window_preferences{window_playback};
+        MainWindow window{window_playback, window_library, window_preferences};
         QSlider* volume = volume_slider(window);
         QPushButton* boost = with_text<QPushButton>(window, "+");
 
@@ -329,7 +335,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
     wiola::app::LibrarySession restored_library{
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService restored_playback{session};
-    MainWindow restored{restored_playback, restored_library};
+    wiola::app::PlaybackPreferences restored_preferences{restored_playback};
+    MainWindow restored{restored_playback, restored_library, restored_preferences};
     const QSlider* volume = volume_slider(restored);
     const QPushButton* boost = with_text<QPushButton>(restored, "+");
 
@@ -348,7 +355,8 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
         wiola::app::LibrarySession window_library{
             std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::PlaybackService window_playback{session};
-        MainWindow window{window_playback, window_library};
+        wiola::app::PlaybackPreferences window_preferences{window_playback};
+        MainWindow window{window_playback, window_library, window_preferences};
         QPushButton* equalizer = with_text<QPushButton>(window, "EQ");
 
         ASSERT_NE(equalizer, nullptr);
@@ -377,7 +385,8 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     wiola::app::LibrarySession restored_library{
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService restored_playback{session};
-    MainWindow restored{restored_playback, restored_library};
+    wiola::app::PlaybackPreferences restored_preferences{restored_playback};
+    MainWindow restored{restored_playback, restored_library, restored_preferences};
     QPushButton* equalizer = with_text<QPushButton>(restored, "EQ");
 
     ASSERT_NE(equalizer, nullptr);

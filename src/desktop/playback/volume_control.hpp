@@ -26,7 +26,7 @@
 
 #include <QSettings>
 
-namespace wiola::gui {
+namespace wiola::app {
 
 /// A slider position out of a hundred, applied to `volume` and kept for the runs after this
 /// one. Nothing else may set the volume, or what it is set to is not what comes back.
@@ -62,4 +62,4 @@ private:
     bool boosted_{false};
 };
 
-} // namespace wiola::gui
+} // namespace wiola::app

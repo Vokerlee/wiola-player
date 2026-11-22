@@ -30,7 +30,17 @@ MediaRevisionPublisher::MediaRevisionPublisher(QObject& gui_context,
 {
 }
 
-MediaRevisionPublisher::~MediaRevisionPublisher() = default;
+MediaRevisionPublisher::~MediaRevisionPublisher()
+{
+    stop();
+}
+
+void MediaRevisionPublisher::stop()
+{
+    reader_.stop();
+    std::lock_guard lock{state_->mutex};
+    state_->requests.clear();
+}
 
 bool MediaRevisionPublisher::enqueue(const library::MediaId& media, std::filesystem::path path)
 {

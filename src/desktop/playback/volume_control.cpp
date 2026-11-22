@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace wiola::gui {
+namespace wiola::app {
 
 namespace {
 
@@ -86,4 +86,4 @@ int VolumeControl::max_position() const noexcept
         : scale_.full_position;
 }
 
-} // namespace wiola::gui
+} // namespace wiola::app

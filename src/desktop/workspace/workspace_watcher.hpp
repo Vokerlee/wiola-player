@@ -35,6 +35,7 @@ public:
     explicit WorkspaceWatcher(QObject* parent = nullptr);
 
     [[nodiscard]] bool watch(const library::WorkspaceRecord& workspace);
+    void stop();
     void unwatch(const library::WorkspaceId& id);
     void on_changed(std::function<void(library::WorkspaceId)> observer);
 
@@ -42,6 +43,7 @@ private:
     void changed(const QString& path);
     void debounce(const library::WorkspaceId& id);
 
+    bool stopped_{false};
     QFileSystemWatcher watcher_;
     std::map<library::WorkspaceId, QStringList> watched_;
     std::map<library::WorkspaceId, QTimer*> pending_;

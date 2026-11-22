@@ -6,7 +6,6 @@ wiola_add_library(
         layout/editor/button_layout_editor.cpp
         layout/classic_layout.cpp
         metadata/custom_tag_editor.cpp
-        controls/equalizer_control.cpp
         controls/equalizer_panel.cpp
         layout/focused_layout.cpp
         shell/library_navigation.cpp
@@ -16,7 +15,6 @@ wiola_add_library(
         shell/main_window.cpp
         metadata/metadata_conflict_panel.cpp
         documents/now_playing_document.cpp
-        controls/queue_settings.cpp
         metadata/track_inspector.cpp
         tracks/track_table_model.cpp
         tracks/track_table_view.cpp
@@ -32,9 +30,9 @@ wiola_add_library(
         shell/saved_playlist_manager.cpp
         controls/seek_bar.cpp
         metadata/standard_metadata_editor.cpp
-        controls/volume_control.cpp
         documents/workspace_document.cpp
     LIBS
+        wiola_playback_preferences
         wiola_library_session
         wiola_persistence_qt
         wiola_qt_settings

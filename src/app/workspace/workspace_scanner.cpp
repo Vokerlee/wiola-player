@@ -53,12 +53,22 @@ void publish(const WorkspaceScanner::Observer& observer, const library::Workspac
 
 WorkspaceScanner::~WorkspaceScanner()
 {
+    stop();
+}
+
+void WorkspaceScanner::stop()
+{
+    stopped_permanently_ = true;
     cancel();
+    if (worker_.joinable())
+        worker_.join();
 }
 
 std::uint64_t WorkspaceScanner::start(const library::WorkspaceRecord& workspace,
     std::vector<std::string> supported_extensions, Observer observer)
 {
+    if (stopped_permanently_)
+        return 0;
     cancel();
 
     if (worker_.joinable())

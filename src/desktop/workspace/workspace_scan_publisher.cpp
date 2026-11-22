@@ -30,12 +30,21 @@ WorkspaceScanPublisher::WorkspaceScanPublisher(QObject& gui_context, Observer ob
 
 WorkspaceScanPublisher::~WorkspaceScanPublisher()
 {
+    stop();
+}
+
+void WorkspaceScanPublisher::stop()
+{
+    stopped_ = true;
     cancel();
+    scanner_.stop();
 }
 
 std::uint64_t WorkspaceScanPublisher::start(const library::WorkspaceRecord& workspace,
     std::vector<std::string> supported_extensions)
 {
+    if (stopped_)
+        return 0;
     const std::uint64_t generation = state_->generation.fetch_add(1) + 1;
     const std::weak_ptr<State> state = state_;
     scanner_.start(workspace, std::move(supported_extensions),
