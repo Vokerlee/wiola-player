@@ -2,6 +2,7 @@ wiola_add_library(
     wiola_app
     SOURCES
         library/search_index.cpp
+        library/tag_key_catalog.cpp
         metadata/background_metadata.cpp
         metadata/background_metadata_writes.cpp
         metadata/bulk_metadata_commands.cpp

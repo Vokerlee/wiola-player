@@ -23,6 +23,7 @@
 #ifndef Q_MOC_RUN
 #include "track_commands.hpp"
 #include "track_table_model.hpp"
+#include <app/library/tag_key_catalog.hpp>
 #endif
 
 #include <QKeyEvent>
@@ -41,6 +42,8 @@ class TrackTableView final : public QTableView {
 
 public:
     explicit TrackTableView(QWidget* parent = nullptr);
+
+    void set_tag_catalog(const app::TagKeyCatalog* catalog) { tag_catalog_ = catalog; }
 
     void set_capabilities(TrackCapabilities capabilities);
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
@@ -67,6 +70,8 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
+    void remember_columns();
+    void restore_columns();
     void rebuild_tag_actions();
     void update_tag_columns();
     void sort_column(int column, bool extend);
@@ -77,6 +82,9 @@ private:
     TrackCapabilities capabilities_{TrackCapabilities::all()};
     std::map<TrackCommand, QAction*> command_actions_;
     TrackTableModel model_;
+    const app::TagKeyCatalog* tag_catalog_{nullptr};
+    std::map<TrackColumnId, TrackColumnLayout> column_layout_;
+    std::vector<TrackColumnId> column_order_;
     std::vector<std::string> available_tags_;
     std::vector<std::string> visible_tags_;
     std::vector<QAction*> tag_actions_;

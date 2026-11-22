@@ -27,6 +27,7 @@
 #include <gui/documents/now_playing_document.hpp>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
+#include <gui/tracks/track_browser.hpp>
 #include <library/location.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -42,6 +43,7 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     , empty_{new QWidget{this}}
     , queue_{new NowPlayingDocument{this}}
 {
+    queue_->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
     setObjectName("documentTabs");
     setDocumentMode(true);
     setTabsClosable(true);
@@ -118,6 +120,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
     if (registry_.playlist(id))
         return activate(DocumentId::playlist(id));
     auto* document = new SavedPlaylistDocument{this};
+    document->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
     if (!document->show_playlist(library_.repository(), id)) {
         delete document;
         return false;
@@ -160,6 +163,7 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
     if (registry_.workspace(id))
         return activate(DocumentId::workspace(id));
     auto* document = new WorkspaceDocument{this};
+    document->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
     registry_.add(id, *document, [document] { return document->selection(); });
     document->on_rescan_requested([this, id](bool recursive) {
         if (commands_.rescan)

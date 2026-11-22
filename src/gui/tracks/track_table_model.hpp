@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "track_column.hpp"
 #include "track_view_state.hpp"
 #include <gui/appearance/artwork_cache.hpp>
 
@@ -39,12 +40,9 @@ class LibraryRepository;
 
 namespace wiola::gui {
 
-[[nodiscard]] std::vector<std::string>
-custom_tag_keys(const library::LibraryRepository& repository);
-
 class TrackTableModel final : public QAbstractTableModel {
 public:
-    static constexpr int standard_columns{5};
+    static constexpr int standard_columns{StandardTrackColumn::num_columns};
 
     explicit TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy = {});
 
@@ -60,6 +58,8 @@ public:
 
     [[nodiscard]] const TrackViewState& view_state() const noexcept { return state_; }
 
+    [[nodiscard]] std::vector<library::MediaId> media_ids() const;
+    [[nodiscard]] TrackColumnDescriptor column(int section) const;
     [[nodiscard]] std::optional<TrackRowId> row_id(const QModelIndex& index) const;
 
     [[nodiscard]] std::size_t total_count() const { return source_rows_.size(); }
