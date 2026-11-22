@@ -66,6 +66,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
         static_cast<void>(active_.set(active));
     for (const auto& track : repository_.tracks()) {
         search_.upsert(track);
+        tag_keys_.upsert(track);
         if (!track.locations.empty())
             request_metadata(track.id, library::preferred_location(track));
     }
@@ -269,10 +270,14 @@ void LibrarySession::publish_metadata(BackgroundMetadataResult result)
 void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
 {
     for (const auto& change : batch.media)
-        if (const auto* track = repository_.track(change.media))
+        if (const auto* track = repository_.track(change.media)) {
             search_.upsert(*track);
-    for (const auto& media : batch.removed_media)
+            tag_keys_.upsert(*track);
+        }
+    for (const auto& media : batch.removed_media) {
         search_.remove(media);
+        tag_keys_.remove(media);
+    }
     for (const auto& playlist : batch.removed_playlists)
         if (active_.clear_if(playlist))
             settings_.remove("playlists/active");

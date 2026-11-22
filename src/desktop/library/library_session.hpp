@@ -22,6 +22,7 @@
 #ifndef Q_MOC_RUN
 #include "saved_playlist_commands.hpp"
 #include <app/library/search_index.hpp>
+#include <app/library/tag_key_catalog.hpp>
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/metadata/metadata_merge.hpp>
 #include <app/metadata/optimistic_metadata_edits.hpp>
@@ -56,6 +57,13 @@ public:
     [[nodiscard]] OptimisticMetadataEdits& metadata_edits();
     [[nodiscard]] ActivePlaylist& active_playlist();
     [[nodiscard]] const SearchIndex& search() const;
+
+    [[nodiscard]] const TagKeyCatalog& tag_keys() const
+    {
+        check_owner();
+        return tag_keys_;
+    }
+
     [[nodiscard]] const library::RepositoryTransaction::Persist& persistence() const;
     std::uint64_t scan_workspace(const library::WorkspaceId& id,
         std::vector<std::string> extensions);
@@ -91,6 +99,7 @@ private:
     OptimisticMetadataEdits edits_;
     ActivePlaylist active_;
     SearchIndex search_;
+    TagKeyCatalog tag_keys_;
     MetadataMerge merge_;
     WorkspaceReconciliation reconciliation_{persist_};
 

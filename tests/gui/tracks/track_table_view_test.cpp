@@ -51,6 +51,30 @@ QAction* action(QWidget& widget, const QString& text)
     return found == actions.end() ? nullptr : *found;
 }
 
+TEST(TrackTableView, HiddenStandardColumnKeepsWidthWhenTagSchemaChanges)
+{
+    wiola::gui::TrackTableView view;
+    view.setColumnWidth(2, 231);
+    auto* artist = action(*view.horizontalHeader(), "Artist");
+    ASSERT_NE(artist, nullptr);
+    artist->setChecked(false);
+    wiola::app::TagKeyCatalog catalog;
+    wiola::library::TrackRecord record;
+    record.id = {"one"};
+    record.tags = {
+        {.id = {"tag"}, .key = "Genre", .value = "Jazz"}
+    };
+    catalog.upsert(record);
+    view.set_tag_catalog(&catalog);
+    wiola::library::InMemoryRepository repository;
+    view.show_library(repository);
+    auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
+    ASSERT_NE(genre, nullptr);
+    genre->setChecked(true);
+    artist->setChecked(true);
+    EXPECT_EQ(view.columnWidth(2), 231);
+}
+
 TEST(TrackTableView, OffersColumnVisibilityControls)
 {
     wiola::gui::TrackTableView view;
@@ -198,6 +222,38 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
         std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0)});
 }
 
+TEST(TrackTableView, RetainsTagWidthAndOrderWhenHiddenAndReappearing)
+{
+    wiola::gui::TrackTableView view;
+    wiola::app::TagKeyCatalog catalog;
+    view.set_tag_catalog(&catalog);
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = {"one"};
+    record.tags = {
+        {.id = {"tag"}, .key = "Genre", .value = "Jazz"}
+    };
+    repository.put_track(record);
+    catalog.upsert(record);
+    view.show_library(repository);
+    auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
+    ASSERT_NE(genre, nullptr);
+    genre->setChecked(true);
+    view.setColumnWidth(5, 237);
+    view.horizontalHeader()->moveSection(5, 1);
+    genre->setChecked(false);
+    catalog.remove(record.id);
+    view.show_library(repository);
+    catalog.upsert(record);
+    view.show_library(repository);
+    genre = action(*view.horizontalHeader(), "Tag: Genre");
+    ASSERT_NE(genre, nullptr);
+    genre->setChecked(true);
+    EXPECT_EQ(view.columnWidth(5), 237);
+    EXPECT_EQ(view.horizontalHeader()->visualIndex(5), 1);
+    EXPECT_EQ(wiola::gui::tag_track_column(" Genre ").id, wiola::gui::tag_track_column("genre").id);
+}
+
 TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
 {
     wiola::gui::TrackTableView view;
@@ -249,6 +305,9 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
         {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"}
     };
     ASSERT_TRUE(repository.put_track(record));
+    wiola::app::TagKeyCatalog catalog;
+    catalog.upsert(record);
+    view.set_tag_catalog(&catalog);
     view.show_library(repository);
     auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
     ASSERT_NE(genre, nullptr);

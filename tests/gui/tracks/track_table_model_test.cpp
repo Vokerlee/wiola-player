@@ -211,7 +211,6 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     EXPECT_EQ(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Jazz, Fusion");
     EXPECT_EQ(model.data(model.index(0, 6), Qt::DisplayRole).toString(), "Calm");
     EXPECT_TRUE(model.data(model.index(1, 5), Qt::DisplayRole).toString().isEmpty());
-    EXPECT_EQ(wiola::gui::custom_tag_keys(repository), (std::vector<std::string>{"Genre", "Mood"}));
 
     record.tags[1].value = "Live";
     ++record.metadata_revision;

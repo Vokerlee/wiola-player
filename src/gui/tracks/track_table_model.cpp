@@ -40,14 +40,7 @@ namespace wiola::gui {
 
 namespace {
 
-enum Column {
-    cover,
-    title,
-    artist,
-    album,
-    length,
-    num_columns,
-};
+using Column = StandardTrackColumn;
 
 bool same_metadata(const TrackRow& a, const TrackRow& b)
 {
@@ -151,16 +144,23 @@ QVariant TrackTableModel::headerData(int section, Qt::Orientation orientation, i
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
         return {};
 
-    if (section >= standard_columns) {
-        const std::size_t column = static_cast<std::size_t>(section - standard_columns);
-        return column < tag_columns_.size() ? QString::fromStdString(tag_columns_[column])
-                                            : QVariant{};
-    }
+    return section >= 0 && section < columnCount() ? QString::fromStdString(column(section).label)
+                                                   : QVariant{};
+}
 
-    static const std::array labels{QString{}, QString{"Title"}, QString{"Artist"}, QString{"Album"},
-        QString{"Length"}};
-    return section >= 0 && section < Column::num_columns ? labels[static_cast<std::size_t>(section)]
-                                                         : QVariant{};
+std::vector<library::MediaId> TrackTableModel::media_ids() const
+{
+    std::vector<library::MediaId> result;
+    for (const auto& row : source_rows_)
+        result.push_back(row.media);
+    return result;
+}
+
+TrackColumnDescriptor TrackTableModel::column(int section) const
+{
+    if (section >= standard_columns && section < columnCount())
+        return tag_track_column(tag_columns_[static_cast<std::size_t>(section - standard_columns)]);
+    return standard_track_columns().at(static_cast<std::size_t>(section));
 }
 
 void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
@@ -286,24 +286,6 @@ std::optional<TrackRowId> TrackTableModel::row_id(const QModelIndex& index) cons
         return {};
 
     return rows_[static_cast<std::size_t>(index.row())].id;
-}
-
-std::vector<std::string> custom_tag_keys(const library::LibraryRepository& repository)
-{
-    std::map<std::string, std::string> keys;
-
-    for (const library::TrackRecord& track : repository.tracks()) {
-        for (const library::TagRecord& tag : track.tags)
-            keys.try_emplace(library::normalized_tag_text(tag.key), tag.key);
-    }
-
-    std::vector<std::string> result;
-    result.reserve(keys.size());
-
-    for (const auto& [normalized, key] : keys)
-        result.push_back(key);
-
-    return result;
 }
 
 } // namespace wiola::gui

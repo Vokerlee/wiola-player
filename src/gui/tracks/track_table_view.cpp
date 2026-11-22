@@ -38,14 +38,7 @@ namespace {
 
 constexpr PresentationTokens tokens;
 
-enum Column {
-    cover,
-    title,
-    artist,
-    album,
-    length,
-    num_columns,
-};
+using Column = StandardTrackColumn;
 
 class ThemedRowDelegate final : public QStyledItemDelegate {
 public:
@@ -90,15 +83,14 @@ TrackTableView::TrackTableView(QWidget* parent)
     verticalHeader()->setVisible(false);
     verticalHeader()->setDefaultSectionSize(tokens.playlist.artwork.cover_size +
         tokens.playlist.row_padding);
-    horizontalHeader()->setSectionResizeMode(Column::cover, QHeaderView::Fixed);
-    horizontalHeader()->setSectionResizeMode(Column::title, QHeaderView::Stretch);
-    horizontalHeader()->setSectionResizeMode(Column::artist, QHeaderView::Interactive);
-    horizontalHeader()->setSectionResizeMode(Column::album, QHeaderView::Interactive);
-    horizontalHeader()->setSectionResizeMode(Column::length, QHeaderView::Fixed);
-    setColumnWidth(Column::cover, tokens.playlist.artwork.cover_size + tokens.playlist.row_padding);
-    setColumnWidth(Column::artist, tokens.playlist.artist_column_width);
-    setColumnWidth(Column::album, tokens.playlist.album_column_width);
-    setColumnWidth(Column::length, tokens.playlist.length_column_width);
+    horizontalHeader()->setSectionsMovable(true);
+    for (int section = 0; section < model_.columnCount(); ++section) {
+        const auto descriptor = model_.column(section);
+        horizontalHeader()->setSectionResizeMode(section, descriptor.resize);
+        setColumnWidth(section, descriptor.width);
+        column_layout_[descriptor.id] = {descriptor.width, section, true};
+        column_order_.push_back(descriptor.id);
+    }
     setItemDelegate(new ThemedRowDelegate{this});
 
     horizontalHeader()->setContextMenuPolicy(Qt::ActionsContextMenu);
@@ -119,7 +111,13 @@ TrackTableView::TrackTableView(QWidget* parent)
         horizontalHeader()->addAction(visible);
 
         connect(visible, &QAction::toggled, this,
-            [this, column](bool shown) { setColumnHidden(column, !shown); });
+            [this, id = model_.column(column).id, column](bool shown) {
+                remember_columns();
+                column_layout_[id].visible = shown;
+                setColumnHidden(column, !shown);
+                if (shown)
+                    setColumnWidth(column, column_layout_[id].width);
+            });
     }
 
     QAction* play = new QAction{"Play selected track", this};
@@ -193,7 +191,16 @@ void TrackTableView::show_library(const library::LibraryRepository& repository)
     model_.show_library(repository);
     restore_selection(selected, current_id);
 
-    std::vector<std::string> available = custom_tag_keys(repository);
+    std::vector<std::string> available;
+    if (tag_catalog_)
+        available = tag_catalog_->keys();
+    else {
+        app::TagKeyCatalog local;
+        for (const auto& media : model_.media_ids())
+            if (const auto* record = repository.track(media))
+                local.upsert(*record);
+        available = local.keys();
+    }
     for (const std::string& visible : visible_tags_) {
         const std::string normalized = library::normalized_tag_text(visible);
         const bool present = std::ranges::any_of(available, [&](const std::string& key) {
@@ -209,6 +216,44 @@ void TrackTableView::show_library(const library::LibraryRepository& repository)
 
     available_tags_ = std::move(available);
     rebuild_tag_actions();
+}
+
+void TrackTableView::remember_columns()
+{
+    std::vector<TrackColumnId> current;
+    for (int visual = 0; visual < model_.columnCount(); ++visual) {
+        const int section = horizontalHeader()->logicalIndex(visual);
+        const auto id = model_.column(section).id;
+        if (!isColumnHidden(section))
+            column_layout_[id].width = columnWidth(section);
+        current.push_back(id);
+        if (std::ranges::find(column_order_, id) == column_order_.end())
+            column_order_.push_back(id);
+    }
+    auto next = current.begin();
+    for (auto& id : column_order_)
+        if (std::ranges::find(current, id) != current.end())
+            id = *next++;
+    for (std::size_t i = 0; i < column_order_.size(); ++i)
+        column_layout_[column_order_[i]].order = static_cast<int>(i);
+}
+
+void TrackTableView::restore_columns()
+{
+    std::vector<std::pair<int, int>> order;
+    for (int section = 0; section < model_.columnCount(); ++section) {
+        const auto descriptor = model_.column(section);
+        const auto& saved = column_layout_.at(descriptor.id);
+        horizontalHeader()->setSectionResizeMode(section, descriptor.resize);
+        setColumnWidth(section, saved.width);
+        setColumnHidden(section, !saved.visible);
+        order.emplace_back(saved.order, section);
+    }
+    std::ranges::stable_sort(order);
+    for (std::size_t visual = 0; visual < order.size(); ++visual)
+        horizontalHeader()->moveSection(horizontalHeader()->visualIndex(order[visual].second),
+            static_cast<int>(visual));
+    update_sort_indicator();
 }
 
 void TrackTableView::rebuild_tag_actions()
@@ -230,26 +275,34 @@ void TrackTableView::rebuild_tag_actions()
         horizontalHeader()->addAction(visible);
         tag_actions_.push_back(visible);
 
-        connect(visible, &QAction::toggled, this, [this](bool) { update_tag_columns(); });
+        const auto id = tag_track_column(key).id;
+        if (column_layout_
+                .try_emplace(id,
+                    TrackColumnLayout{120, static_cast<int>(column_layout_.size()),
+                        visible->isChecked()})
+                .second)
+            column_order_.push_back(id);
+        connect(visible, &QAction::toggled, this, [this, id](bool shown) {
+            remember_columns();
+            column_layout_[id].visible = shown;
+            update_tag_columns();
+        });
     }
 }
 
 void TrackTableView::update_tag_columns()
 {
     visible_tags_.clear();
-
-    for (const QAction* action : tag_actions_) {
-        if (action->isChecked())
-            visible_tags_.push_back(action->property("tagKey").toString().toStdString());
-    }
+    for (const auto& key : available_tags_)
+        if (column_layout_.at(tag_track_column(key).id).visible)
+            visible_tags_.push_back(key);
 
     const std::vector<TrackRowId> selected = chosen_rows();
     const auto current_id = model_.row_id(currentIndex());
     model_.show_tag_keys(visible_tags_);
     restore_selection(selected, current_id);
 
-    for (std::size_t column = 0; column < visible_tags_.size(); ++column)
-        setColumnHidden(TrackTableModel::standard_columns + static_cast<int>(column), false);
+    restore_columns();
 }
 
 bool TrackTableView::set_view_state(TrackViewState state)
@@ -268,33 +321,12 @@ void TrackTableView::sort_column(int column, bool extend)
 {
     auto state = view_state();
     auto& keys = state.sort_keys;
-    TrackSortKey requested;
-
-    if (column >= TrackTableModel::standard_columns) {
-        const std::size_t tag =
-            static_cast<std::size_t>(column - TrackTableModel::standard_columns);
-        if (tag >= visible_tags_.size())
-            return;
-
-        requested = TrackSortKey::for_tag(library::normalized_tag_text(visible_tags_[tag]));
-    } else {
-        switch (column) {
-        case Column::title:
-            requested.field = TrackSortField::title;
-            break;
-        case Column::artist:
-            requested.field = TrackSortField::artist;
-            break;
-        case Column::album:
-            requested.field = TrackSortField::album;
-            break;
-        case Column::length:
-            requested.field = TrackSortField::duration;
-            break;
-        default:
-            return;
-        }
-    }
+    if (column < 0 || column >= model_.columnCount())
+        return;
+    const auto descriptor = model_.column(column);
+    if (!descriptor.sort)
+        return;
+    TrackSortKey requested = *descriptor.sort;
 
     const auto same = [&requested](const TrackSortKey& key) {
         return key.field == requested.field && key.tag_key == requested.tag_key;
@@ -334,30 +366,13 @@ void TrackTableView::update_sort_indicator()
     const TrackSortKey& primary = view_state().sort_keys.front();
     int column = -1;
 
-    switch (primary.field) {
-    case TrackSortField::title:
-        column = Column::title;
-        break;
-    case TrackSortField::artist:
-        column = Column::artist;
-        break;
-    case TrackSortField::album:
-        column = Column::album;
-        break;
-    case TrackSortField::duration:
-        column = Column::length;
-        break;
-    case TrackSortField::custom_tag: {
-        const auto tag = std::ranges::find_if(visible_tags_,
-            [&](const auto& key) { return library::normalized_tag_text(key) == primary.tag_key; });
-        if (tag != visible_tags_.end()) {
-            column = TrackTableModel::standard_columns +
-                static_cast<int>(std::distance(visible_tags_.begin(), tag));
+    for (int section = 0; section < model_.columnCount(); ++section) {
+        const auto descriptor = model_.column(section);
+        if (descriptor.sort && descriptor.sort->field == primary.field &&
+            descriptor.sort->tag_key == primary.tag_key) {
+            column = section;
+            break;
         }
-        break;
-    }
-    case TrackSortField::path:
-        break;
     }
 
     horizontalHeader()->setSortIndicatorShown(column >= 0);

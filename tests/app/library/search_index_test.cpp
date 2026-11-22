@@ -19,6 +19,7 @@
  */
 
 #include <app/library/search_index.hpp>
+#include <app/library/tag_key_catalog.hpp>
 
 #include <gtest/gtest.h>
 
@@ -79,6 +80,25 @@ TEST(SearchIndex, UpdatesIncrementallyWithoutDuplicatesAndMatchesStructuredQueri
     index.clear();
     EXPECT_EQ(index.size(), 0);
     EXPECT_FALSE(index.upsert(wiola::library::TrackRecord{}));
+}
+
+TEST(TagKeyCatalog, CountsMediaAndRetainsLabelsAcrossValueAndCaseChanges)
+{
+    wiola::app::TagKeyCatalog catalog;
+    auto first = record("one", "Song", "Artist", "Jazz");
+    first.tags.push_back(first.tags.front());
+    catalog.upsert(first);
+    auto second = record("two", "Song", "Artist", "Rock");
+    second.tags.front().key = "genre";
+    catalog.upsert(second);
+    EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Genre"});
+    catalog.remove(first.id);
+    EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Genre"});
+    second.tags.front().key = "Mood";
+    catalog.upsert(second);
+    EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Mood"});
+    catalog.remove(second.id);
+    EXPECT_TRUE(catalog.keys().empty());
 }
 
 TEST(SearchIndexBenchmark, ReusesNormalizedFieldsAcrossManyQueries)
