@@ -18,8 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <app/library/location_index.hpp>
 #include <app/library/search_index.hpp>
 #include <app/library/tag_key_catalog.hpp>
+#include <library/location.hpp>
 
 #include <gtest/gtest.h>
 
@@ -99,6 +102,75 @@ TEST(TagKeyCatalog, CountsMediaAndRetainsLabelsAcrossValueAndCaseChanges)
     EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Mood"});
     catalog.remove(second.id);
     EXPECT_TRUE(catalog.keys().empty());
+}
+
+TEST(SearchIndex, MatchesDirectEvaluationOnFixedDataAndInvalidatesOnlySearchableChanges)
+{
+    wiola::app::SearchIndex index;
+    std::vector<wiola::library::TrackRecord> records;
+    for (int i = 0; i < 1000; ++i) {
+        auto track = record("id-" + std::to_string(i), "Song " + std::to_string(i),
+            i % 2 ? "Odd" : "Even", i % 3 ? "Rock" : "Jazz");
+        if (i % 5 == 0)
+            track.overrides.title = "Renamed";
+        if (i % 7 == 0)
+            track.overrides.artist = "";
+        track.tags.push_back(
+            {.id = {"extra"}, .key = "Mood", .value = i % 2 ? "Calm" : "Energetic"}
+        );
+        index.upsert(track);
+        records.push_back(std::move(track));
+    }
+    const std::vector<wiola::library::SearchQuery> queries{
+        {},
+        {.title = " SONG ", .artist = "EVEN"},
+        {.title = "renamed", .tags = "calm"},
+        {.filters = {{"GENRE", "jazz"},
+             {"mood", "energetic", wiola::library::TagFilterMode::exclude}}},
+        {.tags = "MOOD"},
+        {.album = "album", .filters = {{"genre", "rock"}}}
+    };
+    std::chrono::steady_clock::duration direct_time{}, indexed_time{};
+    for (const auto& query : queries) {
+        auto started = std::chrono::steady_clock::now();
+        std::vector<wiola::library::MediaId> expected;
+        for (const auto& track : records)
+            if (wiola::library::matches_search(query, track))
+                expected.push_back(track.id);
+        std::ranges::sort(expected);
+        direct_time += std::chrono::steady_clock::now() - started;
+        started = std::chrono::steady_clock::now();
+        EXPECT_EQ(index.query(query), expected);
+        indexed_time += std::chrono::steady_clock::now() - started;
+    }
+    RecordProperty("direct_microseconds",
+        std::chrono::duration_cast<std::chrono::microseconds>(direct_time).count());
+    RecordProperty("indexed_microseconds",
+        std::chrono::duration_cast<std::chrono::microseconds>(indexed_time).count());
+    auto edited = records.front();
+    edited.metadata_revision++;
+    edited.tags.front().id = {"different-id"};
+    EXPECT_FALSE(index.upsert(edited));
+    edited.overrides.title = "Unique replacement";
+    EXPECT_TRUE(index.upsert(edited));
+    wiola::library::SearchQuery query;
+    query.title = "unique";
+    EXPECT_EQ(index.query(query), std::vector<wiola::library::MediaId>{edited.id});
+}
+
+TEST(LocationIndex, ResolvesAliasesWithoutFileReadsAndRemovesOldLocations)
+{
+    wiola::app::LocationIndex index;
+    auto track = record("opaque", "Song", "Artist", "Jazz");
+    track.locations = {"missing/../alias.wav", "second.wav"};
+    index.upsert(track);
+    EXPECT_EQ(index.find("alias.wav"), track.id);
+    track.locations = {"moved.wav"};
+    index.upsert(track);
+    EXPECT_FALSE(index.find("alias.wav"));
+    EXPECT_EQ(index.find("moved.wav"), track.id);
+    index.remove(track.id);
+    EXPECT_FALSE(index.find("moved.wav"));
 }
 
 TEST(SearchIndexBenchmark, ReusesNormalizedFieldsAcrossManyQueries)

@@ -43,6 +43,8 @@ class TrackTableView final : public QTableView {
 public:
     explicit TrackTableView(QWidget* parent = nullptr);
 
+    void set_search_index(const app::SearchIndex* index) { model_.set_search_index(index); }
+
     void set_tag_catalog(const app::TagKeyCatalog* catalog) { tag_catalog_ = catalog; }
 
     void set_capabilities(TrackCapabilities capabilities);

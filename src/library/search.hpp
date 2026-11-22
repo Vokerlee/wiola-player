@@ -49,6 +49,23 @@ struct SearchQuery {
     bool operator==(const SearchQuery&) const = default;
 };
 
+struct SearchFields {
+    std::string title, artist, album;
+
+    struct Tag {
+        std::string key, value;
+        bool operator==(const Tag&) const = default;
+    };
+
+    std::vector<Tag> tags;
+    bool operator==(const SearchFields&) const = default;
+};
+
+/// Owns only normalized resolved fields; artwork, file data and user layers are not cloned.
+[[nodiscard]] SearchFields search_fields_of(const TrackRecord& track);
+/// Both arguments are normalized. Shared by direct/reference and indexed matching.
+[[nodiscard]] bool matches_search_fields(const SearchQuery& query, const SearchFields& fields);
+
 /// Trims and case-folds every field independently; empty fields do not restrict results.
 [[nodiscard]] SearchQuery normalized_search_query(SearchQuery query);
 

@@ -67,6 +67,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     for (const auto& track : repository_.tracks()) {
         search_.upsert(track);
         tag_keys_.upsert(track);
+        locations_.upsert(track);
         if (!track.locations.empty())
             request_metadata(track.id, library::preferred_location(track));
     }
@@ -177,14 +178,7 @@ void LibrarySession::cancel_workspace_scan()
 library::MediaId LibrarySession::media_at(const std::filesystem::path& location) const
 {
     check_owner();
-    const auto key = library::media_id_for(location);
-    if (repository_.track(key))
-        return key;
-    for (const auto& record : repository_.tracks())
-        for (const auto& known : record.locations)
-            if (library::media_id_for(known) == key)
-                return record.id;
-    return key;
+    return locations_.find(location).value_or(library::media_id_for(location));
 }
 
 void LibrarySession::publish_scan(WorkspaceScanBatch batch)
@@ -273,10 +267,12 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
         if (const auto* track = repository_.track(change.media)) {
             search_.upsert(*track);
             tag_keys_.upsert(*track);
+            locations_.upsert(*track);
         }
     for (const auto& media : batch.removed_media) {
         search_.remove(media);
         tag_keys_.remove(media);
+        locations_.remove(media);
     }
     for (const auto& playlist : batch.removed_playlists)
         if (active_.clear_if(playlist))

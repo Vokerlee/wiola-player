@@ -59,6 +59,14 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
     clear_album_->setObjectName("clearSearchAlbum");
     clear_album_->setAccessibleName("Clear album search");
 
+    tags_ = new QLineEdit{this};
+    tags_->setObjectName("searchTags");
+    tags_->setAccessibleName("Search custom tag keys and values");
+    tags_->setPlaceholderText("Tag key or value");
+    clear_tags_ = new QPushButton{"Clear", this};
+    clear_tags_->setObjectName("clearSearchTags");
+    clear_tags_->setAccessibleName("Clear tag search");
+
     reset_ = new QPushButton{"Reset search", this};
     reset_->setObjectName("resetTrackSearch");
     reset_->setAccessibleName("Reset all search fields");
@@ -78,6 +86,7 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
     add_field("Title", title_, clear_title_);
     add_field("Artist", artist_, clear_artist_);
     add_field("Album", album_, clear_album_);
+    add_field("Tags", tags_, clear_tags_);
 
     QHBoxLayout* footer = new QHBoxLayout;
     footer->addWidget(results_);
@@ -97,6 +106,8 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
     connect(title_, &QLineEdit::textChanged, this, changed);
     connect(artist_, &QLineEdit::textChanged, this, changed);
     connect(album_, &QLineEdit::textChanged, this, changed);
+    connect(tags_, &QLineEdit::textChanged, this, changed);
+    connect(clear_tags_, &QPushButton::clicked, tags_, &QLineEdit::clear);
     connect(clear_title_, &QPushButton::clicked, title_, &QLineEdit::clear);
     connect(clear_artist_, &QPushButton::clicked, artist_, &QLineEdit::clear);
     connect(clear_album_, &QPushButton::clicked, album_, &QLineEdit::clear);
@@ -110,16 +121,17 @@ library::SearchQuery TrackSearchPanel::query() const
     return {.title = title_->text().toStdString(),
         .artist = artist_->text().toStdString(),
         .album = album_->text().toStdString(),
-        .tags = {},
+        .tags = tags_->text().toStdString(),
         .filters = {}};
 }
 
 void TrackSearchPanel::show_query(const library::SearchQuery& query)
 {
-    const QSignalBlocker title{title_}, artist{artist_}, album{album_};
+    const QSignalBlocker title{title_}, artist{artist_}, album{album_}, tags{tags_};
     title_->setText(QString::fromStdString(query.title));
     artist_->setText(QString::fromStdString(query.artist));
     album_->setText(QString::fromStdString(query.album));
+    tags_->setText(QString::fromStdString(query.tags));
 }
 
 void TrackSearchPanel::show_results(std::size_t visible, std::size_t total)

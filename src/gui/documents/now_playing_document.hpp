@@ -24,6 +24,8 @@
 
 #include <QWidget>
 
+#include <functional>
+#include <library/identity.hpp>
 #include <vector>
 
 namespace wiola::library {
@@ -42,6 +44,11 @@ class NowPlayingDocument final : public QWidget {
 public:
     explicit NowPlayingDocument(QWidget* parent = nullptr);
 
+    void set_media_resolver(std::function<library::MediaId(const std::filesystem::path&)> resolver)
+    {
+        resolve_media_ = std::move(resolver);
+    }
+
     void show_playlist(const engine::Playlist& playlist);
     void show_library(const library::LibraryRepository& repository);
     [[nodiscard]] std::vector<std::filesystem::path>
@@ -56,6 +63,7 @@ signals:
     void order_application_asked();
 
 private:
+    std::function<library::MediaId(const std::filesystem::path&)> resolve_media_;
     TrackBrowser* browser_{nullptr};
 };
 

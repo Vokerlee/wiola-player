@@ -22,29 +22,34 @@
 
 #include <library/search.hpp>
 
+#include <map>
+#include <optional>
 #include <vector>
 
 namespace wiola::app {
 
 class SearchIndex final {
 public:
-    /// Returns false for an unidentified record or one whose indexed fields did not change.
     bool upsert(const library::TrackRecord& track);
     bool remove(const library::MediaId& media);
+    void clear();
 
-    void clear() noexcept { entries_.clear(); }
+    [[nodiscard]] bool contains(const library::MediaId& media) const
+    {
+        return entries_.contains(media);
+    }
 
     [[nodiscard]] std::vector<library::MediaId> query(const library::SearchQuery& query) const;
+    /// Caller normalized the query at its input boundary. Cached until searchable facts change.
+    [[nodiscard]] const std::vector<library::MediaId>&
+    query_normalized(const library::SearchQuery& query) const;
 
     [[nodiscard]] std::size_t size() const noexcept { return entries_.size(); }
 
 private:
-    struct Entry {
-        library::MediaId media;
-        library::TrackRecord normalized;
-    };
-
-    std::vector<Entry> entries_;
+    std::map<library::MediaId, library::SearchFields> entries_;
+    mutable std::optional<library::SearchQuery> cached_query_;
+    mutable std::vector<library::MediaId> cached_matches_;
 };
 
 } // namespace wiola::app

@@ -44,6 +44,10 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     , queue_{new NowPlayingDocument{this}}
 {
     queue_->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
+    queue_->findChild<TrackBrowser*>()->table().set_search_index(&library_.search());
+    queue_->set_media_resolver([this](const std::filesystem::path& path) {
+        return library_.media_at(path);
+    });
     setObjectName("documentTabs");
     setDocumentMode(true);
     setTabsClosable(true);
@@ -121,6 +125,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
         return activate(DocumentId::playlist(id));
     auto* document = new SavedPlaylistDocument{this};
     document->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
+    document->findChild<TrackBrowser*>()->table().set_search_index(&library_.search());
     if (!document->show_playlist(library_.repository(), id)) {
         delete document;
         return false;
@@ -164,6 +169,7 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
         return activate(DocumentId::workspace(id));
     auto* document = new WorkspaceDocument{this};
     document->findChild<TrackBrowser*>()->table().set_tag_catalog(&library_.tag_keys());
+    document->findChild<TrackBrowser*>()->table().set_search_index(&library_.search());
     registry_.add(id, *document, [document] { return document->selection(); });
     document->on_rescan_requested([this, id](bool recursive) {
         if (commands_.rescan)

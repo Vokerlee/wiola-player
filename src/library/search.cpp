@@ -29,30 +29,9 @@ namespace wiola::library {
 
 namespace {
 
-bool contains(std::string value, const std::string& term)
+bool contains(const std::string& value, const std::string& term)
 {
-    return term.empty() || normalized_tag_text(std::move(value)).find(term) != std::string::npos;
-}
-
-bool matches_tag(const TagRecord& tag, const std::string& term)
-{
-    return contains(tag.key, term) || contains(tag.value, term);
-}
-
-bool present(const TrackRecord& track, const TagFilter& filter)
-{
-    return std::ranges::any_of(track.tags, [&](const TagRecord& tag) {
-        return normalized_tag_text(tag.key) == filter.key &&
-            (filter.value.empty() || normalized_tag_text(tag.value) == filter.value);
-    });
-}
-
-bool matches_filters(const TrackRecord& track, const std::vector<TagFilter>& filters)
-{
-    return std::ranges::all_of(filters, [&](const TagFilter& filter) {
-        return filter.mode == TagFilterMode::include ? present(track, filter)
-                                                     : !present(track, filter);
-    });
+    return term.empty() || value.find(term) != std::string::npos;
 }
 
 } // namespace
@@ -77,21 +56,38 @@ bool matches_search(const SearchQuery& query, const TrackRecord& track)
     return matches_normalized_search(normalized_search_query(query), track);
 }
 
-bool matches_normalized_search(const SearchQuery& normalized, const TrackRecord& track)
+SearchFields search_fields_of(const TrackRecord& track)
 {
-    const ResolvedMetadata metadata = resolve_metadata(track);
+    const auto resolved = resolve_metadata(track);
+    SearchFields result{.title = normalized_tag_text(resolved.title),
+        .artist = normalized_tag_text(resolved.artist),
+        .album = normalized_tag_text(resolved.album),
+        .tags = {}};
+    for (const auto& tag : track.tags)
+        result.tags.push_back({normalized_tag_text(tag.key), normalized_tag_text(tag.value)});
+    return result;
+}
 
-    if (!contains(metadata.title, normalized.title) ||
-        !contains(metadata.artist, normalized.artist) ||
-        !contains(metadata.album, normalized.album))
+bool matches_search_fields(const SearchQuery& query, const SearchFields& fields)
+{
+    if (!contains(fields.title, query.title) || !contains(fields.artist, query.artist) ||
+        !contains(fields.album, query.album))
         return false;
-
-    if (!normalized.tags.empty() && std::ranges::none_of(track.tags, [&](const TagRecord& tag) {
-            return matches_tag(tag, normalized.tags);
+    if (!query.tags.empty() && std::ranges::none_of(fields.tags, [&](const auto& tag) {
+            return contains(tag.key, query.tags) || contains(tag.value, query.tags);
         }))
         return false;
+    return std::ranges::all_of(query.filters, [&](const auto& filter) {
+        const bool present = std::ranges::any_of(fields.tags, [&](const auto& tag) {
+            return tag.key == filter.key && (filter.value.empty() || tag.value == filter.value);
+        });
+        return filter.mode == TagFilterMode::include ? present : !present;
+    });
+}
 
-    return matches_filters(track, normalized.filters);
+bool matches_normalized_search(const SearchQuery& query, const TrackRecord& track)
+{
+    return matches_search_fields(query, search_fields_of(track));
 }
 
 } // namespace wiola::library
