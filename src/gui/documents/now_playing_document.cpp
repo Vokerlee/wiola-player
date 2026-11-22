@@ -19,6 +19,7 @@
  */
 
 #include "now_playing_document.hpp"
+#include "queue_rows.hpp"
 
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_search_panel.hpp>
@@ -58,7 +59,10 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
     layout->addWidget(filters_);
     layout->addWidget(table_);
 
-    connect(table_, &TrackTableView::track_chosen, this, &NowPlayingDocument::track_chosen);
+    connect(table_, &TrackTableView::row_chosen, this, [this](TrackRowId row) {
+        if (const auto* id = std::get_if<engine::QueueEntryId>(&row))
+            emit track_chosen(*id);
+    });
     connect(table_, &TrackTableView::removal_asked, this, &NowPlayingDocument::removal_asked);
     connect(table_, &TrackTableView::transfer_active_asked, this,
         &NowPlayingDocument::transfer_active_asked);
@@ -73,7 +77,7 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
     const auto current = playlist.current()
         ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
         : std::nullopt;
-    table_->show_tracks(playlist.tracks(), current);
+    table_->show_rows(queue_rows(playlist.tracks()), current);
     update_results();
 }
 
@@ -93,7 +97,7 @@ NowPlayingDocument::displayed_paths(const engine::Playlist& playlist) const
 {
     std::vector<std::filesystem::path> paths;
 
-    for (const engine::QueueEntryId id : table_->displayed_tracks()) {
+    for (const engine::QueueEntryId id : queue_entry_ids(table_->displayed_rows())) {
         const auto row = playlist.index_of(id);
         if (row)
             paths.push_back(playlist.tracks()[*row].path());
@@ -104,7 +108,7 @@ NowPlayingDocument::displayed_paths(const engine::Playlist& playlist) const
 
 std::vector<engine::QueueEntryId> NowPlayingDocument::chosen_tracks() const
 {
-    return table_->chosen_tracks();
+    return queue_entry_ids(table_->chosen_rows());
 }
 
 } // namespace wiola::gui

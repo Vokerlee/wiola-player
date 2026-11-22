@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "queue_entry_id.hpp"
 
 #include <media/media.hpp>
 #include <utils/units.hpp>
@@ -30,14 +31,6 @@
 #include <string>
 
 namespace wiola::engine {
-
-struct QueueEntryId {
-    std::uint64_t value{0};
-
-    [[nodiscard]] constexpr bool valid() const noexcept { return value != 0; }
-
-    auto operator<=>(const QueueEntryId&) const = default;
-};
 
 /// Facts learned after queueing, separate from the resource they describe.
 using TrackMetadata = media::TrackMetadata;

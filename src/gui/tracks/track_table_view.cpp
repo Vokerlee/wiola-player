@@ -127,8 +127,8 @@ TrackTableView::TrackTableView(QWidget* parent)
     setContextMenuPolicy(Qt::ActionsContextMenu);
 
     connect(play, &QAction::triggered, this, [this] {
-        if (const auto id = model_.track_id(currentIndex()))
-            emit track_chosen(*id);
+        if (const auto id = model_.row_id(currentIndex()))
+            emit row_chosen(*id);
     });
 
     QAction* remove = new QAction{"Remove selected tracks", this};
@@ -152,27 +152,27 @@ TrackTableView::TrackTableView(QWidget* parent)
     connect(apply_order, &QAction::triggered, this, &TrackTableView::order_application_asked);
 
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
-        if (const auto id = model_.track_id(index))
-            emit track_chosen(*id);
+        if (const auto id = model_.row_id(index))
+            emit row_chosen(*id);
     });
 }
 
-void TrackTableView::show_tracks(const std::vector<engine::Track>& tracks,
-    std::optional<engine::QueueEntryId> current)
+void TrackTableView::show_rows(const std::vector<TrackRow>& tracks,
+    std::optional<TrackRowId> current)
 {
-    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
-    const auto current_id = model_.track_id(currentIndex());
+    const std::vector<TrackRowId> selected = chosen_rows();
+    const auto current_id = model_.row_id(currentIndex());
     tracks_ = tracks;
     current_ = current;
 
-    model_.show_tracks(tracks, current);
+    model_.show_rows(tracks, current);
     restore_selection(selected, current_id);
 }
 
 void TrackTableView::show_library(const library::LibraryRepository& repository)
 {
-    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
-    const auto current_id = model_.track_id(currentIndex());
+    const std::vector<TrackRowId> selected = chosen_rows();
+    const auto current_id = model_.row_id(currentIndex());
     model_.show_library(repository);
     restore_selection(selected, current_id);
 
@@ -226,8 +226,8 @@ void TrackTableView::update_tag_columns()
             visible_tags_.push_back(action->property("tagKey").toString().toStdString());
     }
 
-    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
-    const auto current_id = model_.track_id(currentIndex());
+    const std::vector<TrackRowId> selected = chosen_rows();
+    const auto current_id = model_.row_id(currentIndex());
     model_.show_tag_keys(visible_tags_);
     restore_selection(selected, current_id);
 
@@ -237,8 +237,8 @@ void TrackTableView::update_tag_columns()
 
 void TrackTableView::sort_by(const std::vector<TrackSortKey>& keys)
 {
-    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
-    const auto current_id = model_.track_id(currentIndex());
+    const std::vector<TrackRowId> selected = chosen_rows();
+    const auto current_id = model_.row_id(currentIndex());
     std::vector<TrackSortKey> valid;
 
     for (const TrackSortKey& key : keys) {
@@ -353,14 +353,14 @@ void TrackTableView::update_sort_indicator()
     }
 }
 
-void TrackTableView::restore_selection(const std::vector<engine::QueueEntryId>& selected,
-    const std::optional<engine::QueueEntryId>& current)
+void TrackTableView::restore_selection(const std::vector<TrackRowId>& selected,
+    const std::optional<TrackRowId>& current)
 {
     selectionModel()->clearSelection();
 
     for (int row = 0; row < model_.rowCount(); ++row) {
         const QModelIndex first = model_.index(row, 0);
-        const auto id = model_.track_id(first);
+        const auto id = model_.row_id(first);
 
         if (id && std::ranges::find(selected, *id) != selected.end())
             selectionModel()->select(first,
@@ -373,8 +373,8 @@ void TrackTableView::restore_selection(const std::vector<engine::QueueEntryId>& 
 
 void TrackTableView::search_by(const library::SearchQuery& query)
 {
-    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
-    const auto current_id = model_.track_id(currentIndex());
+    const std::vector<TrackRowId> selected = chosen_rows();
+    const auto current_id = model_.row_id(currentIndex());
     query_ = query;
     query_.filters = filters_;
     model_.search_by(query_);
@@ -383,8 +383,8 @@ void TrackTableView::search_by(const library::SearchQuery& query)
 
 void TrackTableView::filter_by(const std::vector<library::TagFilter>& filters)
 {
-    const std::vector<engine::QueueEntryId> selected = chosen_tracks();
-    const auto current_id = model_.track_id(currentIndex());
+    const std::vector<TrackRowId> selected = chosen_rows();
+    const auto current_id = model_.row_id(currentIndex());
     filters_ = filters;
     query_.filters = filters_;
     model_.search_by(query_);
@@ -401,25 +401,25 @@ std::size_t TrackTableView::total_count() const
     return model_.total_count();
 }
 
-std::vector<engine::QueueEntryId> TrackTableView::displayed_tracks() const
+std::vector<TrackRowId> TrackTableView::displayed_rows() const
 {
-    std::vector<engine::QueueEntryId> displayed;
+    std::vector<TrackRowId> displayed;
     displayed.reserve(static_cast<std::size_t>(model_.rowCount()));
 
     for (int row = 0; row < model_.rowCount(); ++row) {
-        if (const auto id = model_.track_id(model_.index(row, 0)))
+        if (const auto id = model_.row_id(model_.index(row, 0)))
             displayed.push_back(*id);
     }
 
     return displayed;
 }
 
-std::vector<engine::QueueEntryId> TrackTableView::chosen_tracks() const
+std::vector<TrackRowId> TrackTableView::chosen_rows() const
 {
-    std::vector<engine::QueueEntryId> tracks;
+    std::vector<TrackRowId> tracks;
 
     for (const QModelIndex& index : selectionModel()->selectedRows()) {
-        if (const auto id = model_.track_id(index))
+        if (const auto id = model_.row_id(index))
             tracks.push_back(*id);
     }
 

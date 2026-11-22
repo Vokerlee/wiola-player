@@ -15,9 +15,11 @@ wiola_add_library(
         shell/document_host.cpp
         shell/main_window.cpp
         metadata/metadata_conflict_panel.cpp
+        documents/queue_rows.cpp
         documents/document_registry.cpp
         documents/now_playing_document.cpp
         metadata/track_inspector.cpp
+        tracks/track_row.cpp
         tracks/track_table_model.cpp
         tracks/track_table_view.cpp
         tracks/track_sort.cpp

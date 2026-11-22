@@ -20,7 +20,9 @@
 
 #pragma once
 
+#ifndef Q_MOC_RUN
 #include "track_table_model.hpp"
+#endif
 
 #include <QKeyEvent>
 #include <QTableView>
@@ -38,19 +40,18 @@ class TrackTableView final : public QTableView {
 public:
     explicit TrackTableView(QWidget* parent = nullptr);
 
-    void show_tracks(const std::vector<engine::Track>& tracks,
-        std::optional<engine::QueueEntryId> current = {});
+    void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
     void show_library(const library::LibraryRepository& repository);
     void sort_by(const std::vector<TrackSortKey>& keys);
     void search_by(const library::SearchQuery& query);
     void filter_by(const std::vector<library::TagFilter>& filters);
     [[nodiscard]] std::size_t visible_count() const;
     [[nodiscard]] std::size_t total_count() const;
-    [[nodiscard]] std::vector<engine::QueueEntryId> displayed_tracks() const;
-    [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
+    [[nodiscard]] std::vector<TrackRowId> displayed_rows() const;
+    [[nodiscard]] std::vector<TrackRowId> chosen_rows() const;
 
 signals:
-    void track_chosen(engine::QueueEntryId id);
+    void row_chosen(wiola::gui::TrackRowId id);
     void removal_asked();
     void transfer_active_asked();
     void transfer_destination_asked();
@@ -65,12 +66,12 @@ private:
     void update_tag_columns();
     void sort_column(int column, bool extend);
     void update_sort_indicator();
-    void restore_selection(const std::vector<engine::QueueEntryId>& selected,
-        const std::optional<engine::QueueEntryId>& current);
+    void restore_selection(const std::vector<TrackRowId>& selected,
+        const std::optional<TrackRowId>& current);
 
     TrackTableModel model_;
-    std::vector<engine::Track> tracks_;
-    std::optional<engine::QueueEntryId> current_;
+    std::vector<TrackRow> tracks_;
+    std::optional<TrackRowId> current_;
     std::vector<std::string> available_tags_;
     std::vector<std::string> visible_tags_;
     std::vector<TrackSortKey> sort_keys_;

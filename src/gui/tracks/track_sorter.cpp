@@ -48,8 +48,8 @@ int compare_values(const TrackSortValue& first, const TrackSortValue& second)
     return duration < other ? -1 : other < duration ? 1 : 0;
 }
 
-int compare(const engine::Track& first, const engine::Track& second,
-    const library::LibraryRepository& repository, const std::vector<TrackSortKey>& keys)
+int compare(const TrackRow& first, const TrackRow& second,
+    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys)
 {
     for (const TrackSortKey& key : keys) {
         const TrackSortValue first_value = track_sort_value(key, first, repository);
@@ -79,13 +79,13 @@ int compare(const engine::Track& first, const engine::Track& second,
             track_sort_value(title, second, repository)))
         return result;
 
-    return first.id().value < second.id().value ? -1 : first.id().value > second.id().value ? 1 : 0;
+    return first.id < second.id ? -1 : second.id < first.id ? 1 : 0;
 }
 
 } // namespace
 
-std::vector<engine::Track> sorted_tracks(const std::vector<engine::Track>& tracks,
-    const library::LibraryRepository& repository, const std::vector<TrackSortKey>& keys)
+std::vector<TrackRow> sorted_rows(const std::vector<TrackRow>& tracks,
+    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys)
 {
     std::vector<TrackSortKey> valid;
 
@@ -94,9 +94,9 @@ std::vector<engine::Track> sorted_tracks(const std::vector<engine::Track>& track
             valid.push_back(key);
     }
 
-    std::vector<engine::Track> sorted = tracks;
+    std::vector<TrackRow> sorted = tracks;
     std::stable_sort(sorted.begin(), sorted.end(),
-        [&](const engine::Track& first, const engine::Track& second) {
+        [&](const TrackRow& first, const TrackRow& second) {
             return compare(first, second, repository, valid) < 0;
         });
 

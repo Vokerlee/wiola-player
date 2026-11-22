@@ -28,7 +28,7 @@ namespace wiola::gui {
 
 [[nodiscard]] bool track_query_active(const library::SearchQuery& query);
 
-[[nodiscard]] std::vector<engine::Track> apply_track_view(const std::vector<engine::Track>& source,
+[[nodiscard]] std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
     const library::LibraryRepository* repository, const library::SearchQuery& query,
     const std::vector<TrackSortKey>& sort_keys);
 
