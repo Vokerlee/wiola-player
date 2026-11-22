@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <library/metadata_patch.hpp>
+
 #include "metadata_conflicts.hpp"
 #include "standard_metadata_commands.hpp"
 
@@ -52,10 +54,10 @@ public:
         Observer observer);
 
     [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
-        const library::StandardFieldOverrides& edit,
+        const library::StandardMetadataPatch& edit,
         const std::map<library::MediaId, std::uint64_t>& expected_revisions = {});
     [[nodiscard]] MetadataEditOutcome submit(const std::vector<library::MediaId>& media,
-        const library::StandardFieldOverrides& edit,
+        const library::StandardMetadataPatch& edit,
         const std::map<library::MediaId, ExpectedMediaState>& expected_states);
     [[nodiscard]] MetadataEditOutcome reset(const std::vector<library::MediaId>& media);
 

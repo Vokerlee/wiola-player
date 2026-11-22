@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <library/metadata_patch.hpp>
+
 #include "standard_metadata_commands.hpp"
 
 namespace wiola::app {
@@ -40,7 +42,7 @@ public:
     BulkMetadataCommands(library::InMemoryRepository& repository, Persist persist);
 
     [[nodiscard]] BulkMetadataResult apply(const std::vector<library::MediaId>& media,
-        const library::StandardFieldOverrides& edit);
+        const library::StandardMetadataPatch& edit);
 
 private:
     library::InMemoryRepository& repository_;

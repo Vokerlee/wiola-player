@@ -24,23 +24,6 @@
 
 namespace wiola::app {
 
-namespace {
-
-bool empty(const library::StandardFieldOverrides& edit)
-{
-    return !edit.title && !edit.artist && !edit.album && !edit.genre && !edit.comment &&
-        !edit.composer && !edit.year && !edit.track_number && !edit.disc_number;
-}
-
-template<typename T>
-void merge(std::optional<T>& current, const std::optional<T>& edit)
-{
-    if (edit)
-        current = *edit;
-}
-
-} // namespace
-
 StandardMetadataCommands::StandardMetadataCommands(library::InMemoryRepository& repository,
     Persist persist)
     : repository_{repository}
@@ -49,25 +32,20 @@ StandardMetadataCommands::StandardMetadataCommands(library::InMemoryRepository& 
 }
 
 StandardMetadataResult StandardMetadataCommands::apply(const library::MediaId& media,
-    const library::StandardFieldOverrides& edit)
+    const library::StandardMetadataPatch& edit)
 {
     const library::TrackRecord* existing = repository_.track(media);
     if (existing == nullptr)
         return {.error = StandardMetadataError::missing_media, .changed = false};
 
-    if (empty(edit))
+    if (!library::valid_metadata_patch(edit))
+        return {.error = StandardMetadataError::invalid_edit};
+
+    if (library::metadata_patch_empty(edit))
         return {.error = StandardMetadataError::empty_edit, .changed = false};
 
     library::TrackRecord updated = *existing;
-    merge(updated.overrides.title, edit.title);
-    merge(updated.overrides.artist, edit.artist);
-    merge(updated.overrides.album, edit.album);
-    merge(updated.overrides.genre, edit.genre);
-    merge(updated.overrides.comment, edit.comment);
-    merge(updated.overrides.composer, edit.composer);
-    merge(updated.overrides.year, edit.year);
-    merge(updated.overrides.track_number, edit.track_number);
-    merge(updated.overrides.disc_number, edit.disc_number);
+    static_cast<void>(library::apply_metadata_patch(updated.overrides, edit));
 
     if (updated.overrides == existing->overrides)
         return {.error = StandardMetadataError::none, .changed = false};

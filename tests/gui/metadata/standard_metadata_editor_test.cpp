@@ -63,9 +63,8 @@ TEST_F(StandardMetadataEditor, ShowsResolvedValuesAndAppliesDirtyOverrides)
             ->text()
             .contains("Application overrides"));
 
-    std::optional<wiola::library::StandardFieldOverrides> applied;
-    editor.on_apply([&](wiola::library::MediaId media,
-                        wiola::library::StandardFieldOverrides edit) {
+    std::optional<wiola::library::StandardMetadataPatch> applied;
+    editor.on_apply([&](wiola::library::MediaId media, wiola::library::StandardMetadataPatch edit) {
         EXPECT_EQ(media, track.id);
         applied = std::move(edit);
     });
@@ -78,11 +77,10 @@ TEST_F(StandardMetadataEditor, ShowsResolvedValuesAndAppliesDirtyOverrides)
     button("applyStandardMetadata")->click();
 
     ASSERT_TRUE(applied.has_value());
-    EXPECT_EQ(applied->genre, "Jazz");
-    EXPECT_EQ(applied->year, 2026);
-    EXPECT_EQ(applied->track_number, 4);
-    ASSERT_TRUE(applied->disc_number.has_value());
-    EXPECT_FALSE(applied->disc_number->has_value());
+    EXPECT_EQ(*applied->genre.value(), "Jazz");
+    EXPECT_EQ(*applied->year.value(), 2026);
+    EXPECT_EQ(*applied->track_number.value(), 4);
+    EXPECT_EQ(applied->disc_number.operation(), wiola::library::FieldEditOperation::clear);
 }
 
 TEST_F(StandardMetadataEditor, RejectsInvalidNumbersAndCancelsCleanly)
@@ -128,18 +126,18 @@ TEST_F(StandardMetadataEditor, MixedValuesRemainUnchangedUnlessExplicitlyEdited)
     EXPECT_TRUE(field("standardYear")->text().isEmpty());
     EXPECT_EQ(field("standardYear")->placeholderText(), "Mixed values");
 
-    std::optional<wiola::library::StandardFieldOverrides> applied;
-    editor.on_apply([&](wiola::library::MediaId, wiola::library::StandardFieldOverrides edit) {
+    std::optional<wiola::library::StandardMetadataPatch> applied;
+    editor.on_apply([&](wiola::library::MediaId, wiola::library::StandardMetadataPatch edit) {
         applied = std::move(edit);
     });
     field("standardGenre")->setText("Jazz");
     button("applyStandardMetadata")->click();
 
     ASSERT_TRUE(applied.has_value());
-    EXPECT_EQ(applied->genre, "Jazz");
-    EXPECT_FALSE(applied->artist.has_value());
-    EXPECT_FALSE(applied->year.has_value());
-    EXPECT_FALSE(applied->title.has_value());
+    EXPECT_EQ(*applied->genre.value(), "Jazz");
+    EXPECT_EQ(applied->artist.operation(), wiola::library::FieldEditOperation::unchanged);
+    EXPECT_EQ(applied->year.operation(), wiola::library::FieldEditOperation::unchanged);
+    EXPECT_EQ(applied->title.operation(), wiola::library::FieldEditOperation::unchanged);
 }
 
 } // namespace

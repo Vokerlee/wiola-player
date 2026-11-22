@@ -286,7 +286,7 @@ MainWindow::MainWindow(engine::Session& session)
         finish_custom_tag(tag_commands_.remove(media, tag), "Custom tag removed");
     });
     inspector_->standard_metadata()->on_apply([this](library::MediaId media,
-                                                  library::StandardFieldOverrides edit) {
+                                                  library::StandardMetadataPatch edit) {
         finish_standard_metadata(media, std::move(edit));
     });
     inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
@@ -1314,7 +1314,7 @@ std::vector<const library::TrackRecord*> MainWindow::selected_records()
     return selected;
 }
 
-void MainWindow::finish_standard_metadata(library::MediaId, library::StandardFieldOverrides edit)
+void MainWindow::finish_standard_metadata(library::MediaId, library::StandardMetadataPatch edit)
 {
     std::vector<library::MediaId> selected;
     std::map<library::MediaId, app::ExpectedMediaState> expected;

@@ -21,6 +21,7 @@
 #pragma once
 
 #include <library/metadata.hpp>
+#include <library/metadata_patch.hpp>
 
 #include <QLabel>
 #include <QLineEdit>
@@ -35,7 +36,7 @@ namespace wiola::gui {
 
 class StandardMetadataEditor final : public QWidget {
 public:
-    using Observer = std::function<void(library::MediaId, library::StandardFieldOverrides)>;
+    using Observer = std::function<void(library::MediaId, library::StandardMetadataPatch)>;
 
     explicit StandardMetadataEditor(QWidget* parent = nullptr);
 
@@ -46,7 +47,7 @@ public:
 
 private:
     [[nodiscard]] library::ResolvedMetadata current() const;
-    [[nodiscard]] library::StandardFieldOverrides overrides() const;
+    [[nodiscard]] library::StandardMetadataPatch patch() const;
     [[nodiscard]] bool valid_numbers() const;
     [[nodiscard]] bool dirty() const;
     void populate();
