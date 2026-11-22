@@ -96,6 +96,16 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
                 if (const auto* workspace = library_.repository().workspace(id))
                     view->begin(*workspace, generation);
         });
+    connect(&library_, &app::LibrarySession::artwork_changed, &lifetime_,
+        [this](const auto& media) {
+            queue_->browser().table().refresh_artwork(media);
+            for (const auto& [id, view] : registry_.playlists())
+                if (view)
+                    view->browser().table().refresh_artwork(media);
+            for (const auto& [id, view] : registry_.workspaces())
+                if (view)
+                    view->browser().table().refresh_artwork(media);
+        });
     connect(&library_, &app::LibrarySession::scan_batch, &lifetime_,
         [this](const app::WorkspaceScanBatch& batch) {
             if (auto* document = registry_.workspace(batch.workspace))
@@ -120,6 +130,16 @@ DocumentHost::~DocumentHost()
 
 void DocumentHost::configure_browser(TrackBrowser& browser)
 {
+    const QPointer<app::LibrarySession> artwork_library{&library_};
+    browser.table().set_artwork_source(
+        [artwork_library](const auto& id) {
+            return artwork_library ? artwork_library->artwork(id) : media::ArtworkReference{};
+        },
+        [artwork_library](const auto& id) {
+            if (artwork_library)
+                artwork_library->request_artwork(id);
+        }
+    );
     browser.table().set_tag_catalog(&library_.tag_keys());
     browser.table().set_search_index(&library_.search());
     connect(&browser, &TrackBrowser::selection_changed, &lifetime_, [this] {

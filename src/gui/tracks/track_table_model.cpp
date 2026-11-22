@@ -46,9 +46,9 @@ using Column = StandardTrackColumn;
 
 } // namespace
 
-TrackTableModel::TrackTableModel(const QWidget& styled, ArtworkCachePolicy policy)
-    : artwork_{styled, policy}
-    , policy_{policy}
+TrackTableModel::TrackTableModel(const QWidget& styled, ArtworkRequest policy)
+    : styled_{styled}
+    , artwork_request_value_{policy}
 {
 }
 
@@ -109,8 +109,11 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
     }
 
     if (role == Qt::DecorationRole && index.column() == Column::cover) {
-        return artwork_.cover_of({.media = track.media.value, .revision = track.artwork_revision},
-            track.artwork);
+        return artwork_->cover(styled_, track.media, track.artwork, artwork_request_value_,
+            [this, id = track.media] {
+                if (artwork_request_)
+                    artwork_request_(id);
+            });
     }
 
     if (current_ != track.id)
@@ -160,6 +163,7 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
 {
     std::set<TrackRowId> seen;
     source_rows_.clear();
+    source_media_.clear();
     source_rows_.reserve(tracks.size());
     for (const auto& row : tracks) {
         const bool valid = std::visit(
@@ -171,8 +175,18 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
             },
             row.id
         );
-        if (valid && seen.insert(row.id).second)
+        if (valid && seen.insert(row.id).second) {
             source_rows_.push_back(row);
+            auto& held = source_rows_.back();
+            source_media_[held.media].push_back(source_rows_.size() - 1);
+            if (artwork_source_) {
+                const auto reference = artwork_source_(held.media);
+                if (reference.known() &&
+                    (reference.availability() != media::ArtworkAvailability::failed ||
+                        !held.artwork))
+                    held.artwork = reference;
+            }
+        }
     }
     reconcile_rows(visible_rows());
     if (current_ == current)
@@ -186,6 +200,25 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
         if (first.isValid())
             emit dataChanged(first, index(first.row(), columnCount() - 1),
                 {Qt::FontRole, Qt::BackgroundRole});
+    }
+}
+
+void TrackTableModel::refresh_artwork(const library::MediaId& media)
+{
+    const auto positions = source_media_.find(media);
+    if (positions == source_media_.end() || !artwork_source_)
+        return;
+    const auto reference = artwork_source_(media);
+    for (const auto position : positions->second) {
+        auto& row = source_rows_[position];
+        if (reference.availability() == media::ArtworkAvailability::failed && row.artwork)
+            continue;
+        row.artwork = reference;
+        const auto visible = index_of(row.id);
+        if (visible.isValid()) {
+            rows_[static_cast<std::size_t>(visible.row())].artwork = reference;
+            emit dataChanged(visible, visible, {Qt::DecorationRole});
+        }
     }
 }
 

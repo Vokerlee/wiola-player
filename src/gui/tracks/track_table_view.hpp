@@ -45,6 +45,14 @@ public:
 
     void set_search_index(const app::SearchIndex* index) { model_.set_search_index(index); }
 
+    void set_artwork_source(std::function<media::ArtworkReference(const library::MediaId&)> source,
+        std::function<void(const library::MediaId&)> request)
+    {
+        model_.set_artwork_source(std::move(source), std::move(request));
+    }
+
+    void refresh_artwork(const library::MediaId& media) { model_.refresh_artwork(media); }
+
     void set_tag_catalog(const app::TagKeyCatalog* catalog) { tag_catalog_ = catalog; }
 
     void set_capabilities(TrackCapabilities capabilities);

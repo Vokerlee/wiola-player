@@ -50,7 +50,6 @@ TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& recor
     row.missing = record.missing || row.location.empty();
     row.metadata_revision = record.metadata_revision;
     row.content_revision = record.content_revision;
-    row.artwork_revision = record.metadata_revision;
     return row;
 }
 

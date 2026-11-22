@@ -19,6 +19,7 @@
  */
 
 #include "tag_reader.hpp"
+#include <media/artwork_reference.hpp>
 
 #include <codec/provider.hpp>
 
@@ -185,6 +186,8 @@ void TagReader::work(const std::stop_token& stop)
         if (result && result->artwork.data.size() > max_completed_artwork_bytes_)
             result->artwork = {};
 
+        if (result)
+            result->artwork.content_id = media::artwork_content_id(result->artwork);
         const std::size_t artwork_bytes{result ? result->artwork.data.size() : 0};
 
         {

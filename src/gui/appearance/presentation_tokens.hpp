@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "artwork_cache_policy.hpp"
+#include "artwork_presentation.hpp"
 
 #include <QPalette>
 #include <QStyle>
@@ -44,7 +44,7 @@ struct PlayerPresentationTokens {
 };
 
 struct PlaylistPresentationTokens {
-    ArtworkCachePolicy artwork{};
+    ArtworkRequest artwork{};
     int min_height{120};
     int row_padding{4};
     int artist_column_width{120};

@@ -24,7 +24,7 @@
 #include "inspector_context.hpp"
 #include "metadata_conflict_panel.hpp"
 #include "standard_metadata_editor.hpp"
-#include <gui/appearance/artwork_cache.hpp>
+#include <gui/appearance/artwork_presentation.hpp>
 
 #include <QLabel>
 #include <QWidget>
@@ -37,6 +37,13 @@ public:
 
     void show_context(InspectorContext context);
 
+    void set_artwork_requester(std::function<void(const library::MediaId&)> request)
+    {
+        artwork_request_ = std::move(request);
+    }
+
+    void refresh_artwork(const library::MediaId& media, media::ArtworkReference artwork);
+
     [[nodiscard]] const InspectorContext& context() const { return context_; }
 
     [[nodiscard]] CustomTagEditor* custom_tags() const noexcept { return custom_tags_; }
@@ -48,11 +55,16 @@ public:
 
     [[nodiscard]] MetadataConflictPanel* conflicts() const noexcept { return conflicts_; }
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 private:
+    void show_artwork();
+    std::function<void(const library::MediaId&)> artwork_request_;
     InspectorContext context_;
     std::optional<InspectorContext> pending_context_;
     QLabel* context_label_{nullptr};
-    ArtworkCache artwork_;
+    std::shared_ptr<ArtworkPresentationService> artwork_{ArtworkPresentationService::acquire()};
     QLabel* artwork_label_{nullptr};
     QLabel* title_{nullptr};
     QLabel* artist_{nullptr};

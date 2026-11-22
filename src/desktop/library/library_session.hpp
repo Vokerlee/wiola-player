@@ -21,6 +21,7 @@
 #pragma once
 #ifndef Q_MOC_RUN
 #include "saved_playlist_commands.hpp"
+#include <app/library/artwork_store.hpp>
 #include <app/library/location_index.hpp>
 #include <app/library/search_index.hpp>
 #include <app/library/tag_key_catalog.hpp>
@@ -69,6 +70,14 @@ public:
     [[nodiscard]] std::optional<library::TrackRecord> snapshot(const library::MediaId& id) const;
     [[nodiscard]] const SearchIndex& search() const;
 
+    [[nodiscard]] media::ArtworkReference artwork(const library::MediaId& id) const
+    {
+        check_owner();
+        return artwork_.get(id);
+    }
+
+    void request_artwork(const library::MediaId& id);
+
     [[nodiscard]] const TagKeyCatalog& tag_keys() const
     {
         check_owner();
@@ -92,6 +101,7 @@ signals:
     void metadata_outcome(const wiola::app::MetadataEditOutcome& outcome);
     void status_changed(const QString& status);
     void file_write_outcome(const wiola::app::MetadataWriteResult& result);
+    void artwork_changed(const wiola::library::MediaId& media);
     void workspace_changed(const wiola::library::WorkspaceId& id);
     void workspace_scan_started(const wiola::library::WorkspaceId& id, std::uint64_t generation);
 
@@ -112,6 +122,8 @@ private:
     MetadataEditService edits_;
     ActivePlaylist active_;
     SearchIndex search_;
+    mutable ArtworkStore artwork_;
+    std::map<library::MediaId, std::uint64_t> metadata_pending_;
     LocationIndex locations_;
     TagKeyCatalog tag_keys_;
     MetadataMerge merge_;

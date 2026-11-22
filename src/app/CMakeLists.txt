@@ -2,6 +2,7 @@ wiola_add_library(
     wiola_app
     SOURCES
         library/search_index.cpp
+        library/artwork_store.cpp
         library/location_index.cpp
         library/tag_key_catalog.cpp
         metadata/background_metadata.cpp

@@ -21,6 +21,7 @@
 #pragma once
 #include "track_identity.hpp"
 #include <library/records.hpp>
+#include <media/artwork_reference.hpp>
 #include <media/media.hpp>
 #include <memory>
 
@@ -36,8 +37,7 @@ struct TrackRow {
     bool missing{false};
     std::uint64_t metadata_revision{0};
     std::uint64_t content_revision{0};
-    std::shared_ptr<const media::Artwork> artwork;
-    std::uint64_t artwork_revision{0};
+    media::ArtworkReference artwork;
     bool operator==(const TrackRow&) const = default;
 };
 

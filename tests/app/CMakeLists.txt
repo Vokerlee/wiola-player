@@ -87,3 +87,9 @@ wiola_add_test(
     SOURCES metadata/file_replacement_test.cpp
     LIBS wiola_file_replacement wiola_library
 )
+
+wiola_add_test(
+    app_artwork_store_test
+    SOURCES library/artwork_store_test.cpp
+    LIBS wiola_app
+)
