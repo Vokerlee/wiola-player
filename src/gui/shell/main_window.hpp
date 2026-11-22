@@ -143,6 +143,7 @@ private:
     void play_displayed_paths(std::vector<std::filesystem::path> tracks);
     void request_metadata(const std::filesystem::path& location);
     void publish_media_revision(app::BackgroundMetadataResult result);
+    void apply_library_changes(const library::LibraryChangeBatch& batch);
     void finish_custom_tag(app::CustomTagResult result, const QString& success);
     void finish_standard_metadata(library::MediaId media, library::StandardMetadataPatch edit);
     void publish_metadata_outcome(const app::MetadataEditOutcome& outcome);
@@ -228,6 +229,7 @@ private:
     VolumeControl volume_;
     EqualizerControl equalizer_;
     library::InMemoryRepository library_;
+    library::LibraryChanges::Subscription library_changes_;
     persistence::qt::LibraryStore library_storage_;
     library::RepositoryTransaction::Persist persist_library_;
     app::SavedPlaylistCommands playlist_commands_;

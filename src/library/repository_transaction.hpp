@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Owner-thread repository transactions with complete rollback.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -40,7 +40,7 @@ public:
 
 private:
     InMemoryRepository& repository_;
-    InMemoryRepository checkpoint_;
+    InMemoryRepository::State checkpoint_;
     Persist persist_;
     bool finished_{false};
 };

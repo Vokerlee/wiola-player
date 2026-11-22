@@ -339,7 +339,6 @@ MainWindow::MainWindow(engine::Session& session)
 
     navigation_->on_playlist_chosen([this](library::PlaylistId id) { open_playlist(id); });
     navigation_->on_workspace_chosen([this](library::WorkspaceId id) { open_workspace(id); });
-    playlist_manager_->on_changed([this] { refresh_playlist_documents(); });
     connect(documents_, &QTabWidget::currentChanged, this, [this](int) {
         save_playlist_documents();
         save_workspace_documents();
@@ -510,6 +509,9 @@ MainWindow::MainWindow(engine::Session& session)
 
     // What was put back settles both of these, without either button having been pressed.
     show_list_buttons();
+    library_changes_ = library_.observe([this](const library::LibraryChangeBatch& batch) {
+        apply_library_changes(batch);
+    });
 
     refresh();
 }
@@ -1214,11 +1216,24 @@ void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
         show_status("Could not save the learned metadata");
         return;
     }
+}
 
+void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
+{
+    for (const auto& id : batch.removed_playlists) {
+        if (active_playlist_.clear_if(id))
+            settings_.remove("playlists/active");
+    }
+    if (!batch.playlists.empty() || !batch.removed_playlists.empty())
+        navigation_->show_repository(library_);
+    if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
+        show_workspace_navigation();
     refresh_playlist_documents();
-
-    for (const auto& [id, document] : workspace_documents_)
-        static_cast<void>(document->show_media_revision(library_, result.media));
+    for (const auto& [id, document] : workspace_documents_) {
+        for (const auto& change : batch.media)
+            static_cast<void>(document->show_media_revision(library_, change.media));
+    }
+    refresh();
 }
 
 void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& success)
@@ -1255,12 +1270,6 @@ void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& s
         return;
     }
 
-    refresh_playlist_documents();
-
-    for (const auto& [id, document] : workspace_documents_)
-        document->show_library(library_);
-
-    refresh();
     show_status(success);
 }
 
@@ -1368,15 +1377,6 @@ void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
 
 void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcome)
 {
-    refresh_playlist_documents();
-
-    for (const auto& [id, document] : workspace_documents_) {
-        for (const library::TrackRecord* record : selected_records())
-            static_cast<void>(document->show_media_revision(library_, record->id));
-    }
-
-    refresh();
-
     switch (outcome.state) {
     case app::MetadataEditState::queued:
         inspector_->conflicts()->hide_conflict();

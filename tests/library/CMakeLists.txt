@@ -38,3 +38,9 @@ wiola_add_test(
     SOURCES metadata_patch_test.cpp
     LIBS wiola_library
 )
+
+wiola_add_test(
+    library_changes_test
+    SOURCES library_changes_test.cpp
+    LIBS wiola_library
+)

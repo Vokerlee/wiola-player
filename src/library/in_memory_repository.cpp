@@ -46,24 +46,24 @@ bool InMemoryRepository::put_track(TrackRecord track)
     }
 
     const MediaId id{track.id};
-    tracks_.insert_or_assign(id, std::move(track));
+    data_.tracks_.insert_or_assign(id, std::move(track));
 
     return true;
 }
 
 const TrackRecord* InMemoryRepository::track(const MediaId& id) const
 {
-    const auto found{tracks_.find(id)};
+    const auto found{data_.tracks_.find(id)};
 
-    return found == tracks_.end() ? nullptr : &found->second;
+    return found == data_.tracks_.end() ? nullptr : &found->second;
 }
 
 std::vector<TrackRecord> InMemoryRepository::tracks() const
 {
     std::vector<TrackRecord> result;
-    result.reserve(tracks_.size());
+    result.reserve(data_.tracks_.size());
 
-    for (const auto& [id, track] : tracks_)
+    for (const auto& [id, track] : data_.tracks_)
         result.push_back(track);
 
     return result;
@@ -75,23 +75,25 @@ bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
     InMemoryRepository replacement;
 
     for (const TrackRecord& track : tracks) {
-        if (replacement.tracks_.contains(track.id) || !replacement.put_track(track))
+        if (replacement.data_.tracks_.contains(track.id) || !replacement.put_track(track))
             return false;
     }
 
     for (const PlaylistRecord& playlist : playlists) {
-        if (replacement.playlists_.contains(playlist.id) || !replacement.put_playlist(playlist))
+        if (replacement.data_.playlists_.contains(playlist.id) ||
+            !replacement.put_playlist(playlist))
             return false;
     }
 
     for (const WorkspaceRecord& workspace : workspaces) {
-        if (replacement.workspaces_.contains(workspace.id) || !replacement.put_workspace(workspace))
+        if (replacement.data_.workspaces_.contains(workspace.id) ||
+            !replacement.put_workspace(workspace))
             return false;
     }
 
-    tracks_ = std::move(replacement.tracks_);
-    playlists_ = std::move(replacement.playlists_);
-    workspaces_ = std::move(replacement.workspaces_);
+    data_.tracks_ = std::move(replacement.data_.tracks_);
+    data_.playlists_ = std::move(replacement.data_.playlists_);
+    data_.workspaces_ = std::move(replacement.data_.workspaces_);
 
     return true;
 }
@@ -99,7 +101,7 @@ bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
 PlaylistId InMemoryRepository::create_playlist(std::string name)
 {
     const PlaylistId id{next_playlist_id()};
-    playlists_.emplace(id, PlaylistRecord{.id = id, .name = std::move(name), .entries = {}});
+    data_.playlists_.emplace(id, PlaylistRecord{.id = id, .name = std::move(name), .entries = {}});
 
     return id;
 }
@@ -117,14 +119,14 @@ bool InMemoryRepository::put_playlist(PlaylistRecord playlist)
     }
 
     const PlaylistId id{playlist.id};
-    playlists_.insert_or_assign(id, std::move(playlist));
+    data_.playlists_.insert_or_assign(id, std::move(playlist));
 
     return true;
 }
 
 bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
 {
-    PlaylistRecord* found{playlists_.contains(id) ? &playlists_.at(id) : nullptr};
+    PlaylistRecord* found{data_.playlists_.contains(id) ? &data_.playlists_.at(id) : nullptr};
 
     if (found == nullptr)
         return false;
@@ -136,22 +138,22 @@ bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
 
 bool InMemoryRepository::delete_playlist(const PlaylistId& id)
 {
-    return playlists_.erase(id) != 0;
+    return data_.playlists_.erase(id) != 0;
 }
 
 const PlaylistRecord* InMemoryRepository::playlist(const PlaylistId& id) const
 {
-    const auto found{playlists_.find(id)};
+    const auto found{data_.playlists_.find(id)};
 
-    return found == playlists_.end() ? nullptr : &found->second;
+    return found == data_.playlists_.end() ? nullptr : &found->second;
 }
 
 std::vector<PlaylistRecord> InMemoryRepository::playlists() const
 {
     std::vector<PlaylistRecord> result;
-    result.reserve(playlists_.size());
+    result.reserve(data_.playlists_.size());
 
-    for (const auto& [id, playlist] : playlists_)
+    for (const auto& [id, playlist] : data_.playlists_)
         result.push_back(playlist);
 
     return result;
@@ -160,7 +162,8 @@ std::vector<PlaylistRecord> InMemoryRepository::playlists() const
 std::optional<PlaylistEntryId> InMemoryRepository::append_track(const PlaylistId& playlist_id,
     const MediaId& media)
 {
-    PlaylistRecord* found{playlists_.contains(playlist_id) ? &playlists_.at(playlist_id) : nullptr};
+    PlaylistRecord* found{
+        data_.playlists_.contains(playlist_id) ? &data_.playlists_.at(playlist_id) : nullptr};
 
     if (found == nullptr || track(media) == nullptr)
         return std::nullopt;
@@ -173,7 +176,8 @@ std::optional<PlaylistEntryId> InMemoryRepository::append_track(const PlaylistId
 
 bool InMemoryRepository::remove_entry(const PlaylistId& playlist_id, const PlaylistEntryId& entry)
 {
-    PlaylistRecord* found{playlists_.contains(playlist_id) ? &playlists_.at(playlist_id) : nullptr};
+    PlaylistRecord* found{
+        data_.playlists_.contains(playlist_id) ? &data_.playlists_.at(playlist_id) : nullptr};
 
     if (found == nullptr)
         return false;
@@ -189,7 +193,7 @@ WorkspaceId InMemoryRepository::create_workspace(std::filesystem::path root, boo
         return {};
 
     const WorkspaceId id{next_workspace_id()};
-    workspaces_.emplace(id,
+    data_.workspaces_.emplace(id,
         WorkspaceRecord{.id = id,
             .root = std::filesystem::absolute(root).lexically_normal(),
             .recursive = recursive});
@@ -203,23 +207,23 @@ bool InMemoryRepository::put_workspace(WorkspaceRecord workspace)
         return false;
 
     workspace.root = std::filesystem::absolute(workspace.root).lexically_normal();
-    workspaces_.insert_or_assign(workspace.id, std::move(workspace));
+    data_.workspaces_.insert_or_assign(workspace.id, std::move(workspace));
 
     return true;
 }
 
 const WorkspaceRecord* InMemoryRepository::workspace(const WorkspaceId& id) const
 {
-    const auto found = workspaces_.find(id);
-    return found == workspaces_.end() ? nullptr : &found->second;
+    const auto found = data_.workspaces_.find(id);
+    return found == data_.workspaces_.end() ? nullptr : &found->second;
 }
 
 std::vector<WorkspaceRecord> InMemoryRepository::workspaces() const
 {
     std::vector<WorkspaceRecord> result;
-    result.reserve(workspaces_.size());
+    result.reserve(data_.workspaces_.size());
 
-    for (const auto& [id, workspace] : workspaces_)
+    for (const auto& [id, workspace] : data_.workspaces_)
         result.push_back(workspace);
 
     return result;
@@ -227,12 +231,12 @@ std::vector<WorkspaceRecord> InMemoryRepository::workspaces() const
 
 bool InMemoryRepository::delete_workspace(const WorkspaceId& id)
 {
-    return workspaces_.erase(id) != 0;
+    return data_.workspaces_.erase(id) != 0;
 }
 
 TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::string value)
 {
-    TrackRecord* found{tracks_.contains(media) ? &tracks_.at(media) : nullptr};
+    TrackRecord* found{data_.tracks_.contains(media) ? &data_.tracks_.at(media) : nullptr};
     auto candidate = make_tag_value(std::move(key), std::move(value));
 
     if (found == nullptr || !candidate || found->tags.size() >= max_tags_per_track)
@@ -259,7 +263,7 @@ TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::st
 
 bool InMemoryRepository::remove_tag(const MediaId& media, const TagId& tag)
 {
-    TrackRecord* found{tracks_.contains(media) ? &tracks_.at(media) : nullptr};
+    TrackRecord* found{data_.tracks_.contains(media) ? &data_.tracks_.at(media) : nullptr};
 
     if (found == nullptr)
         return false;
@@ -279,8 +283,8 @@ PlaylistId InMemoryRepository::next_playlist_id()
     PlaylistId id;
 
     do {
-        id.value = "playlist-" + std::to_string(next_playlist_++);
-    } while (playlists_.contains(id));
+        id.value = "playlist-" + std::to_string(data_.next_playlist_++);
+    } while (data_.playlists_.contains(id));
 
     return id;
 }
@@ -290,7 +294,7 @@ PlaylistEntryId InMemoryRepository::next_entry_id()
     PlaylistEntryId id;
 
     do {
-        id.value = "entry-" + std::to_string(next_entry_++);
+        id.value = "entry-" + std::to_string(data_.next_entry_++);
     } while (entry_exists(id));
 
     return id;
@@ -301,8 +305,8 @@ WorkspaceId InMemoryRepository::next_workspace_id()
     WorkspaceId id;
 
     do {
-        id.value = "workspace-" + std::to_string(next_workspace_++);
-    } while (workspaces_.contains(id));
+        id.value = "workspace-" + std::to_string(data_.next_workspace_++);
+    } while (data_.workspaces_.contains(id));
 
     return id;
 }
@@ -312,7 +316,7 @@ TagId InMemoryRepository::next_tag_id()
     TagId id;
 
     do {
-        id.value = "tag-" + std::to_string(next_tag_++);
+        id.value = "tag-" + std::to_string(data_.next_tag_++);
     } while (tag_exists(id));
 
     return id;
@@ -320,7 +324,7 @@ TagId InMemoryRepository::next_tag_id()
 
 bool InMemoryRepository::entry_exists(const PlaylistEntryId& id) const
 {
-    return std::ranges::any_of(playlists_, [&id](const auto& pair) {
+    return std::ranges::any_of(data_.playlists_, [&id](const auto& pair) {
         return std::ranges::any_of(pair.second.entries,
             [&id](const PlaylistEntryRecord& entry) { return entry.id == id; });
     });
@@ -328,7 +332,7 @@ bool InMemoryRepository::entry_exists(const PlaylistEntryId& id) const
 
 bool InMemoryRepository::tag_exists(const TagId& id) const
 {
-    return std::ranges::any_of(tracks_, [&id](const auto& pair) {
+    return std::ranges::any_of(data_.tracks_, [&id](const auto& pair) {
         return std::ranges::any_of(pair.second.tags,
             [&id](const TagRecord& tag) { return tag.id == id; });
     });

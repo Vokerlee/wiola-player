@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Repository rollback, allocation, and persistence contract tests.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
