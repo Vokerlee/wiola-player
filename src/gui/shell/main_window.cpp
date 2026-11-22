@@ -19,6 +19,7 @@
  */
 
 #include "main_window.hpp"
+#include "action_button_binding.hpp"
 #include <gui/documents/queue_rows.hpp>
 #include <gui/metadata/inspector_context.hpp>
 #include <gui/metadata/metadata_edit_presentation.hpp>
@@ -144,6 +145,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , metadata_edits_{library_session.metadata_edits()}
     , active_playlist_{library_session.active_playlist()}
 {
+    for (std::size_t i = 0; i < static_cast<std::size_t>(PlayerAction::count); ++i)
+        addAction(actions_.action(static_cast<PlayerAction>(i)));
     const QString selected_theme = settings_.value("theme/name", "light").toString();
     const ThemeColors custom_theme = stored_custom_theme(settings_);
 
@@ -162,11 +165,21 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     next_button_ = new QPushButton{this};
     stop_button_ = new QPushButton{this};
 
-    connect_action(*open_button_, PlayerAction::open, true);
-    connect_action(*previous_button_, PlayerAction::previous, true);
-    connect_action(*play_button_, PlayerAction::play, true);
-    connect_action(*next_button_, PlayerAction::next, true);
-    connect_action(*stop_button_, PlayerAction::stop, true);
+    new ActionButtonBinding{*open_button_, *actions_.action(PlayerAction::open),
+        ActionButtonPresentation::icon_only};
+    open_button_->setFixedWidth(tokens.player.icon_button_width);
+    new ActionButtonBinding{*previous_button_, *actions_.action(PlayerAction::previous),
+        ActionButtonPresentation::icon_only};
+    previous_button_->setFixedWidth(tokens.player.icon_button_width);
+    new ActionButtonBinding{*play_button_, *actions_.action(PlayerAction::play),
+        ActionButtonPresentation::icon_only};
+    play_button_->setFixedWidth(tokens.player.icon_button_width);
+    new ActionButtonBinding{*next_button_, *actions_.action(PlayerAction::next),
+        ActionButtonPresentation::icon_only};
+    next_button_->setFixedWidth(tokens.player.icon_button_width);
+    new ActionButtonBinding{*stop_button_, *actions_.action(PlayerAction::stop),
+        ActionButtonPresentation::icon_only};
+    stop_button_->setFixedWidth(tokens.player.icon_button_width);
 
     show_play_button(false);
 
@@ -177,14 +190,14 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     remove_button_ = new QPushButton{this};
     clear_button_ = new QPushButton{this};
 
-    connect_action(*repeat_button_, PlayerAction::repeat);
-    connect_action(*shuffle_button_, PlayerAction::shuffle);
-    connect_action(*add_button_, PlayerAction::add);
-    connect_action(*remove_button_, PlayerAction::remove);
-    connect_action(*clear_button_, PlayerAction::clear);
+    new ActionButtonBinding{*repeat_button_, *actions_.action(PlayerAction::repeat)};
+    new ActionButtonBinding{*shuffle_button_, *actions_.action(PlayerAction::shuffle)};
+    new ActionButtonBinding{*add_button_, *actions_.action(PlayerAction::add)};
+    new ActionButtonBinding{*remove_button_, *actions_.action(PlayerAction::remove)};
+    new ActionButtonBinding{*clear_button_, *actions_.action(PlayerAction::clear)};
 
     equalizer_button_ = new QPushButton{this};
-    connect_action(*equalizer_button_, PlayerAction::equalizer);
+    new ActionButtonBinding{*equalizer_button_, *actions_.action(PlayerAction::equalizer)};
     equalizer_button_->setAccessibleName("Equalizer");
     equalizer_button_->setToolTip("Open equalizer");
 
@@ -447,11 +460,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
     const auto refresh_theme_icons = [this] {
         actions_.reload_icons(*this);
-        open_button_->setIcon(actions_.action(PlayerAction::open)->icon());
-        previous_button_->setIcon(actions_.action(PlayerAction::previous)->icon());
-        play_button_->setIcon(actions_.action(PlayerAction::play)->icon());
-        next_button_->setIcon(actions_.action(PlayerAction::next)->icon());
-        stop_button_->setIcon(actions_.action(PlayerAction::stop)->icon());
     };
 
     const auto choose_theme = [this, refresh_theme_icons](const QString& choice) {
@@ -1207,27 +1215,6 @@ void MainWindow::set_shuffled(bool shuffled)
     show_list_buttons();
 }
 
-void MainWindow::connect_action(QPushButton& button, PlayerAction id, bool icon_only)
-{
-    QAction* command{actions_.action(id)};
-
-    addAction(command);
-    button.setToolTip(command->toolTip());
-    button.setAccessibleName(command->text());
-    button.setFocusPolicy(Qt::StrongFocus);
-
-    if (icon_only) {
-        button.setIcon(command->icon());
-        button.setFixedWidth(tokens.player.icon_button_width);
-    } else {
-        button.setText(command->text());
-        button.setCheckable(command->isCheckable());
-        button.setChecked(command->isChecked());
-    }
-
-    connect(&button, &QPushButton::clicked, command, &QAction::trigger);
-}
-
 void MainWindow::show_play_button(bool pausing)
 {
     if (showing_pause_ == pausing)
@@ -1235,12 +1222,6 @@ void MainWindow::show_play_button(bool pausing)
 
     showing_pause_ = pausing;
     actions_.set_playing(pausing);
-
-    QAction* command{actions_.action(PlayerAction::play)};
-
-    play_button_->setIcon(command->icon());
-    play_button_->setToolTip(command->toolTip());
-    play_button_->setAccessibleName(command->text());
 }
 
 void MainWindow::show_list_buttons()
@@ -1249,9 +1230,6 @@ void MainWindow::show_list_buttons()
 
     actions_.set_repeat(presentation.repeat);
     actions_.set_shuffled(presentation.shuffled);
-
-    repeat_button_->setText(actions_.action(PlayerAction::repeat)->text());
-    shuffle_button_->setChecked(actions_.action(PlayerAction::shuffle)->isChecked());
 }
 
 void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
@@ -1374,10 +1352,6 @@ void MainWindow::refresh()
     actions_.set_available(PlayerAction::previous, playback.loaded);
     actions_.set_available(PlayerAction::next, playback.loaded);
 
-    play_button_->setEnabled(actions_.action(PlayerAction::play)->isEnabled());
-    stop_button_->setEnabled(actions_.action(PlayerAction::stop)->isEnabled());
-    previous_button_->setEnabled(actions_.action(PlayerAction::previous)->isEnabled());
-    next_button_->setEnabled(actions_.action(PlayerAction::next)->isEnabled());
     position_bar_->setEnabled(playback.loaded && playback.seekable &&
         playback.total_time.has_value());
 

@@ -19,6 +19,7 @@
  */
 
 #include "layout_builder.hpp"
+#include <gui/shell/action_button_binding.hpp>
 
 #include <gui/shell/player_actions.hpp>
 #include <gui/tracks/track_table_view.hpp>
@@ -242,13 +243,7 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
         auto* button = qobject_cast<QPushButton*>(widget);
         QAction* action = context.actions->action(*node.action);
         if (button && action) {
-            button->setText(action->text());
-            button->setToolTip(action->toolTip());
-            button->setAccessibleName(action->text());
-            button->setCheckable(action->isCheckable());
-            button->setChecked(action->isChecked());
-            button->setEnabled(action->isEnabled());
-            QObject::connect(button, &QPushButton::clicked, action, &QAction::trigger);
+            new ActionButtonBinding{*button, *action};
         }
     }
     for (std::size_t index = 0; index < node.children.size(); ++index) {
