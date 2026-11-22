@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui/tracks/track_table_view.hpp>
+
 #include <gui/documents/saved_playlist_document.hpp>
 
 #include <library/in_memory_repository.hpp>

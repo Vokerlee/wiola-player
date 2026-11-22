@@ -34,9 +34,7 @@ class LibraryRepository;
 
 namespace wiola::gui {
 
-class TrackTableView;
-class TrackSearchPanel;
-class TagFilterPanel;
+class TrackBrowser;
 
 class NowPlayingDocument final : public QWidget {
     Q_OBJECT
@@ -58,11 +56,7 @@ signals:
     void order_application_asked();
 
 private:
-    void update_results();
-
-    TrackTableView* table_{nullptr};
-    TrackSearchPanel* search_{nullptr};
-    TagFilterPanel* filters_{nullptr};
+    TrackBrowser* browser_{nullptr};
 };
 
 } // namespace wiola::gui

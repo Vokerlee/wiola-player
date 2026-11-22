@@ -20,8 +20,7 @@
 
 #include "saved_playlist_document.hpp"
 
-#include <gui/tracks/tag_filter_panel.hpp>
-#include <gui/tracks/track_search_panel.hpp>
+#include <gui/tracks/track_browser.hpp>
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -48,27 +47,15 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     play_button_ = new QPushButton{"Play in Now Playing", this};
     play_button_->setObjectName("playSavedPlaylist");
 
-    table_ = new TrackTableView{this};
-    table_->setAccessibleName("Saved playlist tracks");
-    search_ = new TrackSearchPanel{this};
-    search_->on_changed([this](library::SearchQuery query) {
-        table_->search_by(query);
-        update_results();
-    });
-    filters_ = new TagFilterPanel{this};
-    filters_->on_changed([this](std::vector<library::TagFilter> filters) {
-        table_->filter_by(filters);
-        update_results();
-    });
+    browser_ = new TrackBrowser{TrackCapabilities::playlist(), this};
+    browser_->table().setAccessibleName("Saved playlist tracks");
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
     layout->addWidget(active_button_);
     layout->addWidget(play_button_);
-    layout->addWidget(search_);
-    layout->addWidget(filters_);
-    layout->addWidget(table_);
+    layout->addWidget(browser_);
 
     connect(active_button_, &QPushButton::clicked, [this] {
         if (active_observer_)
@@ -80,30 +67,32 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
             playback_observer_();
     });
 
-    connect(table_, &TrackTableView::row_chosen, [this](TrackRowId occurrence) {
+    connect(browser_, &TrackBrowser::row_activated, this, [this](TrackRowId occurrence) {
         if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence);
             id && entry_observer_)
             entry_observer_(*id);
     });
-
-    connect(table_, &TrackTableView::transfer_active_asked, [this] {
-        if (transfer_active_observer_)
-            transfer_active_observer_();
-    });
-
-    connect(table_, &TrackTableView::transfer_destination_asked, [this] {
-        if (transfer_destination_observer_)
-            transfer_destination_observer_();
-    });
-
-    connect(table_, &TrackTableView::transfer_move_asked, [this] {
-        if (transfer_move_observer_)
-            transfer_move_observer_();
-    });
-
-    connect(table_, &TrackTableView::order_application_asked, [this] {
-        if (apply_order_observer_)
-            apply_order_observer_();
+    connect(browser_, &TrackBrowser::command_requested, this, [this](TrackCommand command) {
+        switch (command) {
+        case TrackCommand::transfer:
+            if (transfer_active_observer_)
+                transfer_active_observer_();
+            break;
+        case TrackCommand::transfer_destination:
+            if (transfer_destination_observer_)
+                transfer_destination_observer_();
+            break;
+        case TrackCommand::move:
+            if (transfer_move_observer_)
+                transfer_move_observer_();
+            break;
+        case TrackCommand::apply_order:
+            if (apply_order_observer_)
+                apply_order_observer_();
+            break;
+        default:
+            break;
+        }
     });
 }
 
@@ -120,9 +109,8 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     if (!source_.reconcile(repository, id))
         return false;
 
-    table_->show_library(repository);
-    table_->show_rows(source_.rows());
-    update_results();
+    browser_->show_library(repository);
+    browser_->show_rows(source_.rows());
     return true;
 }
 
@@ -130,10 +118,9 @@ bool SavedPlaylistDocument::show_media_revision(const library::LibraryRepository
     const library::MediaId& media)
 {
     const bool changed = source_.update_media(repository, media);
-    table_->show_library(repository);
+    browser_->show_library(repository);
     if (changed)
-        table_->show_rows(source_.rows());
-    update_results();
+        browser_->show_rows(source_.rows());
     return changed;
 }
 
@@ -157,15 +144,10 @@ void SavedPlaylistDocument::update_heading()
     heading_->setText(active_destination_ ? name_ + " — Active destination" : name_);
 }
 
-void SavedPlaylistDocument::update_results()
-{
-    search_->show_results(table_->visible_count(), table_->total_count());
-}
-
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
-    for (const auto& occurrence : table_->displayed_rows())
+    for (const auto& occurrence : browser_->table().displayed_rows())
         if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence))
             if (const auto* row = source_.row(*id); row && !row->location.empty())
                 paths.push_back(row->location);
@@ -175,7 +157,7 @@ std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() cons
 std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() const
 {
     std::vector<library::PlaylistEntryId> selected;
-    for (const auto& occurrence : table_->chosen_rows())
+    for (const auto& occurrence : browser_->table().chosen_rows())
         if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence))
             selected.push_back(*id);
     return selected;

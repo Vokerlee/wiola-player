@@ -20,8 +20,7 @@
 
 #include "workspace_document.hpp"
 
-#include <gui/tracks/tag_filter_panel.hpp>
-#include <gui/tracks/track_search_panel.hpp>
+#include <gui/tracks/track_browser.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>
@@ -61,18 +60,8 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     append_ = new QPushButton{"Add to Now Playing", this};
     append_->setObjectName("appendWorkspaceSelection");
 
-    table_ = new TrackTableView{this};
-    table_->setAccessibleName("Workspace tracks");
-    search_ = new TrackSearchPanel{this};
-    search_->on_changed([this](library::SearchQuery query) {
-        table_->search_by(query);
-        update_results();
-    });
-    filters_ = new TagFilterPanel{this};
-    filters_->on_changed([this](std::vector<library::TagFilter> filters) {
-        table_->filter_by(filters);
-        update_results();
-    });
+    browser_ = new TrackBrowser{TrackCapabilities::workspace(), this};
+    browser_->table().setAccessibleName("Workspace tracks");
 
     QHBoxLayout* controls = new QHBoxLayout;
     controls->addWidget(recursive_);
@@ -90,9 +79,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     layout->addLayout(playback);
     layout->addWidget(progress_);
     layout->addWidget(status_);
-    layout->addWidget(search_);
-    layout->addWidget(filters_);
-    layout->addWidget(table_);
+    layout->addWidget(browser_);
 
     connect(rescan_, &QPushButton::clicked, [this] {
         if (rescan_observer_)
@@ -114,26 +101,28 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
             append_observer_();
     });
 
-    connect(table_, &TrackTableView::row_chosen, [this](TrackRowId) {
+    connect(browser_, &TrackBrowser::row_activated, this, [this](TrackRowId) {
         if (play_observer_)
             play_observer_();
     });
-
-    connect(table_, &TrackTableView::transfer_active_asked, [this] {
-        if (transfer_active_observer_)
-            transfer_active_observer_();
+    connect(browser_, &TrackBrowser::command_requested, this, [this](TrackCommand command) {
+        switch (command) {
+        case TrackCommand::transfer:
+            if (transfer_active_observer_)
+                transfer_active_observer_();
+            break;
+        case TrackCommand::transfer_destination:
+            if (transfer_destination_observer_)
+                transfer_destination_observer_();
+            break;
+        case TrackCommand::apply_order:
+            if (apply_order_observer_)
+                apply_order_observer_();
+            break;
+        default:
+            break;
+        }
     });
-
-    connect(table_, &TrackTableView::transfer_destination_asked, [this] {
-        if (transfer_destination_observer_)
-            transfer_destination_observer_();
-    });
-
-    connect(table_, &TrackTableView::order_application_asked, [this] {
-        if (apply_order_observer_)
-            apply_order_observer_();
-    });
-
     set_busy(false);
 }
 
@@ -144,7 +133,7 @@ void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::ui
     heading_->setText(platform::qt::QtPathAdapter::to_qt(workspace.root));
     recursive_->setChecked(workspace.recursive);
     status_->setText("Scanning...");
-    table_->show_rows(source_.rows());
+    browser_->show_rows(source_.rows());
     set_busy(true);
 }
 
@@ -154,9 +143,8 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
     if (!source_.apply(batch, repository))
         return false;
     if (repository)
-        table_->show_library(*repository);
-    table_->show_rows(source_.rows());
-    update_results();
+        browser_->show_library(*repository);
+    browser_->show_rows(source_.rows());
     status_->setText(QString{"%1 tracks"}.arg(source_.rows().size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
@@ -177,22 +165,15 @@ bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& re
     const library::MediaId& media)
 {
     const bool changed = source_.update_media(repository, media);
-    table_->show_library(repository);
+    browser_->show_library(repository);
     if (changed)
-        table_->show_rows(source_.rows());
-    update_results();
+        browser_->show_rows(source_.rows());
     return changed;
 }
 
 void WorkspaceDocument::show_library(const library::LibraryRepository& repository)
 {
-    table_->show_library(repository);
-    update_results();
-}
-
-void WorkspaceDocument::update_results()
-{
-    search_->show_results(table_->visible_count(), table_->total_count());
+    browser_->show_library(repository);
 }
 
 void WorkspaceDocument::show_cancelled()
@@ -224,13 +205,13 @@ void WorkspaceDocument::on_cancel_requested(std::function<void()> observer)
 
 std::vector<TrackRowId> WorkspaceDocument::chosen_rows() const
 {
-    return table_->chosen_rows();
+    return browser_->table().chosen_rows();
 }
 
 std::vector<SelectedTrack> WorkspaceDocument::selection() const
 {
     std::vector<SelectedTrack> result;
-    for (const auto& id : table_->chosen_rows())
+    for (const auto& id : browser_->table().chosen_rows())
         if (const auto* row = source_.row(id))
             result.push_back({row->media, row->id, row->location});
     return result;
@@ -248,7 +229,7 @@ std::vector<std::filesystem::path> WorkspaceDocument::chosen_paths() const
 std::vector<std::filesystem::path> WorkspaceDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
-    for (const auto& id : table_->displayed_rows())
+    for (const auto& id : browser_->table().displayed_rows())
         if (const auto* row = source_.row(id); row && !row->location.empty())
             paths.push_back(row->location);
     return paths;

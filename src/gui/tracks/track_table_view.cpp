@@ -151,10 +151,29 @@ TrackTableView::TrackTableView(QWidget* parent)
     addAction(apply_order);
     connect(apply_order, &QAction::triggered, this, &TrackTableView::order_application_asked);
 
+    command_actions_ = {
+        {TrackCommand::play,                 play       },
+        {TrackCommand::remove,               remove     },
+        {TrackCommand::transfer,             add_active },
+        {TrackCommand::transfer_destination, add_to     },
+        {TrackCommand::move,                 move_to    },
+        {TrackCommand::apply_order,          apply_order}
+    };
+
     connect(this, &QTableView::activated, [this](const QModelIndex& index) {
-        if (const auto id = model_.row_id(index))
+        if (const auto id = model_.row_id(index); id && capabilities_.supports(TrackCommand::play))
             emit row_chosen(*id);
     });
+}
+
+void TrackTableView::set_capabilities(TrackCapabilities capabilities)
+{
+    capabilities_ = capabilities;
+    for (const auto& [command, action] : command_actions_) {
+        const bool available = capabilities_.supports(command);
+        action->setVisible(available);
+        action->setEnabled(available);
+    }
 }
 
 void TrackTableView::show_rows(const std::vector<TrackRow>& tracks,
@@ -428,7 +447,7 @@ std::vector<TrackRowId> TrackTableView::chosen_rows() const
 
 void TrackTableView::keyPressEvent(QKeyEvent* event)
 {
-    if (event->key() == Qt::Key_Delete) {
+    if (event->key() == Qt::Key_Delete && capabilities_.supports(TrackCommand::remove)) {
         emit removal_asked();
         return;
     }

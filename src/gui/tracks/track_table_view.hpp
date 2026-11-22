@@ -21,12 +21,14 @@
 #pragma once
 
 #ifndef Q_MOC_RUN
+#include "track_commands.hpp"
 #include "track_table_model.hpp"
 #endif
 
 #include <QKeyEvent>
 #include <QTableView>
 
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -40,6 +42,7 @@ class TrackTableView final : public QTableView {
 public:
     explicit TrackTableView(QWidget* parent = nullptr);
 
+    void set_capabilities(TrackCapabilities capabilities);
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
     void show_library(const library::LibraryRepository& repository);
     void sort_by(const std::vector<TrackSortKey>& keys);
@@ -69,6 +72,8 @@ private:
     void restore_selection(const std::vector<TrackRowId>& selected,
         const std::optional<TrackRowId>& current);
 
+    TrackCapabilities capabilities_{TrackCapabilities::all()};
+    std::map<TrackCommand, QAction*> command_actions_;
     TrackTableModel model_;
     std::vector<TrackRow> tracks_;
     std::optional<TrackRowId> current_;

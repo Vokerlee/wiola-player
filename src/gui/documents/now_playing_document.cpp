@@ -21,9 +21,7 @@
 #include "now_playing_document.hpp"
 #include "queue_rows.hpp"
 
-#include <gui/tracks/tag_filter_panel.hpp>
-#include <gui/tracks/track_search_panel.hpp>
-#include <gui/tracks/track_table_view.hpp>
+#include <gui/tracks/track_browser.hpp>
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -39,37 +37,36 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
     QLabel* heading = new QLabel{"Now Playing", this};
     heading->setObjectName("nowPlayingHeading");
 
-    table_ = new TrackTableView{this};
-    table_->setAccessibleName("Now Playing tracks");
-    search_ = new TrackSearchPanel{this};
-    search_->on_changed([this](library::SearchQuery query) {
-        table_->search_by(query);
-        update_results();
-    });
-    filters_ = new TagFilterPanel{this};
-    filters_->on_changed([this](std::vector<library::TagFilter> filters) {
-        table_->filter_by(filters);
-        update_results();
-    });
+    browser_ = new TrackBrowser{TrackCapabilities::queue(), this};
+    browser_->table().setAccessibleName("Now Playing tracks");
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading);
-    layout->addWidget(search_);
-    layout->addWidget(filters_);
-    layout->addWidget(table_);
+    layout->addWidget(browser_);
 
-    connect(table_, &TrackTableView::row_chosen, this, [this](TrackRowId row) {
+    connect(browser_, &TrackBrowser::row_activated, this, [this](TrackRowId row) {
         if (const auto* id = std::get_if<engine::QueueEntryId>(&row))
             emit track_chosen(*id);
     });
-    connect(table_, &TrackTableView::removal_asked, this, &NowPlayingDocument::removal_asked);
-    connect(table_, &TrackTableView::transfer_active_asked, this,
-        &NowPlayingDocument::transfer_active_asked);
-    connect(table_, &TrackTableView::transfer_destination_asked, this,
-        &NowPlayingDocument::transfer_destination_asked);
-    connect(table_, &TrackTableView::order_application_asked, this,
-        &NowPlayingDocument::order_application_asked);
+    connect(browser_, &TrackBrowser::command_requested, this, [this](TrackCommand command) {
+        switch (command) {
+        case TrackCommand::remove:
+            emit removal_asked();
+            break;
+        case TrackCommand::transfer:
+            emit transfer_active_asked();
+            break;
+        case TrackCommand::transfer_destination:
+            emit transfer_destination_asked();
+            break;
+        case TrackCommand::apply_order:
+            emit order_application_asked();
+            break;
+        default:
+            break;
+        }
+    });
 }
 
 void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
@@ -77,19 +74,12 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
     const auto current = playlist.current()
         ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
         : std::nullopt;
-    table_->show_rows(queue_rows(playlist.tracks()), current);
-    update_results();
+    browser_->show_rows(queue_rows(playlist.tracks()), current);
 }
 
 void NowPlayingDocument::show_library(const library::LibraryRepository& repository)
 {
-    table_->show_library(repository);
-    update_results();
-}
-
-void NowPlayingDocument::update_results()
-{
-    search_->show_results(table_->visible_count(), table_->total_count());
+    browser_->show_library(repository);
 }
 
 std::vector<std::filesystem::path>
@@ -97,7 +87,7 @@ NowPlayingDocument::displayed_paths(const engine::Playlist& playlist) const
 {
     std::vector<std::filesystem::path> paths;
 
-    for (const engine::QueueEntryId id : queue_entry_ids(table_->displayed_rows())) {
+    for (const engine::QueueEntryId id : queue_entry_ids(browser_->table().displayed_rows())) {
         const auto row = playlist.index_of(id);
         if (row)
             paths.push_back(playlist.tracks()[*row].path());
@@ -108,7 +98,7 @@ NowPlayingDocument::displayed_paths(const engine::Playlist& playlist) const
 
 std::vector<engine::QueueEntryId> NowPlayingDocument::chosen_tracks() const
 {
-    return queue_entry_ids(table_->chosen_rows());
+    return queue_entry_ids(browser_->table().chosen_rows());
 }
 
 } // namespace wiola::gui

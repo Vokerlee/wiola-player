@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <gui/tracks/track_table_view.hpp>
-
 #include <desktop/workspace/workspace_scan_publisher.hpp>
 
 #include "workspace_rows.hpp"
@@ -35,8 +33,7 @@
 
 namespace wiola::gui {
 
-class TrackSearchPanel;
-class TagFilterPanel;
+class TrackBrowser;
 
 class WorkspaceDocument final : public QWidget {
 public:
@@ -63,7 +60,6 @@ public:
 
 private:
     void set_busy(bool busy);
-    void update_results();
 
     WorkspaceRows source_;
     QLabel* heading_{nullptr};
@@ -74,9 +70,7 @@ private:
     QPushButton* play_{nullptr};
     QPushButton* append_{nullptr};
     QProgressBar* progress_{nullptr};
-    TrackTableView* table_{nullptr};
-    TrackSearchPanel* search_{nullptr};
-    TagFilterPanel* filters_{nullptr};
+    TrackBrowser* browser_{nullptr};
     std::function<void(bool)> rescan_observer_;
     std::function<void()> cancel_observer_;
     std::function<void()> play_observer_;

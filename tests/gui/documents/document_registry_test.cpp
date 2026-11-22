@@ -33,7 +33,7 @@ using namespace wiola::gui;
 using wiola::library::PlaylistId;
 using wiola::library::WorkspaceId;
 
-TEST(DocumentRegistry, SeparatesTypedIdentitiesAndDocumentCapabilities)
+TEST(DocumentRegistry, SeparatesTypedIdentitiesAndTrackCapabilities)
 {
     DocumentRegistry registry;
     NowPlayingDocument queue;
