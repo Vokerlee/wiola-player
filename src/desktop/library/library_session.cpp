@@ -132,7 +132,7 @@ CustomTagCommands& LibrarySession::tags()
     return tags_;
 }
 
-OptimisticMetadataEdits& LibrarySession::metadata_edits()
+MetadataEditService& LibrarySession::metadata_edits()
 {
     check_owner();
     return edits_;

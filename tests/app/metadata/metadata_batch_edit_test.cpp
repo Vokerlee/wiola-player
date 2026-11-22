@@ -18,13 +18,13 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/bulk_metadata_commands.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
 
 #include <gtest/gtest.h>
 
 namespace {
 
-class BulkMetadataCommands : public testing::Test {
+class MetadataBatchEdit : public testing::Test {
 protected:
     void SetUp() override
     {
@@ -42,9 +42,9 @@ protected:
     int saves{0};
 };
 
-TEST_F(BulkMetadataCommands, AppliesOnlyChangedRecordsAndReportsMissingTracks)
+TEST_F(MetadataBatchEdit, AppliesOnlyChangedRecordsAndReportsMissingTracks)
 {
-    wiola::app::BulkMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [this](const wiola::library::LibraryRepository&) {
             ++saves;
             return true;
@@ -67,9 +67,9 @@ TEST_F(BulkMetadataCommands, AppliesOnlyChangedRecordsAndReportsMissingTracks)
     EXPECT_EQ(saves, 1);
 }
 
-TEST_F(BulkMetadataCommands, RollsBackEveryChangedRecordWhenSavingFails)
+TEST_F(MetadataBatchEdit, RollsBackEveryChangedRecordWhenSavingFails)
 {
-    wiola::app::BulkMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return false; }};
     wiola::library::StandardMetadataPatch edit;
     edit.title = "Cannot save";
@@ -83,11 +83,11 @@ TEST_F(BulkMetadataCommands, RollsBackEveryChangedRecordWhenSavingFails)
     EXPECT_EQ(repository.track(second)->metadata_revision, 0);
 }
 
-TEST_F(BulkMetadataCommands, PublishesOneCommittedBatchForAllChangedMedia)
+TEST_F(MetadataBatchEdit, PublishesOneCommittedBatchForAllChangedMedia)
 {
     std::vector<wiola::library::LibraryChangeBatch> batches;
     auto subscription = repository.observe([&](const auto& batch) { batches.push_back(batch); });
-    wiola::app::BulkMetadataCommands commands{repository,
+    wiola::app::MetadataEditService commands{repository,
         [](const wiola::library::LibraryRepository&) { return true; }};
     wiola::library::StandardMetadataPatch patch;
     patch.genre = "Jazz";
@@ -99,7 +99,7 @@ TEST_F(BulkMetadataCommands, PublishesOneCommittedBatchForAllChangedMedia)
     EXPECT_TRUE(batches.front().media[0].includes(wiola::library::MediaChangeFields::overrides));
     EXPECT_EQ(commands.apply({first, second}, patch).changed, 0U);
     EXPECT_EQ(batches.size(), 1U);
-    wiola::app::BulkMetadataCommands failing{repository,
+    wiola::app::MetadataEditService failing{repository,
         [](const wiola::library::LibraryRepository&) { return false; }};
     patch.genre = "Rejected";
     EXPECT_FALSE(failing.apply({first, second}, patch).succeeded());

@@ -25,8 +25,8 @@
 #include <app/library/search_index.hpp>
 #include <app/library/tag_key_catalog.hpp>
 #include <app/metadata/custom_tag_commands.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
 #include <app/metadata/metadata_merge.hpp>
-#include <app/metadata/optimistic_metadata_edits.hpp>
 #include <app/playback/active_playlist.hpp>
 #include <app/workspace/workspace_reconciliation.hpp>
 #include <desktop/metadata/media_revision_publisher.hpp>
@@ -55,7 +55,7 @@ public:
     [[nodiscard]] const library::InMemoryRepository& repository() const;
     [[nodiscard]] SavedPlaylistCommands& playlists();
     [[nodiscard]] CustomTagCommands& tags();
-    [[nodiscard]] OptimisticMetadataEdits& metadata_edits();
+    [[nodiscard]] MetadataEditService& metadata_edits();
     [[nodiscard]] ActivePlaylist& active_playlist();
     /// Owned, owner-thread snapshot safe across repository transactions.
     [[nodiscard]] std::optional<library::TrackRecord> snapshot(const library::MediaId& id) const;
@@ -99,7 +99,7 @@ private:
     library::RepositoryTransaction::Persist persist_;
     SavedPlaylistCommands playlists_;
     CustomTagCommands tags_;
-    OptimisticMetadataEdits edits_;
+    MetadataEditService edits_;
     ActivePlaylist active_;
     SearchIndex search_;
     LocationIndex locations_;

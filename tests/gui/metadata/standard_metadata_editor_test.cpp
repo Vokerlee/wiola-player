@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/optimistic_metadata_edits.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
 #include <gui/metadata/standard_metadata_editor.hpp>
 
 #include <QApplication>
@@ -158,7 +158,7 @@ TEST_F(StandardMetadataEditor, ApplyAfterExternalChangeChecksOriginalTargetAndEx
     other.id = {"other"};
     ASSERT_TRUE(repository.put_track(track));
     ASSERT_TRUE(repository.put_track(other));
-    wiola::app::OptimisticMetadataEdits commands{repository, [](const auto&) { return true; },
+    wiola::app::MetadataEditService commands{repository, [](const auto&) { return true; },
         [](const auto&) { }};
     field("standardComment")->setText("Draft");
     track.embedded.artist = "External";
@@ -168,7 +168,7 @@ TEST_F(StandardMetadataEditor, ApplyAfterExternalChangeChecksOriginalTargetAndEx
     editor.show_track(repository.track(other.id));
     std::optional<wiola::app::MetadataEditOutcome> outcome;
     editor.on_apply([&](const wiola::app::MetadataEditSession& session) {
-        outcome = commands.submit(session.media(), session.draft(), session.expectations());
+        outcome = commands.apply(session.media(), session.draft(), session.expectations());
     });
     button("applyStandardMetadata")->click();
     ASSERT_TRUE(outcome);

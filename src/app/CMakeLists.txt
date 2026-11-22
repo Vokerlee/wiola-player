@@ -6,14 +6,12 @@ wiola_add_library(
         library/tag_key_catalog.cpp
         metadata/background_metadata.cpp
         metadata/background_metadata_writes.cpp
-        metadata/bulk_metadata_commands.cpp
         metadata/custom_tag_commands.cpp
         metadata/media_replacement.cpp
         metadata/metadata_conflicts.cpp
         metadata/metadata_merge.cpp
         metadata/metadata_edit_session.cpp
-        metadata/optimistic_metadata_edits.cpp
-        metadata/standard_metadata_commands.cpp
+        metadata/metadata_edit_service.cpp
         playback/active_playlist.cpp
         playback/playback_queue.cpp
         playback/playback_service.cpp

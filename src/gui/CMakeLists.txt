@@ -15,6 +15,7 @@ wiola_add_library(
         shell/document_host.cpp
         shell/main_window.cpp
         metadata/metadata_conflict_panel.cpp
+        metadata/metadata_edit_presentation.cpp
         documents/queue_rows.cpp
         documents/document_registry.cpp
         documents/now_playing_document.cpp
