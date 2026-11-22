@@ -157,17 +157,17 @@ MainWindow::MainWindow(engine::Session& session)
     , playlist_commands_{library_,
           [this](const library::LibraryRepository& records) {
               return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                  persistence::qt::LibraryJsonError::none;
+                  persistence::qt::LibraryStoreResult{};
           }}
     , tag_commands_{library_,
           [this](const library::LibraryRepository& records) {
               return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                  persistence::qt::LibraryJsonError::none;
+                  persistence::qt::LibraryStoreResult{};
           }}
     , optimistic_edits_{library_,
           [this](const library::LibraryRepository& records) {
               return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                  persistence::qt::LibraryJsonError::none;
+                  persistence::qt::LibraryStoreResult{};
           },
           [this](const app::MetadataEditOutcome& outcome) { publish_metadata_outcome(outcome); }}
 {
@@ -226,7 +226,7 @@ MainWindow::MainWindow(engine::Session& session)
     volume_slider_ = new QSlider{Qt::Horizontal, this};
 
     if (wiola::persistence::qt::restore_repository(library_storage_, library_) !=
-        persistence::qt::LibraryJsonError::none)
+        persistence::qt::LibraryStoreResult{})
         show_status("Could not restore the saved library");
 
     const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
@@ -710,7 +710,7 @@ void MainWindow::import_m3u_playlist()
     }
 
     if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-        persistence::qt::LibraryJsonError::none) {
+        persistence::qt::LibraryStoreResult{}) {
         static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
             previous_workspaces));
         show_status("Could not save the imported playlist");
@@ -849,7 +849,7 @@ void MainWindow::open_folder()
         return;
 
     if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-        persistence::qt::LibraryJsonError::none) {
+        persistence::qt::LibraryStoreResult{}) {
         static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
             previous_workspaces));
         show_status("Could not save the folder workspace");
@@ -981,7 +981,7 @@ void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive
         }
 
         if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-            persistence::qt::LibraryJsonError::none) {
+            persistence::qt::LibraryStoreResult{}) {
             static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
                 previous_workspaces));
             show_status("Could not save the workspace settings");
@@ -1106,7 +1106,7 @@ void MainWindow::choose_move_destination(const library::PlaylistId& id,
                 app::PlaylistTransfer transfer{library_, active_playlist_,
                     [this](const library::LibraryRepository& records) {
                         return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                            persistence::qt::LibraryJsonError::none;
+                            persistence::qt::LibraryStoreResult{};
                     }};
                 const auto result = transfer.move_to(id, destination, entries);
 
@@ -1158,7 +1158,7 @@ void MainWindow::transfer_to(std::optional<library::PlaylistId> destination,
     app::PlaylistTransfer transfer{library_, active_playlist_,
         [this](const library::LibraryRepository& records) {
             return library_storage_.save(wiola::library::snapshot_of(records)) ==
-                persistence::qt::LibraryJsonError::none;
+                persistence::qt::LibraryStoreResult{};
         }};
     const app::PlaylistTransferResult result = transfer.add_to(*destination, media);
 
@@ -1245,7 +1245,7 @@ void MainWindow::publish_media_revision(app::BackgroundMetadataResult result)
         return;
 
     if (library_storage_.save(wiola::library::snapshot_of(library_)) !=
-        persistence::qt::LibraryJsonError::none) {
+        persistence::qt::LibraryStoreResult{}) {
         static_cast<void>(library_.replace_all(previous_tracks, previous_playlists,
             previous_workspaces));
         show_status("Could not save the learned metadata");

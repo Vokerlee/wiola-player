@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <QtGlobal>
 #include <library/snapshot.hpp>
 
 #include <vector>
@@ -29,6 +30,8 @@ class QByteArrayView;
 
 namespace wiola::persistence::qt {
 
+inline constexpr qsizetype max_library_document_bytes{16 * 1024 * 1024};
+
 enum class LibraryJsonError {
     none,
     too_large,
@@ -36,7 +39,6 @@ enum class LibraryJsonError {
     unsupported_version,
     invalid_record,
     limit_exceeded,
-    io,
 };
 
 [[nodiscard]] LibraryJsonError write_library_json(const library::LibrarySnapshot& library,

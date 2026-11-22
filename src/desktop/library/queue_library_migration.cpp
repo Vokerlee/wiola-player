@@ -21,7 +21,7 @@
 #include "queue_library_migration.hpp"
 
 #include <library/location.hpp>
-#include <persistence/qt/library_storage.hpp>
+#include <persistence/qt/library_store.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -39,9 +39,9 @@ QueueLibraryMigration::QueueLibraryMigration(QSettings& settings)
     file_ = platform::qt::QtPathAdapter::from_qt(directory + "/library.json");
 }
 
-persistence::qt::LibraryJsonError QueueLibraryMigration::migrate(QSettings& settings) const
+persistence::qt::LibraryStoreResult QueueLibraryMigration::migrate(QSettings& settings) const
 {
-    persistence::qt::LibraryStorage storage{file_};
+    persistence::qt::LibraryStore storage{file_};
     const QString name{platform::qt::QtPathAdapter::to_qt(file_)};
 
     if (QFile::exists(name) || QFile::exists(name + ".bak")) {

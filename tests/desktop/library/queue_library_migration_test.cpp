@@ -21,7 +21,7 @@
 #include <desktop/library/queue_library_migration.hpp>
 
 #include <library/location.hpp>
-#include <persistence/qt/library_storage.hpp>
+#include <persistence/qt/library_store.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -43,7 +43,8 @@ namespace {
 using Migration = wiola::app::QueueLibraryMigration;
 using wiola::library::LibrarySnapshot;
 using wiola::persistence::qt::LibraryJsonError;
-using wiola::persistence::qt::LibraryStorage;
+using wiola::persistence::qt::LibraryStore;
+using wiola::persistence::qt::LibraryStoreResult;
 
 class QueueLibraryMigration : public testing::Test {
 protected:
@@ -92,12 +93,12 @@ TEST_F(QueueLibraryMigration, CreatesAnEmptyLibraryForAnEmptyQueue)
 {
     const Migration migration{settings};
 
-    EXPECT_EQ(migration.migrate(settings), LibraryJsonError::none);
+    EXPECT_EQ(migration.migrate(settings), LibraryStoreResult{});
     EXPECT_TRUE(std::filesystem::exists(library_file()));
 
-    LibraryStorage storage{library_file()};
+    LibraryStore storage{library_file()};
     wiola::library::LibrarySnapshot restored;
-    EXPECT_EQ(storage.load(restored), LibraryJsonError::none);
+    EXPECT_EQ(storage.load(restored), LibraryStoreResult{});
     EXPECT_TRUE(restored.tracks.empty());
     EXPECT_TRUE(restored.playlists.empty());
 }
@@ -115,11 +116,11 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     wiola::platform::qt::QtSettingsAdapter{settings}.write_playlist(queue);
 
     const Migration migration{settings};
-    ASSERT_EQ(migration.migrate(settings), LibraryJsonError::none);
+    ASSERT_EQ(migration.migrate(settings), LibraryStoreResult{});
 
-    LibraryStorage storage{library_file()};
+    LibraryStore storage{library_file()};
     wiola::library::LibrarySnapshot restored;
-    ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
+    ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
 
     ASSERT_EQ(restored.tracks.size(), 2U);
     ASSERT_EQ(restored.playlists.size(), 1U);
@@ -153,18 +154,18 @@ TEST_F(QueueLibraryMigration, DoesNotOverwriteAnExistingValidLibrary)
     track.embedded.title = "Keep me";
     existing.tracks.push_back(track);
 
-    LibraryStorage storage{library_file()};
-    ASSERT_EQ(storage.save(existing), LibraryJsonError::none);
+    LibraryStore storage{library_file()};
+    ASSERT_EQ(storage.save(existing), LibraryStoreResult{});
 
     wiola::platform::qt::PlaylistSettings queue;
     queue.tracks = {this->track("wiola_migrate_existing.wav")};
     wiola::platform::qt::QtSettingsAdapter{settings}.write_playlist(queue);
 
     const Migration migration{settings};
-    ASSERT_EQ(migration.migrate(settings), LibraryJsonError::none);
+    ASSERT_EQ(migration.migrate(settings), LibraryStoreResult{});
 
     wiola::library::LibrarySnapshot restored;
-    ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
+    ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Keep me");
     EXPECT_TRUE(restored.playlists.empty());
@@ -181,7 +182,8 @@ TEST_F(QueueLibraryMigration, DoesNotReplaceACorruptLibrary)
 
     const Migration migration{settings};
 
-    EXPECT_EQ(migration.migrate(settings), LibraryJsonError::malformed);
+    EXPECT_EQ(migration.migrate(settings),
+        LibraryStoreResult{.schema = LibraryJsonError::malformed});
 
     damaged.open(QIODevice::ReadOnly);
     EXPECT_EQ(damaged.readAll(), "broken");
