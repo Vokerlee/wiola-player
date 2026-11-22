@@ -22,7 +22,7 @@
 
 #include "library_navigation.hpp"
 
-#include <app/saved_playlist_commands.hpp>
+#include <desktop/library/saved_playlist_commands.hpp>
 
 #include <QLabel>
 #include <QPushButton>

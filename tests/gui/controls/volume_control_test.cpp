@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/controls/player_settings.hpp>
+#include <app/playback/volume_scale.hpp>
 #include <gui/controls/volume_control.hpp>
-#include <gui/controls/volume_scale.hpp>
+#include <platform/qt/player_settings.hpp>
 
 #include <audio/dsp/volume.hpp>
 
@@ -36,7 +36,7 @@ namespace {
 
 using wiola::audio::Volume;
 using Control = wiola::gui::VolumeControl;
-constexpr wiola::gui::VolumeScale scale;
+constexpr wiola::app::VolumeScale scale;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.
 class VolumeControl : public testing::Test {
@@ -51,8 +51,8 @@ protected:
 
     int restore(Control& control)
     {
-        const wiola::gui::PlayerSettings restored{
-            wiola::gui::QtSettingsAdapter{settings}.read(control.scale(), {})};
+        const wiola::platform::qt::PlayerSettings restored{
+            wiola::platform::qt::QtSettingsAdapter{settings}.read(control.scale(), {})};
         control.apply_restored(restored.volume_position, restored.boosted);
         return control.position();
     }

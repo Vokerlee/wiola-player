@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <app/playback_service.hpp>
+#include <app/playback/playback_service.hpp>
 
 namespace wiola::gui {
 
