@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Schema-aware library persistence and backup recovery.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

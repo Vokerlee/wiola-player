@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Scheduling and retry behavior for coalesced library saves.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

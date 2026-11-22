@@ -83,4 +83,27 @@ TEST_F(BulkMetadataCommands, RollsBackEveryChangedRecordWhenSavingFails)
     EXPECT_EQ(repository.track(second)->metadata_revision, 0);
 }
 
+TEST_F(BulkMetadataCommands, PublishesOneCommittedBatchForAllChangedMedia)
+{
+    std::vector<wiola::library::LibraryChangeBatch> batches;
+    auto subscription = repository.observe([&](const auto& batch) { batches.push_back(batch); });
+    wiola::app::BulkMetadataCommands commands{repository,
+        [](const wiola::library::LibraryRepository&) { return true; }};
+    wiola::library::StandardMetadataPatch patch;
+    patch.genre = "Jazz";
+    ASSERT_TRUE(commands.apply({first, second, first}, patch).succeeded());
+    ASSERT_EQ(batches.size(), 1U);
+    ASSERT_EQ(batches.front().media.size(), 2U);
+    EXPECT_EQ(batches.front().media[0].media, first);
+    EXPECT_EQ(batches.front().media[1].media, second);
+    EXPECT_TRUE(batches.front().media[0].includes(wiola::library::MediaChangeFields::overrides));
+    EXPECT_EQ(commands.apply({first, second}, patch).changed, 0U);
+    EXPECT_EQ(batches.size(), 1U);
+    wiola::app::BulkMetadataCommands failing{repository,
+        [](const wiola::library::LibraryRepository&) { return false; }};
+    patch.genre = "Rejected";
+    EXPECT_FALSE(failing.apply({first, second}, patch).succeeded());
+    EXPECT_EQ(batches.size(), 1U);
+}
+
 } // namespace

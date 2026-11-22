@@ -20,14 +20,33 @@
 
 #pragma once
 
+#include <library/library_changes.hpp>
 #include <library/repository.hpp>
 
 #include <map>
+#include <utility>
 
 namespace wiola::library {
 
 class InMemoryRepository final : public LibraryRepository {
 public:
+    InMemoryRepository() = default;
+
+    /// A candidate copy has its own observer scope; copying data does not copy view subscriptions.
+    InMemoryRepository(const InMemoryRepository& other)
+        : data_{other.data_}
+    {
+    }
+
+    InMemoryRepository& operator=(const InMemoryRepository&) = delete;
+
+    [[nodiscard]] LibraryChanges::Subscription observe(LibraryChanges::Observer observer)
+    {
+        return changes_.observe(std::move(observer));
+    }
+
+    [[nodiscard]] std::uint64_t change_revision() const noexcept { return change_revision_; }
+
     bool put_track(TrackRecord track) override;
     [[nodiscard]] const TrackRecord* track(const MediaId& id) const override;
     [[nodiscard]] std::vector<TrackRecord> tracks() const override;
@@ -66,13 +85,20 @@ private:
     [[nodiscard]] bool entry_exists(const PlaylistEntryId& id) const;
     [[nodiscard]] bool tag_exists(const TagId& id) const;
 
-    std::map<MediaId, TrackRecord> tracks_;
-    std::map<PlaylistId, PlaylistRecord> playlists_;
-    std::map<WorkspaceId, WorkspaceRecord> workspaces_;
-    std::size_t next_playlist_{1};
-    std::size_t next_entry_{1};
-    std::size_t next_workspace_{1};
-    std::size_t next_tag_{1};
+    struct State {
+        std::map<MediaId, TrackRecord> tracks_;
+        std::map<PlaylistId, PlaylistRecord> playlists_;
+        std::map<WorkspaceId, WorkspaceRecord> workspaces_;
+        std::size_t next_playlist_{1};
+        std::size_t next_entry_{1};
+        std::size_t next_workspace_{1};
+        std::size_t next_tag_{1};
+    };
+
+    State data_;
+    LibraryChanges changes_;
+    std::uint64_t change_revision_{0};
+    bool transaction_active_{false};
 };
 
 } // namespace wiola::library

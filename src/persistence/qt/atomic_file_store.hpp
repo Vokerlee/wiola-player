@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Bounded byte access and atomic primary and backup outputs.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

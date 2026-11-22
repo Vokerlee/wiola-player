@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Validated library snapshots with atomic persistence and recovery.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

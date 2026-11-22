@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Persistent track, metadata, tag, and playlist record shapes.
+ * @brief Typed metadata patch semantics and file conversion tests.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

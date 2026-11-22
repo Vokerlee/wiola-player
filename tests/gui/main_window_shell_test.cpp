@@ -24,10 +24,15 @@
 #include <gui/layout/classic_layout.hpp>
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_table_view.hpp>
+#include <library/location.hpp>
+#include <persistence/qt/library_store.hpp>
+#include <platform/qt/qt_path_adapter.hpp>
 
 #include <QApplication>
+#include <QFileInfo>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHeaderView>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
@@ -588,6 +593,74 @@ TEST_F(MainWindowShell, LayoutPreviewCommandsAndCancelDoNotTouchPlayerState)
     EXPECT_EQ(editor->result(), QDialog::Rejected);
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_EQ(window.centralWidget()->findChild<QPushButton*>("open"), nullptr);
+}
+
+TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
+{
+    using namespace wiola;
+    QTemporaryDir media_directory;
+    ASSERT_TRUE(media_directory.isValid());
+    const auto path = platform::qt::QtPathAdapter::from_qt(media_directory.filePath("shared.mp3"));
+    library::InMemoryRepository records;
+    library::TrackRecord record;
+    record.id = library::media_id_for(path);
+    record.locations = {path};
+    record.embedded.title = "Shared track";
+    ASSERT_TRUE(records.put_track(record));
+    const auto first = records.create_playlist("First");
+    const auto second = records.create_playlist("Second");
+    ASSERT_TRUE(records.append_track(first, record.id));
+    ASSERT_TRUE(records.append_track(first, record.id));
+    ASSERT_TRUE(records.append_track(second, record.id));
+    QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+    persistence::qt::LibraryStore store{platform::qt::QtPathAdapter::from_qt(
+        QFileInfo{settings.fileName()}.absolutePath() + "/library.json"
+    )};
+    ASSERT_TRUE(store.save(library::snapshot_of(records)).succeeded());
+
+    engine::Session session;
+    session.add({path});
+    gui::MainWindow window{session};
+    auto* navigation =
+        static_cast<gui::LibraryNavigation*>(window.findChild<QWidget*>("libraryNavigation"));
+    auto* documents = window.findChild<QTabWidget*>("documentTabs");
+    ASSERT_NE(navigation, nullptr);
+    ASSERT_NE(documents, nullptr);
+    ASSERT_TRUE(navigation->select_playlist(first));
+    auto* first_table = documents->currentWidget()->findChild<gui::TrackTableView*>();
+    ASSERT_NE(first_table, nullptr);
+    ASSERT_EQ(first_table->total_count(), 2U);
+    ASSERT_TRUE(navigation->select_playlist(second));
+    auto* active = documents->currentWidget();
+    auto* second_table = active->findChild<gui::TrackTableView*>();
+    ASSERT_NE(second_table, nullptr);
+    ASSERT_EQ(second_table->total_count(), 1U);
+    auto* key = window.findChild<QLineEdit*>("customTagKey");
+    auto* value = window.findChild<QLineEdit*>("customTagValue");
+    auto* add = window.findChild<QPushButton*>("addCustomTag");
+    ASSERT_NE(key, nullptr);
+    ASSERT_NE(value, nullptr);
+    ASSERT_NE(add, nullptr);
+    ASSERT_TRUE(add->isEnabled());
+    key->setText("Mood");
+    value->setText("Calm");
+    add->click();
+    for (auto* table : {first_table, second_table}) {
+        const auto actions = table->horizontalHeader()->actions();
+        const auto mood = std::ranges::find_if(actions,
+            [](QAction* item) { return item->text() == "Tag: Mood"; });
+        ASSERT_NE(mood, actions.end());
+        (*mood)->setChecked(true);
+        for (int row = 0; row < table->model()->rowCount(); ++row)
+            EXPECT_EQ(table->model()->index(row, 5).data().toString(), "Calm");
+    }
+    EXPECT_EQ(documents->currentWidget(), active);
+    EXPECT_EQ(session.playlist().tracks().size(), 1U);
+    library::LibrarySnapshot restored;
+    ASSERT_TRUE(store.load(restored).succeeded());
+    ASSERT_EQ(restored.tracks.size(), 1U);
+    ASSERT_EQ(restored.tracks.front().tags.size(), 1U);
+    EXPECT_EQ(restored.tracks.front().tags.front().value, "Calm");
 }
 
 } // namespace
