@@ -119,6 +119,26 @@ TEST(ButtonLayoutEditor, AcceptsPaletteDropsAndRestoresHistory)
     EXPECT_NE(find(editor.document().root, "next"), nullptr);
 }
 
+TEST(ButtonLayoutEditor, RepeatedConfigurationRetainsTheSelectedComponentIdentity)
+{
+    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    auto* title = editor.findChild<QLineEdit*>("layoutComponentTitle");
+    ASSERT_NE(tree, nullptr);
+    ASSERT_NE(title, nullptr);
+    tree->setCurrentItem(item(*tree, "transportControls"));
+    for (int revision = 0; revision < 32; ++revision) {
+        const QString text = "Controls " + QString::number(revision);
+        title->setText(text);
+        emit title->editingFinished();
+        const auto* node = find(editor.document().root, "transportControls");
+        ASSERT_NE(node, nullptr);
+        EXPECT_EQ(node->title, text);
+        ASSERT_NE(tree->currentItem(), nullptr);
+        EXPECT_EQ(tree->currentItem()->text(0), "transportControls");
+    }
+}
+
 TEST(ButtonLayoutEditor, CreatesAndConfiguresContainersWithUndoAndIsolatedPreview)
 {
     wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};

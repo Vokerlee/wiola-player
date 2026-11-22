@@ -513,7 +513,9 @@ void ButtonLayoutEditor::configure_selected()
     if (configured.kind == LayoutComponentKind::grid)
         configured.columns = columns_->value();
 
-    finish_edit(editor_.configure(location.node->id, configured), location.node->id);
+    // configure() replaces the document and invalidates location.node.
+    const QString id = location.node->id;
+    finish_edit(editor_.configure(id, configured), id);
 }
 
 void ButtonLayoutEditor::rebuild(const QString& selected)
