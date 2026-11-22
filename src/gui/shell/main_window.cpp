@@ -24,11 +24,11 @@
 #include <gui/appearance/theme.hpp>
 #include <gui/appearance/theme_editor.hpp>
 #include <gui/controls/clock.hpp>
-#include <gui/controls/player_settings.hpp>
 #include <gui/layout/classic_layout.hpp>
 #include <gui/layout/editor/button_layout_editor.hpp>
 #include <gui/layout/focused_layout.hpp>
 #include <gui/layout/layout_builder.hpp>
+#include <platform/qt/player_settings.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <codec/provider.hpp>
@@ -229,8 +229,9 @@ MainWindow::MainWindow(engine::Session& session)
     if (library_.playlist(active) != nullptr)
         static_cast<void>(active_playlist_.set(active));
 
-    const PlayerSettings restored{QtSettingsAdapter{settings_}.read(volume_.scale(),
-        presenter_.equalizer_control().config())};
+    const platform::qt::PlayerSettings restored{
+        platform::qt::QtSettingsAdapter{settings_}.read(volume_.scale(),
+            presenter_.equalizer_control().config())};
     volume_.apply_restored(restored.volume_position, restored.boosted);
     equalizer_.apply_restored(restored.equalizer_enabled, restored.band_gains);
     const int position{volume_.position()};

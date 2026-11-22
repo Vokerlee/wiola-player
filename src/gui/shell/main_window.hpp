@@ -37,16 +37,16 @@
 #include <gui/metadata/track_inspector.hpp>
 #include <gui/saved_playlist_storage.hpp>
 
-#include <app/active_playlist.hpp>
-#include <app/custom_tag_commands.hpp>
-#include <app/m3u_playlist.hpp>
-#include <app/media_revision_publisher.hpp>
-#include <app/metadata_merge.hpp>
-#include <app/optimistic_metadata_edits.hpp>
-#include <app/playback_queue.hpp>
-#include <app/playlist_transfer.hpp>
-#include <app/workspace_watcher.hpp>
+#include <app/metadata/custom_tag_commands.hpp>
+#include <app/metadata/metadata_merge.hpp>
+#include <app/metadata/optimistic_metadata_edits.hpp>
+#include <app/playback/active_playlist.hpp>
+#include <app/playback/playback_queue.hpp>
+#include <app/playback/playlist_transfer.hpp>
 #include <codec/decode/open.hpp>
+#include <desktop/library/m3u_playlist.hpp>
+#include <desktop/metadata/media_revision_publisher.hpp>
+#include <desktop/workspace/workspace_watcher.hpp>
 #include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
 #include <utils/units.hpp>

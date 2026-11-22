@@ -20,8 +20,8 @@
 
 #include <audio/dsp/equalizer.hpp>
 #include <gui/controls/equalizer_control.hpp>
-#include <gui/controls/player_settings.hpp>
 #include <pcm/stream_spec.hpp>
+#include <platform/qt/player_settings.hpp>
 #include <utils/units.hpp>
 
 #include <QSettings>
@@ -55,8 +55,8 @@ protected:
 
     void restore(Control& control)
     {
-        const wiola::gui::PlayerSettings restored{
-            wiola::gui::QtSettingsAdapter{settings}.read({}, equalizer.config())};
+        const wiola::platform::qt::PlayerSettings restored{
+            wiola::platform::qt::QtSettingsAdapter{settings}.read({}, equalizer.config())};
         control.apply_restored(restored.equalizer_enabled, restored.band_gains);
     }
 

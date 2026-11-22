@@ -20,7 +20,7 @@
 
 #include "queue_settings.hpp"
 
-#include "player_settings.hpp"
+#include <platform/qt/player_settings.hpp>
 
 #include <algorithm>
 #include <utility>
@@ -54,7 +54,8 @@ QueueSettings::QueueSettings(PlayerPresenter& presenter, QSettings& settings) no
 
 std::size_t QueueSettings::restore()
 {
-    PlaylistSettings stored{QtSettingsAdapter{settings_}.read_playlist()};
+    platform::qt::PlaylistSettings stored{
+        platform::qt::QtSettingsAdapter{settings_}.read_playlist()};
     std::vector<std::filesystem::path> tracks;
     std::size_t gone{0};
 
@@ -89,7 +90,7 @@ std::size_t QueueSettings::restore()
 void QueueSettings::save()
 {
     const PlayerPresentation presentation{presenter_.presentation()};
-    PlaylistSettings settings{.tracks = {},
+    platform::qt::PlaylistSettings settings{.tracks = {},
         .selected = {},
         .repeat = static_cast<int>(presentation.repeat),
         .shuffled = presentation.shuffled};
@@ -100,7 +101,7 @@ void QueueSettings::save()
     if (const engine::Track* current = presenter_.playlist().current())
         settings.selected = current->path();
 
-    QtSettingsAdapter{settings_}.write_playlist(settings);
+    platform::qt::QtSettingsAdapter{settings_}.write_playlist(settings);
 }
 
 } // namespace wiola::gui

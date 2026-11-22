@@ -31,7 +31,6 @@ wiola_add_library(
         appearance/theme_editor.cpp
         shell/player_actions.cpp
         shell/player_presenter.cpp
-        controls/player_settings.cpp
         documents/saved_playlist_document.cpp
         shell/saved_playlist_manager.cpp
         saved_playlist_storage.cpp
@@ -40,6 +39,7 @@ wiola_add_library(
         controls/volume_control.cpp
         documents/workspace_document.cpp
     LIBS
+        wiola_qt_settings
         wiola_qt_platform
         wiola_app
         wiola_codec

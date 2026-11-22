@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/player_application.hpp>
-#include <app/queue_library_migration.hpp>
 #include <core/version.hpp>
+#include <desktop/library/queue_library_migration.hpp>
+#include <desktop/player_application.hpp>
 #include <gui/shell/main_window.hpp>
 
 #include <QApplication>

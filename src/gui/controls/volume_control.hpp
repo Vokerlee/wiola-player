@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "volume_scale.hpp"
+#include <app/playback/volume_scale.hpp>
 
 #include <audio/dsp/volume.hpp>
 
@@ -46,7 +46,7 @@ public:
     [[nodiscard]] int position() const noexcept;
     [[nodiscard]] bool boosted() const noexcept;
 
-    [[nodiscard]] const VolumeScale& scale() const noexcept { return scale_; }
+    [[nodiscard]] const app::VolumeScale& scale() const noexcept { return scale_; }
 
     /// The furthest the slider goes, which is what `boosted` decides.
     [[nodiscard]] int max_position() const noexcept;
@@ -57,7 +57,7 @@ private:
 
     audio::Volume& volume_;
     QSettings& settings_;
-    VolumeScale scale_;
+    app::VolumeScale scale_;
     int position_;
     bool boosted_{false};
 };

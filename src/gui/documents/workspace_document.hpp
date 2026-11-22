@@ -22,7 +22,7 @@
 
 #include <gui/tracks/track_table_view.hpp>
 
-#include <app/workspace_scan_publisher.hpp>
+#include <desktop/workspace/workspace_scan_publisher.hpp>
 
 #include <engine/queue/playlist.hpp>
 #include <library/repository.hpp>

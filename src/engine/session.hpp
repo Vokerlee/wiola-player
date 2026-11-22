@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <app/operation_outcome.hpp>
-#include <app/playback_snapshot.hpp>
+#include <app/playback/operation_outcome.hpp>
+#include <app/playback/playback_snapshot.hpp>
 #include <audio/dsp/equalizer.hpp>
 #include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/volume.hpp>
