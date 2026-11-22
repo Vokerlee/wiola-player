@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QPushButton>
+#include <gui/shell/action_button_binding.hpp>
 #include <gui/shell/player_actions.hpp>
 
 #include <QApplication>
@@ -109,6 +111,51 @@ TEST_F(PlayerActions, ReflectsShuffleWithoutEmittingANewCommand)
 
     EXPECT_FALSE(shuffle->isChecked());
     EXPECT_EQ(toggles, 0);
+}
+
+TEST_F(PlayerActions, EveryButtonTracksSharedStateAndDisconnectsWithItsLifetime)
+{
+    QPushButton first, second;
+    auto* command = actions.action(wiola::gui::PlayerAction::shuffle);
+    new wiola::gui::ActionButtonBinding{first, *command};
+    new wiola::gui::ActionButtonBinding{second, *command};
+    int triggered{};
+    QObject::connect(command, &QAction::triggered, [&] { ++triggered; });
+    actions.set_shuffled(true);
+    EXPECT_TRUE(first.isChecked());
+    EXPECT_TRUE(second.isChecked());
+    EXPECT_EQ(triggered, 0);
+    first.click();
+    EXPECT_EQ(triggered, 1);
+    EXPECT_FALSE(first.isChecked());
+    EXPECT_FALSE(second.isChecked());
+    command->setText("A shared label");
+    command->setToolTip("Shared help");
+    command->setEnabled(false);
+    EXPECT_EQ(first.text(), second.text());
+    EXPECT_EQ(first.accessibleName(), "A shared label");
+    EXPECT_EQ(second.toolTip(), "Shared help");
+    EXPECT_FALSE(first.isEnabled());
+    for (int i = 0; i < 10; ++i) {
+        QPushButton temporary;
+        new wiola::gui::ActionButtonBinding{temporary, *command};
+    }
+    command->setEnabled(true);
+    second.click();
+    EXPECT_EQ(triggered, 2);
+}
+
+TEST_F(PlayerActions, BindingSafelyDisablesWhenTheActionDies)
+{
+    QPushButton button;
+    auto* command = new QAction{"Temporary"};
+    new wiola::gui::ActionButtonBinding{button, *command,
+        wiola::gui::ActionButtonPresentation::icon_only};
+    EXPECT_TRUE(button.text().isEmpty());
+    EXPECT_EQ(button.accessibleName(), "Temporary");
+    delete command;
+    EXPECT_FALSE(button.isEnabled());
+    button.click();
 }
 
 } // namespace

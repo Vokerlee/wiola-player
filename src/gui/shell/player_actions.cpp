@@ -145,9 +145,13 @@ void PlayerActions::set_repeat(engine::Playlist::Repeat repeat)
 void PlayerActions::set_shuffled(bool shuffled)
 {
     QAction* command = action(PlayerAction::shuffle);
-    const QSignalBlocker blocked{command};
-
-    command->setChecked(shuffled);
+    if (command->isChecked() == shuffled)
+        return;
+    {
+        const QSignalBlocker blocked{command};
+        command->setChecked(shuffled);
+    }
+    emit command->changed();
 }
 
 } // namespace wiola::gui

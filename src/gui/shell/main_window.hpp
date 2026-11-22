@@ -160,7 +160,6 @@ private:
     void set_shuffled(bool shuffled);
 
     /// Connects a button to a shared action and copies its accessible presentation.
-    void connect_action(QPushButton& button, PlayerAction id, bool icon_only = false);
 
     /// Shows the play button as pausing or as playing. Does nothing when it already shows that
     /// one: a window refreshing ten times a second would otherwise ask the style for an icon it

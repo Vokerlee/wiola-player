@@ -598,7 +598,18 @@ void ButtonLayoutEditor::update_inspector()
 void ButtonLayoutEditor::update_preview()
 {
     delete preview_;
-    preview_ = LayoutBuilder{}.build(editor_.document().root, {}, preview_layout_->parentWidget());
+    auto* root = new QWidget{preview_layout_->parentWidget()};
+    auto* actions = new PlayerActions{*root};
+    actions->setParent(root);
+    auto* built = LayoutBuilder{}.build(editor_.document().root, {.actions = actions}, root);
+    if (!built) {
+        delete root;
+        preview_ = nullptr;
+    } else {
+        auto* layout = new QVBoxLayout{root};
+        layout->addWidget(built);
+        preview_ = root;
+    }
 
     if (preview_ == nullptr) {
         status_->setText("Could not construct the isolated preview");
@@ -606,23 +617,6 @@ void ButtonLayoutEditor::update_preview()
     }
 
     preview_layout_->addWidget(preview_);
-
-    const auto present_node = [this](auto&& self, const LayoutNode& node) -> void {
-        if (node.action) {
-            if (auto* button = preview_->findChild<QPushButton*>(node.id)) {
-                const QString name = action_name(*node.action);
-                const auto found = std::ranges::find(available_actions, name, &ActionName::name);
-                button->setText(
-                    found == available_actions.end() ? name : QString::fromLatin1(found->label)
-                );
-            }
-        }
-
-        for (const LayoutNode& child : node.children)
-            self(self, child);
-    };
-
-    present_node(present_node, editor_.document().root);
 }
 
 void ButtonLayoutEditor::update_history()
