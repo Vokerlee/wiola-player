@@ -35,7 +35,7 @@ wiola_add_test(
 )
 wiola_add_test(
     gui_library_navigation_test
-    SOURCES library_navigation_test.cpp
+    SOURCES shell/library_navigation_test.cpp
     LIBS wiola_gui wiola_library
 )
 wiola_add_test(
@@ -65,7 +65,7 @@ wiola_add_test(
 )
 wiola_add_test(
     gui_saved_playlist_manager_test
-    SOURCES saved_playlist_manager_test.cpp
+    SOURCES shell/saved_playlist_manager_test.cpp
     LIBS wiola_gui wiola_saved_playlists
 )
 wiola_add_test(
@@ -80,20 +80,24 @@ wiola_add_test(
 )
 wiola_add_test(
     gui_playlist_control_test
-    SOURCES playlist_control_test.cpp
+    SOURCES controls/queue_settings_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_equalizer_control_test
-    SOURCES equalizer_control_test.cpp
+    SOURCES controls/equalizer_control_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_volume_control_test
-    SOURCES volume_control_test.cpp
+    SOURCES controls/volume_control_test.cpp
     LIBS wiola_gui
 )
-wiola_add_test(gui_main_window_test SOURCES main_window_test.cpp LIBS wiola_gui)
+wiola_add_test(
+    gui_main_window_test
+    SOURCES shell/main_window_test.cpp
+    LIBS wiola_gui
+)
 
 if(ENABLE_TSAN)
     target_compile_definitions(
@@ -104,12 +108,12 @@ if(ENABLE_TSAN)
 endif()
 wiola_add_test(
     gui_player_presenter_test
-    SOURCES player_presenter_test.cpp
+    SOURCES shell/player_presenter_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_player_actions_test
-    SOURCES player_actions_test.cpp
+    SOURCES shell/player_actions_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
@@ -122,20 +126,20 @@ wiola_add_test(
     SOURCES library_storage_test.cpp
     LIBS wiola_gui wiola_library
 )
-wiola_add_test(gui_theme_test SOURCES theme_test.cpp LIBS wiola_gui)
+wiola_add_test(gui_theme_test SOURCES appearance/theme_test.cpp LIBS wiola_gui)
 wiola_add_test(
     gui_theme_editor_test
-    SOURCES theme_editor_test.cpp
+    SOURCES appearance/theme_editor_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_layout_document_test
-    SOURCES layout_document_test.cpp
+    SOURCES layout/layout_document_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_button_layout_editor_test
-    SOURCES button_layout_editor_test.cpp
+    SOURCES layout/editor/button_layout_editor_test.cpp
     LIBS wiola_gui
 )
 if(ENABLE_TSAN)
@@ -146,12 +150,12 @@ if(ENABLE_TSAN)
 endif()
 wiola_add_test(
     gui_layout_editor_test
-    SOURCES layout_editor_test.cpp
+    SOURCES layout/layout_editor_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(
     gui_layout_builder_test
-    SOURCES layout_builder_test.cpp
+    SOURCES layout/layout_builder_test.cpp
     LIBS wiola_gui
 )
 wiola_add_test(

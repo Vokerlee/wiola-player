@@ -21,7 +21,7 @@
 #include <app/player_application.hpp>
 #include <app/queue_library_migration.hpp>
 #include <core/version.hpp>
-#include <gui/main_window.hpp>
+#include <gui/shell/main_window.hpp>
 
 #include <QApplication>
 #include <QDebug>

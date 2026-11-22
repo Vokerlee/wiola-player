@@ -20,7 +20,7 @@
 
 #include "player_actions.hpp"
 
-#include "theme.hpp"
+#include <gui/appearance/theme.hpp>
 
 #include <QKeySequence>
 #include <QSignalBlocker>

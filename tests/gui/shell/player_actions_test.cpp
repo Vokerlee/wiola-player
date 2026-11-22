@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/player_actions.hpp>
+#include <gui/shell/player_actions.hpp>
 
 #include <QApplication>
 #include <QWidget>

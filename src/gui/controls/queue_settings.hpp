@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "player_presenter.hpp"
+#include <gui/shell/player_presenter.hpp>
 
 #include <QSettings>
 
@@ -35,9 +35,9 @@ namespace wiola::gui {
  * is kept is the list, the track it stood at, and how it was being played through - not where in
  * that track playback had reached, which is a different thing to promise.
  */
-class PlaylistControl {
+class QueueSettings {
 public:
-    PlaylistControl(PlayerPresenter& presenter, QSettings& settings) noexcept;
+    QueueSettings(PlayerPresenter& presenter, QSettings& settings) noexcept;
 
     /// Puts back what the last run left. Tracks that have gone since are dropped rather than
     /// queued to fail, and how many were dropped is what this answers.

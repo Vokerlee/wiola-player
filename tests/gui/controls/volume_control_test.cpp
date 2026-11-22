@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/player_settings.hpp>
-#include <gui/volume_control.hpp>
-#include <gui/volume_scale.hpp>
+#include <gui/controls/player_settings.hpp>
+#include <gui/controls/volume_control.hpp>
+#include <gui/controls/volume_scale.hpp>
 
 #include <audio/dsp/volume.hpp>
 

@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/classic_layout.hpp>
-#include <gui/focused_layout.hpp>
-#include <gui/layout_document.hpp>
+#include <gui/layout/classic_layout.hpp>
+#include <gui/layout/focused_layout.hpp>
+#include <gui/layout/layout_document.hpp>
 
 #include <gtest/gtest.h>
 

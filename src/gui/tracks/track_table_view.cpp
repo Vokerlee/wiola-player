@@ -20,7 +20,7 @@
 
 #include "track_table_view.hpp"
 
-#include <gui/presentation_tokens.hpp>
+#include <gui/appearance/presentation_tokens.hpp>
 
 #include <library/tags.hpp>
 

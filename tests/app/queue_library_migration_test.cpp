@@ -20,8 +20,8 @@
 
 #include <app/queue_library_migration.hpp>
 
+#include <gui/controls/player_settings.hpp>
 #include <gui/library_storage.hpp>
-#include <gui/player_settings.hpp>
 #include <library/location.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 

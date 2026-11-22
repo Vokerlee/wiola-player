@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/saved_playlist_manager.hpp>
 #include <gui/saved_playlist_storage.hpp>
+#include <gui/shell/saved_playlist_manager.hpp>
 
 #include <QApplication>
 #include <QDir>
