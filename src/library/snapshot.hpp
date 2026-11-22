@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief End-to-end persistent storage for repository-backed saved playlists.
+ * @brief Persistent track, metadata, tag, and playlist record shapes.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,24 +19,21 @@
  */
 
 #pragma once
+#include <library/repository.hpp>
 
-#include "library_storage.hpp"
+namespace wiola::library {
 
-#include <library/in_memory_repository.hpp>
-
-#include <filesystem>
-
-namespace wiola::gui {
-
-class SavedPlaylistStorage final {
-public:
-    explicit SavedPlaylistStorage(std::filesystem::path file);
-
-    [[nodiscard]] LibraryJsonError save(const library::LibraryRepository& repository);
-    [[nodiscard]] LibraryJsonError restore(library::InMemoryRepository& repository) const;
-
-private:
-    LibraryStorage storage_;
+struct LibrarySnapshot {
+    std::vector<TrackRecord> tracks;
+    std::vector<PlaylistRecord> playlists;
+    std::vector<WorkspaceRecord> workspaces;
 };
 
-} // namespace wiola::gui
+[[nodiscard]] inline LibrarySnapshot snapshot_of(const LibraryRepository& repository)
+{
+    return {.tracks = repository.tracks(),
+        .playlists = repository.playlists(),
+        .workspaces = repository.workspaces()};
+}
+
+} // namespace wiola::library

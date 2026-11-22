@@ -20,8 +20,8 @@
 
 #include "queue_library_migration.hpp"
 
-#include <gui/library_storage.hpp>
 #include <library/location.hpp>
+#include <persistence/qt/library_storage.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -39,20 +39,20 @@ QueueLibraryMigration::QueueLibraryMigration(QSettings& settings)
     file_ = platform::qt::QtPathAdapter::from_qt(directory + "/library.json");
 }
 
-gui::LibraryJsonError QueueLibraryMigration::migrate(QSettings& settings) const
+persistence::qt::LibraryJsonError QueueLibraryMigration::migrate(QSettings& settings) const
 {
-    gui::LibraryStorage storage{file_};
+    persistence::qt::LibraryStorage storage{file_};
     const QString name{platform::qt::QtPathAdapter::to_qt(file_)};
 
     if (QFile::exists(name) || QFile::exists(name + ".bak")) {
-        gui::LibrarySnapshot existing;
+        library::LibrarySnapshot existing;
 
         return storage.load(existing);
     }
 
     const platform::qt::PlaylistSettings queue{
         platform::qt::QtSettingsAdapter{settings}.read_playlist()};
-    gui::LibrarySnapshot library;
+    library::LibrarySnapshot library;
     library::PlaylistRecord migrated;
     migrated.id = {.value = "playlist-migrated-queue"};
     migrated.name = "Migrated queue";

@@ -44,6 +44,6 @@ target_link_libraries(wiola_player_application PUBLIC Qt6::Widgets)
 wiola_add_library(
     wiola_queue_migration
     SOURCES library/queue_library_migration.cpp
-    LIBS wiola_gui wiola_library wiola_qt_platform wiola_qt_settings
+    LIBS wiola_persistence_qt wiola_library wiola_qt_platform wiola_qt_settings
 )
 target_link_libraries(wiola_queue_migration PUBLIC Qt6::Core)

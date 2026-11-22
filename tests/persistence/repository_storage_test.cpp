@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/saved_playlist_storage.hpp>
+#include <persistence/qt/library_storage.hpp>
 
 #include <QCoreApplication>
 #include <QFile>
@@ -62,12 +62,14 @@ TEST_F(SavedPlaylistStorage, RestoresOrderedEntriesAndDuplicateMediaWithStableId
     const auto last_entry = original.append_track(playlist, second);
     ASSERT_TRUE(first_entry && duplicate && last_entry);
 
-    wiola::gui::SavedPlaylistStorage storage{file()};
-    ASSERT_EQ(storage.save(original), wiola::gui::LibraryJsonError::none);
+    wiola::persistence::qt::LibraryStorage storage{file()};
+    ASSERT_EQ(storage.save(wiola::library::snapshot_of(original)),
+        wiola::persistence::qt::LibraryJsonError::none);
 
     wiola::library::InMemoryRepository restored;
     ASSERT_TRUE(restored.put_track(track(wiola::library::MediaId{"obsolete"})));
-    ASSERT_EQ(storage.restore(restored), wiola::gui::LibraryJsonError::none);
+    ASSERT_EQ(wiola::persistence::qt::restore_repository(storage, restored),
+        wiola::persistence::qt::LibraryJsonError::none);
 
     EXPECT_EQ(restored.tracks().size(), 2);
     EXPECT_EQ(restored.track(wiola::library::MediaId{"obsolete"}), nullptr);
@@ -109,8 +111,9 @@ TEST_F(SavedPlaylistStorage, RejectsInvalidSavedRecordsWithoutChangingTheReposit
     ASSERT_TRUE(corrupted.write("{not json") > 0);
     corrupted.close();
 
-    wiola::gui::SavedPlaylistStorage storage{file()};
-    EXPECT_EQ(storage.restore(repository), wiola::gui::LibraryJsonError::malformed);
+    wiola::persistence::qt::LibraryStorage storage{file()};
+    EXPECT_EQ(wiola::persistence::qt::restore_repository(storage, repository),
+        wiola::persistence::qt::LibraryJsonError::malformed);
     ASSERT_NE(repository.track(retained), nullptr);
     EXPECT_EQ(repository.tracks().size(), 1);
 }

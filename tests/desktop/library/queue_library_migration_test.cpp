@@ -20,8 +20,8 @@
 
 #include <desktop/library/queue_library_migration.hpp>
 
-#include <gui/library_storage.hpp>
 #include <library/location.hpp>
+#include <persistence/qt/library_storage.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -41,9 +41,9 @@
 namespace {
 
 using Migration = wiola::app::QueueLibraryMigration;
-using wiola::gui::LibraryJsonError;
-using wiola::gui::LibrarySnapshot;
-using wiola::gui::LibraryStorage;
+using wiola::library::LibrarySnapshot;
+using wiola::persistence::qt::LibraryJsonError;
+using wiola::persistence::qt::LibraryStorage;
 
 class QueueLibraryMigration : public testing::Test {
 protected:
@@ -96,7 +96,7 @@ TEST_F(QueueLibraryMigration, CreatesAnEmptyLibraryForAnEmptyQueue)
     EXPECT_TRUE(std::filesystem::exists(library_file()));
 
     LibraryStorage storage{library_file()};
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     EXPECT_EQ(storage.load(restored), LibraryJsonError::none);
     EXPECT_TRUE(restored.tracks.empty());
     EXPECT_TRUE(restored.playlists.empty());
@@ -118,7 +118,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     ASSERT_EQ(migration.migrate(settings), LibraryJsonError::none);
 
     LibraryStorage storage{library_file()};
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
 
     ASSERT_EQ(restored.tracks.size(), 2U);
@@ -147,7 +147,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
 
 TEST_F(QueueLibraryMigration, DoesNotOverwriteAnExistingValidLibrary)
 {
-    LibrarySnapshot existing;
+    wiola::library::LibrarySnapshot existing;
     wiola::library::TrackRecord track;
     track.id = {.value = "existing-media"};
     track.embedded.title = "Keep me";
@@ -163,7 +163,7 @@ TEST_F(QueueLibraryMigration, DoesNotOverwriteAnExistingValidLibrary)
     const Migration migration{settings};
     ASSERT_EQ(migration.migrate(settings), LibraryJsonError::none);
 
-    LibrarySnapshot restored;
+    wiola::library::LibrarySnapshot restored;
     ASSERT_EQ(storage.load(restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Keep me");

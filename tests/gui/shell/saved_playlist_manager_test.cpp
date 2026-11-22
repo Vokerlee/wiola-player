@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/saved_playlist_storage.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
+#include <persistence/qt/library_storage.hpp>
 
 #include <QApplication>
 #include <QDir>
@@ -44,9 +44,10 @@ protected:
 
 TEST_F(SavedPlaylistManager, CreatesRenamesDuplicatesAndDeletesWithVisibleSavedState)
 {
-    wiola::gui::SavedPlaylistStorage storage{file()};
+    wiola::persistence::qt::LibraryStorage storage{file()};
     auto persist = [&storage](const wiola::library::LibraryRepository& records) {
-        return storage.save(records) == wiola::gui::LibraryJsonError::none;
+        return storage.save(wiola::library::snapshot_of(records)) ==
+            wiola::persistence::qt::LibraryJsonError::none;
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
     wiola::gui::SavedPlaylistManager manager{repository, commands, navigation};
@@ -83,9 +84,10 @@ TEST_F(SavedPlaylistManager, ReportsSaveFailureAndValidatesSelectionAndNames)
 {
     ASSERT_TRUE(QDir{directory.path()}.mkdir("blocked"));
 
-    wiola::gui::SavedPlaylistStorage storage{file("blocked")};
+    wiola::persistence::qt::LibraryStorage storage{file("blocked")};
     auto persist = [&storage](const wiola::library::LibraryRepository& records) {
-        return storage.save(records) == wiola::gui::LibraryJsonError::none;
+        return storage.save(wiola::library::snapshot_of(records)) ==
+            wiola::persistence::qt::LibraryJsonError::none;
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
     wiola::gui::SavedPlaylistManager manager{repository, commands, navigation};

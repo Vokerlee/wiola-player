@@ -37,7 +37,7 @@
 #include <set>
 #include <string>
 
-namespace wiola::gui {
+namespace wiola::persistence::qt {
 
 namespace {
 
@@ -434,7 +434,7 @@ QJsonObject write_workspace(const library::WorkspaceRecord& workspace)
 
 } // namespace
 
-LibraryJsonError write_library_json(const LibrarySnapshot& library, QByteArray& output)
+LibraryJsonError write_library_json(const library::LibrarySnapshot& library, QByteArray& output)
 {
     QJsonArray tracks;
     for (const library::TrackRecord& track : library.tracks)
@@ -459,7 +459,7 @@ LibraryJsonError write_library_json(const LibrarySnapshot& library, QByteArray& 
     if (static_cast<std::size_t>(json.size()) > max_document_bytes)
         return LibraryJsonError::too_large;
 
-    LibrarySnapshot validated;
+    library::LibrarySnapshot validated;
     const LibraryJsonError error{read_library_json(json, validated)};
 
     if (error != LibraryJsonError::none)
@@ -470,7 +470,7 @@ LibraryJsonError write_library_json(const LibrarySnapshot& library, QByteArray& 
     return LibraryJsonError::none;
 }
 
-LibraryJsonError read_library_json(QByteArrayView json, LibrarySnapshot& output)
+LibraryJsonError read_library_json(QByteArrayView json, library::LibrarySnapshot& output)
 {
     if (static_cast<std::size_t>(json.size()) > max_document_bytes)
         return LibraryJsonError::too_large;
@@ -504,7 +504,7 @@ LibraryJsonError read_library_json(QByteArrayView json, LibrarySnapshot& output)
         static_cast<std::size_t>(workspaces.size()) > max_workspaces)
         return LibraryJsonError::limit_exceeded;
 
-    LibrarySnapshot library;
+    library::LibrarySnapshot library;
     std::set<library::MediaId> media;
 
     for (const QJsonValue& value : tracks) {
@@ -556,4 +556,4 @@ LibraryJsonError read_library_json(QByteArrayView json, LibrarySnapshot& output)
     return LibraryJsonError::none;
 }
 
-} // namespace wiola::gui
+} // namespace wiola::persistence::qt

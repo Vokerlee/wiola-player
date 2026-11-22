@@ -21,6 +21,7 @@
 #pragma once
 
 #include "library_json.hpp"
+#include <library/in_memory_repository.hpp>
 
 #include <QObject>
 #include <QTimer>
@@ -29,7 +30,7 @@
 #include <functional>
 #include <optional>
 
-namespace wiola::gui {
+namespace wiola::persistence::qt {
 
 class LibraryStorage final : public QObject {
 public:
@@ -37,13 +38,13 @@ public:
     ~LibraryStorage() override;
 
     /// Loads the primary file, falling back to the last valid backup when necessary.
-    LibraryJsonError load(LibrarySnapshot& output) const;
+    LibraryJsonError load(library::LibrarySnapshot& output) const;
 
     /// Cancels any older scheduled snapshot and writes this one immediately and atomically.
-    LibraryJsonError save(const LibrarySnapshot& snapshot);
+    LibraryJsonError save(const library::LibrarySnapshot& snapshot);
 
     /// Coalesces snapshots produced in quick succession. The newest complete value wins.
-    void schedule(LibrarySnapshot snapshot);
+    void schedule(library::LibrarySnapshot snapshot);
 
     /// Writes the scheduled value, retaining it for another attempt if writing fails.
     LibraryJsonError flush();
@@ -54,13 +55,16 @@ public:
     [[nodiscard]] bool pending() const noexcept { return pending_.has_value(); }
 
 private:
-    LibraryJsonError write(const LibrarySnapshot& snapshot);
+    LibraryJsonError write(const library::LibrarySnapshot& snapshot);
 
     std::filesystem::path file_;
     std::filesystem::path backup_;
-    std::optional<LibrarySnapshot> pending_;
+    std::optional<library::LibrarySnapshot> pending_;
     QTimer coalesce_;
     std::function<void(LibraryJsonError)> failure_observer_;
 };
 
-} // namespace wiola::gui
+[[nodiscard]] LibraryJsonError restore_repository(const LibraryStorage& storage,
+    library::InMemoryRepository& repository);
+
+} // namespace wiola::persistence::qt
