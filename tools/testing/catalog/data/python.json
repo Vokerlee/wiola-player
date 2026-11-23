@@ -17,5 +17,7 @@
   "tools/testing/catalog/tests/test_catalog.py": "testing.catalog",
   "tools/testing/cmake_build/tests/test_build.py": "testing.cmake_build",
   "tools/testing/desktop_checks/tests/test_environment.py": "testing.desktop_checks",
-  "tools/testing/gtest/tests/test_protocol.py": "testing.gtest"
+  "tools/testing/gtest/tests/test_protocol.py": "testing.gtest",
+  "tools/testing/mutation_checks/tests/test_checks.py": "testing.mutation_checks",
+  "tools/testing/source_mutation/tests/test_mutation.py": "testing.source_mutation"
 }

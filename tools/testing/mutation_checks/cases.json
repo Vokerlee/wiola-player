@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "identity": "wrong-document",
+      "source_owner": "source.gui.shell.document_command_router",
+      "anchor": "std::optional<library::PlaylistId> destination = library_->active_playlist().id();",
+      "replacement": "std::optional<library::PlaylistId> destination = context.document.playlist() ? std::optional{*context.document.playlist()} : std::nullopt;",
+      "target": "gui_document_command_router_test",
+      "selection": "DocumentCommandRouterTest.ContextMenuTransferAfterCloseAndReopenUsesOneExactOccurrence"
+    },
+    {
+      "identity": "stale-revision",
+      "source_owner": "source.desktop.library.library_session",
+      "anchor": "if (revision != pending->second) {",
+      "replacement": "if (false) {",
+      "target": "desktop_library_lifetime_test",
+      "selection": "LibraryLifetime.CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbeddedMetadata"
+    },
+    {
+      "identity": "rollback",
+      "source_owner": "source.library.repository_transaction",
+      "anchor": "    restore(repository_.data_.tracks_, tracks_);",
+      "replacement": "    // Seeded regression: omit restoring touched records.",
+      "target": "library_repository_transaction_test",
+      "selection": "RepositoryTransaction.PersistenceFailureRestoresValuesRevisionsAndEveryAllocator"
+    },
+    {
+      "identity": "selection",
+      "source_owner": "source.gui.tracks.track_table_view",
+      "anchor": "for (const auto& id : selected) {",
+      "replacement": "for (const auto& id : std::vector<TrackRowId>{}) {",
+      "target": "gui_track_table_view_test",
+      "selection": "TrackTableView.AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues"
+    },
+    {
+      "identity": "action-binding",
+      "source_owner": "source.gui.shell.action_button_binding",
+      "anchor": "button.setEnabled(action.isEnabled());",
+      "replacement": "button.setEnabled(true);",
+      "target": "gui_layout_component_contract_test",
+      "selection": "AllContainers/LayoutComponentContract.*"
+    },
+    {
+      "identity": "preview-side-effects",
+      "source_owner": "source.gui.layout.layout_builder",
+      "anchor": "node.view && !context.isolated_preview ? views_.find(*node.view) : nullptr;",
+      "replacement": "node.view ? views_.find(*node.view) : nullptr;",
+      "target": "gui_layout_component_contract_test",
+      "selection": "AllContainers/LayoutComponentContract.*"
+    }
+  ]
+}

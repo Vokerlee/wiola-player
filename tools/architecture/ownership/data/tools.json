@@ -347,11 +347,39 @@
       ]
     },
     {
+      "id": "testing.mutation_checks",
+      "purpose": "Qualifies declared regressions through owned source, build and GoogleTest protocols",
+      "files": [
+        "tools/testing/mutation_checks/CMakeLists.txt",
+        "tools/testing/mutation_checks/README.md",
+        "tools/testing/mutation_checks/__init__.py",
+        "tools/testing/mutation_checks/__main__.py",
+        "tools/testing/mutation_checks/cases.json",
+        "tools/testing/mutation_checks/catalog.py",
+        "tools/testing/mutation_checks/tests/README.md",
+        "tools/testing/mutation_checks/tests/__init__.py",
+        "tools/testing/mutation_checks/tests/test_checks.py",
+        "tools/testing/mutation_checks/verifier.py"
+      ]
+    },
+    {
       "id": "testing.package",
       "purpose": "Groups independent test-policy tooling",
       "files": [
         "tools/testing/README.md",
         "tools/testing/__init__.py"
+      ]
+    },
+    {
+      "id": "testing.source_mutation",
+      "purpose": "Applies one atomic source edit and restores exact bytes without overwriting concurrent edits",
+      "files": [
+        "tools/testing/source_mutation/README.md",
+        "tools/testing/source_mutation/__init__.py",
+        "tools/testing/source_mutation/mutation.py",
+        "tools/testing/source_mutation/tests/README.md",
+        "tools/testing/source_mutation/tests/__init__.py",
+        "tools/testing/source_mutation/tests/test_mutation.py"
       ]
     },
     {

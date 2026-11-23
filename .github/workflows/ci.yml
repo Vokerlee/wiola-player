@@ -226,12 +226,15 @@ jobs:
           build-dir: build-debug
       - run: cmake --preset linux-debug
       - name: Require assertion evidence for six critical regressions
-        run: python3 scripts/check-gui-mutations.py --build-dir build-debug --artifacts mutation-results --jobs 4
+        run: cmake --build --preset linux-debug --target wiola_check_mutations
+        env:
+          QT_QPA_PLATFORM: offscreen
+          WIOLA_MUTATION_ARTIFACTS: ${{ runner.temp }}/mutation-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gui-mutation-evidence
-          path: mutation-results
+          path: ${{ runner.temp }}/mutation-results
 
   coverage:
     runs-on: ubuntu-24.04
