@@ -23,6 +23,7 @@
 #include <QApplication>
 
 #include <algorithm>
+#include <fixtures/gui_interaction.hpp>
 #include <gtest/gtest.h>
 #include <gui/model/tracks/track_view_state.hpp>
 
@@ -111,9 +112,5 @@ TEST(TagFilterPanel, RejectsBlankAndNormalizedDuplicateFilters)
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
-    testing::InitGoogleTest(&argc, argv);
-    QApplication application{argc, argv};
-
-    return RUN_ALL_TESTS();
+    return wiola::testing::run_gui_tests(argc, argv);
 }
