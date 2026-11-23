@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sys
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeInventory
 from tools.architecture.ownership.registry import load_current_registry
 from tools.coverage.measurement.report import CoverageMeasurement
 from tools.coverage.source_policy.policy import load_current_policy

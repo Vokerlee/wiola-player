@@ -78,6 +78,14 @@
       "files": [
         "scripts/test-affected.py"
       ]
+    },
+    {
+      "id": "scripts.build",
+      "purpose": "Groups configured-build and environment developer commands",
+      "files": [
+        "scripts/build/README.md",
+        "scripts/build/__init__.py"
+      ]
     }
   ]
 }

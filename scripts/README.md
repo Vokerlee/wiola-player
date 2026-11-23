@@ -13,6 +13,8 @@ flowchart LR
 
 [Qt tooling](qt/README.md) is complete under `qt/`: one source provider, the x64 Windows recipe and the native instrumented Core recipe. Use their canonical commands directly; no Qt launcher or implementation lives elsewhere in this tree.
 
+[Configured builds](build/README.md) expose one public CMake inventory/build API used by SDK, quality and test callers.
+
 Current other commands:
 
 - `format-cpp.sh`, `format-cmake.sh` and `install-hooks.sh` are described in [CONTRIBUTING.md](../CONTRIBUTING.md).

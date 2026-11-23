@@ -64,6 +64,55 @@
       "workflow": false
     },
     {
+      "path": "scripts/build/__init__.py",
+      "owner": "scripts.build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/cmake/__init__.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/cmake/_build.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/cmake/_inventory.py",
+      "owner": "architecture.cmake_inventory",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/cmake/tests/__init__.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/cmake/tests/test_build.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/cmake/tests/test_inventory.py",
+      "owner": "architecture.cmake_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "scripts/check-gui-mutations.py",
       "owner": "tool.check_gui_mutations",
       "language": "python",
@@ -4369,34 +4418,6 @@
       "workflow": false
     },
     {
-      "path": "tools/architecture/cmake_inventory/__init__.py",
-      "owner": "architecture.cmake_inventory",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/architecture/cmake_inventory/inventory.py",
-      "owner": "architecture.cmake_inventory",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/architecture/cmake_inventory/tests/__init__.py",
-      "owner": "architecture.cmake_inventory",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/architecture/cmake_inventory/tests/test_inventory.py",
-      "owner": "architecture.cmake_inventory",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
       "path": "tools/architecture/commands/__init__.py",
       "owner": "architecture.command_group",
       "language": "python",
@@ -4667,34 +4688,6 @@
       "owner": "build_environment.package",
       "language": "python",
       "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/build_environment/cmake/__init__.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/build_environment/cmake/build.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/build_environment/cmake/tests/__init__.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/build_environment/cmake/tests/test_build.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "test",
       "workflow": false
     },
     {

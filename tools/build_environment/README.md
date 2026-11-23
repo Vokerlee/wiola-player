@@ -1,15 +1,11 @@
-# Build environments
+# Host build environment
 
-This grouping contains host package and configured build adapters. Each child owns its external-tool interaction, reuse contract and tests. Player targets and GUI choices remain with their callers.
+This grouping owns the current [Ubuntu package adapter](ubuntu_packages/README.md): dependency resolution, installation and verified archive reuse. Caller profiles select packages; CI transports cache data.
 
 ```mermaid
 flowchart LR
-  Caller[Local build or CI provider] --> Ubuntu[ubuntu_packages]
-  Ubuntu --> APT[Ubuntu APT]
-  Caller --> CMake[cmake]
-  CMake --> Targets[Configured builds and artifacts]
+  Caller[Local build or CI] --> Packages[Ubuntu package adapter]
+  Packages --> APT[Actual resolver and package archives]
 ```
 
-[Ubuntu packages](ubuntu_packages/README.md) prepare installed tools.
-[Configured CMake builds](cmake/README.md) build named targets and resolve declared artifacts.
-Both adapters are usable by SDK construction, coverage and tests.
+Configured target observation/building lives in the complete [CMake adapter](../../scripts/build/cmake/README.md). It is consumed through its public API and has no dependency on these host package mechanics.

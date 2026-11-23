@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 from tools.architecture.contracts.catalog import load_current_catalog
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeInventory
 from tools.architecture.dependency_graph.graph import (
     SourceDependencyGraph,
     ConfiguredDependencyGraph,

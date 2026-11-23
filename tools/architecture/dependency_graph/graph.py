@@ -7,7 +7,7 @@ import re
 import posixpath
 
 from tools.architecture.ownership.registry import OwnershipRegistry
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeInventory
 
 
 @dataclass(frozen=True, order=True)
@@ -20,7 +20,9 @@ class DependencyEdge:
 
     @property
     def identity(self) -> str:
-        return f"{self.kind}|{self.source}|{self.target}|{self.origin}|{self.destination}"
+        return (
+            f"{self.kind}|{self.source}|{self.target}|{self.origin}|{self.destination}"
+        )
 
 
 class SourceDependencyGraph:
@@ -33,7 +35,8 @@ class SourceDependencyGraph:
         }
         self._public_headers = {
             path.split("/public/", 1)[1]: path
-            for path in self._owners if "/public/" in path and path.endswith(".hpp")
+            for path in self._owners
+            if "/public/" in path and path.endswith(".hpp")
         }
 
     def _python_module(self, name: str) -> str | None:
@@ -50,7 +53,7 @@ class SourceDependencyGraph:
             if isinstance(node, ast.Import):
                 names = [alias.name for alias in node.names]
             elif isinstance(node, ast.ImportFrom):
-                prefix = package[:len(package) - node.level + 1] if node.level else ()
+                prefix = package[: len(package) - node.level + 1] if node.level else ()
                 name = ".".join((*prefix, node.module or "")).rstrip(".")
                 names = [name]
                 names.extend(name + "." + alias.name for alias in node.names)
@@ -72,19 +75,32 @@ class SourceDependencyGraph:
             if suffix == ".py":
                 targets = self._python_imports(path, text)
                 for target in targets:
-                    edges.add(DependencyEdge(path, target, origin, self._owners[target], "import"))
+                    edges.add(
+                        DependencyEdge(
+                            path, target, origin, self._owners[target], "import"
+                        )
+                    )
                 continue
             for include in re.findall(r'^\s*#\s*include\s*[<"]([^>"\n]+)', text, re.M):
                 if include.startswith("Qt") or re.match(r"Q[A-Z]", include):
-                    edges.add(DependencyEdge(path, include, origin, "external.qt", "framework"))
+                    edges.add(
+                        DependencyEdge(
+                            path, include, origin, "external.qt", "framework"
+                        )
+                    )
                     continue
-                candidates = [posixpath.normpath(str(Path(path).parent / include)), "src/" + include]
+                candidates = [
+                    posixpath.normpath(str(Path(path).parent / include)),
+                    "src/" + include,
+                ]
                 public = self._public_headers.get(include)
                 if public:
                     candidates.append(public)
                 for target in candidates:
                     if target in self._owners:
-                        edges.add(DependencyEdge(path, target, origin, self._owners[target]))
+                        edges.add(
+                            DependencyEdge(path, target, origin, self._owners[target])
+                        )
                         break
         return tuple(sorted(edges))
 
@@ -98,11 +114,15 @@ class ConfiguredDependencyGraph:
 
     def __init__(self, inventory: CMakeInventory, registry: OwnershipRegistry) -> None:
         self._inventory = inventory
-        self._owners = {path: owner.identity for owner in registry.owners for path in owner.files}
+        self._owners = {
+            path: owner.identity for owner in registry.owners for path in owner.files
+        }
 
     def edges(self) -> tuple[DependencyEdge, ...]:
         owners = {
-            target.name: {self._owners[path] for path in target.sources if path in self._owners}
+            target.name: {
+                self._owners[path] for path in target.sources if path in self._owners
+            }
             for target in self._inventory.targets
         }
         edges = set()
@@ -111,9 +131,27 @@ class ConfiguredDependencyGraph:
             for dependency in target.dependencies:
                 for origin in origins:
                     for destination in owners[dependency]:
-                        edges.add(DependencyEdge(target.name, dependency, origin, destination, "configured-target"))
-            if any(value.startswith("QT_") and value.endswith("_LIB")
-                   for value in target.compile_definitions):
+                        edges.add(
+                            DependencyEdge(
+                                target.name,
+                                dependency,
+                                origin,
+                                destination,
+                                "configured-target",
+                            )
+                        )
+            if any(
+                value.startswith("QT_") and value.endswith("_LIB")
+                for value in target.compile_definitions
+            ):
                 for origin in origins:
-                    edges.add(DependencyEdge(target.name, "Qt", origin, "external.qt", "configured-framework"))
+                    edges.add(
+                        DependencyEdge(
+                            target.name,
+                            "Qt",
+                            origin,
+                            "external.qt",
+                            "configured-framework",
+                        )
+                    )
         return tuple(sorted(edges))

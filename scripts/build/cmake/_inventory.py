@@ -26,6 +26,7 @@ class BuildTarget:
 class CMakeInventory:
     source_root: Path
     targets: tuple[BuildTarget, ...]
+    build_directory: Path | None = None
 
     @classmethod
     def read(
@@ -129,7 +130,9 @@ class CMakeInventory:
                     )
                 )
             return cls(
-                source_root, tuple(sorted(targets, key=lambda target: target.name))
+                source_root,
+                tuple(sorted(targets, key=lambda target: target.name)),
+                build,
             )
         except (KeyError, TypeError, OSError, json.JSONDecodeError) as error:
             raise BuildInventoryError(

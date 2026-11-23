@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.architecture.cmake_inventory.inventory import (
+from scripts.build.cmake import (
     CMakeInventory,
     BuildInventoryError,
 )
@@ -67,6 +67,7 @@ class CMakeInventoryTest(unittest.TestCase):
             source, _ = self.model(directory)
             inventory = CMakeInventory.read(directory)
             self.assertEqual(inventory.source_root, source)
+            self.assertEqual(inventory.build_directory, directory.resolve())
             core, player = inventory.targets
             self.assertEqual(core.name, "core")
             self.assertEqual(core.compile_definitions, ("QT_CORE_LIB",))
@@ -87,6 +88,46 @@ class CMakeInventoryTest(unittest.TestCase):
             )
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
+
+    def test_valid_json_that_is_not_an_object_is_not_a_codemodel(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            self.model(directory)
+            self.write(directory, "model.json", [])
+            with self.assertRaisesRegex(BuildInventoryError, "must contain an object"):
+                CMakeInventory.read(directory)
+
+    def test_only_active_build_generated_sources_are_retained(self):
+        with tempfile.TemporaryDirectory() as name:
+            repository = Path(name) / "repository"
+            directory = repository / "nonstandard-output"
+            _, model = self.model(directory)
+            model["paths"]["source"] = str(repository)
+            self.write(directory, "model.json", model)
+            foreign = repository / "other-output"
+            foreign.mkdir(parents=True)
+            (foreign / "CMakeCache.txt").write_text("# another configured build")
+            self.write(
+                directory,
+                "core.json",
+                {
+                    "type": "STATIC_LIBRARY",
+                    "sources": [
+                        {"path": "src/core.cpp"},
+                        {"path": str(directory / "generated.cpp"), "isGenerated": True},
+                        {"path": str(directory / "unowned.cpp")},
+                        {"path": str(foreign / "generated.cpp"), "isGenerated": True},
+                    ],
+                },
+            )
+
+            inventory = CMakeInventory.read(directory)
+
+            core = inventory.targets[0]
+            self.assertEqual(core.sources, ("src/core.cpp",))
+            self.assertEqual(
+                core.generated_sources, ("nonstandard-output/generated.cpp",)
+            )
 
     def test_unsupported_or_ambiguous_models_are_not_silently_selected(self):
         with tempfile.TemporaryDirectory() as name:

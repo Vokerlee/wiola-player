@@ -8,10 +8,9 @@ import signal
 import subprocess
 import sys
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeBuild, CMakeInventory
 from tools.architecture.inventory.git_inventory import GitInventory
 from tools.architecture.ownership.registry import load_current_registry
-from tools.build_environment.cmake.build import CMakeBuild
 from tools.testing.gtest.runner import GoogleTestRunner
 
 from .catalog import MutationCatalog
@@ -50,9 +49,7 @@ def main(argv=None) -> int:
         status.check_returncode()
         revision = GitInventory(root).revision("HEAD")
         cases = MutationCatalog.read(args.catalog).select(args.seed)
-        build = CMakeBuild(
-            args.build_dir, inventory, jobs=args.jobs, timeout=args.build_timeout
-        )
+        build = CMakeBuild(inventory, jobs=args.jobs, timeout=args.build_timeout)
         verifier = MutationVerifier(
             root,
             registry,

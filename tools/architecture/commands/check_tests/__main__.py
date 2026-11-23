@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeInventory
 from tools.architecture.ownership.registry import load_current_registry
 from tools.testing.catalog.catalog import load_current_catalog
 

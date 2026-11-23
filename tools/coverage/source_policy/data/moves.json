@@ -138,5 +138,35 @@
     "previous": "tools/sdk/__init__.py",
     "current": "scripts/qt/__init__.py",
     "owner": "sdk.package"
+  },
+  {
+    "previous": "tools/build_environment/cmake/__init__.py",
+    "current": "scripts/build/cmake/__init__.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/build_environment/cmake/build.py",
+    "current": "scripts/build/cmake/_build.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/build_environment/cmake/tests/__init__.py",
+    "current": "scripts/build/cmake/tests/__init__.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/build_environment/cmake/tests/test_build.py",
+    "current": "scripts/build/cmake/tests/test_build.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/architecture/cmake_inventory/inventory.py",
+    "current": "scripts/build/cmake/_inventory.py",
+    "owner": "architecture.cmake_inventory"
+  },
+  {
+    "previous": "tools/architecture/cmake_inventory/tests/test_inventory.py",
+    "current": "scripts/build/cmake/tests/test_inventory.py",
+    "owner": "architecture.cmake_inventory"
   }
 ]

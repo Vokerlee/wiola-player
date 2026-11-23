@@ -3,7 +3,7 @@
 from collections import defaultdict
 from pathlib import Path
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeInventory
 from tools.coverage.source_policy.policy import SourcePolicy
 
 CPP_METRICS = ("lines", "functions", "regions", "branches")

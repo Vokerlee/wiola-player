@@ -83,6 +83,7 @@
     "repository.license": "documentation",
     "repository.requirements": "documentation",
     "resources.desktop": "resources",
+    "scripts.build": "tooling",
     "scripts.package": "tooling",
     "sdk.package": "tooling",
     "sdk.qt_core_tsan": "tooling",

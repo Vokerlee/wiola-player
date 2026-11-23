@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.architecture.cmake_inventory.inventory import BuildTarget, CMakeInventory
+from scripts.build.cmake import BuildTarget, CMakeInventory
 from tools.coverage.measurement.report import CoverageMeasurement
 from tools.coverage.source_policy.policy import SourcePolicy, SourceRecord
 

@@ -4,13 +4,12 @@ import os
 from pathlib import Path
 import subprocess
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from ._inventory import CMakeInventory
 
 
 class CMakeBuild:
     def __init__(
         self,
-        directory: Path,
         inventory: CMakeInventory,
         *,
         jobs: int | None = None,
@@ -30,7 +29,11 @@ class CMakeBuild:
             )
         if jobs < 1 or timeout <= 0:
             raise ValueError("CMake build parallelism and timeout must be positive")
-        self.directory = directory.resolve()
+        if inventory.build_directory is None:
+            raise ValueError(
+                "Build execution needs an inventory with a configured directory"
+            )
+        self.directory = inventory.build_directory.resolve()
         self.inventory = inventory
         self.jobs = jobs
         self.timeout = timeout
