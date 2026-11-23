@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.integration.build",
+      "purpose": "Integrates build with the configured build.",
+      "files": [
+        "cmake/build.cmake"
+      ]
+    },
+    {
+      "id": "build.integration.coverage_inventory",
+      "purpose": "Integrates coverage inventory with the configured build.",
+      "files": [
+        "cmake/coverage_inventory.cmake"
+      ]
+    },
+    {
+      "id": "build.integration.dependencies",
+      "purpose": "Integrates dependencies with the configured build.",
+      "files": [
+        "cmake/dependencies.cmake"
+      ]
+    },
+    {
+      "id": "build.integration.ffmpeg",
+      "purpose": "Integrates ffmpeg with the configured build.",
+      "files": [
+        "cmake/ffmpeg.cmake"
+      ]
+    },
+    {
+      "id": "build.integration.icon_rc",
+      "purpose": "Integrates icon.rc with the configured build.",
+      "files": [
+        "cmake/icon.rc.in"
+      ]
+    },
+    {
+      "id": "build.integration.mingw_w64",
+      "purpose": "Integrates mingw w64 with the configured build.",
+      "files": [
+        "cmake/mingw-w64.cmake"
+      ]
+    },
+    {
+      "id": "build.integration.version_hpp",
+      "purpose": "Integrates version.hpp with the configured build.",
+      "files": [
+        "cmake/version.hpp.in"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,593 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.src.gui",
+      "purpose": "Declares the current targets for src/gui.",
+      "files": [
+        "src/gui/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "build.src.gui.model",
+      "purpose": "Declares the current targets for src/gui/model.",
+      "files": [
+        "src/gui/model/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "build.src.gui.projection",
+      "purpose": "Declares the current targets for src/gui/projection.",
+      "files": [
+        "src/gui/projection/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "source.gui.appearance.artwork_presentation",
+      "purpose": "Owns the current artwork presentation declaration/implementation in gui/appearance.",
+      "files": [
+        "src/gui/appearance/artwork_presentation.cpp",
+        "src/gui/appearance/artwork_presentation.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.appearance.presentation_tokens",
+      "purpose": "Owns the current presentation tokens declaration/implementation in gui/appearance.",
+      "files": [
+        "src/gui/appearance/presentation_tokens.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.appearance.theme",
+      "purpose": "Owns the current theme declaration/implementation in gui/appearance.",
+      "files": [
+        "src/gui/appearance/theme.cpp",
+        "src/gui/appearance/theme.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.appearance.theme_editor",
+      "purpose": "Owns the current theme editor declaration/implementation in gui/appearance.",
+      "files": [
+        "src/gui/appearance/theme_editor.cpp",
+        "src/gui/appearance/theme_editor.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.appearance.theme_manager",
+      "purpose": "Owns the current theme manager declaration/implementation in gui/appearance.",
+      "files": [
+        "src/gui/appearance/theme_manager.cpp",
+        "src/gui/appearance/theme_manager.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.controls.clock",
+      "purpose": "Owns the current clock declaration/implementation in gui/controls.",
+      "files": [
+        "src/gui/controls/clock.cpp",
+        "src/gui/controls/clock.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.controls.equalizer_panel",
+      "purpose": "Owns the current equalizer panel declaration/implementation in gui/controls.",
+      "files": [
+        "src/gui/controls/equalizer_panel.cpp",
+        "src/gui/controls/equalizer_panel.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.controls.seek_bar",
+      "purpose": "Owns the current seek bar declaration/implementation in gui/controls.",
+      "files": [
+        "src/gui/controls/seek_bar.cpp",
+        "src/gui/controls/seek_bar.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.controls.status_view",
+      "purpose": "Owns the current status view declaration/implementation in gui/controls.",
+      "files": [
+        "src/gui/controls/status_view.cpp",
+        "src/gui/controls/status_view.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.controls.transport_view",
+      "purpose": "Owns the current transport view declaration/implementation in gui/controls.",
+      "files": [
+        "src/gui/controls/transport_view.cpp",
+        "src/gui/controls/transport_view.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.controls.volume_view",
+      "purpose": "Owns the current volume view declaration/implementation in gui/controls.",
+      "files": [
+        "src/gui/controls/volume_view.cpp",
+        "src/gui/controls/volume_view.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.documents.document_registry",
+      "purpose": "Owns the current document registry declaration/implementation in gui/documents.",
+      "files": [
+        "src/gui/documents/document_registry.cpp",
+        "src/gui/documents/document_registry.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.documents.now_playing_document",
+      "purpose": "Owns the current now playing document declaration/implementation in gui/documents.",
+      "files": [
+        "src/gui/documents/now_playing_document.cpp",
+        "src/gui/documents/now_playing_document.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.documents.saved_playlist_document",
+      "purpose": "Owns the current saved playlist document declaration/implementation in gui/documents.",
+      "files": [
+        "src/gui/documents/saved_playlist_document.cpp",
+        "src/gui/documents/saved_playlist_document.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.documents.workspace_document",
+      "purpose": "Owns the current workspace document declaration/implementation in gui/documents.",
+      "files": [
+        "src/gui/documents/workspace_document.cpp",
+        "src/gui/documents/workspace_document.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.classic_layout",
+      "purpose": "Owns the current classic layout declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/classic_layout.cpp",
+        "src/gui/layout/classic_layout.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.component_descriptor",
+      "purpose": "Owns the current component descriptor declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/component_descriptor.cpp",
+        "src/gui/layout/component_descriptor.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.editor.layout_editor_dialog",
+      "purpose": "Owns the current layout editor dialog declaration/implementation in gui/layout/editor.",
+      "files": [
+        "src/gui/layout/editor/layout_editor_dialog.cpp",
+        "src/gui/layout/editor/layout_editor_dialog.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.editor.layout_preview_host",
+      "purpose": "Owns the current layout preview host declaration/implementation in gui/layout/editor.",
+      "files": [
+        "src/gui/layout/editor/layout_preview_host.cpp",
+        "src/gui/layout/editor/layout_preview_host.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.editor.layout_property_inspector",
+      "purpose": "Owns the current layout property inspector declaration/implementation in gui/layout/editor.",
+      "files": [
+        "src/gui/layout/editor/layout_property_inspector.cpp",
+        "src/gui/layout/editor/layout_property_inspector.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.editor.layout_tree_views",
+      "purpose": "Owns the current layout tree views declaration/implementation in gui/layout/editor.",
+      "files": [
+        "src/gui/layout/editor/layout_tree_views.cpp",
+        "src/gui/layout/editor/layout_tree_views.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.focused_layout",
+      "purpose": "Owns the current focused layout declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/focused_layout.cpp",
+        "src/gui/layout/focused_layout.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.layout_builder",
+      "purpose": "Owns the current layout builder declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/layout_builder.cpp",
+        "src/gui/layout/layout_builder.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.layout_document",
+      "purpose": "Owns the current layout document declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/layout_document.cpp",
+        "src/gui/layout/layout_document.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.layout_editor",
+      "purpose": "Owns the current layout editor declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/layout_editor.cpp",
+        "src/gui/layout/layout_editor.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.layout_session",
+      "purpose": "Owns the current layout session declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/layout_session.cpp",
+        "src/gui/layout/layout_session.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.layout_tree",
+      "purpose": "Owns the current layout tree declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/layout_tree.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.layout_widget_operations",
+      "purpose": "Owns the current layout widget operations declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/layout_widget_operations.cpp",
+        "src/gui/layout/layout_widget_operations.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.player_layout",
+      "purpose": "Owns the current player layout declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/player_layout.cpp",
+        "src/gui/layout/player_layout.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.prepared_layout",
+      "purpose": "Owns the current prepared layout declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/prepared_layout.cpp",
+        "src/gui/layout/prepared_layout.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.view_reference",
+      "purpose": "Owns the current view reference declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/view_reference.cpp",
+        "src/gui/layout/view_reference.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.layout.view_registry",
+      "purpose": "Owns the current view registry declaration/implementation in gui/layout.",
+      "files": [
+        "src/gui/layout/view_registry.cpp",
+        "src/gui/layout/view_registry.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.custom_tag_editor",
+      "purpose": "Owns the current custom tag editor declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/custom_tag_editor.cpp",
+        "src/gui/metadata/custom_tag_editor.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.inspector_context",
+      "purpose": "Owns the current inspector context declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/inspector_context.cpp",
+        "src/gui/metadata/inspector_context.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.metadata_conflict_panel",
+      "purpose": "Owns the current metadata conflict panel declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/metadata_conflict_panel.cpp",
+        "src/gui/metadata/metadata_conflict_panel.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.metadata_edit_presentation",
+      "purpose": "Owns the current metadata edit presentation declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/metadata_edit_presentation.cpp",
+        "src/gui/metadata/metadata_edit_presentation.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.metadata_inspector_binding",
+      "purpose": "Owns the current metadata inspector binding declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/metadata_inspector_binding.cpp",
+        "src/gui/metadata/metadata_inspector_binding.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.standard_metadata_editor",
+      "purpose": "Owns the current standard metadata editor declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/standard_metadata_editor.cpp",
+        "src/gui/metadata/standard_metadata_editor.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.metadata.track_inspector",
+      "purpose": "Owns the current track inspector declaration/implementation in gui/metadata.",
+      "files": [
+        "src/gui/metadata/track_inspector.cpp",
+        "src/gui/metadata/track_inspector.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.boundary",
+      "purpose": "Owns the current boundary declaration/implementation in gui/model.",
+      "files": [
+        "src/gui/model/boundary.cpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.documents.document_id",
+      "purpose": "Owns the current document id declaration/implementation in gui/model/documents.",
+      "files": [
+        "src/gui/model/documents/document_id.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.documents.queue_rows",
+      "purpose": "Owns the current queue rows declaration/implementation in gui/model/documents.",
+      "files": [
+        "src/gui/model/documents/queue_rows.cpp",
+        "src/gui/model/documents/queue_rows.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.documents.saved_playlist_rows",
+      "purpose": "Owns the current saved playlist rows declaration/implementation in gui/model/documents.",
+      "files": [
+        "src/gui/model/documents/saved_playlist_rows.cpp",
+        "src/gui/model/documents/saved_playlist_rows.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.documents.workspace_rows",
+      "purpose": "Owns the current workspace rows declaration/implementation in gui/model/documents.",
+      "files": [
+        "src/gui/model/documents/workspace_rows.cpp",
+        "src/gui/model/documents/workspace_rows.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_column_identity",
+      "purpose": "Owns the current track column identity declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_column_identity.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_commands",
+      "purpose": "Owns the current track commands declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_commands.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_identity",
+      "purpose": "Owns the current track identity declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_identity.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_row",
+      "purpose": "Owns the current track row declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_row.cpp",
+        "src/gui/model/tracks/track_row.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_sort",
+      "purpose": "Owns the current track sort declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_sort.cpp",
+        "src/gui/model/tracks/track_sort.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_sorter",
+      "purpose": "Owns the current track sorter declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_sorter.cpp",
+        "src/gui/model/tracks/track_sorter.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_view_pipeline",
+      "purpose": "Owns the current track view pipeline declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_view_pipeline.cpp",
+        "src/gui/model/tracks/track_view_pipeline.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.model.tracks.track_view_state",
+      "purpose": "Owns the current track view state declaration/implementation in gui/model/tracks.",
+      "files": [
+        "src/gui/model/tracks/track_view_state.cpp",
+        "src/gui/model/tracks/track_view_state.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.projection.boundary",
+      "purpose": "Owns the current boundary declaration/implementation in gui/projection.",
+      "files": [
+        "src/gui/projection/boundary.cpp"
+      ]
+    },
+    {
+      "id": "source.gui.projection.track_projection",
+      "purpose": "Executes cancellable track presentation projections.",
+      "files": [
+        "src/gui/projection/track_projection.cpp",
+        "src/gui/projection/track_projection.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.action_button_binding",
+      "purpose": "Owns the current action button binding declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/action_button_binding.cpp",
+        "src/gui/shell/action_button_binding.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.action_descriptor",
+      "purpose": "Owns the current action descriptor declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/action_descriptor.cpp",
+        "src/gui/shell/action_descriptor.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.document_command_context",
+      "purpose": "Owns the current document command context declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/document_command_context.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.document_command_router",
+      "purpose": "Owns the current document command router declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/document_command_router.cpp",
+        "src/gui/shell/document_command_router.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.document_host",
+      "purpose": "Owns active Qt document views and tab lifetimes.",
+      "files": [
+        "src/gui/shell/document_host.cpp",
+        "src/gui/shell/document_host.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.library_navigation",
+      "purpose": "Owns the current library navigation declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/library_navigation.cpp",
+        "src/gui/shell/library_navigation.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.main_window",
+      "purpose": "Composes Qt views, controls, bindings and window state.",
+      "files": [
+        "src/gui/shell/main_window.cpp",
+        "src/gui/shell/main_window.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.player_actions",
+      "purpose": "Owns the current player actions declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/player_actions.cpp",
+        "src/gui/shell/player_actions.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.player_dialogs",
+      "purpose": "Owns the current player dialogs declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/player_dialogs.cpp",
+        "src/gui/shell/player_dialogs.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.player_menu",
+      "purpose": "Owns the current player menu declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/player_menu.cpp",
+        "src/gui/shell/player_menu.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.player_shortcuts",
+      "purpose": "Owns the current player shortcuts declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/player_shortcuts.cpp",
+        "src/gui/shell/player_shortcuts.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.shell.saved_playlist_manager",
+      "purpose": "Owns the current saved playlist manager declaration/implementation in gui/shell.",
+      "files": [
+        "src/gui/shell/saved_playlist_manager.cpp",
+        "src/gui/shell/saved_playlist_manager.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.tracks.tag_filter_panel",
+      "purpose": "Owns the current tag filter panel declaration/implementation in gui/tracks.",
+      "files": [
+        "src/gui/tracks/tag_filter_panel.cpp",
+        "src/gui/tracks/tag_filter_panel.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.tracks.track_browser",
+      "purpose": "Owns the current track browser declaration/implementation in gui/tracks.",
+      "files": [
+        "src/gui/tracks/track_browser.cpp",
+        "src/gui/tracks/track_browser.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.tracks.track_column",
+      "purpose": "Owns the current track column declaration/implementation in gui/tracks.",
+      "files": [
+        "src/gui/tracks/track_column.cpp",
+        "src/gui/tracks/track_column.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.tracks.track_search_panel",
+      "purpose": "Owns the current track search panel declaration/implementation in gui/tracks.",
+      "files": [
+        "src/gui/tracks/track_search_panel.cpp",
+        "src/gui/tracks/track_search_panel.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.tracks.track_table_model",
+      "purpose": "Owns the current track table model declaration/implementation in gui/tracks.",
+      "files": [
+        "src/gui/tracks/track_table_model.cpp",
+        "src/gui/tracks/track_table_model.hpp"
+      ]
+    },
+    {
+      "id": "source.gui.tracks.track_table_view",
+      "purpose": "Owns the current track table view declaration/implementation in gui/tracks.",
+      "files": [
+        "src/gui/tracks/track_table_view.cpp",
+        "src/gui/tracks/track_table_view.hpp"
+      ]
+    }
+  ]
+}

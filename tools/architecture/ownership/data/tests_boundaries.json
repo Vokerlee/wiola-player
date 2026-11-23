@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "test.boundaries.coverage_inventory",
+      "purpose": "Verifies the current coverage inventory contract.",
+      "files": [
+        "tests/boundaries/coverage_inventory.cpp"
+      ]
+    }
+  ]
+}

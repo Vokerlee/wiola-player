@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "coverage.policy_data",
+      "purpose": "Defines the measured coverage baseline and qualified test identities.",
+      "files": [
+        "tests/coverage/workflow-baseline.json"
+      ]
+    }
+  ]
+}

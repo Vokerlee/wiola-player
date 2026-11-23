@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.src.app",
+      "purpose": "Declares the current targets for src/app.",
+      "files": [
+        "src/app/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "source.app.library.artwork_store",
+      "purpose": "Owns the current artwork store declaration/implementation in app/library.",
+      "files": [
+        "src/app/library/artwork_store.cpp",
+        "src/app/library/artwork_store.hpp"
+      ]
+    },
+    {
+      "id": "source.app.library.location_index",
+      "purpose": "Owns the current location index declaration/implementation in app/library.",
+      "files": [
+        "src/app/library/location_index.cpp",
+        "src/app/library/location_index.hpp"
+      ]
+    },
+    {
+      "id": "source.app.library.search_index",
+      "purpose": "Owns the current search index declaration/implementation in app/library.",
+      "files": [
+        "src/app/library/search_index.cpp",
+        "src/app/library/search_index.hpp"
+      ]
+    },
+    {
+      "id": "source.app.library.tag_key_catalog",
+      "purpose": "Owns the current tag key catalog declaration/implementation in app/library.",
+      "files": [
+        "src/app/library/tag_key_catalog.cpp",
+        "src/app/library/tag_key_catalog.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.background_metadata",
+      "purpose": "Executes bounded background metadata reads.",
+      "files": [
+        "src/app/metadata/background_metadata.cpp",
+        "src/app/metadata/background_metadata.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.background_metadata_writes",
+      "purpose": "Executes bounded metadata-write staging and cancellation.",
+      "files": [
+        "src/app/metadata/background_metadata_writes.cpp",
+        "src/app/metadata/background_metadata_writes.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.custom_tag_commands",
+      "purpose": "Owns the current custom tag commands declaration/implementation in app/metadata.",
+      "files": [
+        "src/app/metadata/custom_tag_commands.cpp",
+        "src/app/metadata/custom_tag_commands.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.media_replacement",
+      "purpose": "Validates and coordinates replacement of local media.",
+      "files": [
+        "src/app/metadata/media_replacement.cpp",
+        "src/app/metadata/media_replacement.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.metadata_conflicts",
+      "purpose": "Owns the current metadata conflicts declaration/implementation in app/metadata.",
+      "files": [
+        "src/app/metadata/metadata_conflicts.cpp",
+        "src/app/metadata/metadata_conflicts.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.metadata_edit_service",
+      "purpose": "Owns the current metadata edit service declaration/implementation in app/metadata.",
+      "files": [
+        "src/app/metadata/metadata_edit_service.cpp",
+        "src/app/metadata/metadata_edit_service.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.metadata_edit_session",
+      "purpose": "Owns the current metadata edit session declaration/implementation in app/metadata.",
+      "files": [
+        "src/app/metadata/metadata_edit_session.cpp",
+        "src/app/metadata/metadata_edit_session.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.metadata_merge",
+      "purpose": "Owns the current metadata merge declaration/implementation in app/metadata.",
+      "files": [
+        "src/app/metadata/metadata_merge.cpp",
+        "src/app/metadata/metadata_merge.hpp"
+      ]
+    },
+    {
+      "id": "source.app.metadata.metadata_write_job",
+      "purpose": "Carries write-operation values and staged-output lifetime.",
+      "files": [
+        "src/app/metadata/metadata_write_job.cpp",
+        "src/app/metadata/metadata_write_job.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.active_playlist",
+      "purpose": "Owns the current active playlist declaration/implementation in app/playback.",
+      "files": [
+        "src/app/playback/active_playlist.cpp",
+        "src/app/playback/active_playlist.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.operation_outcome",
+      "purpose": "Represents engine operation acceptance and terminal outcomes.",
+      "files": [
+        "src/app/playback/operation_outcome.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.playback_presentation",
+      "purpose": "Owns the current playback presentation declaration/implementation in app/playback.",
+      "files": [
+        "src/app/playback/playback_presentation.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.playback_queue",
+      "purpose": "Owns the current playback queue declaration/implementation in app/playback.",
+      "files": [
+        "src/app/playback/playback_queue.cpp",
+        "src/app/playback/playback_queue.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.playback_service",
+      "purpose": "Owns the current playback service declaration/implementation in app/playback.",
+      "files": [
+        "src/app/playback/playback_service.cpp",
+        "src/app/playback/playback_service.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.playback_snapshot",
+      "purpose": "Represents a coherent engine playback observation.",
+      "files": [
+        "src/app/playback/playback_snapshot.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.playlist_transfer",
+      "purpose": "Owns the current playlist transfer declaration/implementation in app/playback.",
+      "files": [
+        "src/app/playback/playlist_transfer.cpp",
+        "src/app/playback/playlist_transfer.hpp"
+      ]
+    },
+    {
+      "id": "source.app.playback.volume_scale",
+      "purpose": "Owns the current volume scale declaration/implementation in app/playback.",
+      "files": [
+        "src/app/playback/volume_scale.hpp"
+      ]
+    },
+    {
+      "id": "source.app.workspace.workspace_discovery",
+      "purpose": "Owns the current workspace discovery declaration/implementation in app/workspace.",
+      "files": [
+        "src/app/workspace/workspace_discovery.cpp",
+        "src/app/workspace/workspace_discovery.hpp"
+      ]
+    },
+    {
+      "id": "source.app.workspace.workspace_reconciliation",
+      "purpose": "Owns the current workspace reconciliation declaration/implementation in app/workspace.",
+      "files": [
+        "src/app/workspace/workspace_reconciliation.cpp",
+        "src/app/workspace/workspace_reconciliation.hpp"
+      ]
+    },
+    {
+      "id": "source.app.workspace.workspace_scanner",
+      "purpose": "Owns the current workspace scanner declaration/implementation in app/workspace.",
+      "files": [
+        "src/app/workspace/workspace_scanner.cpp",
+        "src/app/workspace/workspace_scanner.hpp"
+      ]
+    }
+  ]
+}

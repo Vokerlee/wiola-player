@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "documentation.scripts",
+      "purpose": "Explains the current scripts responsibilities and contributor entrypoints.",
+      "files": [
+        "scripts/README.md"
+      ]
+    },
+    {
+      "id": "tool.build_qt_core_tsan",
+      "purpose": "Implements the current build qt core tsan development command.",
+      "files": [
+        "scripts/build-qt-core-tsan.sh"
+      ]
+    },
+    {
+      "id": "tool.build_qt_mingw",
+      "purpose": "Implements the current build qt mingw development command.",
+      "files": [
+        "scripts/build-qt-mingw.sh"
+      ]
+    },
+    {
+      "id": "tool.check_gui_mutations",
+      "purpose": "Implements the current check gui mutations development command.",
+      "files": [
+        "scripts/check-gui-mutations.py"
+      ]
+    },
+    {
+      "id": "tool.coverage",
+      "purpose": "Implements the current coverage development command.",
+      "files": [
+        "scripts/coverage.sh"
+      ]
+    },
+    {
+      "id": "tool.coverage_gate",
+      "purpose": "Implements the current coverage gate development command.",
+      "files": [
+        "scripts/coverage_gate.py"
+      ]
+    },
+    {
+      "id": "tool.coverage_report",
+      "purpose": "Implements the current coverage report development command.",
+      "files": [
+        "scripts/coverage_report.py"
+      ]
+    },
+    {
+      "id": "tool.format_cmake",
+      "purpose": "Implements the current format cmake development command.",
+      "files": [
+        "scripts/format-cmake.sh"
+      ]
+    },
+    {
+      "id": "tool.format_cpp",
+      "purpose": "Implements the current format cpp development command.",
+      "files": [
+        "scripts/format-cpp.sh"
+      ]
+    },
+    {
+      "id": "tool.hooks.pre_commit",
+      "purpose": "Implements the current pre commit development command.",
+      "files": [
+        "scripts/hooks/pre-commit"
+      ]
+    },
+    {
+      "id": "tool.install_hooks",
+      "purpose": "Implements the current install hooks development command.",
+      "files": [
+        "scripts/install-hooks.sh"
+      ]
+    },
+    {
+      "id": "tool.run_desktop_journeys",
+      "purpose": "Implements the current run desktop journeys development command.",
+      "files": [
+        "scripts/run-desktop-journeys.py"
+      ]
+    },
+    {
+      "id": "tool.test_affected",
+      "purpose": "Implements the current test affected development command.",
+      "files": [
+        "scripts/test-affected.py"
+      ]
+    }
+  ]
+}

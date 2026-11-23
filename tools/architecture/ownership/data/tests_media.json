@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests.media",
+      "purpose": "Declares the current targets for tests/media.",
+      "files": [
+        "tests/media/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "test.media.byte_stream_test",
+      "purpose": "Verifies the current byte stream contract.",
+      "files": [
+        "tests/media/byte_stream_test.cpp"
+      ]
+    },
+    {
+      "id": "test.media.metadata_writer_test",
+      "purpose": "Verifies the current metadata writer contract.",
+      "files": [
+        "tests/media/metadata_writer_test.cpp"
+      ]
+    },
+    {
+      "id": "test.media.track_metadata_test",
+      "purpose": "Verifies the current track metadata contract.",
+      "files": [
+        "tests/media/track_metadata_test.cpp"
+      ]
+    }
+  ]
+}

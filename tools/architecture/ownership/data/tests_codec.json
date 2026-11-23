@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests.codec",
+      "purpose": "Declares the current targets for tests/codec.",
+      "files": [
+        "tests/codec/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "fixtures.codec",
+      "purpose": "Owns immutable media fixtures used by codec contracts.",
+      "files": [
+        "tests/codec/data/attached-art.m4a",
+        "tests/codec/data/chained-channel-change.ogg",
+        "tests/codec/data/chained-rate-change.ogg",
+        "tests/codec/data/chained-same-shape.ogg",
+        "tests/codec/data/channels-5.1.caf",
+        "tests/codec/data/channels-6.1.caf",
+        "tests/codec/data/large-metadata.ogg",
+        "tests/codec/data/multi-audio.m4a",
+        "tests/codec/data/no-audio.mp4",
+        "tests/codec/data/tone-alac.mp4",
+        "tests/codec/data/tone-f32le.rf64",
+        "tests/codec/data/tone-f64le.caf",
+        "tests/codec/data/tone-hybrid.wv",
+        "tests/codec/data/tone-lc-mono.aac",
+        "tests/codec/data/tone-lc.aac",
+        "tests/codec/data/tone-lossless.wv",
+        "tests/codec/data/tone-opus.mka",
+        "tests/codec/data/tone-opus.webm",
+        "tests/codec/data/tone-s16be.aiff",
+        "tests/codec/data/tone-s16le.aifc",
+        "tests/codec/data/tone-s24le.w64",
+        "tests/codec/data/tone-s32be.au",
+        "tests/codec/data/tone-vorbis.mka",
+        "tests/codec/data/tone-vorbis.ogg",
+        "tests/codec/data/tone-wmav2.wma",
+        "tests/codec/data/tone.ape",
+        "tests/codec/data/tone.flac",
+        "tests/codec/data/tone.mp2",
+        "tests/codec/data/tone.mp3",
+        "tests/codec/data/tone.opus",
+        "tests/codec/data/tone.tta",
+        "tests/codec/data/tone.wav",
+        "tests/codec/data/unsupported-speex.ogg"
+      ]
+    },
+    {
+      "id": "test.codec.audio_decoder_test",
+      "purpose": "Verifies the current audio decoder contract.",
+      "files": [
+        "tests/codec/audio_decoder_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.backend_qualification_test",
+      "purpose": "Verifies the current backend qualification contract.",
+      "files": [
+        "tests/codec/backend_qualification_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.decoder_test",
+      "purpose": "Verifies the current decoder contract.",
+      "files": [
+        "tests/codec/decoder_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_adts_test",
+      "purpose": "Verifies the current ffmpeg adts contract.",
+      "files": [
+        "tests/codec/ffmpeg_adts_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_build_test",
+      "purpose": "Verifies the current ffmpeg build contract.",
+      "files": [
+        "tests/codec/ffmpeg_build_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_channel_layout_test",
+      "purpose": "Verifies the current ffmpeg channel layout contract.",
+      "files": [
+        "tests/codec/ffmpeg_channel_layout_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_container_test",
+      "purpose": "Verifies the current ffmpeg container contract.",
+      "files": [
+        "tests/codec/ffmpeg_container_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_hardening_test",
+      "purpose": "Verifies the current ffmpeg hardening contract.",
+      "files": [
+        "tests/codec/ffmpeg_hardening_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_io_test",
+      "purpose": "Verifies the current ffmpeg io contract.",
+      "files": [
+        "tests/codec/ffmpeg_io_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_lossless_test",
+      "purpose": "Verifies the current ffmpeg lossless contract.",
+      "files": [
+        "tests/codec/ffmpeg_lossless_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_metadata_test",
+      "purpose": "Verifies the current ffmpeg metadata contract.",
+      "files": [
+        "tests/codec/ffmpeg_metadata_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_metadata_writer_test",
+      "purpose": "Verifies the current ffmpeg metadata writer contract.",
+      "files": [
+        "tests/codec/ffmpeg_metadata_writer_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_mp4_test",
+      "purpose": "Verifies the current ffmpeg mp4 contract.",
+      "files": [
+        "tests/codec/ffmpeg_mp4_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_ogg_test",
+      "purpose": "Verifies the current ffmpeg ogg contract.",
+      "files": [
+        "tests/codec/ffmpeg_ogg_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_packet_decoder_test",
+      "purpose": "Verifies the current ffmpeg packet decoder contract.",
+      "files": [
+        "tests/codec/ffmpeg_packet_decoder_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_pcm_test",
+      "purpose": "Verifies the current ffmpeg pcm contract.",
+      "files": [
+        "tests/codec/ffmpeg_pcm_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_qualification_test",
+      "purpose": "Verifies the current ffmpeg qualification contract.",
+      "files": [
+        "tests/codec/ffmpeg_qualification_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.ffmpeg_sampled_file_test",
+      "purpose": "Verifies the current ffmpeg sampled file contract.",
+      "files": [
+        "tests/codec/ffmpeg_sampled_file_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.format_test",
+      "purpose": "Verifies the current format contract.",
+      "files": [
+        "tests/codec/format_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.provider_test",
+      "purpose": "Verifies the current provider contract.",
+      "files": [
+        "tests/codec/provider_test.cpp"
+      ]
+    },
+    {
+      "id": "test.codec.registry_test",
+      "purpose": "Verifies the current registry contract.",
+      "files": [
+        "tests/codec/registry_test.cpp"
+      ]
+    }
+  ]
+}

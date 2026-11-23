@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "test.scripts.test_affected_selection",
+      "purpose": "Verifies the current test affected selection contract.",
+      "files": [
+        "tests/scripts/test_affected_selection.py"
+      ]
+    },
+    {
+      "id": "test.scripts.test_coverage_gate",
+      "purpose": "Verifies the current test coverage gate contract.",
+      "files": [
+        "tests/scripts/test_coverage_gate.py"
+      ]
+    },
+    {
+      "id": "test.scripts.test_coverage_inventory",
+      "purpose": "Verifies the current test coverage inventory contract.",
+      "files": [
+        "tests/scripts/test_coverage_inventory.py"
+      ]
+    }
+  ]
+}
