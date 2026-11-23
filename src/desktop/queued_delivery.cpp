@@ -26,6 +26,10 @@
 namespace wiola::app {
 namespace {
 
+// All publishers share the owner's Qt event queue. Give producer-side queue entry an explicit
+// C++ synchronization boundary, including when the system Qt mutexes are uninstrumented.
+std::mutex event_posting;
+
 QEvent::Type delivery_event_type()
 {
     static const auto type = static_cast<QEvent::Type>(QEvent::registerEventType());
@@ -60,7 +64,10 @@ bool QueuedDelivery::Endpoint::post(std::function<void()> delivery) const
         return false;
     state->pending.push_back(std::move(delivery));
     // The receiver destructor takes this mutex before retiring the QObject address.
-    QCoreApplication::postEvent(state->receiver, new QEvent{delivery_event_type()});
+    {
+        std::lock_guard posting{event_posting};
+        QCoreApplication::postEvent(state->receiver, new QEvent{delivery_event_type()});
+    }
     return true;
 }
 
