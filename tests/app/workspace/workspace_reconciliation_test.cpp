@@ -275,4 +275,19 @@ TEST_F(WorkspaceReconciliation, AmbiguousFingerprintsDoNotMergeDistinctMediaIden
     EXPECT_NE(discovered.media, second.id);
 }
 
+TEST_F(WorkspaceReconciliation, MissingNewFileCannotBeQualifiedAsKnownOrRelocated)
+{
+    const auto missing = root / "not-created.flac";
+    wiola::app::WorkspaceDiscovery discovery{root, {}};
+
+    const auto discovered = discovery.resolve(missing);
+
+    EXPECT_TRUE(discovered.unreadable);
+    EXPECT_FALSE(discovered.fingerprint.has_value());
+    EXPECT_FALSE(discovered.known());
+    EXPECT_FALSE(discovered.relocated());
+    EXPECT_EQ(discovered.media, wiola::library::media_id_for(missing));
+    EXPECT_EQ(discovered.expected_content_revision, 0U);
+}
+
 } // namespace
