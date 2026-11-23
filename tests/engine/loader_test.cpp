@@ -26,6 +26,10 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdlib>
+#include <exception>
+#include <new>
+
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
@@ -81,7 +85,9 @@ TEST(Loader, HasNothingBeforeItIsAsked)
 
 TEST(Loader, OpensAFileAndHandsItOver)
 {
-    Loader loader{[](const std::filesystem::path&) { return success(); }};
+    Loader loader{[](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        return success();
+    }};
 
     loader.start(request("track.wav", 7));
 
@@ -97,7 +103,7 @@ TEST(Loader, OpensAFileAndHandsItOver)
 
 TEST(Loader, SaysWhyAFileWouldNotOpen)
 {
-    Loader loader{[](const std::filesystem::path&) {
+    Loader loader{[](const std::filesystem::path&, const wiola::media::OperationContext&) {
         return wiola::media::DecoderOpenResult{wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable,
                 .detail = "missing"}}};
@@ -115,7 +121,9 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
 
 TEST(Loader, HandsTheAnswerOverOnlyOnce)
 {
-    Loader loader{[](const std::filesystem::path&) { return success(); }};
+    Loader loader{[](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        return success();
+    }};
 
     loader.start(request("track.wav"));
 
@@ -126,7 +134,7 @@ TEST(Loader, HandsTheAnswerOverOnlyOnce)
 TEST(Loader, HoldsALoadUntilItsOpenerReturns)
 {
     Gate opening;
-    Loader loader{[&opening](const std::filesystem::path&) {
+    Loader loader{[&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
         opening.wait();
         return success();
     }};
@@ -146,7 +154,8 @@ TEST(Loader, KeepsOnlyTheFileAskedForLast)
 {
     Gate first_open;
     const std::filesystem::path first{"first.wav"};
-    Loader loader{[&first_open, &first](const std::filesystem::path& path) {
+    Loader loader{[&first_open, &first](const std::filesystem::path& path,
+                      const wiola::media::OperationContext&) {
         if (path == first) {
             first_open.wait();
             return success(10);
@@ -172,7 +181,9 @@ TEST(Loader, KeepsOnlyTheFileAskedForLast)
 
 TEST(Loader, TakesAnotherFileAfterOneIsDone)
 {
-    Loader loader{[](const std::filesystem::path&) { return success(); }};
+    Loader loader{[](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        return success();
+    }};
 
     loader.start(request("first.wav", 1));
     ASSERT_TRUE(wait_for(loader).has_value());
@@ -210,7 +221,7 @@ TEST(Loader, CanBeThrownAwayWhileItIsReading)
         opening.release();
     }};
 
-    Loader loader{[&opening](const std::filesystem::path&) {
+    Loader loader{[&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
         opening.wait();
         return success();
     }};
@@ -249,7 +260,8 @@ TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
 
 TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
 {
-    Loader loader{[](const std::filesystem::path& path) -> wiola::media::DecoderOpenResult {
+    Loader loader{[](const std::filesystem::path& path,
+                      const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
         if (path == "broken.wav")
             throw std::runtime_error{"broken decoder"};
         return success();
@@ -266,3 +278,22 @@ TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
     ASSERT_TRUE(recovered.has_value());
     EXPECT_TRUE(recovered->opened.has_value());
 }
+
+#if GTEST_HAS_DEATH_TEST
+TEST(Loader, AllocationFailureRemainsFatalRatherThanAnUnreadableFile)
+{
+    EXPECT_EXIT(
+        {
+            std::set_terminate([] { std::exit(EXIT_FAILURE); });
+            Loader loader{[](
+                              const std::filesystem::path&, const wiola::media::OperationContext&
+                          ) -> wiola::media::DecoderOpenResult { throw std::bad_alloc{}; }};
+            loader.start(request("allocation-failure.wav"));
+            while (loader.busy())
+                std::this_thread::yield();
+            std::_Exit(EXIT_SUCCESS);
+        },
+        testing::ExitedWithCode(EXIT_FAILURE), ""
+    );
+}
+#endif

@@ -153,7 +153,7 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
                         ++num_outputs;
                         return std::make_unique<wiola::testing::FakeOutput>();
                     },
-        [](const std::filesystem::path&) {
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             auto decoder{std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
                 wiola::pcm::StreamSpec{.sample_rate = units::Frequency{48000.0},
                     .num_channels = 0})};
@@ -176,7 +176,7 @@ TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
     const auto loads_with = [](units::Time duration) {
         Session session{
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-            [](const std::filesystem::path&) {
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
@@ -688,7 +688,7 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
     std::atomic<std::size_t> num_reads{0};
     Session session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [](const std::filesystem::path&) {
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [&num_reads](const std::filesystem::path&) {
@@ -716,7 +716,7 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 {
     Session session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [](const std::filesystem::path&) {
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [](const std::filesystem::path&) -> wiola::media::Result<wiola::media::Metadata> {
@@ -740,7 +740,7 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
     wiola::testing::Gate opening;
     Session session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [&opening](const std::filesystem::path&) {
+        [&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
             opening.wait();
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
@@ -764,7 +764,8 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
     const std::filesystem::path second{"second.wav"};
     Session session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [&opening, &second](const std::filesystem::path& path) {
+        [&opening, &second](const std::filesystem::path& path,
+            const wiola::media::OperationContext&) {
             if (path == second)
                 opening.wait();
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};

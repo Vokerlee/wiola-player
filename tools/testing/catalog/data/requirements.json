@@ -114,6 +114,11 @@
       "identity": "decoder.reject-progress-stalls",
       "target": "media_audio_decoder_contract_test",
       "name": "AudioDecoder.RejectsBackendProgressStalls"
+    },
+    {
+      "identity": "engine.unknown-length-seek",
+      "target": "engine_player_test",
+      "name": "SeekOperation.AcceptsUnknownLengthWithoutTreatingItAsAnExactZero"
     }
   ],
   "auxiliary": {

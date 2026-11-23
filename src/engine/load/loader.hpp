@@ -35,8 +35,9 @@
 
 namespace wiola::engine {
 
-using DecoderOpener = std::function<media::DecoderOpenResult(const std::filesystem::path&)>;
-using ContextDecoderOpener = std::function<media::DecoderOpenResult(const std::filesystem::path&,
+/// Opening receives the active cancellation/deadline context. Implementations honor it before
+/// expensive work and during blocking operations; stale completions are not installed.
+using DecoderOpener = std::function<media::DecoderOpenResult(const std::filesystem::path&,
     const media::OperationContext&)>;
 
 /// Latest-request-wins decoder opening with request identity retained in every completion.
@@ -45,7 +46,6 @@ public:
     Loader();
     explicit Loader(std::shared_ptr<media::MediaProvider> provider);
     explicit Loader(DecoderOpener open);
-    explicit Loader(ContextDecoderOpener open);
 
     NO_COPY_SEMANTIC(Loader);
     NO_MOVE_SEMANTIC(Loader);
@@ -61,7 +61,7 @@ public:
 private:
     void work(const std::stop_token& stop);
 
-    ContextDecoderOpener open_;
+    DecoderOpener open_;
     std::stop_source active_stop_;
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;

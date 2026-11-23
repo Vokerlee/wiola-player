@@ -43,17 +43,6 @@ Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
 }
 
 Loader::Loader(DecoderOpener open)
-    : open_{[open = std::move(open)](const std::filesystem::path& path,
-                const media::OperationContext& context) {
-        if (context.stop_reason() != media::StopReason::none)
-            return media::DecoderOpenResult{media::unexpected{context.error()}};
-
-        return open(path);
-    }}
-{
-}
-
-Loader::Loader(ContextDecoderOpener open)
     : open_{std::move(open)}
 {
 }
@@ -120,20 +109,18 @@ void Loader::work(const std::stop_token& stop)
             opening_ = true;
         }
 
-        media::DecoderOpenResult opened{
-            media::unexpected{media::Error{.category = media::ErrorCategory::unreadable,
-                .detail = "decoder was not opened"}}};
-
-        try {
-            opened = open_(request.path, context);
-        } catch (const std::bad_alloc&) {
-            throw;
-        } catch (...) {
-            opened = media::unexpected{
-                media::Error{.category = media::ErrorCategory::unreadable,
-                             .detail = "decoder opener failed"}
-            };
-        }
+        auto opened{[&]() -> media::DecoderOpenResult {
+            try {
+                return open_(request.path, context);
+            } catch (const std::bad_alloc&) {
+                throw;
+            } catch (...) {
+                return media::unexpected{
+                    media::Error{.category = media::ErrorCategory::unreadable,
+                                 .detail = "decoder opener failed"}
+                };
+            }
+        }()};
 
         {
             const std::lock_guard asked{mutex_};
