@@ -39,6 +39,12 @@ namespace wiola::codec::ffmpeg {
 
 namespace {
 
+std::string utf8(const std::filesystem::path& path)
+{
+    const auto encoded = path.u8string();
+    return {encoded.begin(), encoded.end()};
+}
+
 using Input = std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)>;
 using Output = std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)>;
 using Io = std::unique_ptr<AVIOContext, void (*)(AVIOContext*)>;
@@ -143,7 +149,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     if (context.stop_reason() != media::StopReason::none)
         return failed(media::MetadataWriteError::cancelled, context.error().detail);
 
-    const int opened = avformat_open_input(&raw_input, source.string().c_str(), nullptr, nullptr);
+    const int opened = avformat_open_input(&raw_input, utf8(source).c_str(), nullptr, nullptr);
     if (opened < 0)
         return failed(media::MetadataWriteError::io, ffmpeg_error(opened));
 
@@ -157,16 +163,16 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
 
     const std::string_view input_formats{input->iformat->name};
     std::string primary_format{input_formats.substr(0, input_formats.find(','))};
-    if (primary_format == "mov" && av_match_ext(temporary.string().c_str(), "m4a"))
+    if (primary_format == "mov" && av_match_ext(utf8(temporary).c_str(), "m4a"))
         primary_format = "ipod";
-    else if (primary_format == "mov" && av_match_ext(temporary.string().c_str(), "mp4"))
+    else if (primary_format == "mov" && av_match_ext(utf8(temporary).c_str(), "mp4"))
         primary_format = "mp4";
 
     const AVOutputFormat* muxer = av_guess_format(primary_format.c_str(), nullptr, nullptr);
 
     AVFormatContext* raw_output{nullptr};
     const int allocated =
-        avformat_alloc_output_context2(&raw_output, muxer, nullptr, temporary.string().c_str());
+        avformat_alloc_output_context2(&raw_output, muxer, nullptr, utf8(temporary).c_str());
     if (allocated < 0 || raw_output == nullptr)
         return failed(media::MetadataWriteError::invalid_output,
             allocated < 0 ? ffmpeg_error(allocated) : "FFmpeg could not allocate output");
@@ -207,7 +213,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     }
 
     AVIOContext* raw_io{nullptr};
-    const int io_opened = avio_open(&raw_io, temporary.string().c_str(), AVIO_FLAG_WRITE);
+    const int io_opened = avio_open(&raw_io, utf8(temporary).c_str(), AVIO_FLAG_WRITE);
     if (io_opened < 0)
         return failed(media::MetadataWriteError::io, ffmpeg_error(io_opened));
 
@@ -302,7 +308,8 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     return {.state = media::MetadataWriteState::written,
         .error = media::MetadataWriteError::none,
         .source_modified = false,
-        .detail = temporary.string()};
+        .detail = "Metadata output staged",
+        .staged_output = temporary};
 }
 
 } // namespace wiola::codec::ffmpeg

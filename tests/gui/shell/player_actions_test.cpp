@@ -24,6 +24,7 @@
 
 #include <QApplication>
 #include <QWidget>
+#include <fixtures/gui_interaction.hpp>
 
 #include <gtest/gtest.h>
 
@@ -52,6 +53,27 @@ TEST_F(PlayerActions, RegistersEveryCommandWithALabelAndShortcut)
     EXPECT_EQ(actions.action(PlayerAction::open)->text(), "Open tracks");
     EXPECT_EQ(actions.action(PlayerAction::play)->text(), "Play");
     EXPECT_TRUE(actions.action(PlayerAction::shuffle)->isCheckable());
+}
+
+TEST_F(PlayerActions, SpaceActivatesTheFocusedButtonAndRemainsAPlayerShortcutElsewhere)
+{
+    QPushButton reset{"Reset", &styled};
+    styled.setFocusPolicy(Qt::StrongFocus);
+    styled.addAction(actions.action(PlayerAction::play));
+    int resets{}, plays{};
+    QObject::connect(&reset, &QPushButton::clicked, [&] { ++resets; });
+    QObject::connect(actions.action(PlayerAction::play), &QAction::triggered, [&] { ++plays; });
+    styled.show();
+    styled.activateWindow();
+    reset.setFocus();
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return reset.hasFocus(); }));
+    QTest::keyClick(&reset, Qt::Key_Space);
+    EXPECT_EQ(resets, 1);
+    EXPECT_EQ(plays, 0);
+    styled.setFocus();
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return styled.hasFocus(); }));
+    QTest::keyClick(&styled, Qt::Key_Space);
+    EXPECT_EQ(plays, 1);
 }
 
 TEST_F(PlayerActions, SharesAvailabilityAndPreventsDisabledActivation)

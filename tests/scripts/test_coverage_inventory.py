@@ -30,6 +30,7 @@ class CoverageInventory(unittest.TestCase):
         root = Path('/tmp/repo')
         for folder in ['gui', 'desktop', 'app', 'persistence', 'library', 'media']:
             self.assertTrue(coverage.workflow_file(root / 'src' / folder / 'moved.cpp', root))
+        self.assertTrue(coverage.workflow_file(root / 'src/main.cpp', root))
         self.assertFalse(coverage.workflow_file(root / 'tests/gui/test.cpp', root))
 
     def test_zero_hits_and_distinct_branch_counts_remain_visible(self):

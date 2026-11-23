@@ -76,6 +76,7 @@ TEST(MetadataWriter, ReadOnlyAssetsRejectWritesWithoutModifyingTheSource)
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::unsupported);
     EXPECT_FALSE(outcome.source_modified);
     EXPECT_FALSE(outcome.detail.empty());
+    EXPECT_TRUE(outcome.staged_output.empty());
     EXPECT_FALSE(asset.metadata_write_capabilities().any());
 }
 

@@ -90,7 +90,7 @@ endif()
 wiola_add_test(
     gui_player_actions_test
     SOURCES shell/player_actions_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui Qt6::Test
 )
 wiola_add_test(gui_theme_test SOURCES appearance/theme_test.cpp LIBS wiola_gui)
 wiola_add_test(
@@ -224,6 +224,7 @@ wiola_add_test(
     gui_desktop_journey_test
     SOURCES journeys/desktop_journey_test.cpp
     LIBS wiola_gui wiola_player_application Qt6::Test
+    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
 )
 qt_finalize_target(gui_desktop_journey_test)
 
@@ -253,3 +254,12 @@ wiola_add_test(
     SOURCES controls/painting_contract_test.cpp
     LIBS wiola_gui Qt6::Test
 )
+
+if(ENABLE_COVERAGE)
+    target_compile_definitions(
+        gui_desktop_journey_test
+        PRIVATE WIOLA_TEST_COVERAGE
+    )
+endif()
+
+add_dependencies(gui_desktop_journey_test wiola-player)

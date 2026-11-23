@@ -82,7 +82,8 @@ public:
         return {.state = wiola::media::MetadataWriteState::written,
             .error = wiola::media::MetadataWriteError::none,
             .source_modified = false,
-            .detail = "temporary output"};
+            .detail = "temporary output",
+            .staged_output = "temporary output"};
     }
 
 private:

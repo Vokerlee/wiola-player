@@ -159,9 +159,39 @@ void SeekBar::request_seek(double value)
         emit seek_requested(fraction_);
 }
 
+bool SeekBar::event(QEvent* event)
+{
+    if (event->type() == QEvent::ShortcutOverride && isEnabled()) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        if (key->modifiers() == Qt::NoModifier) {
+            switch (key->key()) {
+            case Qt::Key_Left:
+            case Qt::Key_Right:
+            case Qt::Key_Up:
+            case Qt::Key_Down:
+            case Qt::Key_PageUp:
+            case Qt::Key_PageDown:
+            case Qt::Key_Home:
+            case Qt::Key_End:
+                key->accept();
+                return true;
+            case Qt::Key_Escape:
+                if (dragging_) {
+                    key->accept();
+                    return true;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    return QWidget::event(event);
+}
+
 void SeekBar::keyPressEvent(QKeyEvent* event)
 {
-    if (!isEnabled()) {
+    if (!isEnabled() || event->modifiers() != Qt::NoModifier) {
         QWidget::keyPressEvent(event);
         return;
     }

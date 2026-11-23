@@ -126,6 +126,8 @@ struct MetadataWriteOutcome {
     MetadataWriteError error{MetadataWriteError::none};
     bool source_modified{false};
     std::string detail;
+    /// Owned path of a staged output; diagnostic text never transports filesystem identity.
+    std::filesystem::path staged_output{};
 };
 
 struct Metadata {

@@ -23,6 +23,7 @@
 #include "library_navigation.hpp"
 #include "player_actions.hpp"
 #include "saved_playlist_manager.hpp"
+#include <QApplication>
 #include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
@@ -574,6 +575,7 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
         return false;
     }
 
+    const QPointer<QWidget> previous_focus = QApplication::focusWidget();
     ViewRegistry live = views_;
     const auto register_document = [&](DocumentId id, QWidget* widget) {
         static_cast<void>(live.add(DocumentViewReference{id}, widget,
@@ -653,6 +655,11 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
         layout->setSpacing(tokens.player.section_spacing);
 
     setCentralWidget(root);
+    if (isVisible()) {
+        root->show();
+        if (previous_focus && belongs_to_root(previous_focus))
+            previous_focus->setFocus(Qt::OtherFocusReason);
+    }
     show_layout_choice();
     if (persist)
         save_window_state();

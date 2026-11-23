@@ -357,7 +357,7 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
     const auto outcome = (*asset)->write_metadata(request);
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
-    const std::filesystem::path output = outcome.detail;
+    const std::filesystem::path output = outcome.staged_output;
 
     struct RemoveOutput {
         std::filesystem::path path;
@@ -394,7 +394,7 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
     auto outcome = (*asset)->write_metadata(first);
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
-    const std::filesystem::path commented = outcome.detail;
+    const std::filesystem::path commented = outcome.staged_output;
 
     struct RemoveOutput {
         std::filesystem::path path;
@@ -409,7 +409,7 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
     outcome = (*asset)->write_metadata(second);
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
-    const std::filesystem::path output = outcome.detail;
+    const std::filesystem::path output = outcome.staged_output;
     RemoveOutput cleanup{output};
     const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
 
@@ -443,7 +443,7 @@ TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
         const auto outcome = (*asset)->write_metadata(request);
         ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
-        const std::filesystem::path output = outcome.detail;
+        const std::filesystem::path output = outcome.staged_output;
 
         struct RemoveOutput {
             std::filesystem::path path;
@@ -482,7 +482,7 @@ TEST(FfmpegMetadata, QualifiedOggAndOpusWritingPreservesPacketsAndChainedPcm)
         const auto outcome = (*asset)->write_metadata(request);
         ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
-        const std::filesystem::path output = outcome.detail;
+        const std::filesystem::path output = outcome.staged_output;
 
         struct RemoveOutput {
             std::filesystem::path path;
