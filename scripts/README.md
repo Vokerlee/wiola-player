@@ -43,3 +43,10 @@ The shared [GoogleTest protocol](../tools/testing/gtest/README.md) owns process
 discovery, complete case evidence and assertion/crash classification. The runner
 does not guess platform or build paths; pass a Qt platform explicitly when needed
 (for example `--qt-platform offscreen`) or preserve the caller environment.
+
+## Regression qualification
+
+`check-gui-mutations.py` launches [owned mutation checks](../tools/testing/mutation_checks/README.md).
+Regression recipes use stable source-owner identities; the engine does not embed GUI paths.
+Run `cmake --build --preset linux-debug --target wiola_check_mutations` for the current native GUI configuration.
+CMake supplies the actual build directory and available parallelism replaces fixed worker counts.

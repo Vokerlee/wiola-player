@@ -166,4 +166,14 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/testing/cmake_build/build.py',), grouping=False,
     ),
+    AbstractionContract(
+        'testing.source_mutation', 'tools/testing/source_mutation', 'Applies one atomic source edit and restores exact bytes without overwriting concurrent edits',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/testing/source_mutation/mutation.py',), grouping=False,
+    ),
+    AbstractionContract(
+        'testing.mutation_checks', 'tools/testing/mutation_checks', 'Qualifies declared regressions through owned source, build and GoogleTest protocols',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/testing/mutation_checks/__main__.py', 'tools/testing/mutation_checks/verifier.py', 'tools/testing/mutation_checks/catalog.py'), grouping=False,
+    ),
 )
