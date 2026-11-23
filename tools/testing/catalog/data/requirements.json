@@ -94,6 +94,16 @@
       "identity": "theme.future-store-preservation",
       "target": "gui_theme_manager_test",
       "name": "ThemeManager.BoundedAllowlistedImportsAndFutureFilesPreserveTheAcceptedDefinition"
+    },
+    {
+      "identity": "fingerprint.pre-cancelled-read",
+      "target": "library_fingerprint_test",
+      "name": "MediaFingerprint.PreCancelledReadNeverPublishesAContentIdentity"
+    },
+    {
+      "identity": "workspace.unreadable-new-entry",
+      "target": "app_workspace_reconciliation_test",
+      "name": "WorkspaceReconciliation.MissingNewFileCannotBeQualifiedAsKnownOrRelocated"
     }
   ],
   "auxiliary": {

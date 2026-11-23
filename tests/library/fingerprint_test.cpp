@@ -20,11 +20,12 @@
 
 #include <library/fingerprint.hpp>
 
+#include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
-#include <random>
+#include <stop_token>
 #include <string>
 #include <vector>
 
@@ -32,14 +33,7 @@ namespace {
 
 using namespace wiola::library;
 
-struct TemporaryDirectory {
-    std::filesystem::path path{std::filesystem::temp_directory_path() /
-        ("wiola-fingerprint-" + std::to_string(std::random_device{}()))};
-
-    TemporaryDirectory() { std::filesystem::create_directories(path); }
-
-    ~TemporaryDirectory() { std::filesystem::remove_all(path); }
-};
+using wiola::testing::TemporaryDirectory;
 
 void write(const std::filesystem::path& file, const std::string& content)
 {
@@ -49,8 +43,8 @@ void write(const std::filesystem::path& file, const std::string& content)
 TEST(MediaFingerprint, DependsOnContentRatherThanLocation)
 {
     const TemporaryDirectory directory;
-    const auto first = directory.path / "first.wav";
-    const auto second = directory.path / "second.wav";
+    const auto first = directory.path() / "first.wav";
+    const auto second = directory.path() / "second.wav";
 
     write(first, "same content");
     write(second, "same content");
@@ -66,7 +60,7 @@ TEST(MediaFingerprint, DependsOnContentRatherThanLocation)
 TEST(MediaFingerprint, MatchesOnlyOneUnambiguousStoredRecord)
 {
     const TemporaryDirectory directory;
-    const auto candidate = directory.path / "candidate.wav";
+    const auto candidate = directory.path() / "candidate.wav";
     write(candidate, "content");
 
     TrackRecord first;
@@ -91,8 +85,8 @@ TEST(MediaFingerprint, MatchesOnlyOneUnambiguousStoredRecord)
 TEST(MediaFingerprint, ReconcilesMovesAndEmbeddedEditsWithoutLosingUserMetadata)
 {
     const TemporaryDirectory directory;
-    const auto original = directory.path / "original.wav";
-    const auto moved = directory.path / "moved.wav";
+    const auto original = directory.path() / "original.wav";
+    const auto moved = directory.path() / "moved.wav";
     write(original, "original");
     write(moved, "original");
 
@@ -126,7 +120,7 @@ TEST(MediaFingerprint, ReconcilesMovesAndEmbeddedEditsWithoutLosingUserMetadata)
 TEST(MediaFingerprint, LearnsAnInitialFingerprintWithoutCallingItAnEdit)
 {
     const TemporaryDirectory directory;
-    const auto file = directory.path / "track.wav";
+    const auto file = directory.path() / "track.wav";
     write(file, "content");
 
     TrackRecord track;
@@ -142,15 +136,28 @@ TEST(MediaFingerprint, LearnsAnInitialFingerprintWithoutCallingItAnEdit)
 
 TEST(MediaFingerprint, UnreadableLocationLeavesTheRecordUnchanged)
 {
+    const TemporaryDirectory directory;
     TrackRecord track;
     track.id = {.value = "media-1"};
     track.fingerprint = "known";
     track.missing = true;
 
-    EXPECT_FALSE(reconcile_location(track, "/definitely/missing/track.wav").has_value());
+    EXPECT_FALSE(reconcile_location(track, directory.path() / "missing.wav").has_value());
     EXPECT_EQ(track.fingerprint, "known");
     EXPECT_TRUE(track.missing);
     EXPECT_TRUE(track.locations.empty());
+}
+
+TEST(MediaFingerprint, PreCancelledReadNeverPublishesAContentIdentity)
+{
+    const TemporaryDirectory directory;
+    const auto file = directory.path() / "cancelled.wav";
+    write(file, "readable content");
+    std::stop_source cancellation;
+    ASSERT_TRUE(cancellation.request_stop());
+
+    EXPECT_FALSE(fingerprint_media_cancellable(file, cancellation.get_token()).has_value());
+    EXPECT_TRUE(fingerprint_media(file).has_value());
 }
 
 } // namespace
