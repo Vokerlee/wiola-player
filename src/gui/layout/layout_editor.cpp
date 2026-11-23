@@ -19,6 +19,7 @@
  */
 
 #include "layout_editor.hpp"
+#include "layout_tree.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -29,42 +30,6 @@ namespace wiola::gui {
 namespace {
 
 constexpr std::size_t max_history{64};
-
-LayoutNode* find_node(LayoutNode& root, const QString& id)
-{
-    if (root.id == id)
-        return &root;
-
-    for (LayoutNode& child : root.children) {
-        if (LayoutNode* found = find_node(child, id))
-            return found;
-    }
-
-    return nullptr;
-}
-
-std::pair<LayoutNode*, std::size_t> find_child(LayoutNode& root, const QString& id)
-{
-    for (LayoutNode& child : root.children) {
-        if (child.id == id)
-            return {&root, static_cast<std::size_t>(&child - root.children.data())};
-
-        if (auto found = find_child(child, id); found.first != nullptr)
-            return found;
-    }
-
-    return {nullptr, 0};
-}
-
-std::size_t count_nodes(const LayoutNode& node)
-{
-    std::size_t count = 1;
-
-    for (const LayoutNode& child : node.children)
-        count += count_nodes(child);
-
-    return count;
-}
 
 void push_history(std::vector<LayoutDocument>& history, const LayoutDocument& document)
 {
@@ -84,7 +49,7 @@ LayoutEditor::LayoutEditor(LayoutDocument document)
 bool LayoutEditor::insert(const QString& parent, std::size_t index, const LayoutNode& node)
 {
     LayoutDocument next = document_;
-    LayoutNode* destination = find_node(next.root, parent);
+    LayoutNode* destination = locate_layout_node(next.root, parent).node;
 
     if (destination == nullptr || index > destination->children.size())
         return false;
@@ -103,7 +68,9 @@ bool LayoutEditor::remove(const QString& id)
         return false;
 
     LayoutDocument next = document_;
-    const auto [parent, index] = find_child(next.root, id);
+    const auto location = locate_layout_node(next.root, id);
+    auto* parent = location.parent;
+    const auto index = location.index;
 
     if (parent == nullptr)
         return false;
@@ -120,7 +87,9 @@ bool LayoutEditor::move(const QString& id, const QString& parent, std::size_t in
         return false;
 
     LayoutDocument next = document_;
-    const auto [source, source_index] = find_child(next.root, id);
+    const auto location = locate_layout_node(next.root, id);
+    auto* source = location.parent;
+    const auto source_index = location.index;
 
     if (source == nullptr)
         return false;
@@ -131,7 +100,7 @@ bool LayoutEditor::move(const QString& id, const QString& parent, std::size_t in
     source->children.erase(source->children.begin() + static_cast<std::ptrdiff_t>(source_index));
     if (!source->sizes.empty())
         source->sizes.erase(source->sizes.begin() + static_cast<std::ptrdiff_t>(source_index));
-    LayoutNode* destination = find_node(next.root, parent);
+    LayoutNode* destination = locate_layout_node(next.root, parent).node;
 
     if (destination == nullptr || index > destination->children.size())
         return false;
@@ -150,7 +119,7 @@ bool LayoutEditor::configure(const QString& id, const LayoutNode& configuration)
         return false;
 
     LayoutDocument next = document_;
-    LayoutNode* node = find_node(next.root, id);
+    LayoutNode* node = locate_layout_node(next.root, id).node;
 
     if (node == nullptr)
         return false;
@@ -163,7 +132,7 @@ bool LayoutEditor::configure(const QString& id, const LayoutNode& configuration)
 
 bool LayoutEditor::commit(LayoutDocument next)
 {
-    next.node_count = count_nodes(next.root);
+    next.node_count = layout_node_count(next.root);
 
     if (validate_layout_document(next) != LayoutJsonError::none)
         return false;

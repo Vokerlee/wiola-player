@@ -106,7 +106,7 @@ wiola_add_test(
 wiola_add_test(
     gui_button_layout_editor_test
     SOURCES layout/editor/button_layout_editor_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui Qt6::Test
 )
 if(ENABLE_TSAN)
     target_compile_definitions(
