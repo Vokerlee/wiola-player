@@ -24,6 +24,7 @@ class QWidget;
 
 namespace wiola::gui::layout_detail {
 
+[[nodiscard]] bool accepts_dimensions(const QWidget& widget, const LayoutNode& node);
 void configure_widget(QWidget& widget, const LayoutNode& node);
 [[nodiscard]] bool matches_container(QWidget* widget, LayoutComponentKind kind);
 [[nodiscard]] bool append_child(QWidget* parent, QWidget* child, const LayoutNode& node,

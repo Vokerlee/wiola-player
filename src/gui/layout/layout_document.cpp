@@ -90,6 +90,9 @@ bool read_dimension(const QJsonObject& object, const char* key, std::optional<in
 
 bool valid_container_properties(const LayoutNode& node)
 {
+    if ((node.width && node.min_width && *node.min_width > *node.width) ||
+        (node.height && node.min_height && *node.min_height > *node.height))
+        return false;
     const auto* descriptor = component_descriptor(node.kind);
     if (!descriptor)
         return false;

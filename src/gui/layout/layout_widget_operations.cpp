@@ -28,10 +28,31 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
+#include <QVariant>
 
 #include <algorithm>
 
 namespace wiola::gui::layout_detail {
+namespace {
+
+constexpr auto minimum_key = "_wiola_layout_baseline_minimum";
+constexpr auto maximum_key = "_wiola_layout_baseline_maximum";
+constexpr auto orientation_key = "_wiola_layout_baseline_orientation";
+
+QSize component_minimum(const QWidget& widget)
+{
+    const auto saved = widget.property(minimum_key);
+    return saved.isValid() ? saved.toSize() : widget.minimumSize();
+}
+
+} // namespace
+
+bool accepts_dimensions(const QWidget& widget, const LayoutNode& node)
+{
+    const auto minimum = component_minimum(widget);
+    return (!node.width || *node.width >= std::max(minimum.width(), node.min_width.value_or(0))) &&
+        (!node.height || *node.height >= std::max(minimum.height(), node.min_height.value_or(0)));
+}
 
 void configure_widget(QWidget& widget, const LayoutNode& node)
 {
@@ -45,26 +66,41 @@ void configure_widget(QWidget& widget, const LayoutNode& node)
             node.kind == LayoutComponentKind::group)
             box->setDirection(QBoxLayout::TopToBottom);
     }
+    if (!widget.property(minimum_key).isValid()) {
+        widget.setProperty(minimum_key, widget.minimumSize());
+        widget.setProperty(maximum_key, widget.maximumSize());
+        if (const auto* splitter = qobject_cast<QSplitter*>(&widget))
+            widget.setProperty(orientation_key, static_cast<int>(splitter->orientation()));
+    }
+    const auto minimum = component_minimum(widget);
+    const auto maximum = widget.property(maximum_key).toSize();
+    // Reset only constraints owned by layout overrides, preserving the component's real minimums.
+    widget.setMinimumSize(0, 0);
+    widget.setMaximumSize(maximum);
+    widget.setMinimumSize(minimum);
+    if (node.min_width)
+        widget.setMinimumWidth(std::max(minimum.width(), *node.min_width));
+    if (node.min_height)
+        widget.setMinimumHeight(std::max(minimum.height(), *node.min_height));
     if (node.width)
         widget.setFixedWidth(*node.width);
     if (node.height)
         widget.setFixedHeight(*node.height);
-    if (node.min_width)
-        widget.setMinimumWidth(*node.min_width);
-    if (node.min_height)
-        widget.setMinimumHeight(*node.min_height);
     if (node.kind == LayoutComponentKind::splitter) {
         auto* splitter = qobject_cast<QSplitter*>(&widget);
         if (!splitter)
             return;
-        splitter->setOrientation(node.orientation.value_or(Qt::Horizontal));
+        splitter->setOrientation(node.orientation.value_or(
+            static_cast<Qt::Orientation>(widget.property(orientation_key).toInt())
+        ));
         splitter->setChildrenCollapsible(false);
-        if (!node.sizes.empty()) {
-            QList<int> sizes;
-            for (int size : node.sizes)
+        QList<int> sizes;
+        if (node.sizes.empty())
+            sizes.fill(100, splitter->count());
+        else
+            for (const auto size : node.sizes)
                 sizes.append(size);
-            splitter->setSizes(sizes);
-        }
+        splitter->setSizes(sizes);
     }
 }
 

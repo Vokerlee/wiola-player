@@ -131,6 +131,10 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
     }
     if (!widget)
         return nullptr;
+    if (!reused && !accepts_dimensions(*widget, node)) {
+        delete widget;
+        return nullptr;
+    }
     if (reused != nullptr && node.kind == LayoutComponentKind::splitter &&
         !qobject_cast<QSplitter*>(reused)) {
         delete widget;
@@ -170,7 +174,8 @@ std::unique_ptr<PreparedLayout> LayoutBuilder::prepare(const LayoutNode& node,
     const auto preflight = [&](auto&& self, const LayoutNode& current) -> bool {
         if (current.view && !context.isolated_preview) {
             const auto* view = views_.find(*current.view);
-            if (!view || view->kind != current.kind ||
+            if (!view || !accepts_dimensions(*view->widget, current) ||
+                view->kind != current.kind ||
                 (parent && (view->widget == parent || view->widget->isAncestorOf(parent))) ||
                 (!current.children.empty() && !view->allow_structure))
                 return false;
