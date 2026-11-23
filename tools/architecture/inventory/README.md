@@ -12,3 +12,5 @@ flowchart LR
 The adapter never mutates the index or discovers ownership. Git failure and bounded process failure remain distinguishable subprocess exceptions for the command boundary to report. NUL-separated output preserves spaces and Unicode without shell parsing.
 
 [Test contracts](tests/README.md) use a real isolated Git index and a nonrepository failure case. Replacing the source of tracked paths does not require changing the ownership registry.
+
+The same adapter resolves trusted revisions and reads their committed policy blobs without changing the index. Working-tree reads retain repository-relative identity from nested queries and reject paths escaping the checkout. Deleted paths and the actual commit review message support acceptance without a second Git implementation.

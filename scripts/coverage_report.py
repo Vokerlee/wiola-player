@@ -78,11 +78,11 @@ def source_state(root):
 
 
 def inventory(root, build):
-    configured = CMakeInventory.read(build)
+    registry = load_current_registry()
+    configured = CMakeInventory.read(build, first_party_sources=registry.paths)
     if configured.source_root != root.resolve():
         raise ValueError("The configured build belongs to another source root")
     policy = load_current_policy()
-    registry = load_current_registry()
     issues = policy.reconcile(registry)
     if issues:
         raise ValueError("\n".join(issues))

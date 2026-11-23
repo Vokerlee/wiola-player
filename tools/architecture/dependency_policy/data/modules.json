@@ -1,6 +1,7 @@
 {
   "owners": {
     "architecture.check_dependencies": "tooling",
+    "architecture.check_design": "tooling",
     "architecture.check_ownership": "tooling",
     "architecture.check_tests": "tooling",
     "architecture.cmake_inventory": "tooling",
@@ -11,6 +12,8 @@
     "architecture.git_inventory": "tooling",
     "architecture.ownership": "tooling",
     "architecture.package": "tooling",
+    "architecture.policy_guard": "tooling",
+    "architecture.review_contract": "tooling",
     "build.integration.build": "build",
     "build.integration.coverage_inventory": "build",
     "build.integration.dependencies": "build",
@@ -66,6 +69,7 @@
     "coverage.policy_data": "test",
     "coverage.python_runner": "tooling",
     "coverage.source_policy": "tooling",
+    "documentation.github": "documentation",
     "documentation.repository": "documentation",
     "documentation.scripts": "documentation",
     "documentation.src.audio": "documentation",

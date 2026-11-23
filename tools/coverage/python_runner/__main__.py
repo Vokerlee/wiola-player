@@ -11,6 +11,7 @@ import tempfile
 import coverage
 
 from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from tools.architecture.ownership.registry import load_current_registry
 from tools.coverage.source_policy.policy import load_current_policy
 
 
@@ -86,7 +87,9 @@ def main() -> int:
     parser.add_argument("--build-dir", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    inventory = CMakeInventory.read(args.build_dir)
+    inventory = CMakeInventory.read(
+        args.build_dir, first_party_sources=load_current_registry().paths
+    )
     root = inventory.source_root
     policy = load_current_policy()
     sources = sorted(

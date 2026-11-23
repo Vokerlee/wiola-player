@@ -30,6 +30,43 @@ class GitInventoryTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 GitInventory(Path(directory)).paths()
 
+    def test_historical_reads_keep_repository_identity_and_do_not_change_the_index(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True)
+            file = root / "source.txt"
+            file.write_text("trusted bytes")
+            subprocess.run(["git", "add", file.name], cwd=root, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "-m",
+                    "tests: preserve a trusted fixture",
+                ],
+                cwd=root,
+                check=True,
+            )
+            nested = root / "nested"
+            nested.mkdir()
+            adapter = GitInventory(nested)
+            reference = adapter.revision("HEAD")
+            file.write_text("working bytes")
+            self.assertEqual(adapter.read("source.txt", reference), "trusted bytes")
+            self.assertEqual(adapter.read("source.txt"), "working bytes")
+            self.assertIn("tests: preserve", adapter.commit_message())
+            self.assertEqual(adapter.deleted_paths(reference), ())
+            for invalid in ["../source.txt", "/source.txt", "nested/../source.txt"]:
+                with self.assertRaises(ValueError):
+                    adapter.read(invalid)
+
 
 if __name__ == "__main__":
     unittest.main()

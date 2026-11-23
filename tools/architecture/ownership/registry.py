@@ -122,6 +122,10 @@ class OwnershipRegistry:
         return Owner(identity, purpose, frozenset(normalized))
 
     @property
+    def paths(self) -> frozenset[str]:
+        return frozenset(self._file_owners)
+
+    @property
     def owners(self) -> tuple[Owner, ...]:
         return tuple(self._owners[key] for key in sorted(self._owners))
 
