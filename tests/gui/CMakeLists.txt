@@ -232,3 +232,12 @@ wiola_add_test(
     SOURCES contracts/interaction_fixture_test.cpp
     LIBS wiola_gui Qt6::Test
 )
+
+wiola_add_test(
+    gui_metadata_file_journey_test
+    SOURCES metadata/metadata_file_journey_test.cpp
+    LIBS wiola_gui wiola_player_application Qt6::Test
+    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+)
+
+qt_finalize_target(gui_metadata_file_journey_test)
