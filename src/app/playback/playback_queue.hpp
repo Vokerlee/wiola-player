@@ -39,7 +39,8 @@ public:
     [[nodiscard]] PlaybackQueueResult append_paths(PlaybackService& session,
         std::vector<std::filesystem::path> tracks) const;
     [[nodiscard]] PlaybackQueueResult replace_with_saved_playlist(PlaybackService& session,
-        const library::LibraryRepository& repository, const library::PlaylistId& id) const;
+        const library::LibraryRepository& repository, const library::PlaylistId& id,
+        std::optional<library::PlaylistEntryId> selected = {}) const;
 };
 
 } // namespace wiola::app

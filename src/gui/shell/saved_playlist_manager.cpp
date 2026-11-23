@@ -27,7 +27,7 @@
 
 namespace wiola::gui {
 
-SavedPlaylistManager::SavedPlaylistManager(library::InMemoryRepository& repository,
+SavedPlaylistManager::SavedPlaylistManager(const library::LibraryRepository& repository,
     app::SavedPlaylistCommands& commands, LibraryNavigation& navigation, QWidget* parent)
     : QWidget{parent}
     , repository_{repository}

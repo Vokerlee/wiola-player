@@ -29,19 +29,12 @@
 
 class QWidget;
 
-namespace wiola::library {
-
-class InMemoryRepository;
-
-}
-
 namespace wiola::gui {
 
 class PlayerActions;
 
 struct LayoutBuildContext {
     PlayerActions* actions{nullptr};
-    library::InMemoryRepository* library{nullptr};
     bool isolated_preview{false};
 };
 

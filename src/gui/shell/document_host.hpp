@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "document_command_context.hpp"
 #include <QTabWidget>
 #include <QWidget>
 #include <app/playback/playback_service.hpp>
@@ -33,15 +34,9 @@ class TrackBrowser;
 struct DocumentCommands {
     std::function<void()> open_folder;
     std::function<void()> selection_changed;
-    std::function<void(library::PlaylistId)> activate_playlist;
-    std::function<void(library::PlaylistId)> play_playlist;
-    std::function<void(library::PlaylistId, SavedPlaylistDocument&, bool)> transfer_playlist;
-    std::function<void(library::PlaylistId, SavedPlaylistDocument&)> move_playlist;
+    std::function<void(TrackCommand, DocumentCommandContext)> execute;
+    std::function<void(library::PlaylistId, std::optional<library::PlaylistEntryId>)> play_playlist;
     std::function<void(library::WorkspaceId, bool)> rescan;
-    std::function<void(WorkspaceDocument&)> play_workspace;
-    std::function<void(WorkspaceDocument&)> append_workspace;
-    std::function<void(WorkspaceDocument&, bool)> transfer_workspace;
-    std::function<void(std::vector<std::filesystem::path>)> apply_order;
 };
 
 class DocumentHost final : public QTabWidget {
@@ -62,6 +57,9 @@ public:
     bool close(const DocumentId& id);
     void begin_scan(const library::WorkspaceId& id);
     void refresh_active_destination();
+
+    void dispatch(TrackCommand command, const DocumentId& id);
+    [[nodiscard]] DocumentCommandContext capture(const DocumentId& id) const;
 
     void capture_preferences() { save(); }
 

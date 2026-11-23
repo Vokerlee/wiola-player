@@ -27,8 +27,12 @@ wiola_add_library(
         layout/layout_editor.cpp
         shell/document_host.cpp
         shell/main_window.cpp
+        shell/document_command_router.cpp
+        shell/player_dialogs.cpp
+        shell/player_menu.cpp
         metadata/metadata_conflict_panel.cpp
         metadata/metadata_edit_presentation.cpp
+        metadata/metadata_inspector_binding.cpp
         documents/queue_rows.cpp
         documents/document_registry.cpp
         documents/now_playing_document.cpp
@@ -70,6 +74,7 @@ wiola_add_library(
         wiola_library
         wiola_media_revisions
         wiola_m3u
+        wiola_library_documents
         wiola_saved_playlists
         wiola_workspace_scans
         wiola_workspace_watcher

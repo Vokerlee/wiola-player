@@ -19,15 +19,14 @@
  */
 
 #include "main_window.hpp"
-#include "action_button_binding.hpp"
-#include <gui/documents/queue_rows.hpp>
-#include <gui/metadata/inspector_context.hpp>
-#include <gui/metadata/metadata_edit_presentation.hpp>
+#include "document_command_router.hpp"
+#include "player_dialogs.hpp"
+#include "player_menu.hpp"
+#include <gui/metadata/metadata_inspector_binding.hpp>
 
 #include <gui/appearance/presentation_tokens.hpp>
 #include <gui/appearance/theme.hpp>
 #include <gui/appearance/theme_editor.hpp>
-#include <gui/controls/clock.hpp>
 #include <gui/layout/classic_layout.hpp>
 #include <gui/layout/editor/layout_editor_dialog.hpp>
 #include <gui/layout/focused_layout.hpp>
@@ -40,9 +39,7 @@
 
 #include <QActionGroup>
 #include <QCloseEvent>
-#include <QCursor>
 #include <QDir>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
 #include <QGroupBox>
@@ -50,7 +47,6 @@
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QMenuBar>
-#include <QSaveFile>
 #include <QScreen>
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -110,10 +106,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , equalizer_{preferences.equalizer()}
     , library_session_{library_session}
     , library_{library_session.repository()}
-    , persist_library_{library_session.persistence()}
-    , playlist_commands_{library_session.playlists()}
-    , tag_commands_{library_session.tags()}
-    , metadata_edits_{library_session.metadata_edits()}
     , active_playlist_{library_session.active_playlist()}
 {
     for (const auto& descriptor : action_descriptors())
@@ -132,39 +124,37 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     if (!library_session_.restore_error().isEmpty())
         show_status(library_session_.restore_error());
 
+    dialogs_ = std::make_unique<NativePlayerDialogs>(*this);
+    commands_ = new DocumentCommandRouter{library_session_, playback_, playlist_, *dialogs_,
+        [this](const DocumentCommandOutcome& outcome) {
+            if (outcome.open_result)
+                said_ = *outcome.open_result;
+            if (outcome.open_playlist)
+                static_cast<void>(document_host_->open_playlist(*outcome.open_playlist));
+            if (outcome.open_workspace)
+                static_cast<void>(document_host_->open_workspace(*outcome.open_workspace));
+            if (!outcome.message.isEmpty())
+                show_status(outcome.message);
+            if (outcome.queue_changed)
+                refresh();
+        },
+        this};
     DocumentCommands document_commands;
     document_commands.selection_changed = [this] {
-        refresh_inspector();
+        if (inspector_binding_)
+            inspector_binding_->refresh();
     };
     document_commands.open_folder = [this] {
-        open_folder();
+        commands_->choose_folder();
     };
-    document_commands.activate_playlist = [this](const auto& id) {
-        activate_playlist(id);
+    document_commands.execute = [this](auto command, auto context) {
+        commands_->execute(command, std::move(context));
     };
-    document_commands.play_playlist = [this](const auto& id) {
-        play_saved_playlist(id);
-    };
-    document_commands.transfer_playlist = [this](const auto& id, auto& document, bool choose) {
-        transfer_saved_playlist(id, document, choose);
-    };
-    document_commands.move_playlist = [this](const auto& id, auto& document) {
-        choose_move_destination(id, document);
+    document_commands.play_playlist = [this](const auto& id, auto entry) {
+        commands_->play_saved(id, entry);
     };
     document_commands.rescan = [this](const auto& id, bool recursive) {
-        rescan_workspace(id, recursive);
-    };
-    document_commands.play_workspace = [this](auto& document) {
-        play_workspace_selection(document);
-    };
-    document_commands.append_workspace = [this](auto& document) {
-        append_workspace_selection(document);
-    };
-    document_commands.transfer_workspace = [this](auto& document, bool choose) {
-        transfer_workspace(document, choose);
-    };
-    document_commands.apply_order = [this](auto paths) {
-        play_displayed_paths(std::move(paths));
+        commands_->rescan(id, recursive);
     };
     document_host_ = new DocumentHost{library_session_, playback_, ui_preferences_,
         std::move(document_commands), this};
@@ -174,59 +164,16 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
     show_workspace_navigation();
-    playlist_manager_ = new SavedPlaylistManager{library_, playlist_commands_, *navigation_, this};
+    playlist_manager_ =
+        new SavedPlaylistManager{library_, library_session_.playlists(), *navigation_, this};
     inspector_ = new TrackInspector{this};
 
-    inspector_->custom_tags()->on_add([this](library::MediaId media, std::string key,
-                                          std::string value) {
-        finish_custom_tag(tag_commands_.add(media, std::move(key), std::move(value)),
-            "Custom tag added");
-    });
-    inspector_->custom_tags()->on_edit([this](library::MediaId media, library::TagId tag,
-                                           std::string key, std::string value) {
-        finish_custom_tag(tag_commands_.edit(media, tag, std::move(key), std::move(value)),
-            "Custom tag updated");
-    });
-    inspector_->custom_tags()->on_remove([this](library::MediaId media, library::TagId tag) {
-        finish_custom_tag(tag_commands_.remove(media, tag), "Custom tag removed");
-    });
-    inspector_->standard_metadata()->on_apply([this](const app::MetadataEditSession& session) {
-        finish_standard_metadata(session);
-    });
-    inspector_->standard_metadata()->on_file_write([this](const app::MetadataEditSession& draft) {
-        const auto captured = draft;
-        const auto outcome =
-            metadata_edits_.apply(captured.media(), captured.draft(), captured.expectations());
-        if (!outcome.succeeded()) {
-            inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
-            return;
-        }
-        static_cast<void>(library_session_.file_writes().submit(captured));
-        inspector_->standard_metadata()->discard();
-        refresh_inspector();
-    });
-    connect(&library_session_, &app::LibrarySession::file_write_outcome, this,
-        [this](const app::MetadataWriteResult& result) {
-            const auto message = metadata_file_message(result);
-            inspector_->standard_metadata()->show_file_status(message);
-            show_status(message);
-        });
-    const QPointer<app::LibrarySession> artwork_library{&library_session_};
-    inspector_->set_artwork_requester([artwork_library](const auto& id) {
-        if (artwork_library)
-            artwork_library->request_artwork(id);
-    });
-    connect(&library_session_, &app::LibrarySession::artwork_changed, inspector_,
-        [artwork_library, inspector = inspector_](const auto& media) {
-            if (artwork_library)
-                inspector->refresh_artwork(media, artwork_library->artwork(media));
-        });
-    inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
-        resolve_metadata_conflict(action);
-    });
+    inspector_binding_ = new MetadataInspectorBinding{*inspector_, *document_host_,
+        library_session_, playback_, [status = QPointer<StatusView>{status_}](const QString& text) {
+            if (status)
+                status->show_message(text);
+        }};
 
-    connect(&library_session_, &app::LibrarySession::metadata_outcome, this,
-        &MainWindow::publish_metadata_outcome);
     connect(&library_session_, &app::LibrarySession::status_changed, this,
         &MainWindow::show_status);
     connect(&library_session_, &app::LibrarySession::workspace_changed, this,
@@ -322,8 +269,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     if (layout_session_->restore_error() != LayoutSessionError::none)
         show_status("Could not restore the saved layout; a usable layout was retained");
 
-    connect(actions_.action(PlayerAction::open), &QAction::triggered, this,
-        &MainWindow::choose_tracks);
+    connect(actions_.action(PlayerAction::open), &QAction::triggered, commands_,
+        [commands = commands_] { commands->choose_tracks(); });
     connect(actions_.action(PlayerAction::previous), &QAction::triggered, this,
         &MainWindow::play_previous);
     connect(actions_.action(PlayerAction::next), &QAction::triggered, this, &MainWindow::play_next);
@@ -335,39 +282,26 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         &MainWindow::cycle_repeat);
     connect(actions_.action(PlayerAction::shuffle), &QAction::triggered, this,
         &MainWindow::set_shuffled);
-    connect(actions_.action(PlayerAction::add), &QAction::triggered, this, &MainWindow::add_tracks);
-    connect(actions_.action(PlayerAction::remove), &QAction::triggered, this,
-        &MainWindow::remove_chosen);
-    connect(actions_.action(PlayerAction::clear), &QAction::triggered, this,
-        &MainWindow::clear_queue);
+    connect(actions_.action(PlayerAction::add), &QAction::triggered, commands_,
+        [commands = commands_] { commands->choose_tracks(true); });
+    connect(actions_.action(PlayerAction::remove), &QAction::triggered, document_host_,
+        [host = document_host_] { host->dispatch(TrackCommand::remove, DocumentId::queue()); });
+    connect(actions_.action(PlayerAction::clear), &QAction::triggered, commands_,
+        &DocumentCommandRouter::clear_queue);
     connect(actions_.action(PlayerAction::equalizer), &QAction::triggered, this,
         &MainWindow::show_equalizer);
 
-    QMenu* file = menuBar()->addMenu("&File");
-    file->addAction(actions_.action(PlayerAction::open));
-    file->addAction(actions_.action(PlayerAction::add));
-    file->addAction(actions_.action(PlayerAction::clear));
-    file->addSeparator();
-
-    QAction* open_folder = file->addAction("Open folder...");
-    connect(open_folder, &QAction::triggered, this, &MainWindow::open_folder);
-    file->addSeparator();
-
-    QAction* import_m3u = file->addAction("Import M3U8...");
-    QAction* export_m3u = file->addAction("Export M3U8...");
-    connect(import_m3u, &QAction::triggered, this, &MainWindow::import_m3u_playlist);
-    connect(export_m3u, &QAction::triggered, this, &MainWindow::export_m3u_playlist);
-
-    QMenu* playback = menuBar()->addMenu("&Playback");
-    playback->addAction(actions_.action(PlayerAction::previous));
-    playback->addAction(actions_.action(PlayerAction::play));
-    playback->addAction(actions_.action(PlayerAction::next));
-    playback->addAction(actions_.action(PlayerAction::stop));
-    playback->addSeparator();
-    playback->addAction(actions_.action(PlayerAction::repeat));
-    playback->addAction(actions_.action(PlayerAction::shuffle));
-
-    QMenu* view = menuBar()->addMenu("&View");
+    const auto menus = build_player_menus(*menuBar(), actions_, *commands_,
+        {[commands = commands_] { commands->choose_folder(); },
+            [commands = commands_] { commands->import_playlist(); },
+            [this] {
+                std::optional<library::PlaylistId> target;
+                if (const auto document = document_host_->registry().active();
+                    document && document->playlist())
+                    target = *document->playlist();
+                commands_->export_playlist(target);
+            }});
+    auto* view = menus.view;
     QAction* classic = view->addAction("Classic");
     QAction* library = view->addAction("Library Focus");
     QAction* queue = view->addAction("Queue Focus");
@@ -428,26 +362,24 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(custom, &QAction::triggered, this,
         [choose_theme] { choose_theme(ThemeChoice::custom); });
 
-    QMenu* tools = menuBar()->addMenu("&Tools");
-    tools->addAction(actions_.action(PlayerAction::equalizer));
+    auto* tools = menus.tools;
     QAction* edit_layout = tools->addAction("Edit button layout...");
     connect(edit_layout, &QAction::triggered, this, [this] {
         auto* editor = new LayoutEditorDialog{layout_session_->document(), this};
         editor->setAttribute(Qt::WA_DeleteOnClose);
-        editor->on_apply([this](const LayoutDocument& document) {
-            return switch_layout(document);
+        editor->on_apply([owner = QPointer<MainWindow>{this}](const LayoutDocument& document) {
+            return owner && owner->switch_layout(document);
         });
         editor->show();
     });
 
     auto* import_layout_action = tools->addAction("Import layout...");
     connect(import_layout_action, &QAction::triggered, this, [this] {
-        const auto path =
-            QFileDialog::getOpenFileName(this, "Import layout", {}, "Layout (*.json)");
-        if (path.isEmpty())
+        const QPointer<MainWindow> alive{this};
+        const auto path = dialogs_->file(PlayerFileChoice::import_layout);
+        if (!alive || !path)
             return;
-        persistence::qt::AtomicFileStore input{platform::qt::QtPathAdapter::from_qt(path),
-            256 * 1024};
+        persistence::qt::AtomicFileStore input{*path, 256 * 1024};
         const auto read = input.read(persistence::qt::FileSlot::primary);
         if (read.error != persistence::qt::FileStoreError::none || !read.exists)
             show_status("Could not read the layout file");
@@ -456,13 +388,13 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     });
     auto* export_layout_action = tools->addAction("Export layout...");
     connect(export_layout_action, &QAction::triggered, this, [this] {
-        const auto path =
-            QFileDialog::getSaveFileName(this, "Export layout", {}, "Layout (*.json)");
-        if (path.isEmpty())
+        const QPointer<MainWindow> alive{this};
+        const auto definition = layout_json();
+        const auto path = dialogs_->file(PlayerFileChoice::export_layout);
+        if (!alive || !path)
             return;
-        persistence::qt::AtomicFileStore output{platform::qt::QtPathAdapter::from_qt(path),
-            256 * 1024};
-        show_status(output.write(persistence::qt::FileSlot::primary, layout_json()) ==
+        persistence::qt::AtomicFileStore output{*path, 256 * 1024};
+        show_status(output.write(persistence::qt::FileSlot::primary, definition) ==
                     persistence::qt::FileStoreError::none
                 ? "Layout exported"
                 : "Could not export the layout");
@@ -479,11 +411,11 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     });
     auto* import_theme = tools->addAction("Import theme...");
     connect(import_theme, &QAction::triggered, this, [this] {
-        const auto path = QFileDialog::getOpenFileName(this, "Import theme", {}, "Theme (*.json)");
-        if (path.isEmpty())
+        const QPointer<MainWindow> alive{this};
+        const auto path = dialogs_->file(PlayerFileChoice::import_theme);
+        if (!alive || !path)
             return;
-        persistence::qt::AtomicFileStore input{platform::qt::QtPathAdapter::from_qt(path),
-            16 * 1024};
+        persistence::qt::AtomicFileStore input{*path, 16 * 1024};
         const auto read = input.read(persistence::qt::FileSlot::primary);
         if (read.error != persistence::qt::FileStoreError::none || !read.exists ||
             theme_->import_json(read.bytes) != ThemeError::none)
@@ -491,27 +423,19 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     });
     auto* export_theme = tools->addAction("Export theme...");
     connect(export_theme, &QAction::triggered, this, [this] {
-        const auto path = QFileDialog::getSaveFileName(this, "Export theme", {}, "Theme (*.json)");
-        if (path.isEmpty())
+        const QPointer<MainWindow> alive{this};
+        const auto definition = theme_->export_json();
+        const auto path = dialogs_->file(PlayerFileChoice::export_theme);
+        if (!alive || !path)
             return;
-        persistence::qt::AtomicFileStore output{platform::qt::QtPathAdapter::from_qt(path),
-            16 * 1024};
-        show_status(output.write(persistence::qt::FileSlot::primary, theme_->export_json()) ==
+        persistence::qt::AtomicFileStore output{*path, 16 * 1024};
+        show_status(output.write(persistence::qt::FileSlot::primary, definition) ==
                     persistence::qt::FileStoreError::none
                 ? "Theme exported"
                 : "Could not export the theme");
     });
     if (theme_->restore_error() != ThemeError::none)
         show_status("Could not restore the saved theme; a usable theme was retained");
-
-    connect(now_playing_, &NowPlayingDocument::track_chosen, this, &MainWindow::play_chosen);
-    connect(now_playing_, &NowPlayingDocument::removal_asked, this, &MainWindow::remove_chosen);
-    connect(now_playing_, &NowPlayingDocument::transfer_active_asked, this,
-        [this] { transfer_now_playing(false); });
-    connect(now_playing_, &NowPlayingDocument::transfer_destination_asked, this,
-        [this] { transfer_now_playing(true); });
-    connect(now_playing_, &NowPlayingDocument::order_application_asked, this,
-        [this] { play_displayed_paths(now_playing_->displayed_paths(playback_.playlist())); });
 
     connect(volume_view_, &VolumeView::volume_requested, this, &MainWindow::set_volume);
     connect(volume_view_, &VolumeView::boost_requested, this, &MainWindow::set_boosted);
@@ -526,9 +450,9 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
     // What was put back settles both of these, without either button having been pressed.
     show_list_buttons();
-    library_changes_ = library_.observe([this](const library::LibraryChangeBatch& batch) {
-        apply_library_changes(batch);
-    });
+    library_changes_ = library_session_.repository().observe(
+        [this](const library::LibraryChangeBatch& batch) { apply_library_changes(batch); }
+    );
 
     refresh();
 }
@@ -625,8 +549,7 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
             register_document(DocumentId::workspace(id), view);
     LayoutBuilder builder{live};
 
-    auto prepared =
-        builder.prepare(document.root, {.actions = &actions_, .library = &library_}, this);
+    auto prepared = builder.prepare(document.root, {.actions = &actions_}, this);
     QWidget* root = nullptr;
     if (persist && prepared) {
         const auto result = layout_session_->accept(document, choice, std::move(prepared), this);
@@ -691,194 +614,7 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
 
 void MainWindow::open(std::vector<std::filesystem::path> tracks)
 {
-    if (tracks.empty())
-        return;
-
-    const QString first{platform::qt::QtPathAdapter::to_qt(tracks.front().filename())};
-
-    for (const std::filesystem::path& location : tracks)
-        request_metadata(location);
-
-    static_cast<void>(playback_.open(std::move(tracks)));
-    said_ = app::present_playback(playback_).playback.open_result;
-
-    playlist_.save();
-    show_status(QString{"opening "} + first + "...");
-
-    // A new list is an unshuffled one, whether or not the listener asked for that.
-    show_list_buttons();
-
-    refresh();
-}
-
-std::vector<std::filesystem::path> MainWindow::ask_for_tracks()
-{
-    QStringList patterns;
-    for (const std::string& extension : playback_.playback_extensions())
-        patterns.append(QString::fromStdString("*" + extension));
-
-    const QString filter{QString{"Audio (%1);;All files (*)"}.arg(patterns.join(' '))};
-    const QStringList chosen{
-        QFileDialog::getOpenFileNames(this, "Choose tracks", QString{}, filter)};
-
-    std::vector<std::filesystem::path> tracks;
-    tracks.reserve(static_cast<std::size_t>(chosen.size()));
-
-    for (const QString& name : chosen)
-        tracks.push_back(platform::qt::QtPathAdapter::from_qt(name));
-
-    return tracks;
-}
-
-void MainWindow::choose_tracks()
-{
-    // Whether the files can be read is said by playing them.
-    open(ask_for_tracks());
-}
-
-void MainWindow::add_tracks()
-{
-    std::vector<std::filesystem::path> tracks{ask_for_tracks()};
-
-    if (tracks.empty())
-        return;
-
-    for (const std::filesystem::path& location : tracks)
-        request_metadata(location);
-
-    playback_.add(std::move(tracks));
-    playlist_.save();
-    refresh();
-}
-
-void MainWindow::import_m3u_playlist()
-{
-    const QString selected = QFileDialog::getOpenFileName(this, "Import M3U8 playlist", {},
-        "M3U8 playlists (*.m3u8 *.m3u);;All files (*)");
-    if (selected.isEmpty())
-        return;
-
-    QFile input{selected};
-    if (!input.open(QIODevice::ReadOnly)) {
-        show_status("Could not open the M3U8 playlist");
-        return;
-    }
-
-    const QByteArray encoded = input.read(16 * 1024 * 1024 + 1);
-    library::RepositoryTransaction transaction{library_, persist_library_};
-    library::PlaylistId imported;
-    const QFileInfo details{selected};
-    const app::M3uError error = app::M3uPlaylist::import_playlist(library_,
-        platform::qt::QtPathAdapter::from_qt(details.absolutePath()),
-        details.completeBaseName().toStdString(), encoded, imported);
-
-    if (error != app::M3uError::none) {
-        show_status("Could not import the M3U8 playlist");
-        return;
-    }
-
-    if (!transaction.commit()) {
-        show_status("Could not save the imported playlist");
-        return;
-    }
-
-    navigation_->show_repository(library_);
-    static_cast<void>(document_host_->open_playlist(imported));
-    show_status("M3U8 playlist imported");
-}
-
-void MainWindow::export_m3u_playlist()
-{
-    std::optional<library::PlaylistId> selected;
-
-    if (const auto current = document_host_->registry().active(); current && current->playlist())
-        selected = *current->playlist();
-
-    if (!selected)
-        selected = active_playlist_.id();
-
-    if (!selected) {
-        show_status("Open a saved playlist to export");
-        return;
-    }
-
-    const QString file =
-        QFileDialog::getSaveFileName(this, "Export M3U8 playlist", {}, "M3U8 playlists (*.m3u8)");
-    if (file.isEmpty())
-        return;
-
-    QByteArray encoded;
-    const std::filesystem::path path = platform::qt::QtPathAdapter::from_qt(file);
-    const app::M3uError error =
-        app::M3uPlaylist::export_playlist(library_, *selected, path.parent_path(), encoded);
-
-    if (error != app::M3uError::none) {
-        show_status("Could not export the M3U8 playlist");
-        return;
-    }
-
-    QSaveFile output{file};
-    if (!output.open(QIODevice::WriteOnly) || output.write(encoded) != encoded.size() ||
-        !output.commit()) {
-        show_status("Could not write the M3U8 playlist");
-        return;
-    }
-
-    show_status("M3U8 playlist exported");
-}
-
-void MainWindow::remove_chosen()
-{
-    for (const engine::QueueEntryId id : now_playing_->chosen_tracks()) {
-        const auto index = playback_.playlist().index_of(id);
-        if (index)
-            static_cast<void>(playback_.remove(*index));
-    }
-
-    playlist_.save();
-    refresh();
-}
-
-void MainWindow::clear_queue()
-{
-    playback_.clear();
-    playlist_.save();
-
-    // Emptying the queue puts the order back as it was given, shuffle button and all.
-    show_list_buttons();
-
-    refresh();
-}
-
-void MainWindow::play_chosen(engine::QueueEntryId id)
-{
-    const auto index = playback_.playlist().index_of(id);
-    if (index)
-        static_cast<void>(playback_.play_track(*index));
-
-    refresh();
-}
-
-void MainWindow::open_folder()
-{
-    const QString selected = QFileDialog::getExistingDirectory(this, "Open folder workspace");
-    if (selected.isEmpty())
-        return;
-
-    library::RepositoryTransaction transaction{library_, persist_library_};
-    const library::WorkspaceId workspace =
-        library_.create_workspace(platform::qt::QtPathAdapter::from_qt(selected));
-
-    if (!workspace.valid())
-        return;
-
-    if (!transaction.commit()) {
-        show_status("Could not save the folder workspace");
-        return;
-    }
-
-    show_workspace_navigation();
-    static_cast<void>(document_host_->open_workspace(workspace));
+    commands_->open(std::move(tracks));
 }
 
 void MainWindow::show_workspace_navigation()
@@ -894,360 +630,14 @@ void MainWindow::show_workspace_navigation()
     navigation_->show_workspaces(entries);
 }
 
-void MainWindow::play_workspace_selection(WorkspaceDocument& document)
-{
-    const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.replace_with_paths(playback_, document.chosen_paths());
-
-    if (!result.requested) {
-        show_status("Select workspace tracks to play");
-        return;
-    }
-
-    said_ = result.open_result;
-    playlist_.save();
-    refresh();
-}
-
-void MainWindow::append_workspace_selection(WorkspaceDocument& document)
-{
-    const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.append_paths(playback_, document.chosen_paths());
-
-    if (!result.requested) {
-        show_status("Select workspace tracks to add");
-        return;
-    }
-
-    playlist_.save();
-    show_status(QString{"%1 track(s) added to Now Playing"}.arg(result.queued));
-    refresh();
-}
-
-void MainWindow::transfer_workspace(WorkspaceDocument& document, bool choose_destination)
-{
-    std::vector<app::MediaTransfer> media;
-
-    for (const auto& selected : document.selection())
-        media.push_back({.media = selected.media, .location = selected.location});
-
-    if (choose_destination)
-        choose_transfer_destination(media);
-    else
-        transfer_to({}, media);
-}
-
-void MainWindow::rescan_workspace(const library::WorkspaceId& id, bool recursive)
-{
-    const library::WorkspaceRecord* current = library_.workspace(id);
-    WorkspaceDocument* document = document_host_->registry().workspace(id);
-    if (current == nullptr || document == nullptr)
-        return;
-
-    library::WorkspaceRecord updated = *current;
-    updated.recursive = recursive;
-
-    if (recursive != current->recursive) {
-        library::RepositoryTransaction transaction{library_, persist_library_};
-
-        if (!library_.put_workspace(updated)) {
-            show_status("Could not update the folder workspace");
-            return;
-        }
-
-        if (!transaction.commit()) {
-            show_status("Could not save the workspace settings");
-            return;
-        }
-        return; // The committed workspace change starts its application-owned scan.
-    }
-
-    document_host_->begin_scan(id);
-}
-
-void MainWindow::activate_playlist(const library::PlaylistId& id)
-{
-    if (library_.playlist(id) == nullptr)
-        return;
-
-    static_cast<void>(active_playlist_.set(id));
-
-    document_host_->refresh_active_destination();
-}
-
-void MainWindow::transfer_now_playing(bool choose_destination)
-{
-    std::vector<app::MediaTransfer> media;
-
-    for (const engine::QueueEntryId id : now_playing_->chosen_tracks()) {
-        const auto row = playback_.playlist().index_of(id);
-        if (!row)
-            continue;
-
-        const std::filesystem::path& location = playback_.playlist().tracks()[*row].path();
-        media.push_back({.media = library::media_id_for(location), .location = location});
-    }
-
-    if (choose_destination)
-        choose_transfer_destination(media);
-    else
-        transfer_to({}, media);
-}
-
-void MainWindow::transfer_saved_playlist(const library::PlaylistId& id,
-    SavedPlaylistDocument& document, bool choose_destination)
-{
-    const library::PlaylistRecord* source = library_.playlist(id);
-    if (source == nullptr)
-        return;
-
-    std::vector<app::MediaTransfer> media;
-
-    for (const library::PlaylistEntryId& selected : document.chosen_entries()) {
-        const auto entry =
-            std::ranges::find(source->entries, selected, &library::PlaylistEntryRecord::id);
-        if (entry == source->entries.end())
-            continue;
-
-        const library::TrackRecord* track = library_.track(entry->media);
-        media.push_back({.media = entry->media,
-            .location = track != nullptr && !track->locations.empty()
-                ? library::preferred_location(*track)
-                : std::filesystem::path{}});
-    }
-
-    if (choose_destination)
-        choose_transfer_destination(media);
-    else
-        transfer_to({}, media);
-}
-
-void MainWindow::choose_move_destination(const library::PlaylistId& id,
-    SavedPlaylistDocument& document)
-{
-    const std::vector<library::PlaylistEntryId> entries = document.chosen_entries();
-    if (entries.empty()) {
-        show_status("Select tracks to move");
-        return;
-    }
-
-    QMenu destinations{this};
-
-    for (const library::PlaylistRecord& playlist : library_.playlists()) {
-        if (playlist.id == id)
-            continue;
-
-        const library::PlaylistId destination = playlist.id;
-        destinations.addAction(QString::fromStdString(playlist.name),
-            [this, id, destination, entries] {
-                app::PlaylistTransfer transfer{library_, active_playlist_, persist_library_};
-                const auto result = transfer.move_to(id, destination, entries);
-
-                show_status(result.succeeded ? QString{"%1 track(s) moved"}.arg(result.added)
-                                             : QString{"Could not save the playlist move"});
-            });
-    }
-
-    if (destinations.isEmpty())
-        destinations.addAction("No other saved playlists")->setEnabled(false);
-
-    destinations.exec(QCursor::pos());
-}
-
-void MainWindow::choose_transfer_destination(const std::vector<app::MediaTransfer>& media)
-{
-    QMenu destinations{this};
-
-    for (const library::PlaylistRecord& playlist : library_.playlists()) {
-        const library::PlaylistId id = playlist.id;
-        destinations.addAction(QString::fromStdString(playlist.name),
-            [this, id, media] { transfer_to(id, media); });
-    }
-
-    if (destinations.isEmpty())
-        destinations.addAction("No saved playlists")->setEnabled(false);
-
-    destinations.exec(QCursor::pos());
-}
-
-void MainWindow::transfer_to(std::optional<library::PlaylistId> destination,
-    const std::vector<app::MediaTransfer>& media)
-{
-    if (media.empty()) {
-        show_status("Select tracks to add");
-        return;
-    }
-
-    if (!destination)
-        destination = active_playlist_.id();
-
-    if (!destination) {
-        show_status("Choose an active playlist first");
-        return;
-    }
-
-    app::PlaylistTransfer transfer{library_, active_playlist_, persist_library_};
-    const app::PlaylistTransferResult result = transfer.add_to(*destination, media);
-
-    if (!result.succeeded) {
-        show_status("Could not save the playlist transfer");
-        return;
-    }
-
-    show_status(QString{"%1 track(s) added"}.arg(result.added));
-}
-
-void MainWindow::play_saved_playlist(const library::PlaylistId& id)
-{
-    const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.replace_with_saved_playlist(playback_, library_, id);
-
-    if (!result.requested) {
-        show_status("The saved playlist has no playable tracks");
-        refresh();
-        return;
-    }
-
-    said_ = result.open_result;
-    playlist_.save();
-    show_status(result.unavailable == 0
-            ? QString{"opening saved playlist..."}
-            : QString{"%1 unavailable track(s) skipped"}.arg(result.unavailable));
-    refresh();
-}
-
-void MainWindow::play_displayed_paths(std::vector<std::filesystem::path> tracks)
-{
-    const app::PlaybackQueueResult result =
-        app::PlaybackQueue{}.replace_with_paths(playback_, std::move(tracks));
-
-    if (!result.requested) {
-        show_status("The displayed document has no playable tracks");
-        refresh();
-        return;
-    }
-
-    said_ = result.open_result;
-    playlist_.save();
-    show_status("Playing the displayed order");
-    refresh();
-}
-
-void MainWindow::request_metadata(const std::filesystem::path& location)
-{
-    library_session_.request_metadata(location);
-}
-
 void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
 {
-    for (const auto& id : batch.removed_playlists) {
-        static_cast<void>(active_playlist_.clear_if(id));
-    }
     if (!batch.playlists.empty() || !batch.removed_playlists.empty())
         navigation_->show_repository(library_);
     if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
         show_workspace_navigation();
     show_document_context();
     refresh();
-}
-
-void MainWindow::finish_custom_tag(app::CustomTagResult result, const QString& success)
-{
-    if (!result.succeeded()) {
-        switch (result.error) {
-        case app::CustomTagError::missing_media:
-            show_status("The track is no longer in the library");
-            break;
-        case app::CustomTagError::missing_tag:
-            show_status("The custom tag is no longer available");
-            break;
-        case app::CustomTagError::invalid_value:
-            show_status("Enter a valid, non-empty custom tag");
-            break;
-        case app::CustomTagError::duplicate_value:
-            show_status("That custom tag already exists");
-            break;
-        case app::CustomTagError::limit_exceeded:
-            show_status("The track already has the maximum number of custom tags");
-            break;
-        case app::CustomTagError::persistence_failed:
-            show_status("Could not save the custom tag change");
-            break;
-        case app::CustomTagError::none:
-            break;
-        }
-
-        return;
-    }
-
-    if (!result.changed) {
-        show_status("No custom tag changes to save");
-        return;
-    }
-
-    show_status(success);
-}
-
-void MainWindow::refresh_inspector()
-{
-    if (!inspector_)
-        return;
-    const auto active = document_host_->registry().active();
-    std::optional<TrackRow> playing;
-    // Only Now Playing opts into a labeled fallback. An empty saved/workspace view stays empty.
-    if (active && active->is_queue())
-        if (const auto* current = playback_.playlist().current()) {
-            playing = queue_row(*current);
-            playing->media = library_session_.media_at(current->path());
-        }
-    inspector_->show_context(inspector_context(library_session_,
-        document_host_->registry().selection(), std::move(playing)));
-}
-
-void MainWindow::finish_standard_metadata(const app::MetadataEditSession& session)
-{
-    const auto outcome =
-        metadata_edits_.apply(session.media(), session.draft(), session.expectations());
-    if (outcome.state == app::MetadataEditState::succeeded) {
-        inspector_->standard_metadata()->discard();
-        refresh();
-    }
-    if (!outcome.succeeded())
-        inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
-}
-
-void MainWindow::resolve_metadata_conflict(MetadataConflictAction action)
-{
-    if (action == MetadataConflictAction::review)
-        return;
-
-    auto* editor = inspector_->standard_metadata();
-    const auto session = editor->edit_session();
-    if (!session.valid())
-        return;
-    if (action == MetadataConflictAction::keep) {
-        editor->discard();
-        inspector_->conflicts()->hide_conflict();
-        show_status("Kept current application metadata");
-        refresh();
-        return;
-    }
-    const auto outcome = action == MetadataConflictAction::reload
-        ? metadata_edits_.reset(session.media())
-        : metadata_edits_.apply(session.media(), session.draft());
-    if (outcome.state == app::MetadataEditState::succeeded) {
-        editor->discard();
-        refresh();
-    }
-}
-
-void MainWindow::publish_metadata_outcome(const app::MetadataEditOutcome& outcome)
-{
-    if (outcome.state == app::MetadataEditState::conflicted)
-        inspector_->conflicts()->show_conflict(metadata_edit_message(outcome));
-    else
-        inspector_->conflicts()->hide_conflict();
-    show_status(metadata_edit_message(outcome));
 }
 
 void MainWindow::play_previous()
@@ -1396,7 +786,8 @@ void MainWindow::refresh()
     transport_->present(app::present_playback(playback_));
     now_playing_->show_library(library_);
     now_playing_->show_playlist(playback_.playlist());
-    refresh_inspector();
+    if (inspector_binding_)
+        inspector_binding_->refresh();
 }
 
 } // namespace wiola::gui
