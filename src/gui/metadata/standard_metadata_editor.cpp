@@ -79,6 +79,7 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     status_ = new QLabel{this};
     status_->setObjectName("standardMetadataStatus");
     status_->setWordWrap(true);
+    status_->setAccessibleName("Metadata edit status");
 
     title_ = field(this, "standardTitle", "Title");
     artist_ = field(this, "standardArtist", "Artist");
@@ -121,6 +122,7 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     file_status_ = new QLabel{this};
     file_status_->setObjectName("metadataFileStatus");
     file_status_->setWordWrap(true);
+    file_status_->setAccessibleName("Embedded file write status");
     file_status_->setText("File writing is explicit. Format support is checked before writing.");
     connect(save_file_, &QPushButton::clicked, this, [this] {
         if (file_observer_ && dirty() && valid_numbers()) {
@@ -310,6 +312,9 @@ void StandardMetadataEditor::update_actions()
         status_->setText("Application overrides are active. Embedded file data is unchanged.");
     else
         status_->setText("Embedded values. Edits are stored in the application.");
+    status_->setAccessibleDescription(status_->text());
+    for (auto* input : {year_, track_number_, disc_number_})
+        input->setAccessibleDescription(valid_numbers() ? QString{} : status_->text());
 }
 
 void StandardMetadataEditor::show_status(const QString& status)

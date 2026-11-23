@@ -184,6 +184,8 @@ TEST(TrackInspector, ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAno
         library.repository().put_track(selected);
         ASSERT_TRUE(change.commit());
     }
+    // The assertion concerns the captured selection, after its seed writes are settled.
+    ASSERT_TRUE(library.flush().succeeded());
     wiola::gui::TrackInspector inspector;
     inspector.show_context(context);
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "Selected title");

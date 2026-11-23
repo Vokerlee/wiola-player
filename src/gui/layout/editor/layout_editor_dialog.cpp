@@ -19,6 +19,9 @@
  */
 
 #include "layout_editor_dialog.hpp"
+#include <QGuiApplication>
+#include <QScreen>
+#include <QScrollArea>
 #include <gui/layout/layout_tree.hpp>
 
 #include <gui/layout/layout_builder.hpp>
@@ -61,7 +64,10 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
 {
     setObjectName("buttonLayoutEditor");
     setWindowTitle("Edit button layout");
-    setMinimumSize(900, 560);
+    const QSize preferred{fontMetrics().averageCharWidth() * 110, fontMetrics().height() * 32};
+    resize(QGuiApplication::primaryScreen()
+            ? preferred.boundedTo(QGuiApplication::primaryScreen()->availableGeometry().size())
+            : preferred);
 
     palette_ = new ComponentPalette{this};
     hierarchy_ = new LayoutHierarchy{this};
@@ -125,7 +131,14 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     contents->addLayout(right, 1);
 
     auto* root = new QVBoxLayout{this};
-    root->addLayout(contents);
+    auto* scroll = new QScrollArea{this};
+    scroll->setObjectName("layoutEditorScroll");
+    scroll->setAccessibleName("Scrollable layout editing panels");
+    scroll->setWidgetResizable(true);
+    auto* panels = new QWidget;
+    panels->setLayout(contents);
+    scroll->setWidget(panels);
+    root->addWidget(scroll, 1);
     root->addWidget(status_);
     root->addWidget(buttons);
 
@@ -143,23 +156,28 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
             accept();
         else
             status_->setText("Could not apply this layout");
+        status_->setAccessibleDescription(status_->text());
     });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     hierarchy_->on_drop([this](LayoutDrop request) { drop_component(std::move(request)); });
 
-    auto* remove_shortcut = new QShortcut{QKeySequence::Delete, this};
+    auto* remove_shortcut = new QShortcut{QKeySequence::Delete, hierarchy_};
+    remove_shortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(remove_shortcut, &QShortcut::activated, this, &LayoutEditorDialog::remove_selected);
-    auto* undo_shortcut = new QShortcut{QKeySequence::Undo, this};
+    auto* undo_shortcut = new QShortcut{QKeySequence::Undo, hierarchy_};
+    undo_shortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(undo_shortcut, &QShortcut::activated, this,
         [this] { finish_edit(editor_.undo(), selected_id()); });
-    auto* redo_shortcut = new QShortcut{QKeySequence::Redo, this};
+    auto* redo_shortcut = new QShortcut{QKeySequence::Redo, hierarchy_};
+    redo_shortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(redo_shortcut, &QShortcut::activated, this,
         [this] { finish_edit(editor_.redo(), selected_id()); });
 
     for (const int key : {Qt::Key_Up, Qt::Key_Down}) {
         const int offset = key == Qt::Key_Up ? -1 : 1;
-        auto* move = new QShortcut{QKeySequence{Qt::ALT | key}, this};
+        auto* move = new QShortcut{QKeySequence{Qt::ALT | key}, hierarchy_};
+        move->setContext(Qt::WidgetWithChildrenShortcut);
         connect(move, &QShortcut::activated, this, [this, offset] { move_selected(offset); });
     }
 

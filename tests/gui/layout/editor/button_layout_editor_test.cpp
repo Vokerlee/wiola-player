@@ -25,8 +25,11 @@
 #include <QDialogButtonBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QLineEdit>
 #include <QMimeData>
 #include <QPointer>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QTest>
 
 #include <gtest/gtest.h>
@@ -50,6 +53,40 @@ QTreeWidgetItem* item(QTreeWidget& tree, const QString& id)
 {
     const auto items = tree.findItems(id, Qt::MatchExactly | Qt::MatchRecursive);
     return items.empty() ? nullptr : items.front();
+}
+
+TEST(ButtonLayoutEditor, TextEditingShortcutsDoNotDeleteComponentsAndSmallWindowsCanScroll)
+{
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
+    // This contract drives focus/input/geometry. Rendering is qualified separately.
+    editor.setUpdatesEnabled(false);
+    QFont large = editor.font();
+    large.setPointSize(24);
+    editor.setFont(large);
+    editor.resize(640, 400);
+    editor.show();
+    editor.activateWindow();
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    tree->setCurrentItem(item(*tree, "transportControls"));
+    auto* title = editor.findChild<QLineEdit*>("layoutComponentTitle");
+    ASSERT_NE(title, nullptr);
+    title->setFocus();
+    QTest::keyClicks(title, "Draft");
+    title->setCursorPosition(0);
+    QTest::keyClick(title, Qt::Key_Delete);
+    EXPECT_EQ(title->text(), "raft");
+    EXPECT_NE(find(editor.document().root, "transportControls"), nullptr);
+    auto* scroll = editor.findChild<QScrollArea*>("layoutEditorScroll");
+    ASSERT_NE(scroll, nullptr);
+    scroll->widget()->layout()->activate();
+    editor.layout()->activate();
+    EXPECT_GT(scroll->horizontalScrollBar()->maximum() + scroll->verticalScrollBar()->maximum(), 0);
+    auto* cancel = editor.findChild<QPushButton*>("cancelLayoutEdit");
+    ASSERT_NE(cancel, nullptr);
+    EXPECT_TRUE(cancel->isVisibleTo(&editor));
+    cancel->setFocus();
+    QTest::keyClick(cancel, Qt::Key_Space);
+    EXPECT_FALSE(editor.isVisible());
 }
 
 TEST(ButtonLayoutEditor, AddsConfiguresAndAppliesPaletteActions)

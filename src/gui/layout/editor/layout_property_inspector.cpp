@@ -29,6 +29,7 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
 {
     title_ = new QLineEdit{this};
     title_->setObjectName("layoutComponentTitle");
+    title_->setAccessibleName("Layout component title");
     width_ = new QSpinBox{this};
     width_->setObjectName("layoutComponentWidth");
     width_->setRange(0, 4096);
