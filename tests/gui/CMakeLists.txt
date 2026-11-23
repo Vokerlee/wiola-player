@@ -219,3 +219,10 @@ foreach(scale IN ITEMS 1 1.25 1.5 2)
             --gtest_filter=ButtonLayoutEditor.TextEditingShortcutsDoNotDeleteComponentsAndSmallWindowsCanScroll
     )
 endforeach()
+
+wiola_add_test(
+    gui_desktop_journey_test
+    SOURCES journeys/desktop_journey_test.cpp
+    LIBS wiola_gui wiola_player_application Qt6::Test
+)
+qt_finalize_target(gui_desktop_journey_test)
