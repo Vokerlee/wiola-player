@@ -2,6 +2,10 @@ wiola_add_library(
     wiola_gui
     SOURCES
         controls/clock.cpp
+        controls/transport_view.cpp
+        controls/volume_view.cpp
+        controls/status_view.cpp
+        layout/player_layout.cpp
         appearance/artwork_presentation.cpp
         layout/editor/layout_editor_dialog.cpp
         layout/editor/layout_tree_views.cpp

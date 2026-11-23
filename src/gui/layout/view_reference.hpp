@@ -22,6 +22,7 @@
 #include "component_descriptor.hpp"
 #include <QJsonObject>
 #include <gui/documents/document_id.hpp>
+#include <gui/shell/action_descriptor.hpp>
 #include <string>
 #include <variant>
 
@@ -57,6 +58,7 @@ using ViewReference = std::variant<ComponentViewId, DocumentViewReference>;
 struct LegacyViewDescriptor {
     const char* key;
     LayoutComponentKind kind;
+    std::optional<PlayerAction> action{};
 };
 
 [[nodiscard]] std::span<const LegacyViewDescriptor> legacy_view_descriptors();

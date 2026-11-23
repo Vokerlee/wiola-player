@@ -29,6 +29,8 @@
 #include <QLabel>
 #include <QWidget>
 
+class QToolButton;
+
 namespace wiola::gui {
 
 class TrackInspector final : public QWidget {
@@ -72,6 +74,8 @@ private:
     QLabel* location_{nullptr};
     QLabel* duration_{nullptr};
     QLabel* availability_{nullptr};
+    QToolButton* metadata_toggle_{nullptr};
+    QToolButton* tags_toggle_{nullptr};
     CustomTagEditor* custom_tags_{nullptr};
     StandardMetadataEditor* standard_metadata_{nullptr};
     MetadataConflictPanel* conflicts_{nullptr};

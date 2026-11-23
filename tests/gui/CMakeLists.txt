@@ -177,3 +177,9 @@ wiola_add_test(
     SOURCES appearance/theme_manager_test.cpp
     LIBS wiola_gui
 )
+
+wiola_add_test(
+    gui_player_sections_test
+    SOURCES controls/player_sections_test.cpp
+    LIBS wiola_gui
+)
