@@ -191,6 +191,24 @@ private:
     int& commits_;
 };
 
+TEST_F(LibraryStorage, NativeOutputOpenFailurePreservesTheExistingDirectoryAndContents)
+{
+    const auto target = file("existing-directory");
+    ASSERT_TRUE(std::filesystem::create_directory(target));
+    const auto sentinel = target / "keep.txt";
+    {
+        QFile file{QString::fromStdString(sentinel.string())};
+        ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+        ASSERT_EQ(file.write("retained"), 8);
+    }
+    AtomicFileStore store{target, 100};
+    EXPECT_EQ(store.write(FileSlot::primary, QByteArrayView{"replacement"}), FileStoreError::io);
+    EXPECT_TRUE(std::filesystem::is_directory(target));
+    QFile retained{QString::fromStdString(sentinel.string())};
+    ASSERT_TRUE(retained.open(QIODevice::ReadOnly));
+    EXPECT_EQ(retained.readAll(), "retained");
+}
+
 TEST_F(LibraryStorage, ShortWritesAreNeverCommitted)
 {
     int commits = 0;

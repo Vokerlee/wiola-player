@@ -196,7 +196,7 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
         if (!object.value("tags").isArray())
             return LibraryJsonError::invalid_record;
 
-        const QJsonArray tags{object.value("tags").toArray()};
+        const QJsonArray tags = object.value("tags").toArray();
 
         if (static_cast<std::size_t>(tags.size()) > max_tags)
             return LibraryJsonError::limit_exceeded;
@@ -235,7 +235,7 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
         if (!object.value("locations").isArray())
             return LibraryJsonError::invalid_record;
 
-        const QJsonArray locations{object.value("locations").toArray()};
+        const QJsonArray locations = object.value("locations").toArray();
 
         if (static_cast<std::size_t>(locations.size()) > max_locations)
             return LibraryJsonError::limit_exceeded;
@@ -277,7 +277,7 @@ LibraryJsonError read_playlist(const QJsonValue& value, const std::set<library::
         !object.value("entries").isArray())
         return LibraryJsonError::invalid_record;
 
-    const QJsonArray entries{object.value("entries").toArray()};
+    const QJsonArray entries = object.value("entries").toArray();
     total_entries += static_cast<std::size_t>(entries.size());
 
     if (total_entries > max_playlist_entries)
@@ -495,9 +495,9 @@ LibraryJsonError read_library_json(QByteArrayView json, library::LibrarySnapshot
         (root.contains("workspaces") && !root.value("workspaces").isArray()))
         return LibraryJsonError::malformed;
 
-    const QJsonArray tracks{root.value("tracks").toArray()};
-    const QJsonArray playlists{root.value("playlists").toArray()};
-    const QJsonArray workspaces{root.value("workspaces").toArray()};
+    const QJsonArray tracks = root.value("tracks").toArray();
+    const QJsonArray playlists = root.value("playlists").toArray();
+    const QJsonArray workspaces = root.value("workspaces").toArray();
 
     if (static_cast<std::size_t>(tracks.size()) > max_tracks ||
         static_cast<std::size_t>(playlists.size()) > max_playlists ||

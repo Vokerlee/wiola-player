@@ -44,9 +44,11 @@ cmake -G Ninja -S "$source_dir" -B "$work/build" \
     -DQT_BUILD_TESTS=OFF \
     -DFEATURE_sql=OFF \
     -DFEATURE_dbus=OFF \
-    -DFEATURE_testlib=OFF
+    -DFEATURE_testlib=ON
 
-cmake --build "$work/build" --parallel
+cmake --build "$work/build" --parallel "${WIOLA_QT_BUILD_JOBS:-$(nproc)}"
 cmake --install "$work/build"
+
+test -f "$prefix/lib/cmake/Qt6Test/Qt6TestConfig.cmake"
 
 echo "Qt $version installed to $prefix; export QT_MINGW_ROOT=$prefix"

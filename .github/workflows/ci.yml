@@ -144,7 +144,7 @@ jobs:
       - run: cmake --preset windows-release -DENABLE_UNIT_TESTS=ON -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST
         env:
           QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
-      - run: cmake --build --preset windows-release -j
+      - run: cmake --build --preset windows-release --parallel 4 --target wiola-player gui_desktop_journey_test gui_metadata_file_journey_test
         env:
           QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
       - name: Check static Windows imports
