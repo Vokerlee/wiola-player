@@ -217,6 +217,27 @@
       ]
     },
     {
+      "id": "sdk.package",
+      "purpose": "Groups independent external SDK builders",
+      "files": [
+        "tools/sdk/README.md",
+        "tools/sdk/__init__.py"
+      ]
+    },
+    {
+      "id": "sdk.qt_mingw",
+      "purpose": "Builds and identifies the x86-64 static Qt SDK",
+      "files": [
+        "tools/sdk/qt_mingw/README.md",
+        "tools/sdk/qt_mingw/__init__.py",
+        "tools/sdk/qt_mingw/build.sh",
+        "tools/sdk/qt_mingw/context.cmake",
+        "tools/sdk/qt_mingw/tests/README.md",
+        "tools/sdk/qt_mingw/tests/__init__.py",
+        "tools/sdk/qt_mingw/tests/test_sdk.py"
+      ]
+    },
+    {
       "id": "testing.catalog",
       "purpose": "Reconciles test ownership, semantic purpose and applicability",
       "files": [

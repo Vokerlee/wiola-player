@@ -4537,6 +4537,48 @@
       "workflow": false
     },
     {
+      "path": "tools/sdk/__init__.py",
+      "owner": "sdk.package",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_mingw/__init__.py",
+      "owner": "sdk.qt_mingw",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_mingw/build.sh",
+      "owner": "sdk.qt_mingw",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_mingw/context.cmake",
+      "owner": "sdk.qt_mingw",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_mingw/tests/__init__.py",
+      "owner": "sdk.qt_mingw",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_mingw/tests/test_sdk.py",
+      "owner": "sdk.qt_mingw",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "tools/testing/__init__.py",
       "owner": "testing.package",
       "language": "python",

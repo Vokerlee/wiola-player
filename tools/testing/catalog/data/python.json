@@ -10,5 +10,6 @@
   "tools/architecture/ownership/tests/test_registry.py": "architecture.ownership",
   "tools/coverage/measurement/tests/test_report.py": "coverage.measurement",
   "tools/coverage/source_policy/tests/test_policy.py": "coverage.source_policy",
+  "tools/sdk/qt_mingw/tests/test_sdk.py": "sdk.qt_mingw",
   "tools/testing/catalog/tests/test_catalog.py": "testing.catalog"
 }

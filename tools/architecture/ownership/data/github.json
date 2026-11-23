@@ -5,6 +5,7 @@
       "id": "ci.environment_setup",
       "purpose": "Owns GitHub runner environment setup.",
       "files": [
+        ".github/actions/setup-build/README.md",
         ".github/actions/setup-build/action.yml"
       ]
     },
