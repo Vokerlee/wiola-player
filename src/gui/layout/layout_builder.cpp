@@ -191,9 +191,10 @@ LayoutBuilder::LayoutBuilder()
         [](QWidget* parent, const auto&) { return new QPushButton{parent}; });
     add(LayoutComponentKind::track_table,
         [](QWidget* parent, const auto&) { return new TrackTableView{parent}; });
-    for (const LayoutComponentKind kind : {LayoutComponentKind::inspector,
-             LayoutComponentKind::search, LayoutComponentKind::tags, LayoutComponentKind::transport,
-             LayoutComponentKind::volume, LayoutComponentKind::status})
+    for (const LayoutComponentKind kind :
+        {LayoutComponentKind::inspector, LayoutComponentKind::search, LayoutComponentKind::tags,
+            LayoutComponentKind::transport, LayoutComponentKind::volume,
+            LayoutComponentKind::status, LayoutComponentKind::document_host})
         add(kind, [](QWidget* parent, const auto&) { return new QLabel{parent}; });
 }
 
@@ -205,40 +206,36 @@ bool LayoutBuilder::register_component(LayoutComponentKind kind, Factory factory
     return true;
 }
 
-bool LayoutBuilder::register_widget(const QString& id, QWidget* widget)
-{
-    if (id.isEmpty() || widget == nullptr || widgets_.contains(id) ||
-        std::ranges::any_of(widgets_,
-            [widget](const auto& entry) { return entry.second == widget; }))
-        return false;
-    widgets_.emplace(id, widget);
-    return true;
-}
-
 QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildContext& context,
     QWidget* parent, std::vector<Attachment>& attachments) const
 {
-    const auto reused = widgets_.find(node.id);
+    const auto* registration =
+        node.view && !context.isolated_preview ? views_.find(*node.view) : nullptr;
+    if (node.view && !context.isolated_preview &&
+        (!registration || registration->kind != node.kind ||
+            (!node.children.empty() && !registration->allow_structure)))
+        return nullptr;
+    QWidget* reused = registration ? registration->widget.data() : nullptr;
     QWidget* widget = nullptr;
-    if (reused != widgets_.end() && node.children.empty()) {
+    if (reused != nullptr && node.children.empty()) {
         // A borrowed leaf may be a composite application view whose contents must stay intact.
         widget = new QWidget{parent};
     } else {
         const auto factory = factories_.find(node.kind);
         if (factory == factories_.end() ||
-            (reused != widgets_.end() && !matches_container(reused->second, node.kind)))
+            (reused != nullptr && !matches_container(reused, node.kind)))
             return nullptr;
         widget = factory->second(parent, context);
     }
     if (!widget)
         return nullptr;
-    if (reused != widgets_.end() && node.kind == LayoutComponentKind::splitter &&
-        !qobject_cast<QSplitter*>(reused->second)) {
+    if (reused != nullptr && node.kind == LayoutComponentKind::splitter &&
+        !qobject_cast<QSplitter*>(reused)) {
         delete widget;
         return nullptr;
     }
-    if (reused != widgets_.end())
-        attachments.push_back({.placeholder = widget, .widget = reused->second, .node = node});
+    if (reused != nullptr)
+        attachments.push_back({.placeholder = widget, .widget = reused, .node = node});
     else if (node.kind == LayoutComponentKind::button && node.action && context.actions) {
         auto* button = qobject_cast<QPushButton*>(widget);
         QAction* action = context.actions->action(*node.action);
@@ -254,7 +251,7 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
             return nullptr;
         }
     }
-    if (reused == widgets_.end())
+    if (reused == nullptr)
         configure_widget(*widget, node);
     return widget;
 }
@@ -262,8 +259,21 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
 QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& context,
     QWidget* parent) const
 {
-    const LayoutDocument document{.version = 1, .root = node, .node_count = bounded_count(node)};
+    const LayoutDocument document{.version = 2, .root = node, .node_count = bounded_count(node)};
     if (validate_layout_document(document) != LayoutJsonError::none)
+        return nullptr;
+    const auto preflight = [&](auto&& self, const LayoutNode& current) -> bool {
+        if (current.view && !context.isolated_preview) {
+            const auto* view = views_.find(*current.view);
+            if (!view || view->kind != current.kind ||
+                (parent && (view->widget == parent || view->widget->isAncestorOf(parent))) ||
+                (!current.children.empty() && !view->allow_structure))
+                return false;
+        }
+        return std::ranges::all_of(current.children,
+            [&](const auto& child) { return self(self, child); });
+    };
+    if (!preflight(preflight, node))
         return nullptr;
     std::vector<Attachment> attachments;
     QWidget* root = build_node(node, context, parent, attachments);
@@ -348,7 +358,10 @@ QWidget* LayoutBuilder::build(const LayoutNode& node, const LayoutBuildContext& 
         if (is_root)
             root = widget;
     }
-    for (const auto& [id, widget] : widgets_) {
+    for (const auto& [id, registration] : views_.entries()) {
+        QWidget* widget = registration.widget.data();
+        if (!widget)
+            continue;
         if (retired.isAncestorOf(widget)) {
             widget->setParent(parent);
             widget->hide();

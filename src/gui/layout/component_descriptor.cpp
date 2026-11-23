@@ -26,21 +26,22 @@ namespace wiola::gui {
 std::span<const ComponentDescriptor> component_descriptors()
 {
     static constexpr std::array descriptors{
-        ComponentDescriptor{LayoutComponentKind::row,         "row",         true,  3         },
-        ComponentDescriptor{LayoutComponentKind::column,      "column",      true,  3         },
-        ComponentDescriptor{LayoutComponentKind::stack,       "stack",       true,  3         },
-        ComponentDescriptor{LayoutComponentKind::splitter,    "splitter",    true,  3 | 8 | 16},
-        ComponentDescriptor{LayoutComponentKind::grid,        "grid",        true,  3 | 32    },
-        ComponentDescriptor{LayoutComponentKind::tabs,        "tabs",        true,  3         },
-        ComponentDescriptor{LayoutComponentKind::group,       "group",       true,  3         },
-        ComponentDescriptor{LayoutComponentKind::button,      "button",      false, 3 | 4     },
-        ComponentDescriptor{LayoutComponentKind::track_table, "track_table", false, 3         },
-        ComponentDescriptor{LayoutComponentKind::inspector,   "inspector",   false, 3         },
-        ComponentDescriptor{LayoutComponentKind::search,      "search",      false, 3         },
-        ComponentDescriptor{LayoutComponentKind::tags,        "tags",        false, 3         },
-        ComponentDescriptor{LayoutComponentKind::transport,   "transport",   false, 3         },
-        ComponentDescriptor{LayoutComponentKind::volume,      "volume",      false, 3         },
-        ComponentDescriptor{LayoutComponentKind::status,      "status",      false, 3         }
+        ComponentDescriptor{LayoutComponentKind::row,           "row",           true,  3         },
+        ComponentDescriptor{LayoutComponentKind::column,        "column",        true,  3         },
+        ComponentDescriptor{LayoutComponentKind::stack,         "stack",         true,  3         },
+        ComponentDescriptor{LayoutComponentKind::splitter,      "splitter",      true,  3 | 8 | 16},
+        ComponentDescriptor{LayoutComponentKind::grid,          "grid",          true,  3 | 32    },
+        ComponentDescriptor{LayoutComponentKind::tabs,          "tabs",          true,  3         },
+        ComponentDescriptor{LayoutComponentKind::group,         "group",         true,  3         },
+        ComponentDescriptor{LayoutComponentKind::button,        "button",        false, 3 | 4     },
+        ComponentDescriptor{LayoutComponentKind::track_table,   "track_table",   false, 3         },
+        ComponentDescriptor{LayoutComponentKind::inspector,     "inspector",     false, 3         },
+        ComponentDescriptor{LayoutComponentKind::search,        "search",        false, 3         },
+        ComponentDescriptor{LayoutComponentKind::tags,          "tags",          false, 3         },
+        ComponentDescriptor{LayoutComponentKind::transport,     "transport",     false, 3         },
+        ComponentDescriptor{LayoutComponentKind::volume,        "volume",        false, 3         },
+        ComponentDescriptor{LayoutComponentKind::status,        "status",        false, 3         },
+        ComponentDescriptor{LayoutComponentKind::document_host, "document_host", false, 3         }
     };
     return descriptors;
 }

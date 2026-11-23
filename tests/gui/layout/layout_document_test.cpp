@@ -50,7 +50,7 @@ TEST(LayoutDocument, ReadsVersionedNestingDimensionsAndActionBindings)
     wiola::gui::LayoutDocument document;
     ASSERT_EQ(wiola::gui::read_layout_json(json, document), LayoutJsonError::none);
 
-    EXPECT_EQ(document.version, 1);
+    EXPECT_EQ(document.version, 2);
     EXPECT_EQ(document.node_count, 4U);
     EXPECT_EQ(document.root.id, "player");
     EXPECT_EQ(document.root.min_width, 640);
@@ -94,7 +94,7 @@ TEST(LayoutDocument, RejectsMalformedVersionsAndExcessiveInputs)
     wiola::gui::LayoutDocument document;
 
     EXPECT_EQ(wiola::gui::read_layout_json("not json", document), LayoutJsonError::malformed);
-    EXPECT_EQ(wiola::gui::read_layout_json(R"({"version":2,"root":{}})", document),
+    EXPECT_EQ(wiola::gui::read_layout_json(R"({"version":3,"root":{}})", document),
         LayoutJsonError::unsupported_version);
     EXPECT_EQ(wiola::gui::read_layout_json(QByteArray(256 * 1024 + 1, ' '), document),
         LayoutJsonError::too_large);
@@ -204,6 +204,33 @@ TEST(LayoutDocument, DescriptorsRoundTripEveryStableComponentAndActionKey)
     EXPECT_FALSE(parse_component("QWidget"));
     EXPECT_FALSE(parse_action("execute"));
     EXPECT_EQ(action_descriptors().size(), static_cast<std::size_t>(PlayerAction::count));
+}
+
+TEST(LayoutDocument, MigratesOnlyWellKnownVersionOneViewsToVersionTwoReferences)
+{
+    using namespace wiola::gui;
+    LayoutDocument document;
+    ASSERT_EQ(read_layout_json(R"({"version":1,"root":{"id":"documentTabs","type":"stack"}})",
+                  document),
+        LayoutJsonError::none);
+    EXPECT_EQ(document.version, 2);
+    EXPECT_EQ(document.root.kind, LayoutComponentKind::document_host);
+    ASSERT_TRUE(document.root.view);
+    EXPECT_EQ(*document.root.view, component_view("documentTabs"));
+    ASSERT_EQ(read_layout_json(R"({"version":2,"root":{"id":"documentTabs","type":"stack"}})",
+                  document),
+        LayoutJsonError::none);
+    EXPECT_FALSE(document.root.view);
+    EXPECT_EQ(document.root.kind, LayoutComponentKind::stack);
+    const auto before = write_layout_json(document);
+    EXPECT_EQ(
+        read_layout_json(
+            R"({"version":2,"root":{"id":"view","type":"status","view":{"component":"x","document":{}}}})",
+            document
+        ),
+        LayoutJsonError::invalid_component
+    );
+    EXPECT_EQ(write_layout_json(document), before);
 }
 
 } // namespace

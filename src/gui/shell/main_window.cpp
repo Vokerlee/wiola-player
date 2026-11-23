@@ -367,6 +367,58 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         static_cast<void>(document_host_->open_workspace(id));
     });
 
+    static_cast<void>(views_.add(component_view("trackLabel"), track_label_,
+        LayoutComponentKind::status, false));
+    static_cast<void>(views_.add(component_view("positionBar"), position_bar_,
+        LayoutComponentKind::transport, false));
+    static_cast<void>(views_.add(component_view("elapsedTime"), elapsed_label_,
+        LayoutComponentKind::status, false));
+    static_cast<void>(views_.add(component_view("totalDuration"), total_label_,
+        LayoutComponentKind::status, false));
+    static_cast<void>(views_.add(component_view("previousTrack"), previous_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("playPause"), play_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("nextTrack"), next_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("stopPlayback"), stop_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("volumeSlider"), volume_slider_,
+        LayoutComponentKind::volume, false));
+    static_cast<void>(views_.add(component_view("volumeValue"), volume_value_,
+        LayoutComponentKind::status, false));
+    static_cast<void>(views_.add(component_view("boostButton"), boost_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("openTracks"), open_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("repeatQueue"), repeat_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("shuffleQueue"), shuffle_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("equalizer"), equalizer_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("documentArea"), document_area_,
+        LayoutComponentKind::splitter, true));
+    static_cast<void>(views_.add(component_view("libraryPane"), library_pane_,
+        LayoutComponentKind::column, true));
+    static_cast<void>(views_.add(component_view("libraryNavigation"), navigation_,
+        LayoutComponentKind::inspector, false));
+    static_cast<void>(views_.add(component_view("savedPlaylistManager"), playlist_manager_,
+        LayoutComponentKind::inspector, false));
+    static_cast<void>(views_.add(component_view("documentTabs"), document_host_,
+        LayoutComponentKind::document_host, false));
+    static_cast<void>(views_.add(component_view("trackInspector"), inspector_,
+        LayoutComponentKind::inspector, false));
+    static_cast<void>(views_.add(DocumentViewReference{DocumentId::queue()}, now_playing_,
+        LayoutComponentKind::track_table, false));
+    static_cast<void>(views_.add(component_view("addTracks"), add_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("removeTracks"), remove_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("clearQueue"), clear_button_,
+        LayoutComponentKind::button, false));
+    static_cast<void>(views_.add(component_view("playerStatus"), status_label_,
+        LayoutComponentKind::status, false));
     const QString selected_layout = settings_.value("layout/preset", "classic").toString();
     static_cast<void>(switch_layout(layout_for(selected_layout)));
 
@@ -540,61 +592,27 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
         return false;
     }
 
-    LayoutBuilder builder;
-    const std::array<std::pair<const char*, QWidget*>, 26> widgets{
-        std::pair{"trackLabel",           track_label_     },
-        std::pair{"positionBar",          position_bar_    },
-        std::pair{"elapsedTime",          elapsed_label_   },
-        std::pair{"totalDuration",        total_label_     },
-        std::pair{"previousTrack",        previous_button_ },
-        std::pair{"playPause",            play_button_     },
-        std::pair{"nextTrack",            next_button_     },
-        std::pair{"stopPlayback",         stop_button_     },
-        std::pair{"volumeSlider",         volume_slider_   },
-        std::pair{"volumeValue",          volume_value_    },
-        std::pair{"boostButton",          boost_button_    },
-        std::pair{"openTracks",           open_button_     },
-        std::pair{"repeatQueue",          repeat_button_   },
-        std::pair{"shuffleQueue",         shuffle_button_  },
-        std::pair{"equalizer",            equalizer_button_},
-        std::pair{"documentArea",         document_area_   },
-        std::pair{"libraryPane",          library_pane_    },
-        std::pair{"libraryNavigation",    navigation_      },
-        std::pair{"savedPlaylistManager", playlist_manager_},
-        std::pair{"documentTabs",         document_host_   },
-        std::pair{"trackInspector",       inspector_       },
-        std::pair{"nowPlayingDocument",   now_playing_     },
-        std::pair{"addTracks",            add_button_      },
-        std::pair{"removeTracks",         remove_button_   },
-        std::pair{"clearQueue",           clear_button_    },
-        std::pair{"playerStatus",         status_label_    },
+    ViewRegistry live = views_;
+    const auto register_document = [&](DocumentId id, QWidget* widget) {
+        static_cast<void>(live.add(DocumentViewReference{id}, widget,
+            LayoutComponentKind::track_table));
+        static_cast<void>(live.add(DocumentViewReference{id, DocumentViewPart::search},
+            widget->findChild<QWidget*>("trackSearchPanel"), LayoutComponentKind::search));
+        static_cast<void>(live.add(DocumentViewReference{id, DocumentViewPart::tags},
+            widget->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
     };
-
-    for (const auto& [id, widget] : widgets)
-        static_cast<void>(builder.register_widget(QString::fromLatin1(id), widget));
-
-    static_cast<void>(builder.register_widget("nowPlayingSearch",
-        now_playing_->findChild<QWidget*>("trackSearchPanel")));
-    static_cast<void>(builder.register_widget("nowPlayingFilters",
-        now_playing_->findChild<QWidget*>("tagFilterPanel")));
-
-    for (const auto& [id, saved] : document_host_->registry().playlists()) {
-        const QString identity = QString::fromStdString(id.value);
-        static_cast<void>(builder.register_widget("playlistDocument:" + identity, saved));
-        static_cast<void>(builder.register_widget("playlistSearch:" + identity,
-            saved->findChild<QWidget*>("trackSearchPanel")));
-        static_cast<void>(builder.register_widget("playlistFilters:" + identity,
-            saved->findChild<QWidget*>("tagFilterPanel")));
-    }
-
-    for (const auto& [id, workspace] : document_host_->registry().workspaces()) {
-        const QString identity = QString::fromStdString(id.value);
-        static_cast<void>(builder.register_widget("workspaceDocument:" + identity, workspace));
-        static_cast<void>(builder.register_widget("workspaceSearch:" + identity,
-            workspace->findChild<QWidget*>("trackSearchPanel")));
-        static_cast<void>(builder.register_widget("workspaceFilters:" + identity,
-            workspace->findChild<QWidget*>("tagFilterPanel")));
-    }
+    // Queue whole is already a singleton registration; its nested browser parts are separate views.
+    static_cast<void>(live.add(DocumentViewReference{DocumentId::queue(), DocumentViewPart::search},
+        now_playing_->findChild<QWidget*>("trackSearchPanel"), LayoutComponentKind::search));
+    static_cast<void>(live.add(DocumentViewReference{DocumentId::queue(), DocumentViewPart::tags},
+        now_playing_->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
+    for (const auto& [id, view] : document_host_->registry().playlists())
+        if (view)
+            register_document(DocumentId::playlist(id), view);
+    for (const auto& [id, view] : document_host_->registry().workspaces())
+        if (view)
+            register_document(DocumentId::workspace(id), view);
+    LayoutBuilder builder{live};
 
     QWidget* root =
         builder.build(document.root, {.actions = &actions_, .library = &library_}, this);
@@ -613,10 +631,23 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
         return false;
     };
 
-    for (const auto& [id, widget] : widgets) {
+    for (const auto& [id, registration] : live.entries()) {
+        QWidget* widget = registration.widget.data();
+        if (!widget)
+            continue;
+        bool registered_ancestor = false;
+        for (QWidget* ancestor = widget->parentWidget(); ancestor && ancestor != this;
+            ancestor = ancestor->parentWidget())
+            if (std::ranges::any_of(live.entries(),
+                    [ancestor](const auto& entry) { return entry.second.widget == ancestor; })) {
+                registered_ancestor = true;
+                break;
+            }
         if (!belongs_to_root(widget)) {
-            widget->setParent(this);
-            widget->hide();
+            if (!registered_ancestor)
+                widget->setParent(this);
+            if (!registered_ancestor || std::holds_alternative<ComponentViewId>(id))
+                widget->hide();
         }
     }
 

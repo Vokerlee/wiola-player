@@ -10,6 +10,8 @@ wiola_add_library(
         layout/focused_layout.cpp
         shell/library_navigation.cpp
         layout/layout_document.cpp
+        layout/view_reference.cpp
+        layout/view_registry.cpp
         layout/component_descriptor.cpp
         layout/layout_builder.cpp
         layout/layout_editor.cpp

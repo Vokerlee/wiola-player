@@ -41,6 +41,7 @@ enum class LayoutComponentKind {
     transport,
     volume,
     status,
+    document_host,
 };
 
 enum class ComponentProperty : unsigned {

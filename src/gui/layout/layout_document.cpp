@@ -30,6 +30,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <set>
 #include <string_view>
 
 namespace wiola::gui {
@@ -187,6 +188,13 @@ struct Parser {
                 return LayoutJsonError::invalid_component;
         }
 
+        if (object.contains("view")) {
+            if (!object.value("view").isObject())
+                return LayoutJsonError::invalid_component;
+            output.view = read_view_reference(object.value("view").toObject());
+            if (!output.view)
+                return LayoutJsonError::invalid_component;
+        }
         const QJsonValue children_value = object.value("children");
         if (children_value.isUndefined())
             return valid_container_properties(output) ? LayoutJsonError::none
@@ -230,26 +238,41 @@ LayoutJsonError read_layout_json(QByteArrayView json, LayoutDocument& output)
         object.value("version").toDouble(std::numeric_limits<double>::quiet_NaN());
     if (!std::isfinite(version) || std::floor(version) != version)
         return LayoutJsonError::malformed;
-    if (version != 1)
+    if (version != 1 && version != 2)
         return LayoutJsonError::unsupported_version;
 
     Parser parser;
-    parser.document.version = 1;
+    parser.document.version = 2;
     const LayoutJsonError result = parser.node(object.value("root"), parser.document.root, 0);
 
     if (result != LayoutJsonError::none)
         return result;
 
+    if (version == 1) {
+        const auto migrate = [](auto&& self, LayoutNode& node) -> void {
+            if (!node.view)
+                node.view = legacy_view_reference(node.id);
+            if (node.id == "documentTabs")
+                node.kind = LayoutComponentKind::document_host;
+            for (auto& child : node.children)
+                self(self, child);
+        };
+        migrate(migrate, parser.document.root);
+    }
+    const auto validated = validate_layout_document(parser.document);
+    if (validated != LayoutJsonError::none)
+        return validated;
     output = std::move(parser.document);
     return LayoutJsonError::none;
 }
 
 LayoutJsonError validate_layout_document(const LayoutDocument& document)
 {
-    if (document.version != 1)
+    if (document.version != 2)
         return LayoutJsonError::unsupported_version;
 
     QSet<QString> identities;
+    std::set<ViewReference> views;
     std::size_t count = 0;
 
     const auto validate_node = [&]<typename Self>(Self&& self, const LayoutNode& node,
@@ -278,6 +301,8 @@ LayoutJsonError validate_layout_document(const LayoutDocument& document)
         if (!valid_container_properties(node))
             return LayoutJsonError::invalid_component;
 
+        if (node.view && (!valid_view_reference(*node.view) || !views.insert(*node.view).second))
+            return LayoutJsonError::invalid_component;
         identities.insert(node.id);
         ++count;
 
@@ -320,6 +345,8 @@ QByteArray write_layout_json(const LayoutDocument& document)
             {"id",   node.id                         },
             {"type", layout_component_name(node.kind)}
         };
+        if (node.view)
+            result.insert("view", write_view_reference(*node.view));
         if (!node.title.isEmpty())
             result.insert("title", node.title);
         if (node.action)

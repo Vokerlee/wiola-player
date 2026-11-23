@@ -34,6 +34,9 @@ LayoutNode component(const QString& id, LayoutComponentKind kind)
     LayoutNode node;
     node.id = id;
     node.kind = kind;
+    node.view = legacy_view_reference(id);
+    if (id == "documentTabs")
+        node.kind = LayoutComponentKind::document_host;
     return node;
 }
 
@@ -72,6 +75,7 @@ LayoutDocument library_focus_layout_document()
     };
 
     area->id = "libraryFocusBody";
+    area->view.reset();
     area->title.clear();
     area->kind = LayoutComponentKind::row;
     area->orientation.reset();

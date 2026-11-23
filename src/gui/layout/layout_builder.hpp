@@ -21,6 +21,7 @@
 #pragma once
 
 #include "layout_document.hpp"
+#include "view_registry.hpp"
 
 #include <functional>
 #include <map>
@@ -40,6 +41,7 @@ class PlayerActions;
 struct LayoutBuildContext {
     PlayerActions* actions{nullptr};
     library::InMemoryRepository* library{nullptr};
+    bool isolated_preview{false};
 };
 
 class LayoutBuilder final {
@@ -48,8 +50,15 @@ public:
 
     LayoutBuilder();
 
+    explicit LayoutBuilder(ViewRegistry views)
+        : LayoutBuilder{}
+    {
+        views_ = std::move(views);
+    }
+
+    [[nodiscard]] ViewRegistry& views() { return views_; }
+
     [[nodiscard]] bool register_component(LayoutComponentKind kind, Factory factory);
-    [[nodiscard]] bool register_widget(const QString& id, QWidget* widget);
     [[nodiscard]] QWidget* build(const LayoutNode& node, const LayoutBuildContext& context,
         QWidget* parent = nullptr) const;
 
@@ -64,7 +73,7 @@ private:
         QWidget* parent, std::vector<Attachment>& attachments) const;
 
     std::map<LayoutComponentKind, Factory> factories_;
-    std::map<QString, QWidget*> widgets_;
+    ViewRegistry views_;
 };
 
 } // namespace wiola::gui
