@@ -22,17 +22,11 @@ if [ ! -d "$host_cmake_dir/Qt6" ]; then
     exit 1
 fi
 
-source_dir="$work/qtbase-everywhere-src-$version"
 mkdir -p "$work"
 cmake -P "$script_directory/context.cmake" > "$work/context.identity"
 
-if [ ! -d "$source_dir" ]; then
-    curl --fail --location --retry 3 --connect-timeout 30 \
-        --speed-time 30 --speed-limit 1024 --output-dir "$work" -o qtbase.tar.xz \
-        "https://download.qt.io/archive/qt/${version%.*}/$version/submodules/qtbase-everywhere-src-$version.tar.xz"
-    tar xf "$work/qtbase.tar.xz" -C "$work"
-    rm "$work/qtbase.tar.xz"
-fi
+source_dir="$(PYTHONPATH="$repository_directory${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m tools.sdk.qt_source "$version" "${WIOLA_QT_SOURCE_CACHE:-$work}")"
 
 cmake -G Ninja -S "$source_dir" -B "$work/build" \
     -DCMAKE_TOOLCHAIN_FILE="$toolchain" \

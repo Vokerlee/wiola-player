@@ -304,6 +304,20 @@
       ]
     },
     {
+      "id": "sdk.qt_source",
+      "purpose": "Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts",
+      "files": [
+        "tools/sdk/qt_source/README.md",
+        "tools/sdk/qt_source/__init__.py",
+        "tools/sdk/qt_source/__main__.py",
+        "tools/sdk/qt_source/pins.json",
+        "tools/sdk/qt_source/provider.py",
+        "tools/sdk/qt_source/tests/README.md",
+        "tools/sdk/qt_source/tests/__init__.py",
+        "tools/sdk/qt_source/tests/test_provider.py"
+      ]
+    },
+    {
       "id": "testing.catalog",
       "purpose": "Reconciles test ownership, semantic purpose and applicability",
       "files": [
