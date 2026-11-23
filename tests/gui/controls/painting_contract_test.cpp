@@ -1,5 +1,6 @@
 #include <QAccessible>
 #include <QAccessibleValueInterface>
+#include <QAction>
 #include <QCheckBox>
 #include <QImage>
 #include <QScrollArea>
@@ -67,6 +68,32 @@ TEST_F(GuiInteraction, SeekKeyboardAccessibilityAndDragCancellationHaveDistinctO
     EXPECT_EQ(requested.count(), before);
     bar.set_fraction(std::numeric_limits<double>::quiet_NaN());
     EXPECT_EQ(bar.fraction(), 0.25);
+}
+
+TEST_F(GuiInteraction, SeekDragCancellationTakesPrecedenceOverTheWindowStopShortcut)
+{
+    wiola::gui::SeekBar bar;
+    watch(bar);
+    QAction stop{&bar};
+    stop.setShortcut(QKeySequence{Qt::Key_Escape});
+    bar.addAction(&stop);
+    int stops{};
+    QObject::connect(&stop, &QAction::triggered, [&] { ++stops; });
+    bar.resize(200, 12);
+    bar.show();
+    bar.activateWindow();
+    bar.setFocus();
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return bar.hasFocus(); }));
+    bar.set_fraction(0.25);
+    QTest::mousePress(&bar, Qt::LeftButton, Qt::NoModifier, QPoint{150, 6});
+    ASSERT_TRUE(bar.dragging());
+    QTest::keyClick(&bar, Qt::Key_Escape);
+    EXPECT_FALSE(bar.dragging());
+    EXPECT_EQ(bar.fraction(), 0.25);
+    EXPECT_EQ(stops, 0);
+    QTest::mouseRelease(&bar, Qt::LeftButton, Qt::NoModifier, QPoint{150, 6});
+    QTest::keyClick(&bar, Qt::Key_Escape);
+    EXPECT_EQ(stops, 1);
 }
 
 TEST_F(GuiInteraction, FocusIsVisibleAndMouseCommitDiffersFromCancelledOrDisplayUpdates)

@@ -154,7 +154,7 @@ void BackgroundMetadataWrites::run()
                             job.context());
                     if (result.outcome.state == media::MetadataWriteState::written &&
                         !result.outcome.source_modified) {
-                        const std::filesystem::path path{result.outcome.detail};
+                        const auto& path = result.outcome.staged_output;
                         if (!path.empty() &&
                             path.lexically_normal() != job.source.lexically_normal()) {
                             result.output = std::make_shared<StagedMetadataOutput>(path);

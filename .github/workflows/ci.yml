@@ -33,7 +33,7 @@ jobs:
   test:
     name: test (${{ matrix.preset }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       # One sanitizer failing is not a reason to stop hearing from the others.
       fail-fast: false
@@ -50,15 +50,39 @@ jobs:
       - uses: ./.github/actions/setup-build
         with:
           name: ${{ matrix.preset }}
+          packages: ${{ matrix.preset == 'linux-tsan' && 'libglib2.0-dev' || '' }}
+      - uses: actions/cache@v4
+        if: matrix.preset == 'linux-tsan'
+        with:
+          path: build-tsan/qt-core-tsan/runtime
+          key: qt-core-tsan-${{ runner.arch }}-${{ hashFiles('scripts/build-qt-core-tsan.sh') }}
+      - name: Build the matching instrumented Qt event dispatcher
+        if: matrix.preset == 'linux-tsan'
+        run: |
+          scripts/build-qt-core-tsan.sh build-tsan/qt-core-tsan
+          echo "WIOLA_QT_PLUGIN_PATH=$(qtpaths6 --plugin-dir)" >> "$GITHUB_ENV"
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
       - run: cmake --build --preset ${{ matrix.preset }} --target wiola_core_adapter_boundary
+      - name: Record the instrumented Qt runtime
+        if: matrix.preset == 'linux-tsan'
+        run: |
+          mkdir -p build-tsan/Testing
+          ldd build-tsan/tests/gui/gui_desktop_journey_test > build-tsan/Testing/qt-runtime.txt
+          grep -F "$GITHUB_WORKSPACE/build-tsan/qt-core-tsan/runtime/libQt6Core.so.6" build-tsan/Testing/qt-runtime.txt
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/build-tsan/qt-core-tsan/runtime
       - name: Run offscreen GUI command journeys
         run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 --output-on-failure -R '^(MainWindowTest|DesktopJourney)\.' ${{ matrix.ctest_args }}
         env:
           QT_QPA_PLATFORM: offscreen
+          LD_LIBRARY_PATH: ${{ matrix.preset == 'linux-tsan' && format('{0}/build-tsan/qt-core-tsan/runtime', github.workspace) || '' }}
+          QT_PLUGIN_PATH: ${{ env.WIOLA_QT_PLUGIN_PATH }}
           WIOLA_GUI_FAILURE_ARTIFACTS: ${{ github.workspace }}/build-${{ matrix.preset }}/gui-artifacts
       - run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 ${{ matrix.ctest_args }}
+        env:
+          LD_LIBRARY_PATH: ${{ matrix.preset == 'linux-tsan' && format('{0}/build-tsan/qt-core-tsan/runtime', github.workspace) || '' }}
+          QT_PLUGIN_PATH: ${{ env.WIOLA_QT_PLUGIN_PATH }}
       - name: Upload test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -66,7 +90,10 @@ jobs:
           name: test-diagnostics-${{ matrix.preset }}
           path: |
             build-*/Testing/Temporary
+            build-*/Testing/qt-runtime.txt
             build-*/gui-artifacts
+            build-tsan/qt-core-tsan/runtime/receipt.json
+            build-tsan/qt-core-tsan/*.log
           if-no-files-found: ignore
           retention-days: 7
 
@@ -127,12 +154,18 @@ jobs:
             exit 1
           fi
 
+      - name: Package qualified media fixtures
+        run: |
+          mkdir -p build-win-release/tests/codec/data
+          cp tests/codec/data/{tone.mp3,tone.flac,tone-vorbis.ogg,tone.wav} build-win-release/tests/codec/data/
       - uses: actions/upload-artifact@v4
         with:
           name: windows-desktop-journeys
           path: |
             build-win-release/bin/wiola-player.exe
             build-win-release/tests/gui/gui_desktop_journey_test.exe
+            build-win-release/tests/gui/gui_metadata_file_journey_test.exe
+            build-win-release/tests/codec/data
 
   windows-native:
     needs: windows
@@ -145,7 +178,11 @@ jobs:
           name: windows-desktop-journeys
           path: native-journey
       - name: Run the packaged static binary on native Windows
-        run: python scripts/run-desktop-journeys.py --binary native-journey/tests/gui/gui_desktop_journey_test.exe --artifacts native-journey/results --revision "${{ github.sha }}"
+        run: python scripts/run-desktop-journeys.py --binary native-journey/tests/gui/gui_desktop_journey_test.exe --artifacts native-journey/results/state --minimum-tests 8 --media-dir native-journey/tests/codec/data --revision "${{ github.sha }}"
+        env:
+          QT_QPA_PLATFORM: windows
+      - name: Edit qualified files during playback on native Windows
+        run: python scripts/run-desktop-journeys.py --binary native-journey/tests/gui/gui_metadata_file_journey_test.exe --artifacts native-journey/results/metadata --media-dir native-journey/tests/codec/data --filter "QualifiedFormats/*" --minimum-tests 4 --revision "${{ github.sha }}"
         env:
           QT_QPA_PLATFORM: windows
       - uses: actions/upload-artifact@v4

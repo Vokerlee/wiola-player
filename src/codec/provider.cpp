@@ -78,8 +78,10 @@ public:
                 .source_modified = false,
                 .detail = "this format is read-only"};
 
-        const std::filesystem::path temporary = path_.parent_path() /
-            (path_.stem().string() + ".wiola-writing" + path_.extension().string());
+        auto name = path_.stem();
+        name += ".wiola-writing";
+        name += path_.extension();
+        const auto temporary = path_.parent_path() / name;
 
         return ffmpeg::remux_metadata(path_, temporary, request, context);
     }

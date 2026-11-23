@@ -73,7 +73,7 @@ def require_profiles(raw, expected):
 
 def workflow_file(filename, root):
     path = Path(filename).resolve()
-    return path.is_relative_to(root / 'src') and path.relative_to(root / 'src').parts[0] in WORKFLOW
+    return path == root / 'src/main.cpp' or (path.is_relative_to(root / 'src') and path.relative_to(root / 'src').parts[0] in WORKFLOW)
 
 
 def summarize(files):

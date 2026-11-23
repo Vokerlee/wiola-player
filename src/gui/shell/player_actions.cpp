@@ -19,6 +19,7 @@
  */
 
 #include "player_actions.hpp"
+#include "player_shortcuts.hpp"
 
 #include <gui/appearance/theme.hpp>
 
@@ -44,6 +45,7 @@ PlayerActions::PlayerActions(QWidget& styled)
         actions_[index_of(description.id)] = command;
     }
 
+    new PlayerShortcuts{styled, this};
     reload_icons(styled);
 }
 
