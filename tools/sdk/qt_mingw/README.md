@@ -18,3 +18,9 @@ Call `scripts/build-qt-mingw.sh INSTALL_PREFIX [WORKSPACE]`. One argument retain
 `cmake -P tools/sdk/qt_mingw/context.cmake` writes a SHA-256 identity to stdout. It includes the host Qt version/location, compiler version and compiler target read from the selected toolchain. It has no GitHub dependency; CI combines the identity with the recipe/toolchain hash and runner platform. A failed build or missing Qt Test install cannot be reported as a completed SDK.
 
 [Tests](tests/README.md) check workspace isolation, existing sources, legacy invocation, failed stages, identity changes and architecture rejection. Actual SDK compatibility is additionally qualified by configuring/linking the player and running its native Windows journeys.
+
+Source acquisition belongs entirely to [the shared Qt source provider](../qt_source/README.md).
+The host version must have a reviewed checksum in its release registry. `WIOLA_QT_SOURCE_CACHE`
+can select a shared source workspace. SDK context identity includes the selected source and
+provider recipe, so source changes invalidate installed-SDK reuse. Python 3.12 is required by
+the source provider; no Python package installation is needed for it.

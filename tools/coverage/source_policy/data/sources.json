@@ -4719,6 +4719,41 @@
       "workflow": false
     },
     {
+      "path": "tools/sdk/qt_source/__init__.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_source/__main__.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_source/provider.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_source/tests/__init__.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_source/tests/test_provider.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "tools/testing/__init__.py",
       "owner": "testing.package",
       "language": "python",

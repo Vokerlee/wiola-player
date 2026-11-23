@@ -181,4 +181,9 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/coverage/llvm_reporting/reporter.py',), grouping=False,
     ),
+    AbstractionContract(
+        'sdk.qt_source', 'tools/sdk/qt_source', 'Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/sdk/qt_source/provider.py', 'tools/sdk/qt_source/__main__.py'), grouping=False,
+    ),
 )

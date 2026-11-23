@@ -86,6 +86,7 @@
     "resources.desktop": "resources",
     "sdk.package": "tooling",
     "sdk.qt_mingw": "tooling",
+    "sdk.qt_source": "tooling",
     "source.app.library.artwork_store": "application",
     "source.app.library.location_index": "application",
     "source.app.library.search_index": "application",

@@ -62,7 +62,7 @@ jobs:
         if: matrix.preset == 'linux-tsan'
         with:
           path: build-tsan/qt-core-tsan/runtime
-          key: qt-core-tsan-${{ runner.arch }}-${{ hashFiles('scripts/build-qt-core-tsan.sh') }}
+          key: qt-core-tsan-${{ runner.arch }}-${{ hashFiles('scripts/build-qt-core-tsan.sh', 'tools/sdk/qt_source/*.py', 'tools/sdk/qt_source/pins.json') }}
       - name: Build the matching instrumented Qt event dispatcher
         if: matrix.preset == 'linux-tsan'
         run: |

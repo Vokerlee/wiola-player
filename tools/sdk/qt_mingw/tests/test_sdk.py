@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -81,6 +82,29 @@ class QtSdkTest(unittest.TestCase):
         toolchain = self.root / "toolchain.cmake"
         toolchain.write_text(f'set(CMAKE_CXX_COMPILER "{compiler.as_posix()}")\n')
         self.environment["WIOLA_QT_TOOLCHAIN_FILE"] = str(toolchain)
+        source_api = self.executable(
+            "python3",
+            """
+            import hashlib, os, pathlib, sys
+            args = sys.argv[1:]
+            if args[:2] == ["-m", "tools.sdk.qt_source"]:
+                version = args[2]
+                if "--identity" in args:
+                    print(hashlib.sha256(("fixture source " + version).encode()).hexdigest())
+                else:
+                    source = pathlib.Path(args[3]) / ("qtbase-everywhere-src-" + version)
+                    if not source.is_dir():
+                        print("controlled source-provider failure", file=sys.stderr)
+                        sys.exit(7)
+                    print(source)
+            else:
+                os.execv(os.environ["TEST_REAL_PYTHON"], [os.environ["TEST_REAL_PYTHON"], *args])
+            """,
+        )
+        source_api.write_text(
+            "#!" + sys.executable + "\n" + source_api.read_text().partition("\n")[2]
+        )
+        self.environment["TEST_REAL_PYTHON"] = sys.executable
 
     def executable(self, name, source):
         path = self.binary_directory / name
