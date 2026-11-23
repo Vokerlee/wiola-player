@@ -1,15 +1,13 @@
 """Compare current declarations with Git's tracked-file inventory."""
 
 import argparse
-import json
 from importlib.resources import files
 from pathlib import Path
 import subprocess
 import sys
 
 from tools.architecture.inventory.git_inventory import GitInventory
-from tools.architecture.contracts.catalog import ContractCatalog, ContractError
-from tools.architecture.contracts.definitions import CONTRACTS
+from tools.architecture.contracts.catalog import ContractError, load_current_catalog
 from tools.architecture.cmake_inventory.inventory import CMakeInventory, BuildInventoryError
 from tools.architecture.ownership.registry import OwnershipRegistry, RegistryError
 
@@ -27,8 +25,7 @@ def main() -> int:
             if path.name.endswith(".json")
         ]
         registry = OwnershipRegistry(documents)
-        legacy_file = files("tools.architecture.contracts").joinpath("data", "legacy.json")
-        catalog = ContractCatalog(CONTRACTS, json.loads(legacy_file.read_text(encoding="utf-8")))
+        catalog = load_current_catalog()
         audit = catalog.audit(registry)
         paths = GitInventory(args.repository).paths()
         difference = registry.compare(paths)

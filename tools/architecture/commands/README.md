@@ -10,3 +10,5 @@ flowchart LR
 ```
 
 Player code never imports these development commands. Shared implementation belongs to a named component, not another command's main routine.
+
+[Dependency checking](check_dependencies/README.md) assembles graph readers and policy checks. It consumes the contract catalog through its public API.

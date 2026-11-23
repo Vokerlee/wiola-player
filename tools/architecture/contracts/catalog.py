@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 import hashlib
+from importlib.resources import files
+import json
 from pathlib import PurePosixPath
 from typing import Iterable, Mapping
 
@@ -83,6 +85,10 @@ class ContractCatalog:
                for value in self._legacy.values()):
             raise ContractError("Legacy allowances must identify exact file sets")
 
+    @property
+    def contracts(self) -> tuple[AbstractionContract, ...]:
+        return tuple(self._contracts.values())
+
     def audit(self, registry: OwnershipRegistry) -> ContractAudit:
         owners = {owner.identity: owner for owner in registry.owners}
         issues: list[ContractIssue] = []
@@ -125,3 +131,11 @@ class ContractCatalog:
                             identity, f"Abstraction subtree contains unrelated owner {other.identity}"
                         ))
         return ContractAudit(tuple(issues), tuple(legacy))
+
+
+def load_current_catalog() -> ContractCatalog:
+    """Load this checkout's contracts without exposing their storage layout."""
+    from .definitions import CONTRACTS
+
+    legacy = files(__package__).joinpath("data", "legacy.json")
+    return ContractCatalog(CONTRACTS, json.loads(legacy.read_text(encoding="utf-8")))
