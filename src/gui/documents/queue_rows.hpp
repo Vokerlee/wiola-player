@@ -19,11 +19,63 @@
  */
 
 #pragma once
+#include <engine/queue/playlist.hpp>
 #include <engine/queue/track.hpp>
+#include <functional>
 #include <gui/tracks/track_row.hpp>
+#include <library/library_changes.hpp>
+#include <library/repository.hpp>
+#include <map>
 #include <span>
+#include <unordered_map>
 
 namespace wiola::gui {
+
+struct QueueRowChanges {
+    bool structure{}, current{}, playback_changed{};
+    std::vector<TrackRow> rows;
+
+    [[nodiscard]] bool changed() const { return structure || current || !rows.empty(); }
+};
+
+/// Queue occurrence projection and indexes, independently of widgets and playback commands.
+class QueueRows final {
+public:
+    using Resolver = std::function<library::MediaId(const std::filesystem::path&)>;
+
+    void set_resolver(Resolver resolver)
+    {
+        resolve_media_ = std::move(resolver);
+        invalidate();
+    }
+
+    void invalidate() { structure_.reset(); }
+
+    [[nodiscard]] QueueRowChanges reconcile(const engine::Playlist& playlist,
+        const library::LibraryRepository* repository);
+    [[nodiscard]] QueueRowChanges apply_library(const engine::Playlist& playlist,
+        const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch);
+
+    [[nodiscard]] const std::vector<TrackRow>& rows() const { return rows_; }
+
+    [[nodiscard]] std::optional<engine::QueueEntryId> current() const { return current_; }
+
+private:
+    [[nodiscard]] TrackRow present(const engine::Track& track,
+        const library::LibraryRepository* repository) const;
+    void replace(std::size_t position, TrackRow row);
+    [[nodiscard]] std::vector<TrackRow> update_library(const engine::Playlist& playlist,
+        const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch);
+    const engine::Playlist* playlist_{};
+    std::optional<std::size_t> structure_, metadata_;
+    std::optional<engine::QueueEntryId> current_;
+    std::vector<TrackRow> rows_;
+    std::vector<std::size_t> revisions_;
+    std::map<engine::QueueEntryId, std::size_t> entries_;
+    std::unordered_map<library::MediaId, std::vector<engine::QueueEntryId>> media_;
+    std::unordered_map<std::string, std::vector<engine::QueueEntryId>> locations_;
+    Resolver resolve_media_;
+};
 
 [[nodiscard]] TrackRow queue_row(const engine::Track& track);
 [[nodiscard]] std::vector<TrackRow> queue_rows(std::span<const engine::Track> tracks);

@@ -25,6 +25,10 @@
 #include <QApplication>
 #include <QFont>
 #include <QLabel>
+#include <QSignalSpy>
+#include <gui/tracks/track_browser.hpp>
+#include <library/in_memory_repository.hpp>
+#include <library/location.hpp>
 
 #include <gtest/gtest.h>
 
@@ -100,6 +104,106 @@ TEST(NowPlayingDocument, ForwardsIdentityBasedCommandsFromItsTable)
     EXPECT_EQ(chosen, selected);
     EXPECT_EQ(document.chosen_tracks(), std::vector<wiola::engine::QueueEntryId>{selected});
     EXPECT_EQ(removals, 1);
+}
+
+TEST(NowPlayingDocument, IdleRefreshAndPlayingMarkerDoNotRebuildOrQueryTheSource)
+{
+    using namespace wiola;
+    std::vector<engine::Track> tracks;
+    for (int i = 0; i < 1000; ++i)
+        tracks.push_back(engine::Track::of("/music/" + std::to_string(i) + ".wav"));
+    engine::Playlist playlist;
+    playlist.set(std::move(tracks));
+    gui::NowPlayingDocument document;
+    std::size_t resolutions = 0;
+    document.set_media_resolver([&](const auto& path) {
+        ++resolutions;
+        return library::media_id_for(path);
+    });
+    ASSERT_TRUE(document.show_playlist(playlist));
+    auto& table = document.browser().table();
+    auto* model = static_cast<gui::TrackTableModel*>(table.model());
+    const auto before = model->projection_statistics();
+    for (int i = 0; i < 100; ++i)
+        EXPECT_FALSE(document.show_playlist(playlist));
+    EXPECT_EQ(resolutions, 1000);
+    EXPECT_EQ(model->projection_statistics().source_rebuilds, before.source_rebuilds);
+    EXPECT_EQ(model->projection_statistics().queries, before.queries);
+    QSignalSpy changed{model, &QAbstractItemModel::dataChanged};
+    playlist.go_to(1);
+    EXPECT_TRUE(document.show_playlist(playlist));
+    EXPECT_EQ(changed.size(), 2);
+    EXPECT_EQ(model->projection_statistics().queries, before.queries);
+    EXPECT_EQ(resolutions, 1000);
+}
+
+TEST(NowPlayingDocument, LibraryOverridesRefreshDuplicateOccurrencesWithoutReadingTheFile)
+{
+    using namespace wiola;
+    engine::Playlist playlist;
+    playlist.set({engine::Track::of("/missing.wav"), engine::Track::of("/missing.wav")});
+    library::InMemoryRepository repository;
+    library::TrackRecord record;
+    record.id = library::media_id_for("/missing.wav");
+    record.locations = {"/missing.wav"};
+    record.overrides.title = "Application title";
+    record.metadata_revision = 1;
+    ASSERT_TRUE(repository.put_track(record));
+    gui::NowPlayingDocument document;
+    document.show_library(repository);
+    document.show_playlist(playlist);
+    auto* model = document.browser().table().model();
+    ASSERT_EQ(model->rowCount(), 2);
+    for (int i = 0; i < 2; ++i)
+        EXPECT_EQ(model->index(i, 1).data().toString(), "Application title");
+}
+
+TEST(NowPlayingDocument,
+    LibraryBatchesPatchOnlyMatchingOccurrencesAndKeepRawFieldsUntilLearningCompletes)
+{
+    using namespace wiola;
+    std::vector<engine::Track> tracks;
+    for (int i = 0; i < 1000; ++i)
+        tracks.push_back(engine::Track::of("/music/" + std::to_string(i == 1 ? 0 : i) + ".wav"));
+    engine::Playlist playlist;
+    playlist.set(std::move(tracks));
+    playlist.describe(playlist.tracks()[0].id(), {.title = "Raw title", .artist = "Raw artist"});
+    library::InMemoryRepository repository;
+    gui::NowPlayingDocument document;
+    std::size_t lookups = 0;
+    document.set_media_resolver([&](const auto& path) {
+        ++lookups;
+        return library::media_id_for(path);
+    });
+    document.show_library(repository);
+    document.show_playlist(playlist);
+    auto* model = static_cast<gui::TrackTableModel*>(document.browser().table().model());
+    const auto before = model->projection_statistics();
+    library::LibraryChangeBatch batch;
+    batch.media = {
+        library::MediaChange{.media = {"unrelated"}, .fields = library::MediaChangeFields::tags}
+    };
+    EXPECT_FALSE(document.show_library_changes(playlist, repository, batch));
+    EXPECT_EQ(lookups, 1000);
+    EXPECT_EQ(model->projection_statistics().queries, before.queries);
+    library::TrackRecord record;
+    record.id = library::media_id_for("/music/0.wav");
+    record.locations = {"/music/0.wav"};
+    record.overrides.title = "Application title";
+    record.metadata_revision = 7;
+    ASSERT_TRUE(repository.put_track(record));
+    batch.media = {
+        library::MediaChange{.media = record.id, .fields = library::MediaChangeFields::overrides}
+    };
+    QSignalSpy changed{model, &QAbstractItemModel::dataChanged};
+    document.show_library_changes(playlist, repository, batch);
+    EXPECT_EQ(changed.size(), 2);
+    EXPECT_EQ(lookups, 1002);
+    EXPECT_EQ(model->projection_statistics().source_rebuilds, before.source_rebuilds);
+    EXPECT_EQ(model->projection_statistics().queries, before.queries);
+    EXPECT_EQ(model->index(0, 1).data().toString(), "Application title");
+    EXPECT_EQ(model->index(1, 1).data().toString(), "Application title");
+    EXPECT_EQ(model->index(0, 2).data().toString(), "Raw artist");
 }
 
 } // namespace

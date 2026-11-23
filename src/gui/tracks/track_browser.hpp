@@ -25,6 +25,7 @@
 #include "track_table_view.hpp"
 #endif
 #include <QPointer>
+#include <QTimer>
 #include <QWidget>
 
 namespace wiola::gui {
@@ -34,7 +35,8 @@ class TrackBrowser final : public QWidget {
 public:
     TrackBrowser(TrackCapabilities capabilities, QWidget* parent = nullptr);
     ~TrackBrowser() override;
-    void show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current = {});
+    void show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current = {},
+        const library::LibraryRepository* repository = nullptr);
 
     [[nodiscard]] app::BrowserViewState capture_browser_state()
     {
@@ -53,6 +55,18 @@ public:
 
     void show_library(const library::LibraryRepository& repository);
 
+    void bind_library(const library::LibraryRepository& repository)
+    {
+        table_->bind_library(repository);
+    }
+
+    void update_rows(const std::vector<TrackRow>& rows,
+        const library::LibraryRepository* repository = nullptr)
+    {
+        table_->update_rows(rows, repository);
+        update_results();
+    }
+
     [[nodiscard]] TrackTableView& table() noexcept { return *table_; }
 
     [[nodiscard]] const TrackTableView& table() const noexcept { return *table_; }
@@ -64,6 +78,9 @@ signals:
 
 private:
     void update_results();
+    void apply_query(library::SearchQuery query);
+    QTimer search_timer_;
+    std::optional<library::SearchQuery> pending_query_;
     QPointer<TrackTableView> table_;
     QPointer<TrackSearchPanel> search_;
     QPointer<TagFilterPanel> filters_;

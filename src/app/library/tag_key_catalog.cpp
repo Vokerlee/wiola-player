@@ -30,8 +30,10 @@ void TagKeyCatalog::remove(const library::MediaId& id)
         return;
     for (const auto& key : found->second) {
         const auto item = keys_.find(key);
-        if (--item->second.count == 0)
+        if (--item->second.count == 0) {
             keys_.erase(item);
+            ++revision_;
+        }
     }
     media_.erase(found);
 }
@@ -52,15 +54,19 @@ void TagKeyCatalog::upsert(const library::TrackRecord& track)
         if (desired.contains(key))
             continue;
         const auto item = keys_.find(key);
-        if (--item->second.count == 0)
+        if (--item->second.count == 0) {
             keys_.erase(item);
+            ++revision_;
+        }
     }
     for (const auto& [key, label] : incoming) {
         if (previous.contains(key))
             continue;
         auto& item = keys_[key];
-        if (item.count++ == 0)
+        if (item.count++ == 0) {
             item.label = label;
+            ++revision_;
+        }
     }
     previous = std::move(desired);
 }

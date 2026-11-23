@@ -311,6 +311,16 @@ void DocumentHost::refresh_active_destination()
 
 void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
 {
+    if (catalog_revision_ != library_.tag_keys().revision()) {
+        catalog_revision_ = library_.tag_keys().revision();
+        queue_->browser().table().refresh_catalog();
+        for (const auto& [id, document] : registry_.playlists())
+            if (document)
+                document->browser().table().refresh_catalog();
+        for (const auto& [id, document] : registry_.workspaces())
+            if (document)
+                document->browser().table().refresh_catalog();
+    }
     for (const auto& [id, document] : registry_.playlists()) {
         const auto* playlist = library_.repository().playlist(id);
         if (!playlist) {

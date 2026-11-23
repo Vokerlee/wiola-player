@@ -19,6 +19,9 @@
  */
 
 #include "track_table_model.hpp"
+#include "track_projection.hpp"
+#include <QPointer>
+#include <app/library/search_index.hpp>
 
 #include "track_view_pipeline.hpp"
 #include <gui/controls/clock.hpp>
@@ -50,6 +53,105 @@ TrackTableModel::TrackTableModel(const QWidget& styled, ArtworkRequest policy)
     : styled_{styled}
     , artwork_request_value_{policy}
 {
+    projection_timer_.setSingleShot(true);
+    projection_timer_.setInterval(25);
+    connect(&projection_timer_, &QTimer::timeout, this, &TrackTableModel::request_projection);
+}
+
+TrackTableModel::~TrackTableModel()
+{
+    projection_timer_.stop();
+    projector_.reset();
+}
+
+std::shared_ptr<const TrackProjectionInput> TrackTableModel::projection_input()
+{
+    if (snapshot_)
+        return snapshot_;
+    auto input = std::make_shared<TrackProjectionInput>();
+    input->rows = source_rows_;
+    for (const auto& row : source_rows_) {
+        if (input->search.contains(row.media))
+            continue;
+        if (search_)
+            if (const auto* fields = search_->fields(row.media)) {
+                input->search.emplace(row.media, *fields);
+                continue;
+            }
+        if (repository_)
+            if (const auto* record = repository_->track(row.media))
+                input->search.emplace(row.media, library::search_fields_of(*record));
+    }
+    ++statistics_.snapshots;
+    snapshot_ = std::move(input);
+    return snapshot_;
+}
+
+bool TrackTableModel::refresh_search_revision()
+{
+    if (!search_ || search_revision_ == search_->revision())
+        return false;
+    search_revision_ = search_->revision();
+    snapshot_.reset();
+    return true;
+}
+
+void TrackTableModel::reproject(bool coalesce)
+{
+    static_cast<void>(refresh_search_revision());
+    ++statistics_.queries;
+    if (source_rows_.size() < asynchronous_projection_threshold ||
+        (!track_query_active(state_.query) && state_.sort_keys.empty())) {
+        projection_timer_.stop();
+        if (projector_)
+            projector_->cancel();
+        ++projection_generation_;
+        projection_pending_ = false;
+        reconcile_rows(visible_rows());
+        return;
+    }
+    projection_pending_ = true;
+    if (coalesce) {
+        if (projector_)
+            projector_->cancel();
+        ++projection_generation_;
+        if (!projection_timer_.isActive())
+            projection_timer_.start();
+        return;
+    }
+    request_projection();
+}
+
+void TrackTableModel::request_projection()
+{
+    projection_timer_.stop();
+    if (!projector_)
+        projector_ = std::make_unique<TrackProjection>(*this, [this](TrackProjectionResult result) {
+            if (result.generation != projection_generation_)
+                return;
+            projection_pending_ = false;
+            struct Prepared {
+                std::vector<TrackRow> rows;
+                bool attached{};
+            };
+            auto prepared = std::make_shared<Prepared>();
+            prepared->rows = std::move(result.rows);
+            const auto generation = result.generation;
+            std::function<void()> apply = [owner = QPointer<TrackTableModel>{this}, prepared,
+                                              generation] {
+                if (!owner || prepared->attached || generation != owner->projection_generation_)
+                    return;
+                prepared->attached = true;
+                owner->reconcile_rows(std::move(prepared->rows));
+            };
+            const auto attachment = attachment_;
+            if (attachment)
+                attachment(std::move(apply));
+            else
+                apply();
+        });
+    projection_pending_ = true;
+    projection_generation_ = projector_->request(projection_input(), state_);
 }
 
 int TrackTableModel::rowCount(const QModelIndex& parent) const
@@ -79,13 +181,10 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
         if (column >= tag_columns_.size())
             return {};
 
-        const library::TrackRecord* record =
-            repository_ ? repository_->track(track.media) : nullptr;
-
         const std::string key = library::normalized_tag_text(tag_columns_[column]);
         QStringList values;
 
-        for (const library::TagRecord& tag : record ? record->tags : track.tags) {
+        for (const library::TagRecord& tag : track.tags) {
             if (library::normalized_tag_text(tag.key) == key)
                 values.push_back(QString::fromStdString(tag.value));
         }
@@ -109,7 +208,14 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
     }
 
     if (role == Qt::DecorationRole && index.column() == Column::cover) {
-        return artwork_->cover(styled_, track.media, track.artwork, artwork_request_value_,
+        auto reference = track.artwork;
+        if (artwork_source_) {
+            const auto current = artwork_source_(track.media);
+            if (current.known() &&
+                (current.availability() != media::ArtworkAvailability::failed || !reference))
+                reference = current;
+        }
+        return artwork_->cover(styled_, track.media, reference, artwork_request_value_,
             [this, id = track.media] {
                 if (artwork_request_)
                     artwork_request_(id);
@@ -161,9 +267,32 @@ TrackColumnDescriptor TrackTableModel::column(int section) const
 void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
     std::optional<TrackRowId> current)
 {
+    const bool search_changed = refresh_search_revision();
+    if (std::ranges::equal(tracks, source_rows_,
+            [](const auto& a, const auto& b) { return a.id == b.id; })) {
+        std::vector<TrackRow> changed;
+        for (std::size_t i = 0; i < tracks.size(); ++i)
+            if (tracks[i] != source_rows_[i]) {
+                auto row = tracks[i];
+                if (repository_)
+                    if (const auto* record = repository_->track(row.media))
+                        row.tags = record->tags;
+                if (row != source_rows_[i])
+                    changed.push_back(std::move(row));
+            }
+        update_rows(changed);
+        if (changed.empty() && search_changed && track_query_active(state_.query))
+            reproject(true);
+        set_current(std::move(current));
+        return;
+    }
+    ++statistics_.source_rebuilds;
+    statistics_.source_rows += tracks.size();
+    snapshot_.reset();
     std::set<TrackRowId> seen;
     source_rows_.clear();
     source_media_.clear();
+    source_index_.clear();
     source_rows_.reserve(tracks.size());
     for (const auto& row : tracks) {
         const bool valid = std::visit(
@@ -178,17 +307,19 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
         if (valid && seen.insert(row.id).second) {
             source_rows_.push_back(row);
             auto& held = source_rows_.back();
+            if (repository_)
+                if (const auto* record = repository_->track(held.media))
+                    held.tags = record->tags;
             source_media_[held.media].push_back(source_rows_.size() - 1);
-            if (artwork_source_) {
-                const auto reference = artwork_source_(held.media);
-                if (reference.known() &&
-                    (reference.availability() != media::ArtworkAvailability::failed ||
-                        !held.artwork))
-                    held.artwork = reference;
-            }
+            source_index_.emplace(held.id, source_rows_.size() - 1);
         }
     }
-    reconcile_rows(visible_rows());
+    reproject(true);
+    set_current(std::move(current));
+}
+
+void TrackTableModel::set_current(std::optional<TrackRowId> current)
+{
     if (current_ == current)
         return;
     const auto previous = current_;
@@ -203,22 +334,55 @@ void TrackTableModel::show_rows(const std::vector<TrackRow>& tracks,
     }
 }
 
+void TrackTableModel::update_rows(const std::vector<TrackRow>& changed)
+{
+    std::vector<std::size_t> updated;
+    for (const auto& row : changed) {
+        const auto found = source_index_.find(row.id);
+        if (found == source_index_.end())
+            continue;
+        auto& previous = source_rows_[found->second];
+        if (previous == row)
+            continue;
+        if (previous.media != row.media) {
+            auto old = source_media_.find(previous.media);
+            if (old != source_media_.end()) {
+                std::erase(old->second, found->second);
+                if (old->second.empty())
+                    source_media_.erase(old);
+            }
+            source_media_[row.media].push_back(found->second);
+        }
+        previous = row;
+        updated.push_back(found->second);
+        ++statistics_.updated_rows;
+    }
+    if (updated.empty())
+        return;
+    snapshot_.reset();
+    if (!track_query_active(state_.query) && state_.sort_keys.empty()) {
+        ++statistics_.commits;
+        for (const auto position : updated) {
+            const auto& row = source_rows_[position];
+            const auto visible = row_index_.find(row.id);
+            if (visible == row_index_.end())
+                continue;
+            rows_[static_cast<std::size_t>(visible->second)] = row;
+            emit dataChanged(index(visible->second, 0), index(visible->second, columnCount() - 1));
+        }
+    } else
+        reproject(true);
+}
+
 void TrackTableModel::refresh_artwork(const library::MediaId& media)
 {
     const auto positions = source_media_.find(media);
     if (positions == source_media_.end() || !artwork_source_)
         return;
-    const auto reference = artwork_source_(media);
     for (const auto position : positions->second) {
-        auto& row = source_rows_[position];
-        if (reference.availability() == media::ArtworkAvailability::failed && row.artwork)
-            continue;
-        row.artwork = reference;
-        const auto visible = index_of(row.id);
-        if (visible.isValid()) {
-            rows_[static_cast<std::size_t>(visible.row())].artwork = reference;
+        const auto visible = index_of(source_rows_[position].id);
+        if (visible.isValid())
             emit dataChanged(visible, visible, {Qt::DecorationRole});
-        }
     }
 }
 
@@ -237,23 +401,50 @@ QModelIndex TrackTableModel::index_of(const TrackRowId& id, int column) const
 
 void TrackTableModel::reconcile_rows(std::vector<TrackRow> next)
 {
+    ++statistics_.commits;
     std::map<TrackRowId, std::size_t> positions;
     for (std::size_t i = 0; i < next.size(); ++i)
         positions.emplace(next[i].id, i);
-    // Remove backwards so every emitted range refers to the current model.
-    for (int last = static_cast<int>(rows_.size()) - 1; last >= 0;) {
-        if (positions.contains(rows_[static_cast<std::size_t>(last)].id)) {
-            --last;
-            continue;
+    // Group removals into one suffix. Filtering many interleaved rows must not repeatedly
+    // move the retained vector and rebuild its entire index for each small removal range.
+    std::vector<bool> retained;
+    retained.reserve(rows_.size());
+    std::size_t kept = 0;
+    for (const auto& row : rows_) {
+        const bool keep = positions.contains(row.id);
+        retained.push_back(keep);
+        kept += keep;
+    }
+    if (kept != rows_.size()) {
+        if (kept != 0) {
+            emit layoutAboutToBeChanged({}, QAbstractItemModel::VerticalSortHint);
+            const auto old = persistentIndexList();
+            std::vector<int> mapped(rows_.size());
+            int keep = 0, removed = static_cast<int>(kept);
+            for (std::size_t i = 0; i < rows_.size(); ++i)
+                mapped[i] = retained[i] ? keep++ : removed++;
+            QModelIndexList replacement;
+            for (const auto& value : old)
+                replacement.push_back(index(mapped[static_cast<std::size_t>(value.row())],
+                    value.column()));
+            std::vector<TrackRow> partitioned;
+            partitioned.reserve(rows_.size());
+            for (std::size_t i = 0; i < rows_.size(); ++i)
+                if (retained[i])
+                    partitioned.push_back(std::move(rows_[i]));
+            for (std::size_t i = 0; i < rows_.size(); ++i)
+                if (!retained[i])
+                    partitioned.push_back(std::move(rows_[i]));
+            rows_ = std::move(partitioned);
+            rebuild_row_index();
+            changePersistentIndexList(old, replacement);
+            emit layoutChanged({}, QAbstractItemModel::VerticalSortHint);
         }
-        int first = last;
-        while (first > 0 && !positions.contains(rows_[static_cast<std::size_t>(first - 1)].id))
-            --first;
-        beginRemoveRows({}, first, last);
-        rows_.erase(rows_.begin() + first, rows_.begin() + last + 1);
-        rebuild_row_index();
+        beginRemoveRows({}, static_cast<int>(kept), static_cast<int>(rows_.size()) - 1);
+        for (std::size_t i = kept; i < rows_.size(); ++i)
+            row_index_.erase(rows_[i].id);
+        rows_.erase(rows_.begin() + static_cast<std::ptrdiff_t>(kept), rows_.end());
         endRemoveRows();
-        last = first - 1;
     }
     std::vector<TrackRow> added;
     for (const auto& row : next)
@@ -264,7 +455,8 @@ void TrackTableModel::reconcile_rows(std::vector<TrackRow> next)
         beginInsertRows({}, first, first + static_cast<int>(added.size()) - 1);
         rows_.insert(rows_.end(), std::make_move_iterator(added.begin()),
             std::make_move_iterator(added.end()));
-        rebuild_row_index();
+        for (std::size_t i = static_cast<std::size_t>(first); i < rows_.size(); ++i)
+            row_index_.emplace(rows_[i].id, static_cast<int>(i));
         endInsertRows();
     }
     const bool reordered =
@@ -300,10 +492,11 @@ void TrackTableModel::reconcile_rows(std::vector<TrackRow> next)
 void TrackTableModel::show_library(const library::LibraryRepository& repository)
 {
     repository_ = &repository;
+    snapshot_.reset();
     for (auto& row : source_rows_)
         if (const auto* record = repository.track(row.media))
             row.tags = record->tags;
-    reconcile_rows(visible_rows());
+    reproject();
 }
 
 void TrackTableModel::show_tag_keys(std::vector<std::string> keys)
@@ -346,7 +539,7 @@ bool TrackTableModel::set_view_state(TrackViewState state)
     if (state == state_)
         return false;
     state_ = std::move(state);
-    reconcile_rows(visible_rows());
+    reproject();
     return true;
 }
 

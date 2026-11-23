@@ -22,11 +22,17 @@
 
 #include "track_sort.hpp"
 
+#include <stop_token>
 #include <vector>
 
 namespace wiola::gui {
 
+struct TrackSortStatistics {
+    std::size_t prepared_values{}, comparisons{};
+};
+
 [[nodiscard]] std::vector<TrackRow> sorted_rows(const std::vector<TrackRow>& tracks,
-    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys);
+    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys,
+    TrackSortStatistics* statistics = nullptr, std::stop_token stop = {});
 
 } // namespace wiola::gui

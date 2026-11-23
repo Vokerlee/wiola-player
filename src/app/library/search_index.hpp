@@ -44,12 +44,21 @@ public:
     [[nodiscard]] const std::vector<library::MediaId>&
     query_normalized(const library::SearchQuery& query) const;
 
+    [[nodiscard]] const library::SearchFields* fields(const library::MediaId& id) const
+    {
+        const auto found = entries_.find(id);
+        return found == entries_.end() ? nullptr : &found->second;
+    }
+
     [[nodiscard]] std::size_t size() const noexcept { return entries_.size(); }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
 
 private:
     std::map<library::MediaId, library::SearchFields> entries_;
     mutable std::optional<library::SearchQuery> cached_query_;
     mutable std::vector<library::MediaId> cached_matches_;
+    std::uint64_t revision_{};
 };
 
 } // namespace wiola::app

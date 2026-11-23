@@ -21,6 +21,7 @@
 #include "metadata_inspector_binding.hpp"
 #include "inspector_context.hpp"
 #include "metadata_edit_presentation.hpp"
+#include <algorithm>
 #include <gui/documents/queue_rows.hpp>
 
 namespace wiola::gui {
@@ -148,6 +149,20 @@ void MetadataInspectorBinding::refresh()
         }
     inspector_->show_context(inspector_context(*library_, host_->registry().selection(),
         std::move(playing)));
+}
+
+void MetadataInspectorBinding::refresh(const library::LibraryChangeBatch& batch)
+{
+    if (!inspector_)
+        return;
+    for (const auto& row : inspector_->context().tracks) {
+        if (std::ranges::any_of(batch.media,
+                [&](const auto& change) { return change.media == row.media; }) ||
+            std::ranges::find(batch.removed_media, row.media) != batch.removed_media.end()) {
+            refresh();
+            return;
+        }
+    }
 }
 
 void MetadataInspectorBinding::finish_standard_metadata(const app::MetadataEditSession& session)

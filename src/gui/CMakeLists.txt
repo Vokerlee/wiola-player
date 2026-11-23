@@ -47,6 +47,7 @@ wiola_add_library(
         tracks/track_sort.cpp
         tracks/track_sorter.cpp
         tracks/track_view_pipeline.cpp
+        tracks/track_projection.cpp
         tracks/track_search_panel.cpp
         tracks/tag_filter_panel.cpp
         appearance/theme.cpp

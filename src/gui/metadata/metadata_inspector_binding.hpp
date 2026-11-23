@@ -35,6 +35,7 @@ public:
     MetadataInspectorBinding(TrackInspector& inspector, DocumentHost& host,
         app::LibrarySession& library, app::PlaybackService& playback, Status status);
     void refresh();
+    void refresh(const library::LibraryChangeBatch& batch);
 
 private:
     void show_status(const QString& message)

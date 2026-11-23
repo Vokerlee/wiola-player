@@ -31,6 +31,7 @@ bool SearchIndex::upsert(const library::TrackRecord& track)
     if (found != entries_.end() && found->second == fields)
         return false;
     entries_.insert_or_assign(track.id, std::move(fields));
+    ++revision_;
     cached_query_.reset();
     return true;
 }
@@ -39,12 +40,15 @@ bool SearchIndex::remove(const library::MediaId& id)
 {
     if (entries_.erase(id) == 0)
         return false;
+    ++revision_;
     cached_query_.reset();
     return true;
 }
 
 void SearchIndex::clear()
 {
+    if (!entries_.empty())
+        ++revision_;
     entries_.clear();
     cached_query_.reset();
     cached_matches_.clear();

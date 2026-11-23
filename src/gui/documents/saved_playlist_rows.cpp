@@ -79,6 +79,15 @@ bool SavedPlaylistRows::update_media(const library::LibraryRepository& repositor
     return changed;
 }
 
+std::vector<TrackRow> SavedPlaylistRows::media_rows(const library::MediaId& media) const
+{
+    std::vector<TrackRow> rows;
+    if (const auto found = media_.find(media); found != media_.end())
+        for (const auto position : found->second)
+            rows.push_back(rows_[position]);
+    return rows;
+}
+
 const TrackRow* SavedPlaylistRows::row(const library::PlaylistEntryId& id) const
 {
     const auto found = entries_.find(id);

@@ -134,9 +134,11 @@ void TrackSearchPanel::show_query(const library::SearchQuery& query)
     tags_->setText(QString::fromStdString(query.tags));
 }
 
-void TrackSearchPanel::show_results(std::size_t visible, std::size_t total)
+void TrackSearchPanel::show_results(std::size_t visible, std::size_t total, bool pending)
 {
-    results_->setText(QString{"%1 of %2 tracks"}.arg(visible).arg(total));
+    results_->setText(pending ? QString{"Updating results…"}
+                              : QString{"%1 of %2 tracks"}.arg(visible).arg(total));
+    results_->setAccessibleDescription(results_->text());
 }
 
 void TrackSearchPanel::on_changed(Observer observer)

@@ -20,7 +20,9 @@
 
 #pragma once
 
-#include <engine/queue/playlist.hpp>
+#ifndef Q_MOC_RUN
+#include "queue_rows.hpp"
+#endif
 
 #include <QWidget>
 
@@ -48,11 +50,13 @@ public:
 
     void set_media_resolver(std::function<library::MediaId(const std::filesystem::path&)> resolver)
     {
-        resolve_media_ = std::move(resolver);
+        source_.set_resolver(std::move(resolver));
     }
 
-    void show_playlist(const engine::Playlist& playlist);
+    bool show_playlist(const engine::Playlist& playlist);
     void show_library(const library::LibraryRepository& repository);
+    bool show_library_changes(const engine::Playlist& playlist,
+        const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch);
     [[nodiscard]] std::vector<std::filesystem::path>
     displayed_paths(const engine::Playlist& playlist) const;
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
@@ -65,7 +69,9 @@ signals:
     void order_application_asked();
 
 private:
-    std::function<library::MediaId(const std::filesystem::path&)> resolve_media_;
+    void present_changes(const QueueRowChanges& changes);
+    QueueRows source_;
+    const library::LibraryRepository* library_{};
     TrackBrowser* browser_{nullptr};
 };
 

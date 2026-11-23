@@ -102,4 +102,29 @@ TEST(TrackSorter, KeepsMissingDurationsLastAndUsesTagKeys)
     EXPECT_EQ(tagged.front().location, "unknown.wav");
 }
 
+TEST(TrackSorter, PreparesEachSortValueOncePerRowInsteadOfOncePerComparison)
+{
+    using namespace wiola;
+    std::vector<gui::TrackRow> rows;
+    for (int i = 0; i < 5000; ++i) {
+        gui::TrackRow row;
+        row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
+        row.location_key = std::to_string(i);
+        row.metadata.title = "Track " + std::to_string(5000 - i);
+        row.metadata.artist = "Artist " + std::to_string(i % 7);
+        rows.push_back(std::move(row));
+    }
+    gui::TrackSortStatistics statistics;
+    const auto sorted = gui::sorted_rows(rows, nullptr,
+        {key(TrackSortField::artist), key(TrackSortField::title)}, &statistics);
+    ASSERT_EQ(sorted.size(), rows.size());
+    EXPECT_EQ(statistics.prepared_values, rows.size() * 4);
+    EXPECT_GT(statistics.comparisons, rows.size());
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    EXPECT_TRUE(gui::sorted_rows(rows, nullptr, {key(TrackSortField::title)}, nullptr,
+        cancelled.get_token())
+            .empty());
+}
+
 } // namespace

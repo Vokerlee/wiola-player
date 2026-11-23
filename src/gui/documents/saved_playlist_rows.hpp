@@ -32,6 +32,8 @@ public:
 
     [[nodiscard]] const std::vector<TrackRow>& rows() const noexcept { return rows_; }
 
+    [[nodiscard]] std::vector<TrackRow> media_rows(const library::MediaId& media) const;
+
     [[nodiscard]] const TrackRow* row(const library::PlaylistEntryId& id) const;
 
 private:

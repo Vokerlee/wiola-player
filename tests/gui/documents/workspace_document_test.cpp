@@ -26,7 +26,10 @@
 #include <library/location.hpp>
 
 #include <QApplication>
+#include <QEventLoop>
 #include <QLabel>
+#include <QTimer>
+#include <gui/tracks/track_browser.hpp>
 
 #include <gtest/gtest.h>
 
@@ -359,6 +362,51 @@ TEST(WorkspaceDocument, StreamsInStablePathOrderAndReportsScanLimitsWithoutDropp
     EXPECT_TRUE(
         document.findChild<QLabel*>("workspaceStatus")->text().contains("Scan limit reached")
     );
+}
+
+TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProjection)
+{
+    using namespace wiola;
+    gui::WorkspaceDocument document;
+    library::WorkspaceRecord workspace{.id = {"workspace"}, .root = "/music"};
+    document.begin(workspace, 1);
+    app::BrowserViewState restore;
+    restore.view.query.title = "track 4999";
+    const auto wanted = library::media_id_for("/music/Track 4999.wav");
+    restore.selected = {
+        gui::WorkspaceTrackId{workspace.id, wanted}
+    };
+    restore.current = restore.selected[0];
+    document.browser().restore_browser_state(restore);
+    app::WorkspaceScanBatch batch;
+    batch.workspace = workspace.id;
+    batch.generation = 1;
+    for (int i = 0; i < 5000; ++i) {
+        app::WorkspaceScanEntry entry;
+        entry.location = "/music/Track " + std::to_string(i) + ".wav";
+        entry.media = library::media_id_for(entry.location);
+        batch.entries.push_back(std::move(entry));
+    }
+    ASSERT_TRUE(document.show_batch(batch));
+    batch.entries.clear();
+    batch.status = app::WorkspaceScanStatus::complete;
+    ASSERT_TRUE(document.show_batch(batch));
+    auto& table = document.browser().table();
+    ASSERT_TRUE(table.projection_pending());
+    QEventLoop loop;
+    QTimer deadline;
+    deadline.setSingleShot(true);
+    QObject::connect(&deadline, &QTimer::timeout, &loop, &QEventLoop::quit);
+    QObject::connect(&table, &gui::TrackTableView::view_state_changed, &loop, [&] {
+        if (!table.projection_pending())
+            loop.quit();
+    });
+    deadline.start(10000);
+    loop.exec();
+    EXPECT_FALSE(table.projection_pending());
+    ASSERT_EQ(table.visible_count(), 1);
+    EXPECT_EQ(table.chosen_rows(), restore.selected);
+    EXPECT_EQ(document.selection()[0].media, wanted);
 }
 
 } // namespace

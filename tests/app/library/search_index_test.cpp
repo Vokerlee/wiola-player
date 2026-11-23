@@ -206,4 +206,50 @@ TEST(SearchIndexBenchmark, ReusesNormalizedFieldsAcrossManyQueries)
     EXPECT_GT(rate, 0);
 }
 
+TEST(TagKeyCatalog, RevisionChangesForGlobalKeysAndNotForValueOrOccurrenceChanges)
+{
+    using namespace wiola;
+    app::TagKeyCatalog catalog;
+    auto first = record("one", "Title", "Artist", "Genre");
+    first.tags = {
+        {{"tag"}, "Mood", "Calm"}
+    };
+    catalog.upsert(first);
+    const auto revision = catalog.revision();
+    first.tags[0].value = "Loud";
+    catalog.upsert(first);
+    EXPECT_EQ(catalog.revision(), revision);
+    auto second = first;
+    second.id = {"two"};
+    catalog.upsert(second);
+    EXPECT_EQ(catalog.revision(), revision);
+    catalog.remove(first.id);
+    EXPECT_EQ(catalog.revision(), revision);
+    catalog.remove(second.id);
+    EXPECT_GT(catalog.revision(), revision);
+    EXPECT_TRUE(catalog.keys().empty());
+}
+
+TEST(SearchIndex, RevisionChangesOnlyWhenSearchableFactsChange)
+{
+    wiola::app::SearchIndex index;
+    auto track = record("one", "Title", "Artist", "Genre");
+    ASSERT_TRUE(index.upsert(track));
+    const auto revision = index.revision();
+    track.metadata_revision = 88;
+    EXPECT_FALSE(index.upsert(track));
+    EXPECT_EQ(index.revision(), revision);
+    EXPECT_FALSE(index.remove({"missing"}));
+    EXPECT_EQ(index.revision(), revision);
+    track.embedded.title = "Changed";
+    EXPECT_TRUE(index.upsert(track));
+    EXPECT_GT(index.revision(), revision);
+    const auto current = index.revision();
+    index.clear();
+    EXPECT_GT(index.revision(), current);
+    const auto empty = index.revision();
+    index.clear();
+    EXPECT_EQ(index.revision(), empty);
+}
+
 } // namespace

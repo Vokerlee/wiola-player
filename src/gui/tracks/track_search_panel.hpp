@@ -38,7 +38,7 @@ public:
     explicit TrackSearchPanel(QWidget* parent = nullptr);
 
     void show_query(const library::SearchQuery& query);
-    void show_results(std::size_t visible, std::size_t total);
+    void show_results(std::size_t visible, std::size_t total, bool pending = false);
     void on_changed(Observer observer);
     void reset();
 
