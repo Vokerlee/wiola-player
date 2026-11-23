@@ -162,9 +162,9 @@ CONTRACTS = (
         ('tools/testing/desktop_checks/__main__.py', 'tools/testing/desktop_checks/environment.py'), grouping=False,
     ),
     AbstractionContract(
-        'testing.cmake_build', 'tools/testing/cmake_build', 'Builds configured CMake targets and resolves their declared executable artifacts',
+        'testing.cmake_build', 'tools/build_environment/cmake', 'Builds configured CMake targets and resolves their declared executable artifacts',
         ("Complete implementation and tests belong to this owner",),
-        ('tools/testing/cmake_build/build.py',), grouping=False,
+        ('tools/build_environment/cmake/build.py',), grouping=False,
     ),
     AbstractionContract(
         'testing.source_mutation', 'tools/testing/source_mutation', 'Applies one atomic source edit and restores exact bytes without overwriting concurrent edits',
@@ -185,5 +185,10 @@ CONTRACTS = (
         'sdk.qt_source', 'tools/sdk/qt_source', 'Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts',
         ("Complete implementation and tests belong to this owner",),
         ('tools/sdk/qt_source/provider.py', 'tools/sdk/qt_source/__main__.py'), grouping=False,
+    ),
+    AbstractionContract(
+        'sdk.qt_core_tsan', 'tools/sdk/qt_core_tsan', 'Builds, qualifies and verifies the native instrumented Qt Core runtime',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/sdk/qt_core_tsan/__main__.py', 'tools/sdk/qt_core_tsan/build.py', 'tools/sdk/qt_core_tsan/context.py', 'tools/sdk/qt_core_tsan/runtime.py', 'tools/sdk/qt_core_tsan/CMakeLists.txt'), grouping=False,
     ),
 )

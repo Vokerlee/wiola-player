@@ -20,7 +20,7 @@ from tools.architecture.cmake_inventory.inventory import CMakeInventory
 from tools.architecture.ownership.registry import load_current_registry
 from tools.coverage.source_policy.policy import load_current_policy
 from tools.testing.catalog.catalog import load_current_catalog
-from tools.testing.cmake_build.build import CMakeBuild
+from tools.build_environment.cmake.build import CMakeBuild
 from tools.coverage.llvm_reporting.reporter import LLVMReporter, coverage_diagnostics
 
 METRICS = ("lines", "functions", "regions", "branches")

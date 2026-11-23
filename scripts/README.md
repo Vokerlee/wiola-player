@@ -50,3 +50,10 @@ does not guess platform or build paths; pass a Qt platform explicitly when neede
 Regression recipes use stable source-owner identities; the engine does not embed GUI paths.
 Run `cmake --build --preset linux-debug --target wiola_check_mutations` for the current native GUI configuration.
 CMake supplies the actual build directory and available parallelism replaces fixed worker counts.
+
+## Instrumented Qt Core
+
+`build-qt-core-tsan.sh` is a compatibility launcher for the
+[owned native Core SDK](../tools/sdk/qt_core_tsan/README.md). The recipe discovers
+compiler/host inputs, consumes the shared Qt source provider and resolves output
+through configured target metadata. It does not embed Ubuntu library directories.
