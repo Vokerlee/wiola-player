@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Declarative description of the Classic player layout.
+ * @brief A length of time, written the way a listener reads it.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,95 +19,13 @@
  */
 
 #include "classic_layout.hpp"
+#include "player_layout.hpp"
 
 namespace wiola::gui {
 
 LayoutDocument classic_layout_document()
 {
-    static const QByteArray json = R"({
-        "version": 1,
-        "root": {
-            "id": "classicRoot",
-            "type": "column",
-            "children": [
-                {
-                    "id": "playbackGroup",
-                    "type": "group",
-                    "title": "Now playing",
-                    "children": [
-                        {"id": "trackLabel", "type": "status"},
-                        {"id": "positionBar", "type": "transport"},
-                        {
-                            "id": "timeRow",
-                            "type": "row",
-                            "children": [
-                                {"id": "elapsedTime", "type": "status"},
-                                {"id": "totalDuration", "type": "status"}
-                            ]
-                        },
-                        {
-                            "id": "transportControls",
-                            "type": "row",
-                            "children": [
-                                {"id": "previousTrack", "type": "button", "action": "previous"},
-                                {"id": "playPause", "type": "button", "action": "play"},
-                                {"id": "nextTrack", "type": "button", "action": "next"},
-                                {"id": "stopPlayback", "type": "button", "action": "stop"},
-                                {"id": "volumeSlider", "type": "volume"},
-                                {"id": "volumeValue", "type": "status"},
-                                {"id": "boostButton", "type": "button"}
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "id": "libraryCommands",
-                    "type": "row",
-                    "children": [
-                        {"id": "openTracks", "type": "button", "action": "open"},
-                        {"id": "repeatQueue", "type": "button", "action": "repeat"},
-                        {"id": "shuffleQueue", "type": "button", "action": "shuffle"},
-                        {"id": "equalizer", "type": "button", "action": "equalizer"}
-                    ]
-                },
-                {
-                    "id": "documentArea",
-                    "type": "splitter",
-                    "sizes": [180, 620, 220],
-                    "children": [
-                        {
-                            "id": "libraryPane",
-                            "type": "column",
-                            "children": [
-                                {"id": "libraryNavigation", "type": "inspector"},
-                                {"id": "savedPlaylistManager", "type": "inspector"}
-                            ]
-                        },
-                        {"id": "documentTabs", "type": "stack"},
-                        {"id": "trackInspector", "type": "inspector"}
-                    ]
-                },
-                {
-                    "id": "queueCommandsGroup",
-                    "type": "group",
-                    "title": "Queue commands",
-                    "children": [
-                        {"id": "addTracks", "type": "button", "action": "add"},
-                        {"id": "removeTracks", "type": "button", "action": "remove"},
-                        {"id": "clearQueue", "type": "button", "action": "clear"}
-                    ]
-                },
-                {"id": "playerStatus", "type": "status"}
-            ]
-        }
-    })";
-
-    LayoutDocument document;
-    const auto error = read_layout_json(json, document);
-    if (error != LayoutJsonError::none)
-        return {};
-
-    return document;
+    return player_layout_document(PlayerLayoutPreset::classic);
 }
 
 } // namespace wiola::gui

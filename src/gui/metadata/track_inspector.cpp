@@ -27,6 +27,7 @@
 
 #include <QEvent>
 #include <QFormLayout>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -39,6 +40,7 @@ QLabel* value(QWidget* parent, const QString& name)
 {
     QLabel* label = new QLabel{parent};
     label->setObjectName(name);
+    label->setTextFormat(Qt::PlainText);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     label->setWordWrap(true);
 
@@ -91,9 +93,29 @@ TrackInspector::TrackInspector(QWidget* parent)
     layout->addWidget(context_label_);
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
-    layout->addWidget(standard_metadata_);
+    const auto disclosure = [this, layout](const char* name, const QString& text,
+                                QWidget* content) {
+        auto* toggle = new QToolButton{this};
+        toggle->setObjectName(name);
+        toggle->setText(text);
+        toggle->setAccessibleName(text);
+        toggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        toggle->setCheckable(true);
+        toggle->setArrowType(Qt::RightArrow);
+        toggle->setFocusPolicy(Qt::StrongFocus);
+        layout->addWidget(toggle);
+        layout->addWidget(content);
+        content->hide();
+        connect(toggle, &QToolButton::toggled, content, [toggle, content](bool expanded) {
+            content->setVisible(expanded);
+            toggle->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+        });
+        return toggle;
+    };
+    metadata_toggle_ =
+        disclosure("metadataDisclosure", "Edit application metadata", standard_metadata_);
     layout->addWidget(conflicts_);
-    layout->addWidget(custom_tags_);
+    tags_toggle_ = disclosure("customTagsDisclosure", "Edit shared custom tags", custom_tags_);
     layout->addStretch();
 
     connect(standard_metadata_->findChild<QPushButton*>("cancelStandardMetadata"),
@@ -114,6 +136,7 @@ void TrackInspector::show_context(InspectorContext next)
         records.push_back(&record);
     standard_metadata_->show_tracks(records);
     if (standard_metadata_->retains_draft()) {
+        metadata_toggle_->setChecked(true);
         pending_context_ = std::move(next);
         context_label_->setText(
             "Editing original selection — draft retained. Cancel to inspect the current selection."

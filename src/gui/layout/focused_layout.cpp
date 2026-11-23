@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Library-focused and queue-focused player layout presets.
+ * @brief A length of time, written the way a listener reads it.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,90 +19,18 @@
  */
 
 #include "focused_layout.hpp"
-
-#include "classic_layout.hpp"
-
-#include <algorithm>
-#include <functional>
+#include "player_layout.hpp"
 
 namespace wiola::gui {
 
-namespace {
-
-LayoutNode component(const QString& id, LayoutComponentKind kind)
-{
-    LayoutNode node;
-    node.id = id;
-    node.kind = kind;
-    node.view = legacy_view_reference(id);
-    if (id == "documentTabs")
-        node.kind = LayoutComponentKind::document_host;
-    return node;
-}
-
-std::size_t count_nodes(const LayoutNode& node)
-{
-    std::size_t count = 1;
-
-    for (const LayoutNode& child : node.children)
-        count += count_nodes(child);
-
-    return count;
-}
-
-LayoutNode* document_area(LayoutDocument& document)
-{
-    const auto found =
-        std::ranges::find(document.root.children, QString{"documentArea"}, &LayoutNode::id);
-
-    return found == document.root.children.end() ? nullptr : &*found;
-}
-
-} // namespace
-
 LayoutDocument library_focus_layout_document()
 {
-    LayoutDocument document = classic_layout_document();
-    LayoutNode* area = document_area(document);
-
-    if (area == nullptr)
-        return {};
-
-    LayoutNode navigation = component("libraryFocusNavigation", LayoutComponentKind::column);
-    navigation.children = {
-        component("libraryNavigation", LayoutComponentKind::inspector),
-        component("savedPlaylistManager", LayoutComponentKind::inspector),
-    };
-
-    area->id = "libraryFocusBody";
-    area->view.reset();
-    area->title.clear();
-    area->kind = LayoutComponentKind::row;
-    area->orientation.reset();
-    area->sizes.clear();
-    area->children = {
-        navigation,
-        component("documentTabs", LayoutComponentKind::stack),
-        component("trackInspector", LayoutComponentKind::inspector),
-    };
-
-    document.root.id = "libraryFocusRoot";
-    document.node_count = count_nodes(document.root);
-    return document;
+    return player_layout_document(PlayerLayoutPreset::library_focus);
 }
 
 LayoutDocument queue_focus_layout_document()
 {
-    LayoutDocument document = classic_layout_document();
-    LayoutNode* area = document_area(document);
-
-    if (area == nullptr)
-        return {};
-
-    *area = component("documentTabs", LayoutComponentKind::stack);
-    document.root.id = "queueFocusRoot";
-    document.node_count = count_nodes(document.root);
-    return document;
+    return player_layout_document(PlayerLayoutPreset::queue_focus);
 }
 
 } // namespace wiola::gui

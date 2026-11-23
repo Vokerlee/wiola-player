@@ -125,89 +125,12 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
 
-    // Every widget is given this window as its parent, so Qt owns them and destroys them with it.
-    open_button_ = new QPushButton{this};
-    previous_button_ = new QPushButton{this};
-    play_button_ = new QPushButton{this};
-    next_button_ = new QPushButton{this};
-    stop_button_ = new QPushButton{this};
-
-    new ActionButtonBinding{*open_button_, *actions_.action(PlayerAction::open),
-        ActionButtonPresentation::icon_only};
-    open_button_->setFixedWidth(tokens.player.icon_button_width);
-    new ActionButtonBinding{*previous_button_, *actions_.action(PlayerAction::previous),
-        ActionButtonPresentation::icon_only};
-    previous_button_->setFixedWidth(tokens.player.icon_button_width);
-    new ActionButtonBinding{*play_button_, *actions_.action(PlayerAction::play),
-        ActionButtonPresentation::icon_only};
-    play_button_->setFixedWidth(tokens.player.icon_button_width);
-    new ActionButtonBinding{*next_button_, *actions_.action(PlayerAction::next),
-        ActionButtonPresentation::icon_only};
-    next_button_->setFixedWidth(tokens.player.icon_button_width);
-    new ActionButtonBinding{*stop_button_, *actions_.action(PlayerAction::stop),
-        ActionButtonPresentation::icon_only};
-    stop_button_->setFixedWidth(tokens.player.icon_button_width);
-
-    show_play_button(false);
-
-    play_button_->setFixedWidth(tokens.player.play_button_width);
-    repeat_button_ = new QPushButton{this};
-    shuffle_button_ = new QPushButton{this};
-    add_button_ = new QPushButton{this};
-    remove_button_ = new QPushButton{this};
-    clear_button_ = new QPushButton{this};
-
-    new ActionButtonBinding{*repeat_button_, *actions_.action(PlayerAction::repeat)};
-    new ActionButtonBinding{*shuffle_button_, *actions_.action(PlayerAction::shuffle)};
-    new ActionButtonBinding{*add_button_, *actions_.action(PlayerAction::add)};
-    new ActionButtonBinding{*remove_button_, *actions_.action(PlayerAction::remove)};
-    new ActionButtonBinding{*clear_button_, *actions_.action(PlayerAction::clear)};
-
-    equalizer_button_ = new QPushButton{this};
-    new ActionButtonBinding{*equalizer_button_, *actions_.action(PlayerAction::equalizer)};
-    equalizer_button_->setAccessibleName("Equalizer");
-    equalizer_button_->setToolTip("Open equalizer");
-
-    boost_button_ = new QPushButton{"+", this};
-    volume_value_ = new QLabel{this};
-    position_bar_ = new SeekBar{this};
-    track_label_ = new QLabel{this};
-    elapsed_label_ = new QLabel{this};
-    total_label_ = new QLabel{this};
-    status_label_ = new QLabel{this};
-    volume_slider_ = new QSlider{Qt::Horizontal, this};
-
+    transport_ = new TransportView{actions_, this};
+    volume_view_ = new VolumeView{this};
+    status_ = new StatusView{this};
+    show_volume();
     if (!library_session_.restore_error().isEmpty())
         show_status(library_session_.restore_error());
-
-    const int position{volume_.position()};
-
-    boost_button_->setCheckable(true);
-    boost_button_->setChecked(volume_.boosted());
-    boost_button_->setFixedWidth(tokens.player.boost_button_width);
-    boost_button_->setFocusPolicy(Qt::StrongFocus);
-    boost_button_->setAccessibleName("Boost volume above 100%");
-    boost_button_->setToolTip("Allow volume above 100%");
-
-    volume_value_->setFixedWidth(tokens.player.volume_value_width);
-
-    volume_slider_->setRange(0, volume_.max_position());
-    volume_slider_->setValue(position);
-
-    show_volume();
-    volume_slider_->setFixedWidth(tokens.player.volume_slider_width);
-    volume_slider_->setToolTip("Volume");
-
-    QFont title{track_label_->font()};
-    title.setPointSize(title.pointSize() + tokens.player.track_name_point_size_step);
-    title.setBold(true);
-    track_label_->setFont(title);
-    track_label_->setAccessibleName("Current track");
-    elapsed_label_->setAccessibleName("Elapsed time");
-    total_label_->setAccessibleName("Total duration");
-    status_label_->setAccessibleName("Player status");
-
-    total_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     DocumentCommands document_commands;
     document_commands.selection_changed = [this] {
@@ -334,36 +257,9 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         static_cast<void>(document_host_->open_workspace(id));
     });
 
-    static_cast<void>(views_.add(component_view("trackLabel"), track_label_,
-        LayoutComponentKind::status, false));
-    static_cast<void>(views_.add(component_view("positionBar"), position_bar_,
-        LayoutComponentKind::transport, false));
-    static_cast<void>(views_.add(component_view("elapsedTime"), elapsed_label_,
-        LayoutComponentKind::status, false));
-    static_cast<void>(views_.add(component_view("totalDuration"), total_label_,
-        LayoutComponentKind::status, false));
-    static_cast<void>(views_.add(component_view("previousTrack"), previous_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("playPause"), play_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("nextTrack"), next_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("stopPlayback"), stop_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("volumeSlider"), volume_slider_,
-        LayoutComponentKind::volume, false));
-    static_cast<void>(views_.add(component_view("volumeValue"), volume_value_,
-        LayoutComponentKind::status, false));
-    static_cast<void>(views_.add(component_view("boostButton"), boost_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("openTracks"), open_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("repeatQueue"), repeat_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("shuffleQueue"), shuffle_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("equalizer"), equalizer_button_,
-        LayoutComponentKind::button, false));
+    transport_->register_views(views_);
+    volume_view_->register_views(views_);
+    status_->register_views(views_);
     static_cast<void>(views_.add(component_view("documentArea"), document_area_,
         LayoutComponentKind::splitter, true));
     static_cast<void>(views_.add(component_view("libraryPane"), library_pane_,
@@ -378,14 +274,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         LayoutComponentKind::inspector, false));
     static_cast<void>(views_.add(DocumentViewReference{DocumentId::queue()}, now_playing_,
         LayoutComponentKind::track_table, false));
-    static_cast<void>(views_.add(component_view("addTracks"), add_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("removeTracks"), remove_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("clearQueue"), clear_button_,
-        LayoutComponentKind::button, false));
-    static_cast<void>(views_.add(component_view("playerStatus"), status_label_,
-        LayoutComponentKind::status, false));
     const auto legacy_layout = settings_.value("layout/preset", "classic").toString();
     layout_session_ = std::make_unique<LayoutSession>(
         platform::qt::QtPathAdapter::from_qt(
@@ -625,13 +513,13 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(now_playing_, &NowPlayingDocument::order_application_asked, this,
         [this] { play_displayed_paths(now_playing_->displayed_paths(playback_.playlist())); });
 
-    connect(volume_slider_, &QSlider::valueChanged, this, &MainWindow::set_volume);
-    connect(boost_button_, &QPushButton::toggled, this, &MainWindow::set_boosted);
-
-    connect(position_bar_, &SeekBar::seek_requested, this, &MainWindow::seek_to);
-
-    // The clock follows the drag rather than waiting for the next poll.
-    connect(position_bar_, &SeekBar::dragged, this, &MainWindow::refresh);
+    connect(volume_view_, &VolumeView::volume_requested, this, &MainWindow::set_volume);
+    connect(volume_view_, &VolumeView::boost_requested, this, &MainWindow::set_boosted);
+    connect(transport_, &TransportView::seek_requested, this, &MainWindow::seek_to);
+    connect(documents_, &QTabWidget::currentChanged, this, &MainWindow::show_document_context);
+    connect(&library_session_, &app::LibrarySession::active_destination_changed, this,
+        &MainWindow::show_document_context);
+    show_document_context();
 
     if (const std::size_t gone{preferences.missing_tracks()}; gone != 0)
         show_status(QString{"%1 queued track(s) are no longer where they were"}.arg(gone));
@@ -1259,6 +1147,7 @@ void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
         navigation_->show_repository(library_);
     if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
         show_workspace_navigation();
+    show_document_context();
     refresh();
 }
 
@@ -1386,21 +1275,9 @@ void MainWindow::set_shuffled(bool shuffled)
     show_list_buttons();
 }
 
-void MainWindow::show_play_button(bool pausing)
-{
-    if (showing_pause_ == pausing)
-        return;
-
-    showing_pause_ = pausing;
-    actions_.set_playing(pausing);
-}
-
 void MainWindow::show_list_buttons()
 {
-    const app::PlayerPresentation presentation{app::present_playback(playback_)};
-
-    actions_.set_repeat(presentation.repeat);
-    actions_.set_shuffled(presentation.shuffled);
+    transport_->present(app::present_playback(playback_));
 }
 
 void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
@@ -1416,9 +1293,6 @@ void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
         const bool opened{result == engine::OpenResult::opened};
 
         show_status(opened ? QString{} : as_status(result));
-
-        if (opened)
-            position_bar_->set_fraction(0.0);
     }
 
     // The title follows what is playing, so a list moving on to the next track renames the
@@ -1431,8 +1305,6 @@ void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
                                           : platform::qt::QtPathAdapter::to_qt(named_.filename())};
 
         setWindowTitle(named_.empty() ? QString{"Wiola Player"} : name);
-        track_label_->setText(name);
-        position_bar_->set_fraction(0.0);
         said_fault_ = false;
 
         // Where the queue stands has moved, which is worth keeping even if nothing was added.
@@ -1490,16 +1362,12 @@ void MainWindow::set_volume(int percent)
 
 void MainWindow::show_volume()
 {
-    volume_value_->setText(QString::number(volume_.position()) + "%");
+    volume_view_->present({volume_.position(), volume_.max_position(), volume_.boosted()});
 }
 
 void MainWindow::set_boosted(bool boosted)
 {
     volume_.set_boosted(boosted);
-
-    // The slider is asked to hold what the control now allows, and says what it settled on.
-    volume_slider_->setRange(0, volume_.max_position());
-    volume_slider_->setValue(volume_.position());
 
     show_volume();
 }
@@ -1509,54 +1377,26 @@ void MainWindow::seek_to(double fraction)
     playback_.seek_to(fraction);
 }
 
+void MainWindow::show_document_context()
+{
+    QString destination = "None selected";
+    if (const auto id = active_playlist_.id())
+        if (const auto record = library_.playlist(*id))
+            destination = QString::fromStdString(record->name);
+    status_->show_context(documents_->tabText(documents_->currentIndex()), destination);
+}
+
 void MainWindow::show_status(const QString& message)
 {
-    status_label_->setText(message);
+    status_->show_message(message);
 }
 
 void MainWindow::refresh()
 {
-    const engine::PlaybackSnapshot playback{app::present_playback(playback_).playback};
-
-    actions_.set_available(PlayerAction::play, playback.loaded);
-    actions_.set_available(PlayerAction::stop, playback.loaded);
-    actions_.set_available(PlayerAction::previous, playback.loaded);
-    actions_.set_available(PlayerAction::next, playback.loaded);
-
-    position_bar_->setEnabled(playback.loaded && playback.seekable &&
-        playback.total_time.has_value());
-
+    transport_->present(app::present_playback(playback_));
     now_playing_->show_library(library_);
     now_playing_->show_playlist(playback_.playlist());
-
     refresh_inspector();
-
-    if (!playback.loaded) {
-        show_play_button(false);
-        track_label_->setText("no track");
-        elapsed_label_->clear();
-        total_label_->clear();
-
-        return;
-    }
-
-    const std::optional<units::Time> total{playback.total_time};
-
-    // While the edge is being dragged it is a place being chosen, and that is the time worth
-    // showing: a listener aiming for somewhere needs to see where they are aiming.
-    const units::Time shown{position_bar_->dragging() && total ? *total * position_bar_->fraction()
-                                                               : playback.time_played};
-
-    show_play_button(playback.playing);
-
-    elapsed_label_->setText(as_clock(shown));
-    total_label_->setText(total ? as_clock(*total) : QString{"--:--"});
-
-    if (!total || *total == units::Time{})
-        return;
-
-    // A drag in progress is left alone by the bar itself.
-    position_bar_->set_fraction(shown.get<units::Sec>() / total->get<units::Sec>());
 }
 
 } // namespace wiola::gui

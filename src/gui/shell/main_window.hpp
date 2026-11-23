@@ -33,7 +33,9 @@
 #include <desktop/playback/volume_control.hpp>
 #include <gui/appearance/theme_manager.hpp>
 #include <gui/controls/equalizer_panel.hpp>
-#include <gui/controls/seek_bar.hpp>
+#include <gui/controls/status_view.hpp>
+#include <gui/controls/transport_view.hpp>
+#include <gui/controls/volume_view.hpp>
 #include <gui/documents/now_playing_document.hpp>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
@@ -172,13 +174,6 @@ private:
     /// Plays the list in the order it was given, or in one drawn at random.
     void set_shuffled(bool shuffled);
 
-    /// Connects a button to a shared action and copies its accessible presentation.
-
-    /// Shows the play button as pausing or as playing. Does nothing when it already shows that
-    /// one: a window refreshing ten times a second would otherwise ask the style for an icon it
-    /// is already wearing.
-    void show_play_button(bool pausing);
-
     /// Says which of the three repeats is on, and whether the order is shuffled. Whatever changes
     /// either must call this: refreshing no longer asks.
     void show_list_buttons();
@@ -200,6 +195,7 @@ private:
 
     /// Says how loud the output is, as the slider has it.
     void show_volume();
+    void show_document_context();
 
     /// Moves playback to `fraction` of the loaded track.
     void seek_to(double fraction);
@@ -232,9 +228,6 @@ private:
     std::unique_ptr<LayoutSession> layout_session_;
     QActionGroup* layout_presets_{nullptr};
 
-    /// Which of the two it is wearing, or nothing before it wears either.
-    std::optional<bool> showing_pause_;
-
     /// The file a run leaves things in.
     QSettings settings_;
     std::shared_ptr<ThemeManager> theme_;
@@ -251,17 +244,9 @@ private:
     app::MetadataEditService& metadata_edits_;
     app::ActivePlaylist& active_playlist_;
 
-    QPushButton* open_button_{nullptr};
-    QPushButton* previous_button_{nullptr};
-    QPushButton* play_button_{nullptr};
-    QPushButton* next_button_{nullptr};
-    QPushButton* stop_button_{nullptr};
-    QPushButton* repeat_button_{nullptr};
-    QPushButton* shuffle_button_{nullptr};
-    QPushButton* add_button_{nullptr};
-    QPushButton* remove_button_{nullptr};
-    QPushButton* clear_button_{nullptr};
-    SeekBar* position_bar_{nullptr};
+    TransportView* transport_{nullptr};
+    VolumeView* volume_view_{nullptr};
+    StatusView* status_{nullptr};
     NowPlayingDocument* now_playing_{nullptr};
     QTabWidget* documents_{nullptr};
     QWidget* library_pane_{nullptr};
@@ -270,15 +255,7 @@ private:
     SavedPlaylistManager* playlist_manager_{nullptr};
     DocumentHost* document_host_{nullptr};
     TrackInspector* inspector_{nullptr};
-    QSlider* volume_slider_{nullptr};
-    QLabel* volume_value_{nullptr};
-    QPushButton* equalizer_button_{nullptr};
-    QPushButton* boost_button_{nullptr};
     EqualizerPanel* equalizer_panel_{nullptr};
-    QLabel* track_label_{nullptr};
-    QLabel* elapsed_label_{nullptr};
-    QLabel* total_label_{nullptr};
-    QLabel* status_label_{nullptr};
 };
 
 } // namespace wiola::gui
