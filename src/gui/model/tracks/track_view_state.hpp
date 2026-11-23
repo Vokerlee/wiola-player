@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief One presentation pipeline for filtering and sorting track rows.
+ * @brief One normalized search, filter, and sort state for each track browser.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,27 +19,17 @@
  */
 
 #pragma once
-
-#include "track_sorter.hpp"
-
+#include <gui/model/tracks/track_sort.hpp>
 #include <library/search.hpp>
-#include <map>
-#include <stop_token>
-
-namespace wiola::app {
-
-class SearchIndex;
-
-}
 
 namespace wiola::gui {
 
-[[nodiscard]] bool track_query_active(const library::SearchQuery& query);
+struct TrackViewState {
+    library::SearchQuery query;
+    std::vector<TrackSortKey> sort_keys;
+    bool operator==(const TrackViewState&) const = default;
+};
 
-[[nodiscard]] std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
-    const library::LibraryRepository* repository, const library::SearchQuery& query,
-    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search = nullptr,
-    const std::map<library::MediaId, library::SearchFields>* fields = nullptr,
-    std::stop_token stop = {});
+[[nodiscard]] TrackViewState normalized_track_view_state(TrackViewState state);
 
 } // namespace wiola::gui

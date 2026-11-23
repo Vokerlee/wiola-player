@@ -22,10 +22,10 @@
 #include <QByteArray>
 #include <QRect>
 #include <QString>
-#include <gui/documents/document_id.hpp>
-#include <gui/tracks/track_column_identity.hpp>
-#include <gui/tracks/track_identity.hpp>
-#include <gui/tracks/track_view_state.hpp>
+#include <gui/model/documents/document_id.hpp>
+#include <gui/model/tracks/track_column_identity.hpp>
+#include <gui/model/tracks/track_identity.hpp>
+#include <gui/model/tracks/track_view_state.hpp>
 #include <map>
 
 namespace wiola::app {

@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Transport-independent track presentation values and explicit library resolution.
+ * @brief Stable multi-column track ordering with deterministic fallbacks.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,28 +19,20 @@
  */
 
 #pragma once
-#include "track_identity.hpp"
-#include <library/records.hpp>
-#include <media/artwork_reference.hpp>
-#include <media/media.hpp>
-#include <memory>
+
+#include <gui/model/tracks/track_sort.hpp>
+
+#include <stop_token>
+#include <vector>
 
 namespace wiola::gui {
 
-struct TrackRow {
-    TrackRowId id;
-    library::MediaId media;
-    std::filesystem::path location;
-    std::string location_key;
-    media::TrackMetadata metadata;
-    std::vector<library::TagRecord> tags;
-    bool missing{false};
-    std::uint64_t metadata_revision{0};
-    std::uint64_t content_revision{0};
-    media::ArtworkReference artwork;
-    bool operator==(const TrackRow&) const = default;
+struct TrackSortStatistics {
+    std::size_t prepared_values{}, comparisons{};
 };
 
-[[nodiscard]] TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& record);
+[[nodiscard]] std::vector<TrackRow> sorted_rows(const std::vector<TrackRow>& tracks,
+    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys,
+    TrackSortStatistics* statistics = nullptr, std::stop_token stop = {});
 
 } // namespace wiola::gui

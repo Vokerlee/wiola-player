@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/documents/queue_rows.hpp>
+#include <gui/model/documents/queue_rows.hpp>
 
-#include <gui/tracks/track_sorter.hpp>
+#include <gui/model/tracks/track_sorter.hpp>
 
 #include <engine/queue/playlist.hpp>
 #include <library/in_memory_repository.hpp>

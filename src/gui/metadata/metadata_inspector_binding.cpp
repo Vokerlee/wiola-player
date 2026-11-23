@@ -22,7 +22,7 @@
 #include "inspector_context.hpp"
 #include "metadata_edit_presentation.hpp"
 #include <algorithm>
-#include <gui/documents/queue_rows.hpp>
+#include <gui/model/documents/queue_rows.hpp>
 
 namespace wiola::gui {
 

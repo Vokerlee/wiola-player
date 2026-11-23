@@ -25,8 +25,11 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <codec/provider.hpp>
+#include <desktop/playback/playback_preferences.hpp>
 #include <gtest/gtest.h>
+#include <gui/documents/saved_playlist_document.hpp>
 #include <gui/fixtures/player_dialogs.hpp>
+#include <gui/metadata/track_inspector.hpp>
 #include <gui/shell/document_command_router.hpp>
 #include <gui/shell/document_host.hpp>
 #include <gui/shell/main_window.hpp>

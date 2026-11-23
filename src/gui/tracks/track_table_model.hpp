@@ -21,10 +21,10 @@
 #pragma once
 
 #include "track_column.hpp"
-#include "track_view_state.hpp"
 #include <gui/appearance/artwork_presentation.hpp>
+#include <gui/model/tracks/track_view_state.hpp>
 
-#include "track_row.hpp"
+#include <gui/model/tracks/track_row.hpp>
 #include <library/search.hpp>
 
 #include <QAbstractTableModel>

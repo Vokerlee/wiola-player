@@ -19,9 +19,9 @@
  */
 
 #pragma once
-#include <gui/documents/document_id.hpp>
-#include <gui/tracks/track_commands.hpp>
-#include <gui/tracks/track_identity.hpp>
+#include <gui/model/documents/document_id.hpp>
+#include <gui/model/tracks/track_commands.hpp>
+#include <gui/model/tracks/track_identity.hpp>
 #include <vector>
 
 namespace wiola::gui {

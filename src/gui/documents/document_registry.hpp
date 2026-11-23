@@ -19,13 +19,13 @@
  */
 
 #pragma once
-#include "document_id.hpp"
 #include <QObject>
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-#include <gui/tracks/track_commands.hpp>
-#include <gui/tracks/track_identity.hpp>
+#include <gui/model/documents/document_id.hpp>
+#include <gui/model/tracks/track_commands.hpp>
+#include <gui/model/tracks/track_identity.hpp>
 #include <map>
 #include <optional>
 #include <vector>

@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "track_view_state.hpp"
 #include <algorithm>
+#include <gui/model/tracks/track_view_state.hpp>
 #include <library/tags.hpp>
 
 namespace wiola::gui {

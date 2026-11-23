@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "track_row.hpp"
+#include <gui/model/tracks/track_row.hpp>
 #include <library/location.hpp>
 #include <library/metadata.hpp>
 

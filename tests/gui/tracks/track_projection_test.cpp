@@ -22,7 +22,7 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <gtest/gtest.h>
-#include <gui/tracks/track_projection.hpp>
+#include <gui/projection/track_projection.hpp>
 
 namespace {
 

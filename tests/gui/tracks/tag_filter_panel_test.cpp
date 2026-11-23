@@ -24,7 +24,7 @@
 
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <gui/tracks/track_view_state.hpp>
+#include <gui/model/tracks/track_view_state.hpp>
 
 namespace {
 

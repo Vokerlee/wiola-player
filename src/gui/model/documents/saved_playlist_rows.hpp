@@ -19,7 +19,7 @@
  */
 
 #pragma once
-#include <gui/tracks/track_row.hpp>
+#include <gui/model/tracks/track_row.hpp>
 #include <library/repository.hpp>
 #include <map>
 

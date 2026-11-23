@@ -19,12 +19,12 @@
  */
 
 #include "track_table_model.hpp"
-#include "track_projection.hpp"
 #include <QPointer>
 #include <app/library/search_index.hpp>
+#include <gui/projection/track_projection.hpp>
 
-#include "track_view_pipeline.hpp"
 #include <gui/controls/clock.hpp>
+#include <gui/model/tracks/track_view_pipeline.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <library/location.hpp>

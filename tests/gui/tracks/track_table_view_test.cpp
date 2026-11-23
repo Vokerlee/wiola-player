@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/documents/queue_rows.hpp>
+#include <gui/model/documents/queue_rows.hpp>
 
 #include <fixtures/track_view.hpp>
 #include <gui/tracks/track_table_view.hpp>

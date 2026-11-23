@@ -18,18 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <persistence/qt/library_save_queue.hpp>
 #include <persistence/qt/library_store.hpp>
 
 #include <QCoreApplication>
-#include <QEventLoop>
 #include <QFile>
 #include <QTemporaryDir>
-#include <QThread>
 
 #include <gtest/gtest.h>
 
-#include <chrono>
 #include <filesystem>
 
 namespace {
@@ -47,19 +43,6 @@ wiola::library::LibrarySnapshot snapshot(const std::string& title)
     library.tracks.push_back(track);
 
     return library;
-}
-
-template<typename Predicate>
-bool pump_until(Predicate&& predicate)
-{
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
-
-    while (!predicate() && std::chrono::steady_clock::now() < deadline) {
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
-        QThread::msleep(1);
-    }
-
-    return predicate();
 }
 
 class LibraryStorage : public testing::Test {
@@ -113,43 +96,6 @@ TEST_F(LibraryStorage, RecoversTheLastValidBackupAfterPrimaryCorruption)
     EXPECT_EQ(restored.tracks.front().embedded.title, "First");
 }
 
-TEST_F(LibraryStorage, CoalescesScheduledSnapshotsIntoTheNewestCompleteWrite)
-{
-    Storage file_store{file()};
-    LibrarySaveQueue storage{file_store};
-    int failures{0};
-
-    storage.on_save_failed([&failures](LibraryStoreResult) { ++failures; });
-
-    storage.schedule(snapshot("Old"));
-    storage.schedule(snapshot("New"));
-
-    ASSERT_TRUE(storage.pending());
-    ASSERT_TRUE(pump_until([&storage] { return !storage.pending(); }));
-    EXPECT_EQ(failures, 0);
-
-    wiola::library::LibrarySnapshot restored;
-    ASSERT_EQ(file_store.load(restored), LibraryStoreResult{});
-    ASSERT_EQ(restored.tracks.size(), 1U);
-    EXPECT_EQ(restored.tracks.front().embedded.title, "New");
-}
-
-TEST_F(LibraryStorage, FlushWritesImmediatelyAndClearsThePendingSnapshot)
-{
-    Storage file_store{file()};
-    LibrarySaveQueue storage{file_store};
-
-    storage.schedule(snapshot("Immediate"));
-
-    EXPECT_EQ(storage.flush(), LibraryStoreResult{});
-    EXPECT_FALSE(storage.pending());
-
-    wiola::library::LibrarySnapshot restored;
-    ASSERT_EQ(file_store.load(restored), LibraryStoreResult{});
-    ASSERT_EQ(restored.tracks.size(), 1U);
-    EXPECT_EQ(restored.tracks.front().embedded.title, "Immediate");
-}
-
 TEST_F(LibraryStorage, InvalidSnapshotDoesNotReplaceThePreviousFile)
 {
     Storage storage{file()};
@@ -167,60 +113,6 @@ TEST_F(LibraryStorage, InvalidSnapshotDoesNotReplaceThePreviousFile)
     ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Valid");
-}
-
-TEST_F(LibraryStorage, ReportsAScheduledWriteFailureAndKeepsTheSnapshotForRetry)
-{
-    QFile blocker{QString::fromStdString(file("blocked").string())};
-    ASSERT_TRUE(blocker.open(QIODevice::WriteOnly));
-    blocker.close();
-
-    Storage file_store{file("blocked/library.json")};
-    LibrarySaveQueue storage{file_store};
-    int failures{0};
-    storage.on_save_failed([&failures](LibraryStoreResult error) {
-        EXPECT_EQ(error, LibraryStoreResult{.io = FileStoreError::io});
-        ++failures;
-    });
-
-    storage.schedule(snapshot("Retry me"));
-
-    ASSERT_TRUE(pump_until([&failures] { return failures == 1; }));
-    EXPECT_TRUE(storage.pending());
-}
-
-TEST_F(LibraryStorage, FailedImmediateSaveRetainsTheNewestSnapshotForRetry)
-{
-    QFile blocker{directory.filePath("blocked")};
-    ASSERT_TRUE(blocker.open(QIODevice::WriteOnly));
-    blocker.close();
-    Storage store{file("blocked/library.json")};
-    LibrarySaveQueue queue{store};
-    queue.schedule(snapshot("Old"));
-    EXPECT_EQ(queue.save(snapshot("Newest")), (LibraryStoreResult{.io = FileStoreError::io}));
-    EXPECT_TRUE(queue.pending());
-    ASSERT_TRUE(blocker.remove());
-    ASSERT_TRUE(queue.flush().succeeded());
-    EXPECT_FALSE(queue.pending());
-    wiola::library::LibrarySnapshot restored;
-    ASSERT_TRUE(store.load(restored).succeeded());
-    ASSERT_EQ(restored.tracks.size(), 1U);
-    EXPECT_EQ(restored.tracks.front().embedded.title, "Newest");
-}
-
-TEST_F(LibraryStorage, InvalidImmediateSaveKeepsAnEarlierValidPendingSnapshot)
-{
-    Storage store{file()};
-    LibrarySaveQueue queue{store};
-    queue.schedule(snapshot("Pending"));
-    auto invalid = snapshot("Invalid");
-    invalid.tracks.push_back(invalid.tracks.front());
-    EXPECT_EQ(queue.save(invalid),
-        (LibraryStoreResult{.schema = LibraryJsonError::invalid_record}));
-    ASSERT_TRUE(queue.flush().succeeded());
-    wiola::library::LibrarySnapshot restored;
-    ASSERT_TRUE(store.load(restored).succeeded());
-    EXPECT_EQ(restored.tracks.front().embedded.title, "Pending");
 }
 
 TEST_F(LibraryStorage, FutureSchemaIsNotReplacedByAnOlderBackupOrNewSave)

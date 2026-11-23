@@ -20,7 +20,7 @@
 
 #include <fixtures/track_view.hpp>
 
-#include <gui/documents/queue_rows.hpp>
+#include <gui/model/documents/queue_rows.hpp>
 
 #include <gui/tracks/track_table_model.hpp>
 

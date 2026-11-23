@@ -22,50 +22,16 @@
 
 // moc only needs the Qt declaration; the collaborators include C++23 concepts it cannot parse.
 #ifndef Q_MOC_RUN
-#include "document_host.hpp"
-#include "library_navigation.hpp"
 #include "player_actions.hpp"
-#include "saved_playlist_manager.hpp"
-#include <app/playback/playback_service.hpp>
-#include <desktop/library/library_session.hpp>
-#include <desktop/playback/playback_preferences.hpp>
-#include <desktop/playback/queue_settings.hpp>
-#include <desktop/playback/volume_control.hpp>
-#include <gui/appearance/theme_manager.hpp>
-#include <gui/controls/equalizer_panel.hpp>
-#include <gui/controls/status_view.hpp>
-#include <gui/controls/transport_view.hpp>
-#include <gui/controls/volume_view.hpp>
-#include <gui/documents/now_playing_document.hpp>
-#include <gui/documents/saved_playlist_document.hpp>
-#include <gui/documents/workspace_document.hpp>
-#include <gui/layout/layout_document.hpp>
+#include <engine/open_result.hpp>
 #include <gui/layout/layout_session.hpp>
 #include <gui/layout/view_registry.hpp>
-#include <gui/metadata/track_inspector.hpp>
-#include <library/metadata_patch.hpp>
-
-#include <app/metadata/custom_tag_commands.hpp>
-#include <app/metadata/metadata_edit_service.hpp>
-#include <app/metadata/metadata_merge.hpp>
-#include <app/playback/active_playlist.hpp>
-#include <app/playback/playback_queue.hpp>
-#include <app/playback/playlist_transfer.hpp>
-#include <codec/decode/open.hpp>
-#include <desktop/library/m3u_playlist.hpp>
-#include <desktop/metadata/media_revision_publisher.hpp>
-#include <desktop/workspace/workspace_watcher.hpp>
-#include <engine/session.hpp>
-#include <library/in_memory_repository.hpp>
-#include <utils/units.hpp>
+#include <library/library_changes.hpp>
 #endif
 
-#include <QLabel>
 #include <QMainWindow>
-#include <QPushButton>
+#include <QPointer>
 #include <QSettings>
-#include <QSlider>
-#include <QTabWidget>
 
 #include <filesystem>
 #include <map>
@@ -74,12 +40,43 @@
 #include <vector>
 
 class QSplitter;
+class QTabWidget;
 class QCloseEvent;
 class QActionGroup;
+
+namespace wiola::app {
+
+class PlaybackService;
+struct PlayerPresentation;
+class PlaybackPreferences;
+class LibrarySession;
+class SessionPreferences;
+class QueueSettings;
+class VolumeControl;
+class EqualizerControl;
+class ActivePlaylist;
+
+} // namespace wiola::app
+
+namespace wiola::library {
+
+class LibraryRepository;
+
+}
 
 namespace wiola::gui {
 
 class PlayerDialogs;
+class ThemeManager;
+class TransportView;
+class VolumeView;
+class StatusView;
+class NowPlayingDocument;
+class LibraryNavigation;
+class SavedPlaylistManager;
+class DocumentHost;
+class TrackInspector;
+class EqualizerPanel;
 class DocumentCommandRouter;
 class MetadataInspectorBinding;
 
@@ -166,10 +163,7 @@ private:
     /// so a message stays readable rather than lasting until the next poll.
     void show_status(const QString& message);
 
-    [[nodiscard]] bool loaded() const noexcept
-    {
-        return app::present_playback(playback_).playback.loaded;
-    }
+    [[nodiscard]] bool loaded() const noexcept;
 
     app::PlaybackService& playback_;
 
