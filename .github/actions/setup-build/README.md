@@ -19,4 +19,4 @@ Cache restores precede network installation. The [Ubuntu package owner](../../..
 
 APT verifies restored archives and installs required dependencies, including Qt platform plugins for GUI checks, with optional recommendations disabled. Operations retry failed transfers and use bounded inactivity timeouts. Additional package names are passed as array arguments, not evaluated shell text. Ccache is made available to both C and C++ CMake compilations. A restored cache is reuse evidence, not proof that a build or test passed.
 
-SDK construction and cache identity belong to [the Qt SDK owner](../../../tools/sdk/qt_mingw/README.md). The workflow owns scheduling and artifact transport. Changes to those responsibilities belong with their owners rather than inside this environment adapter.
+SDK construction and cache identity belong to [the Qt SDK owner](../../../scripts/qt/windows/README.md). The workflow owns scheduling and artifact transport. Changes to those responsibilities belong with their owners rather than inside this environment adapter.

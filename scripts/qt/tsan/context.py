@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
-from tools.sdk.qt_source.provider import QtSourcePin, file_digest as digest
+from scripts.qt.source.provider import QtSourcePin, file_digest as digest
 
 
 def _capture(*command: str) -> str:

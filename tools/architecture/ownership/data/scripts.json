@@ -2,24 +2,11 @@
   "schema_version": 1,
   "owners": [
     {
-      "id": "documentation.scripts",
-      "purpose": "Explains the current scripts responsibilities and contributor entrypoints.",
+      "id": "scripts.package",
+      "purpose": "Groups maintained development commands by responsibility",
       "files": [
-        "scripts/README.md"
-      ]
-    },
-    {
-      "id": "tool.build_qt_core_tsan",
-      "purpose": "Implements the current build qt core tsan development command.",
-      "files": [
-        "scripts/build-qt-core-tsan.sh"
-      ]
-    },
-    {
-      "id": "tool.build_qt_mingw",
-      "purpose": "Launches the owned x86-64 MinGW Qt SDK builder for existing callers.",
-      "files": [
-        "scripts/build-qt-mingw.sh"
+        "scripts/README.md",
+        "scripts/__init__.py"
       ]
     },
     {

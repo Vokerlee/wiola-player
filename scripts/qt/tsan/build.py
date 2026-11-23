@@ -8,7 +8,7 @@ import os
 from tools.architecture.cmake_inventory.inventory import CMakeInventory
 from tools.build_environment.cmake.build import CMakeBuild
 
-from tools.sdk.qt_source.provider import QtSourceStore
+from scripts.qt.source.provider import QtSourceStore
 
 from .context import QtCoreContext
 from .runtime import QtCoreRuntime

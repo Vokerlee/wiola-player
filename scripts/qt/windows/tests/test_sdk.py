@@ -7,9 +7,9 @@ import tempfile
 import textwrap
 import unittest
 
-REPOSITORY = Path(__file__).resolve().parents[4]
-BUILD = REPOSITORY / "scripts/build-qt-mingw.sh"
-CONTEXT = REPOSITORY / "tools/sdk/qt_mingw/context.cmake"
+PACKAGE = Path(__file__).resolve().parent.parent
+BUILD = PACKAGE / "build.sh"
+CONTEXT = PACKAGE / "context.cmake"
 
 
 class QtSdkTest(unittest.TestCase):
@@ -87,7 +87,7 @@ class QtSdkTest(unittest.TestCase):
             """
             import hashlib, os, pathlib, sys
             args = sys.argv[1:]
-            if args[:2] == ["-m", "tools.sdk.qt_source"]:
+            if args[:2] == ["-m", "scripts.qt.source"]:
                 version = args[2]
                 if "--identity" in args:
                     print(hashlib.sha256(("fixture source " + version).encode()).hexdigest())

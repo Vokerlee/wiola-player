@@ -5,6 +5,10 @@ from tools.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        'scripts.package', 'scripts', 'Groups maintained development commands by responsibility',
+        ('Each child owns its complete implementation and tests',), grouping=True,
+    ),
+    AbstractionContract(
         'source.codec.decode.decoder', 'src/media/audio_decoder', 'Backend-neutral worker-owned decoder contract and shared read/seek validation',
         ('No concrete codec, registry, device or GUI dependency', 'Progress and EOF are distinct', 'Read and seek errors retain typed media results'),
         ('src/media/audio_decoder/audio_decoder.hpp',),
@@ -127,14 +131,14 @@ CONTRACTS = (
         ('tools/coverage/python_runner/__main__.py',), grouping=False,
     ),
     AbstractionContract(
-        'sdk.package', 'tools/sdk', 'Groups independent external SDK builders',
+        'sdk.package', 'scripts/qt', 'Groups the shared Qt source provider and target SDK recipes',
         ("Complete implementation and tests belong to this owner",),
         (), grouping=True,
     ),
     AbstractionContract(
-        'sdk.qt_mingw', 'tools/sdk/qt_mingw', 'Builds and identifies the x86-64 static Qt SDK',
+        'sdk.qt_mingw', 'scripts/qt/windows', 'Builds and identifies the x86-64 static Qt SDK',
         ("Complete implementation and tests belong to this owner",),
-        ('tools/sdk/qt_mingw/build.sh', 'tools/sdk/qt_mingw/context.cmake'), grouping=False,
+        ('scripts/qt/windows/build.sh', 'scripts/qt/windows/context.cmake'), grouping=False,
     ),
     AbstractionContract(
         "ci.environment_setup", ".github/actions/setup-build", "Restores caches and installs selected Ubuntu host dependencies",
@@ -197,13 +201,13 @@ CONTRACTS = (
         ('tools/coverage/llvm_reporting/reporter.py',), grouping=False,
     ),
     AbstractionContract(
-        'sdk.qt_source', 'tools/sdk/qt_source', 'Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts',
+        'sdk.qt_source', 'scripts/qt/source', 'Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts',
         ("Complete implementation and tests belong to this owner",),
-        ('tools/sdk/qt_source/provider.py', 'tools/sdk/qt_source/__main__.py'), grouping=False,
+        ('scripts/qt/source/provider.py', 'scripts/qt/source/__main__.py'), grouping=False,
     ),
     AbstractionContract(
-        'sdk.qt_core_tsan', 'tools/sdk/qt_core_tsan', 'Builds, qualifies and verifies the native instrumented Qt Core runtime',
+        'sdk.qt_core_tsan', 'scripts/qt/tsan', 'Builds, qualifies and verifies the native instrumented Qt Core runtime',
         ("Complete implementation and tests belong to this owner",),
-        ('tools/sdk/qt_core_tsan/__main__.py', 'tools/sdk/qt_core_tsan/build.py', 'tools/sdk/qt_core_tsan/context.py', 'tools/sdk/qt_core_tsan/runtime.py', 'tools/sdk/qt_core_tsan/CMakeLists.txt'), grouping=False,
+        ('scripts/qt/tsan/__main__.py', 'scripts/qt/tsan/build.py', 'scripts/qt/tsan/context.py', 'scripts/qt/tsan/runtime.py', 'scripts/qt/tsan/CMakeLists.txt'), grouping=False,
     ),
 )

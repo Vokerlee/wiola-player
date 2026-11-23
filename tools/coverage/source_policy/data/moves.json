@@ -38,5 +38,105 @@
     "previous": "src/codec/decode/decoder.cpp",
     "current": "src/media/audio_decoder/audio_decoder.cpp",
     "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/CMakeLists.txt",
+    "current": "scripts/qt/tsan/CMakeLists.txt",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/__init__.py",
+    "current": "scripts/qt/tsan/__init__.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/__main__.py",
+    "current": "scripts/qt/tsan/__main__.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/build.py",
+    "current": "scripts/qt/tsan/build.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/context.py",
+    "current": "scripts/qt/tsan/context.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/runtime.py",
+    "current": "scripts/qt/tsan/runtime.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/tests/__init__.py",
+    "current": "scripts/qt/tsan/tests/__init__.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/tests/test_recipe.py",
+    "current": "scripts/qt/tsan/tests/test_recipe.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_core_tsan/verify.py",
+    "current": "scripts/qt/tsan/verify.py",
+    "owner": "sdk.qt_core_tsan"
+  },
+  {
+    "previous": "tools/sdk/qt_mingw/__init__.py",
+    "current": "scripts/qt/windows/__init__.py",
+    "owner": "sdk.qt_mingw"
+  },
+  {
+    "previous": "tools/sdk/qt_mingw/build.sh",
+    "current": "scripts/qt/windows/build.sh",
+    "owner": "sdk.qt_mingw"
+  },
+  {
+    "previous": "tools/sdk/qt_mingw/context.cmake",
+    "current": "scripts/qt/windows/context.cmake",
+    "owner": "sdk.qt_mingw"
+  },
+  {
+    "previous": "tools/sdk/qt_mingw/tests/__init__.py",
+    "current": "scripts/qt/windows/tests/__init__.py",
+    "owner": "sdk.qt_mingw"
+  },
+  {
+    "previous": "tools/sdk/qt_mingw/tests/test_sdk.py",
+    "current": "scripts/qt/windows/tests/test_sdk.py",
+    "owner": "sdk.qt_mingw"
+  },
+  {
+    "previous": "tools/sdk/qt_source/__init__.py",
+    "current": "scripts/qt/source/__init__.py",
+    "owner": "sdk.qt_source"
+  },
+  {
+    "previous": "tools/sdk/qt_source/__main__.py",
+    "current": "scripts/qt/source/__main__.py",
+    "owner": "sdk.qt_source"
+  },
+  {
+    "previous": "tools/sdk/qt_source/provider.py",
+    "current": "scripts/qt/source/provider.py",
+    "owner": "sdk.qt_source"
+  },
+  {
+    "previous": "tools/sdk/qt_source/tests/__init__.py",
+    "current": "scripts/qt/source/tests/__init__.py",
+    "owner": "sdk.qt_source"
+  },
+  {
+    "previous": "tools/sdk/qt_source/tests/test_provider.py",
+    "current": "scripts/qt/source/tests/test_provider.py",
+    "owner": "sdk.qt_source"
+  },
+  {
+    "previous": "tools/sdk/__init__.py",
+    "current": "scripts/qt/__init__.py",
+    "owner": "sdk.package"
   }
 ]

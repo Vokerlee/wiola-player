@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-export PYTHONPATH="$script_directory/..${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m tools.sdk.qt_core_tsan "$@"

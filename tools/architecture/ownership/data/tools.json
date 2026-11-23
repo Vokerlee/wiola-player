@@ -284,54 +284,54 @@
     },
     {
       "id": "sdk.package",
-      "purpose": "Groups independent external SDK builders",
+      "purpose": "Groups the shared Qt source provider and target SDK recipes",
       "files": [
-        "tools/sdk/README.md",
-        "tools/sdk/__init__.py"
+        "scripts/qt/README.md",
+        "scripts/qt/__init__.py"
       ]
     },
     {
       "id": "sdk.qt_core_tsan",
       "purpose": "Builds, qualifies and verifies the native instrumented Qt Core runtime",
       "files": [
-        "tools/sdk/qt_core_tsan/CMakeLists.txt",
-        "tools/sdk/qt_core_tsan/README.md",
-        "tools/sdk/qt_core_tsan/__init__.py",
-        "tools/sdk/qt_core_tsan/__main__.py",
-        "tools/sdk/qt_core_tsan/build.py",
-        "tools/sdk/qt_core_tsan/context.py",
-        "tools/sdk/qt_core_tsan/runtime.py",
-        "tools/sdk/qt_core_tsan/tests/README.md",
-        "tools/sdk/qt_core_tsan/tests/__init__.py",
-        "tools/sdk/qt_core_tsan/tests/test_recipe.py",
-        "tools/sdk/qt_core_tsan/verify.py"
+        "scripts/qt/tsan/CMakeLists.txt",
+        "scripts/qt/tsan/README.md",
+        "scripts/qt/tsan/__init__.py",
+        "scripts/qt/tsan/__main__.py",
+        "scripts/qt/tsan/build.py",
+        "scripts/qt/tsan/context.py",
+        "scripts/qt/tsan/runtime.py",
+        "scripts/qt/tsan/tests/README.md",
+        "scripts/qt/tsan/tests/__init__.py",
+        "scripts/qt/tsan/tests/test_recipe.py",
+        "scripts/qt/tsan/verify.py"
       ]
     },
     {
       "id": "sdk.qt_mingw",
       "purpose": "Builds and identifies the x86-64 static Qt SDK",
       "files": [
-        "tools/sdk/qt_mingw/README.md",
-        "tools/sdk/qt_mingw/__init__.py",
-        "tools/sdk/qt_mingw/build.sh",
-        "tools/sdk/qt_mingw/context.cmake",
-        "tools/sdk/qt_mingw/tests/README.md",
-        "tools/sdk/qt_mingw/tests/__init__.py",
-        "tools/sdk/qt_mingw/tests/test_sdk.py"
+        "scripts/qt/windows/README.md",
+        "scripts/qt/windows/__init__.py",
+        "scripts/qt/windows/build.sh",
+        "scripts/qt/windows/context.cmake",
+        "scripts/qt/windows/tests/README.md",
+        "scripts/qt/windows/tests/__init__.py",
+        "scripts/qt/windows/tests/test_sdk.py"
       ]
     },
     {
       "id": "sdk.qt_source",
       "purpose": "Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts",
       "files": [
-        "tools/sdk/qt_source/README.md",
-        "tools/sdk/qt_source/__init__.py",
-        "tools/sdk/qt_source/__main__.py",
-        "tools/sdk/qt_source/pins.json",
-        "tools/sdk/qt_source/provider.py",
-        "tools/sdk/qt_source/tests/README.md",
-        "tools/sdk/qt_source/tests/__init__.py",
-        "tools/sdk/qt_source/tests/test_provider.py"
+        "scripts/qt/source/README.md",
+        "scripts/qt/source/__init__.py",
+        "scripts/qt/source/__main__.py",
+        "scripts/qt/source/pins.json",
+        "scripts/qt/source/provider.py",
+        "scripts/qt/source/tests/README.md",
+        "scripts/qt/source/tests/__init__.py",
+        "scripts/qt/source/tests/test_provider.py"
       ]
     },
     {

@@ -16,3 +16,5 @@ flowchart TD
 [Testing tools](testing/README.md) separate semantic test roles from actual runtime coupling and check configured discovery against independently required behaviors.
 
 [Coverage qualification](coverage/README.md) separates source applicability, raw process collection and owner measurement. Unmeasured languages and unmapped headers remain visible.
+
+[Qt SDK tooling](../scripts/qt/README.md) lives completely in the canonical scripts family, with source acquisition and both target recipes together.
