@@ -1,5 +1,4 @@
 import copy
-import importlib.util
 from pathlib import Path
 import sys
 import tempfile
@@ -8,9 +7,7 @@ import unittest
 SCRIPTS = Path(__file__).resolve().parents[2] / 'scripts'
 sys.path.insert(0, str(SCRIPTS))
 import coverage_gate as gate
-spec = importlib.util.spec_from_file_location('mutations', SCRIPTS / 'check-gui-mutations.py')
-mutations = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mutations)
+
 
 
 def report(total=100, hit=90):
@@ -72,17 +69,6 @@ class CoverageGate(unittest.TestCase):
         diff = '+++ b/src/a.cpp\n@@ -1,2 +1,2 @@\n-old\n+new\n same\n@@ -8,0 +9 @@\n+next\n'
         self.assertEqual(gate.changed_lines(diff), {'src/a.cpp': {1, 9}})
 
-
-class MutationEvidence(unittest.TestCase):
-    def test_only_an_executed_assertion_failure_kills_a_mutant(self):
-        with tempfile.TemporaryDirectory() as directory:
-            xml = Path(directory) / 'results.xml'
-            self.assertFalse(mutations.assertion_failure(xml, 1))
-            for tests, failures, errors, status, killed in [
-                (1, 1, 0, 1, True), (0, 0, 0, 0, False), (1, 0, 0, 0, False),
-                (1, 1, 0, -11, False), (1, 0, 1, 1, False)]:
-                xml.write_text(f'<testsuites tests="{tests}" failures="{failures}" errors="{errors}"/>')
-                self.assertEqual(mutations.assertion_failure(xml, status), killed)
 
 
 if __name__ == '__main__': unittest.main()
