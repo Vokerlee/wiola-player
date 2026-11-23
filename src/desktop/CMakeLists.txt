@@ -79,6 +79,14 @@ wiola_add_library(
         playback/queue_settings.cpp
         playback/volume_control.cpp
         playback/equalizer_control.cpp
-    LIBS wiola_app wiola_qt_settings
+    LIBS wiola_app wiola_qt_settings wiola_session_preferences
 )
 target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core)
+
+wiola_add_library(
+    wiola_session_preferences
+    SOURCES session/session_state.cpp session/session_preferences.cpp
+    LIBS wiola_persistence_qt wiola_library_session
+)
+set_target_properties(wiola_session_preferences PROPERTIES AUTOMOC ON)
+target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core)

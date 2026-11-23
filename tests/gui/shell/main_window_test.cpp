@@ -153,7 +153,8 @@ protected:
     {
         QSettings settings = player_settings();
         settings.clear();
-        for (const auto& name : {"layout.json", "layout.json.bak"})
+        for (const auto& name :
+            {"layout.json", "layout.json.bak", "session.json", "session.json.bak"})
             QFile::remove(QFileInfo{settings.fileName()}.dir().filePath(name));
         settings.sync();
     }

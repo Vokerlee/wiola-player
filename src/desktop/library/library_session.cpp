@@ -63,6 +63,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     restore_result_ = persistence::qt::restore_repository(store_, repository_);
     if (!restore_result_.succeeded())
         restore_error_ = "Could not restore the saved library";
+    active_.on_changed([this](auto id) { emit active_destination_changed(id); });
     const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
     if (repository_.playlist(active))
         static_cast<void>(active_.set(active));
@@ -355,8 +356,7 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
             static_cast<void>(scan_workspace(id, workspace_extensions_));
         }
     for (const auto& playlist : batch.removed_playlists)
-        if (active_.clear_if(playlist))
-            settings_.remove("playlists/active");
+        static_cast<void>(active_.clear_if(playlist));
 }
 
 } // namespace wiola::app

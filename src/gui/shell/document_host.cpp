@@ -34,12 +34,12 @@
 namespace wiola::gui {
 
 DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& playback,
-    DocumentCommands commands, QWidget* parent)
+    app::SessionPreferences& preferences, DocumentCommands commands, QWidget* parent)
     : QTabWidget{parent}
     , library_{library}
     , playback_{playback}
     , commands_{std::move(commands)}
-    , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
+    , preferences_{preferences}
     , empty_{new QWidget{this}}
     , queue_{new NowPlayingDocument{this}}
 {
@@ -126,6 +126,7 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
 DocumentHost::~DocumentHost()
 {
     save();
+    static_cast<void>(preferences_.flush());
 }
 
 void DocumentHost::configure_browser(TrackBrowser& browser)
@@ -142,7 +143,11 @@ void DocumentHost::configure_browser(TrackBrowser& browser)
     );
     browser.table().set_tag_catalog(&library_.tag_keys());
     browser.table().set_search_index(&library_.search());
+    connect(&browser.table(), &TrackTableView::view_state_changed, &lifetime_, [this] { save(); });
+    connect(&browser.table(), &TrackTableView::browser_preferences_changed, &lifetime_,
+        [this] { save(); });
     connect(&browser, &TrackBrowser::selection_changed, &lifetime_, [this] {
+        save();
         if (commands_.selection_changed)
             commands_.selection_changed();
     });
@@ -193,6 +198,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
             commands_.move_playlist(id, *document);
     });
     addTab(document, QString::fromStdString(library_.repository().playlist(id)->name));
+    restore_browser(DocumentId::playlist(id), document->browser(), true);
     return activate(DocumentId::playlist(id));
 }
 
@@ -237,6 +243,7 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
     const auto name = workspace->root.filename();
     addTab(document, name.empty() ? "Workspace" : platform::qt::QtPathAdapter::to_qt(name));
     begin_scan(id);
+    restore_browser(DocumentId::workspace(id), document->browser(), false);
     return activate(DocumentId::workspace(id));
 }
 
@@ -292,67 +299,68 @@ void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
     refresh_active_destination();
 }
 
+void DocumentHost::restore_browser(const DocumentId& id, TrackBrowser& browser, bool complete)
+{
+    if (const auto found = preferences_.state().browsers.find(id);
+        found != preferences_.state().browsers.end()) {
+        const auto state = found->second;
+        browser.restore_browser_state(state);
+        if (complete)
+            browser.table().finish_browser_restore();
+    }
+}
+
 void DocumentHost::restore()
 {
-    const auto playlists = settings_.value("documents/open_playlists").toStringList();
-    const auto workspaces = settings_.value("documents/open_workspaces").toStringList();
-    const auto kind = settings_.value("documents/current_kind").toString();
-    const auto current = settings_.value("documents/current_id").toString().toStdString();
-    const auto legacy_playlist =
-        settings_.value("documents/current_playlist").toString().toStdString();
-    const auto legacy_workspace =
-        settings_.value("documents/current_workspace").toString().toStdString();
-    for (const auto& id : playlists)
-        static_cast<void>(open_playlist(library::PlaylistId{id.toStdString()}));
-    for (const auto& id : workspaces)
-        static_cast<void>(open_workspace(library::WorkspaceId{id.toStdString()}));
-    if (kind == "empty") {
+    const auto state = preferences_.state();
+    for (const auto& id : state.open) {
+        if (id.playlist())
+            static_cast<void>(open_playlist(*id.playlist()));
+        else if (id.workspace())
+            static_cast<void>(open_workspace(*id.workspace()));
+    }
+    restore_browser(DocumentId::queue(), queue_->browser(), false);
+    if (!state.visible) {
         setCurrentWidget(empty_);
         return;
     }
-    if ((kind == "playlist" && activate(DocumentId::playlist(library::PlaylistId{current}))) ||
-        (kind == "workspace" && activate(DocumentId::workspace(library::WorkspaceId{current}))))
-        return;
-    if (kind.isEmpty()) {
-        if (!legacy_workspace.empty() &&
-            activate(DocumentId::workspace(library::WorkspaceId{legacy_workspace})))
-            return;
-        if (!legacy_playlist.empty() &&
-            activate(DocumentId::playlist(library::PlaylistId{legacy_playlist})))
-            return;
-    }
-    static_cast<void>(activate(DocumentId::queue()));
+    if (!activate(*state.visible))
+        static_cast<void>(activate(DocumentId::queue()));
 }
 
 void DocumentHost::save()
 {
     if (restoring_)
         return;
-    QStringList playlists, workspaces;
-    for (const auto& [id, view] : registry_.playlists())
-        playlists.push_back(QString::fromStdString(id.value));
-    for (const auto& [id, view] : registry_.workspaces())
-        workspaces.push_back(QString::fromStdString(id.value));
-    const auto active = registry_.active();
-    QString kind{"empty"}, value, playlist, workspace;
-    if (active) {
-        if (active->is_queue())
-            kind = "queue";
-        else if (active->playlist()) {
-            kind = "playlist";
-            value = playlist = QString::fromStdString(active->playlist()->value);
-        } else if (active->workspace()) {
-            kind = "workspace";
-            value = workspace = QString::fromStdString(active->workspace()->value);
+    std::vector<DocumentId> open;
+    std::map<DocumentId, app::BrowserViewState> browsers;
+    for (int index = 0; index < count(); ++index)
+        if (const auto id = registry_.identify(widget(index))) {
+            open.push_back(*id);
+            if (id->is_queue())
+                browsers.emplace(*id, queue_->browser().capture_browser_state());
+            else if (id->playlist())
+                if (auto* view = registry_.playlist(*id->playlist()))
+                    browsers.emplace(*id, view->browser().capture_browser_state());
+            if (id->workspace())
+                if (auto* view = registry_.workspace(*id->workspace()))
+                    browsers.emplace(*id, view->browser().capture_browser_state());
         }
-    }
-    settings_.setValue("documents/open_playlists", playlists);
-    settings_.setValue("documents/open_workspaces", workspaces);
-    settings_.setValue("documents/current_kind", kind);
-    settings_.setValue("documents/current_id", value);
-    settings_.setValue("documents/current_playlist", playlist);
-    settings_.setValue("documents/current_workspace", workspace);
-    settings_.sync();
+    const auto active = registry_.active();
+    preferences_.edit([&](auto& state) {
+        state.open = std::move(open);
+        state.visible = active;
+        for (auto& [id, value] : browsers)
+            state.browsers.insert_or_assign(id, std::move(value));
+        while (state.browsers.size() > 128) {
+            auto oldest = std::ranges::find_if(state.browsers, [&](const auto& item) {
+                return std::ranges::find(state.open, item.first) == state.open.end();
+            });
+            if (oldest == state.browsers.end())
+                break;
+            state.browsers.erase(oldest);
+        }
+    });
 }
 
 } // namespace wiola::gui

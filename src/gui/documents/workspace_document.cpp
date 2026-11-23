@@ -145,6 +145,8 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
     if (repository)
         browser_->show_library(*repository);
     browser_->show_rows(source_.rows());
+    if (batch.status == app::WorkspaceScanStatus::complete)
+        browser_->table().finish_browser_restore();
     status_->setText(QString{"%1 tracks"}.arg(source_.rows().size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 

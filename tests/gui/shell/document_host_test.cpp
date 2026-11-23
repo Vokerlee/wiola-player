@@ -38,6 +38,8 @@ protected:
     {
         ASSERT_TRUE(directory.isValid());
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.path());
+        QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+        preferences = std::make_unique<app::SessionPreferences>(settings);
         library =
             std::make_unique<app::LibrarySession>(std::make_shared<codec::LocalMediaProvider>());
     }
@@ -46,12 +48,13 @@ protected:
     engine::Session engine;
     app::PlaybackService playback{engine};
     std::unique_ptr<app::LibrarySession> library;
+    std::unique_ptr<app::SessionPreferences> preferences;
 };
 
 TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeletingRecords)
 {
     const auto playlist = library->playlists().create("Favorites");
-    gui::DocumentHost host{*library, playback, {}};
+    gui::DocumentHost host{*library, playback, *preferences, {}};
     ASSERT_TRUE(host.open_playlist(playlist));
     auto* original = host.registry().playlist(playlist);
     ASSERT_NE(original, nullptr);
@@ -77,12 +80,12 @@ TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
     playback.add({"queued.wav", "queued.wav"});
     const auto entry = playback.playlist().tracks()[1].id();
     {
-        gui::DocumentHost host{*library, playback, {}};
+        gui::DocumentHost host{*library, playback, *preferences, {}};
         ASSERT_TRUE(host.open_playlist(first));
         ASSERT_TRUE(host.open_playlist(second));
         ASSERT_TRUE(host.activate(gui::DocumentId::playlist(first)));
     }
-    gui::DocumentHost restored{*library, playback, {}};
+    gui::DocumentHost restored{*library, playback, *preferences, {}};
     EXPECT_EQ(restored.tabs().count(), 4);
     EXPECT_EQ(restored.registry().active(), gui::DocumentId::playlist(first));
     EXPECT_EQ(restored.tabs().tabText(restored.tabs().currentIndex()), "First");
@@ -93,7 +96,7 @@ TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
 TEST_F(DocumentHostTest, CommittedDeletionUpdatesTabsAndActiveIdentity)
 {
     const auto playlist = library->playlists().create("Deleted");
-    gui::DocumentHost host{*library, playback, {}};
+    gui::DocumentHost host{*library, playback, *preferences, {}};
     ASSERT_TRUE(host.open_playlist(playlist));
     ASSERT_TRUE(library->playlists().remove(playlist));
     EXPECT_EQ(host.registry().playlist(playlist), nullptr);
@@ -109,7 +112,7 @@ TEST_F(DocumentHostTest, EmptyStateRequestsOpenFolderWithoutCreatingAWorkspace)
     commands.open_folder = [&] {
         ++requests;
     };
-    gui::DocumentHost host{*library, playback, std::move(commands)};
+    gui::DocumentHost host{*library, playback, *preferences, std::move(commands)};
     auto* open = host.findChild<QPushButton*>("openFolderFromDocuments");
     ASSERT_NE(open, nullptr);
     open->click();

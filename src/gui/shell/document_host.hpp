@@ -19,11 +19,11 @@
  */
 
 #pragma once
-#include <QSettings>
 #include <QTabWidget>
 #include <QWidget>
 #include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
+#include <desktop/session/session_preferences.hpp>
 #include <gui/documents/document_registry.hpp>
 
 namespace wiola::gui {
@@ -47,7 +47,7 @@ struct DocumentCommands {
 class DocumentHost final : public QTabWidget {
 public:
     DocumentHost(app::LibrarySession& library, app::PlaybackService& playback,
-        DocumentCommands commands, QWidget* parent = nullptr);
+        app::SessionPreferences& preferences, DocumentCommands commands, QWidget* parent = nullptr);
     ~DocumentHost() override;
 
     [[nodiscard]] NowPlayingDocument& queue() noexcept { return *queue_; }
@@ -63,7 +63,10 @@ public:
     void begin_scan(const library::WorkspaceId& id);
     void refresh_active_destination();
 
+    void capture_preferences() { save(); }
+
 private:
+    void restore_browser(const DocumentId& id, TrackBrowser& browser, bool complete);
     void configure_browser(TrackBrowser& browser);
     void refresh(const library::LibraryChangeBatch& batch);
     void restore();
@@ -71,7 +74,7 @@ private:
     app::LibrarySession& library_;
     app::PlaybackService& playback_;
     DocumentCommands commands_;
-    QSettings settings_;
+    app::SessionPreferences& preferences_;
     DocumentRegistry registry_;
     QWidget* empty_;
     NowPlayingDocument* queue_;

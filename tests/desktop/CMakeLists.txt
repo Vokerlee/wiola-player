@@ -63,3 +63,9 @@ wiola_add_test(
     LIBS wiola_metadata_writes wiola_codec wiola_qt_platform
     DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
 )
+
+wiola_add_test(
+    desktop_session_preferences_test
+    SOURCES session/session_preferences_test.cpp
+    LIBS wiola_session_preferences wiola_codec
+)

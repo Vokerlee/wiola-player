@@ -25,6 +25,7 @@ namespace wiola::app {
 
 PlaybackPreferences::PlaybackPreferences(PlaybackService& playback)
     : settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
+    , ui_session_{settings_}
     , queue_{playback, settings_}
     , volume_{playback, settings_}
     , equalizer_{playback, settings_}
@@ -34,13 +35,15 @@ PlaybackPreferences::PlaybackPreferences(PlaybackService& playback)
     volume_.apply_restored(restored.volume_position, restored.boosted);
     equalizer_.apply_restored(restored.equalizer_enabled, restored.band_gains);
     missing_ = queue_.restore();
+    ui_session_.remap_queue(queue_.restore_mapping());
 }
 
 bool PlaybackPreferences::flush()
 {
     queue_.save();
     settings_.sync();
-    return settings_.status() == QSettings::NoError;
+    const auto ui_saved = ui_session_.flush();
+    return settings_.status() == QSettings::NoError && ui_saved == SessionStateError::none;
 }
 
 } // namespace wiola::app

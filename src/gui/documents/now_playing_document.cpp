@@ -79,6 +79,7 @@ void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
         for (auto& row : rows)
             row.media = resolve_media_(row.location);
     browser_->show_rows(rows, current);
+    browser_->table().finish_browser_restore();
 }
 
 void NowPlayingDocument::show_library(const library::LibraryRepository& repository)

@@ -127,7 +127,7 @@ wiola_add_test(
 wiola_add_test(
     gui_main_window_shell_test
     SOURCES main_window_shell_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui wiola_player_application
 )
 
 wiola_add_test(
@@ -164,4 +164,10 @@ wiola_add_test(
     gui_layout_session_test
     SOURCES layout/layout_session_test.cpp
     LIBS wiola_gui
+)
+
+wiola_add_test(
+    gui_browser_view_state_test
+    SOURCES tracks/browser_view_state_test.cpp
+    LIBS wiola_gui Qt6::Test
 )

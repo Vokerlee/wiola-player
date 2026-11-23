@@ -39,16 +39,19 @@
 #include <library/metadata.hpp>
 
 #include <QActionGroup>
+#include <QCloseEvent>
 #include <QCursor>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
 #include <QGroupBox>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QMenuBar>
 #include <QSaveFile>
+#include <QScreen>
 #include <QSplitter>
 #include <QVBoxLayout>
 
@@ -135,6 +138,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     : playback_{playback_service}
     , actions_{*this}
     , settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
+    , ui_preferences_{preferences.ui_session()}
     , playlist_{preferences.queue()}
     , volume_{preferences.volume()}
     , equalizer_{preferences.equalizer()}
@@ -148,6 +152,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 {
     for (const auto& descriptor : action_descriptors())
         addAction(actions_.action(descriptor.id));
+    ui_preferences_.bind_library(library_session_);
     const QString selected_theme = settings_.value("theme/name", "light").toString();
     const ThemeColors custom_theme = stored_custom_theme(settings_);
 
@@ -277,8 +282,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     document_commands.apply_order = [this](auto paths) {
         play_displayed_paths(std::move(paths));
     };
-    document_host_ =
-        new DocumentHost{library_session_, playback_, std::move(document_commands), this};
+    document_host_ = new DocumentHost{library_session_, playback_, ui_preferences_,
+        std::move(document_commands), this};
     documents_ = &document_host_->tabs();
     now_playing_ = &document_host_->queue();
 
@@ -433,6 +438,37 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         static_cast<void>(install_layout(layout_session_->document(), LayoutChoice::classic,
             false));
     }
+    const auto geometry = ui_preferences_.state().window;
+    if (geometry.isValid()) {
+        auto* screen = QGuiApplication::screenAt(geometry.center());
+        if (!screen)
+            screen = QGuiApplication::primaryScreen();
+        if (screen) {
+            const auto available = screen->availableGeometry();
+            setMinimumSize(minimumSize().boundedTo(available.size()));
+            const auto size = geometry.size().expandedTo(minimumSize()).boundedTo(available.size());
+            const QPoint top{
+                std::clamp(geometry.x(), available.left(), available.right() - size.width() + 1),
+                std::clamp(geometry.y(), available.top(), available.bottom() - size.height() + 1)};
+            setGeometry(QRect{top, size});
+        }
+    }
+    for (auto* splitter : findChildren<QSplitter*>())
+        if (const auto found =
+                ui_preferences_.state().splitters.find(splitter->objectName().toStdString());
+            found != ui_preferences_.state().splitters.end() &&
+            found->second.size() == static_cast<std::size_t>(splitter->count())) {
+            QList<int> sizes;
+            for (const auto size : found->second)
+                sizes.push_back(size);
+            splitter->setSizes(sizes);
+        }
+    connect(&ui_preferences_, &app::SessionPreferences::save_failed, this,
+        [this](auto) { show_status("Could not save view preferences; changes remain pending"); });
+    if (ui_preferences_.restore_error() != app::SessionStateError::none)
+        show_status(ui_preferences_.restore_error() == app::SessionStateError::unsupported_version
+                ? "View preferences use a newer version; the saved file was retained"
+                : "Could not restore all view preferences; a usable session was retained");
     const auto selected_layout = layout_choice_name(layout_session_->choice());
     if (layout_session_->restore_error() != LayoutSessionError::none)
         show_status("Could not restore the saved layout; a usable layout was retained");
@@ -627,7 +663,38 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     refresh();
 }
 
-MainWindow::~MainWindow() = default;
+MainWindow::~MainWindow()
+{
+    save_window_state();
+    document_host_->capture_preferences();
+    QObject::disconnect(&ui_preferences_, nullptr, this, nullptr);
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    save_window_state();
+    document_host_->capture_preferences();
+    QMainWindow::closeEvent(event);
+}
+
+void MainWindow::save_window_state()
+{
+    if (!layout_session_)
+        return;
+    const auto geometry = this->geometry();
+    std::map<std::string, std::vector<int>> splitters;
+    for (auto* splitter : findChildren<QSplitter*>())
+        if (!splitter->objectName().isEmpty()) {
+            const auto sizes = splitter->sizes();
+            splitters.emplace(splitter->objectName().toStdString(),
+                std::vector<int>{sizes.begin(), sizes.end()});
+        }
+    ui_preferences_.edit([&](auto& state) {
+        state.window = geometry;
+        state.splitters = std::move(splitters);
+        state.layout_identity = layout_choice_name(layout_session_->choice());
+    });
+}
 
 void MainWindow::show_layout_choice()
 {
@@ -746,6 +813,8 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
 
     setCentralWidget(root);
     show_layout_choice();
+    if (persist)
+        save_window_state();
     return true;
 }
 
@@ -1031,8 +1100,6 @@ void MainWindow::activate_playlist(const library::PlaylistId& id)
         return;
 
     static_cast<void>(active_playlist_.set(id));
-    settings_.setValue("playlists/active", QString::fromStdString(id.value));
-    settings_.sync();
 
     document_host_->refresh_active_destination();
 }
@@ -1203,8 +1270,7 @@ void MainWindow::request_metadata(const std::filesystem::path& location)
 void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
 {
     for (const auto& id : batch.removed_playlists) {
-        if (active_playlist_.clear_if(id))
-            settings_.remove("playlists/active");
+        static_cast<void>(active_playlist_.clear_if(id));
     }
     if (!batch.playlists.empty() || !batch.removed_playlists.empty())
         navigation_->show_repository(library_);

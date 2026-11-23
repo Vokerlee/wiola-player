@@ -22,12 +22,15 @@
 #include "equalizer_control.hpp"
 #include "queue_settings.hpp"
 #include "volume_control.hpp"
+#include <desktop/session/session_preferences.hpp>
 
 namespace wiola::app {
 
 class PlaybackPreferences final {
 public:
     explicit PlaybackPreferences(PlaybackService& playback);
+
+    [[nodiscard]] SessionPreferences& ui_session() noexcept { return ui_session_; }
 
     [[nodiscard]] QueueSettings& queue() noexcept { return queue_; }
 
@@ -41,6 +44,7 @@ public:
 
 private:
     QSettings settings_;
+    SessionPreferences ui_session_;
     QueueSettings queue_;
     VolumeControl volume_;
     EqualizerControl equalizer_;
