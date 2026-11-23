@@ -5,6 +5,16 @@ from tools.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        'source.app.playback.operation_outcome', 'src/engine/operations', 'Engine asynchronous operation identities, acceptance and completion values',
+        ('Zero identifies no asynchronous completion', 'Completion carries an owned media result', 'Overflow is explicit rather than silently complete history'),
+        ('src/engine/operations/operation_outcome.hpp',),
+    ),
+    AbstractionContract(
+        'source.app.playback.playback_snapshot', 'src/engine/playback_snapshot', 'Coherent value snapshot of engine playback, selection and revisions',
+        ('Snapshots own their values', 'Application and GUI dependencies are forbidden', 'Queue and revision identities retain their semantics'),
+        ('src/engine/playback_snapshot/playback_snapshot.hpp',),
+    ),
+    AbstractionContract(
         "tooling.package", "tools", "Repository-tool package and contributor entrypoint",
         ("Player runtime does not depend on development tools",), grouping=True,
     ),

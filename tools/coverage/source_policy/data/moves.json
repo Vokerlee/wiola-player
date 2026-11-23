@@ -18,5 +18,15 @@
     "previous": "tools/testing/cmake_build/tests/test_build.py",
     "current": "tools/build_environment/cmake/tests/test_build.py",
     "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "src/app/playback/operation_outcome.hpp",
+    "current": "src/engine/operations/operation_outcome.hpp",
+    "owner": "source.app.playback.operation_outcome"
+  },
+  {
+    "previous": "src/app/playback/playback_snapshot.hpp",
+    "current": "src/engine/playback_snapshot/playback_snapshot.hpp",
+    "owner": "source.app.playback.playback_snapshot"
   }
 ]

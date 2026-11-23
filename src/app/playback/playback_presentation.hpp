@@ -19,7 +19,7 @@
  */
 
 #pragma once
-#include "playback_snapshot.hpp"
+#include <engine/playback_snapshot/playback_snapshot.hpp>
 #include <engine/queue/playlist.hpp>
 
 namespace wiola::app {

@@ -121,13 +121,6 @@
       ]
     },
     {
-      "id": "source.app.playback.operation_outcome",
-      "purpose": "Represents engine operation acceptance and terminal outcomes.",
-      "files": [
-        "src/app/playback/operation_outcome.hpp"
-      ]
-    },
-    {
       "id": "source.app.playback.playback_presentation",
       "purpose": "Owns the current playback presentation declaration/implementation in app/playback.",
       "files": [
@@ -148,13 +141,6 @@
       "files": [
         "src/app/playback/playback_service.cpp",
         "src/app/playback/playback_service.hpp"
-      ]
-    },
-    {
-      "id": "source.app.playback.playback_snapshot",
-      "purpose": "Represents a coherent engine playback observation.",
-      "files": [
-        "src/app/playback/playback_snapshot.hpp"
       ]
     },
     {
