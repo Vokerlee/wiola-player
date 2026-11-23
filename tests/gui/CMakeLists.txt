@@ -31,7 +31,7 @@ wiola_add_test(
 wiola_add_test(
     gui_now_playing_document_test
     SOURCES documents/now_playing_document_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui Qt6::Test
 )
 wiola_add_test(
     gui_library_navigation_test
@@ -189,3 +189,17 @@ wiola_add_test(
     SOURCES shell/document_command_router_test.cpp
     LIBS wiola_gui Qt6::Test
 )
+
+wiola_add_test(
+    gui_track_projection_test
+    SOURCES tracks/track_projection_test.cpp
+    LIBS wiola_gui
+)
+
+# Explicit benchmark target: measurements are artifacts, not wall-clock CI pass/fail assertions.
+add_executable(
+    gui_projection_benchmark
+    EXCLUDE_FROM_ALL
+    benchmarks/projection_benchmark.cpp
+)
+target_link_libraries(gui_projection_benchmark PRIVATE wiola_gui)

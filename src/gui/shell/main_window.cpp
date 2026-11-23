@@ -160,6 +160,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         std::move(document_commands), this};
     documents_ = &document_host_->tabs();
     now_playing_ = &document_host_->queue();
+    now_playing_->show_library(library_);
 
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
@@ -636,12 +637,22 @@ void MainWindow::show_workspace_navigation()
 
 void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
 {
-    if (!batch.playlists.empty() || !batch.removed_playlists.empty())
+    if (!batch.playlists.empty() || !batch.removed_playlists.empty()) {
         navigation_->show_repository(library_);
+        show_document_context();
+    }
     if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
         show_workspace_navigation();
-    show_document_context();
-    refresh();
+    if (!batch.media.empty() || !batch.removed_media.empty()) {
+        const bool playback_changed =
+            now_playing_->show_library_changes(playback_.playlist(), library_, batch);
+        if (inspector_binding_) {
+            if (playback_changed)
+                inspector_binding_->refresh();
+            else
+                inspector_binding_->refresh(batch);
+        }
+    }
 }
 
 void MainWindow::play_previous()
@@ -788,9 +799,7 @@ void MainWindow::show_status(const QString& message)
 void MainWindow::refresh()
 {
     transport_->present(app::present_playback(playback_));
-    now_playing_->show_library(library_);
-    now_playing_->show_playlist(playback_.playlist());
-    if (inspector_binding_)
+    if (now_playing_->show_playlist(playback_.playlist()) && inspector_binding_)
         inspector_binding_->refresh();
 }
 

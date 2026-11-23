@@ -69,22 +69,40 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
     });
 }
 
-void NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
+void NowPlayingDocument::present_changes(const QueueRowChanges& changes)
 {
-    const auto current = playlist.current()
-        ? std::optional<engine::QueueEntryId>{playlist.current()->id()}
-        : std::nullopt;
-    auto rows = queue_rows(playlist.tracks());
-    if (resolve_media_)
-        for (auto& row : rows)
-            row.media = resolve_media_(row.location);
-    browser_->show_rows(rows, current);
-    browser_->table().finish_browser_restore();
+    if (changes.structure) {
+        browser_->show_rows(source_.rows(), source_.current(), library_);
+        browser_->table().finish_browser_restore();
+    } else {
+        if (!changes.rows.empty())
+            browser_->update_rows(changes.rows, library_);
+        if (changes.current)
+            browser_->table().set_playing_row(source_.current());
+    }
+}
+
+bool NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
+{
+    const auto changes = source_.reconcile(playlist, library_);
+    present_changes(changes);
+    return changes.changed();
 }
 
 void NowPlayingDocument::show_library(const library::LibraryRepository& repository)
 {
-    browser_->show_library(repository);
+    library_ = &repository;
+    source_.invalidate();
+    browser_->bind_library(repository);
+}
+
+bool NowPlayingDocument::show_library_changes(const engine::Playlist& playlist,
+    const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch)
+{
+    library_ = &repository;
+    const auto changes = source_.apply_library(playlist, repository, batch);
+    present_changes(changes);
+    return changes.playback_changed;
 }
 
 std::vector<std::filesystem::path>

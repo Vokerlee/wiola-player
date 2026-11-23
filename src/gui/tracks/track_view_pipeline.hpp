@@ -23,6 +23,8 @@
 #include "track_sorter.hpp"
 
 #include <library/search.hpp>
+#include <map>
+#include <stop_token>
 
 namespace wiola::app {
 
@@ -36,6 +38,8 @@ namespace wiola::gui {
 
 [[nodiscard]] std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
     const library::LibraryRepository* repository, const library::SearchQuery& query,
-    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search = nullptr);
+    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search = nullptr,
+    const std::map<library::MediaId, library::SearchFields>* fields = nullptr,
+    std::stop_token stop = {});
 
 } // namespace wiola::gui

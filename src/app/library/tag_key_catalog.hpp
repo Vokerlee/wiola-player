@@ -32,6 +32,8 @@ public:
     void remove(const library::MediaId& id);
     [[nodiscard]] std::vector<std::string> keys() const;
 
+    [[nodiscard]] std::uint64_t revision() const { return revision_; }
+
 private:
     std::map<library::MediaId, std::set<std::string>> media_;
 
@@ -41,6 +43,7 @@ private:
     };
 
     std::map<std::string, Key> keys_;
+    std::uint64_t revision_{};
 };
 
 } // namespace wiola::app

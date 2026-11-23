@@ -28,6 +28,7 @@
 #include <library/search.hpp>
 
 #include <QAbstractTableModel>
+#include <QTimer>
 
 #include <optional>
 #include <vector>
@@ -46,11 +47,33 @@ class SearchIndex;
 
 namespace wiola::gui {
 
+class TrackProjection;
+struct TrackProjectionInput;
+
 class TrackTableModel final : public QAbstractTableModel {
 public:
+    static constexpr std::size_t asynchronous_projection_threshold{4096};
+
+    struct ProjectionStatistics {
+        std::size_t source_rebuilds{}, source_rows{}, updated_rows{}, queries{}, snapshots{},
+            commits{};
+    };
+
+    [[nodiscard]] const ProjectionStatistics& projection_statistics() const { return statistics_; }
+
+    [[nodiscard]] bool projection_pending() const { return projection_pending_; }
+
+    using ProjectionAttachment = std::function<void(std::function<void()>)>;
+
+    void on_async_projection(ProjectionAttachment attachment)
+    {
+        attachment_ = std::move(attachment);
+    }
+
     static constexpr int standard_columns{StandardTrackColumn::num_columns};
 
     explicit TrackTableModel(const QWidget& styled, ArtworkRequest policy = {});
+    ~TrackTableModel() override;
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
@@ -66,10 +89,24 @@ public:
 
     void refresh_artwork(const library::MediaId& media);
 
-    void set_search_index(const app::SearchIndex* index) { search_ = index; }
+    void set_search_index(const app::SearchIndex* index)
+    {
+        search_ = index;
+        search_revision_.reset();
+        snapshot_.reset();
+    }
 
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
+    void set_current(std::optional<TrackRowId> current);
+    void update_rows(const std::vector<TrackRow>& changed);
     void show_library(const library::LibraryRepository& repository);
+
+    void bind_library(const library::LibraryRepository& repository)
+    {
+        repository_ = &repository;
+        snapshot_.reset();
+    }
+
     void show_tag_keys(std::vector<std::string> keys);
     bool set_view_state(TrackViewState state);
 
@@ -86,8 +123,20 @@ private:
     [[nodiscard]] std::vector<TrackRow> visible_rows() const;
 
     void reconcile_rows(std::vector<TrackRow> next);
+    void reproject(bool coalesce = false);
+    void request_projection();
+    bool refresh_search_revision();
+    [[nodiscard]] std::shared_ptr<const TrackProjectionInput> projection_input();
+    ProjectionStatistics statistics_;
+    ProjectionAttachment attachment_;
+    std::shared_ptr<const TrackProjectionInput> snapshot_;
+    QTimer projection_timer_;
+    std::unique_ptr<TrackProjection> projector_;
+    std::uint64_t projection_generation_{};
+    bool projection_pending_{};
     void rebuild_row_index();
     std::map<TrackRowId, int> row_index_;
+    std::map<TrackRowId, std::size_t> source_index_;
     const QWidget& styled_;
     std::shared_ptr<ArtworkPresentationService> artwork_{ArtworkPresentationService::acquire()};
     ArtworkRequest artwork_request_value_;
@@ -101,6 +150,7 @@ private:
     std::vector<std::string> tag_columns_;
     TrackViewState state_;
     const app::SearchIndex* search_{nullptr};
+    std::optional<std::uint64_t> search_revision_;
 };
 
 } // namespace wiola::gui

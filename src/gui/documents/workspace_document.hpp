@@ -29,6 +29,7 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QTimer>
 #include <QWidget>
 
 namespace wiola::gui {
@@ -62,8 +63,14 @@ public:
 
 private:
     void set_busy(bool busy);
+    void show_projection();
+    void queue_projection(const library::LibraryRepository* repository, bool immediate);
+    QTimer projection_timer_;
+    const library::LibraryRepository* projection_repository_{};
+    std::optional<std::uint64_t> projected_revision_;
 
     WorkspaceRows source_;
+    library::WorkspaceId workspace_id_;
     QLabel* heading_{nullptr};
     QLabel* status_{nullptr};
     QCheckBox* recursive_{nullptr};

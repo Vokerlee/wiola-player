@@ -23,7 +23,8 @@
 #include <gui/tracks/track_row.hpp>
 #include <library/repository.hpp>
 #include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace wiola::gui {
 
@@ -35,18 +36,26 @@ public:
 
     void cancel() noexcept { accepting_ = false; }
 
-    [[nodiscard]] const std::vector<TrackRow>& rows() const noexcept { return rows_; }
+    [[nodiscard]] const std::vector<TrackRow>& rows() const;
+
+    [[nodiscard]] std::size_t size() const noexcept { return ordered_.size(); }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
 
     [[nodiscard]] const TrackRow* row(const TrackRowId& id) const;
 
 private:
-    void index_rows();
+    bool put(TrackRow row);
+    using Order = std::map<std::pair<std::string, library::MediaId>, TrackRow>;
     library::WorkspaceRecord workspace_;
     std::uint64_t generation_{0};
     bool accepting_{false};
-    std::vector<TrackRow> rows_;
-    std::map<library::MediaId, std::size_t> index_;
-    std::set<library::MediaId> seen_;
+    Order ordered_;
+    mutable std::vector<TrackRow> rows_;
+    mutable bool dirty_{};
+    std::uint64_t revision_{};
+    std::unordered_map<library::MediaId, Order::iterator> index_;
+    std::unordered_set<library::MediaId> seen_;
 };
 
 } // namespace wiola::gui

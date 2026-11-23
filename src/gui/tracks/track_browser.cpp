@@ -32,11 +32,21 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
 {
     setObjectName("trackBrowser");
     table_->set_capabilities(capabilities);
+    search_timer_.setSingleShot(true);
+    search_timer_.setInterval(75);
+    connect(&search_timer_, &QTimer::timeout, &lifetime_, [this] {
+        if (pending_query_) {
+            auto query = std::move(*pending_query_);
+            pending_query_.reset();
+            apply_query(std::move(query));
+        }
+    });
     search_->on_changed([this](library::SearchQuery query) {
-        auto state = table_->view_state();
-        query.filters = state.query.filters;
-        state.query = std::move(query);
-        table_->set_view_state(std::move(state));
+        if (table_->total_count() >= TrackTableModel::asynchronous_projection_threshold) {
+            pending_query_ = std::move(query);
+            search_timer_.start();
+        } else
+            apply_query(std::move(query));
     });
     filters_->on_edit([this](TagFilterEdit edit) {
         auto state = table_->view_state();
@@ -82,17 +92,28 @@ TrackBrowser::~TrackBrowser()
         filters_->on_edit({});
 }
 
+void TrackBrowser::apply_query(library::SearchQuery query)
+{
+    auto state = table_->view_state();
+    query.filters = state.query.filters;
+    state.query = std::move(query);
+    table_->set_view_state(std::move(state));
+}
+
 void TrackBrowser::set_view_state(TrackViewState state)
 {
+    search_timer_.stop();
+    pending_query_.reset();
     table_->set_view_state(std::move(state));
     search_->show_query(table_->view_state().query);
     filters_->show_filters(table_->view_state().query.filters);
     update_results();
 }
 
-void TrackBrowser::show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current)
+void TrackBrowser::show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current,
+    const library::LibraryRepository* repository)
 {
-    table_->show_rows(rows, std::move(current));
+    table_->show_rows(rows, std::move(current), repository);
     update_results();
 }
 
@@ -104,7 +125,8 @@ void TrackBrowser::show_library(const library::LibraryRepository& repository)
 
 void TrackBrowser::update_results()
 {
-    search_->show_results(table_->visible_count(), table_->total_count());
+    search_->show_results(table_->visible_count(), table_->total_count(),
+        table_->projection_pending());
 }
 
 } // namespace wiola::gui

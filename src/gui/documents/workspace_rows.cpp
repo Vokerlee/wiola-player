@@ -32,6 +32,9 @@ bool WorkspaceRows::begin(const library::WorkspaceRecord& workspace, std::uint64
     if (workspace.id != workspace_.id) {
         rows_.clear();
         index_.clear();
+        ordered_.clear();
+        dirty_ = false;
+        ++revision_;
     }
     workspace_ = workspace;
     generation_ = generation;
@@ -61,17 +64,19 @@ bool WorkspaceRows::apply(const app::WorkspaceScanBatch& batch,
             const auto title = entry.location.stem().u8string();
             row.metadata.title.assign(title.begin(), title.end());
         }
-        if (const auto found = index_.find(entry.media); found != index_.end())
-            rows_[found->second] = std::move(row);
-        else {
-            index_.emplace(entry.media, rows_.size());
-            rows_.push_back(std::move(row));
+        static_cast<void>(put(std::move(row)));
+    }
+    if (batch.status == app::WorkspaceScanStatus::complete) {
+        for (auto item = index_.begin(); item != index_.end();) {
+            if (!seen_.contains(item->first)) {
+                ordered_.erase(item->second);
+                item = index_.erase(item);
+                dirty_ = true;
+                ++revision_;
+            } else
+                ++item;
         }
     }
-    if (batch.status == app::WorkspaceScanStatus::complete)
-        std::erase_if(rows_, [&](const auto& row) { return !seen_.contains(row.media); });
-    std::ranges::stable_sort(rows_, {}, &TrackRow::location_key);
-    index_rows();
     if (batch.status != app::WorkspaceScanStatus::running)
         accepting_ = false;
     return true;
@@ -85,7 +90,7 @@ bool WorkspaceRows::update_media(const library::LibraryRepository& repository,
     if (found == index_.end() || !record)
         return false;
     auto row = present_record(WorkspaceTrackId{workspace_.id, media}, *record);
-    const auto& previous = rows_[found->second];
+    const auto& previous = found->second->second;
     if (row.location.empty() || std::ranges::any_of(record->locations, [&](const auto& location) {
             return library::media_id_for(location).value == previous.location_key;
         })) {
@@ -94,8 +99,7 @@ bool WorkspaceRows::update_media(const library::LibraryRepository& repository,
     }
     if (row == previous)
         return false;
-    rows_[found->second] = std::move(row);
-    return true;
+    return put(std::move(row));
 }
 
 const TrackRow* WorkspaceRows::row(const TrackRowId& id) const
@@ -104,14 +108,37 @@ const TrackRow* WorkspaceRows::row(const TrackRowId& id) const
     if (!workspace || workspace->workspace != workspace_.id)
         return nullptr;
     const auto found = index_.find(workspace->media);
-    return found == index_.end() ? nullptr : &rows_[found->second];
+    return found == index_.end() ? nullptr : &found->second->second;
 }
 
-void WorkspaceRows::index_rows()
+bool WorkspaceRows::put(TrackRow row)
 {
-    index_.clear();
-    for (std::size_t index = 0; index < rows_.size(); ++index)
-        index_.emplace(rows_[index].media, index);
+    const auto found = index_.find(row.media);
+    if (found != index_.end() && found->second->second == row)
+        return false;
+    const auto key = std::pair{row.location_key, row.media};
+    auto [inserted, fresh] = ordered_.insert_or_assign(key, std::move(row));
+    if (found != index_.end()) {
+        if (found->second != inserted)
+            ordered_.erase(found->second);
+        found->second = inserted;
+    } else
+        index_.emplace(inserted->second.media, inserted);
+    dirty_ = true;
+    ++revision_;
+    return true;
+}
+
+const std::vector<TrackRow>& WorkspaceRows::rows() const
+{
+    if (dirty_) {
+        rows_.clear();
+        rows_.reserve(ordered_.size());
+        for (const auto& [key, row] : ordered_)
+            rows_.push_back(row);
+        dirty_ = false;
+    }
+    return rows_;
 }
 
 } // namespace wiola::gui

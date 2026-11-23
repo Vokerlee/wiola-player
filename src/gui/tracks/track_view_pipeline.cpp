@@ -54,7 +54,8 @@ bool track_query_active(const library::SearchQuery& query)
 
 std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
     const library::LibraryRepository* repository, const library::SearchQuery& query,
-    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search)
+    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search,
+    const std::map<library::MediaId, library::SearchFields>* fields, std::stop_token stop)
 {
     std::vector<TrackRow> visible;
     visible.reserve(source.size());
@@ -65,16 +66,24 @@ std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
         const auto& ids = search->query_normalized(query);
         matching.insert(ids.begin(), ids.end());
     }
+    std::size_t visited = 0;
     for (const TrackRow& track : source) {
+        if ((visited++ % 64) == 0 && stop.stop_requested())
+            return {};
+        const auto held = fields
+            ? fields->find(track.media)
+            : std::map<library::MediaId, library::SearchFields>::const_iterator{};
         const bool accepted = !active ||
-            (search && search->contains(track.media) ? matching.contains(track.media)
-                                                     : matches(track, repository, query));
+            (fields && held != fields->end() ? library::matches_search_fields(query, held->second)
+                                             : (search && search->contains(track.media)
+                                                       ? matching.contains(track.media)
+                                                       : matches(track, repository, query)));
         if (accepted)
             visible.push_back(track);
     }
 
     if (!sort_keys.empty())
-        return sorted_rows(visible, repository, sort_keys);
+        return sorted_rows(visible, repository, sort_keys, nullptr, stop);
 
     return visible;
 }

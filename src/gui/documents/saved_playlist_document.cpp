@@ -109,19 +109,17 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     if (!source_.reconcile(repository, id))
         return false;
 
-    browser_->show_library(repository);
-    browser_->show_rows(source_.rows());
+    browser_->show_rows(source_.rows(), {}, &repository);
     return true;
 }
 
 bool SavedPlaylistDocument::show_media_revision(const library::LibraryRepository& repository,
     const library::MediaId& media)
 {
-    const bool changed = source_.update_media(repository, media);
-    browser_->show_library(repository);
-    if (changed)
-        browser_->show_rows(source_.rows());
-    return changed;
+    if (!source_.update_media(repository, media))
+        return false;
+    browser_->update_rows(source_.media_rows(media), &repository);
+    return true;
 }
 
 std::vector<SelectedTrack> SavedPlaylistDocument::selection() const

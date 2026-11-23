@@ -30,9 +30,12 @@
 
 #include <QApplication>
 #include <QBuffer>
+#include <QEventLoop>
 #include <QFont>
 #include <QImage>
 #include <QPixmap>
+#include <QSignalSpy>
+#include <QTimer>
 
 #include <QAbstractItemModelTester>
 #include <QPersistentModelIndex>
@@ -322,6 +325,81 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
 
     wiola::testing::set_track_query(model, {});
     EXPECT_EQ(model.rowCount(), 2);
+}
+
+TEST_F(TrackTableModelTest, LargeQueriesRejectOldResultsReuseSnapshotsAndKeepPersistentIdentity)
+{
+    using namespace wiola;
+    std::vector<gui::TrackRow> rows;
+    for (int i = 0; i < 5000; ++i) {
+        gui::TrackRow row;
+        row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
+        row.media = {std::to_string(i)};
+        row.metadata.title = "Track " + std::to_string(i);
+        row.location_key = std::to_string(i);
+        rows.push_back(std::move(row));
+    }
+    gui::TrackTableModel model{styled};
+    model.show_rows(rows);
+    QPersistentModelIndex retained = model.index(4999, 1);
+    QEventLoop loop;
+    QTimer deadline;
+    deadline.setSingleShot(true);
+    QObject::connect(&deadline, &QTimer::timeout, &loop, &QEventLoop::quit);
+    model.on_async_projection([&](auto apply) {
+        apply();
+        loop.quit();
+    });
+    gui::TrackViewState first;
+    first.query.title = "Track 4";
+    ASSERT_TRUE(model.set_view_state(first));
+    EXPECT_TRUE(model.projection_pending());
+    auto last = first;
+    last.query.title = "Track 4999";
+    ASSERT_TRUE(model.set_view_state(last));
+    deadline.start(10000);
+    loop.exec();
+    EXPECT_FALSE(model.projection_pending());
+    ASSERT_EQ(model.rowCount(), 1);
+    EXPECT_TRUE(retained.isValid());
+    EXPECT_EQ(retained.row(), 0);
+    EXPECT_EQ(retained.data().toString(), "Track 4999");
+    EXPECT_EQ(model.projection_statistics().snapshots, 1);
+    EXPECT_EQ(model.projection_statistics().source_rebuilds, 1);
+    EXPECT_EQ(model.projection_statistics().commits, 2);
+    last.query.title = "not present";
+    ASSERT_TRUE(model.set_view_state(last));
+    deadline.start(10000);
+    loop.exec();
+    EXPECT_EQ(model.rowCount(), 0);
+    EXPECT_FALSE(retained.isValid());
+    EXPECT_EQ(model.projection_statistics().snapshots, 1);
+}
+
+TEST_F(TrackTableModelTest, ARowPatchUpdatesOnlyItsOccurrenceWithoutRebuildingTheSourceOrQuery)
+{
+    using namespace wiola;
+    std::vector<gui::TrackRow> rows;
+    for (int i = 0; i < 1000; ++i) {
+        gui::TrackRow row;
+        row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
+        row.media = {std::to_string(i)};
+        row.metadata.title = "Track " + std::to_string(i);
+        rows.push_back(std::move(row));
+    }
+    gui::TrackTableModel model{styled};
+    model.show_rows(rows);
+    const auto before = model.projection_statistics();
+    QSignalSpy changed{&model, &QAbstractItemModel::dataChanged};
+    auto row = rows[517];
+    row.metadata.title = "Updated";
+    model.update_rows({row});
+    EXPECT_EQ(changed.size(), 1);
+    EXPECT_EQ(model.index(517, 1).data().toString(), "Updated");
+    EXPECT_EQ(model.index(516, 1).data().toString(), "Track 516");
+    EXPECT_EQ(model.projection_statistics().source_rebuilds, before.source_rebuilds);
+    EXPECT_EQ(model.projection_statistics().queries, before.queries);
+    EXPECT_EQ(model.projection_statistics().updated_rows, 1);
 }
 
 int main(int argc, char** argv)

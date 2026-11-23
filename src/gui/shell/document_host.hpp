@@ -77,6 +77,7 @@ private:
     QWidget* empty_;
     NowPlayingDocument* queue_;
     bool restoring_{true};
+    std::uint64_t catalog_revision_{};
     library::LibraryChanges::Subscription changes_;
     QObject lifetime_;
 };

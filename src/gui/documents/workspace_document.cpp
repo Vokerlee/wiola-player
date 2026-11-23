@@ -36,6 +36,9 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     : QWidget{parent}
 {
     setObjectName("workspaceDocument");
+    projection_timer_.setSingleShot(true);
+    projection_timer_.setInterval(25);
+    connect(&projection_timer_, &QTimer::timeout, this, &WorkspaceDocument::show_projection);
     heading_ = new QLabel{this};
     heading_->setObjectName("workspaceHeading");
     QFont font = heading_->font();
@@ -130,10 +133,13 @@ void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::ui
 {
     if (!source_.begin(workspace, generation))
         return;
+    projection_timer_.stop();
+    workspace_id_ = workspace.id;
     heading_->setText(platform::qt::QtPathAdapter::to_qt(workspace.root));
     recursive_->setChecked(workspace.recursive);
     status_->setText("Scanning...");
-    browser_->show_rows(source_.rows());
+    browser_->table().defer_browser_restore();
+    show_projection();
     set_busy(true);
 }
 
@@ -142,12 +148,10 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
 {
     if (!source_.apply(batch, repository))
         return false;
-    if (repository)
-        browser_->show_library(*repository);
-    browser_->show_rows(source_.rows());
+    queue_projection(repository, batch.status != app::WorkspaceScanStatus::running);
     if (batch.status == app::WorkspaceScanStatus::complete)
         browser_->table().finish_browser_restore();
-    status_->setText(QString{"%1 tracks"}.arg(source_.rows().size()));
+    status_->setText(QString{"%1 tracks"}.arg(source_.size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
     if (batch.status == app::WorkspaceScanStatus::failed) {
@@ -187,11 +191,18 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
 bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& repository,
     const library::MediaId& media)
 {
-    const bool changed = source_.update_media(repository, media);
-    browser_->show_library(repository);
-    if (changed)
-        browser_->show_rows(source_.rows());
-    return changed;
+    const auto id = WorkspaceTrackId{workspace_id_, media};
+    const auto* before = source_.row(id);
+    const auto location = before ? before->location_key : std::string{};
+    if (!source_.update_media(repository, media))
+        return false;
+    const auto* row = source_.row(id);
+    if (row && row->location_key == location && !projection_timer_.isActive()) {
+        browser_->update_rows({*row}, &repository);
+        projected_revision_ = source_.revision();
+    } else
+        queue_projection(&repository, false);
+    return true;
 }
 
 void WorkspaceDocument::show_library(const library::LibraryRepository& repository)
@@ -201,9 +212,30 @@ void WorkspaceDocument::show_library(const library::LibraryRepository& repositor
 
 void WorkspaceDocument::show_cancelled()
 {
+    projection_timer_.stop();
+    show_projection();
     source_.cancel();
-    status_->setText(QString{"%1 tracks — cancelled"}.arg(source_.rows().size()));
+    status_->setText(QString{"%1 tracks — cancelled"}.arg(source_.size()));
     set_busy(false);
+}
+
+void WorkspaceDocument::queue_projection(const library::LibraryRepository* repository,
+    bool immediate)
+{
+    projection_repository_ = repository;
+    if (immediate || source_.size() < TrackTableModel::asynchronous_projection_threshold) {
+        projection_timer_.stop();
+        show_projection();
+    } else if (!projection_timer_.isActive())
+        projection_timer_.start();
+}
+
+void WorkspaceDocument::show_projection()
+{
+    if (projected_revision_ == source_.revision())
+        return;
+    browser_->show_rows(source_.rows(), {}, projection_repository_);
+    projected_revision_ = source_.revision();
 }
 
 void WorkspaceDocument::set_busy(bool busy)
