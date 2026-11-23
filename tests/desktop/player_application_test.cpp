@@ -34,7 +34,9 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDir>
 #include <QEventLoop>
+#include <QFileInfo>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QThread>
@@ -81,6 +83,8 @@ protected:
     {
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
         settings.clear();
+        for (const auto& name : {"layout.json", "layout.json.bak"})
+            QFile::remove(QFileInfo{settings.fileName()}.dir().filePath(name));
         settings.sync();
     }
 

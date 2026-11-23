@@ -28,7 +28,10 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QCoreApplication>
+#include <QDir>
 #include <QEventLoop>
+#include <QFile>
+#include <QFileInfo>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPushButton>
@@ -150,6 +153,8 @@ protected:
     {
         QSettings settings = player_settings();
         settings.clear();
+        for (const auto& name : {"layout.json", "layout.json.bak"})
+            QFile::remove(QFileInfo{settings.fileName()}.dir().filePath(name));
         settings.sync();
     }
 

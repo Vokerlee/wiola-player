@@ -36,6 +36,8 @@ struct LayoutAttachment {
 /// intact.
 class PreparedLayout final {
 public:
+    [[nodiscard]] const LayoutDocument& document() const { return document_; }
+
     [[nodiscard]] bool ready(QWidget* parent = nullptr) const;
     [[nodiscard]] QWidget* attach(QWidget* parent = nullptr);
 
@@ -43,16 +45,18 @@ private:
     friend class LayoutBuilder;
 
     PreparedLayout(std::unique_ptr<QWidget> root, std::vector<LayoutAttachment> attachments,
-        ViewRegistry views)
+        ViewRegistry views, LayoutDocument document)
         : root_{std::move(root)}
         , attachments_{std::move(attachments)}
         , views_{std::move(views)}
+        , document_{std::move(document)}
     {
     }
 
     std::unique_ptr<QWidget> root_;
     std::vector<LayoutAttachment> attachments_;
     ViewRegistry views_;
+    LayoutDocument document_;
 };
 
 } // namespace wiola::gui

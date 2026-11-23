@@ -159,3 +159,9 @@ wiola_add_test(
     SOURCES appearance/artwork_presentation_test.cpp
     LIBS wiola_gui
 )
+
+wiola_add_test(
+    gui_layout_session_test
+    SOURCES layout/layout_session_test.cpp
+    LIBS wiola_gui
+)

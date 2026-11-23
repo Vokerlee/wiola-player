@@ -181,7 +181,8 @@ std::unique_ptr<PreparedLayout> LayoutBuilder::prepare(const LayoutNode& node,
         return nullptr;
 
     return std::unique_ptr<PreparedLayout>{
-        new PreparedLayout{std::unique_ptr<QWidget>{root}, std::move(attachments), views_}
+        new PreparedLayout{std::unique_ptr<QWidget>{root}, std::move(attachments), views_,
+                           document}
     };
 }
 

@@ -37,6 +37,7 @@
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/documents/workspace_document.hpp>
 #include <gui/layout/layout_document.hpp>
+#include <gui/layout/layout_session.hpp>
 #include <gui/layout/view_registry.hpp>
 #include <gui/metadata/track_inspector.hpp>
 #include <library/metadata_patch.hpp>
@@ -70,6 +71,7 @@
 #include <vector>
 
 class QSplitter;
+class QActionGroup;
 
 namespace wiola::gui {
 
@@ -103,8 +105,12 @@ public:
 
     /// Builds a complete layout before replacing the current one, retaining registered widgets.
     [[nodiscard]] bool switch_layout(const LayoutDocument& document);
+    [[nodiscard]] bool import_layout(QByteArrayView bytes);
+    [[nodiscard]] QByteArray layout_json() const;
 
 private:
+    void show_layout_choice();
+    bool install_layout(const LayoutDocument& document, LayoutChoice choice, bool persist);
     /// Asks for files and plays them, in the order they were chosen.
     void choose_tracks();
 
@@ -217,6 +223,8 @@ private:
     /// Shared command objects; buttons and keyboard shortcuts trigger the same actions.
     PlayerActions actions_;
     ViewRegistry views_;
+    std::unique_ptr<LayoutSession> layout_session_;
+    QActionGroup* layout_presets_{nullptr};
 
     /// Which of the two it is wearing, or nothing before it wears either.
     std::optional<bool> showing_pause_;

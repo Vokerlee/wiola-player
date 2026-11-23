@@ -23,6 +23,7 @@
 
 #include <gui/appearance/theme_editor.hpp>
 #include <gui/layout/classic_layout.hpp>
+#include <gui/layout/editor/layout_editor_dialog.hpp>
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_table_view.hpp>
 #include <library/location.hpp>
@@ -30,6 +31,8 @@
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <QApplication>
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -94,6 +97,8 @@ protected:
     {
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
         settings.clear();
+        for (const auto& name : {"layout.json", "layout.json.bak"})
+            QFile::remove(QFileInfo{settings.fileName()}.dir().filePath(name));
         settings.sync();
     }
 
@@ -521,7 +526,7 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         action(*menu(window, "&View"), "Queue Focus")->trigger();
 
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
-        EXPECT_EQ(settings.value("layout/preset").toString(), "queue-focus");
+        EXPECT_FALSE(settings.contains("layout/preset"));
     }
 
     {
@@ -772,6 +777,39 @@ TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPla
     EXPECT_FALSE(library.repository().track(playing.id)->overrides.title);
     ASSERT_NE(session.playlist().current(), nullptr);
     EXPECT_EQ(session.playlist().current()->path(), playing.locations.front());
+}
+
+TEST_F(MainWindowShell, CustomLayoutReopensFromAcceptedValuesAndRestartsWithoutLosingEdits)
+{
+    QByteArray accepted;
+    {
+        wiola::engine::Session session;
+        wiola::app::LibrarySession library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::app::PlaybackService playback{session};
+        wiola::app::PlaybackPreferences preferences{playback};
+        wiola::gui::MainWindow window{playback, library, preferences};
+        auto edited = wiola::gui::classic_layout_document();
+        edited.root.id = "acceptedCustomRoot";
+        ASSERT_TRUE(window.switch_layout(edited));
+        accepted = window.layout_json();
+        action(*menu(window, "&Tools"), "Edit button layout...")->trigger();
+        auto* dialog = window.findChild<QDialog*>("buttonLayoutEditor");
+        ASSERT_NE(dialog, nullptr);
+        const auto* editor = static_cast<wiola::gui::LayoutEditorDialog*>(dialog);
+        EXPECT_EQ(editor->document().root.id, "acceptedCustomRoot");
+        dialog->reject();
+        EXPECT_FALSE(window.import_layout(R"({"version":99,"root":{}})"));
+        EXPECT_EQ(window.layout_json(), accepted);
+    }
+    {
+        wiola::engine::Session session;
+        wiola::app::LibrarySession library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::app::PlaybackService playback{session};
+        wiola::app::PlaybackPreferences preferences{playback};
+        wiola::gui::MainWindow window{playback, library, preferences};
+        EXPECT_EQ(window.layout_json(), accepted);
+        EXPECT_EQ(window.centralWidget()->objectName(), "acceptedCustomRoot");
+    }
 }
 
 } // namespace

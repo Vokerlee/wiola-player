@@ -40,6 +40,7 @@
 
 #include <QActionGroup>
 #include <QCursor>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
@@ -419,8 +420,22 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         LayoutComponentKind::button, false));
     static_cast<void>(views_.add(component_view("playerStatus"), status_label_,
         LayoutComponentKind::status, false));
-    const QString selected_layout = settings_.value("layout/preset", "classic").toString();
-    static_cast<void>(switch_layout(layout_for(selected_layout)));
+    const auto legacy_layout = settings_.value("layout/preset", "classic").toString();
+    layout_session_ = std::make_unique<LayoutSession>(
+        platform::qt::QtPathAdapter::from_qt(
+            QFileInfo{settings_.fileName()}.dir().filePath("layout.json")
+        ),
+        layout_for(legacy_layout),
+        parse_layout_choice(legacy_layout).value_or(LayoutChoice::classic)
+    );
+    if (!install_layout(layout_session_->document(), layout_session_->choice(), false)) {
+        layout_session_->use_fallback(classic_layout_document(), LayoutChoice::classic);
+        static_cast<void>(install_layout(layout_session_->document(), LayoutChoice::classic,
+            false));
+    }
+    const auto selected_layout = layout_choice_name(layout_session_->choice());
+    if (layout_session_->restore_error() != LayoutSessionError::none)
+        show_status("Could not restore the saved layout; a usable layout was retained");
 
     connect(actions_.action(PlayerAction::open), &QAction::triggered, this,
         &MainWindow::choose_tracks);
@@ -472,6 +487,10 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     QAction* library = view->addAction("Library Focus");
     QAction* queue = view->addAction("Queue Focus");
     auto* presets = new QActionGroup{this};
+    layout_presets_ = presets;
+    classic->setData("classic");
+    library->setData("library-focus");
+    queue->setData("queue-focus");
     presets->setExclusive(true);
 
     for (QAction* preset : {classic, library, queue}) {
@@ -479,16 +498,14 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         presets->addAction(preset);
     }
 
-    classic->setChecked(selected_layout != "library-focus" && selected_layout != "queue-focus");
+    classic->setChecked(selected_layout == "classic");
     library->setChecked(selected_layout == "library-focus");
     queue->setChecked(selected_layout == "queue-focus");
 
     const auto choose_layout = [this](const QString& choice) {
-        if (!switch_layout(layout_for(choice)))
-            return;
-
-        settings_.setValue("layout/preset", choice);
-        settings_.sync();
+        static_cast<void>(install_layout(layout_for(choice),
+            parse_layout_choice(choice).value_or(LayoutChoice::classic), true));
+        show_layout_choice();
     };
 
     connect(classic, &QAction::triggered, this, [choose_layout] { choose_layout("classic"); });
@@ -528,13 +545,40 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     tools->addAction(actions_.action(PlayerAction::equalizer));
     QAction* edit_layout = tools->addAction("Edit button layout...");
     connect(edit_layout, &QAction::triggered, this, [this] {
-        auto* editor = new LayoutEditorDialog{
-            layout_for(settings_.value("layout/preset", "classic").toString()), this};
+        auto* editor = new LayoutEditorDialog{layout_session_->document(), this};
         editor->setAttribute(Qt::WA_DeleteOnClose);
         editor->on_apply([this](const LayoutDocument& document) {
             return switch_layout(document);
         });
         editor->show();
+    });
+
+    auto* import_layout_action = tools->addAction("Import layout...");
+    connect(import_layout_action, &QAction::triggered, this, [this] {
+        const auto path =
+            QFileDialog::getOpenFileName(this, "Import layout", {}, "Layout (*.json)");
+        if (path.isEmpty())
+            return;
+        persistence::qt::AtomicFileStore input{platform::qt::QtPathAdapter::from_qt(path),
+            256 * 1024};
+        const auto read = input.read(persistence::qt::FileSlot::primary);
+        if (read.error != persistence::qt::FileStoreError::none || !read.exists)
+            show_status("Could not read the layout file");
+        else
+            static_cast<void>(import_layout(read.bytes));
+    });
+    auto* export_layout_action = tools->addAction("Export layout...");
+    connect(export_layout_action, &QAction::triggered, this, [this] {
+        const auto path =
+            QFileDialog::getSaveFileName(this, "Export layout", {}, "Layout (*.json)");
+        if (path.isEmpty())
+            return;
+        persistence::qt::AtomicFileStore output{platform::qt::QtPathAdapter::from_qt(path),
+            256 * 1024};
+        show_status(output.write(persistence::qt::FileSlot::primary, layout_json()) ==
+                    persistence::qt::FileStoreError::none
+                ? "Layout exported"
+                : "Could not export the layout");
     });
 
     QAction* edit_theme = tools->addAction("Edit theme...");
@@ -585,7 +629,36 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
 MainWindow::~MainWindow() = default;
 
+void MainWindow::show_layout_choice()
+{
+    if (!layout_presets_ || !layout_session_)
+        return;
+    const auto key = layout_choice_name(layout_session_->choice());
+    for (auto* action : layout_presets_->actions())
+        action->setChecked(action->data().toString() == key);
+}
+
 bool MainWindow::switch_layout(const LayoutDocument& document)
+{
+    return install_layout(document, LayoutChoice::custom, true);
+}
+
+bool MainWindow::import_layout(QByteArrayView bytes)
+{
+    LayoutDocument document;
+    if (read_layout_json(bytes, document) != LayoutJsonError::none) {
+        show_status("That layout file is invalid or uses an unsupported version");
+        return false;
+    }
+    return switch_layout(document);
+}
+
+QByteArray MainWindow::layout_json() const
+{
+    return write_layout_json(layout_session_->document());
+}
+
+bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice choice, bool persist)
 {
     if (document.node_count == 0) {
         show_status("Could not construct the layout");
@@ -616,7 +689,23 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
 
     auto prepared =
         builder.prepare(document.root, {.actions = &actions_, .library = &library_}, this);
-    QWidget* root = prepared ? prepared->attach(this) : nullptr;
+    QWidget* root = nullptr;
+    if (persist && prepared) {
+        const auto result = layout_session_->accept(document, choice, std::move(prepared), this);
+        root = result.root;
+        if (result.error != LayoutSessionError::none) {
+            show_status(result.error == LayoutSessionError::unsupported_version
+                    ? "Saved layout uses a newer version"
+                    : result.error == LayoutSessionError::rollback_failed
+                    ? "Could not restore the previous saved layout; the current view layout was "
+                      "retained"
+                    : "Could not save or attach this layout");
+            return false;
+        }
+        settings_.remove("layout/preset");
+        settings_.sync();
+    } else if (prepared)
+        root = prepared->attach(this);
 
     if (root == nullptr) {
         show_status("Could not construct the layout");
@@ -656,6 +745,7 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
         layout->setSpacing(tokens.player.section_spacing);
 
     setCentralWidget(root);
+    show_layout_choice();
     return true;
 }
 
