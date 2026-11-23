@@ -189,6 +189,7 @@ jobs:
             echo '### Coverage'
             echo '```'
             cat build-coverage/coverage/summary.txt
+            cat build-coverage/coverage/workflow.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       # What this pull request itself left untested, which a total is too blunt to show.
@@ -202,6 +203,17 @@ jobs:
         with:
           name: coverage-html
           path: build-coverage/coverage/html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-evidence
+          path: |
+            build-coverage/coverage/manifest.json
+            build-coverage/coverage/inventory.json
+            build-coverage/coverage/summary.json
+            build-coverage/coverage/summary.txt
+            build-coverage/coverage/workflow.json
+            build-coverage/coverage/workflow.txt
+            build-coverage/coverage/coverage.lcov
       # Only from main: what a pull request measured is its own, and does not replace the report.
       # The report takes a path of its own, leaving the root for whatever is put there later.
       - if: github.ref == 'refs/heads/main'
