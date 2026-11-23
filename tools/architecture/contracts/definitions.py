@@ -161,4 +161,9 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/testing/desktop_checks/__main__.py', 'tools/testing/desktop_checks/environment.py'), grouping=False,
     ),
+    AbstractionContract(
+        'testing.cmake_build', 'tools/testing/cmake_build', 'Builds configured CMake targets and resolves their declared executable artifacts',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/testing/cmake_build/build.py',), grouping=False,
+    ),
 )

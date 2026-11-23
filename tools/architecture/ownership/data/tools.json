@@ -309,6 +309,18 @@
       ]
     },
     {
+      "id": "testing.cmake_build",
+      "purpose": "Builds configured CMake targets and resolves their declared executable artifacts",
+      "files": [
+        "tools/testing/cmake_build/README.md",
+        "tools/testing/cmake_build/__init__.py",
+        "tools/testing/cmake_build/build.py",
+        "tools/testing/cmake_build/tests/README.md",
+        "tools/testing/cmake_build/tests/__init__.py",
+        "tools/testing/cmake_build/tests/test_build.py"
+      ]
+    },
+    {
       "id": "testing.desktop_checks",
       "purpose": "Composes desktop fixture environment and packaged test execution",
       "files": [

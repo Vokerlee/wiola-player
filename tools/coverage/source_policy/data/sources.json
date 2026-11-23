@@ -4733,6 +4733,34 @@
       "workflow": false
     },
     {
+      "path": "tools/testing/cmake_build/__init__.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/cmake_build/build.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/cmake_build/tests/__init__.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/cmake_build/tests/test_build.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "tools/testing/desktop_checks/__init__.py",
       "owner": "testing.desktop_checks",
       "language": "python",
