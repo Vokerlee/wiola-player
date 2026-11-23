@@ -19,6 +19,7 @@
  */
 
 #include "layout_builder.hpp"
+#include "layout_tree.hpp"
 #include "layout_widget_operations.hpp"
 #include <gui/shell/action_button_binding.hpp>
 
@@ -42,19 +43,6 @@ namespace wiola::gui {
 using namespace layout_detail;
 
 namespace {
-
-std::size_t bounded_count(const LayoutNode& node, int depth = 0)
-{
-    if (depth > 16)
-        return 257;
-    std::size_t count = 1;
-    for (const LayoutNode& child : node.children) {
-        count += bounded_count(child, depth + 1);
-        if (count > 256)
-            break;
-    }
-    return count;
-}
 
 } // namespace
 
@@ -168,7 +156,9 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
 std::unique_ptr<PreparedLayout> LayoutBuilder::prepare(const LayoutNode& node,
     const LayoutBuildContext& context, QWidget* parent) const
 {
-    const LayoutDocument document{.version = 2, .root = node, .node_count = bounded_count(node)};
+    const LayoutDocument document{.version = 2,
+        .root = node,
+        .node_count = layout_node_count(node)};
     if (validate_layout_document(document) != LayoutJsonError::none)
         return nullptr;
     const auto preflight = [&](auto&& self, const LayoutNode& current) -> bool {

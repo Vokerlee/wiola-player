@@ -29,7 +29,7 @@
 #include <gui/appearance/theme_editor.hpp>
 #include <gui/controls/clock.hpp>
 #include <gui/layout/classic_layout.hpp>
-#include <gui/layout/editor/button_layout_editor.hpp>
+#include <gui/layout/editor/layout_editor_dialog.hpp>
 #include <gui/layout/focused_layout.hpp>
 #include <gui/layout/layout_builder.hpp>
 #include <platform/qt/player_settings.hpp>
@@ -528,7 +528,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     tools->addAction(actions_.action(PlayerAction::equalizer));
     QAction* edit_layout = tools->addAction("Edit button layout...");
     connect(edit_layout, &QAction::triggered, this, [this] {
-        auto* editor = new ButtonLayoutEditor{
+        auto* editor = new LayoutEditorDialog{
             layout_for(settings_.value("layout/preset", "classic").toString()), this};
         editor->setAttribute(Qt::WA_DeleteOnClose);
         editor->on_apply([this](const LayoutDocument& document) {

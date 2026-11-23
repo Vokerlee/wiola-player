@@ -19,12 +19,15 @@
  */
 
 #include <gui/layout/classic_layout.hpp>
-#include <gui/layout/editor/button_layout_editor.hpp>
+#include <gui/layout/editor/layout_editor_dialog.hpp>
 
 #include <QApplication>
 #include <QDialogButtonBox>
+#include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QPointer>
+#include <QTest>
 
 #include <gtest/gtest.h>
 
@@ -51,7 +54,7 @@ QTreeWidgetItem* item(QTreeWidget& tree, const QString& id)
 
 TEST(ButtonLayoutEditor, AddsConfiguresAndAppliesPaletteActions)
 {
-    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
     auto* palette = editor.findChild<QListWidget*>("layoutComponentPalette");
     auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
     ASSERT_NE(palette, nullptr);
@@ -94,7 +97,7 @@ TEST(ButtonLayoutEditor, AddsConfiguresAndAppliesPaletteActions)
 
 TEST(ButtonLayoutEditor, AcceptsPaletteDropsAndRestoresHistory)
 {
-    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
     auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
     ASSERT_NE(tree, nullptr);
     QTreeWidgetItem* transport = item(*tree, "transportControls");
@@ -121,7 +124,7 @@ TEST(ButtonLayoutEditor, AcceptsPaletteDropsAndRestoresHistory)
 
 TEST(ButtonLayoutEditor, RepeatedConfigurationRetainsTheSelectedComponentIdentity)
 {
-    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
     auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
     auto* title = editor.findChild<QLineEdit*>("layoutComponentTitle");
     ASSERT_NE(tree, nullptr);
@@ -141,7 +144,7 @@ TEST(ButtonLayoutEditor, RepeatedConfigurationRetainsTheSelectedComponentIdentit
 
 TEST(ButtonLayoutEditor, CreatesAndConfiguresContainersWithUndoAndIsolatedPreview)
 {
-    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
     auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
     auto* kind = editor.findChild<QComboBox*>("layoutContainerType");
     auto* add = editor.findChild<QPushButton*>("addLayoutContainer");
@@ -183,7 +186,7 @@ TEST(ButtonLayoutEditor, CreatesAndConfiguresContainersWithUndoAndIsolatedPrevie
 #ifndef WIOLA_TEST_TSAN
 TEST(ButtonLayoutEditor, RemovesSelectedComponentsWithTheKeyboard)
 {
-    wiola::gui::ButtonLayoutEditor editor{wiola::gui::classic_layout_document()};
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
     auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
     ASSERT_NE(tree, nullptr);
     editor.show();
@@ -199,6 +202,90 @@ TEST(ButtonLayoutEditor, RemovesSelectedComponentsWithTheKeyboard)
     EXPECT_EQ(find(editor.document().root, "openTracks"), nullptr);
 }
 #endif
+
+TEST(LayoutEditorComponents, InvalidPropertyInputRetainsItsDraftUntilCorrected)
+{
+    using namespace wiola::gui;
+    LayoutPropertyInspector inspector;
+    LayoutNode node{
+        .id = "split",
+        .kind = LayoutComponentKind::splitter,
+        .children = {{.id = "first", .kind = LayoutComponentKind::status},
+                     {.id = "second", .kind = LayoutComponentKind::status}}
+    };
+    inspector.show_node(&node);
+    int accepted{}, rejected{};
+    inspector.show();
+    auto* weights = inspector.findChild<QLineEdit*>("layoutSplitterSizes");
+    ASSERT_NE(weights, nullptr);
+    weights->setFocus();
+    QApplication::processEvents();
+    inspector.on_changed([&] {
+        if (auto edited = inspector.configuration(node)) {
+            node = *edited;
+            ++accepted;
+        } else
+            ++rejected;
+    });
+    QTest::keyClicks(weights, "bad");
+    QTest::keyClick(weights, Qt::Key_Return);
+    EXPECT_EQ(rejected, 1);
+    EXPECT_EQ(accepted, 0);
+    EXPECT_EQ(weights->text(), "bad");
+    EXPECT_TRUE(node.sizes.empty());
+    EXPECT_TRUE(inspector.error().contains("positive"));
+    EXPECT_FALSE(weights->accessibleDescription().isEmpty());
+    weights->selectAll();
+    QTest::keyClicks(weights, "1, 3");
+    QTest::keyClick(weights, Qt::Key_Return);
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(node.sizes, (std::vector<int>{1, 3}));
+    EXPECT_TRUE(inspector.error().isEmpty());
+}
+
+TEST(LayoutEditorComponents, FailedPreviewPreparationRetainsTheLastGoodIsolatedTree)
+{
+    using namespace wiola::gui;
+    LayoutPreviewHost preview;
+    LayoutDocument document{
+        .root = {.id = "previewPlay",
+                 .kind = LayoutComponentKind::button,
+                 .action = PlayerAction::play},
+        .node_count = 1
+    };
+    ASSERT_TRUE(preview.show_document(document));
+    QPointer<QPushButton> original = preview.findChild<QPushButton*>("previewPlay");
+    ASSERT_NE(original, nullptr);
+    document.root.kind = static_cast<LayoutComponentKind>(999);
+    EXPECT_FALSE(preview.show_document(document));
+    EXPECT_NE(original, nullptr);
+    EXPECT_EQ(preview.findChild<QPushButton*>("previewPlay"), original.data());
+}
+
+TEST(LayoutEditorComponents, RejectsOversizedAndUnknownDragPayloadsWithoutIssuingEditRequests)
+{
+    wiola::gui::LayoutHierarchy hierarchy;
+    int drops{};
+    hierarchy.on_drop([&](auto) { ++drops; });
+    for (const auto& payload :
+        {QByteArray(300, 'x'), QByteArray{"action:unknown"}, QByteArray{"arbitrary"}}) {
+        QMimeData data;
+        data.setData("application/x-wiola-layout-component", payload);
+        QDragEnterEvent enter{
+            QPoint{1, 1},
+            Qt::CopyAction, &data, Qt::LeftButton, Qt::NoModifier
+        };
+        QApplication::sendEvent(hierarchy.viewport(), &enter);
+        EXPECT_FALSE(enter.isAccepted());
+        QDropEvent drop{
+            QPointF{1, 1},
+            Qt::CopyAction, &data, Qt::LeftButton, Qt::NoModifier
+        };
+        QApplication::sendEvent(hierarchy.viewport(), &drop);
+        EXPECT_FALSE(drop.isAccepted());
+    }
+    EXPECT_EQ(drops, 0);
+}
 
 } // namespace
 

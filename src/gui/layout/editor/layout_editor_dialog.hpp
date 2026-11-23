@@ -19,6 +19,9 @@
  */
 
 #pragma once
+#include "layout_preview_host.hpp"
+#include "layout_property_inspector.hpp"
+#include "layout_tree_views.hpp"
 
 #include <gui/layout/layout_editor.hpp>
 
@@ -37,11 +40,11 @@ class QLayout;
 
 namespace wiola::gui {
 
-class ButtonLayoutEditor final : public QDialog {
+class LayoutEditorDialog final : public QDialog {
 public:
     using ApplyObserver = std::function<bool(const LayoutDocument&)>;
 
-    explicit ButtonLayoutEditor(LayoutDocument document, QWidget* parent = nullptr);
+    explicit LayoutEditorDialog(LayoutDocument document, QWidget* parent = nullptr);
 
     void on_apply(ApplyObserver observer);
 
@@ -52,7 +55,7 @@ private:
     void add_container();
     void remove_selected();
     void move_selected(int offset);
-    void drop_component(const QString& payload, const QPoint& position);
+    void drop_component(LayoutDrop request);
     void insert_action(PlayerAction action, const QString& parent, std::size_t index);
     void configure_selected();
     void rebuild(const QString& selected = {});
@@ -63,22 +66,15 @@ private:
     [[nodiscard]] QString selected_id() const;
 
     LayoutEditor editor_;
-    QListWidget* palette_{nullptr};
-    QTreeWidget* hierarchy_{nullptr};
-    QLineEdit* title_{nullptr};
-    QSpinBox* width_{nullptr};
-    QComboBox* action_{nullptr};
+    ComponentPalette* palette_{nullptr};
+    LayoutHierarchy* hierarchy_{nullptr};
+    LayoutPropertyInspector* inspector_{nullptr};
     QComboBox* container_kind_{nullptr};
-    QComboBox* orientation_{nullptr};
-    QSpinBox* columns_{nullptr};
-    QLineEdit* sizes_{nullptr};
     QPushButton* undo_{nullptr};
     QPushButton* redo_{nullptr};
     QLabel* status_{nullptr};
-    QWidget* preview_{nullptr};
-    QLayout* preview_layout_{nullptr};
+    LayoutPreviewHost* preview_{nullptr};
     ApplyObserver apply_observer_;
-    bool updating_{false};
 };
 
 } // namespace wiola::gui

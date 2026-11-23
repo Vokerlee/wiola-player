@@ -3,7 +3,10 @@ wiola_add_library(
     SOURCES
         controls/clock.cpp
         appearance/artwork_presentation.cpp
-        layout/editor/button_layout_editor.cpp
+        layout/editor/layout_editor_dialog.cpp
+        layout/editor/layout_tree_views.cpp
+        layout/editor/layout_property_inspector.cpp
+        layout/editor/layout_preview_host.cpp
         layout/classic_layout.cpp
         metadata/custom_tag_editor.cpp
         controls/equalizer_panel.cpp
