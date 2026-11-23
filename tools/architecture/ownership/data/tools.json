@@ -2,6 +2,15 @@
   "schema_version": 1,
   "owners": [
     {
+      "id": "architecture.check_dependencies",
+      "purpose": "Assembles current dependency checks and reports violations.",
+      "files": [
+        "tools/architecture/commands/check_dependencies/README.md",
+        "tools/architecture/commands/check_dependencies/__init__.py",
+        "tools/architecture/commands/check_dependencies/__main__.py"
+      ]
+    },
+    {
       "id": "architecture.check_ownership",
       "purpose": "Assembles ownership checking and reports stable command exit outcomes.",
       "files": [
@@ -43,6 +52,33 @@
         "tools/architecture/contracts/tests/README.md",
         "tools/architecture/contracts/tests/__init__.py",
         "tools/architecture/contracts/tests/test_catalog.py"
+      ]
+    },
+    {
+      "id": "architecture.dependency_graph",
+      "purpose": "Observes explicit source and configured dependency edges.",
+      "files": [
+        "tools/architecture/dependency_graph/README.md",
+        "tools/architecture/dependency_graph/__init__.py",
+        "tools/architecture/dependency_graph/graph.py",
+        "tools/architecture/dependency_graph/tests/README.md",
+        "tools/architecture/dependency_graph/tests/__init__.py",
+        "tools/architecture/dependency_graph/tests/test_graph.py"
+      ]
+    },
+    {
+      "id": "architecture.dependency_policy",
+      "purpose": "Checks dependency direction, Qt capability and public boundaries.",
+      "files": [
+        "tools/architecture/dependency_policy/README.md",
+        "tools/architecture/dependency_policy/__init__.py",
+        "tools/architecture/dependency_policy/data/README.md",
+        "tools/architecture/dependency_policy/data/legacy.json",
+        "tools/architecture/dependency_policy/data/modules.json",
+        "tools/architecture/dependency_policy/policy.py",
+        "tools/architecture/dependency_policy/tests/README.md",
+        "tools/architecture/dependency_policy/tests/__init__.py",
+        "tools/architecture/dependency_policy/tests/test_policy.py"
       ]
     },
     {

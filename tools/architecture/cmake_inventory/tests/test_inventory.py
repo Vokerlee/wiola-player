@@ -24,7 +24,8 @@ class CMakeInventoryTest(unittest.TestCase):
         self.write(directory, "core.json", {"type": "STATIC_LIBRARY", "sources": [
             {"path": "src/core.cpp"}, {"path": "generated/moc.cpp", "isGenerated": True},
             {"path": str(directory / "external/foreign.cpp")}],
-            "artifacts": [{"path": "lib/core.a"}]})
+            "artifacts": [{"path": "lib/core.a"}],
+            "compileGroups": [{"defines": [{"define": "QT_CORE_LIB"}]}]})
         self.write(directory, "player.json", {"type": "EXECUTABLE", "sources": [
             {"path": "src/main.cpp"}], "dependencies": [{"id": "core-id"}],
             "artifacts": [{"path": "bin/player"}]})
@@ -38,6 +39,7 @@ class CMakeInventoryTest(unittest.TestCase):
             self.assertEqual(inventory.source_root, source)
             core, player = inventory.targets
             self.assertEqual(core.name, "core")
+            self.assertEqual(core.compile_definitions, ("QT_CORE_LIB",))
             self.assertEqual(core.sources, ("src/core.cpp",))
             self.assertEqual(core.generated_sources, ("generated/moc.cpp",))
             self.assertEqual(player.dependencies, ("core",))
