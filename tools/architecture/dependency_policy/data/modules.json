@@ -64,6 +64,7 @@
     "build_environment.ubuntu_packages": "tooling",
     "ci.environment_setup": "ci",
     "ci.workflow": "ci",
+    "coverage.llvm_reporting": "tooling",
     "coverage.measurement": "tooling",
     "coverage.package": "tooling",
     "coverage.policy_data": "test",

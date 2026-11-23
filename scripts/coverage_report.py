@@ -20,6 +20,8 @@ from tools.architecture.cmake_inventory.inventory import CMakeInventory
 from tools.architecture.ownership.registry import load_current_registry
 from tools.coverage.source_policy.policy import load_current_policy
 from tools.testing.catalog.catalog import load_current_catalog
+from tools.testing.cmake_build.build import CMakeBuild
+from tools.coverage.llvm_reporting.reporter import LLVMReporter, coverage_diagnostics
 
 METRICS = ("lines", "functions", "regions", "branches")
 
@@ -142,32 +144,6 @@ def summarize(files):
             "uncovered": count - covered,
         }
     return result
-
-
-def coverage_diagnostics(stderr):
-    # LLVM emits zero-hash entries for uninstantiated mappings, including an inline function
-    # mapped in several objects but instantiated in only some. Keep these visible; reject real
-    # profile/CFG hash mismatches rather than silently accepting any warning.
-    clean = re.sub(r"\x1b\[[0-9;]*m", "", stderr)
-    records = []
-    expected = 0
-    for line in clean.splitlines():
-        if not line.strip():
-            continue
-        count = re.fullmatch(r"warning: (\d+) functions have mismatched data", line)
-        if count:
-            expected += int(count.group(1))
-            continue
-        entry = re.fullmatch(
-            r"hash-mismatch: No profile record found for '(.+)' with hash = (0x[0-9a-fA-F]+)",
-            line,
-        )
-        if not entry or int(entry.group(2), 16) != 0:
-            raise ValueError("Invalid coverage profile diagnostic: " + line)
-        records.append(entry.group(1))
-    if expected != len(records):
-        raise ValueError("Coverage diagnostic count did not match its detailed records")
-    return records
 
 
 def refresh_inputs(root, previous, entries, targets):
@@ -363,7 +339,13 @@ def main():
         print(f"{target}: {len(cases)} tests, {len(produced)} profiles", flush=True)
     merged = report / "wiola.profdata"
     run([profdata, "merge", "-sparse", *profiles, "-o", merged])
-    objects = [build / "bin/wiola-player", build / "bin/wiola_coverage_inventory"]
+    configured_build = CMakeBuild(
+        build,
+        CMakeInventory.read(build, first_party_sources=load_current_registry().paths),
+    )
+    player_binary = configured_build.executable("wiola-player")
+    mapping_binary = configured_build.executable("wiola_coverage_inventory")
+    objects = [player_binary, mapping_binary]
     objects.extend(Path(value["binary"]) for value in selected.values())
     if any(not p.is_file() for p in objects):
         raise ValueError("An inventoried production/test object is absent")
@@ -373,36 +355,8 @@ def main():
         "-instr-profile=" + str(merged),
         str(root / "src"),
     ]
-    diagnostics = {}
-
-    def measured(command, destination=None, phase="whole"):
-        result = run(
-            [cov, *command, *(["-dump"] if command[0] == "report" else [])],
-            stdout=destination,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if command[0] == "report":
-            diagnostics[phase] = {
-                "zero_hash_mappings": coverage_diagnostics(result.stderr)
-            }
-        else:
-            clean = re.sub(r"\x1b\[[0-9;]*m", "", result.stderr)
-            counts = []
-            for line in clean.splitlines():
-                if not line.strip():
-                    continue
-                warning = re.fullmatch(
-                    r"warning: (\d+) functions have mismatched data", line
-                )
-                if not warning:
-                    raise ValueError("Unexpected coverage diagnostic: " + line)
-                counts.append(int(warning.group(1)))
-            if sum(counts) != len(diagnostics[phase]["zero_hash_mappings"]):
-                raise ValueError("Coverage commands disagree about mapping diagnostics")
-        (report / (phase + "-" + command[0] + "-mapping-diagnostics.txt")).write_text(
-            result.stderr
-        )
+    reporter = LLVMReporter((cov,), report)
+    measured = reporter.execute
 
     for command, output in [("report", "summary.txt"), ("export", "summary.json")]:
         options = ["-format=text", "-summary-only"] if command == "export" else []
@@ -424,26 +378,28 @@ def main():
     # Non-workflow test TUs can instantiate extra inline functions; their mappings must not
     # silently alter the qualified denominator. Hits still use the same collected profile.
     workflow_objects = [
-        build / "bin/wiola_coverage_inventory",
+        mapping_binary,
         *[Path(value["binary"]) for value in selected.values() if value["workflow"]],
     ]
     workflow_arguments = [
-        build / "bin/wiola-player",
+        player_binary,
         *[part for p in workflow_objects for part in ["-object", p]],
         "-instr-profile=" + str(merged),
         str(root / "src"),
     ]
     with (report / "workflow-summary.txt").open("w") as destination:
-        measured(["report", *workflow_arguments], destination, "workflow")
+        measured(["report", *workflow_arguments], destination, phase="workflow")
     with (report / "workflow-summary.json").open("w") as destination:
         measured(
             ["export", *workflow_arguments, "-format=text", "-summary-only"],
             destination,
-            "workflow",
+            phase="workflow",
         )
     with (report / "workflow.lcov").open("w") as destination:
         measured(
-            ["export", *workflow_arguments, "-format=lcov"], destination, "workflow"
+            ["export", *workflow_arguments, "-format=lcov"],
+            destination,
+            phase="workflow",
         )
     workflow_data = json.loads((report / "workflow-summary.json").read_text())["data"][
         0
@@ -474,7 +430,7 @@ def main():
         tools=tool_versions,
         completed=completed,
         raw_profiles=len(profiles),
-        mapping_diagnostics=diagnostics,
+        mapping_diagnostics=reporter.diagnostics,
         exclusions=[
             "external dependencies and generated files: only src/ is selected",
             "compile/link boundary executables are not production targets",
