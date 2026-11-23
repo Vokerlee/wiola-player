@@ -33,21 +33,14 @@ wiola_add_library(
         metadata/metadata_conflict_panel.cpp
         metadata/metadata_edit_presentation.cpp
         metadata/metadata_inspector_binding.cpp
-        documents/queue_rows.cpp
         documents/document_registry.cpp
         documents/now_playing_document.cpp
         metadata/track_inspector.cpp
         metadata/inspector_context.cpp
         tracks/track_column.cpp
-        tracks/track_view_state.cpp
         tracks/track_browser.cpp
-        tracks/track_row.cpp
         tracks/track_table_model.cpp
         tracks/track_table_view.cpp
-        tracks/track_sort.cpp
-        tracks/track_sorter.cpp
-        tracks/track_view_pipeline.cpp
-        tracks/track_projection.cpp
         tracks/track_search_panel.cpp
         tracks/tag_filter_panel.cpp
         appearance/theme.cpp
@@ -56,14 +49,14 @@ wiola_add_library(
         shell/player_actions.cpp
         shell/action_descriptor.cpp
         shell/action_button_binding.cpp
-        documents/saved_playlist_rows.cpp
         documents/saved_playlist_document.cpp
         shell/saved_playlist_manager.cpp
         controls/seek_bar.cpp
         metadata/standard_metadata_editor.cpp
-        documents/workspace_rows.cpp
         documents/workspace_document.cpp
     LIBS
+        wiola_gui_model
+        wiola_gui_projection
         wiola_playback_preferences
         wiola_library_session
         wiola_persistence_qt

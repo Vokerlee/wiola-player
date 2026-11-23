@@ -19,7 +19,7 @@
  */
 
 #include "now_playing_document.hpp"
-#include "queue_rows.hpp"
+#include <gui/model/documents/queue_rows.hpp>
 
 #include <gui/tracks/track_browser.hpp>
 

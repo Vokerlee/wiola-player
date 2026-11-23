@@ -19,6 +19,43 @@
  */
 
 #include "main_window.hpp"
+#include "document_host.hpp"
+#include "library_navigation.hpp"
+#include "player_actions.hpp"
+#include "saved_playlist_manager.hpp"
+#include <app/playback/playback_service.hpp>
+#include <desktop/library/library_session.hpp>
+#include <desktop/playback/playback_preferences.hpp>
+#include <desktop/playback/queue_settings.hpp>
+#include <desktop/playback/volume_control.hpp>
+#include <gui/appearance/theme_manager.hpp>
+#include <gui/controls/equalizer_panel.hpp>
+#include <gui/controls/status_view.hpp>
+#include <gui/controls/transport_view.hpp>
+#include <gui/controls/volume_view.hpp>
+#include <gui/documents/now_playing_document.hpp>
+#include <gui/documents/saved_playlist_document.hpp>
+#include <gui/documents/workspace_document.hpp>
+#include <gui/layout/layout_document.hpp>
+#include <gui/layout/layout_session.hpp>
+#include <gui/layout/view_registry.hpp>
+#include <gui/metadata/track_inspector.hpp>
+#include <library/metadata_patch.hpp>
+
+#include <app/metadata/custom_tag_commands.hpp>
+#include <app/metadata/metadata_edit_service.hpp>
+#include <app/metadata/metadata_merge.hpp>
+#include <app/playback/active_playlist.hpp>
+#include <app/playback/playback_queue.hpp>
+#include <app/playback/playlist_transfer.hpp>
+#include <codec/decode/open.hpp>
+#include <desktop/library/m3u_playlist.hpp>
+#include <desktop/metadata/media_revision_publisher.hpp>
+#include <desktop/workspace/workspace_watcher.hpp>
+#include <engine/session.hpp>
+#include <library/in_memory_repository.hpp>
+#include <utils/units.hpp>
+
 #include "document_command_router.hpp"
 #include "player_dialogs.hpp"
 #include "player_menu.hpp"
@@ -93,6 +130,11 @@ QString as_status(engine::OpenResult result)
 }
 
 } // namespace
+
+bool MainWindow::loaded() const noexcept
+{
+    return app::present_playback(playback_).playback.loaded;
+}
 
 MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySession& library_session,
     app::PlaybackPreferences& preferences)

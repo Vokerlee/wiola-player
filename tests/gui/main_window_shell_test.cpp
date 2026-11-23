@@ -19,7 +19,17 @@
  */
 
 #include <codec/provider.hpp>
+#include <desktop/library/library_session.hpp>
+#include <desktop/playback/playback_preferences.hpp>
+#include <desktop/playback/volume_control.hpp>
+#include <gui/controls/equalizer_panel.hpp>
+#include <gui/documents/now_playing_document.hpp>
+#include <gui/documents/saved_playlist_document.hpp>
+#include <gui/documents/workspace_document.hpp>
+#include <gui/metadata/track_inspector.hpp>
+#include <gui/shell/document_host.hpp>
 #include <gui/shell/main_window.hpp>
+#include <gui/shell/saved_playlist_manager.hpp>
 #include <gui/tracks/track_browser.hpp>
 
 #include <gui/appearance/theme_editor.hpp>

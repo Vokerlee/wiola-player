@@ -21,7 +21,7 @@
 #pragma once
 
 #ifndef Q_MOC_RUN
-#include "queue_rows.hpp"
+#include <gui/model/documents/queue_rows.hpp>
 #endif
 
 #include <QWidget>

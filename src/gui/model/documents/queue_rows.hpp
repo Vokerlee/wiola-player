@@ -22,7 +22,7 @@
 #include <engine/queue/playlist.hpp>
 #include <engine/queue/track.hpp>
 #include <functional>
-#include <gui/tracks/track_row.hpp>
+#include <gui/model/tracks/track_row.hpp>
 #include <library/library_changes.hpp>
 #include <library/repository.hpp>
 #include <map>

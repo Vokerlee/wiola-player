@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "track_row.hpp"
+#include <gui/model/tracks/track_row.hpp>
 #include <library/repository.hpp>
 #include <utils/units.hpp>
 

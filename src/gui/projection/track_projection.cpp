@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "track_projection.hpp"
-#include "track_view_pipeline.hpp"
 #include <QThread>
+#include <gui/model/tracks/track_view_pipeline.hpp>
+#include <gui/projection/track_projection.hpp>
 
 namespace wiola::gui {
 

@@ -87,7 +87,7 @@ target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_session_preferences
     SOURCES session/session_state.cpp session/session_preferences.cpp
-    LIBS wiola_persistence_qt wiola_library_session
+    LIBS wiola_persistence_qt wiola_library_session wiola_gui_model
 )
 set_target_properties(wiola_session_preferences PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core)

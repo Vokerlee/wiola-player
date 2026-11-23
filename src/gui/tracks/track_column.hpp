@@ -19,10 +19,10 @@
  */
 
 #pragma once
-#include "track_column_identity.hpp"
-#include "track_sort.hpp"
 #include <QHeaderView>
 #include <array>
+#include <gui/model/tracks/track_column_identity.hpp>
+#include <gui/model/tracks/track_sort.hpp>
 #include <variant>
 
 namespace wiola::gui {

@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "saved_playlist_rows.hpp"
+#include <gui/model/documents/saved_playlist_rows.hpp>
 #include <library/repository.hpp>
 
 #include <QLabel>

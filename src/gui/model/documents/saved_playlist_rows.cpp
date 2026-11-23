@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "saved_playlist_rows.hpp"
+#include <gui/model/documents/saved_playlist_rows.hpp>
 
 namespace wiola::gui {
 

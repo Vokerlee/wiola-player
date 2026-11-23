@@ -21,10 +21,10 @@
 #pragma once
 
 #ifndef Q_MOC_RUN
-#include "track_commands.hpp"
 #include "track_table_model.hpp"
 #include <app/library/tag_key_catalog.hpp>
 #include <desktop/session/session_state.hpp>
+#include <gui/model/tracks/track_commands.hpp>
 #endif
 
 #include <QKeyEvent>

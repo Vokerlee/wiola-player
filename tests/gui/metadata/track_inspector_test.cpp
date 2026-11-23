@@ -20,8 +20,8 @@
 
 #include <codec/provider.hpp>
 #include <desktop/library/library_session.hpp>
-#include <gui/documents/queue_rows.hpp>
 #include <gui/metadata/track_inspector.hpp>
+#include <gui/model/documents/queue_rows.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <engine/queue/playlist.hpp>
