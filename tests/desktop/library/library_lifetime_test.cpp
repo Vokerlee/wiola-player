@@ -27,6 +27,21 @@ protected:
         barrier = platform::qt::QtPathAdapter::from_qt(directory.filePath("barrier.mp3"));
         std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
         std::filesystem::copy_file(path, barrier);
+        std::filesystem::path staged;
+        {
+            codec::LocalMediaProvider provider;
+            auto asset = provider.open(path);
+            ASSERT_TRUE(asset);
+            media::MetadataWriteRequest request;
+            request.overrides.title = "Original physical metadata";
+            const auto outcome = (*asset)->write_metadata(request);
+            ASSERT_EQ(outcome.state, media::MetadataWriteState::written);
+            staged = outcome.staged_output;
+            ASSERT_FALSE(staged.empty());
+        }
+        // This private fixture is not open in a session yet; install its tagged source.
+        std::filesystem::remove(path);
+        std::filesystem::rename(staged, path);
         media = library::media_id_for(path);
         barrier_id = library::media_id_for(barrier);
     }

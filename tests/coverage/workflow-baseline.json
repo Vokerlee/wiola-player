@@ -1,0 +1,4651 @@
+{
+  "totals": {
+    "lines": {
+      "count": 14938,
+      "covered": 13485,
+      "uncovered": 1453
+    },
+    "functions": {
+      "count": 1466,
+      "covered": 1369,
+      "uncovered": 97
+    },
+    "regions": {
+      "count": 8870,
+      "covered": 7763,
+      "uncovered": 1107
+    },
+    "branches": {
+      "count": 6714,
+      "covered": 4940,
+      "uncovered": 1774
+    }
+  },
+  "files": [
+    {
+      "file": "src/app/library/artwork_store.cpp",
+      "counts": {
+        "lines": {
+          "count": 49,
+          "covered": 48
+        },
+        "functions": {
+          "count": 6,
+          "covered": 6
+        },
+        "regions": {
+          "count": 45,
+          "covered": 44
+        },
+        "branches": {
+          "count": 34,
+          "covered": 30
+        }
+      }
+    },
+    {
+      "file": "src/app/library/artwork_store.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/library/location_index.cpp",
+      "counts": {
+        "lines": {
+          "count": 27,
+          "covered": 26
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 19,
+          "covered": 18
+        },
+        "branches": {
+          "count": 16,
+          "covered": 13
+        }
+      }
+    },
+    {
+      "file": "src/app/library/search_index.cpp",
+      "counts": {
+        "lines": {
+          "count": 39,
+          "covered": 38
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 26,
+          "covered": 25
+        },
+        "branches": {
+          "count": 20,
+          "covered": 19
+        }
+      }
+    },
+    {
+      "file": "src/app/library/search_index.hpp",
+      "counts": {
+        "lines": {
+          "count": 9,
+          "covered": 5
+        },
+        "functions": {
+          "count": 4,
+          "covered": 3
+        },
+        "regions": {
+          "count": 7,
+          "covered": 3
+        },
+        "branches": {
+          "count": 2,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/library/tag_key_catalog.cpp",
+      "counts": {
+        "lines": {
+          "count": 50,
+          "covered": 48
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 29,
+          "covered": 27
+        },
+        "branches": {
+          "count": 28,
+          "covered": 24
+        }
+      }
+    },
+    {
+      "file": "src/app/library/tag_key_catalog.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/background_metadata.cpp",
+      "counts": {
+        "lines": {
+          "count": 79,
+          "covered": 75
+        },
+        "functions": {
+          "count": 7,
+          "covered": 7
+        },
+        "regions": {
+          "count": 52,
+          "covered": 50
+        },
+        "branches": {
+          "count": 34,
+          "covered": 30
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/background_metadata_writes.cpp",
+      "counts": {
+        "lines": {
+          "count": 152,
+          "covered": 134
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 92,
+          "covered": 81
+        },
+        "branches": {
+          "count": 72,
+          "covered": 53
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/custom_tag_commands.cpp",
+      "counts": {
+        "lines": {
+          "count": 78,
+          "covered": 71
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 61,
+          "covered": 54
+        },
+        "branches": {
+          "count": 38,
+          "covered": 30
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/custom_tag_commands.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/media_replacement.cpp",
+      "counts": {
+        "lines": {
+          "count": 148,
+          "covered": 115
+        },
+        "functions": {
+          "count": 7,
+          "covered": 7
+        },
+        "regions": {
+          "count": 122,
+          "covered": 97
+        },
+        "branches": {
+          "count": 94,
+          "covered": 60
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_conflicts.cpp",
+      "counts": {
+        "lines": {
+          "count": 18,
+          "covered": 18
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 24,
+          "covered": 23
+        },
+        "branches": {
+          "count": 16,
+          "covered": 14
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_conflicts.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_edit_service.cpp",
+      "counts": {
+        "lines": {
+          "count": 112,
+          "covered": 108
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 52,
+          "covered": 50
+        },
+        "branches": {
+          "count": 34,
+          "covered": 31
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_edit_service.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 4,
+          "covered": 4
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_edit_session.cpp",
+      "counts": {
+        "lines": {
+          "count": 58,
+          "covered": 58
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 21,
+          "covered": 21
+        },
+        "branches": {
+          "count": 20,
+          "covered": 19
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_edit_session.hpp",
+      "counts": {
+        "lines": {
+          "count": 10,
+          "covered": 10
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 8,
+          "covered": 8
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_merge.cpp",
+      "counts": {
+        "lines": {
+          "count": 45,
+          "covered": 45
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 17,
+          "covered": 17
+        },
+        "branches": {
+          "count": 12,
+          "covered": 12
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_write_job.cpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/metadata/metadata_write_job.hpp",
+      "counts": {
+        "lines": {
+          "count": 9,
+          "covered": 9
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 6,
+          "covered": 6
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/playback/active_playlist.cpp",
+      "counts": {
+        "lines": {
+          "count": 25,
+          "covered": 25
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 16,
+          "covered": 16
+        },
+        "branches": {
+          "count": 10,
+          "covered": 10
+        }
+      }
+    },
+    {
+      "file": "src/app/playback/active_playlist.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/playback/playback_queue.cpp",
+      "counts": {
+        "lines": {
+          "count": 47,
+          "covered": 45
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 29,
+          "covered": 27
+        },
+        "branches": {
+          "count": 22,
+          "covered": 19
+        }
+      }
+    },
+    {
+      "file": "src/app/playback/playback_service.cpp",
+      "counts": {
+        "lines": {
+          "count": 210,
+          "covered": 186
+        },
+        "functions": {
+          "count": 49,
+          "covered": 46
+        },
+        "regions": {
+          "count": 121,
+          "covered": 103
+        },
+        "branches": {
+          "count": 60,
+          "covered": 41
+        }
+      }
+    },
+    {
+      "file": "src/app/playback/playlist_transfer.cpp",
+      "counts": {
+        "lines": {
+          "count": 63,
+          "covered": 51
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 58,
+          "covered": 47
+        },
+        "branches": {
+          "count": 44,
+          "covered": 26
+        }
+      }
+    },
+    {
+      "file": "src/app/playback/volume_scale.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 2,
+          "covered": 2
+        }
+      }
+    },
+    {
+      "file": "src/app/workspace/workspace_discovery.cpp",
+      "counts": {
+        "lines": {
+          "count": 79,
+          "covered": 76
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 58,
+          "covered": 55
+        },
+        "branches": {
+          "count": 58,
+          "covered": 48
+        }
+      }
+    },
+    {
+      "file": "src/app/workspace/workspace_discovery.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/workspace/workspace_reconciliation.cpp",
+      "counts": {
+        "lines": {
+          "count": 86,
+          "covered": 73
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 69,
+          "covered": 61
+        },
+        "branches": {
+          "count": 58,
+          "covered": 46
+        }
+      }
+    },
+    {
+      "file": "src/app/workspace/workspace_reconciliation.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/app/workspace/workspace_scanner.cpp",
+      "counts": {
+        "lines": {
+          "count": 218,
+          "covered": 197
+        },
+        "functions": {
+          "count": 12,
+          "covered": 12
+        },
+        "regions": {
+          "count": 112,
+          "covered": 101
+        },
+        "branches": {
+          "count": 84,
+          "covered": 64
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/library_documents.cpp",
+      "counts": {
+        "lines": {
+          "count": 53,
+          "covered": 46
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 45,
+          "covered": 37
+        },
+        "branches": {
+          "count": 26,
+          "covered": 17
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/library_persistence.cpp",
+      "counts": {
+        "lines": {
+          "count": 289,
+          "covered": 276
+        },
+        "functions": {
+          "count": 20,
+          "covered": 20
+        },
+        "regions": {
+          "count": 160,
+          "covered": 152
+        },
+        "branches": {
+          "count": 146,
+          "covered": 121
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/library_session.cpp",
+      "counts": {
+        "lines": {
+          "count": 353,
+          "covered": 297
+        },
+        "functions": {
+          "count": 39,
+          "covered": 36
+        },
+        "regions": {
+          "count": 203,
+          "covered": 174
+        },
+        "branches": {
+          "count": 156,
+          "covered": 100
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/library_session.hpp",
+      "counts": {
+        "lines": {
+          "count": 13,
+          "covered": 13
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/m3u_playlist.cpp",
+      "counts": {
+        "lines": {
+          "count": 117,
+          "covered": 105
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 108,
+          "covered": 96
+        },
+        "branches": {
+          "count": 88,
+          "covered": 66
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/queue_library_migration.cpp",
+      "counts": {
+        "lines": {
+          "count": 38,
+          "covered": 37
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 15,
+          "covered": 14
+        },
+        "branches": {
+          "count": 14,
+          "covered": 12
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/saved_playlist_commands.cpp",
+      "counts": {
+        "lines": {
+          "count": 52,
+          "covered": 48
+        },
+        "functions": {
+          "count": 6,
+          "covered": 6
+        },
+        "regions": {
+          "count": 43,
+          "covered": 39
+        },
+        "branches": {
+          "count": 26,
+          "covered": 22
+        }
+      }
+    },
+    {
+      "file": "src/desktop/library/saved_playlist_commands.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/metadata/media_revision_publisher.cpp",
+      "counts": {
+        "lines": {
+          "count": 80,
+          "covered": 76
+        },
+        "functions": {
+          "count": 7,
+          "covered": 7
+        },
+        "regions": {
+          "count": 31,
+          "covered": 28
+        },
+        "branches": {
+          "count": 20,
+          "covered": 16
+        }
+      }
+    },
+    {
+      "file": "src/desktop/metadata/media_revision_publisher.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/metadata/metadata_write_service.cpp",
+      "counts": {
+        "lines": {
+          "count": 375,
+          "covered": 332
+        },
+        "functions": {
+          "count": 24,
+          "covered": 24
+        },
+        "regions": {
+          "count": 197,
+          "covered": 174
+        },
+        "branches": {
+          "count": 148,
+          "covered": 94
+        }
+      }
+    },
+    {
+      "file": "src/desktop/metadata/metadata_write_service.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/equalizer_control.cpp",
+      "counts": {
+        "lines": {
+          "count": 38,
+          "covered": 38
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 19,
+          "covered": 18
+        },
+        "branches": {
+          "count": 4,
+          "covered": 3
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/playback_preferences.cpp",
+      "counts": {
+        "lines": {
+          "count": 19,
+          "covered": 19
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 9,
+          "covered": 9
+        },
+        "branches": {
+          "count": 4,
+          "covered": 2
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/playback_preferences.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 5,
+          "covered": 5
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/queue_settings.cpp",
+      "counts": {
+        "lines": {
+          "count": 72,
+          "covered": 72
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 43,
+          "covered": 43
+        },
+        "branches": {
+          "count": 36,
+          "covered": 32
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/queue_settings.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/volume_control.cpp",
+      "counts": {
+        "lines": {
+          "count": 33,
+          "covered": 33
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 14,
+          "covered": 14
+        },
+        "branches": {
+          "count": 2,
+          "covered": 2
+        }
+      }
+    },
+    {
+      "file": "src/desktop/playback/volume_control.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/player_application.cpp",
+      "counts": {
+        "lines": {
+          "count": 75,
+          "covered": 73
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 32,
+          "covered": 30
+        },
+        "branches": {
+          "count": 16,
+          "covered": 10
+        }
+      }
+    },
+    {
+      "file": "src/desktop/player_application.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/queued_delivery.cpp",
+      "counts": {
+        "lines": {
+          "count": 70,
+          "covered": 69
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 34,
+          "covered": 34
+        },
+        "branches": {
+          "count": 18,
+          "covered": 17
+        }
+      }
+    },
+    {
+      "file": "src/desktop/queued_delivery.hpp",
+      "counts": {
+        "lines": {
+          "count": 7,
+          "covered": 7
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/session/session_preferences.cpp",
+      "counts": {
+        "lines": {
+          "count": 211,
+          "covered": 197
+        },
+        "functions": {
+          "count": 14,
+          "covered": 12
+        },
+        "regions": {
+          "count": 124,
+          "covered": 107
+        },
+        "branches": {
+          "count": 94,
+          "covered": 68
+        }
+      }
+    },
+    {
+      "file": "src/desktop/session/session_preferences.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/session/session_state.cpp",
+      "counts": {
+        "lines": {
+          "count": 396,
+          "covered": 353
+        },
+        "functions": {
+          "count": 15,
+          "covered": 15
+        },
+        "regions": {
+          "count": 407,
+          "covered": 362
+        },
+        "branches": {
+          "count": 378,
+          "covered": 252
+        }
+      }
+    },
+    {
+      "file": "src/desktop/session/session_state.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/desktop/workspace/workspace_scan_publisher.cpp",
+      "counts": {
+        "lines": {
+          "count": 148,
+          "covered": 136
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 87,
+          "covered": 81
+        },
+        "branches": {
+          "count": 70,
+          "covered": 50
+        }
+      }
+    },
+    {
+      "file": "src/desktop/workspace/workspace_watcher.cpp",
+      "counts": {
+        "lines": {
+          "count": 296,
+          "covered": 265
+        },
+        "functions": {
+          "count": 24,
+          "covered": 24
+        },
+        "regions": {
+          "count": 208,
+          "covered": 182
+        },
+        "branches": {
+          "count": 178,
+          "covered": 119
+        }
+      }
+    },
+    {
+      "file": "src/desktop/workspace/workspace_watcher.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/artwork_presentation.cpp",
+      "counts": {
+        "lines": {
+          "count": 159,
+          "covered": 150
+        },
+        "functions": {
+          "count": 9,
+          "covered": 8
+        },
+        "regions": {
+          "count": 126,
+          "covered": 122
+        },
+        "branches": {
+          "count": 118,
+          "covered": 95
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/artwork_presentation.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/theme.cpp",
+      "counts": {
+        "lines": {
+          "count": 236,
+          "covered": 233
+        },
+        "functions": {
+          "count": 17,
+          "covered": 17
+        },
+        "regions": {
+          "count": 54,
+          "covered": 51
+        },
+        "branches": {
+          "count": 46,
+          "covered": 41
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/theme.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/theme_editor.cpp",
+      "counts": {
+        "lines": {
+          "count": 100,
+          "covered": 91
+        },
+        "functions": {
+          "count": 10,
+          "covered": 8
+        },
+        "regions": {
+          "count": 36,
+          "covered": 30
+        },
+        "branches": {
+          "count": 20,
+          "covered": 15
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/theme_editor.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/theme_manager.cpp",
+      "counts": {
+        "lines": {
+          "count": 177,
+          "covered": 166
+        },
+        "functions": {
+          "count": 13,
+          "covered": 13
+        },
+        "regions": {
+          "count": 129,
+          "covered": 115
+        },
+        "branches": {
+          "count": 106,
+          "covered": 77
+        }
+      }
+    },
+    {
+      "file": "src/gui/appearance/theme_manager.hpp",
+      "counts": {
+        "lines": {
+          "count": 17,
+          "covered": 17
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 5,
+          "covered": 5
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/clock.cpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/equalizer_panel.cpp",
+      "counts": {
+        "lines": {
+          "count": 80,
+          "covered": 80
+        },
+        "functions": {
+          "count": 10,
+          "covered": 10
+        },
+        "regions": {
+          "count": 21,
+          "covered": 21
+        },
+        "branches": {
+          "count": 6,
+          "covered": 6
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/seek_bar.cpp",
+      "counts": {
+        "lines": {
+          "count": 200,
+          "covered": 193
+        },
+        "functions": {
+          "count": 21,
+          "covered": 21
+        },
+        "regions": {
+          "count": 113,
+          "covered": 109
+        },
+        "branches": {
+          "count": 96,
+          "covered": 88
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/seek_bar.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/status_view.cpp",
+      "counts": {
+        "lines": {
+          "count": 39,
+          "covered": 38
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 9,
+          "covered": 8
+        },
+        "branches": {
+          "count": 4,
+          "covered": 3
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/transport_view.cpp",
+      "counts": {
+        "lines": {
+          "count": 103,
+          "covered": 102
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 63,
+          "covered": 62
+        },
+        "branches": {
+          "count": 58,
+          "covered": 53
+        }
+      }
+    },
+    {
+      "file": "src/gui/controls/volume_view.cpp",
+      "counts": {
+        "lines": {
+          "count": 44,
+          "covered": 43
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 7,
+          "covered": 6
+        },
+        "branches": {
+          "count": 2,
+          "covered": 1
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/document_registry.cpp",
+      "counts": {
+        "lines": {
+          "count": 101,
+          "covered": 98
+        },
+        "functions": {
+          "count": 18,
+          "covered": 18
+        },
+        "regions": {
+          "count": 76,
+          "covered": 72
+        },
+        "branches": {
+          "count": 56,
+          "covered": 44
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/now_playing_document.cpp",
+      "counts": {
+        "lines": {
+          "count": 96,
+          "covered": 76
+        },
+        "functions": {
+          "count": 9,
+          "covered": 8
+        },
+        "regions": {
+          "count": 27,
+          "covered": 19
+        },
+        "branches": {
+          "count": 22,
+          "covered": 12
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/now_playing_document.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/saved_playlist_document.cpp",
+      "counts": {
+        "lines": {
+          "count": 158,
+          "covered": 154
+        },
+        "functions": {
+          "count": 19,
+          "covered": 19
+        },
+        "regions": {
+          "count": 66,
+          "covered": 63
+        },
+        "branches": {
+          "count": 50,
+          "covered": 34
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/saved_playlist_document.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/workspace_document.cpp",
+      "counts": {
+        "lines": {
+          "count": 264,
+          "covered": 224
+        },
+        "functions": {
+          "count": 26,
+          "covered": 23
+        },
+        "regions": {
+          "count": 108,
+          "covered": 86
+        },
+        "branches": {
+          "count": 82,
+          "covered": 50
+        }
+      }
+    },
+    {
+      "file": "src/gui/documents/workspace_document.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/classic_layout.cpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/component_descriptor.cpp",
+      "counts": {
+        "lines": {
+          "count": 33,
+          "covered": 33
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 11,
+          "covered": 11
+        },
+        "branches": {
+          "count": 8,
+          "covered": 8
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/component_descriptor.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_editor_dialog.cpp",
+      "counts": {
+        "lines": {
+          "count": 252,
+          "covered": 207
+        },
+        "functions": {
+          "count": 24,
+          "covered": 20
+        },
+        "regions": {
+          "count": 105,
+          "covered": 65
+        },
+        "branches": {
+          "count": 60,
+          "covered": 28
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_editor_dialog.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_preview_host.cpp",
+      "counts": {
+        "lines": {
+          "count": 23,
+          "covered": 22
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 10,
+          "covered": 9
+        },
+        "branches": {
+          "count": 4,
+          "covered": 3
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_property_inspector.cpp",
+      "counts": {
+        "lines": {
+          "count": 118,
+          "covered": 113
+        },
+        "functions": {
+          "count": 6,
+          "covered": 6
+        },
+        "regions": {
+          "count": 70,
+          "covered": 63
+        },
+        "branches": {
+          "count": 62,
+          "covered": 45
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_property_inspector.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_tree_views.cpp",
+      "counts": {
+        "lines": {
+          "count": 109,
+          "covered": 84
+        },
+        "functions": {
+          "count": 13,
+          "covered": 8
+        },
+        "regions": {
+          "count": 59,
+          "covered": 40
+        },
+        "branches": {
+          "count": 38,
+          "covered": 22
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/editor/layout_tree_views.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/focused_layout.cpp",
+      "counts": {
+        "lines": {
+          "count": 6,
+          "covered": 6
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_builder.cpp",
+      "counts": {
+        "lines": {
+          "count": 174,
+          "covered": 161
+        },
+        "functions": {
+          "count": 18,
+          "covered": 18
+        },
+        "regions": {
+          "count": 131,
+          "covered": 124
+        },
+        "branches": {
+          "count": 98,
+          "covered": 80
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_builder.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_document.cpp",
+      "counts": {
+        "lines": {
+          "count": 374,
+          "covered": 355
+        },
+        "functions": {
+          "count": 16,
+          "covered": 16
+        },
+        "regions": {
+          "count": 334,
+          "covered": 309
+        },
+        "branches": {
+          "count": 290,
+          "covered": 224
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_editor.cpp",
+      "counts": {
+        "lines": {
+          "count": 96,
+          "covered": 89
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 66,
+          "covered": 59
+        },
+        "branches": {
+          "count": 44,
+          "covered": 33
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_editor.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_session.cpp",
+      "counts": {
+        "lines": {
+          "count": 127,
+          "covered": 108
+        },
+        "functions": {
+          "count": 8,
+          "covered": 7
+        },
+        "regions": {
+          "count": 101,
+          "covered": 80
+        },
+        "branches": {
+          "count": 82,
+          "covered": 53
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_session.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_tree.hpp",
+      "counts": {
+        "lines": {
+          "count": 35,
+          "covered": 32
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 24,
+          "covered": 21
+        },
+        "branches": {
+          "count": 16,
+          "covered": 12
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/layout_widget_operations.cpp",
+      "counts": {
+        "lines": {
+          "count": 114,
+          "covered": 108
+        },
+        "functions": {
+          "count": 6,
+          "covered": 6
+        },
+        "regions": {
+          "count": 99,
+          "covered": 94
+        },
+        "branches": {
+          "count": 86,
+          "covered": 78
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/player_layout.cpp",
+      "counts": {
+        "lines": {
+          "count": 82,
+          "covered": 81
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 39,
+          "covered": 38
+        },
+        "branches": {
+          "count": 34,
+          "covered": 33
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/prepared_layout.cpp",
+      "counts": {
+        "lines": {
+          "count": 134,
+          "covered": 132
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 98,
+          "covered": 96
+        },
+        "branches": {
+          "count": 88,
+          "covered": 81
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/prepared_layout.hpp",
+      "counts": {
+        "lines": {
+          "count": 7,
+          "covered": 7
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 6,
+          "covered": 6
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/view_reference.cpp",
+      "counts": {
+        "lines": {
+          "count": 122,
+          "covered": 104
+        },
+        "functions": {
+          "count": 6,
+          "covered": 6
+        },
+        "regions": {
+          "count": 88,
+          "covered": 65
+        },
+        "branches": {
+          "count": 74,
+          "covered": 38
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/view_reference.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/view_registry.cpp",
+      "counts": {
+        "lines": {
+          "count": 20,
+          "covered": 17
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 28,
+          "covered": 26
+        },
+        "branches": {
+          "count": 20,
+          "covered": 15
+        }
+      }
+    },
+    {
+      "file": "src/gui/layout/view_registry.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 3
+        },
+        "functions": {
+          "count": 2,
+          "covered": 1
+        },
+        "regions": {
+          "count": 2,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/custom_tag_editor.cpp",
+      "counts": {
+        "lines": {
+          "count": 142,
+          "covered": 140
+        },
+        "functions": {
+          "count": 13,
+          "covered": 13
+        },
+        "regions": {
+          "count": 63,
+          "covered": 61
+        },
+        "branches": {
+          "count": 50,
+          "covered": 41
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/inspector_context.cpp",
+      "counts": {
+        "lines": {
+          "count": 42,
+          "covered": 41
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 31,
+          "covered": 29
+        },
+        "branches": {
+          "count": 30,
+          "covered": 23
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/metadata_conflict_panel.cpp",
+      "counts": {
+        "lines": {
+          "count": 91,
+          "covered": 91
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 20,
+          "covered": 20
+        },
+        "branches": {
+          "count": 10,
+          "covered": 5
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/metadata_edit_presentation.cpp",
+      "counts": {
+        "lines": {
+          "count": 62,
+          "covered": 32
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 39,
+          "covered": 19
+        },
+        "branches": {
+          "count": 50,
+          "covered": 29
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/metadata_inspector_binding.cpp",
+      "counts": {
+        "lines": {
+          "count": 216,
+          "covered": 144
+        },
+        "functions": {
+          "count": 17,
+          "covered": 13
+        },
+        "regions": {
+          "count": 102,
+          "covered": 60
+        },
+        "branches": {
+          "count": 76,
+          "covered": 30
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/metadata_inspector_binding.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 2,
+          "covered": 1
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/standard_metadata_editor.cpp",
+      "counts": {
+        "lines": {
+          "count": 273,
+          "covered": 273
+        },
+        "functions": {
+          "count": 25,
+          "covered": 25
+        },
+        "regions": {
+          "count": 116,
+          "covered": 116
+        },
+        "branches": {
+          "count": 88,
+          "covered": 81
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/standard_metadata_editor.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/track_inspector.cpp",
+      "counts": {
+        "lines": {
+          "count": 197,
+          "covered": 196
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 71,
+          "covered": 68
+        },
+        "branches": {
+          "count": 50,
+          "covered": 44
+        }
+      }
+    },
+    {
+      "file": "src/gui/metadata/track_inspector.hpp",
+      "counts": {
+        "lines": {
+          "count": 9,
+          "covered": 9
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 5,
+          "covered": 5
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/document_id.hpp",
+      "counts": {
+        "lines": {
+          "count": 31,
+          "covered": 31
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 13,
+          "covered": 13
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/queue_rows.cpp",
+      "counts": {
+        "lines": {
+          "count": 168,
+          "covered": 151
+        },
+        "functions": {
+          "count": 10,
+          "covered": 10
+        },
+        "regions": {
+          "count": 79,
+          "covered": 68
+        },
+        "branches": {
+          "count": 76,
+          "covered": 59
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/queue_rows.hpp",
+      "counts": {
+        "lines": {
+          "count": 8,
+          "covered": 8
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 9,
+          "covered": 9
+        },
+        "branches": {
+          "count": 6,
+          "covered": 6
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/saved_playlist_rows.cpp",
+      "counts": {
+        "lines": {
+          "count": 62,
+          "covered": 54
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 32,
+          "covered": 26
+        },
+        "branches": {
+          "count": 24,
+          "covered": 17
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/saved_playlist_rows.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/workspace_rows.cpp",
+      "counts": {
+        "lines": {
+          "count": 106,
+          "covered": 97
+        },
+        "functions": {
+          "count": 7,
+          "covered": 6
+        },
+        "regions": {
+          "count": 84,
+          "covered": 77
+        },
+        "branches": {
+          "count": 74,
+          "covered": 57
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/documents/workspace_rows.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_column_identity.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_commands.hpp",
+      "counts": {
+        "lines": {
+          "count": 25,
+          "covered": 25
+        },
+        "functions": {
+          "count": 7,
+          "covered": 7
+        },
+        "regions": {
+          "count": 8,
+          "covered": 8
+        },
+        "branches": {
+          "count": 2,
+          "covered": 2
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_identity.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_row.cpp",
+      "counts": {
+        "lines": {
+          "count": 27,
+          "covered": 24
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 7,
+          "covered": 6
+        },
+        "branches": {
+          "count": 8,
+          "covered": 7
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_row.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_sort.cpp",
+      "counts": {
+        "lines": {
+          "count": 41,
+          "covered": 41
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 41,
+          "covered": 41
+        },
+        "branches": {
+          "count": 40,
+          "covered": 37
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_sort.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_sorter.cpp",
+      "counts": {
+        "lines": {
+          "count": 87,
+          "covered": 81
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 85,
+          "covered": 75
+        },
+        "branches": {
+          "count": 62,
+          "covered": 50
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_view_pipeline.cpp",
+      "counts": {
+        "lines": {
+          "count": 43,
+          "covered": 42
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 48,
+          "covered": 46
+        },
+        "branches": {
+          "count": 42,
+          "covered": 39
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_view_state.cpp",
+      "counts": {
+        "lines": {
+          "count": 28,
+          "covered": 26
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 22,
+          "covered": 20
+        },
+        "branches": {
+          "count": 24,
+          "covered": 19
+        }
+      }
+    },
+    {
+      "file": "src/gui/model/tracks/track_view_state.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/projection/track_projection.cpp",
+      "counts": {
+        "lines": {
+          "count": 106,
+          "covered": 94
+        },
+        "functions": {
+          "count": 10,
+          "covered": 9
+        },
+        "regions": {
+          "count": 61,
+          "covered": 56
+        },
+        "branches": {
+          "count": 42,
+          "covered": 29
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/action_button_binding.cpp",
+      "counts": {
+        "lines": {
+          "count": 42,
+          "covered": 42
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 12,
+          "covered": 12
+        },
+        "branches": {
+          "count": 6,
+          "covered": 4
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/action_descriptor.cpp",
+      "counts": {
+        "lines": {
+          "count": 38,
+          "covered": 38
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 15,
+          "covered": 15
+        },
+        "branches": {
+          "count": 10,
+          "covered": 10
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/document_command_router.cpp",
+      "counts": {
+        "lines": {
+          "count": 218,
+          "covered": 105
+        },
+        "functions": {
+          "count": 11,
+          "covered": 7
+        },
+        "regions": {
+          "count": 207,
+          "covered": 116
+        },
+        "branches": {
+          "count": 156,
+          "covered": 64
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/document_host.cpp",
+      "counts": {
+        "lines": {
+          "count": 484,
+          "covered": 403
+        },
+        "functions": {
+          "count": 53,
+          "covered": 35
+        },
+        "regions": {
+          "count": 202,
+          "covered": 148
+        },
+        "branches": {
+          "count": 136,
+          "covered": 89
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/document_host.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/library_navigation.cpp",
+      "counts": {
+        "lines": {
+          "count": 93,
+          "covered": 90
+        },
+        "functions": {
+          "count": 10,
+          "covered": 10
+        },
+        "regions": {
+          "count": 41,
+          "covered": 38
+        },
+        "branches": {
+          "count": 30,
+          "covered": 24
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/main_window.cpp",
+      "counts": {
+        "lines": {
+          "count": 792,
+          "covered": 655
+        },
+        "functions": {
+          "count": 72,
+          "covered": 51
+        },
+        "regions": {
+          "count": 327,
+          "covered": 219
+        },
+        "branches": {
+          "count": 234,
+          "covered": 131
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/player_actions.cpp",
+      "counts": {
+        "lines": {
+          "count": 61,
+          "covered": 61
+        },
+        "functions": {
+          "count": 7,
+          "covered": 7
+        },
+        "regions": {
+          "count": 28,
+          "covered": 27
+        },
+        "branches": {
+          "count": 22,
+          "covered": 20
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/player_actions.hpp",
+      "counts": {
+        "lines": {
+          "count": 3,
+          "covered": 3
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/player_dialogs.cpp",
+      "counts": {
+        "lines": {
+          "count": 74,
+          "covered": 0
+        },
+        "functions": {
+          "count": 5,
+          "covered": 0
+        },
+        "regions": {
+          "count": 39,
+          "covered": 0
+        },
+        "branches": {
+          "count": 38,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/player_dialogs.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/player_menu.cpp",
+      "counts": {
+        "lines": {
+          "count": 27,
+          "covered": 27
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 6,
+          "covered": 6
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/player_shortcuts.cpp",
+      "counts": {
+        "lines": {
+          "count": 17,
+          "covered": 17
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 19,
+          "covered": 19
+        },
+        "branches": {
+          "count": 14,
+          "covered": 9
+        }
+      }
+    },
+    {
+      "file": "src/gui/shell/saved_playlist_manager.cpp",
+      "counts": {
+        "lines": {
+          "count": 155,
+          "covered": 116
+        },
+        "functions": {
+          "count": 14,
+          "covered": 9
+        },
+        "regions": {
+          "count": 61,
+          "covered": 43
+        },
+        "branches": {
+          "count": 34,
+          "covered": 22
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/tag_filter_panel.cpp",
+      "counts": {
+        "lines": {
+          "count": 90,
+          "covered": 89
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 38,
+          "covered": 37
+        },
+        "branches": {
+          "count": 22,
+          "covered": 18
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_browser.cpp",
+      "counts": {
+        "lines": {
+          "count": 124,
+          "covered": 108
+        },
+        "functions": {
+          "count": 19,
+          "covered": 17
+        },
+        "regions": {
+          "count": 35,
+          "covered": 29
+        },
+        "branches": {
+          "count": 10,
+          "covered": 4
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_browser.hpp",
+      "counts": {
+        "lines": {
+          "count": 17,
+          "covered": 16
+        },
+        "functions": {
+          "count": 7,
+          "covered": 6
+        },
+        "regions": {
+          "count": 7,
+          "covered": 6
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_column.cpp",
+      "counts": {
+        "lines": {
+          "count": 21,
+          "covered": 21
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_search_panel.cpp",
+      "counts": {
+        "lines": {
+          "count": 108,
+          "covered": 108
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 16,
+          "covered": 16
+        },
+        "branches": {
+          "count": 6,
+          "covered": 5
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_table_model.cpp",
+      "counts": {
+        "lines": {
+          "count": 479,
+          "covered": 449
+        },
+        "functions": {
+          "count": 31,
+          "covered": 30
+        },
+        "regions": {
+          "count": 320,
+          "covered": 293
+        },
+        "branches": {
+          "count": 266,
+          "covered": 220
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_table_model.hpp",
+      "counts": {
+        "lines": {
+          "count": 20,
+          "covered": 20
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 8,
+          "covered": 8
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_table_view.cpp",
+      "counts": {
+        "lines": {
+          "count": 574,
+          "covered": 561
+        },
+        "functions": {
+          "count": 44,
+          "covered": 44
+        },
+        "regions": {
+          "count": 270,
+          "covered": 257
+        },
+        "branches": {
+          "count": 222,
+          "covered": 191
+        }
+      }
+    },
+    {
+      "file": "src/gui/tracks/track_table_view.hpp",
+      "counts": {
+        "lines": {
+          "count": 15,
+          "covered": 15
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 8,
+          "covered": 8
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/commit_receipt.cpp",
+      "counts": {
+        "lines": {
+          "count": 33,
+          "covered": 18
+        },
+        "functions": {
+          "count": 3,
+          "covered": 2
+        },
+        "regions": {
+          "count": 38,
+          "covered": 27
+        },
+        "branches": {
+          "count": 28,
+          "covered": 16
+        }
+      }
+    },
+    {
+      "file": "src/library/commit_receipt.hpp",
+      "counts": {
+        "lines": {
+          "count": 17,
+          "covered": 17
+        },
+        "functions": {
+          "count": 7,
+          "covered": 7
+        },
+        "regions": {
+          "count": 12,
+          "covered": 12
+        },
+        "branches": {
+          "count": 2,
+          "covered": 2
+        }
+      }
+    },
+    {
+      "file": "src/library/fingerprint.cpp",
+      "counts": {
+        "lines": {
+          "count": 68,
+          "covered": 64
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 52,
+          "covered": 47
+        },
+        "branches": {
+          "count": 34,
+          "covered": 28
+        }
+      }
+    },
+    {
+      "file": "src/library/identity.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/in_memory_repository.cpp",
+      "counts": {
+        "lines": {
+          "count": 273,
+          "covered": 266
+        },
+        "functions": {
+          "count": 33,
+          "covered": 33
+        },
+        "regions": {
+          "count": 179,
+          "covered": 169
+        },
+        "branches": {
+          "count": 144,
+          "covered": 119
+        }
+      }
+    },
+    {
+      "file": "src/library/in_memory_repository.hpp",
+      "counts": {
+        "lines": {
+          "count": 11,
+          "covered": 11
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 6,
+          "covered": 6
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/library_changes.cpp",
+      "counts": {
+        "lines": {
+          "count": 80,
+          "covered": 79
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 52,
+          "covered": 51
+        },
+        "branches": {
+          "count": 32,
+          "covered": 28
+        }
+      }
+    },
+    {
+      "file": "src/library/library_changes.hpp",
+      "counts": {
+        "lines": {
+          "count": 8,
+          "covered": 8
+        },
+        "functions": {
+          "count": 3,
+          "covered": 3
+        },
+        "regions": {
+          "count": 3,
+          "covered": 3
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/location.cpp",
+      "counts": {
+        "lines": {
+          "count": 29,
+          "covered": 28
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 17,
+          "covered": 16
+        },
+        "branches": {
+          "count": 14,
+          "covered": 13
+        }
+      }
+    },
+    {
+      "file": "src/library/metadata.cpp",
+      "counts": {
+        "lines": {
+          "count": 22,
+          "covered": 22
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 11,
+          "covered": 11
+        },
+        "branches": {
+          "count": 8,
+          "covered": 8
+        }
+      }
+    },
+    {
+      "file": "src/library/metadata.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/metadata_patch.cpp",
+      "counts": {
+        "lines": {
+          "count": 114,
+          "covered": 114
+        },
+        "functions": {
+          "count": 10,
+          "covered": 10
+        },
+        "regions": {
+          "count": 41,
+          "covered": 41
+        },
+        "branches": {
+          "count": 34,
+          "covered": 32
+        }
+      }
+    },
+    {
+      "file": "src/library/metadata_patch.hpp",
+      "counts": {
+        "lines": {
+          "count": 18,
+          "covered": 18
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 14,
+          "covered": 14
+        },
+        "branches": {
+          "count": 2,
+          "covered": 2
+        }
+      }
+    },
+    {
+      "file": "src/library/records.hpp",
+      "counts": {
+        "lines": {
+          "count": 15,
+          "covered": 14
+        },
+        "functions": {
+          "count": 9,
+          "covered": 8
+        },
+        "regions": {
+          "count": 18,
+          "covered": 17
+        },
+        "branches": {
+          "count": 6,
+          "covered": 6
+        }
+      }
+    },
+    {
+      "file": "src/library/repository.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/repository_transaction.cpp",
+      "counts": {
+        "lines": {
+          "count": 146,
+          "covered": 142
+        },
+        "functions": {
+          "count": 13,
+          "covered": 13
+        },
+        "regions": {
+          "count": 69,
+          "covered": 68
+        },
+        "branches": {
+          "count": 46,
+          "covered": 44
+        }
+      }
+    },
+    {
+      "file": "src/library/search.cpp",
+      "counts": {
+        "lines": {
+          "count": 57,
+          "covered": 57
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 34,
+          "covered": 34
+        },
+        "branches": {
+          "count": 30,
+          "covered": 30
+        }
+      }
+    },
+    {
+      "file": "src/library/search.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 4,
+          "covered": 4
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/snapshot.hpp",
+      "counts": {
+        "lines": {
+          "count": 5,
+          "covered": 5
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/library/tags.cpp",
+      "counts": {
+        "lines": {
+          "count": 38,
+          "covered": 38
+        },
+        "functions": {
+          "count": 9,
+          "covered": 9
+        },
+        "regions": {
+          "count": 30,
+          "covered": 30
+        },
+        "branches": {
+          "count": 26,
+          "covered": 22
+        }
+      }
+    },
+    {
+      "file": "src/main.cpp",
+      "counts": {
+        "lines": {
+          "count": 38,
+          "covered": 17
+        },
+        "functions": {
+          "count": 3,
+          "covered": 1
+        },
+        "regions": {
+          "count": 21,
+          "covered": 12
+        },
+        "branches": {
+          "count": 14,
+          "covered": 6
+        }
+      }
+    },
+    {
+      "file": "src/media/artwork_reference.hpp",
+      "counts": {
+        "lines": {
+          "count": 40,
+          "covered": 40
+        },
+        "functions": {
+          "count": 11,
+          "covered": 11
+        },
+        "regions": {
+          "count": 38,
+          "covered": 37
+        },
+        "branches": {
+          "count": 24,
+          "covered": 21
+        }
+      }
+    },
+    {
+      "file": "src/media/byte_stream.hpp",
+      "counts": {
+        "lines": {
+          "count": 2,
+          "covered": 2
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 2,
+          "covered": 2
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/media/local_file_stream.cpp",
+      "counts": {
+        "lines": {
+          "count": 50,
+          "covered": 43
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 50,
+          "covered": 42
+        },
+        "branches": {
+          "count": 32,
+          "covered": 22
+        }
+      }
+    },
+    {
+      "file": "src/media/media.hpp",
+      "counts": {
+        "lines": {
+          "count": 16,
+          "covered": 10
+        },
+        "functions": {
+          "count": 5,
+          "covered": 4
+        },
+        "regions": {
+          "count": 37,
+          "covered": 28
+        },
+        "branches": {
+          "count": 36,
+          "covered": 11
+        }
+      }
+    },
+    {
+      "file": "src/media/operation_context.hpp",
+      "counts": {
+        "lines": {
+          "count": 14,
+          "covered": 13
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 16,
+          "covered": 12
+        },
+        "branches": {
+          "count": 12,
+          "covered": 6
+        }
+      }
+    },
+    {
+      "file": "src/media/provider.hpp",
+      "counts": {
+        "lines": {
+          "count": 14,
+          "covered": 14
+        },
+        "functions": {
+          "count": 6,
+          "covered": 6
+        },
+        "regions": {
+          "count": 6,
+          "covered": 6
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/media/result.hpp",
+      "counts": {
+        "lines": {
+          "count": 29,
+          "covered": 24
+        },
+        "functions": {
+          "count": 20,
+          "covered": 18
+        },
+        "regions": {
+          "count": 23,
+          "covered": 21
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/persistence/qt/atomic_file_store.cpp",
+      "counts": {
+        "lines": {
+          "count": 62,
+          "covered": 57
+        },
+        "functions": {
+          "count": 8,
+          "covered": 8
+        },
+        "regions": {
+          "count": 55,
+          "covered": 50
+        },
+        "branches": {
+          "count": 36,
+          "covered": 27
+        }
+      }
+    },
+    {
+      "file": "src/persistence/qt/atomic_file_store.hpp",
+      "counts": {
+        "lines": {
+          "count": 1,
+          "covered": 1
+        },
+        "functions": {
+          "count": 1,
+          "covered": 1
+        },
+        "regions": {
+          "count": 1,
+          "covered": 1
+        },
+        "branches": {
+          "count": 0,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "file": "src/persistence/qt/library_json.cpp",
+      "counts": {
+        "lines": {
+          "count": 369,
+          "covered": 337
+        },
+        "functions": {
+          "count": 15,
+          "covered": 15
+        },
+        "regions": {
+          "count": 333,
+          "covered": 301
+        },
+        "branches": {
+          "count": 282,
+          "covered": 193
+        }
+      }
+    },
+    {
+      "file": "src/persistence/qt/library_store.cpp",
+      "counts": {
+        "lines": {
+          "count": 63,
+          "covered": 62
+        },
+        "functions": {
+          "count": 5,
+          "covered": 5
+        },
+        "regions": {
+          "count": 62,
+          "covered": 60
+        },
+        "branches": {
+          "count": 44,
+          "covered": 37
+        }
+      }
+    },
+    {
+      "file": "src/persistence/qt/library_store.hpp",
+      "counts": {
+        "lines": {
+          "count": 4,
+          "covered": 4
+        },
+        "functions": {
+          "count": 2,
+          "covered": 2
+        },
+        "regions": {
+          "count": 4,
+          "covered": 4
+        },
+        "branches": {
+          "count": 4,
+          "covered": 4
+        }
+      }
+    }
+  ],
+  "schema": 1,
+  "measured_revision": "77b5490da1681c1d5acd9b6de9f3155069889235",
+  "canonical_revision": "5404ab9ffc6b352fff5c9184f7ac790d29c30f6a",
+  "source_sha256": "71635691b1a5f199b8255a6b2e1a90e24c73b9fa7562167eaf8e524b12d7d611",
+  "measured_tree": "ff23a1c7097f4a8cbc24c0c197946db2a739299d",
+  "compiler_target": "x86_64-pc-linux-gnu",
+  "tools": {
+    "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin",
+    "profdata": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+    "cov": "Ubuntu LLVM version 18.1.3\n  Optimized build."
+  },
+  "exclusions": [
+    "external dependencies and generated files: only src/ is selected",
+    "compile/link boundary executables are not production targets"
+  ],
+  "test_names": [
+    "ActivePlaylist.PublishesOnlyRealChangesAndAllowsReentrantObservers",
+    "ActivePlaylist.TracksDestinationIdentityWithoutDependingOnDocumentSelection",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <00-00 00-00>",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <01-00 00-00>",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <02-00 00-00>",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <03-00 00-00>",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <04-00 00-00>",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <05-00 00-00>",
+    "AllContainers/LayoutComponentContract.NestedAttachmentIsSingleUseAndPreservesBorrowedOwnership/4-byte object <06-00 00-00>",
+    "ArtworkPresentation.EvictedSourceCanBeRequestedWithoutReentrantCacheIteratorLifetime",
+    "ArtworkPresentation.LargerDpiRequestsReDecodeInsteadOfEnlargingAnOldThumbnail",
+    "ArtworkPresentation.NegativeDecodeAndPlaceholdersAreBoundedAndPaletteSensitive",
+    "ArtworkPresentation.SharedOwnersDecodeOnceAcrossViewsSizesAndUnchangedContent",
+    "ArtworkStore.ByteBudgetEvictsLeastRecentlyUsedWithoutPinningRows",
+    "ArtworkStore.ContentIdentityIgnoresPointerChangesAndNegativeEntriesStayBounded",
+    "BackgroundMetadataWrites.CancellationHasAnIdentifiedTerminalResult",
+    "BackgroundMetadataWrites.CoalescesPendingEditsWithoutReplacingRepositoryRecords",
+    "BackgroundMetadataWrites.RejectsStaleExpectedStateBeforeOpeningAnAsset",
+    "BackgroundMetadataWrites.StagesQualifiedMediaWithoutTouchingSourceAndOwnsCleanup",
+    "BrowserViewState.DeferredSelectionRestoresWhenItsOccurrenceArrivesAndNewUserIntentCancelsIt",
+    "BrowserViewState.QueryPanelsSortAndDuplicateOccurrenceSelectionRestoreTogether",
+    "BrowserViewState.RestoresColumnOrderWidthsVisibilityAndMatchingMenuChecks",
+    "ButtonLayoutEditor.AcceptsPaletteDropsAndRestoresHistory",
+    "ButtonLayoutEditor.AddsConfiguresAndAppliesPaletteActions",
+    "ButtonLayoutEditor.CreatesAndConfiguresContainersWithUndoAndIsolatedPreview",
+    "ButtonLayoutEditor.RemovesSelectedComponentsWithTheKeyboard",
+    "ButtonLayoutEditor.RepeatedConfigurationRetainsTheSelectedComponentIdentity",
+    "ButtonLayoutEditor.TextEditingShortcutsDoNotDeleteComponentsAndSmallWindowsCanScroll",
+    "ByteStream.AppliesCancellationToReadSeekAndTell",
+    "ByteStream.DistinguishesEndOfFileFromReadFailure",
+    "ByteStream.ReadsSeeksAndReportsItsCursor",
+    "CustomTagCommands.AddsEditsAndRemovesValuesWithStableIdentity",
+    "CustomTagCommands.RejectsInvalidDuplicatesMissingRecordsAndOverflow",
+    "CustomTagCommands.RollsBackEveryMutationWhenPersistenceFails",
+    "CustomTagEditor.ExplainsSharedValuesAndRoutesAccessibleCommands",
+    "CustomTagEditor.RefreshesOnlyForANewRevisionAndClearsWithoutATrack",
+    "DesktopJourney.EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFile",
+    "DesktopJourney.FailedPreferencesRetainAcceptedDataAndCanBeRetried",
+    "DesktopJourney.FutureLibrarySchemaSurvivesARealChildShutdown",
+    "DesktopJourney.PackagedPlayerCliExercisesTheActualEntryPoint",
+    "DesktopJourney.RestoresIndependentDocumentsQueriesAndDuplicateOccurrences",
+    "DesktopJourney.SeparateProcessesRestoreIndependentSessionLayoutThemeAndSelection",
+    "DesktopJourney.VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLayoutChanges",
+    "DocumentCommandRouterTest.CancelledDestinationPromptReachedThroughContextActionLeavesSelection",
+    "DocumentCommandRouterTest.ContextMenuTransferAfterCloseAndReopenUsesOneExactOccurrence",
+    "DocumentCommandRouterTest.DestroyingRouterWhileAChoiceIsPendingCannotIssueTheCommand",
+    "DocumentCommandRouterTest.DisabledCapabilitiesAndCancelledPromptsNeverMutateDocuments",
+    "DocumentCommandRouterTest.ExportCapturesPlaylistBeforePromptChangesTheDestination",
+    "DocumentCommandRouterTest.MoveCapturesDuplicateOccurrenceBeforePromptChangesDocumentAndSelection",
+    "DocumentCommandRouterTest.ReparentedInspectorEditsWithoutRetainingTheWindowAndRejectsAfterLibraryDeath",
+    "DocumentCommandRouterTest.SavedPlaylistKeyboardActivationRoutesTheExactDuplicateOccurrence",
+    "DocumentHostTest.ActivatesExistingDocumentsAndClosesViewsWithoutDeletingRecords",
+    "DocumentHostTest.CommittedDeletionUpdatesTabsAndActiveIdentity",
+    "DocumentHostTest.EmptyStateRequestsOpenFolderWithoutCreatingAWorkspace",
+    "DocumentHostTest.RestoresTheActiveTypedDocumentWithoutChangingPlayback",
+    "DocumentRegistry.DelayedDestructionCannotUnregisterAReplacementView",
+    "DocumentRegistry.DestroyedViewsAndRegistriesReleaseTheirObservers",
+    "DocumentRegistry.RejectsDuplicateViewsAndReturnsOwnedOccurrenceSelections",
+    "DocumentRegistry.SeparatesTypedIdentitiesAndTrackCapabilities",
+    "EqualizerControl.GivesBackWhatTheLastRunLeft",
+    "EqualizerControl.IgnoresANonFiniteStoredGain",
+    "EqualizerControl.IgnoresAStoredValueThatIsNotAGain",
+    "EqualizerControl.KeepsABandTheFormatCannotCarry",
+    "EqualizerControl.KeepsWhatTheEqualizerAllowed",
+    "EqualizerControl.KeepsWhetherItRuns",
+    "EqualizerControl.RestoresEveryBandTheLayoutNames",
+    "EqualizerControl.StartsFlatAndOn",
+    "FileReplacement.EveryInterruptedBoundaryLeavesKnownSourceOrVerifiedRecovery",
+    "FileReplacement.ExistingBackupsAndUnknownOperationRecordsRemainIntact",
+    "FileReplacement.MissingSourceRecoversOnlyFromVerifiedBackupAndPreservesPermissions",
+    "FileReplacement.OversizedRecoveryRecordIsRejectedWithoutChangingAnyFile",
+    "FileReplacement.RechecksSourceAfterBackupAndNeverOverwritesAnExternalEdit",
+    "GuiInteraction.ControlledSeekPainterSeparatesPlayedTrackAndDisabledColorsAtEachDpr",
+    "GuiInteraction.DisabledAndInvalidMetadataCannotFireButValidInputFiresExactlyOnce",
+    "GuiInteraction.FocusIsVisibleAndMouseCommitDiffersFromCancelledOrDisplayUpdates",
+    "GuiInteraction.KeyboardSearchAndResetReachTheActualQueryObserver",
+    "GuiInteraction.LargeFontEqualizerRemainsScrollableAndKeyboardAdjustsTheLiveBand",
+    "GuiInteraction.MouseSelectionUsesOccurrenceIdentityAndEmitsTheBrowserSignal",
+    "GuiInteraction.SeekDragCancellationTakesPrecedenceOverTheWindowStopShortcut",
+    "GuiInteraction.SeekKeyboardAccessibilityAndDragCancellationHaveDistinctOutcomes",
+    "GuiScaling.LayoutEditor.1",
+    "GuiScaling.LayoutEditor.1.25",
+    "GuiScaling.LayoutEditor.1.5",
+    "GuiScaling.LayoutEditor.2",
+    "Identity.KeepsTheValueThatIdentifiesTheRecord",
+    "Identity.StartsWithoutAPersistedValue",
+    "Identity.UsesTheWholeValueAsAnOpaqueHashKey",
+    "InMemoryRepository.AllowsDuplicateMediaAsDistinctPlaylistEntries",
+    "InMemoryRepository.AllowsMultipleTagValuesButRejectsAnExactDuplicate",
+    "InMemoryRepository.BoundsTagsAndAvoidsARestoredTagIdentity",
+    "InMemoryRepository.CreatesDeterministicPlaylistIdentitiesAndAvoidsRestoredOnes",
+    "InMemoryRepository.MatchesTagsWithoutCaseOrOuterWhitespaceButKeepsOriginalText",
+    "InMemoryRepository.RejectsAnUnidentifiedTrack",
+    "InMemoryRepository.RejectsDuplicateEntryIdsWithinAStoredPlaylist",
+    "InMemoryRepository.RejectsEntriesWhoseMediaIsNotInTheLibrary",
+    "InMemoryRepository.RejectsInvalidOrNormalizedDuplicateRestoredTags",
+    "InMemoryRepository.ReturnsTracksInIdentityOrder",
+    "InMemoryRepository.StoresNormalizedWorkspaceRootsAndPersistentIdentities",
+    "LayoutBuilder.BuildsRegisteredComponentsWithDimensionsAndActions",
+    "LayoutBuilder.BuildsStackedAndGroupedChildren",
+    "LayoutBuilder.BuildsVerticalSplitterWithGridAndLabeledTabs",
+    "LayoutBuilder.FailedConstructionLeavesRegisteredWidgetsInTheirOriginalLayout",
+    "LayoutBuilder.IncompatibleNestedContainerDoesNotMoveBorrowedWidgets",
+    "LayoutBuilder.NodeIdentityDoesNotImplicitlyBorrowAndExplicitViewSurvivesRenaming",
+    "LayoutBuilder.OpaqueDocumentHostAndTypedDocumentReferencesKeepTheirKindsAndLifetimes",
+    "LayoutBuilder.PlacesBorrowedWidgetsInGridCellsAndTabPages",
+    "LayoutBuilder.RejectsDuplicateAndEmptyRegistrations",
+    "LayoutBuilder.RejectsDuplicateUnavailableIncompatibleAndAncestorViewsBeforeMovingAnything",
+    "LayoutBuilder.RemovingSizeOverridesRestoresCapturedComponentConstraints",
+    "LayoutBuilder.RemovingSplitterOverridesRestoresOrientationAndDefaultWeights",
+    "LayoutBuilder.ReordersBorrowedTabPagesAndPreservesTheSelectedPage",
+    "LayoutBuilder.RetiresDiscardedContainersWithoutDeletingOmittedRegisteredViews",
+    "LayoutBuilder.ReusesARegisteredWidgetByIdentity",
+    "LayoutDocument.ClassicPresetIsValidAndComplete",
+    "LayoutDocument.DescriptorsRoundTripEveryStableComponentAndActionKey",
+    "LayoutDocument.FocusedPresetsRetainCompletePlayerControls",
+    "LayoutDocument.MigratesOnlyWellKnownVersionOneViewsToVersionTwoReferences",
+    "LayoutDocument.ReadsVersionedNestingDimensionsAndActionBindings",
+    "LayoutDocument.RejectsInvalidComponentsWithoutChangingThePreviousDocument",
+    "LayoutDocument.RejectsInvalidContainerPropertiesTransactionally",
+    "LayoutDocument.RejectsMalformedVersionsAndExcessiveInputs",
+    "LayoutDocument.RoundTripsNestedContainersWithTheirProperties",
+    "LayoutEditor.ConfiguresContainersAndRejectsMovesIntoLeaves",
+    "LayoutEditor.InsertsWithUndoAndRedoWithoutAcceptingDuplicateIds",
+    "LayoutEditor.KeepsSplitterWeightsAlignedThroughEditsAndHistory",
+    "LayoutEditor.MovesAndConfiguresComponentsWithoutChangingTheirIdentity",
+    "LayoutEditor.RemovesSubtreesAndRejectsInvalidConfigurations",
+    "LayoutEditorComponents.FailedPreviewPreparationRetainsTheLastGoodIsolatedTree",
+    "LayoutEditorComponents.InvalidPropertyInputRetainsItsDraftUntilCorrected",
+    "LayoutEditorComponents.RejectsOversizedAndUnknownDragPayloadsWithoutIssuingEditRequests",
+    "LayoutSession.AcceptedCustomDocumentAndIdentitySurviveRestartExactly",
+    "LayoutSession.CorruptPrimaryRecoversBackupAndFutureSchemasRemainUnchanged",
+    "LayoutSession.FailedDurableSaveRetainsAcceptedValuesAndCurrentWidgets",
+    "LayoutSession.RejectsMismatchedPreparedTreesBeforeWritingAndRecoversALostViewAtCommit",
+    "LibraryChanges.CandidateCopiesDoNotShareSubscriptions",
+    "LibraryChanges.FailedAndNoOpTransactionsPublishNothing",
+    "LibraryChanges.ObserverExceptionsDoNotRollBackDurableDataOrSkipOtherReceivers",
+    "LibraryChanges.PublishesOneCoherentBatchOnlyAfterPersistence",
+    "LibraryChanges.RecordsRemovedIdentitiesAndNewMediaFields",
+    "LibraryChanges.ReentrantCommitsReachEveryReceiverInRevisionOrder",
+    "LibraryChanges.RejectsNestedMutationBeforeAnOuterCommit",
+    "LibraryChanges.ScopedObserversCanDisconnectAndMoveDuringPublication",
+    "LibraryDocuments.FailedPersistenceRollsBackWorkspaceAndPlaylistImports",
+    "LibraryDocuments.OversizedSparseImportIsRejectedWithoutAllocatingOrCreatingRecords",
+    "LibraryJson.MetadataPatchSemanticsKeepTheExistingStoredSchema",
+    "LibraryJson.RejectsANonNumericRevision",
+    "LibraryJson.RejectsAPlaylistEntryForUnknownMedia",
+    "LibraryJson.RejectsDocumentsBeyondTheByteLimitBeforeParsing",
+    "LibraryJson.RejectsDuplicateTrackIdentities",
+    "LibraryJson.RejectsMalformedInputAndUnknownVersions",
+    "LibraryJson.RejectsMoreThan256TagsOnOneTrack",
+    "LibraryJson.RejectsNormalizedDuplicateTagsAndTrimsRestoredText",
+    "LibraryJson.RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences",
+    "LibraryJson.SuppliesDefaultsForOptionalFieldsFromAnOlderRecordShape",
+    "LibraryLifetime.CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbeddedMetadata",
+    "LibraryLifetime.CapturedReadAfterRecordRemovalCannotResurrectItsIdentity",
+    "LibraryNavigation.ListsRepositoryPlaylistsAndTypedWorkspaces",
+    "LibraryNavigation.RefreshesContentsWithoutReusingDisplayNamesAsIdentity",
+    "LibraryPersistence.BoundedBackpressureRejectsOnlyTheNewestTransactionAndCoalescesThePendingPrefix",
+    "LibraryPersistence.CoalescesAcceptedRevisionsAndRetriesWithoutLosingEitherEdit",
+    "LibraryStorage.BackupCommitFailureLeavesThePrimaryUnchanged",
+    "LibraryStorage.FutureBackupIsPreservedWhenThePrimaryIsDamaged",
+    "LibraryStorage.FutureSchemaIsNotReplacedByAnOlderBackupOrNewSave",
+    "LibraryStorage.InvalidSnapshotDoesNotReplaceThePreviousFile",
+    "LibraryStorage.MissingFilesProduceAnEmptyLibrary",
+    "LibraryStorage.RecoversTheLastValidBackupAfterPrimaryCorruption",
+    "LibraryStorage.RejectsOversizedFilesBeforeReadingTheirContents",
+    "LibraryStorage.ShortWritesAreNeverCommitted",
+    "LibraryStorage.WritesAndReadsACompleteSnapshot",
+    "LocationIndex.ResolvesAliasesWithoutFileReadsAndRemovesOldLocations",
+    "M3uPlaylist.AcceptsCrlfCommentsAndRetainsMissingEntries",
+    "M3uPlaylist.BoundsInputBeforeParsing",
+    "M3uPlaylist.RejectsInvalidUtf8AndMalformedExtinfWithoutPartialChanges",
+    "M3uPlaylist.RoundTripsUtf8RelativePathsAndDuplicateOccurrences",
+    "MainWindowShell.AppliesAndRestoresAValidatedCustomTheme",
+    "MainWindowShell.CommittedCustomTagsRefreshEveryOpenPlaylist",
+    "MainWindowShell.CustomLayoutReopensFromAcceptedValuesAndRestartsWithoutLosingEdits",
+    "MainWindowShell.DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocument",
+    "MainWindowShell.FocusedLayoutsCanRoundTripWithoutReplacingDocuments",
+    "MainWindowShell.GroupsControlsAndExposesTheirPurposeAndKeyboardFocus",
+    "MainWindowShell.LayoutPreviewCommandsAndCancelDoNotTouchPlayerState",
+    "MainWindowShell.LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocument",
+    "MainWindowShell.MenusSharePlayerCommandsWithButtonsAndShortcuts",
+    "MainWindowShell.NestedContainersRoundTripWithoutReplacingOpenDocuments",
+    "MainWindowShell.RejectedLayoutKeepsTheCurrentHierarchyAndDocuments",
+    "MainWindowShell.ReopeningThemeEditorsUsesCurrentAcceptedColorsAndCustomChoiceSurvivesSwitching",
+    "MainWindowShell.RestoresLayoutChoiceIndependentlyOfLibraryDocuments",
+    "MainWindowShell.RestoresSavedPlaylistEditorsWithoutChangingPlayback",
+    "MainWindowShell.RestoresTheNativeThemeChoice",
+    "MainWindowShell.SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPlays",
+    "MainWindowShell.TypedSessionRestoresBrowserStateAndDestinationIndependentlyWithDuplicateQueueEntries",
+    "MainWindowTest.LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput",
+    "MainWindowTest.RestoresEqualizerStateAndBandGainsFromThePreviousWindow",
+    "MainWindowTest.RestoresVolumeAndBoostFromThePreviousWindow",
+    "MainWindowTest.SeeksThroughTheBarAndUpdatesTheDisplayedTime",
+    "MainWindowTest.StartsWithOnlyCommandsThatCanRunEnabled",
+    "MediaFingerprint.DependsOnContentRatherThanLocation",
+    "MediaFingerprint.LearnsAnInitialFingerprintWithoutCallingItAnEdit",
+    "MediaFingerprint.MatchesOnlyOneUnambiguousStoredRecord",
+    "MediaFingerprint.ReconcilesMovesAndEmbeddedEditsWithoutLosingUserMetadata",
+    "MediaFingerprint.UnreadableLocationLeavesTheRecordUnchanged",
+    "MediaLocation.DoesNotResolveASymlinkAlias",
+    "MediaLocation.EmptyPathHasNoIdentity",
+    "MediaLocation.MakesARelativePathAbsoluteBeforeNormalizingIt",
+    "MediaLocation.NormalizesAbsolutePathComponentsWithoutReadingTheFile",
+    "MediaLocation.SeparatesPathCaseFromIdentityCase",
+    "MediaReplacement.ComparesOrderedSamplesAcrossDifferentDecoderBlockBoundaries",
+    "MediaReplacement.LockedSourceDoesNotReachTheCommit",
+    "MediaReplacement.RechecksCapturedSourceImmediatelyBeforePreparedCommit",
+    "MediaReplacement.RejectsAnExternalEditBeforeCommit",
+    "MediaReplacement.RejectsInvalidOutputWithoutChangingTheSource",
+    "MediaReplacement.ValidatesAndCommitsWhileRetainingTheOriginal",
+    "MediaRevisionPublisher.BoundedQueueReportsRejectionAndGatedShutdownCancelsWithoutDelivery",
+    "MediaRevisionPublisher.DeliversErrorsWithoutInventingMetadata",
+    "MediaRevisionPublisher.DestructionDropsAlreadyQueuedResults",
+    "MediaRevisionPublisher.EnqueueRejectionUsesQueuedOwnerDelivery",
+    "MediaRevisionPublisher.PublishesOnlyTheNewestRequestForEachIdentity",
+    "MediaRevisionPublisher.WorkerIoExceptionsBecomeTypedFailures",
+    "Metadata.PreservesIntentionalBlankOverrides",
+    "Metadata.ResolvesOverridesTagsDurationAndMissingState",
+    "Metadata.UsesALocationOnlyWhenNoTitleLayerHasAValue",
+    "MetadataBatchEdit.AppliesOnlyChangedRecordsAndReportsMissingTracks",
+    "MetadataBatchEdit.PublishesOneCommittedBatchForAllChangedMedia",
+    "MetadataBatchEdit.RollsBackEveryChangedRecordWhenSavingFails",
+    "MetadataConflictPanel.RoutesEveryChoiceAndRequiresReviewBeforeOverwrite",
+    "MetadataConflicts.AcceptsMatchingExpectedState",
+    "MetadataConflicts.DetectsChangedFilesMissingTracksAndUnreadableLocations",
+    "MetadataConflicts.DetectsMetadataAndContentRevisionChanges",
+    "MetadataEditService.AcceptedEditsReportDurabilitySeparatelyAndLateFailureCannotUndoANewerEdit",
+    "MetadataEditService.NoopAndResetUseTheSameBatchContractWithoutSaving",
+    "MetadataEditService.PublishesQueuedChangesBeforePersistenceSucceeds",
+    "MetadataEditService.RejectsRevisionConflictsBeforeChangingRecords",
+    "MetadataEditService.ReloadClearsApplicationOverridesTransactionally",
+    "MetadataEditService.RollsBackBeforePublishingFailure",
+    "MetadataMerge.LearnsOnlyChangedFieldsWithoutTouchingUserLayers",
+    "MetadataMerge.ReadsAndMergesMetadataThroughTheBackgroundWorker",
+    "MetadataPatch.FileConversionDoesNotTurnInheritanceIntoEmbeddedDeletion",
+    "MetadataPatch.InvalidTextRejectsTheWholePatchBeforeChangingAnyField",
+    "MetadataPatch.KeepsSetClearAndInheritDistinctForText",
+    "MetadataPatch.NumericZeroClearAndInheritHaveDifferentMeanings",
+    "MetadataSingleEdit.AppliesFieldsImmediatelyAndSupportsNumericClearing",
+    "MetadataSingleEdit.RejectsEmptyAndMissingEdits",
+    "MetadataSingleEdit.RejectsInvalidPatchesBeforePersistenceAndCanInheritEmbeddedValues",
+    "MetadataSingleEdit.RollsBackWhenPersistenceFails",
+    "MetadataWriteService.EnqueueRejectionIsIdentifiedAndDeliveredLaterOnOwnerThread",
+    "MetadataWriteService.FailedLibraryAcknowledgmentAfterReplacementKeepsLearnedStateAndReportsSourceModified",
+    "MetadataWriteService.ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSupersededOne",
+    "MetadataWriteService.ReplacementWaitsForDurableIntentAndCompletionWaitsForDurableLibraryResult",
+    "MetadataWriter.ReadOnlyAssetsRejectWritesWithoutModifyingTheSource",
+    "MetadataWriter.RepresentsFieldEditsAndExpectedStateWithoutLibraryDependencies",
+    "NowPlayingDocument.ForwardsIdentityBasedCommandsFromItsTable",
+    "NowPlayingDocument.IdleRefreshAndPlayingMarkerDoNotRebuildOrQueryTheSource",
+    "NowPlayingDocument.LibraryBatchesPatchOnlyMatchingOccurrencesAndKeepRawFieldsUntilLearningCompletes",
+    "NowPlayingDocument.LibraryOverridesRefreshDuplicateOccurrencesWithoutReadingTheFile",
+    "NowPlayingDocument.PresentsTheActualEngineQueueAndCurrentTrack",
+    "PlaybackPresentation.PumpsALoadIntoOneCoherentPresentation",
+    "PlaybackPresentation.ReportsUnavailablePlaybackWithoutMedia",
+    "PlaybackPresentation.RoutesQueueCommandsAndPresentsPlaybackPolicy",
+    "PlaybackPresentation.RoutesVolumeAndEqualizerValues",
+    "PlaybackPresentation.SeeksByFractionOfThePresentedDuration",
+    "PlaybackPresentation.TogglesBetweenPlayingPausedAndStopped",
+    "PlaybackQueue.AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue",
+    "PlaybackQueue.DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists",
+    "PlaybackQueue.ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad",
+    "PlaybackQueue.SelectsTheRequestedDuplicateOccurrenceAndNeverFallsBackForUnknownIds",
+    "PlaybackService.BoundsRetainedOutcomesAndReportsOverflow",
+    "PlaybackService.ConnectsAnAcceptedOpenWithItsTypedFailure",
+    "PlaybackService.ExposesAudioControlsAsValues",
+    "PlaybackService.HeadlessPumpPublishesACoherentCompletionSnapshot",
+    "PlaybackService.ReportsMetadataFailureWithoutSilencingPlayback",
+    "PlaybackService.ReportsUnavailableCommandsWithoutLoadedMedia",
+    "PlaybackService.SeparatesPlayPauseAndResume",
+    "PlaybackService.SuppressesAnObsoleteOpenCompletion",
+    "PlayerActions.BindingSafelyDisablesWhenTheActionDies",
+    "PlayerActions.EveryButtonTracksSharedStateAndDisconnectsWithItsLifetime",
+    "PlayerActions.PresentsPlayPauseAndRepeatState",
+    "PlayerActions.ReflectsShuffleWithoutEmittingANewCommand",
+    "PlayerActions.RegistersEveryCommandWithALabelAndShortcut",
+    "PlayerActions.SharesAvailabilityAndPreventsDisabledActivation",
+    "PlayerActions.SpaceActivatesTheFocusedButtonAndRemainsAPlayerShortcutElsewhere",
+    "PlayerApplication.ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPlayingIntent",
+    "PlayerApplication.KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed",
+    "PlayerApplication.LibraryReconcilesTwoIndependentWorkspaceGenerations",
+    "PlayerApplication.ObserverLifetimeAndShutdownDoNotLeaveLiveCallbacksOrCommands",
+    "PlayerApplication.RecreatingAWindowDoesNotRestoreOrDuplicateTheQueueAgain",
+    "PlayerApplication.RecreatingAWindowKeepsTheSameLibraryAndActiveDestination",
+    "PlayerApplication.RecursiveWorkspaceRefreshContinuesWithoutAWindow",
+    "PlayerApplication.ReportsFailedFlushAndAllowsAnExplicitRetry",
+    "PlayerApplication.UnsupportedGuiFileWriteRetainsApplicationOverrideAndOriginalBytes",
+    "PlayerApplication.WorkspaceRelocationPreservesSavedReferencesAndCanonicalMedia",
+    "PlayerSections.ContextAndErrorsRemainPlainAccessibleText",
+    "PlayerSections.PresetsShareTypedSectionReferencesAndValidateAfterRoundTrip",
+    "PlayerSections.TransportProjectsUnknownDurationAndKeepsBindingsWhenReparented",
+    "PlayerSections.VolumeProjectionNeverIssuesCommandsAndInputsIssueExactlyOne",
+    "PlaylistRecord.AllowsTwoEntriesForTheSameMediaWithoutSharingEntryIdentity",
+    "PlaylistTransfer.AddsSelectedMediaToTheActivePlaylistWithDuplicateOccurrences",
+    "PlaylistTransfer.SupportsExplicitDestinationsAndRollsBackFailedBatches",
+    "PreparedLayout.AbandonmentAndDestroyedBorrowedViewsDoNotAttachAnyLiveWidget",
+    "PreparedLayout.DetectsChangedBorrowedOwnershipAndCanOnlyAttachOnce",
+    "PreparedLayout.RetiringAStructureKeepsOmittedRegisteredCompositeContentsTogether",
+    "QualifiedFormats/MetadataFileJourney.FileButtonWritesTheSelectedDuplicateAndPreservesDecodedAudio/\"tone-vorbis.ogg\"",
+    "QualifiedFormats/MetadataFileJourney.FileButtonWritesTheSelectedDuplicateAndPreservesDecodedAudio/\"tone.flac\"",
+    "QualifiedFormats/MetadataFileJourney.FileButtonWritesTheSelectedDuplicateAndPreservesDecodedAudio/\"tone.mp3\"",
+    "QualifiedFormats/MetadataFileJourney.FileButtonWritesTheSelectedDuplicateAndPreservesDecodedAudio/\"tone.wav\"",
+    "QueueLibraryMigration.CreatesAnEmptyLibraryForAnEmptyQueue",
+    "QueueLibraryMigration.DoesNotOverwriteAnExistingValidLibrary",
+    "QueueLibraryMigration.DoesNotReplaceACorruptLibrary",
+    "QueueLibraryMigration.PreservesDuplicateOccurrencesAndMissingTracks",
+    "QueueSettings.DropsTracksThatHaveGoneSince",
+    "QueueSettings.FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone",
+    "QueueSettings.InvalidOccurrenceMetadataNeverSelectsADuplicateByFilename",
+    "QueueSettings.KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled",
+    "QueueSettings.LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone",
+    "QueueSettings.LegacyPathOnlySelectionMigratesWithoutInventingAnOccurrence",
+    "QueueSettings.PutsBackHowItWasBeingPlayedThrough",
+    "QueueSettings.PutsBackTheQueueTheLastRunLeft",
+    "QueueSettings.RestoresNothingFromAnEmptySettingsFile",
+    "QueueSettings.RestoresTheSelectedOccurrenceOfADuplicatePath",
+    "QueueSettings.StandsWhereTheLastRunStood",
+    "QueuedDelivery.DestroyedContextDiscardsPendingAndFutureDeliveries",
+    "QueuedDelivery.DetachedWorkerEndpointIsSafeAfterReceiverDestruction",
+    "QueuedDelivery.ReceiverDestructionDiscardsPostedDeliveries",
+    "QueuedDelivery.StopAcceptingAndDrainPreserveOnlyAlreadyAcceptedPayloads",
+    "QueuedDelivery.TransfersWorkerPayloadsAndAllowsReentrantPosting",
+    "QueuedDelivery.UnrelatedEventsDoNotConsumeAcceptedPayloads",
+    "ReaderContracts.TruncatedAndMutatedInputsPreserveThePreviouslyAcceptedState",
+    "RepositoryTransaction.AbandoningACandidateDoesNotCallPersistence",
+    "RepositoryTransaction.AcceptedReceiptReportsFailedAttemptsThenDurableWithoutRollingBackLaterEdits",
+    "RepositoryTransaction.BulkReplacementAndRepeatedEditsRestoreEveryOriginalRecordWithoutAllocatingOnRollback",
+    "RepositoryTransaction.ExceptionDuringPersistenceRollsBack",
+    "RepositoryTransaction.OnlyTouchedRecordsMoveAndTheImmutableDeltaSurvivesPublication",
+    "RepositoryTransaction.PersistenceFailureRestoresValuesRevisionsAndEveryAllocator",
+    "RepositoryTransaction.RejectsAnImplicitPersistencePolicy",
+    "RepositoryTransaction.SuccessfulCommitCannotBeUndoneOrCommittedTwice",
+    "SavedPlaylistCommands.CreatesRenamesDuplicatesAndDeletesPersistentPlaylists",
+    "SavedPlaylistCommands.RejectsBlankNamesAndMissingPlaylists",
+    "SavedPlaylistCommands.RollsBackRepositoryChangesWhenPersistenceFails",
+    "SavedPlaylistDocument.CombinesTextTagSortingCountsAndPersistentSelection",
+    "SavedPlaylistDocument.KeepsSelectedEntryIdentityAcrossMembershipChangesAndRename",
+    "SavedPlaylistDocument.PresentsSavedRowsAndReturnsPersistentEntryIdentities",
+    "SavedPlaylistDocument.RefreshesMetadataWithoutLosingPersistentSelection",
+    "SavedPlaylistDocument.SearchesTagsThroughTheCanonicalMediaIdentity",
+    "SavedPlaylistDocument.SortingPreservesPersistentEntrySelection",
+    "SavedPlaylistDocument.UpdatesEverySharedOccurrenceWithoutResettingUnrelatedRows",
+    "SavedPlaylistManager.CreatesRenamesDuplicatesAndDeletesWithVisibleSavedState",
+    "SavedPlaylistManager.PendingRevisionsCannotBeFalselyAcknowledgedByAnOlderSave",
+    "SavedPlaylistManager.ReportsSaveFailureAndValidatesSelectionAndNames",
+    "SavedPlaylistStorage.RejectsInvalidSavedRecordsWithoutChangingTheRepository",
+    "SavedPlaylistStorage.RestoresOrderedEntriesAndDuplicateMediaWithStableIdentities",
+    "Search.AppliesIncludeAndExcludeFiltersWithNormalizedValues",
+    "Search.MatchesTagKeysAndValuesWithNormalizedTerms",
+    "Search.NormalizesEveryQueryField",
+    "Search.RequiresEverySpecifiedFieldGroupToMatch",
+    "SearchIndex.MatchesDirectEvaluationOnFixedDataAndInvalidatesOnlySearchableChanges",
+    "SearchIndex.RevisionChangesOnlyWhenSearchableFactsChange",
+    "SearchIndex.UpdatesIncrementallyWithoutDuplicatesAndMatchesStructuredQueries",
+    "SearchIndexBenchmark.ReusesNormalizedFieldsAcrossManyQueries",
+    "SessionPreferences.DestinationRestoresAndTracksLibraryChangesWithoutAnyWindow",
+    "SessionPreferences.DurableMigrationRetainsLegacyKeysUntilTheWriteSucceeds",
+    "SessionPreferences.FutureSchemaIsPreservedAndReentrantEditsStayPendingForAnotherFlush",
+    "SessionPreferences.QueueRestorationUsesTheExplicitOccurrenceMapAndDropsUnknownEntries",
+    "SessionState.RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWithoutPrecisionLoss",
+    "StandardMetadataEditor.ApplyAfterExternalChangeChecksOriginalTargetAndExpectations",
+    "StandardMetadataEditor.MixedValuesRemainUnchangedUnlessExplicitlyEdited",
+    "StandardMetadataEditor.NumericBoundariesRejectOverflowAndKeepUntouchedFieldsUnchanged",
+    "StandardMetadataEditor.PreservesDraftAndExpectedTargetAcrossRevisionsAndSelectionChanges",
+    "StandardMetadataEditor.RejectsInvalidNumbersAndCancelsCleanly",
+    "StandardMetadataEditor.SessionDeduplicatesOccurrencesAndRetainsOwnedOriginalValues",
+    "StandardMetadataEditor.ShowsResolvedValuesAndAppliesDirtyOverrides",
+    "TagFilterPanel.AddsIncludeExcludeAndRemovableChips",
+    "TagFilterPanel.RejectsBlankAndNormalizedDuplicateFilters",
+    "TagKeyCatalog.CountsMediaAndRetainsLabelsAcrossValueAndCaseChanges",
+    "TagKeyCatalog.RevisionChangesForGlobalKeysAndNotForValueOrOccurrenceChanges",
+    "TagValue.RejectsBlankControlAndOverLimitText",
+    "TagValue.TrimsInputAndPreservesDisplayCasing",
+    "Theme.ApplyingDarkThemeUpdatesNativePaletteAndSemanticStates",
+    "Theme.CustomIconsAndArtworkFollowTheActivePalette",
+    "Theme.LightAndDarkPalettesDefineSemanticStates",
+    "ThemeContrast.ValidatesBuiltinsAndCalculatesAccessibleRatios",
+    "ThemeEditor.FailedDurableAcceptanceRetainsTheDraftForRetry",
+    "ThemeEditor.RejectsLowContrastAndAppliesAnEditableCopy",
+    "ThemeManager.BoundedAllowlistedImportsAndFutureFilesPreserveTheAcceptedDefinition",
+    "ThemeManager.InvalidContrastAlphaAndFailedWritesRetainAcceptedPaletteAndGeneration",
+    "ThemeManager.PersistsAcceptedColorsKeepsCustomAcrossPresetsAndPublishesOneGeneration",
+    "ThemeManager.SharedGuiOwnersReuseOneStateAndPaletteChangesInvalidateArtworkPlaceholders",
+    "TrackBrowser.CapabilitiesGovernMenusAndKeyboardCommands",
+    "TrackBrowser.IndexedSearchUsesCanonicalMediaAndPreservesOccurrenceDuplicates",
+    "TrackBrowser.NormalizesOnceAndIgnoresEquivalentStateUpdates",
+    "TrackBrowser.ReparentedQueryControlsDoNotRetainCallbacksToADestroyedBrowser",
+    "TrackBrowser.SharesSearchAndResultCountsAcrossAllDocumentContexts",
+    "TrackInspector.ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAnotherTrackPlays",
+    "TrackInspector.MarksMissingFilesAndClearsWhenThereIsNoSelection",
+    "TrackInspector.MultiSelectionUsesMixedEditorAndDisablesSingleTrackCustomTags",
+    "TrackInspector.RetainedDraftPinsAllSectionsUntilExplicitCancel",
+    "TrackInspector.ShowsMetadataLocationDurationArtworkAndAvailability",
+    "TrackMetadata.EveryExtendedFieldIsIndependent",
+    "TrackMetadata.ExistingReadersRemainCompatibleAndNewFieldsAffectEmptiness",
+    "TrackProjection.LatestQueryReplacesBlockedWorkAndOwnsItsSearchFacts",
+    "TrackProjection.ShutdownCancelsBlockedWorkAndNoPostedResultCanRetainTheReceiver",
+    "TrackRecord.KeepsMultipleTagsAndLocationHistoryForOneMediaIdentity",
+    "TrackRecord.UserValuesOverrideTheDisplayWithoutReplacingEmbeddedMetadata",
+    "TrackRows.NonPlayingRowsKeepTheirLibraryIdentityAndResolvedValues",
+    "TrackRows.QueueAdapterKeepsDuplicateOccurrencesAndMediaIdentitySeparate",
+    "TrackRows.SelectionAndActivationRetainDistinctSavedOccurrenceIdentities",
+    "TrackRows.SortsAndFiltersSavedAndWorkspaceRowsWithoutAPlaybackQueueOrRepository",
+    "TrackSearchPanel.EmitsSimultaneousFieldsAndClearsEachIndependently",
+    "TrackSearchPanel.ResetClearsEveryField",
+    "TrackSort.ProducesTypedStandardValuesAndDirections",
+    "TrackSort.RejectsMalformedKeysAndRepresentsMissingDuration",
+    "TrackSort.ResolvesCustomTagsWithoutCaseSensitivityAndKeepsMultipleValues",
+    "TrackSorter.AppliesMultipleKeysWithDeterministicIdentityFallback",
+    "TrackSorter.KeepsMissingDurationsLastAndUsesTagKeys",
+    "TrackSorter.PreparesEachSortValueOncePerRowInsteadOfOncePerComparison",
+    "TrackTableModelTest.ARowPatchUpdatesOnlyItsOccurrenceWithoutRebuildingTheSourceOrQuery",
+    "TrackTableModelTest.AddressesRowsByStableTrackIdentity",
+    "TrackTableModelTest.BoundedGeneratedMutationsMatchAnIndependentIdentityOracle",
+    "TrackTableModelTest.ChangesOnlyTheRowWhoseMetadataChanged",
+    "TrackTableModelTest.FiltersSimultaneousTitleArtistAndAlbumTerms",
+    "TrackTableModelTest.FollowsTheCurrentIdentityAcrossReordering",
+    "TrackTableModelTest.KeepsPersistentIndexesThroughInsertRemoveSortAndFilter",
+    "TrackTableModelTest.LargeQueriesRejectOldResultsReuseSnapshotsAndKeepPersistentIdentity",
+    "TrackTableModelTest.PresentsDynamicTagColumnsAndLiveValues",
+    "TrackTableModelTest.RejectsInvalidAndDuplicateOccurrenceIdentities",
+    "TrackTableModelTest.SharesArtworkAcrossDuplicatesAndInvalidatesANewRevision",
+    "TrackTableModelTest.UpdatesSelectionWithoutDependingOnPlaylistRevisions",
+    "TrackTableView.AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues",
+    "TrackTableView.HeaderClicksSortOnlyTheViewAndApplyIsExplicit",
+    "TrackTableView.HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQueue",
+    "TrackTableView.HiddenStandardColumnKeepsWidthWhenTagSchemaChanges",
+    "TrackTableView.MetadataRefreshKeepsSelectionAndFilteringClearsHiddenSelections",
+    "TrackTableView.OffersColumnVisibilityControls",
+    "TrackTableView.ProvidesKeyboardFocusAndContextCommands",
+    "TrackTableView.RestoresSelectionAndKeyboardPositionByTrackIdentity",
+    "TrackTableView.RetainsTagWidthAndOrderWhenHiddenAndReappearing",
+    "VolumeControl.AppliesTheCurveToAPosition",
+    "VolumeControl.AppliesWhatItRestores",
+    "VolumeControl.BringsAPositionBackWhenBoostIsTurnedOff",
+    "VolumeControl.BringsAStoredPositionBackIntoRange",
+    "VolumeControl.ClampsAPositionOffTheTravel",
+    "VolumeControl.GivesBackWhatTheLastRunLeft",
+    "VolumeControl.GivesBackWhetherItWasBoosted",
+    "VolumeControl.IgnoresAStoredValueThatIsNotAPosition",
+    "VolumeControl.IsSilentAtTheBottomOfTheTravel",
+    "VolumeControl.LeavesTheTravelBelowFullAlone",
+    "VolumeControl.LiftsPastWhatArrivedWhenBoosted",
+    "VolumeControl.StartsAtFullVolume",
+    "VolumeControl.StopsAtFullUntilBoosted",
+    "WorkspaceDocument.ANewScanKeepsAnExplicitlyClearedTitle",
+    "WorkspaceDocument.AppendsCurrentBatchesAndRejectsStaleGenerations",
+    "WorkspaceDocument.AppliesMediaRevisionsByIdentityWithoutLosingSelection",
+    "WorkspaceDocument.CancellationKeepsUsefulRowsAndRejectsLateCompletion",
+    "WorkspaceDocument.ExposesRecursionRescanProgressAndCancellationControls",
+    "WorkspaceDocument.RemovesAbsentRowsOnlyAfterTheReplacementGenerationCompletes",
+    "WorkspaceDocument.RescanAndKnownRelocationKeepTheSelectedMediaIdentity",
+    "WorkspaceDocument.RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProjection",
+    "WorkspaceDocument.RetainsUsefulRowsWhenANewScanStarts",
+    "WorkspaceDocument.RoutesSelectedPathsToPlaybackAndTransferCallbacks",
+    "WorkspaceDocument.StreamsInStablePathOrderAndReportsScanLimitsWithoutDroppingUsefulRows",
+    "WorkspaceReconciliation.ANewerOwnerRecordAtANewPathIsNotOverwrittenByDiscovery",
+    "WorkspaceReconciliation.AmbiguousFingerprintsDoNotMergeDistinctMediaIdentities",
+    "WorkspaceReconciliation.AppliesWorkerFactsWithoutReopeningTheFile",
+    "WorkspaceReconciliation.FailedPersistenceRollsBackLearnedRowsAndMissingFlags",
+    "WorkspaceReconciliation.FlatScanNeverClaimsAbsenceForUnvisitedSubdirectories",
+    "WorkspaceReconciliation.HandlesEditedMissingRestoredAndNewFiles",
+    "WorkspaceReconciliation.RejectsUnknownWorkspacesAndCountsOutsidePaths",
+    "WorkspaceReconciliation.RelocatesByFingerprintWithoutChangingTagsOrPlaylistReferences",
+    "WorkspaceReconciliation.StaleDiscoveryCannotOverwriteNewerContentState",
+    "WorkspaceScanPublisher.CancellationInvalidatesAlreadyQueuedBatches",
+    "WorkspaceScanPublisher.CancellingOneWorkspaceLeavesAnotherConcurrentScanIntact",
+    "WorkspaceScanPublisher.FairBoundedQueueRunsWaitingWorkspaceAndReportsOverflow",
+    "WorkspaceScanPublisher.PublishesIncrementalBatchesOnTheGuiThread",
+    "WorkspaceScanPublisher.SupersedingOneWorkspaceDropsOnlyItsOlderQueuedGeneration",
+    "WorkspaceScanner.CancelsCooperativelyAfterTheFirstBatch",
+    "WorkspaceScanner.EmptyQualificationNeverClaimsAllKnownMediaAreMissing",
+    "WorkspaceScanner.HonorsNonRecursiveEnumeration",
+    "WorkspaceScanner.IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation",
+    "WorkspaceScanner.PartialQualificationKeepsPresentKnownFilesButDoesNotImportUnknownFormats",
+    "WorkspaceScanner.PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGatedBoundary",
+    "WorkspaceScanner.ReportsAnInvalidRoot",
+    "WorkspaceScanner.ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows",
+    "WorkspaceScanner.StopsAtTrackLimitWithoutClaimingAnAuthoritativeCompletion",
+    "WorkspaceScanner.StreamsSupportedFilesInBoundedWorkerBatches",
+    "WorkspaceWatcher.CoalescesFilesystemBurstsAndStopsAfterUnwatch",
+    "WorkspaceWatcher.MissingRootUsesAnAncestorAndRecoversWhenTheRootReappears",
+    "WorkspaceWatcher.NewSubdirectoriesAreSubscribedOnlyFromWorkerDiscoveryFacts",
+    "WorkspaceWatcher.OverlappingSubscriptionsSurviveClosingOneWorkspaceAndNotifyEveryInterestedRoot",
+    "WorkspaceWatcher.WatchRefusalAndNativeLimitAreVisibleAndRetryAfterCapacityIsReleased"
+  ],
+  "applicability": {
+    "linux": "Clang 18 LLVM instrumentation, x86_64, Qt 6.4.2 offscreen; exact four-metric counts.",
+    "windows": "Native static Windows state, sharing and metadata journeys are required in a separate CI job. Native coverage is unmeasured; Windows-only executable paths remain a qualification gap. No incompatible profile merging.",
+    "remaining_gaps": "All measured uncovered lines, functions, regions and decisions are retained per file in gate.json; unreachable/platform decisions require review and are not automatically excluded."
+  }
+}
