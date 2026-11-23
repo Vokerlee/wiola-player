@@ -444,6 +444,7 @@
     "test.utils.units_test": "test",
     "testing.atomic_output": "test",
     "testing.catalog": "tooling",
+    "testing.cmake_build": "tooling",
     "testing.compatibility_corpus": "test",
     "testing.decoder": "test",
     "testing.desktop_checks": "tooling",

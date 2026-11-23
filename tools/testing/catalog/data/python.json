@@ -15,6 +15,7 @@
   "tools/coverage/source_policy/tests/test_policy.py": "coverage.source_policy",
   "tools/sdk/qt_mingw/tests/test_sdk.py": "sdk.qt_mingw",
   "tools/testing/catalog/tests/test_catalog.py": "testing.catalog",
+  "tools/testing/cmake_build/tests/test_build.py": "testing.cmake_build",
   "tools/testing/desktop_checks/tests/test_environment.py": "testing.desktop_checks",
   "tools/testing/gtest/tests/test_protocol.py": "testing.gtest"
 }
