@@ -11,7 +11,7 @@ import sys
 from tools.architecture.cmake_inventory.inventory import CMakeInventory
 from tools.architecture.inventory.git_inventory import GitInventory
 from tools.architecture.ownership.registry import load_current_registry
-from tools.testing.cmake_build.build import CMakeBuild
+from tools.build_environment.cmake.build import CMakeBuild
 from tools.testing.gtest.runner import GoogleTestRunner
 
 from .catalog import MutationCatalog

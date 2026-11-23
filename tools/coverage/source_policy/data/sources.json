@@ -4509,6 +4509,34 @@
       "workflow": false
     },
     {
+      "path": "tools/build_environment/cmake/__init__.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/build_environment/cmake/build.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/build_environment/cmake/tests/__init__.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/build_environment/cmake/tests/test_build.py",
+      "owner": "testing.cmake_build",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "tools/build_environment/ubuntu_packages/__init__.py",
       "owner": "build_environment.ubuntu_packages",
       "language": "python",
@@ -4684,6 +4712,69 @@
       "workflow": false
     },
     {
+      "path": "tools/sdk/qt_core_tsan/CMakeLists.txt",
+      "owner": "sdk.qt_core_tsan",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/__init__.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/__main__.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/build.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/context.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/runtime.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/tests/__init__.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/tests/test_recipe.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/sdk/qt_core_tsan/verify.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
       "path": "tools/sdk/qt_mingw/__init__.py",
       "owner": "sdk.qt_mingw",
       "language": "python",
@@ -4791,34 +4882,6 @@
     {
       "path": "tools/testing/catalog/tests/test_catalog.py",
       "owner": "testing.catalog",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/cmake_build/__init__.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/cmake_build/build.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/cmake_build/tests/__init__.py",
-      "owner": "testing.cmake_build",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/cmake_build/tests/test_build.py",
-      "owner": "testing.cmake_build",
       "language": "python",
       "role": "test",
       "workflow": false

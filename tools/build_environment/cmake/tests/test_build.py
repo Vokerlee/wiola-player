@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from tools.architecture.cmake_inventory.inventory import BuildTarget, CMakeInventory
-from tools.testing.cmake_build.build import CMakeBuild
+from tools.build_environment.cmake.build import CMakeBuild
 
 
 class CMakeBuildTest(unittest.TestCase):

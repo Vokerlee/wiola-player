@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "previous": "tools/testing/cmake_build/__init__.py",
+    "current": "tools/build_environment/cmake/__init__.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/testing/cmake_build/build.py",
+    "current": "tools/build_environment/cmake/build.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/testing/cmake_build/tests/__init__.py",
+    "current": "tools/build_environment/cmake/tests/__init__.py",
+    "owner": "testing.cmake_build"
+  },
+  {
+    "previous": "tools/testing/cmake_build/tests/test_build.py",
+    "current": "tools/build_environment/cmake/tests/test_build.py",
+    "owner": "testing.cmake_build"
+  }
+]

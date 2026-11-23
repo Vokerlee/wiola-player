@@ -1,6 +1,6 @@
 # Regression mutation qualification
 
-This owner composes [scoped source edits](../source_mutation/README.md), the configured [CMake build adapter](../cmake_build/README.md), and the [GoogleTest protocol](../gtest/README.md). `MutationCatalog` validates regression recipes; `MutationVerifier` controls baseline, mutant and restored qualification. The narrow build port permits another build adapter without changing source restoration or assertion evidence.
+This owner composes [scoped source edits](../source_mutation/README.md), the configured [CMake build adapter](../../build_environment/cmake/README.md), and the [GoogleTest protocol](../gtest/README.md). `MutationCatalog` validates regression recipes; `MutationVerifier` controls baseline, mutant and restored qualification. The narrow build port permits another build adapter without changing source restoration or assertion evidence.
 
 ```mermaid
 flowchart LR

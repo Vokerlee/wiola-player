@@ -58,38 +58,52 @@ jobs:
         with:
           name: ${{ matrix.preset }}
           packages: ${{ matrix.preset == 'linux-tsan' && 'libglib2.0-dev' || '' }}
-      - uses: actions/cache@v4
+      - name: Identify the instrumented Qt build context
+        id: tsan-qt-context
+        if: matrix.preset == 'linux-tsan'
+        run: |
+          identity="$(python3 -m tools.sdk.qt_core_tsan --identity)"
+          [[ "$identity" =~ ^[[:xdigit:]]{64}$ ]]
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "workspace=$RUNNER_TEMP/qt-core-tsan" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: tsan-qt
         if: matrix.preset == 'linux-tsan'
         with:
-          path: build-tsan/qt-core-tsan/runtime
-          key: qt-core-tsan-${{ runner.arch }}-${{ hashFiles('scripts/build-qt-core-tsan.sh', 'tools/sdk/qt_source/*.py', 'tools/sdk/qt_source/pins.json') }}
+          path: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+          key: qt-core-tsan-${{ runner.os }}-${{ runner.arch }}-${{ steps.tsan-qt-context.outputs.identity }}
       - name: Build the matching instrumented Qt event dispatcher
         if: matrix.preset == 'linux-tsan'
         run: |
-          scripts/build-qt-core-tsan.sh build-tsan/qt-core-tsan
+          scripts/build-qt-core-tsan.sh "$WIOLA_QT_TSAN_WORKSPACE"
           echo "WIOLA_QT_PLUGIN_PATH=$(qtpaths6 --plugin-dir)" >> "$GITHUB_ENV"
+        env:
+          WIOLA_QT_TSAN_WORKSPACE: ${{ steps.tsan-qt-context.outputs.workspace }}
+      - name: Save the qualified Core before testing
+        if: matrix.preset == 'linux-tsan' && steps.tsan-qt.outputs.cache-hit != 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+          key: ${{ steps.tsan-qt.outputs.cache-primary-key }}
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
       - run: cmake --build --preset ${{ matrix.preset }} --target wiola_check_test_contracts
       - run: cmake --build --preset ${{ matrix.preset }} --target wiola_core_adapter_boundary
       - name: Record the instrumented Qt runtime
         if: matrix.preset == 'linux-tsan'
-        run: |
-          mkdir -p build-tsan/Testing
-          ldd build-tsan/tests/gui/gui_desktop_journey_test > build-tsan/Testing/qt-runtime.txt
-          grep -F "$GITHUB_WORKSPACE/build-tsan/qt-core-tsan/runtime/libQt6Core.so.6" build-tsan/Testing/qt-runtime.txt
+        run: cmake --build --preset ${{ matrix.preset }} --target wiola_verify_tsan_runtime
         env:
-          LD_LIBRARY_PATH: ${{ github.workspace }}/build-tsan/qt-core-tsan/runtime
+          WIOLA_QT_CORE_RUNTIME: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
       - name: Run offscreen GUI command journeys
         run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 --output-on-failure -R '^(MainWindowTest|DesktopJourney)\.' ${{ matrix.ctest_args }}
         env:
           QT_QPA_PLATFORM: offscreen
-          LD_LIBRARY_PATH: ${{ matrix.preset == 'linux-tsan' && format('{0}/build-tsan/qt-core-tsan/runtime', github.workspace) || '' }}
+          LD_LIBRARY_PATH: ${{ matrix.preset == 'linux-tsan' && format('{0}/runtime', steps.tsan-qt-context.outputs.workspace) || '' }}
           QT_PLUGIN_PATH: ${{ env.WIOLA_QT_PLUGIN_PATH }}
           WIOLA_GUI_FAILURE_ARTIFACTS: ${{ github.workspace }}/build-${{ matrix.preset }}/gui-artifacts
       - run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 ${{ matrix.ctest_args }}
         env:
-          LD_LIBRARY_PATH: ${{ matrix.preset == 'linux-tsan' && format('{0}/build-tsan/qt-core-tsan/runtime', github.workspace) || '' }}
+          LD_LIBRARY_PATH: ${{ matrix.preset == 'linux-tsan' && format('{0}/runtime', steps.tsan-qt-context.outputs.workspace) || '' }}
           QT_PLUGIN_PATH: ${{ env.WIOLA_QT_PLUGIN_PATH }}
       - name: Upload test diagnostics
         if: failure()
@@ -100,8 +114,8 @@ jobs:
             build-*/Testing/Temporary
             build-*/Testing/qt-runtime.txt
             build-*/gui-artifacts
-            build-tsan/qt-core-tsan/runtime/receipt.json
-            build-tsan/qt-core-tsan/*.log
+            ${{ steps.tsan-qt-context.outputs.workspace }}/runtime/receipt.json
+            ${{ steps.tsan-qt-context.outputs.workspace }}/*.log
           if-no-files-found: ignore
           retention-days: 7
 

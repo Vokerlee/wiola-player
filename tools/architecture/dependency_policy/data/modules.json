@@ -85,6 +85,7 @@
     "repository.requirements": "documentation",
     "resources.desktop": "resources",
     "sdk.package": "tooling",
+    "sdk.qt_core_tsan": "tooling",
     "sdk.qt_mingw": "tooling",
     "sdk.qt_source": "tooling",
     "source.app.library.artwork_store": "application",

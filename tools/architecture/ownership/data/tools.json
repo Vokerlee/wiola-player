@@ -291,6 +291,23 @@
       ]
     },
     {
+      "id": "sdk.qt_core_tsan",
+      "purpose": "Builds, qualifies and verifies the native instrumented Qt Core runtime",
+      "files": [
+        "tools/sdk/qt_core_tsan/CMakeLists.txt",
+        "tools/sdk/qt_core_tsan/README.md",
+        "tools/sdk/qt_core_tsan/__init__.py",
+        "tools/sdk/qt_core_tsan/__main__.py",
+        "tools/sdk/qt_core_tsan/build.py",
+        "tools/sdk/qt_core_tsan/context.py",
+        "tools/sdk/qt_core_tsan/runtime.py",
+        "tools/sdk/qt_core_tsan/tests/README.md",
+        "tools/sdk/qt_core_tsan/tests/__init__.py",
+        "tools/sdk/qt_core_tsan/tests/test_recipe.py",
+        "tools/sdk/qt_core_tsan/verify.py"
+      ]
+    },
+    {
       "id": "sdk.qt_mingw",
       "purpose": "Builds and identifies the x86-64 static Qt SDK",
       "files": [
@@ -338,12 +355,12 @@
       "id": "testing.cmake_build",
       "purpose": "Builds configured CMake targets and resolves their declared executable artifacts",
       "files": [
-        "tools/testing/cmake_build/README.md",
-        "tools/testing/cmake_build/__init__.py",
-        "tools/testing/cmake_build/build.py",
-        "tools/testing/cmake_build/tests/README.md",
-        "tools/testing/cmake_build/tests/__init__.py",
-        "tools/testing/cmake_build/tests/test_build.py"
+        "tools/build_environment/cmake/README.md",
+        "tools/build_environment/cmake/__init__.py",
+        "tools/build_environment/cmake/build.py",
+        "tools/build_environment/cmake/tests/README.md",
+        "tools/build_environment/cmake/tests/__init__.py",
+        "tools/build_environment/cmake/tests/test_build.py"
       ]
     },
     {
