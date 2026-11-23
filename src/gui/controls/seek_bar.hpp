@@ -52,6 +52,9 @@ public:
     /// rather than a place being played.
     [[nodiscard]] bool dragging() const noexcept { return dragging_; }
 
+    /// User/accessibility input, kept separate from playback's presentation update.
+    void request_seek(double fraction);
+
 signals:
     /// Asks for playback to move to `fraction` of the track.
     void seek_requested(double fraction);
@@ -61,6 +64,8 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
     void mousePressEvent(QMouseEvent* event) override;
 
@@ -74,6 +79,7 @@ private:
 
     double fraction_{0.0};
     bool dragging_{false};
+    double drag_origin_{};
 };
 
 } // namespace wiola::gui
