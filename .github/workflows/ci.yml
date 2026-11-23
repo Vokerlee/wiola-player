@@ -52,8 +52,9 @@ jobs:
           name: ${{ matrix.preset }}
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
+      - run: cmake --build --preset ${{ matrix.preset }} --target wiola_core_adapter_boundary
       - name: Run offscreen GUI command journeys
-        run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 --output-on-failure -R '^MainWindowTest\.' ${{ matrix.ctest_args }}
+        run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 --output-on-failure -R '^(MainWindowTest|DesktopJourney)\.' ${{ matrix.ctest_args }}
         env:
           QT_QPA_PLATFORM: offscreen
           WIOLA_GUI_FAILURE_ARTIFACTS: ${{ github.workspace }}/build-${{ matrix.preset }}/gui-artifacts
@@ -80,6 +81,8 @@ jobs:
           build-dir: build-headless
       - run: cmake --preset linux-headless
       - run: cmake --build --preset linux-headless -j
+      - run: cmake --build --preset linux-headless -j --target wiola_model_boundary
+      - run: build-headless/bin/wiola_model_boundary
 
   release:
     runs-on: ubuntu-24.04
@@ -110,7 +113,7 @@ jobs:
           key: qt-mingw-${{ hashFiles('scripts/build-qt-mingw.sh', 'cmake/mingw-w64.cmake') }}
       - if: steps.qt-mingw.outputs.cache-hit != 'true'
         run: ./scripts/build-qt-mingw.sh "$GITHUB_WORKSPACE/.qt-mingw"
-      - run: cmake --preset windows-release
+      - run: cmake --preset windows-release -DENABLE_UNIT_TESTS=ON -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST
         env:
           QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
       - run: cmake --build --preset windows-release -j
@@ -123,6 +126,33 @@ jobs:
             echo "Unexpected non-system runtime import" >&2
             exit 1
           fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-journeys
+          path: |
+            build-win-release/bin/wiola-player.exe
+            build-win-release/tests/gui/gui_desktop_journey_test.exe
+
+  windows-native:
+    needs: windows
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-desktop-journeys
+          path: native-journey
+      - name: Run the packaged static binary on native Windows
+        run: python scripts/run-desktop-journeys.py --binary native-journey/tests/gui/gui_desktop_journey_test.exe --artifacts native-journey/results --revision "${{ github.sha }}"
+        env:
+          QT_QPA_PLATFORM: windows
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-native-journey-results
+          path: native-journey/results
 
   coverage:
     runs-on: ubuntu-24.04
