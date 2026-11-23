@@ -22,6 +22,19 @@ class AbstractionContract:
     invariants: tuple[str, ...]
     public_files: tuple[str, ...] = ()
     grouping: bool = False
+    parts: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        if isinstance(self.parts, str):
+            raise ContractError(
+                "Component parts must be a collection of inventory identities"
+            )
+        object.__setattr__(self, "parts", tuple(self.parts))
+
+    @property
+    def owner_ids(self) -> tuple[str, ...]:
+        """Stable inventory parts forming this one reviewed component."""
+        return (self.owner, *self.parts)
 
 
 @dataclass(frozen=True)
@@ -47,7 +60,8 @@ def file_set_identity(owner: Owner) -> str:
 
 def needs_contract(owner: Owner) -> bool:
     return any(
-        PurePosixPath(path).suffix in {".cpp", ".hpp", ".py", ".sh", ".cmake", ".yml", ".yaml"}
+        PurePosixPath(path).suffix
+        in {".cpp", ".hpp", ".py", ".sh", ".cmake", ".yml", ".yaml"}
         or PurePosixPath(path).name == "CMakeLists.txt"
         for path in owner.files
     )
@@ -62,27 +76,55 @@ class ContractCatalog:
         legacy: Mapping[str, str],
     ) -> None:
         self._contracts: dict[str, AbstractionContract] = {}
+        self._by_owner: dict[str, AbstractionContract] = {}
         for contract in contracts:
             root = PurePosixPath(contract.root)
             if (
-                not root.parts or root.is_absolute() or ".." in root.parts
-                or str(root) != contract.root or "\\" in contract.root
+                not root.parts
+                or root.is_absolute()
+                or ".." in root.parts
+                or str(root) != contract.root
+                or "\\" in contract.root
                 or ":" in contract.root
             ):
                 raise ContractError(f"Invalid abstraction root: {contract.root!r}")
-            if contract.owner in self._contracts:
+            identities = contract.owner_ids
+            if any(
+                not isinstance(identity, str) or not identity.strip()
+                for identity in identities
+            ):
+                raise ContractError(
+                    "Component parts need explicit inventory identities"
+                )
+            if len(set(identities)) != len(identities) or any(
+                identity in self._by_owner for identity in identities
+            ):
                 raise ContractError(f"Duplicate abstraction contract: {contract.owner}")
+            if contract.grouping and contract.parts:
+                raise ContractError(
+                    "A grouping describes children, not implementation parts"
+                )
             if not contract.responsibility.strip() or not contract.invariants:
-                raise ContractError(f"Contract needs responsibility and invariants: {contract.owner}")
+                raise ContractError(
+                    f"Contract needs responsibility and invariants: {contract.owner}"
+                )
             if any(not invariant.strip() for invariant in contract.invariants):
-                raise ContractError(f"Contract contains an empty invariant: {contract.owner}")
+                raise ContractError(
+                    f"Contract contains an empty invariant: {contract.owner}"
+                )
             self._contracts[contract.owner] = contract
+            self._by_owner.update((identity, contract) for identity in identities)
         self._legacy = dict(legacy)
-        if set(self._legacy) & set(self._contracts):
-            raise ContractError("A reviewed contract must be removed from the legacy allowance")
-        if any(not isinstance(value, str) or len(value) != 64
-               or any(c not in "0123456789abcdef" for c in value)
-               for value in self._legacy.values()):
+        if set(self._legacy) & set(self._by_owner):
+            raise ContractError(
+                "A reviewed contract must be removed from the legacy allowance"
+            )
+        if any(
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(c not in "0123456789abcdef" for c in value)
+            for value in self._legacy.values()
+        ):
             raise ContractError("Legacy allowances must identify exact file sets")
 
     @property
@@ -93,43 +135,72 @@ class ContractCatalog:
         owners = {owner.identity: owner for owner in registry.owners}
         issues: list[ContractIssue] = []
         legacy = []
-        for identity in sorted((self._contracts.keys() | self._legacy.keys()) - owners.keys()):
-            issues.append(ContractIssue(identity, "Declaration no longer owns tracked files"))
+        for identity in sorted(
+            (self._by_owner.keys() | self._legacy.keys()) - owners.keys()
+        ):
+            issues.append(
+                ContractIssue(identity, "Declaration no longer owns tracked files")
+            )
         for identity, owner in sorted(owners.items()):
-            contract = self._contracts.get(identity)
-            if contract is None:
-                if not needs_contract(owner):
-                    continue
-                if self._legacy.get(identity) != file_set_identity(owner):
-                    issues.append(ContractIssue(identity, "Requires a reviewed abstraction contract"))
-                else:
-                    legacy.append(identity)
+            if identity in self._by_owner or not needs_contract(owner):
                 continue
+            if self._legacy.get(identity) != file_set_identity(owner):
+                issues.append(
+                    ContractIssue(identity, "Requires a reviewed abstraction contract")
+                )
+            else:
+                legacy.append(identity)
+        for contract in self._contracts.values():
+            identity = contract.owner
             root = PurePosixPath(contract.root)
-            for path in owner.files:
-                if not PurePosixPath(path).is_relative_to(root):
-                    issues.append(ContractIssue(identity, f"Implementation outside owner: {path}"))
+            component_files = set()
+            for part in contract.owner_ids:
+                if part not in owners:
+                    continue
+                for path in owners[part].files:
+                    component_files.add(path)
+                    if not PurePosixPath(path).is_relative_to(root):
+                        issues.append(
+                            ContractIssue(part, f"Implementation outside owner: {path}")
+                        )
             readme = str(root / "README.md")
-            if readme not in owner.files:
-                issues.append(ContractIssue(identity, "Owner README is not declared with the abstraction"))
+            if identity not in owners or readme not in owners[identity].files:
+                issues.append(
+                    ContractIssue(
+                        identity, "Owner README is not declared with the abstraction"
+                    )
+                )
             for path in contract.public_files:
-                if path not in owner.files:
-                    issues.append(ContractIssue(identity, f"Public file is not owned: {path}"))
+                if path not in component_files:
+                    issues.append(
+                        ContractIssue(identity, f"Public file is not owned: {path}")
+                    )
             if contract.grouping:
-                for path in owner.files:
+                for path in component_files:
                     file = PurePosixPath(path)
-                    if file.suffix in {".cpp", ".hpp", ".py"} and file.name != "__init__.py":
-                        issues.append(ContractIssue(
-                            identity, "A grouping owner cannot hide an implementation"
-                        ))
+                    if (
+                        file.suffix in {".cpp", ".hpp", ".py"}
+                        and file.name != "__init__.py"
+                    ):
+                        issues.append(
+                            ContractIssue(
+                                identity,
+                                "A grouping owner cannot hide an implementation",
+                            )
+                        )
             else:
                 for other in owners.values():
-                    if other.identity == identity:
+                    if other.identity in contract.owner_ids:
                         continue
-                    if any(PurePosixPath(path).is_relative_to(root) for path in other.files):
-                        issues.append(ContractIssue(
-                            identity, f"Abstraction subtree contains unrelated owner {other.identity}"
-                        ))
+                    if any(
+                        PurePosixPath(path).is_relative_to(root) for path in other.files
+                    ):
+                        issues.append(
+                            ContractIssue(
+                                identity,
+                                f"Abstraction subtree contains unrelated owner {other.identity}",
+                            )
+                        )
         return ContractAudit(tuple(issues), tuple(legacy))
 
 

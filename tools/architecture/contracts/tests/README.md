@@ -9,3 +9,5 @@ flowchart LR
 ```
 
 The tests do not read the live legacy baseline, so the same data cannot manufacture both actual and expected acceptance.
+
+Explicit-parts cases accept related values inside the component root without another README, preserve inventory identities and immutable membership, and reject missing/outside parts, duplicate membership, leftover legacy allowances and grouping misuse. A part cannot move the component guide away from its primary owner.
