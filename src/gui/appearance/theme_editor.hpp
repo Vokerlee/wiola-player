@@ -33,7 +33,7 @@ namespace wiola::gui {
 
 class ThemeEditor final : public QDialog {
 public:
-    using ApplyObserver = std::function<void(const ThemeColors&)>;
+    using ApplyObserver = std::function<bool(const ThemeColors&)>;
 
     explicit ThemeEditor(const ThemeColors& initial, QWidget* parent = nullptr);
 

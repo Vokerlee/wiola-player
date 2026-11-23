@@ -42,6 +42,7 @@ wiola_add_library(
         tracks/track_search_panel.cpp
         tracks/tag_filter_panel.cpp
         appearance/theme.cpp
+        appearance/theme_manager.cpp
         appearance/theme_editor.cpp
         shell/player_actions.cpp
         shell/action_descriptor.cpp

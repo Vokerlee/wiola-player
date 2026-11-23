@@ -78,40 +78,6 @@ LayoutDocument layout_for(const QString& choice)
     return classic_layout_document();
 }
 
-constexpr std::array theme_color_roles{
-    ThemeColorRole::window,
-    ThemeColorRole::surface,
-    ThemeColorRole::text,
-    ThemeColorRole::muted_text,
-    ThemeColorRole::disabled_text,
-    ThemeColorRole::accent,
-    ThemeColorRole::accent_text,
-    ThemeColorRole::focus,
-    ThemeColorRole::error,
-};
-
-ThemeColors stored_custom_theme(const QSettings& settings)
-{
-    ThemeColors colors = theme_colors(Theme::light);
-
-    for (const ThemeColorRole role : theme_color_roles) {
-        const QString key = "theme/custom/" + QString::fromLatin1(theme_color_key(role));
-        const QColor stored{settings.value(key).toString()};
-        if (stored.isValid())
-            theme_color(colors, role) = stored;
-    }
-
-    return colors;
-}
-
-void store_custom_theme(QSettings& settings, const ThemeColors& colors)
-{
-    for (const ThemeColorRole role : theme_color_roles) {
-        settings.setValue("theme/custom/" + QString::fromLatin1(theme_color_key(role)),
-            theme_color(colors, role).name());
-    }
-}
-
 /// What to say about a file that would not open.
 QString as_status(engine::OpenResult result)
 {
@@ -153,13 +119,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     for (const auto& descriptor : action_descriptors())
         addAction(actions_.action(descriptor.id));
     ui_preferences_.bind_library(library_session_);
-    const QString selected_theme = settings_.value("theme/name", "light").toString();
-    const ThemeColors custom_theme = stored_custom_theme(settings_);
-
-    if (selected_theme == "custom" && theme_contrast_error(custom_theme).isEmpty())
-        apply_theme(custom_theme);
-    else
-        apply_theme(selected_theme == "dark" ? Theme::dark : Theme::light);
+    theme_ = ThemeManager::acquire(settings_);
+    actions_.reload_icons(*this);
 
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
@@ -552,30 +513,32 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     view->addSeparator();
     QAction* light = view->addAction("Light theme");
     QAction* dark = view->addAction("Dark theme");
+    QAction* custom = view->addAction("Custom theme");
     auto* themes = new QActionGroup{this};
     themes->setExclusive(true);
-
-    for (QAction* theme : {light, dark}) {
-        theme->setCheckable(true);
-        themes->addAction(theme);
+    for (auto* action : {light, dark, custom}) {
+        action->setCheckable(true);
+        themes->addAction(action);
     }
-
-    light->setChecked(selected_theme != "dark" && selected_theme != "custom");
-    dark->setChecked(selected_theme == "dark");
-
-    const auto refresh_theme_icons = [this] {
+    const auto reflect_theme = [this, light, dark, custom] {
         actions_.reload_icons(*this);
+        light->setChecked(theme_->state().selected == ThemeChoice::light);
+        dark->setChecked(theme_->state().selected == ThemeChoice::dark);
+        custom->setChecked(theme_->state().selected == ThemeChoice::custom);
     };
-
-    const auto choose_theme = [this, refresh_theme_icons](const QString& choice) {
-        apply_theme(choice == "dark" ? Theme::dark : Theme::light);
-        refresh_theme_icons();
-        settings_.setValue("theme/name", choice);
-        settings_.sync();
+    reflect_theme();
+    connect(theme_.get(), &ThemeManager::theme_changed, this,
+        [reflect_theme](auto) { reflect_theme(); });
+    const auto choose_theme = [this, reflect_theme](ThemeChoice choice) {
+        const auto error = theme_->select(choice);
+        if (error != ThemeError::none)
+            show_status("Could not save the theme; the current theme was retained");
+        reflect_theme();
     };
-
-    connect(light, &QAction::triggered, this, [choose_theme] { choose_theme("light"); });
-    connect(dark, &QAction::triggered, this, [choose_theme] { choose_theme("dark"); });
+    connect(light, &QAction::triggered, this, [choose_theme] { choose_theme(ThemeChoice::light); });
+    connect(dark, &QAction::triggered, this, [choose_theme] { choose_theme(ThemeChoice::dark); });
+    connect(custom, &QAction::triggered, this,
+        [choose_theme] { choose_theme(ThemeChoice::custom); });
 
     QMenu* tools = menuBar()->addMenu("&Tools");
     tools->addAction(actions_.action(PlayerAction::equalizer));
@@ -618,21 +581,40 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     });
 
     QAction* edit_theme = tools->addAction("Edit theme...");
-    connect(edit_theme, &QAction::triggered, this,
-        [this, refresh_theme_icons, light, dark, initial = custom_theme] {
-            auto* editor = new ThemeEditor{initial, this};
-            editor->setAttribute(Qt::WA_DeleteOnClose);
-            editor->on_apply([this, refresh_theme_icons, light, dark](const ThemeColors& colors) {
-                apply_theme(colors);
-                refresh_theme_icons();
-                store_custom_theme(settings_, colors);
-                settings_.setValue("theme/name", "custom");
-                settings_.sync();
-                light->setChecked(false);
-                dark->setChecked(false);
-            });
-            editor->show();
+    connect(edit_theme, &QAction::triggered, this, [this] {
+        auto* editor = new ThemeEditor{theme_->colors(), this};
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        editor->on_apply([manager = theme_](const ThemeColors& colors) {
+            return manager->set_custom(colors) == ThemeError::none;
         });
+        editor->show();
+    });
+    auto* import_theme = tools->addAction("Import theme...");
+    connect(import_theme, &QAction::triggered, this, [this] {
+        const auto path = QFileDialog::getOpenFileName(this, "Import theme", {}, "Theme (*.json)");
+        if (path.isEmpty())
+            return;
+        persistence::qt::AtomicFileStore input{platform::qt::QtPathAdapter::from_qt(path),
+            16 * 1024};
+        const auto read = input.read(persistence::qt::FileSlot::primary);
+        if (read.error != persistence::qt::FileStoreError::none || !read.exists ||
+            theme_->import_json(read.bytes) != ThemeError::none)
+            show_status("Could not import the theme; the current theme was retained");
+    });
+    auto* export_theme = tools->addAction("Export theme...");
+    connect(export_theme, &QAction::triggered, this, [this] {
+        const auto path = QFileDialog::getSaveFileName(this, "Export theme", {}, "Theme (*.json)");
+        if (path.isEmpty())
+            return;
+        persistence::qt::AtomicFileStore output{platform::qt::QtPathAdapter::from_qt(path),
+            16 * 1024};
+        show_status(output.write(persistence::qt::FileSlot::primary, theme_->export_json()) ==
+                    persistence::qt::FileStoreError::none
+                ? "Theme exported"
+                : "Could not export the theme");
+    });
+    if (theme_->restore_error() != ThemeError::none)
+        show_status("Could not restore the saved theme; a usable theme was retained");
 
     connect(now_playing_, &NowPlayingDocument::track_chosen, this, &MainWindow::play_chosen);
     connect(now_playing_, &NowPlayingDocument::removal_asked, this, &MainWindow::remove_chosen);
@@ -668,6 +650,7 @@ MainWindow::~MainWindow()
     save_window_state();
     document_host_->capture_preferences();
     QObject::disconnect(&ui_preferences_, nullptr, this, nullptr);
+    QObject::disconnect(theme_.get(), nullptr, this, nullptr);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)

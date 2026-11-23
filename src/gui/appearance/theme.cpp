@@ -111,22 +111,28 @@ const QColor& theme_color(const ThemeColors& colors, ThemeColorRole role)
     return theme_color(const_cast<ThemeColors&>(colors), role);
 }
 
+std::span<const ThemeColorDescriptor> theme_color_descriptors()
+{
+    static constexpr std::array descriptors{
+        ThemeColorDescriptor{ThemeColorRole::window,        "window",        "Window"        },
+        ThemeColorDescriptor{ThemeColorRole::surface,       "surface",       "Surface"       },
+        ThemeColorDescriptor{ThemeColorRole::text,          "text",          "Text"          },
+        ThemeColorDescriptor{ThemeColorRole::muted_text,    "muted-text",    "Secondary text"},
+        ThemeColorDescriptor{ThemeColorRole::disabled_text, "disabled-text", "Disabled text" },
+        ThemeColorDescriptor{ThemeColorRole::accent,        "accent",        "Selection"     },
+        ThemeColorDescriptor{ThemeColorRole::accent_text,   "accent-text",   "Selected text" },
+        ThemeColorDescriptor{ThemeColorRole::focus,         "focus",         "Keyboard focus"},
+        ThemeColorDescriptor{ThemeColorRole::error,         "error",         "Error"         }
+    };
+    return descriptors;
+}
+
 const char* theme_color_key(ThemeColorRole role)
 {
-    static constexpr std::array roles{
-        std::pair{ThemeColorRole::window,        "window"       },
-        std::pair{ThemeColorRole::surface,       "surface"      },
-        std::pair{ThemeColorRole::text,          "text"         },
-        std::pair{ThemeColorRole::muted_text,    "muted-text"   },
-        std::pair{ThemeColorRole::disabled_text, "disabled-text"},
-        std::pair{ThemeColorRole::accent,        "accent"       },
-        std::pair{ThemeColorRole::accent_text,   "accent-text"  },
-        std::pair{ThemeColorRole::focus,         "focus"        },
-        std::pair{ThemeColorRole::error,         "error"        },
-    };
-
-    const auto found = std::ranges::find(roles, role, &decltype(roles)::value_type::first);
-    return found == roles.end() ? "window" : found->second;
+    for (const auto& descriptor : theme_color_descriptors())
+        if (descriptor.role == role)
+            return descriptor.key;
+    return "window";
 }
 
 double contrast_ratio(const QColor& first, const QColor& second)
@@ -147,6 +153,11 @@ double contrast_ratio(const QColor& first, const QColor& second)
 
 QString theme_contrast_error(const ThemeColors& colors)
 {
+    for (const auto& descriptor : theme_color_descriptors())
+        if (!theme_color(colors, descriptor.role).isValid() ||
+            theme_color(colors, descriptor.role).alpha() != 255)
+            return "Every theme color must be valid and opaque";
+
     struct Requirement {
         QColor foreground;
         QColor background;
