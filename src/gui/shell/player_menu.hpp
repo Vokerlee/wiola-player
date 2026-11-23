@@ -26,7 +26,7 @@
 namespace wiola::gui {
 
 struct PlayerFileCommands {
-    std::function<void()> open_folder, import_playlist, export_playlist;
+    std::function<void()> open_folder, import_playlist, export_playlist, retry_save;
 };
 
 struct PlayerMenus {

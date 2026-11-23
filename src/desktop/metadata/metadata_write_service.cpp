@@ -67,6 +67,7 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
         job.media = target.media;
         job.generation = ++generations_[job.media];
         job.patch = patch;
+        job.library_revision = repository_.change_revision();
         job.expected_source = {.metadata_revision = {},
             .content_revision = target.expected.content_revision,
             .fingerprint = target.expected.fingerprint};
@@ -216,6 +217,33 @@ void MetadataWriteService::begin_commit()
         begin_commit();
         return;
     }
+    if (durability_ && !prepared->intent_durable) {
+        committing_ = true;
+        const std::weak_ptr<Lifetime> weak = lifetime_;
+        durability_(result.job.library_revision, [weak, prepared](bool durable) {
+            if (const auto state = weak.lock(); state && state->owner) {
+                auto& owner = *state->owner;
+                owner.committing_ = false;
+                if (!owner.operations_.contains(prepared->result.job.operation))
+                    return;
+                if (durable) {
+                    prepared->intent_durable = true;
+                    owner.ready_.push_front(prepared);
+                    owner.begin_commit();
+                } else {
+                    prepared->result.stage = MetadataWriteStage::failed;
+                    prepared->result.outcome = {.state = media::MetadataWriteState::failed,
+                        .error = media::MetadataWriteError::io,
+                        .source_modified = false,
+                        .detail = "Application metadata could not be saved; the source file was "
+                                  "retained"};
+                    owner.finish(std::move(prepared->result));
+                    owner.begin_commit();
+                }
+            }
+        });
+        return;
+    }
     if (handoff_)
         prepared->restore = handoff_(result.job.source);
     committing_ = true;
@@ -274,15 +302,39 @@ void MetadataWriteService::completed(std::shared_ptr<Prepared> prepared)
             updated.fingerprint = prepared->replacement->output_fingerprint;
             ++updated.content_revision;
             ++updated.metadata_revision;
-            library::RepositoryTransaction transaction{repository_, persist_};
-            if (!repository_.put_track(std::move(updated)) || !transaction.commit()) {
+            library::RepositoryTransaction transaction{repository_, persist_,
+                library::CommitPriority::file_result};
+            library::CommitResult committed;
+            if (repository_.put_track(std::move(updated)))
+                committed = transaction.commit();
+            if (!committed) {
                 result.outcome.error = media::MetadataWriteError::io;
-                result.outcome.detail = "File updated, but saving the library failed";
+                result.outcome.detail = "File updated, but accepting its library update failed";
+            } else if (!committed.durable() && durability_) {
+                const std::weak_ptr<Lifetime> weak = lifetime_;
+                durability_(committed.revision, [weak, prepared](bool durable) {
+                    if (const auto state = weak.lock(); state && state->owner)
+                        state->owner->finish_commit(prepared, durable);
+                });
+                return;
             }
         } else {
             result.outcome.error = media::MetadataWriteError::io;
             result.outcome.detail = "File updated; its library record was removed";
         }
+    }
+    finish_commit(std::move(prepared));
+}
+
+void MetadataWriteService::finish_commit(std::shared_ptr<Prepared> prepared, bool durable)
+{
+    auto& result = prepared->result;
+    if (!operations_.contains(result.job.operation))
+        return;
+    if (!durable) {
+        result.outcome.error = media::MetadataWriteError::io;
+        result.outcome.detail =
+            "File updated; its library changes remain in memory and need a save retry";
     }
     result.stage =
         result.outcome.source_modified && result.outcome.error == media::MetadataWriteError::none
@@ -327,6 +379,8 @@ void MetadataWriteService::stop()
     if (worker_.joinable())
         worker_.join();
     delivery_.drain();
+    if (flush_durability_)
+        flush_durability_();
 }
 
 } // namespace wiola::app

@@ -51,33 +51,69 @@ MediaChange changed_media(const TrackRecord* before, const TrackRecord& after)
     return result;
 }
 
-template<typename Map, typename Changed, typename Removed, typename Convert>
-void difference(const Map& before, const Map& after, Changed& changed, Removed& removed,
+template<typename Map, typename Undo, typename Id>
+void touch(Map& records, Undo& undo, const Id& id)
+{
+    if (undo.contains(id))
+        return;
+    const auto current = records.find(id);
+    if (current == records.end()) {
+        undo.try_emplace(id);
+        return;
+    }
+    auto candidate = current->second;
+    auto [entry, inserted] = undo.try_emplace(id);
+    entry->second = records.extract(current);
+    try {
+        records.emplace(id, std::move(candidate));
+    } catch (...) {
+        records.insert(std::move(entry->second));
+        undo.erase(entry);
+        throw;
+    }
+}
+
+template<typename Map, typename Undo, typename Changed, typename Removed, typename Convert>
+void difference(const Map& after, const Undo& undo, Changed& changed, Removed& removed,
     Convert convert)
 {
-    for (const auto& [id, value] : after) {
-        const auto old = before.find(id);
-        if (old == before.end() || old->second != value)
-            changed.push_back(convert(old == before.end() ? nullptr : &old->second, value));
+    for (const auto& [id, before] : undo) {
+        const auto current = after.find(id);
+        if (current == after.end()) {
+            if (before)
+                removed.push_back(id);
+        } else if (!before || before.mapped() != current->second)
+            changed.push_back(convert(before ? &before.mapped() : nullptr, current->second));
     }
-    for (const auto& [id, value] : before)
-        if (!after.contains(id))
-            removed.push_back(id);
+}
+
+template<typename Map, typename Undo>
+void restore(Map& records, Undo& undo) noexcept
+{
+    for (auto& [id, before] : undo) {
+        records.erase(id);
+        if (before)
+            records.insert(std::move(before));
+    }
+    undo.clear();
 }
 
 } // namespace
 
-RepositoryTransaction::RepositoryTransaction(InMemoryRepository& repository, Persist persist)
+RepositoryTransaction::RepositoryTransaction(InMemoryRepository& repository, Persist persist,
+    CommitPriority priority)
     : repository_{repository}
-    , checkpoint_{repository.data_}
+    , allocators_{repository.data_.next_playlist_, repository.data_.next_entry_,
+          repository.data_.next_workspace_, repository.data_.next_tag_}
     , persist_{std::move(persist)}
+    , priority_{priority}
 {
     repository_.changes_.check_owner();
     if (!persist_)
         throw std::invalid_argument{"a transaction requires an explicit persistence policy"};
-    if (repository_.transaction_active_)
+    if (repository_.transaction_)
         throw std::logic_error{"nested library mutation before commit"};
-    repository_.transaction_active_ = true;
+    repository_.transaction_ = this;
 }
 
 RepositoryTransaction::~RepositoryTransaction()
@@ -85,43 +121,76 @@ RepositoryTransaction::~RepositoryTransaction()
     rollback();
 }
 
-bool RepositoryTransaction::commit()
+void RepositoryTransaction::touch_track(const MediaId& id)
+{
+    touch(repository_.data_.tracks_, tracks_, id);
+}
+
+void RepositoryTransaction::touch_playlist(const PlaylistId& id)
+{
+    touch(repository_.data_.playlists_, playlists_, id);
+}
+
+void RepositoryTransaction::touch_workspace(const WorkspaceId& id)
+{
+    touch(repository_.data_.workspaces_, workspaces_, id);
+}
+
+CommitResult RepositoryTransaction::commit()
 {
     if (finished_)
         throw std::logic_error{"transaction already completed"};
-    LibraryChangeBatch batch;
-    difference(checkpoint_.tracks_, repository_.data_.tracks_, batch.media, batch.removed_media,
-        changed_media);
+    auto delta = std::make_shared<RevisionDelta>();
+    delta->priority = priority_;
+    auto& batch = delta->changes;
+    difference(repository_.data_.tracks_, tracks_, batch.media, batch.removed_media, changed_media);
     const auto identity = [](const auto*, const auto& record) {
         return record.id;
     };
-    difference(checkpoint_.playlists_, repository_.data_.playlists_, batch.playlists,
-        batch.removed_playlists, identity);
-    difference(checkpoint_.workspaces_, repository_.data_.workspaces_, batch.workspaces,
+    difference(repository_.data_.playlists_, playlists_, batch.playlists, batch.removed_playlists,
+        identity);
+    difference(repository_.data_.workspaces_, workspaces_, batch.workspaces,
         batch.removed_workspaces, identity);
     if (batch.empty()) {
         finished_ = true;
-        repository_.transaction_active_ = false;
+        repository_.transaction_ = nullptr;
         return true;
     }
-    if (!persist_(repository_)) {
+    batch.revision = repository_.change_revision_ + 1;
+    for (const auto& change : batch.media)
+        delta->tracks.push_back(*repository_.track(change.media));
+    for (const auto& id : batch.playlists)
+        delta->playlists.push_back(*repository_.playlist(id));
+    for (const auto& id : batch.workspaces)
+        delta->workspaces.push_back(*repository_.workspace(id));
+    repository_.staged_delta_ = delta;
+    auto result = persist_(repository_);
+    repository_.staged_delta_.reset();
+    if (!result) {
         rollback();
-        return false;
+        return result;
     }
-    batch.revision = ++repository_.change_revision_;
+    result.revision = batch.revision;
+    repository_.change_revision_ = batch.revision;
     finished_ = true;
-    repository_.transaction_active_ = false;
-    repository_.changes_.publish(std::move(batch));
-    return true;
+    repository_.transaction_ = nullptr;
+    repository_.changes_.publish(batch);
+    return result;
 }
 
 void RepositoryTransaction::rollback() noexcept
 {
-    static_assert(std::is_nothrow_move_assignable_v<InMemoryRepository::State>);
     if (finished_)
         return;
-    repository_.data_ = std::move(checkpoint_);
-    repository_.transaction_active_ = false;
+    restore(repository_.data_.tracks_, tracks_);
+    restore(repository_.data_.playlists_, playlists_);
+    restore(repository_.data_.workspaces_, workspaces_);
+    repository_.data_.next_playlist_ = allocators_[0];
+    repository_.data_.next_entry_ = allocators_[1];
+    repository_.data_.next_workspace_ = allocators_[2];
+    repository_.data_.next_tag_ = allocators_[3];
+    repository_.staged_delta_.reset();
+    repository_.transaction_ = nullptr;
     finished_ = true;
 }
 

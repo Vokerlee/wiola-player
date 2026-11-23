@@ -129,4 +129,39 @@ TEST_F(MetadataEditService, NoopAndResetUseTheSameBatchContractWithoutSaving)
     EXPECT_EQ(outcomes.front().state, wiola::app::MetadataEditState::succeeded);
 }
 
+TEST_F(MetadataEditService,
+    AcceptedEditsReportDurabilitySeparatelyAndLateFailureCannotUndoANewerEdit)
+{
+    using namespace wiola;
+    std::vector<std::shared_ptr<library::CommitReceipt>> receipts;
+    app::MetadataEditService commands{repository,
+        [&](const auto&) {
+            const auto revision = repository.staged_delta()->changes.revision;
+            auto receipt = std::make_shared<library::CommitReceipt>(revision);
+            receipts.push_back(receipt);
+            return library::CommitResult::accepted(revision, receipt);
+        },
+        [this](const auto& outcome) { outcomes.push_back(outcome); }};
+    library::StandardMetadataPatch patch;
+    patch.title = "A";
+    const auto first = commands.apply({media}, patch);
+    ASSERT_EQ(first.state, app::MetadataEditState::accepted);
+    EXPECT_TRUE(first.succeeded());
+    patch.title = "B";
+    const auto second = commands.apply({media}, patch);
+    ASSERT_EQ(second.state, app::MetadataEditState::accepted);
+    ASSERT_EQ(receipts.size(), 2);
+    receipts[0]->notify(false);
+    EXPECT_EQ(repository.track(media)->display_title(), "B");
+    EXPECT_EQ(outcomes.back().state, app::MetadataEditState::failed);
+    EXPECT_TRUE(outcomes.back().retained_changes);
+    EXPECT_EQ(outcomes.back().changed, 1);
+    EXPECT_EQ(outcomes.back().revision, first.revision);
+    receipts[0]->notify(true);
+    receipts[1]->notify(true);
+    EXPECT_EQ(outcomes.back().state, app::MetadataEditState::succeeded);
+    EXPECT_EQ(outcomes.back().revision, second.revision);
+    EXPECT_EQ(repository.track(media)->display_title(), "B");
+}
+
 } // namespace

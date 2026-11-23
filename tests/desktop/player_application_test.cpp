@@ -148,8 +148,7 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
     record.embedded.title = "Only in memory";
     record.metadata_revision = 17;
     {
-        wiola::library::RepositoryTransaction edit{library.repository(),
-            [](const auto&) { return true; }};
+        wiola::library::RepositoryTransaction edit{library.repository(), library.persistence()};
         ASSERT_TRUE(library.repository().put_track(record));
         ASSERT_TRUE(edit.commit());
     }

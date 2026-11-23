@@ -733,6 +733,7 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
     }
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_EQ(session.playlist().tracks().size(), 1U);
+    ASSERT_TRUE(window_library.flush().succeeded());
     library::LibrarySnapshot restored;
     ASSERT_TRUE(store.load(restored).succeeded());
     ASSERT_EQ(restored.tracks.size(), 1U);
@@ -754,10 +755,12 @@ TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPla
     playing.id = {"playing"};
     playing.locations = {"playing.wav"};
     playing.embedded.title = "Playing";
+    library::RepositoryTransaction seed{library.repository(), library.persistence()};
     ASSERT_TRUE(library.repository().put_track(selected));
     ASSERT_TRUE(library.repository().put_track(playing));
     const auto playlist = library.repository().create_playlist("Selected playlist");
     ASSERT_TRUE(library.repository().append_track(playlist, selected.id));
+    ASSERT_TRUE(seed.commit());
     engine::Session session;
     session.add(playing.locations);
     app::PlaybackService playback{session};

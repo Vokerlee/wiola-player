@@ -44,6 +44,7 @@ protected:
         library =
             std::make_unique<app::LibrarySession>(std::make_shared<codec::LocalMediaProvider>());
         preferences = std::make_unique<app::PlaybackPreferences>(playback);
+        library::RepositoryTransaction seed{library->repository(), library->persistence()};
         for (const auto& name : {"one", "two"}) {
             library::TrackRecord track;
             track.id = {name};
@@ -51,6 +52,7 @@ protected:
             track.embedded.title = name;
             ASSERT_TRUE(library->repository().put_track(track));
         }
+        ASSERT_TRUE(seed.commit());
     }
 
     gui::DocumentCommandRouter router(wiola::testing::ScriptedPlayerDialogs& dialogs)
@@ -73,10 +75,12 @@ TEST_F(DocumentCommandRouterTest,
     const auto source = library->playlists().create("Source"),
                destination = library->playlists().create("Destination"),
                other = library->playlists().create("Other");
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
+    ASSERT_TRUE(seed.commit());
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_destination = destination;
     auto commands = router(dialogs);
@@ -117,10 +121,12 @@ TEST_F(DocumentCommandRouterTest,
 TEST_F(DocumentCommandRouterTest, SavedPlaylistKeyboardActivationRoutesTheExactDuplicateOccurrence)
 {
     const auto source = library->playlists().create("Duplicates");
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
+    ASSERT_TRUE(seed.commit());
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
@@ -177,8 +183,10 @@ TEST_F(DocumentCommandRouterTest, ExportCapturesPlaylistBeforePromptChangesTheDe
 {
     const auto source = library->playlists().create("Source"),
                other = library->playlists().create("Other");
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
     ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"one"}));
     ASSERT_TRUE(library->repository().append_track(other, library::MediaId{"two"}));
+    ASSERT_TRUE(seed.commit());
     static_cast<void>(library->active_playlist().set(source));
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_path = std::filesystem::path{directory.filePath("export.m3u8").toStdString()};

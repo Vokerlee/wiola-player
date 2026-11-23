@@ -111,4 +111,86 @@ TEST(RepositoryTransaction, RejectsAnImplicitPersistencePolicy)
     EXPECT_TRUE(repository.playlists().empty());
 }
 
+TEST(RepositoryTransaction, OnlyTouchedRecordsMoveAndTheImmutableDeltaSurvivesPublication)
+{
+    InMemoryRepository repository;
+    for (int i = 0; i < 1000; ++i) {
+        auto value = track();
+        value.id = {"media-" + std::to_string(i)};
+        ASSERT_TRUE(repository.put_track(value));
+    }
+    const auto* untouched = repository.track(MediaId{"media-999"});
+    std::shared_ptr<const RevisionDelta> accepted;
+    RepositoryTransaction transaction{repository, [&](const LibraryRepository&) {
+                                          accepted = repository.staged_delta();
+                                          return true;
+                                      }};
+    auto changed = *repository.track(MediaId{"media-0"});
+    changed.embedded.title = "Updated";
+    ASSERT_TRUE(repository.put_track(changed));
+    ASSERT_TRUE(transaction.commit());
+    ASSERT_TRUE(accepted);
+    ASSERT_EQ(accepted->tracks.size(), 1);
+    EXPECT_EQ(accepted->changes.media.size(), 1);
+    EXPECT_EQ(accepted->tracks[0].id, changed.id);
+    EXPECT_EQ(repository.track(MediaId{"media-999"}), untouched);
+    EXPECT_EQ(accepted->changes.revision, 1);
+}
+
+TEST(RepositoryTransaction,
+    BulkReplacementAndRepeatedEditsRestoreEveryOriginalRecordWithoutAllocatingOnRollback)
+{
+    InMemoryRepository repository;
+    ASSERT_TRUE(repository.put_track(track()));
+    const auto playlist = repository.create_playlist("Original");
+    const auto entry = repository.append_track(playlist, MediaId{"media"});
+    ASSERT_TRUE(entry);
+    const auto* original = repository.track(MediaId{"media"});
+    {
+        RepositoryTransaction transaction{repository, [](const auto&) { return false; }};
+        auto next = track();
+        next.id = {"other"};
+        ASSERT_TRUE(repository.replace_all({next}, {}, {}));
+        ASSERT_TRUE(repository.put_track(next));
+        repository.create_playlist("Discarded");
+        EXPECT_FALSE(transaction.commit());
+    }
+    EXPECT_EQ(repository.track(MediaId{"media"}), original);
+    EXPECT_EQ(repository.track(MediaId{"other"}), nullptr);
+    ASSERT_NE(repository.playlist(playlist), nullptr);
+    EXPECT_EQ(repository.playlist(playlist)->entries[0].id, *entry);
+    EXPECT_EQ(repository.playlist(playlist)->name, "Original");
+}
+
+TEST(RepositoryTransaction,
+    AcceptedReceiptReportsFailedAttemptsThenDurableWithoutRollingBackLaterEdits)
+{
+    InMemoryRepository repository;
+    auto receipt = std::make_shared<CommitReceipt>(1);
+    {
+        RepositoryTransaction transaction{repository,
+            [&](const auto&) { return CommitResult::accepted(1, receipt); }};
+        ASSERT_TRUE(repository.put_track(track()));
+        const auto result = transaction.commit();
+        EXPECT_EQ(result.state, CommitState::accepted);
+        EXPECT_FALSE(result.durable());
+    }
+    auto changed = track();
+    changed.embedded.title = "Later edit";
+    {
+        RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+        ASSERT_TRUE(repository.put_track(changed));
+        ASSERT_TRUE(transaction.commit());
+    }
+    std::vector<bool> notifications;
+    receipt->observe([&](auto event) {
+        EXPECT_EQ(event.revision, 1);
+        notifications.push_back(event.durable);
+    });
+    receipt->notify(false);
+    EXPECT_EQ(repository.track(MediaId{"media"})->embedded.title, "Later edit");
+    receipt->notify(true);
+    EXPECT_EQ(notifications, (std::vector<bool>{false, true}));
+}
+
 } // namespace

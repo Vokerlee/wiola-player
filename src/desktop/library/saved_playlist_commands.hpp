@@ -38,9 +38,12 @@ public:
     [[nodiscard]] library::PlaylistId duplicate(const library::PlaylistId& id);
     [[nodiscard]] bool remove(const library::PlaylistId& id);
 
+    [[nodiscard]] const library::CommitResult& last_commit() const { return last_commit_; }
+
 private:
     library::InMemoryRepository& repository_;
     Persist persist_;
+    library::CommitResult last_commit_;
 };
 
 } // namespace wiola::app

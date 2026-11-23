@@ -37,6 +37,9 @@ PlayerMenus build_player_menus(QMenuBar& bar, PlayerActions& actions, QObject& r
         std::move(commands.import_playlist));
     QObject::connect(file->addAction("Export M3U8..."), &QAction::triggered, &receiver,
         std::move(commands.export_playlist));
+    file->addSeparator();
+    QObject::connect(file->addAction("Retry saving library"), &QAction::triggered, &receiver,
+        std::move(commands.retry_save));
     auto* playback = bar.addMenu("&Playback");
     for (const auto id :
         {PlayerAction::previous, PlayerAction::play, PlayerAction::next, PlayerAction::stop})

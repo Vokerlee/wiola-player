@@ -300,6 +300,10 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
                     document && document->playlist())
                     target = *document->playlist();
                 commands_->export_playlist(target);
+            },
+            [library = QPointer<app::LibrarySession>{&library_session_}] {
+                if (library)
+                    library->retry_save();
             }});
     auto* view = menus.view;
     QAction* classic = view->addAction("Classic");

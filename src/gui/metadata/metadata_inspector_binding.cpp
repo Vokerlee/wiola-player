@@ -154,7 +154,7 @@ void MetadataInspectorBinding::finish_standard_metadata(const app::MetadataEditS
 {
     const auto outcome =
         library_->metadata_edits().apply(session.media(), session.draft(), session.expectations());
-    if (outcome.state == app::MetadataEditState::succeeded) {
+    if (outcome.succeeded()) {
         inspector_->standard_metadata()->discard();
         refresh();
     }
@@ -181,7 +181,7 @@ void MetadataInspectorBinding::resolve_metadata_conflict(MetadataConflictAction 
     const auto outcome = action == MetadataConflictAction::reload
         ? library_->metadata_edits().reset(session.media())
         : library_->metadata_edits().apply(session.media(), session.draft());
-    if (outcome.state == app::MetadataEditState::succeeded) {
+    if (outcome.succeeded()) {
         editor->discard();
         refresh();
     }

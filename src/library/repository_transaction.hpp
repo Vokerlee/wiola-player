@@ -19,6 +19,8 @@
  */
 
 #pragma once
+#include "commit_receipt.hpp"
+#include <array>
 #include <functional>
 #include <library/in_memory_repository.hpp>
 
@@ -28,20 +30,32 @@ namespace wiola::library {
 /// including identity allocators. No library record pointer may be retained across rollback.
 class RepositoryTransaction final {
 public:
-    using Persist = std::function<bool(const LibraryRepository&)>;
-    RepositoryTransaction(InMemoryRepository& repository, Persist persist);
+    using Persist = std::function<CommitResult(const LibraryRepository&)>;
+    RepositoryTransaction(InMemoryRepository& repository, Persist persist,
+        CommitPriority priority = CommitPriority::ordinary);
     ~RepositoryTransaction();
     RepositoryTransaction(const RepositoryTransaction&) = delete;
     RepositoryTransaction& operator=(const RepositoryTransaction&) = delete;
     RepositoryTransaction(RepositoryTransaction&&) = delete;
     RepositoryTransaction& operator=(RepositoryTransaction&&) = delete;
-    [[nodiscard]] bool commit();
+    [[nodiscard]] CommitResult commit();
     void rollback() noexcept;
 
 private:
     InMemoryRepository& repository_;
-    InMemoryRepository::State checkpoint_;
+    friend class InMemoryRepository;
+    void touch_track(const MediaId& id);
+    void touch_playlist(const PlaylistId& id);
+    void touch_workspace(const WorkspaceId& id);
+    using Tracks = decltype(InMemoryRepository::State::tracks_);
+    using Playlists = decltype(InMemoryRepository::State::playlists_);
+    using Workspaces = decltype(InMemoryRepository::State::workspaces_);
+    std::map<MediaId, Tracks::node_type> tracks_;
+    std::map<PlaylistId, Playlists::node_type> playlists_;
+    std::map<WorkspaceId, Workspaces::node_type> workspaces_;
+    std::array<std::size_t, 4> allocators_;
     Persist persist_;
+    CommitPriority priority_;
     bool finished_{false};
 };
 

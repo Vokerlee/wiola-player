@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "revision_delta.hpp"
 #include <library/library_changes.hpp>
 #include <library/repository.hpp>
 
@@ -27,6 +28,8 @@
 #include <utility>
 
 namespace wiola::library {
+
+class RepositoryTransaction;
 
 class InMemoryRepository final : public LibraryRepository {
 public:
@@ -43,6 +46,11 @@ public:
     [[nodiscard]] LibraryChanges::Subscription observe(LibraryChanges::Observer observer)
     {
         return changes_.observe(std::move(observer));
+    }
+
+    [[nodiscard]] std::shared_ptr<const RevisionDelta> staged_delta() const
+    {
+        return staged_delta_;
     }
 
     [[nodiscard]] std::uint64_t change_revision() const noexcept { return change_revision_; }
@@ -98,7 +106,8 @@ private:
     State data_;
     LibraryChanges changes_;
     std::uint64_t change_revision_{0};
-    bool transaction_active_{false};
+    RepositoryTransaction* transaction_{nullptr};
+    std::shared_ptr<const RevisionDelta> staged_delta_;
 };
 
 } // namespace wiola::library

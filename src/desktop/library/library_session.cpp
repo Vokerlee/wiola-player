@@ -19,6 +19,7 @@
  */
 
 #include "library_session.hpp"
+#include "library_persistence.hpp"
 #include <QFileInfo>
 #include <QThread>
 #include <algorithm>
@@ -48,7 +49,10 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , store_{std::move(file), std::move(output)}
     , persist_{[this](const library::LibraryRepository& records) {
         check_owner();
-        return accepting_ && store_.save(library::snapshot_of(records)).succeeded();
+        if (!accepting_ || &records != &repository_ || !persistence_worker_ ||
+            restore_result_.schema == persistence::qt::LibraryJsonError::unsupported_version)
+            return library::CommitResult{false};
+        return persistence_worker_->accept(repository_.staged_delta());
     }}
     , playlists_{repository_, persist_}
     , tags_{repository_, persist_}
@@ -63,6 +67,25 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     restore_result_ = persistence::qt::restore_repository(store_, repository_);
     if (!restore_result_.succeeded())
         restore_error_ = "Could not restore the saved library";
+    persistence_worker_ = std::make_unique<LibraryPersistence>(*this, store_,
+        library::snapshot_of(repository_), [this](std::uint64_t revision, auto result) {
+            if (!result.succeeded() && persistence_worker_->durable_revision() < revision) {
+                save_failed_ = true;
+                emit status_changed(
+                    "Library changes remain in memory; saving failed. Use Retry saving library."
+                );
+            } else if (save_failed_ &&
+                persistence_worker_->durable_revision() >=
+                    persistence_worker_->pending_revision()) {
+                save_failed_ = false;
+                emit status_changed("Pending library changes saved");
+            }
+            emit library_save_finished(revision, result.succeeded());
+        });
+    writes_.set_durability([this](
+                               std::uint64_t revision, auto completed
+                           ) { persistence_worker_->when_durable(revision, std::move(completed)); },
+        [this] { static_cast<void>(persistence_worker_->flush()); });
     active_.on_changed([this](auto id) { emit active_destination_changed(id); });
     const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
     if (repository_.playlist(active))
@@ -114,11 +137,25 @@ persistence::qt::LibraryStoreResult LibrarySession::shutdown()
     metadata_.stop();
     shutdown_result_ = !restore_result_.succeeded() && repository_.change_revision() == 0
         ? restore_result_
-        : store_.save(library::snapshot_of(repository_));
+        : persistence_worker_->flush();
+    if (shutdown_result_.succeeded())
+        persistence_worker_->stop();
     settings_.sync();
     if (shutdown_result_.succeeded() && settings_.status() != QSettings::NoError)
         shutdown_result_.io = persistence::qt::FileStoreError::io;
     return shutdown_result_;
+}
+
+void LibrarySession::retry_save()
+{
+    check_owner();
+    persistence_worker_->retry();
+}
+
+persistence::qt::LibraryStoreResult LibrarySession::flush()
+{
+    check_owner();
+    return persistence_worker_->flush();
 }
 
 void LibrarySession::check_owner() const

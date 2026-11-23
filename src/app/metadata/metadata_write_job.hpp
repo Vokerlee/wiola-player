@@ -54,6 +54,7 @@ struct MetadataWriteJob {
     std::uint64_t generation{};
     media::ExpectedMediaState expected_source;
     std::uint64_t accepted_edit_revision{};
+    std::uint64_t library_revision{};
     library::StandardMetadataPatch patch;
     media::MetadataWriteCapabilities capabilities;
     std::shared_ptr<std::stop_source> cancellation{std::make_shared<std::stop_source>()};

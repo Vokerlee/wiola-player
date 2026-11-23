@@ -23,6 +23,7 @@
 #include "active_playlist.hpp"
 
 #include <library/in_memory_repository.hpp>
+#include <library/repository_transaction.hpp>
 
 #include <filesystem>
 #include <functional>
@@ -43,7 +44,7 @@ struct PlaylistTransferResult {
 
 class PlaylistTransfer final {
 public:
-    using Persist = std::function<bool(const library::LibraryRepository&)>;
+    using Persist = library::RepositoryTransaction::Persist;
 
     PlaylistTransfer(library::InMemoryRepository& repository, const ActivePlaylist& active,
         Persist persist);

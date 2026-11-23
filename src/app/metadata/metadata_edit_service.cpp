@@ -101,9 +101,25 @@ MetadataEditOutcome MetadataEditService::apply(const std::vector<library::MediaI
     outcome.state = MetadataEditState::queued;
     publish(outcome);
 
-    if (transaction.commit()) {
-        outcome.state = MetadataEditState::succeeded;
+    const auto committed = transaction.commit();
+    if (committed) {
+        outcome.revision = committed.revision;
+        outcome.state =
+            committed.durable() ? MetadataEditState::succeeded : MetadataEditState::accepted;
+        outcome.retained_changes = !committed.durable();
         publish(outcome);
+        if (committed.receipt) {
+            committed.receipt->observe(
+                [outcome, observer = observer_](library::DurabilityEvent event) mutable {
+                    outcome.state =
+                        event.durable ? MetadataEditState::succeeded : MetadataEditState::failed;
+                    outcome.error = event.durable ? StandardMetadataError::none
+                                                  : StandardMetadataError::persistence_failed;
+                    if (observer)
+                        observer(outcome);
+                }
+            );
+        }
         return outcome;
     }
     transaction.rollback();

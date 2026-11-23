@@ -54,6 +54,7 @@ private:
     QPushButton* rename_button_{nullptr};
     QPushButton* duplicate_button_{nullptr};
     QPushButton* remove_button_{nullptr};
+    std::uint64_t displayed_revision_{};
     QLabel* save_state_{nullptr};
     std::function<void()> changed_observer_;
 };
