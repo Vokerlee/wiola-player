@@ -614,8 +614,9 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
             register_document(DocumentId::workspace(id), view);
     LayoutBuilder builder{live};
 
-    QWidget* root =
-        builder.build(document.root, {.actions = &actions_, .library = &library_}, this);
+    auto prepared =
+        builder.prepare(document.root, {.actions = &actions_, .library = &library_}, this);
+    QWidget* root = prepared ? prepared->attach(this) : nullptr;
 
     if (root == nullptr) {
         show_status("Could not construct the layout");

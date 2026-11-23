@@ -21,6 +21,7 @@
 #pragma once
 
 #include "layout_document.hpp"
+#include "prepared_layout.hpp"
 #include "view_registry.hpp"
 
 #include <functional>
@@ -59,18 +60,14 @@ public:
     [[nodiscard]] ViewRegistry& views() { return views_; }
 
     [[nodiscard]] bool register_component(LayoutComponentKind kind, Factory factory);
+    [[nodiscard]] std::unique_ptr<PreparedLayout> prepare(const LayoutNode& node,
+        const LayoutBuildContext& context, QWidget* parent = nullptr) const;
     [[nodiscard]] QWidget* build(const LayoutNode& node, const LayoutBuildContext& context,
         QWidget* parent = nullptr) const;
 
 private:
-    struct Attachment {
-        QWidget* placeholder;
-        QWidget* widget;
-        LayoutNode node;
-    };
-
     [[nodiscard]] QWidget* build_node(const LayoutNode& node, const LayoutBuildContext& context,
-        QWidget* parent, std::vector<Attachment>& attachments) const;
+        QWidget* parent, std::vector<LayoutAttachment>& attachments) const;
 
     std::map<LayoutComponentKind, Factory> factories_;
     ViewRegistry views_;
