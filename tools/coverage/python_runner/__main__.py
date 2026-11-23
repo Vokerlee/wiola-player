@@ -19,12 +19,21 @@ def _execute(
     root: Path, build_directory: Path, policy, data_file: Path, source_roots: list[str]
 ) -> list[list[str]]:
     commands = []
-    # Collection source_roots are explicit test-package entrypoints, independent of discovery counts.
+    # Test discovery entrypoints are separate from instrumented production source_roots.
+    test_packages = (("tools", root), ("scripts", root), ("tests/scripts", None))
     tests = [
-        ["-m", "unittest", "discover", "-s", directory, "-p", "test_*.py"]
-        for directory in ("tools", "tests/scripts")
+        [
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            directory,
+            "-p",
+            "test_*.py",
+            *(["-t", str(top_level)] if top_level is not None else []),
+        ]
+        for directory, top_level in test_packages
     ]
-    tests[0].extend(["-t", "."])
     checks = [
         [
             "-m",

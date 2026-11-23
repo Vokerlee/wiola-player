@@ -1,59 +1,24 @@
-# Scripts
+# Developer commands
 
-`format-cpp.sh`, `format-cmake.sh`, `install-hooks.sh` and `coverage.sh` are described in
-[CONTRIBUTING.md](../CONTRIBUTING.md). This file covers `build-qt-mingw.sh`.
+Maintained commands are grouped by responsibility. Their implementation, tests, data and CLI belong together; file language does not determine ownership.
 
-## build-qt-mingw.sh
-
-The windows preset needs a Qt built for MinGW-w64, which no distribution packages; without one,
-configure fails at `find_package(Qt6)`. This script builds it. Only qtbase is built, and it is
-static, so the executable still needs no DLLs beside it.
-
-```bash
-sudo apt install g++-mingw-w64-x86-64-posix qt6-base-dev cmake ninja-build curl
-
-scripts/build-qt-mingw.sh ~/opt/qt6-mingw-static
-export QT_MINGW_ROOT=~/opt/qt6-mingw-static
+```mermaid
+flowchart LR
+  Developer[Developer or CI] --> Qt[qt: complete SDK family]
+  Qt --> Source[Shared source integrity]
+  Qt --> Windows[x64 Windows build]
+  Qt --> TSan[Native TSan build]
+  Developer --> Checks[Current formatting, coverage and test commands]
 ```
 
-The host `qt6-base-dev` is required: a cross-build takes `moc`, `rcc` and `uic` from the host and
-refuses a version mismatch. The script reads the version from `qmake6` and fetches the matching
-source.
+[Qt tooling](qt/README.md) is complete under `qt/`: one source provider, the x64 Windows recipe and the native instrumented Core recipe. Use their canonical commands directly; no Qt launcher or implementation lives elsewhere in this tree.
 
-The install prefix is a required argument, and everything the script writes goes under it. Sources
-and the build tree land in `.work` there, which can be deleted once the install has finished;
-re-running reuses what is already unpacked. Qt is built from source, so the first run takes a
-while. Run the script from inside a clone, as it finds the toolchain file through git.
+Current other commands:
 
-`QT_MINGW_ROOT` is read by `cmake/mingw-w64.cmake`, so it has to be set in the shell that
-configures the build.
+- `format-cpp.sh`, `format-cmake.sh` and `install-hooks.sh` are described in [CONTRIBUTING.md](../CONTRIBUTING.md).
+- `run-desktop-journeys.py` uses the [owned desktop composition](../tools/testing/desktop_checks/README.md) and [GoogleTest protocol](../tools/testing/gtest/README.md).
+- `check-gui-mutations.py` uses [owned mutation qualification](../tools/testing/mutation_checks/README.md); CMake provides its actual build directory through `wiola_check_mutations`.
+- `coverage.sh` runs the coverage collector; [coverage qualification](../tools/coverage/README.md) explains source scope and retained evidence.
+- `test-affected.py` builds and runs explicitly selected test targets.
 
-
-The SDK implementation now lives with its identity logic and process contracts in
-[tools/sdk/qt_mingw](../tools/sdk/qt_mingw/README.md). The existing script remains its public
-launcher. CI supplies a second argument for a scratch workspace outside the install prefix,
-so caches contain installed SDK files rather than downloaded sources and compiler objects.
-Only x86-64 POSIX MinGW is supported; the 32-bit and Win32-threading metapackages are not needed.
-
-## Packaged desktop checks
-
-`run-desktop-journeys.py` is a compatibility launcher for
-[the desktop contract composition](../tools/testing/desktop_checks/README.md).
-The shared [GoogleTest protocol](../tools/testing/gtest/README.md) owns process
-discovery, complete case evidence and assertion/crash classification. The runner
-does not guess platform or build paths; pass a Qt platform explicitly when needed
-(for example `--qt-platform offscreen`) or preserve the caller environment.
-
-## Regression qualification
-
-`check-gui-mutations.py` launches [owned mutation checks](../tools/testing/mutation_checks/README.md).
-Regression recipes use stable source-owner identities; the engine does not embed GUI paths.
-Run `cmake --build --preset linux-debug --target wiola_check_mutations` for the current native GUI configuration.
-CMake supplies the actual build directory and available parallelism replaces fixed worker counts.
-
-## Instrumented Qt Core
-
-`build-qt-core-tsan.sh` is a compatibility launcher for the
-[owned native Core SDK](../tools/sdk/qt_core_tsan/README.md). The recipe discovers
-compiler/host inputs, consumes the shared Qt source provider and resolves output
-through configured target metadata. It does not embed Ubuntu library directories.
+Caller-provided paths and configured target metadata determine runtime artifacts. Commands must preserve caller environments, retain original diagnostics and report failures accurately. Development tooling has the same ownership and test requirements as player code.

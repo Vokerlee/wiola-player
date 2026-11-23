@@ -15,8 +15,8 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from tools.sdk.qt_source.provider import QtSourcePin, QtSourceStore
-from tools.sdk.qt_source.__main__ import main
+from scripts.qt.source.provider import QtSourcePin, QtSourceStore
+from scripts.qt.source.__main__ import main
 
 
 def archive_fixture(*, unsafe=False, missing_root=False):
@@ -152,7 +152,7 @@ class QtSourceStoreTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 QtSourcePin(version, checksum)
         result = subprocess.run(
-            [sys.executable, "-m", "tools.sdk.qt_source", "6.4.2", "--identity"],
+            [sys.executable, "-m", "scripts.qt.source", "6.4.2", "--identity"],
             capture_output=True,
             text=True,
         )
@@ -238,7 +238,7 @@ class QtSourceStoreTest(unittest.TestCase):
         self,
     ):
         with patch(
-            "tools.sdk.qt_source.provider.tempfile.TemporaryDirectory",
+            "scripts.qt.source.provider.tempfile.TemporaryDirectory",
             side_effect=PermissionError("unwritable cache"),
         ):
             with self.assertRaises(PermissionError):

@@ -1,4 +1,7 @@
 {
+  "scripts/qt/source/tests/test_provider.py": "sdk.qt_source",
+  "scripts/qt/tsan/tests/test_recipe.py": "sdk.qt_core_tsan",
+  "scripts/qt/windows/tests/test_sdk.py": "sdk.qt_mingw",
   "tests/scripts/test_affected_selection.py": "test.scripts.test_affected_selection",
   "tests/scripts/test_coverage_gate.py": "test.scripts.test_coverage_gate",
   "tests/scripts/test_coverage_inventory.py": "test.scripts.test_coverage_inventory",
@@ -15,9 +18,6 @@
   "tools/coverage/llvm_reporting/tests/test_reporter.py": "coverage.llvm_reporting",
   "tools/coverage/measurement/tests/test_report.py": "coverage.measurement",
   "tools/coverage/source_policy/tests/test_policy.py": "coverage.source_policy",
-  "tools/sdk/qt_core_tsan/tests/test_recipe.py": "sdk.qt_core_tsan",
-  "tools/sdk/qt_mingw/tests/test_sdk.py": "sdk.qt_mingw",
-  "tools/sdk/qt_source/tests/test_provider.py": "sdk.qt_source",
   "tools/testing/catalog/tests/test_catalog.py": "testing.catalog",
   "tools/testing/desktop_checks/tests/test_environment.py": "testing.desktop_checks",
   "tools/testing/gtest/tests/test_protocol.py": "testing.gtest",

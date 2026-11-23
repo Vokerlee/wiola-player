@@ -10,7 +10,7 @@ fi
 prefix="$1"
 work="${2:-$prefix/.work}"
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repository_directory="$(cd -- "$script_directory/../../.." && pwd)"
+repository_directory="$(git -C "$script_directory" rev-parse --show-toplevel)"
 toolchain="${WIOLA_QT_TOOLCHAIN_FILE:-$repository_directory/cmake/mingw-w64.cmake}"
 
 # Cross-builds borrow moc, rcc and uic from the host, and Qt refuses a version mismatch.
@@ -26,7 +26,7 @@ mkdir -p "$work"
 cmake -P "$script_directory/context.cmake" > "$work/context.identity"
 
 source_dir="$(PYTHONPATH="$repository_directory${PYTHONPATH:+:$PYTHONPATH}" \
-    python3 -m tools.sdk.qt_source "$version" "${WIOLA_QT_SOURCE_CACHE:-$work}")"
+    python3 -m scripts.qt.source "$version" "${WIOLA_QT_SOURCE_CACHE:-$work}")"
 
 cmake -G Ninja -S "$source_dir" -B "$work/build" \
     -DCMAKE_TOOLCHAIN_FILE="$toolchain" \

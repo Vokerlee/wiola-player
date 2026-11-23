@@ -1,5 +1,13 @@
 # Read the selected toolchain rather than duplicating its compiler choice in CI.
-get_filename_component(repository "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+find_program(git_command NAMES git REQUIRED)
+execute_process(
+    COMMAND
+        "${git_command}" -C "${CMAKE_CURRENT_LIST_DIR}" rev-parse
+        --show-toplevel
+    OUTPUT_VARIABLE repository
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+)
 if(
     DEFINED ENV{WIOLA_QT_TOOLCHAIN_FILE}
     AND NOT "$ENV{WIOLA_QT_TOOLCHAIN_FILE}" STREQUAL ""
@@ -49,7 +57,7 @@ if(NOT compiler_target STREQUAL "x86_64-w64-mingw32")
 endif()
 find_program(host_python NAMES python3 REQUIRED)
 execute_process(
-    COMMAND "${host_python}" -m tools.sdk.qt_source "${qt_version}" --identity
+    COMMAND "${host_python}" -m scripts.qt.source "${qt_version}" --identity
     WORKING_DIRECTORY "${repository}"
     OUTPUT_VARIABLE source_identity
     OUTPUT_STRIP_TRAILING_WHITESPACE

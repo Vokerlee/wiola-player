@@ -57,16 +57,9 @@
       "workflow": false
     },
     {
-      "path": "scripts/build-qt-core-tsan.sh",
-      "owner": "tool.build_qt_core_tsan",
-      "language": "shell",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "scripts/build-qt-mingw.sh",
-      "owner": "tool.build_qt_mingw",
-      "language": "shell",
+      "path": "scripts/__init__.py",
+      "owner": "scripts.package",
+      "language": "python",
       "role": "tooling",
       "workflow": false
     },
@@ -117,6 +110,146 @@
       "owner": "tool.install_hooks",
       "language": "shell",
       "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/__init__.py",
+      "owner": "sdk.package",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/source/__init__.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/source/__main__.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/source/provider.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/source/tests/__init__.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/source/tests/test_provider.py",
+      "owner": "sdk.qt_source",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/CMakeLists.txt",
+      "owner": "sdk.qt_core_tsan",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/__init__.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/__main__.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/build.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/context.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/runtime.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/tests/__init__.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/tests/test_recipe.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/tsan/verify.py",
+      "owner": "sdk.qt_core_tsan",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/windows/__init__.py",
+      "owner": "sdk.qt_mingw",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/windows/build.sh",
+      "owner": "sdk.qt_mingw",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/windows/context.cmake",
+      "owner": "sdk.qt_mingw",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/windows/tests/__init__.py",
+      "owner": "sdk.qt_mingw",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/qt/windows/tests/test_sdk.py",
+      "owner": "sdk.qt_mingw",
+      "language": "python",
+      "role": "test",
       "workflow": false
     },
     {
@@ -4728,146 +4861,6 @@
     {
       "path": "tools/coverage/source_policy/tests/test_policy.py",
       "owner": "coverage.source_policy",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/__init__.py",
-      "owner": "sdk.package",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/CMakeLists.txt",
-      "owner": "sdk.qt_core_tsan",
-      "language": "cmake",
-      "role": "build",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/__init__.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/__main__.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/build.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/context.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/runtime.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/tests/__init__.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/tests/test_recipe.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_core_tsan/verify.py",
-      "owner": "sdk.qt_core_tsan",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_mingw/__init__.py",
-      "owner": "sdk.qt_mingw",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_mingw/build.sh",
-      "owner": "sdk.qt_mingw",
-      "language": "shell",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_mingw/context.cmake",
-      "owner": "sdk.qt_mingw",
-      "language": "cmake",
-      "role": "build",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_mingw/tests/__init__.py",
-      "owner": "sdk.qt_mingw",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_mingw/tests/test_sdk.py",
-      "owner": "sdk.qt_mingw",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_source/__init__.py",
-      "owner": "sdk.qt_source",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_source/__main__.py",
-      "owner": "sdk.qt_source",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_source/provider.py",
-      "owner": "sdk.qt_source",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_source/tests/__init__.py",
-      "owner": "sdk.qt_source",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/sdk/qt_source/tests/test_provider.py",
-      "owner": "sdk.qt_source",
       "language": "python",
       "role": "test",
       "workflow": false

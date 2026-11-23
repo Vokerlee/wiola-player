@@ -11,11 +11,11 @@ import textwrap
 import unittest
 from unittest.mock import patch
 
-from tools.sdk.qt_core_tsan.build import QtCoreTsanBuilder
-from tools.sdk.qt_core_tsan.context import QtCoreContext
-from tools.sdk.qt_core_tsan.runtime import QtCoreRuntime
-from tools.sdk.qt_core_tsan.__main__ import main
-from tools.sdk.qt_core_tsan.verify import main as verify
+from scripts.qt.tsan.build import QtCoreTsanBuilder
+from scripts.qt.tsan.context import QtCoreContext
+from scripts.qt.tsan.runtime import QtCoreRuntime
+from scripts.qt.tsan.__main__ import main
+from scripts.qt.tsan.verify import main as verify
 
 
 class ControlledSources:

@@ -37,12 +37,12 @@ sudo apt install g++-mingw-w64-x86-64-posix
 ```
 
 The build also needs a Qt built for MinGW-w64, which no distribution packages. Build one once with
-`scripts/build-qt-mingw.sh`, described in [scripts/README.md](scripts/README.md); it compiles Qt
+`scripts/qt/windows/build.sh`, described in [scripts/README.md](scripts/README.md); it compiles Qt
 from source, so expect it to take a while and to want several gigabytes. `QT_MINGW_ROOT` then
 points the toolchain file at it and has to be set in the shell that configures:
 
 ```bash
-scripts/build-qt-mingw.sh ~/opt/qt6-mingw-static
+scripts/qt/windows/build.sh ~/opt/qt6-mingw-static
 export QT_MINGW_ROOT=~/opt/qt6-mingw-static
 
 cmake --preset windows                 # configure into build-win/

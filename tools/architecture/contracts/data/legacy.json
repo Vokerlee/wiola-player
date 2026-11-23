@@ -408,8 +408,6 @@
   "testing.track_view": "545044f76a39685be92d2c399fd3182095274df35357af547722b7668c318610",
   "testing.wav": "27e74d34b8ad2c41f29d4ff464749134bea3c0e14fc655aead182b0829016954",
   "testing.widget_diagnostics": "12d69a0b390e1ea948fd842696ff4ee89892121afa727173b334debd74838df9",
-  "tool.build_qt_core_tsan": "c4d3a8200a396dc902fe201ceaf185f54fd2a5f07a3081daeb70891ee6ce22dd",
-  "tool.build_qt_mingw": "18d79329068083e7d85923dced1e5433e444bc6ff87faef2c92182d8ee44bce7",
   "tool.check_gui_mutations": "c1e1305445379a693715abeffdb3072d112db1c4a8d6d1d37a0c5fd3bf3236d4",
   "tool.coverage": "4056607b7d1d5c0b15558d5b408a7dadb1857b9d4063c1eba6fa00e79b518b27",
   "tool.coverage_gate": "6c8d06f264fa45421ec732783ca87da2808a6e5e2bf1a47fd98c56801a9838ea",
