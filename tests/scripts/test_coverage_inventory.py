@@ -1,7 +1,10 @@
 import importlib.util
+import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('coverage_report', Path(__file__).resolve().parents[2] / 'scripts/coverage_report.py')
 coverage = importlib.util.module_from_spec(spec)
@@ -32,6 +35,37 @@ class CoverageInventory(unittest.TestCase):
             self.assertTrue(coverage.workflow_file(root / 'src' / folder / 'moved.cpp', root))
         self.assertTrue(coverage.workflow_file(root / 'src/main.cpp', root))
         self.assertFalse(coverage.workflow_file(root / 'tests/gui/test.cpp', root))
+
+    def test_profile_refresh_rejects_shared_inputs_and_unknown_targets(self):
+        entries = {'tests': {'view_test': {'sources': ['tests/gui/view_test.cpp']}}}
+        previous = {'revision': 'qualified-revision'}
+        with patch.object(coverage, 'capture', return_value='tests/gui/view_test.cpp'):
+            self.assertEqual(coverage.refresh_inputs(Path('/repo'), previous, entries, ['view_test']),
+                             ['tests/gui/view_test.cpp'])
+            with self.assertRaises(ValueError): coverage.refresh_inputs(Path('/repo'), previous, entries, [])
+            with self.assertRaises(ValueError): coverage.refresh_inputs(Path('/repo'), previous, entries, ['missing'])
+        for changed in ['src/gui/view.cpp', 'tests/fixtures/shared.hpp', 'cmake/build.cmake']:
+            with patch.object(coverage, 'capture', return_value=changed):
+                with self.assertRaises(ValueError): coverage.refresh_inputs(Path('/repo'), previous, entries, ['view_test'])
+
+    def test_profile_refresh_proof_rejects_modified_or_unhashed_retained_profiles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory); raw = report / 'raw/other_test'; raw.mkdir(parents=True)
+            profile = raw / 'one.profraw'; profile.write_bytes(b'qualified profile')
+            original = {'revision': 'original', 'tools': {}, 'scope': 'workflow',
+                        'completed': {'other_test': {'tests': ['Other.Test'], 'profiles': 1},
+                                      'stream_test': {'tests': ['Stream.Test'], 'profiles': 1}}}
+            (report / 'reused-manifest.json').write_text(json.dumps(original))
+            (report / 'inventory.json').write_text(json.dumps({'tests': {'stream_test': {'sources': ['tests/media/stream.cpp']}}}))
+            manifest = dict(original, reused_evidence={'refreshed_targets': ['stream_test'],
+                'changed_inputs': ['tests/media/stream.cpp'], 'retained_profiles': {
+                    'other_test': {'one.profraw': hashlib.sha256(profile.read_bytes()).hexdigest()}}})
+            with patch.object(coverage, 'capture', return_value='tests/media/stream.cpp'):
+                coverage.verify_reused_profiles(Path('/repo'), report, manifest)
+                profile.write_bytes(b'wrong evidence')
+                with self.assertRaises(ValueError): coverage.verify_reused_profiles(Path('/repo'), report, manifest)
+                manifest['reused_evidence']['retained_profiles']['other_test'] = {}
+                with self.assertRaises(ValueError): coverage.verify_reused_profiles(Path('/repo'), report, manifest)
 
     def test_zero_hits_and_distinct_branch_counts_remain_visible(self):
         summary = {metric: {'count': count, 'covered': 0} for metric, count in

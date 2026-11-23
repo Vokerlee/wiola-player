@@ -106,10 +106,46 @@ def coverage_diagnostics(stderr):
     return records
 
 
+def refresh_inputs(root, previous, entries, targets):
+    if not targets or not set(targets).issubset(entries['tests']):
+        raise ValueError('Refresh requires known test target identities')
+    changed = capture(['git', 'diff', '--name-only', previous['revision'], 'HEAD']).splitlines()
+    allowed = {'scripts/coverage_report.py', 'scripts/coverage_gate.py',
+               'tests/scripts/test_coverage_inventory.py'}
+    allowed.update(source for target in targets for source in entries['tests'][target]['sources'])
+    if set(changed) - allowed:
+        raise ValueError('Changed shared/production inputs require fresh collection: ' +
+                         ', '.join(sorted(set(changed) - allowed)))
+    return changed
+
+
+def verify_reused_profiles(root, report, manifest):
+    evidence = manifest.get('reused_evidence')
+    if not evidence:
+        return
+    original = json.loads((report / 'reused-manifest.json').read_text())
+    entries = json.loads((report / 'inventory.json').read_text())
+    changed = refresh_inputs(root, original, entries, evidence['refreshed_targets'])
+    if changed != evidence['changed_inputs'] or original['tools'] != manifest['tools']:
+        raise ValueError('Reused profile input/toolchain proof changed')
+    expected = set(original['completed']) - set(evidence['refreshed_targets'])
+    if set(evidence['retained_profiles']) != expected or original['scope'] != manifest['scope']:
+        raise ValueError('Retained target scope changed')
+    for target, hashes in evidence['retained_profiles'].items():
+        if set(hashes) != {p.name for p in (report / 'raw' / target).glob('*.profraw')}:
+            raise ValueError('Retained profile hash inventory changed: ' + target)
+        if manifest['completed'][target] != original['completed'][target]:
+            raise ValueError('Retained target discovery/profile inventory changed: ' + target)
+        for name, digest in hashes.items():
+            if hashlib.sha256((report / 'raw' / target / name).read_bytes()).hexdigest() != digest:
+                raise ValueError('Retained process profile changed: ' + target + '/' + name)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--scope', choices=['all', 'workflow'], default='all')
     parser.add_argument('--jobs', type=int, default=4)
+    parser.add_argument('--refresh-target', nargs='+', help='Recollect only changed test TUs; reject shared/production changes')
     parser.add_argument('--build-dir', type=Path, default=Path('build-coverage'))
     args = parser.parse_args()
     root = Path(capture(['git', 'rev-parse', '--show-toplevel'])).resolve()
@@ -123,7 +159,22 @@ def main():
     entries = inventory(root, build)
     selected = {name: value for name, value in entries['tests'].items()
                 if args.scope == 'all' or value['workflow']}
-    targets = ['wiola_coverage_inventory', *entries['production'], *selected]
+    report = build / 'coverage'
+    previous = None
+    reused = None
+    if args.refresh_target:
+        previous = json.loads((report / 'manifest.json').read_text())
+        if previous.get('reused_evidence'):
+            raise ValueError('Chained refreshes require fresh collection to keep provenance bounded')
+        old_inventory = json.loads((report / 'inventory.json').read_text())
+        if entries != old_inventory or previous['scope'] != args.scope:
+            raise ValueError('Changed build inventory/scope requires fresh collection')
+        changed = refresh_inputs(root, previous, entries, args.refresh_target)
+        if not set(args.refresh_target).issubset(selected):
+            raise ValueError('Refresh target is outside the selected scope')
+        reused = {'refreshed_targets': args.refresh_target, 'changed_inputs': changed,
+                  'retained_profiles': {}}
+    targets = args.refresh_target or ['wiola_coverage_inventory', *entries['production'], *selected]
     run(['cmake', '--build', build, '-j', args.jobs, '--target', *targets])
     # Verify the actual configured compiler, not merely a shell default named clang.
     cache = (build / 'CMakeCache.txt').read_text()
@@ -142,10 +193,18 @@ def main():
     for tool in ['profdata', 'cov']:
         if not re.search(r'version\s+' + major + r'\.', tool_versions[tool], re.I):
             raise ValueError('Mismatched ' + tool + ' version')
-    report = build / 'coverage'
-    if report.exists():
+    prior = build / 'coverage-previous'
+    if previous:
+        if previous['tools'] != tool_versions:
+            raise ValueError('Changed coverage toolchain requires fresh collection')
+        if prior.exists():
+            shutil.rmtree(prior)
+        report.rename(prior)
+    elif report.exists():
         shutil.rmtree(report)
     report.mkdir()
+    if previous:
+        shutil.copyfile(prior / 'manifest.json', report / 'reused-manifest.json')
     (report / 'inventory.json').write_text(json.dumps(entries, indent=2) + '\n')
     discovery = json.loads(capture(['ctest', '--test-dir', build, '--show-only=json-v1']))
     groups = {name: [] for name in selected}
@@ -161,10 +220,19 @@ def main():
         raw.mkdir(parents=True)
         environment = dict(os.environ, LLVM_PROFILE_FILE=str(raw / '%m-%p.profraw'))
         expression = '^(' + '|'.join(re.escape(name) for name in cases) + ')$'
-        with (report / (target + '.log')).open('w') as output:
-            run(['ctest', '--test-dir', build, '-R', expression, '--no-tests=error',
-                 '--timeout', '120', '--output-on-failure'], env=environment,
-                stdout=output, stderr=subprocess.STDOUT)
+        if previous and target not in args.refresh_target:
+            if cases != previous['completed'][target]['tests']:
+                raise ValueError('Unaffected test discovery changed: ' + target)
+            shutil.copytree(prior / 'raw' / target, raw, dirs_exist_ok=True)
+            shutil.copyfile(prior / (target + '.log'), report / (target + '.log'))
+            print(target + ': verified retained profiles; tests not rerun', flush=True)
+            reused['retained_profiles'][target] = {
+                p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in raw.glob('*.profraw')}
+        else:
+            with (report / (target + '.log')).open('w') as output:
+                run(['ctest', '--test-dir', build, '-R', expression, '--no-tests=error',
+                     '--timeout', '120', '--output-on-failure'], env=environment,
+                    stdout=output, stderr=subprocess.STDOUT)
         produced = require_profiles(raw, len(cases))
         profiles.extend(produced)
         completed[target] = {'tests': cases, 'profiles': len(produced)}
@@ -178,11 +246,11 @@ def main():
     arguments = [objects[0], *[part for p in objects[1:] for part in ['-object', p]],
                  '-instr-profile=' + str(merged), str(root / 'src')]
     diagnostics = {}
-    def measured(command, destination=None):
+    def measured(command, destination=None, phase="whole"):
         result = run([cov, *command, *(['-dump'] if command[0] == 'report' else [])],
                      stdout=destination, stderr=subprocess.PIPE, text=True)
         if command[0] == 'report':
-            diagnostics['report'] = {'zero_hash_mappings': coverage_diagnostics(result.stderr)}
+            diagnostics[phase] = {'zero_hash_mappings': coverage_diagnostics(result.stderr)}
         else:
             clean = re.sub(r'\x1b\[[0-9;]*m', '', result.stderr)
             counts = []
@@ -191,9 +259,9 @@ def main():
                 warning = re.fullmatch(r'warning: (\d+) functions have mismatched data', line)
                 if not warning: raise ValueError('Unexpected coverage diagnostic: ' + line)
                 counts.append(int(warning.group(1)))
-            if sum(counts) != len(diagnostics['report']['zero_hash_mappings']):
+            if sum(counts) != len(diagnostics[phase]['zero_hash_mappings']):
                 raise ValueError('Coverage commands disagree about mapping diagnostics')
-        (report / (command[0] + '-mapping-diagnostics.txt')).write_text(result.stderr)
+        (report / (phase + '-' + command[0] + '-mapping-diagnostics.txt')).write_text(result.stderr)
 
     for command, output in [('report', 'summary.txt'), ('export', 'summary.json')]:
         options = ['-format=text', '-summary-only'] if command == 'export' else []
@@ -207,7 +275,22 @@ def main():
     absent = [s for s in entries['sources'] if (root / s).resolve() not in mapped]
     if absent:
         raise ValueError('Production sources absent from coverage mapping: ' + ', '.join(absent))
-    files = [f for f in data['files'] if workflow_file(f['filename'], root)]
+    # Keep workflow mappings stable whether the profile run selects workflow or all tests.
+    # Non-workflow test TUs can instantiate extra inline functions; their mappings must not
+    # silently alter the qualified denominator. Hits still use the same collected profile.
+    workflow_objects = [build / 'bin/wiola_coverage_inventory', *[
+        Path(value['binary']) for value in selected.values() if value['workflow']]]
+    workflow_arguments = [build / 'bin/wiola-player', *[
+        part for p in workflow_objects for part in ['-object', p]],
+        '-instr-profile=' + str(merged), str(root / 'src')]
+    with (report / 'workflow-summary.txt').open('w') as destination:
+        measured(['report', *workflow_arguments], destination, 'workflow')
+    with (report / 'workflow-summary.json').open('w') as destination:
+        measured(['export', *workflow_arguments, '-format=text', '-summary-only'], destination, 'workflow')
+    with (report / 'workflow.lcov').open('w') as destination:
+        measured(['export', *workflow_arguments, '-format=lcov'], destination, 'workflow')
+    workflow_data = json.loads((report / 'workflow-summary.json').read_text())['data'][0]
+    files = [f for f in workflow_data['files'] if workflow_file(f['filename'], root)]
     workflow = {'totals': summarize(files), 'files': [
         {'file': str(Path(f['filename']).relative_to(root)), 'counts': f['summary']}
         for f in files]}
@@ -222,6 +305,9 @@ def main():
                     completed=completed, raw_profiles=len(profiles), mapping_diagnostics=diagnostics, exclusions=[
                         'external dependencies and generated files: only src/ is selected',
                         'compile/link boundary executables are not production targets'])
+    if reused:
+        manifest['reused_evidence'] = reused
+        verify_reused_profiles(root, report, manifest)
     (report / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     percent = data['totals']['lines']['percent']
     (report / 'html/badge.json').write_text(json.dumps({

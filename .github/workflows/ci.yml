@@ -29,6 +29,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: ./scripts/format-cpp.sh --check
       - run: ./scripts/format-cmake.sh --check
+      - run: python3 -m unittest discover -s tests/scripts -v
 
   test:
     name: test (${{ matrix.preset }})
@@ -191,6 +192,26 @@ jobs:
           name: windows-native-journey-results
           path: native-journey/results
 
+  gui-mutations:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CXX: clang++-18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: gui-mutations
+          build-dir: build-debug
+      - run: cmake --preset linux-debug
+      - name: Require assertion evidence for six critical regressions
+        run: python3 scripts/check-gui-mutations.py --build-dir build-debug --artifacts mutation-results --jobs 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gui-mutation-evidence
+          path: mutation-results
+
   coverage:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -212,12 +233,20 @@ jobs:
       - run: ./scripts/coverage.sh
         env:
           CXX: clang++-18
+      - name: Enforce trusted workflow floors and changed decisions
+        run: python3 scripts/coverage_gate.py --base-ref "$WIOLA_COVERAGE_BASE"
+        env:
+          WIOLA_COVERAGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       - name: Upload coverage test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-test-diagnostics
-          path: build-coverage/Testing/Temporary
+          path: |
+            build-coverage/Testing/Temporary
+            build-coverage/coverage/*.log
+            build-coverage/coverage/*mapping-diagnostics.txt
+            build-coverage/coverage/gate.json
           if-no-files-found: ignore
           retention-days: 7
       # The numbers, on the run's own page.
@@ -241,6 +270,7 @@ jobs:
           name: coverage-html
           path: build-coverage/coverage/html
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage-evidence
           path: |
@@ -251,6 +281,8 @@ jobs:
             build-coverage/coverage/workflow.json
             build-coverage/coverage/workflow.txt
             build-coverage/coverage/coverage.lcov
+            build-coverage/coverage/workflow.lcov
+            build-coverage/coverage/gate.json
       # Only from main: what a pull request measured is its own, and does not replace the report.
       # The report takes a path of its own, leaving the root for whatever is put there later.
       - if: github.ref == 'refs/heads/main'
