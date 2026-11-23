@@ -18,8 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <app/workspace/workspace_reconciliation.hpp>
 #include <app/workspace/workspace_scanner.hpp>
+#include <library/in_memory_repository.hpp>
 
+#include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -63,10 +66,50 @@ void file(const std::filesystem::path& path)
     std::ofstream{path} << "audio";
 }
 
+TEST(WorkspaceScanner, PartialQualificationKeepsPresentKnownFilesButDoesNotImportUnknownFormats)
+{
+    wiola::testing::TemporaryDirectory temporary;
+    const auto root = temporary.path() / "wiola-partial-qualification";
+    std::filesystem::remove_all(root);
+    file(root / "known.flac");
+    file(root / "unknown.flac");
+    file(root / "new.wav");
+    wiola::library::InMemoryRepository repository;
+    const auto workspace = repository.create_workspace(root, false);
+    wiola::library::TrackRecord present, removed;
+    present.id = {"present"};
+    present.locations = {root / "known.flac"};
+    removed.id = {"removed"};
+    removed.locations = {root / "removed.flac"};
+    ASSERT_TRUE(repository.put_track(present));
+    ASSERT_TRUE(repository.put_track(removed));
+    ScanCapture capture;
+    wiola::app::WorkspaceScanner scanner;
+    scanner.start(
+        *repository.workspace(workspace), {".wav"},
+        [&](auto batch) { capture.accept(std::move(batch)); }, repository.tracks()
+    );
+    ASSERT_TRUE(capture.wait());
+    scanner.stop();
+    ASSERT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::complete);
+    ASSERT_EQ(capture.tracks.size(), 2);
+    EXPECT_NE(std::ranges::find(capture.tracks, root / "known.flac"), capture.tracks.end());
+    EXPECT_EQ(std::ranges::find(capture.tracks, root / "unknown.flac"), capture.tracks.end());
+    std::vector<wiola::app::WorkspaceScanEntry> entries;
+    for (const auto& batch : capture.batches)
+        entries.insert(entries.end(), batch.entries.begin(), batch.entries.end());
+    wiola::app::WorkspaceReconciliation reconcile{[](const auto&) { return true; }};
+    ASSERT_TRUE(reconcile.reconcile(repository, workspace, entries).succeeded);
+    EXPECT_FALSE(repository.track(present.id)->missing);
+    EXPECT_TRUE(repository.track(removed.id)->missing);
+    EXPECT_EQ(repository.tracks().size(), 3);
+    std::filesystem::remove_all(root);
+}
+
 TEST(WorkspaceScanner, StreamsSupportedFilesInBoundedWorkerBatches)
 {
-    const std::filesystem::path root =
-        std::filesystem::temp_directory_path() / "wiola-scan-recursive";
+    wiola::testing::TemporaryDirectory temporary;
+    const std::filesystem::path root = temporary.path() / "wiola-scan-recursive";
     std::filesystem::remove_all(root);
     file(root / "z.wav");
     file(root / "a.MP3");
@@ -101,7 +144,8 @@ TEST(WorkspaceScanner, StreamsSupportedFilesInBoundedWorkerBatches)
 
 TEST(WorkspaceScanner, HonorsNonRecursiveEnumeration)
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path() / "wiola-scan-flat";
+    wiola::testing::TemporaryDirectory temporary;
+    const std::filesystem::path root = temporary.path() / "wiola-scan-flat";
     std::filesystem::remove_all(root);
     file(root / "one.wav");
     file(root / "nested" / "two.wav");
@@ -123,7 +167,8 @@ TEST(WorkspaceScanner, HonorsNonRecursiveEnumeration)
 
 TEST(WorkspaceScanner, CancelsCooperativelyAfterTheFirstBatch)
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path() / "wiola-scan-cancel";
+    wiola::testing::TemporaryDirectory temporary;
+    const std::filesystem::path root = temporary.path() / "wiola-scan-cancel";
     std::filesystem::remove_all(root);
     for (int index = 0; index < 70; ++index)
         file(root / (std::to_string(index) + ".wav"));
@@ -163,7 +208,8 @@ TEST(WorkspaceScanner, ReportsAnInvalidRoot)
 
 TEST(WorkspaceScanner, ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-scan-relocation";
+    wiola::testing::TemporaryDirectory temporary;
+    const auto root = temporary.path() / "wiola-scan-relocation";
     std::filesystem::remove_all(root);
     const auto old_path = root / "old.wav";
     const auto new_path = root / "new.wav";
@@ -190,7 +236,8 @@ TEST(WorkspaceScanner, ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows)
 
 TEST(WorkspaceScanner, PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGatedBoundary)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-stream-gated";
+    wiola::testing::TemporaryDirectory temporary;
+    const auto root = temporary.path() / "wiola-stream-gated";
     std::filesystem::remove_all(root);
     for (int i = 0; i < 8; ++i)
         file(root / (std::to_string(i) + ".wav"));
@@ -231,7 +278,8 @@ TEST(WorkspaceScanner, PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGated
 
 TEST(WorkspaceScanner, StopsAtTrackLimitWithoutClaimingAnAuthoritativeCompletion)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-stream-limit";
+    wiola::testing::TemporaryDirectory temporary;
+    const auto root = temporary.path() / "wiola-stream-limit";
     std::filesystem::remove_all(root);
     for (int i = 0; i < 4; ++i)
         file(root / (std::to_string(i) + ".wav"));
@@ -252,7 +300,8 @@ TEST(WorkspaceScanner, StopsAtTrackLimitWithoutClaimingAnAuthoritativeCompletion
 
 TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-stream-copies";
+    wiola::testing::TemporaryDirectory temporary;
+    const auto root = temporary.path() / "wiola-stream-copies";
     std::filesystem::remove_all(root);
     file(root / "existing.wav");
     file(root / "copy.wav");
@@ -280,7 +329,8 @@ TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
 
 TEST(WorkspaceScanner, EmptyQualificationNeverClaimsAllKnownMediaAreMissing)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-empty-qualification";
+    wiola::testing::TemporaryDirectory temporary;
+    const auto root = temporary.path() / "wiola-empty-qualification";
     std::filesystem::remove_all(root);
     file(root / "present.wav");
     ScanCapture capture;

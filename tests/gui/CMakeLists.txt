@@ -203,3 +203,9 @@ add_executable(
     benchmarks/projection_benchmark.cpp
 )
 target_link_libraries(gui_projection_benchmark PRIVATE wiola_gui)
+
+wiola_add_test(
+    gui_reader_contract_test
+    SOURCES contracts/reader_contract_test.cpp
+    LIBS wiola_gui wiola_session_preferences wiola_persistence_qt
+)

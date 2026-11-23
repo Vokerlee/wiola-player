@@ -37,11 +37,15 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
     if (!definition)
         return {};
     const auto root = definition->root;
+    const auto in_scope = [root, recursive = definition->recursive](const auto& path) {
+        return workspace_contains(root, path) &&
+            (recursive || library::media_id_for(path.parent_path()) == library::media_id_for(root));
+    };
     library::RepositoryTransaction transaction{repository, persist_};
     WorkspaceReconciliationResult result;
     std::set<library::MediaId> seen;
     for (const auto& entry : entries) {
-        if (!workspace_contains(root, entry.location)) {
+        if (!in_scope(entry.location)) {
             ++result.outside;
             continue;
         }
@@ -97,7 +101,7 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
         if (seen.contains(track.id) || track.missing)
             continue;
         if (!track.locations.empty() && std::ranges::all_of(track.locations, [&](const auto& path) {
-                return workspace_contains(root, path);
+                return in_scope(path);
             })) {
             track.missing = true;
             if (repository.put_track(std::move(track)))

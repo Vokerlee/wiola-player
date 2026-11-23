@@ -23,6 +23,7 @@
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
 
+#include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>
 
 #include <fstream>
@@ -33,7 +34,7 @@ class WorkspaceReconciliation : public testing::Test {
 protected:
     void SetUp() override
     {
-        root = std::filesystem::temp_directory_path() / "wiola-reconcile";
+        root = temporary.path() / "wiola-reconcile";
         std::filesystem::remove_all(root);
         std::filesystem::create_directories(root);
         workspace = repository.create_workspace(root);
@@ -46,6 +47,7 @@ protected:
         std::ofstream{path, std::ios::binary} << content;
     }
 
+    wiola::testing::TemporaryDirectory temporary;
     wiola::library::InMemoryRepository repository;
     wiola::library::WorkspaceId workspace;
     std::filesystem::path root;
@@ -62,6 +64,25 @@ protected:
         return reconciliation.reconcile(repository, workspace, entries);
     }
 };
+
+TEST_F(WorkspaceReconciliation, FlatScanNeverClaimsAbsenceForUnvisitedSubdirectories)
+{
+    auto definition = *repository.workspace(workspace);
+    definition.recursive = false;
+    ASSERT_TRUE(repository.put_workspace(definition));
+    wiola::library::TrackRecord direct, nested;
+    direct.id = {"direct"};
+    direct.locations = {root / "direct.flac"};
+    nested.id = {"nested"};
+    nested.locations = {root / "nested" / "song.flac"};
+    ASSERT_TRUE(repository.put_track(direct));
+    ASSERT_TRUE(repository.put_track(nested));
+    const auto result = reconciliation.reconcile(repository, workspace, {});
+    ASSERT_TRUE(result.succeeded);
+    EXPECT_EQ(result.missing, 1);
+    EXPECT_TRUE(repository.track(direct.id)->missing);
+    EXPECT_FALSE(repository.track(nested.id)->missing);
+}
 
 TEST_F(WorkspaceReconciliation, RelocatesByFingerprintWithoutChangingTagsOrPlaylistReferences)
 {
