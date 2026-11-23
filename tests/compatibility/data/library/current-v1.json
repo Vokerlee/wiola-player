@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "tracks": [
+    {
+      "id": "media-楽曲",
+      "embedded": {
+        "title": "Соната 楽曲",
+        "artist": "Бах",
+        "album": "Live",
+        "year": 1999
+      },
+      "overrides": {
+        "title": "",
+        "year": null
+      },
+      "tags": [
+        {
+          "id": "tag-calm",
+          "key": "mood",
+          "value": "Calm"
+        },
+        {
+          "id": "tag-live",
+          "key": "mood",
+          "value": "Live"
+        }
+      ],
+      "locations": [
+        "Music/楽曲.flac",
+        "Music/Missing.flac"
+      ],
+      "contentRevision": "18446744073709551614",
+      "metadataRevision": "7",
+      "missing": true
+    }
+  ],
+  "playlists": [
+    {
+      "id": "saved",
+      "name": "Избранное",
+      "entries": [
+        {
+          "id": "entry-a",
+          "media": "media-楽曲"
+        },
+        {
+          "id": "entry-b",
+          "media": "media-楽曲"
+        }
+      ]
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "folder",
+      "root": "Music",
+      "recursive": false
+    }
+  ]
+}

@@ -580,6 +580,21 @@
     "coupling": ""
   },
   {
+    "target": "compatibility_corpus_test",
+    "owner": "testing.compatibility_corpus",
+    "role": "adapter",
+    "sources": [
+      "tests/compatibility/layout_test.cpp",
+      "tests/compatibility/library_test.cpp",
+      "tests/compatibility/main.cpp",
+      "tests/compatibility/session_test.cpp",
+      "tests/compatibility/settings_test.cpp",
+      "tests/compatibility/theme_test.cpp"
+    ],
+    "qt": "widgets",
+    "coupling": "The current GUI aggregate provides layout/theme codecs; cases use QCoreApplication without widgets or a display."
+  },
+  {
     "target": "core_handle_test",
     "owner": "test.core.handle_test",
     "role": "domain",

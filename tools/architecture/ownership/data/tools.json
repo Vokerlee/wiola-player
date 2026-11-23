@@ -134,6 +134,7 @@
         "tools/architecture/ownership/data/tests_audio.json",
         "tools/architecture/ownership/data/tests_boundaries.json",
         "tools/architecture/ownership/data/tests_codec.json",
+        "tools/architecture/ownership/data/tests_compatibility.json",
         "tools/architecture/ownership/data/tests_core.json",
         "tools/architecture/ownership/data/tests_coverage.json",
         "tools/architecture/ownership/data/tests_desktop.json",

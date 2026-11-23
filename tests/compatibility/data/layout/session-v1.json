@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "choice": "custom",
+  "layout": {
+    "version": 2,
+    "root": {
+      "id": "documentTabs",
+      "type": "stack"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "root": {
+    "id": "same",
+    "type": "row",
+    "children": [
+      {
+        "id": "same",
+        "type": "button",
+        "action": "play"
+      }
+    ]
+  }
+}

@@ -432,6 +432,7 @@
     "test.utils.units_test": "test",
     "testing.atomic_output": "test",
     "testing.catalog": "tooling",
+    "testing.compatibility_corpus": "test",
     "testing.decoder": "test",
     "testing.gated_atomic_output": "test",
     "testing.gated_media_provider": "test",

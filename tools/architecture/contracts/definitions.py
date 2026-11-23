@@ -86,4 +86,9 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/architecture/commands/check_tests/__main__.py',), grouping=False,
     ),
+    AbstractionContract(
+        'testing.compatibility_corpus', 'tests/compatibility', 'Qualifies persisted client-data compatibility using independent input oracles',
+        ("Complete implementation and tests belong to this owner",),
+        (), grouping=False,
+    ),
 )

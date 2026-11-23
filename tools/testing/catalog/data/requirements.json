@@ -64,6 +64,36 @@
       "identity": "process.future-library-shutdown",
       "target": "gui_desktop_journey_test",
       "name": "DesktopJourney.FutureLibrarySchemaSurvivesARealChildShutdown"
+    },
+    {
+      "identity": "compatibility.authored-library",
+      "target": "compatibility_corpus_test",
+      "name": "CompatibilityLibrary.ReadsAuthoredUnicodeLayeringAndDuplicateOccurrences"
+    },
+    {
+      "identity": "compatibility.future-library-bytes",
+      "target": "compatibility_corpus_test",
+      "name": "CompatibilityLibrary.FutureFileSurvivesLoadSaveAndStoreDestructionByteForByte"
+    },
+    {
+      "identity": "compatibility.future-session-bytes",
+      "target": "compatibility_corpus_test",
+      "name": "CompatibilitySession.FutureStateSurvivesEditFlushAndDestructionByteForByte"
+    },
+    {
+      "identity": "compatibility.layout-version-identity",
+      "target": "compatibility_corpus_test",
+      "name": "CompatibilityLayout.OnlyLegacyVersionMigratesTheKnownDocumentView"
+    },
+    {
+      "identity": "compatibility.full-width-queue-identity",
+      "target": "compatibility_corpus_test",
+      "name": "CompatibilitySettings.KeepsFullWidthIdsAndRejectsAmbiguousDuplicateTokens"
+    },
+    {
+      "identity": "theme.future-store-preservation",
+      "target": "gui_theme_manager_test",
+      "name": "ThemeManager.BoundedAllowlistedImportsAndFutureFilesPreserveTheAcceptedDefinition"
     }
   ],
   "auxiliary": {
