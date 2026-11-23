@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "source.foundation",
+      "purpose": "Groups independent toolkit-free primitives with owned exports.",
+      "files": [
+        "src/foundation/CMakeLists.txt",
+        "src/foundation/README.md"
+      ]
+    },
+    {
+      "id": "source.core.borrowed",
+      "purpose": "Owns a move-only nullable reference with external lifetime.",
+      "files": [
+        "src/foundation/borrowed_reference/CMakeLists.txt",
+        "src/foundation/borrowed_reference/README.md",
+        "src/foundation/borrowed_reference/public/README.md",
+        "src/foundation/borrowed_reference/public/wiola/README.md",
+        "src/foundation/borrowed_reference/public/wiola/foundation/README.md",
+        "src/foundation/borrowed_reference/public/wiola/foundation/borrowed.hpp",
+        "src/foundation/borrowed_reference/tests/CMakeLists.txt",
+        "src/foundation/borrowed_reference/tests/README.md",
+        "src/foundation/borrowed_reference/tests/borrowed_reference_test.cpp",
+        "src/foundation/borrowed_reference/tests/check_export.py",
+        "src/foundation/borrowed_reference/tests/consumer.cpp",
+        "src/foundation/borrowed_reference/tests/private_probe.hpp"
+      ]
+    }
+  ]
+}

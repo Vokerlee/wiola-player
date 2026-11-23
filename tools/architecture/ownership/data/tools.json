@@ -111,6 +111,7 @@
         "tools/architecture/ownership/data/src_core.json",
         "tools/architecture/ownership/data/src_desktop.json",
         "tools/architecture/ownership/data/src_engine.json",
+        "tools/architecture/ownership/data/src_foundation.json",
         "tools/architecture/ownership/data/src_gui.json",
         "tools/architecture/ownership/data/src_library.json",
         "tools/architecture/ownership/data/src_lockfree.json",
