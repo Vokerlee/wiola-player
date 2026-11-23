@@ -47,7 +47,9 @@ runs:
         key: ccache-${{ inputs.name }}-${{ github.sha }}
         restore-keys: ccache-${{ inputs.name }}-
 
-    - shell: bash
+    - name: Resolve host package archives
+      id: apt-plan
+      shell: bash
       env:
         WIOLA_HOST_QT: ${{ inputs.qt }}
         WIOLA_EXTRA_PACKAGES: ${{ inputs.packages }}
@@ -61,15 +63,35 @@ runs:
         read -r -a extra_packages <<< "$WIOLA_EXTRA_PACKAGES"
         packages+=("${extra_packages[@]}")
 
-        apt_get() {
-          sudo env DEBIAN_FRONTEND=noninteractive apt-get \
-            -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=30 \
-            -o Acquire::https::Timeout=30 "$@"
-        }
-        apt_get update
-        apt_get install -y --no-install-recommends -- "${packages[@]}"
+        identity="$(python3 -m tools.build_environment.ubuntu_packages plan \
+          --output "$RUNNER_TEMP/wiola-apt-plan.json" -- "${packages[@]}")"
+        [[ "$identity" =~ ^[[:xdigit:]]{64}$ ]]
+        echo "identity=$identity" >> "$GITHUB_OUTPUT"
 
+    - name: Restore verified package archives
+      id: apt-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .cache/ubuntu-packages/*.deb
+        key: ubuntu-archives-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-plan.outputs.identity }}
+
+    - name: Install host packages
+      shell: bash
+      run: |
+        python3 -m tools.build_environment.ubuntu_packages install \
+          --plan "$RUNNER_TEMP/wiola-apt-plan.json" \
+          --archives "$GITHUB_WORKSPACE/.cache/ubuntu-packages"
+
+    - name: Save package archives before building
+      if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && steps.apt-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .cache/ubuntu-packages/*.deb
+        key: ${{ steps.apt-cache.outputs.cache-primary-key }}
+
+    - name: Configure compiler cache environment
+      shell: bash
+      run: |
         {
           echo "CMAKE_C_COMPILER_LAUNCHER=ccache"
           echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache"

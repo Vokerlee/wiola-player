@@ -5,13 +5,18 @@ This GitHub adapter restores dependency/compiler caches and installs the request
 ```mermaid
 flowchart LR
   Inputs[Build identity, paths and package requirements] --> Cache[Restore existing caches]
-  Cache --> Packages[Install required host packages]
-  Packages --> Environment[C and C++ compiler launcher environment]
+  Cache --> Resolve[Resolve current APT transaction]
+  Resolve --> Archives[Restore package archives]
+  Archives --> Packages[APT verifies and installs required packages]
+  Packages --> Save[Save successful default-branch archive cache]
+  Save --> Environment[C and C++ compiler launcher environment]
   Environment --> Build[Calling workflow's build]
 ```
 
 `name` partitions caches, `build-dir` identifies actual dependency output, `packages` adds package requirements, and `qt` controls host Qt tools. Headless builds pass `qt: false`. The Windows workflow requests only the x86-64 POSIX MinGW compiler package, whose dependencies supply its matching C compiler/binutils; the all-architecture `mingw-w64` metapackage is unnecessary.
 
-Cache restores precede network installation. APT installs only explicit dependencies, including Qt platform plugins for GUI checks, and omits optional recommended packages. Operations retry failed transfers and use bounded inactivity timeouts. Additional package names are passed as array arguments, not evaluated shell text. Ccache is made available to both C and C++ CMake compilations. A restored cache is reuse evidence, not proof that a build or test passed.
+Cache restores precede network installation. The [Ubuntu package owner](../../../tools/build_environment/ubuntu_packages/README.md) resolves current package requirements and supplies a mirror-independent identity derived from the requested packages and exact resolved archive filenames, sizes and checksums. This action transports those archives through the cache service. Only successful default-branch installations save caches, immediately before compilation; pull requests reuse those caches. The private archive directory is `.cache/ubuntu-packages`, separate from system APT directories. Cache transport includes only its top-level `.deb` files, excluding APT locks and partial downloads. It is not the SDK cache.
+
+APT verifies restored archives and installs required dependencies, including Qt platform plugins for GUI checks, with optional recommendations disabled. Operations retry failed transfers and use bounded inactivity timeouts. Additional package names are passed as array arguments, not evaluated shell text. Ccache is made available to both C and C++ CMake compilations. A restored cache is reuse evidence, not proof that a build or test passed.
 
 SDK construction and cache identity belong to [the Qt SDK owner](../../../tools/sdk/qt_mingw/README.md). The workflow owns scheduling and artifact transport. Changes to those responsibilities belong with their owners rather than inside this environment adapter.

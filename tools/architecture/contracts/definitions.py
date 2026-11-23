@@ -126,4 +126,14 @@ CONTRACTS = (
         ("Cache presence is not build or test success", "Headless builds do not require host Qt", "Package inputs are argument arrays"),
         (".github/actions/setup-build/action.yml",),
     ),
+    AbstractionContract(
+        'build_environment.package', 'tools/build_environment', 'Groups independent host build-environment adapters',
+        ("Complete implementation and tests belong to this owner",),
+        (), grouping=True,
+    ),
+    AbstractionContract(
+        'build_environment.ubuntu_packages', 'tools/build_environment/ubuntu_packages', 'Resolves and installs Ubuntu packages with reusable verified archives',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/build_environment/ubuntu_packages/packages.py', 'tools/build_environment/ubuntu_packages/__main__.py'), grouping=False,
+    ),
 )
