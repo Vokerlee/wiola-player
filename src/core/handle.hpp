@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <core/borrowed.hpp>
 #include <core/macros.hpp>
+#include <wiola/foundation/borrowed.hpp>
 
 namespace wiola::core {
 

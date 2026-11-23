@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
-
 #include <utility>
 
 namespace wiola::core {
@@ -44,7 +42,8 @@ public:
     {
     }
 
-    NO_COPY_SEMANTIC(Borrowed);
+    Borrowed(const Borrowed&) = delete;
+    Borrowed& operator=(const Borrowed&) = delete;
 
     Borrowed(Borrowed&& other) noexcept
         : target_{std::exchange(other.target_, nullptr)}

@@ -453,7 +453,8 @@
     "tool.install_hooks": "tooling",
     "tool.run_desktop_journeys": "tooling",
     "tool.test_affected": "tooling",
-    "tooling.package": "tooling"
+    "tooling.package": "tooling",
+    "source.foundation": "foundation"
   },
   "allowed": {
     "foundation": [],
