@@ -1,0 +1,3 @@
+add_library(wiola_engine_operations INTERFACE)
+add_library(wiola::engine_operations ALIAS wiola_engine_operations)
+target_link_libraries(wiola_engine_operations INTERFACE wiola_core)

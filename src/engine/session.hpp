@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <app/playback/operation_outcome.hpp>
-#include <app/playback/playback_snapshot.hpp>
 #include <audio/dsp/equalizer.hpp>
 #include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/volume.hpp>
@@ -33,8 +31,10 @@
 #include <engine/load/loader.hpp>
 #include <engine/load/metadata_coordinator.hpp>
 #include <engine/open_result.hpp>
+#include <engine/operations/operation_outcome.hpp>
 #include <engine/pipeline/output_session.hpp>
 #include <engine/pipeline/playback_pipeline.hpp>
+#include <engine/playback_snapshot/playback_snapshot.hpp>
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>

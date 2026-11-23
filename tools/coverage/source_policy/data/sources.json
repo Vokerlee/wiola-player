@@ -344,13 +344,6 @@
       "workflow": true
     },
     {
-      "path": "src/app/playback/operation_outcome.hpp",
-      "owner": "source.app.playback.operation_outcome",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
       "path": "src/app/playback/playback_presentation.hpp",
       "owner": "source.app.playback.playback_presentation",
       "language": "cpp",
@@ -381,13 +374,6 @@
     {
       "path": "src/app/playback/playback_service.hpp",
       "owner": "source.app.playback.playback_service",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
-      "path": "src/app/playback/playback_snapshot.hpp",
-      "owner": "source.app.playback.playback_snapshot",
       "language": "cpp",
       "role": "production",
       "workflow": true
@@ -1240,6 +1226,20 @@
       "workflow": false
     },
     {
+      "path": "src/engine/operations/CMakeLists.txt",
+      "owner": "source.app.playback.operation_outcome",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/operations/operation_outcome.hpp",
+      "owner": "source.app.playback.operation_outcome",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
       "path": "src/engine/pipeline/CMakeLists.txt",
       "owner": "build.src.engine.pipeline",
       "language": "cmake",
@@ -1273,6 +1273,20 @@
       "language": "cpp",
       "role": "production",
       "workflow": false
+    },
+    {
+      "path": "src/engine/playback_snapshot/CMakeLists.txt",
+      "owner": "source.app.playback.playback_snapshot",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/playback_snapshot/playback_snapshot.hpp",
+      "owner": "source.app.playback.playback_snapshot",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
     },
     {
       "path": "src/engine/queue/CMakeLists.txt",

@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include "operation_outcome.hpp"
 #include "playback_presentation.hpp"
+#include <engine/operations/operation_outcome.hpp>
 #include <engine/session.hpp>
 
 namespace wiola::app {
