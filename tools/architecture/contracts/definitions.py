@@ -62,4 +62,13 @@ CONTRACTS = (
         ("Source and configured evidence are distinguished", "Checking does not configure or build"),
         ("tools/architecture/commands/check_dependencies/__main__.py",),
     ),
+    AbstractionContract(
+        "source.foundation", "src/foundation", "Groups toolkit-independent primitives",
+        ("Children own complete implementations and public exports",), grouping=True,
+    ),
+    AbstractionContract(
+        "source.core.borrowed", "src/foundation/borrowed_reference", "Move-only reference with external ownership",
+        ("Moving empties the source", "Referent lifetime remains external", "Only the owned public subtree is exported"),
+        ("src/foundation/borrowed_reference/public/wiola/foundation/borrowed.hpp",),
+    ),
 )

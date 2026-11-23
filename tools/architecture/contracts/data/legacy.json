@@ -99,7 +99,6 @@
   "source.codec.decode.open": "3e52527901ea86d0c24e7aff9b0394f4c19adba0dcf7ad8e48f3b24f8602823d",
   "source.codec.decode.registry": "ce8ea7e4d603aafc3bb804f96e912700137f76e14ea1ad1cffb98c4ce738eef1",
   "source.codec.provider": "0c68302ce4cece2f6f722687a1a52f6a1b1f21d54da7512e6c8df811c5f05d0e",
-  "source.core.borrowed": "744e45fe85c4fad53c6fa06f8beae3824e8fccf0a0893dbb685cc4dcc79d7c1b",
   "source.core.cache_line": "020884d2d5d29af50cb66fcd5d61c98328ebc603a1b18b447ac497de0232050e",
   "source.core.handle": "44b54e0cbe4bcb99d70449823e1df5f013a2f8b680a7706fd01e8d8e12dc6b53",
   "source.core.macros": "8d653a5c1613d9326d29022cff91aff151b09962bda3eb16ba5772f887bd4811",

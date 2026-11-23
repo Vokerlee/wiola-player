@@ -2,13 +2,6 @@
   "schema_version": 1,
   "owners": [
     {
-      "id": "source.core.borrowed",
-      "purpose": "Owns the current borrowed declaration/implementation in core.",
-      "files": [
-        "src/core/borrowed.hpp"
-      ]
-    },
-    {
       "id": "source.core.cache_line",
       "purpose": "Owns the current cache line declaration/implementation in core.",
       "files": [
