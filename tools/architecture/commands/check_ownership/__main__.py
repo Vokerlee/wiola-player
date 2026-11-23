@@ -1,42 +1,54 @@
 """Compare current declarations with Git's tracked-file inventory."""
 
 import argparse
-from importlib.resources import files
 from pathlib import Path
 import subprocess
 import sys
 
 from tools.architecture.inventory.git_inventory import GitInventory
 from tools.architecture.contracts.catalog import ContractError, load_current_catalog
-from tools.architecture.cmake_inventory.inventory import CMakeInventory, BuildInventoryError
-from tools.architecture.ownership.registry import OwnershipRegistry, RegistryError
+from tools.architecture.cmake_inventory.inventory import (
+    CMakeInventory,
+    BuildInventoryError,
+)
+from tools.architecture.ownership.registry import RegistryError, load_current_registry
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", type=Path, default=Path.cwd())
-    parser.add_argument("--build-dir", type=Path, help="Read an existing CMake codemodel")
+    parser.add_argument(
+        "--build-dir", type=Path, help="Read an existing CMake codemodel"
+    )
     args = parser.parse_args()
     try:
-        directory = files("tools.architecture.ownership").joinpath("data")
-        documents = [
-            path.read_text(encoding="utf-8")
-            for path in sorted(directory.iterdir(), key=lambda path: path.name)
-            if path.name.endswith(".json")
-        ]
-        registry = OwnershipRegistry(documents)
+        registry = load_current_registry()
         catalog = load_current_catalog()
         audit = catalog.audit(registry)
         paths = GitInventory(args.repository).paths()
         difference = registry.compare(paths)
-        build_inventory = CMakeInventory.read(args.build_dir) if args.build_dir else None
+        build_inventory = (
+            CMakeInventory.read(args.build_dir, first_party_sources=paths)
+            if args.build_dir
+            else None
+        )
         if build_inventory:
             if build_inventory.source_root != args.repository.resolve():
-                raise BuildInventoryError("The build belongs to a different source root")
+                raise BuildInventoryError(
+                    "The build belongs to a different source root"
+                )
             for target in build_inventory.targets:
                 for source in target.sources:
                     registry.owner_of(source)
-    except (RegistryError, ContractError, BuildInventoryError, KeyError, OSError, subprocess.SubprocessError, UnicodeError) as error:
+    except (
+        RegistryError,
+        ContractError,
+        BuildInventoryError,
+        KeyError,
+        OSError,
+        subprocess.SubprocessError,
+        UnicodeError,
+    ) as error:
         print(f"Ownership inventory failed: {error}", file=sys.stderr)
         return 2
     for path in difference.unowned:
@@ -49,7 +61,9 @@ def main() -> int:
         return 1
     print(f"Unreviewed legacy abstraction owners: {len(audit.legacy_owners)}")
     if build_inventory:
-        print(f"CMake ownership verified: {len(build_inventory.targets)} declared targets")
+        print(
+            f"CMake ownership verified: {len(build_inventory.targets)} declared targets"
+        )
     print(f"Ownership verified: {len(paths)} files, {len(registry.owners)} owners")
     return 0
 

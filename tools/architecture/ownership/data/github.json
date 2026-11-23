@@ -15,6 +15,14 @@
       "files": [
         ".github/workflows/ci.yml"
       ]
+    },
+    {
+      "id": "documentation.github",
+      "purpose": "Explains provider integration and defines the concrete PR review interface.",
+      "files": [
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/README.md"
+      ]
     }
   ]
 }

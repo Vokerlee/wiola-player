@@ -19,8 +19,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        inventory = CMakeInventory.read(args.build_dir)
         registry = load_current_registry()
+        inventory = CMakeInventory.read(
+            args.build_dir, first_party_sources=registry.paths
+        )
         policy = load_current_policy()
         problems = policy.reconcile(registry)
         if problems:

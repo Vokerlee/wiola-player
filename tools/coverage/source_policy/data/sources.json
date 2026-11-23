@@ -4257,6 +4257,20 @@
       "workflow": false
     },
     {
+      "path": "tools/architecture/commands/check_design/__init__.py",
+      "owner": "architecture.check_design",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_design/__main__.py",
+      "owner": "architecture.check_design",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
       "path": "tools/architecture/commands/check_ownership/__init__.py",
       "owner": "architecture.check_ownership",
       "language": "python",
@@ -4427,6 +4441,62 @@
     {
       "path": "tools/architecture/ownership/tests/test_registry.py",
       "owner": "architecture.ownership",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/policy_guard/__init__.py",
+      "owner": "architecture.policy_guard",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/policy_guard/policy.py",
+      "owner": "architecture.policy_guard",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/policy_guard/tests/__init__.py",
+      "owner": "architecture.policy_guard",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/policy_guard/tests/test_policy.py",
+      "owner": "architecture.policy_guard",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/review_contract/__init__.py",
+      "owner": "architecture.review_contract",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/review_contract/review.py",
+      "owner": "architecture.review_contract",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/review_contract/tests/__init__.py",
+      "owner": "architecture.review_contract",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/review_contract/tests/test_review.py",
+      "owner": "architecture.review_contract",
       "language": "python",
       "role": "test",
       "workflow": false

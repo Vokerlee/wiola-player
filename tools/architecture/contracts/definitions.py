@@ -136,4 +136,23 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/build_environment/ubuntu_packages/packages.py', 'tools/build_environment/ubuntu_packages/__main__.py'), grouping=False,
     ),
+    AbstractionContract(
+        'architecture.review_contract', 'tools/architecture/review_contract', 'Validates review contracts and repository subject conventions',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/architecture/review_contract/review.py',), grouping=False,
+    ),
+    AbstractionContract(
+        'architecture.policy_guard', 'tools/architecture/policy_guard', 'Rejects silent weakening of accepted architecture policy',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/architecture/policy_guard/policy.py',), grouping=False,
+    ),
+    AbstractionContract(
+        'architecture.check_design', 'tools/architecture/commands/check_design', 'Assembles trusted design acceptance and existing architecture checks',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/architecture/commands/check_design/__main__.py',), grouping=False,
+    ),
+    AbstractionContract(
+        "documentation.github", ".github", "Explains provider boundaries and the PR review interface",
+        ("Provider configuration does not own player runtime behavior",), grouping=True,
+    ),
 )

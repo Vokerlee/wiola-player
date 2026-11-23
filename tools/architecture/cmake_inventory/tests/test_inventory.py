@@ -3,7 +3,10 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory, BuildInventoryError
+from tools.architecture.cmake_inventory.inventory import (
+    CMakeInventory,
+    BuildInventoryError,
+)
 
 
 class CMakeInventoryTest(unittest.TestCase):
@@ -14,21 +17,48 @@ class CMakeInventoryTest(unittest.TestCase):
 
     def model(self, directory):
         source = directory / "repository"
-        self.write(directory, "index-001.json", {
-            "reply": {"codemodel-v2": {"jsonFile": "model.json"}}})
-        model = {"version": {"major": 2}, "paths": {"source": str(source)},
-                 "configurations": [{"targets": [
-                     {"id": "app-id", "name": "player", "jsonFile": "player.json"},
-                     {"id": "core-id", "name": "core", "jsonFile": "core.json"}]}]}
+        self.write(
+            directory,
+            "index-001.json",
+            {"reply": {"codemodel-v2": {"jsonFile": "model.json"}}},
+        )
+        model = {
+            "version": {"major": 2},
+            "paths": {"source": str(source)},
+            "configurations": [
+                {
+                    "targets": [
+                        {"id": "app-id", "name": "player", "jsonFile": "player.json"},
+                        {"id": "core-id", "name": "core", "jsonFile": "core.json"},
+                    ]
+                }
+            ],
+        }
         self.write(directory, "model.json", model)
-        self.write(directory, "core.json", {"type": "STATIC_LIBRARY", "sources": [
-            {"path": "src/core.cpp"}, {"path": "generated/moc.cpp", "isGenerated": True},
-            {"path": str(directory / "external/foreign.cpp")}],
-            "artifacts": [{"path": "lib/core.a"}],
-            "compileGroups": [{"defines": [{"define": "QT_CORE_LIB"}]}]})
-        self.write(directory, "player.json", {"type": "EXECUTABLE", "sources": [
-            {"path": "src/main.cpp"}], "dependencies": [{"id": "core-id"}],
-            "artifacts": [{"path": "bin/player"}]})
+        self.write(
+            directory,
+            "core.json",
+            {
+                "type": "STATIC_LIBRARY",
+                "sources": [
+                    {"path": "src/core.cpp"},
+                    {"path": "generated/moc.cpp", "isGenerated": True},
+                    {"path": str(directory / "external/foreign.cpp")},
+                ],
+                "artifacts": [{"path": "lib/core.a"}],
+                "compileGroups": [{"defines": [{"define": "QT_CORE_LIB"}]}],
+            },
+        )
+        self.write(
+            directory,
+            "player.json",
+            {
+                "type": "EXECUTABLE",
+                "sources": [{"path": "src/main.cpp"}],
+                "dependencies": [{"id": "core-id"}],
+                "artifacts": [{"path": "bin/player"}],
+            },
+        )
         return source, model
 
     def test_resolves_actual_targets_sources_dependencies_and_artifacts(self):
@@ -50,8 +80,11 @@ class CMakeInventoryTest(unittest.TestCase):
             directory = Path(name)
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
-            self.write(directory, "index-001.json", {
-                "reply": {"codemodel-v2": {"jsonFile": "../outside.json"}}})
+            self.write(
+                directory,
+                "index-001.json",
+                {"reply": {"codemodel-v2": {"jsonFile": "../outside.json"}}},
+            )
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
 
@@ -59,10 +92,18 @@ class CMakeInventoryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             _, model = self.model(directory)
-            for version, configurations in [(3, model["configurations"]), (2, []),
-                                             (2, model["configurations"] * 2)]:
-                self.write(directory, "model.json", dict(model,
-                    version={"major": version}, configurations=configurations))
+            for version, configurations in [
+                (3, model["configurations"]),
+                (2, []),
+                (2, model["configurations"] * 2),
+            ]:
+                self.write(
+                    directory,
+                    "model.json",
+                    dict(
+                        model, version={"major": version}, configurations=configurations
+                    ),
+                )
                 with self.assertRaises(BuildInventoryError):
                     CMakeInventory.read(directory)
 
@@ -70,8 +111,11 @@ class CMakeInventoryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             _, model = self.model(directory)
-            self.write(directory, "player.json", {"type": "EXECUTABLE",
-                "dependencies": [{"id": "unknown-id"}]})
+            self.write(
+                directory,
+                "player.json",
+                {"type": "EXECUTABLE", "dependencies": [{"id": "unknown-id"}]},
+            )
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
             entries = model["configurations"][0]["targets"]
@@ -79,6 +123,50 @@ class CMakeInventoryTest(unittest.TestCase):
             self.write(directory, "model.json", model)
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
+
+    def test_external_sources_in_another_configured_build_are_not_first_party(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            source, _ = self.model(directory)
+            foreign = source / "unusual-output-location"
+            foreign.mkdir(parents=True)
+            (foreign / "CMakeCache.txt").write_text("# another configured build")
+            self.write(
+                directory,
+                "core.json",
+                {
+                    "type": "STATIC_LIBRARY",
+                    "sources": [
+                        {"path": "src/core.cpp"},
+                        {"path": "unusual-output-location/vendor/external.cpp"},
+                    ],
+                },
+            )
+            inventory = CMakeInventory.read(directory)
+            self.assertEqual(inventory.targets[0].sources, ("src/core.cpp",))
+
+    def test_explicit_owned_sources_take_precedence_over_a_build_boundary(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            source, _ = self.model(directory)
+            mixed = source / "module-output"
+            mixed.mkdir(parents=True)
+            (mixed / "CMakeCache.txt").write_text("# configured module boundary")
+            self.write(
+                directory,
+                "core.json",
+                {
+                    "type": "STATIC_LIBRARY",
+                    "sources": [
+                        {"path": "module-output/owned.cpp"},
+                        {"path": "module-output/vendor/external.cpp"},
+                    ],
+                },
+            )
+            inventory = CMakeInventory.read(
+                directory, first_party_sources={"module-output/owned.cpp"}
+            )
+            self.assertEqual(inventory.targets[0].sources, ("module-output/owned.cpp",))
 
 
 if __name__ == "__main__":

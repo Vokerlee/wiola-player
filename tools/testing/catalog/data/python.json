@@ -8,6 +8,8 @@
   "tools/architecture/dependency_policy/tests/test_policy.py": "architecture.dependency_policy",
   "tools/architecture/inventory/tests/test_git_inventory.py": "architecture.git_inventory",
   "tools/architecture/ownership/tests/test_registry.py": "architecture.ownership",
+  "tools/architecture/policy_guard/tests/test_policy.py": "architecture.policy_guard",
+  "tools/architecture/review_contract/tests/test_review.py": "architecture.review_contract",
   "tools/build_environment/ubuntu_packages/tests/test_packages.py": "build_environment.ubuntu_packages",
   "tools/coverage/measurement/tests/test_report.py": "coverage.measurement",
   "tools/coverage/source_policy/tests/test_policy.py": "coverage.source_policy",

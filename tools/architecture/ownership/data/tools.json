@@ -11,6 +11,15 @@
       ]
     },
     {
+      "id": "architecture.check_design",
+      "purpose": "Assembles trusted design acceptance and existing architecture checks",
+      "files": [
+        "tools/architecture/commands/check_design/README.md",
+        "tools/architecture/commands/check_design/__init__.py",
+        "tools/architecture/commands/check_design/__main__.py"
+      ]
+    },
+    {
       "id": "architecture.check_ownership",
       "purpose": "Assembles ownership checking and reports stable command exit outcomes.",
       "files": [
@@ -164,6 +173,30 @@
       "files": [
         "tools/architecture/README.md",
         "tools/architecture/__init__.py"
+      ]
+    },
+    {
+      "id": "architecture.policy_guard",
+      "purpose": "Rejects silent weakening of accepted architecture policy",
+      "files": [
+        "tools/architecture/policy_guard/README.md",
+        "tools/architecture/policy_guard/__init__.py",
+        "tools/architecture/policy_guard/policy.py",
+        "tools/architecture/policy_guard/tests/README.md",
+        "tools/architecture/policy_guard/tests/__init__.py",
+        "tools/architecture/policy_guard/tests/test_policy.py"
+      ]
+    },
+    {
+      "id": "architecture.review_contract",
+      "purpose": "Validates review contracts and repository subject conventions",
+      "files": [
+        "tools/architecture/review_contract/README.md",
+        "tools/architecture/review_contract/__init__.py",
+        "tools/architecture/review_contract/review.py",
+        "tools/architecture/review_contract/tests/README.md",
+        "tools/architecture/review_contract/tests/__init__.py",
+        "tools/architecture/review_contract/tests/test_review.py"
       ]
     },
     {
