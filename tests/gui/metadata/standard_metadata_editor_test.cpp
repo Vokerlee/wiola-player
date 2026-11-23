@@ -85,6 +85,32 @@ TEST_F(StandardMetadataEditor, ShowsResolvedValuesAndAppliesDirtyOverrides)
     EXPECT_EQ(applied->disc_number.operation(), wiola::library::FieldEditOperation::clear);
 }
 
+TEST_F(StandardMetadataEditor, NumericBoundariesRejectOverflowAndKeepUntouchedFieldsUnchanged)
+{
+    for (const auto* name : {"standardYear", "standardTrackNumber", "standardDiscNumber"}) {
+        SCOPED_TRACE(name);
+        for (const auto* invalid : {"-1", "4294967296", "1.5"}) {
+            field(name)->setText(invalid);
+            EXPECT_FALSE(button("applyStandardMetadata")->isEnabled()) << invalid;
+            EXPECT_FALSE(field(name)->accessibleDescription().isEmpty());
+            button("cancelStandardMetadata")->click();
+        }
+        std::optional<wiola::library::StandardMetadataPatch> applied;
+        editor.on_apply([&](const auto& session) { applied = session.draft(); });
+        field(name)->setText("4294967295");
+        ASSERT_TRUE(button("applyStandardMetadata")->isEnabled());
+        button("applyStandardMetadata")->click();
+        ASSERT_TRUE(applied);
+        EXPECT_EQ(applied->title.operation(), wiola::library::FieldEditOperation::unchanged);
+        const auto* number = std::string_view{name} == "standardYear" ? applied->year.value()
+            : std::string_view{name} == "standardTrackNumber" ? applied->track_number.value()
+                                                              : applied->disc_number.value();
+        ASSERT_NE(number, nullptr);
+        EXPECT_EQ(*number, 4294967295U);
+        button("cancelStandardMetadata")->click();
+    }
+}
+
 TEST_F(StandardMetadataEditor, RejectsInvalidNumbersAndCancelsCleanly)
 {
     field("standardYear")->setText("not-a-year");
