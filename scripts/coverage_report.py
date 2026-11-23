@@ -16,11 +16,10 @@ if __package__ in {None, ""}:
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeBuild, CMakeInventory
 from tools.architecture.ownership.registry import load_current_registry
 from tools.coverage.source_policy.policy import load_current_policy
 from tools.testing.catalog.catalog import load_current_catalog
-from tools.build_environment.cmake.build import CMakeBuild
 from tools.coverage.llvm_reporting.reporter import LLVMReporter, coverage_diagnostics
 
 METRICS = ("lines", "functions", "regions", "branches")
@@ -340,7 +339,6 @@ def main():
     merged = report / "wiola.profdata"
     run([profdata, "merge", "-sparse", *profiles, "-o", merged])
     configured_build = CMakeBuild(
-        build,
         CMakeInventory.read(build, first_party_sources=load_current_registry().paths),
     )
     player_binary = configured_build.executable("wiola-player")

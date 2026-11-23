@@ -5,8 +5,7 @@ import re
 import subprocess
 import os
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
-from tools.build_environment.cmake.build import CMakeBuild
+from scripts.build.cmake import CMakeBuild, CMakeInventory
 
 from scripts.qt.source.provider import QtSourceStore
 
@@ -71,7 +70,7 @@ class QtCoreTsanBuilder:
             or len(targets[0].artifacts) != 1
         ):
             raise ValueError("Qt Core has no unique configured shared-library artifact")
-        adapter = CMakeBuild(build, inventory, jobs=self.jobs, timeout=self.timeout)
+        adapter = CMakeBuild(inventory, jobs=self.jobs, timeout=self.timeout)
         adapter.build("Core", self.workspace / "build.log")
         library = targets[0].artifacts[0]
         symbols = subprocess.check_output(["nm", "-D", str(library)], text=True)

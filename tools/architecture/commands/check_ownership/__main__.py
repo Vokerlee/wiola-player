@@ -7,7 +7,7 @@ import sys
 
 from tools.architecture.inventory.git_inventory import GitInventory
 from tools.architecture.contracts.catalog import ContractError, load_current_catalog
-from tools.architecture.cmake_inventory.inventory import (
+from scripts.build.cmake import (
     CMakeInventory,
     BuildInventoryError,
 )

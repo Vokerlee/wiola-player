@@ -40,9 +40,9 @@
 *.app
 
 # Build directories
-build/
-Build/
-build-*/
+/build/
+/Build/
+/build-*/
 
 # Generated Windows SDK
 .qt-mingw/

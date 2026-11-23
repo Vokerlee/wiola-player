@@ -41,12 +41,8 @@
       "id": "architecture.cmake_inventory",
       "purpose": "Reads declared targets, first-party sources, dependencies and artifacts from a configured CMake codemodel.",
       "files": [
-        "tools/architecture/cmake_inventory/README.md",
-        "tools/architecture/cmake_inventory/__init__.py",
-        "tools/architecture/cmake_inventory/inventory.py",
-        "tools/architecture/cmake_inventory/tests/README.md",
-        "tools/architecture/cmake_inventory/tests/__init__.py",
-        "tools/architecture/cmake_inventory/tests/test_inventory.py"
+        "scripts/build/cmake/_inventory.py",
+        "scripts/build/cmake/tests/test_inventory.py"
       ]
     },
     {
@@ -355,12 +351,12 @@
       "id": "testing.cmake_build",
       "purpose": "Builds configured CMake targets and resolves their declared executable artifacts",
       "files": [
-        "tools/build_environment/cmake/README.md",
-        "tools/build_environment/cmake/__init__.py",
-        "tools/build_environment/cmake/build.py",
-        "tools/build_environment/cmake/tests/README.md",
-        "tools/build_environment/cmake/tests/__init__.py",
-        "tools/build_environment/cmake/tests/test_build.py"
+        "scripts/build/cmake/README.md",
+        "scripts/build/cmake/__init__.py",
+        "scripts/build/cmake/_build.py",
+        "scripts/build/cmake/tests/README.md",
+        "scripts/build/cmake/tests/__init__.py",
+        "scripts/build/cmake/tests/test_build.py"
       ]
     },
     {

@@ -7,12 +7,23 @@ from pathlib import Path
 from typing import Iterable
 from types import MappingProxyType
 
-from tools.architecture.cmake_inventory.inventory import CMakeInventory
+from scripts.build.cmake import CMakeInventory
 from tools.architecture.ownership.registry import OwnershipRegistry
 
-
-ROLES = frozenset({"domain", "engine", "application", "adapter", "presentation", "widget",
-                   "native", "process", "test_support", "export"})
+ROLES = frozenset(
+    {
+        "domain",
+        "engine",
+        "application",
+        "adapter",
+        "presentation",
+        "widget",
+        "native",
+        "process",
+        "test_support",
+        "export",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -25,12 +36,23 @@ class TestContract:
     coupling: str
 
     def __post_init__(self):
-        if (not self.target or not self.owner or not self.sources
-                or self.role not in ROLES or self.qt not in {"none", "core", "widgets"}):
-            raise ValueError("Test contract needs an owner, purpose, sources and explicit Qt applicability")
+        if (
+            not self.target
+            or not self.owner
+            or not self.sources
+            or self.role not in ROLES
+            or self.qt not in {"none", "core", "widgets"}
+        ):
+            raise ValueError(
+                "Test contract needs an owner, purpose, sources and explicit Qt applicability"
+            )
         if self.role == "widget" and self.qt != "widgets":
             raise ValueError("Widget contracts require the widget toolkit")
-        if self.role in {"domain", "engine", "application"} and self.qt != "none" and not self.coupling:
+        if (
+            self.role in {"domain", "engine", "application"}
+            and self.qt != "none"
+            and not self.coupling
+        ):
             raise ValueError("Incidental toolkit coupling must be explained")
 
 
@@ -42,28 +64,51 @@ class RequiredCase:
 
 
 class TestCatalog:
-    def __init__(self, contracts: Iterable[TestContract], required: Iterable[RequiredCase],
-                 auxiliary: dict[str, dict[str, str]] | None = None,
-                 python_sources: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        contracts: Iterable[TestContract],
+        required: Iterable[RequiredCase],
+        auxiliary: dict[str, dict[str, str]] | None = None,
+        python_sources: dict[str, str] | None = None,
+    ) -> None:
         contracts, required = tuple(contracts), tuple(required)
-        self.contracts = MappingProxyType({contract.target: contract for contract in contracts})
+        self.contracts = MappingProxyType(
+            {contract.target: contract for contract in contracts}
+        )
         if len(self.contracts) != len(contracts):
             raise ValueError("Duplicate test target")
         if len({case.identity for case in required}) != len(required):
             raise ValueError("Duplicate semantic requirement identity")
-        if any(not case.identity or not case.name or case.target not in self.contracts for case in required):
-            raise ValueError("Required cases need a stable identity and a declared target")
+        if any(
+            not case.identity or not case.name or case.target not in self.contracts
+            for case in required
+        ):
+            raise ValueError(
+                "Required cases need a stable identity and a declared target"
+            )
         self._required = required
         self._auxiliary = dict(auxiliary or {})
         self._python_sources = dict(python_sources or {})
 
-    def audit(self, inventory: CMakeInventory, discovery: dict, registry: OwnershipRegistry,
-              with_qt: bool = True) -> tuple[str, ...]:
+    def audit(
+        self,
+        inventory: CMakeInventory,
+        discovery: dict,
+        registry: OwnershipRegistry,
+        with_qt: bool = True,
+    ) -> tuple[str, ...]:
         problems = []
         targets = {target.name: target for target in inventory.targets}
-        expected = {name: contract for name, contract in self.contracts.items()
-                    if with_qt or contract.qt == "none"}
-        binaries = {str(path.resolve()): target.name for target in inventory.targets for path in target.artifacts}
+        expected = {
+            name: contract
+            for name, contract in self.contracts.items()
+            if with_qt or contract.qt == "none"
+        }
+        binaries = {
+            str(path.resolve()): target.name
+            for target in inventory.targets
+            for path in target.artifacts
+        }
         cases: dict[str, set[str]] = {}
         seen_auxiliary = set()
         for test in discovery["tests"]:
@@ -78,16 +123,25 @@ class TestCatalog:
                 except KeyError:
                     owned = False
                 if not owned or expected_script not in test.get("command", []):
-                    problems.append(f"Auxiliary test {name} has no matching owned runner")
+                    problems.append(
+                        f"Auxiliary test {name} has no matching owned runner"
+                    )
                 continue
-            commands = {binaries.get(str(Path(str(arg)).resolve())) for arg in test.get("command", [])}
+            commands = {
+                binaries.get(str(Path(str(arg)).resolve()))
+                for arg in test.get("command", [])
+            }
             commands.discard(None)
             if len(commands) != 1:
-                problems.append(f"Discovered case has no unique configured target: {name}")
+                problems.append(
+                    f"Discovered case has no unique configured target: {name}"
+                )
                 continue
-            target, = commands
+            (target,) = commands
             if target not in expected:
-                problems.append(f"Discovered undeclared or inapplicable test target: {target}")
+                problems.append(
+                    f"Discovered undeclared or inapplicable test target: {target}"
+                )
             cases.setdefault(target, set()).add(name)
         for name, contract in sorted(expected.items()):
             target = targets.get(name)
@@ -98,10 +152,15 @@ class TestCatalog:
                 problems.append(f"Test source membership changed: {name}")
             if target.kind != "EXECUTABLE" or name not in cases:
                 problems.append(f"Test target has no executable discovery: {name}")
-            actual_qt = ("widgets" if "QT_WIDGETS_LIB" in target.compile_definitions else
-                         "core" if "QT_CORE_LIB" in target.compile_definitions else "none")
+            actual_qt = (
+                "widgets"
+                if "QT_WIDGETS_LIB" in target.compile_definitions
+                else "core" if "QT_CORE_LIB" in target.compile_definitions else "none"
+            )
             if actual_qt != contract.qt:
-                problems.append(f"Toolkit applicability changed: {name}: {contract.qt} -> {actual_qt}")
+                problems.append(
+                    f"Toolkit applicability changed: {name}: {contract.qt} -> {actual_qt}"
+                )
             for source in contract.sources:
                 try:
                     if registry.owner_of(source).identity != contract.owner:
@@ -109,32 +168,61 @@ class TestCatalog:
                 except KeyError:
                     problems.append(f"Test source is unowned: {source}")
         for case in self._required:
-            if case.target in expected and case.name not in cases.get(case.target, set()):
-                problems.append(f"Missing semantic requirement {case.identity}: {case.name}")
+            if case.target in expected and case.name not in cases.get(
+                case.target, set()
+            ):
+                problems.append(
+                    f"Missing semantic requirement {case.identity}: {case.name}"
+                )
         for name in self._auxiliary.keys() - seen_auxiliary:
             problems.append(f"Required auxiliary case is missing: {name}")
         return tuple(problems)
 
-
     def audit_sources(self, registry: OwnershipRegistry) -> tuple[str, ...]:
-        observed = {path: owner.identity for owner in registry.owners for path in owner.files
-                    if Path(path).suffix == ".py" and Path(path).name.startswith("test_")}
-        problems = [f"Python test purpose/owner is undeclared or changed: {path}"
-                    for path, owner in observed.items() if self._python_sources.get(path) != owner]
-        problems.extend(f"Stale Python test contract: {path}"
-                        for path in self._python_sources.keys() - observed.keys())
-        cpp_sources = {source: contract.owner for contract in self.contracts.values() for source in contract.sources}
+        observed = {
+            path: owner.identity
+            for owner in registry.owners
+            for path in owner.files
+            if Path(path).suffix == ".py" and Path(path).name.startswith("test_")
+        }
+        problems = [
+            f"Python test purpose/owner is undeclared or changed: {path}"
+            for path, owner in observed.items()
+            if self._python_sources.get(path) != owner
+        ]
+        problems.extend(
+            f"Stale Python test contract: {path}"
+            for path in self._python_sources.keys() - observed.keys()
+        )
+        cpp_sources = {
+            source: contract.owner
+            for contract in self.contracts.values()
+            for source in contract.sources
+        }
         for owner in registry.owners:
             for path in owner.files:
-                if path.endswith("_test.cpp") and cpp_sources.get(path) != owner.identity:
-                    problems.append(f"C++ test purpose/owner is undeclared or changed: {path}")
+                if (
+                    path.endswith("_test.cpp")
+                    and cpp_sources.get(path) != owner.identity
+                ):
+                    problems.append(
+                        f"C++ test purpose/owner is undeclared or changed: {path}"
+                    )
         return tuple(sorted(problems))
 
 
 def load_current_catalog() -> TestCatalog:
     directory = files(__package__).joinpath("data")
     targets = json.loads(directory.joinpath("targets.json").read_text(encoding="utf-8"))
-    cases = json.loads(directory.joinpath("requirements.json").read_text(encoding="utf-8"))
-    return TestCatalog([TestContract(**dict(value, sources=tuple(value["sources"]))) for value in targets],
-                       [RequiredCase(**case) for case in cases["required"]], cases["auxiliary"],
-                       json.loads(directory.joinpath("python.json").read_text(encoding="utf-8")))
+    cases = json.loads(
+        directory.joinpath("requirements.json").read_text(encoding="utf-8")
+    )
+    return TestCatalog(
+        [
+            TestContract(**dict(value, sources=tuple(value["sources"])))
+            for value in targets
+        ],
+        [RequiredCase(**case) for case in cases["required"]],
+        cases["auxiliary"],
+        json.loads(directory.joinpath("python.json").read_text(encoding="utf-8")),
+    )
