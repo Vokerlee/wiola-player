@@ -66,7 +66,7 @@ class GoogleTestProtocolTest(unittest.TestCase):
         )
         self.assertFalse(skipped_node.covers(frozenset({"Suite.one", "Suite.two"})))
 
-    def test_assertions_are_distinct_from_crashes_and_error_reports(self):
+    def test_only_an_executed_assertion_failure_kills_a_mutant(self):
         selected = frozenset({"Suite.one", "Suite.two"})
         failed = self.read(FAIL_REPORT)
         self.assertTrue(
