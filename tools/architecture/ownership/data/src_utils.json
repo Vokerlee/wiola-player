@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "source.utils.units",
+      "purpose": "Defines dimensional values and conversions used by the player.",
+      "files": [
+        "src/utils/units.hpp"
+      ]
+    }
+  ]
+}

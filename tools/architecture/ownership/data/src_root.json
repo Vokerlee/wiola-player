@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.src",
+      "purpose": "Declares the current targets for src.",
+      "files": [
+        "src/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "source.main",
+      "purpose": "Owns the current main declaration/implementation in .",
+      "files": [
+        "src/main.cpp"
+      ]
+    }
+  ]
+}

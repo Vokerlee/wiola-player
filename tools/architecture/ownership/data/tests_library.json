@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests.library",
+      "purpose": "Declares the current targets for tests/library.",
+      "files": [
+        "tests/library/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "test.library.fingerprint_test",
+      "purpose": "Verifies the current fingerprint contract.",
+      "files": [
+        "tests/library/fingerprint_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.identity_test",
+      "purpose": "Verifies the current identity contract.",
+      "files": [
+        "tests/library/identity_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.in_memory_repository_test",
+      "purpose": "Verifies the current in memory repository contract.",
+      "files": [
+        "tests/library/in_memory_repository_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.library_changes_test",
+      "purpose": "Verifies the current library changes contract.",
+      "files": [
+        "tests/library/library_changes_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.location_test",
+      "purpose": "Verifies the current location contract.",
+      "files": [
+        "tests/library/location_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.metadata_patch_test",
+      "purpose": "Verifies the current metadata patch contract.",
+      "files": [
+        "tests/library/metadata_patch_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.metadata_test",
+      "purpose": "Verifies the current metadata contract.",
+      "files": [
+        "tests/library/metadata_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.records_test",
+      "purpose": "Verifies the current records contract.",
+      "files": [
+        "tests/library/records_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.repository_transaction_test",
+      "purpose": "Verifies the current repository transaction contract.",
+      "files": [
+        "tests/library/repository_transaction_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.search_test",
+      "purpose": "Verifies the current search contract.",
+      "files": [
+        "tests/library/search_test.cpp"
+      ]
+    },
+    {
+      "id": "test.library.tags_test",
+      "purpose": "Verifies the current tags contract.",
+      "files": [
+        "tests/library/tags_test.cpp"
+      ]
+    }
+  ]
+}

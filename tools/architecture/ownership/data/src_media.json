@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.src.media",
+      "purpose": "Declares the current targets for src/media.",
+      "files": [
+        "src/media/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "source.media.artwork_reference",
+      "purpose": "Owns the current artwork reference declaration/implementation in media.",
+      "files": [
+        "src/media/artwork_reference.hpp"
+      ]
+    },
+    {
+      "id": "source.media.byte_stream",
+      "purpose": "Owns the current byte stream declaration/implementation in media.",
+      "files": [
+        "src/media/byte_stream.hpp"
+      ]
+    },
+    {
+      "id": "source.media.error",
+      "purpose": "Owns the current error declaration/implementation in media.",
+      "files": [
+        "src/media/error.hpp"
+      ]
+    },
+    {
+      "id": "source.media.local_file_stream",
+      "purpose": "Owns the current local file stream declaration/implementation in media.",
+      "files": [
+        "src/media/local_file_stream.cpp",
+        "src/media/local_file_stream.hpp"
+      ]
+    },
+    {
+      "id": "source.media.media",
+      "purpose": "Owns the current media declaration/implementation in media.",
+      "files": [
+        "src/media/media.hpp"
+      ]
+    },
+    {
+      "id": "source.media.operation_context",
+      "purpose": "Owns the current operation context declaration/implementation in media.",
+      "files": [
+        "src/media/operation_context.hpp"
+      ]
+    },
+    {
+      "id": "source.media.provider",
+      "purpose": "Identifies media and provides resource/decoder access.",
+      "files": [
+        "src/media/provider.hpp"
+      ]
+    },
+    {
+      "id": "source.media.result",
+      "purpose": "Owns the current result declaration/implementation in media.",
+      "files": [
+        "src/media/result.hpp"
+      ]
+    }
+  ]
+}

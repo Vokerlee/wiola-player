@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests",
+      "purpose": "Declares the current targets for tests.",
+      "files": [
+        "tests/CMakeLists.txt"
+      ]
+    }
+  ]
+}

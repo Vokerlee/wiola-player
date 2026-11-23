@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests.app",
+      "purpose": "Declares the current targets for tests/app.",
+      "files": [
+        "tests/app/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "test.app.library.artwork_store_test",
+      "purpose": "Verifies the current artwork store contract.",
+      "files": [
+        "tests/app/library/artwork_store_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.library.search_index_test",
+      "purpose": "Verifies the current search index contract.",
+      "files": [
+        "tests/app/library/search_index_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.background_metadata_writes_test",
+      "purpose": "Verifies the current background metadata writes contract.",
+      "files": [
+        "tests/app/metadata/background_metadata_writes_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.custom_tag_commands_test",
+      "purpose": "Verifies the current custom tag commands contract.",
+      "files": [
+        "tests/app/metadata/custom_tag_commands_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.file_replacement_test",
+      "purpose": "Verifies the current file replacement contract.",
+      "files": [
+        "tests/app/metadata/file_replacement_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.media_replacement_test",
+      "purpose": "Verifies the current media replacement contract.",
+      "files": [
+        "tests/app/metadata/media_replacement_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.metadata_batch_edit_test",
+      "purpose": "Verifies the current metadata batch edit contract.",
+      "files": [
+        "tests/app/metadata/metadata_batch_edit_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.metadata_conflicts_test",
+      "purpose": "Verifies the current metadata conflicts contract.",
+      "files": [
+        "tests/app/metadata/metadata_conflicts_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.metadata_edit_service_test",
+      "purpose": "Verifies the current metadata edit service contract.",
+      "files": [
+        "tests/app/metadata/metadata_edit_service_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.metadata_merge_test",
+      "purpose": "Verifies the current metadata merge contract.",
+      "files": [
+        "tests/app/metadata/metadata_merge_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.metadata.metadata_single_edit_test",
+      "purpose": "Verifies the current metadata single edit contract.",
+      "files": [
+        "tests/app/metadata/metadata_single_edit_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.playback.active_playlist_test",
+      "purpose": "Verifies the current active playlist contract.",
+      "files": [
+        "tests/app/playback/active_playlist_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.playback.playback_presentation_test",
+      "purpose": "Verifies the current playback presentation contract.",
+      "files": [
+        "tests/app/playback/playback_presentation_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.playback.playback_queue_test",
+      "purpose": "Verifies the current playback queue contract.",
+      "files": [
+        "tests/app/playback/playback_queue_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.playback.playback_service_test",
+      "purpose": "Verifies the current playback service contract.",
+      "files": [
+        "tests/app/playback/playback_service_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.playback.playlist_transfer_test",
+      "purpose": "Verifies the current playlist transfer contract.",
+      "files": [
+        "tests/app/playback/playlist_transfer_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.workspace.workspace_reconciliation_test",
+      "purpose": "Verifies the current workspace reconciliation contract.",
+      "files": [
+        "tests/app/workspace/workspace_reconciliation_test.cpp"
+      ]
+    },
+    {
+      "id": "test.app.workspace.workspace_scanner_test",
+      "purpose": "Verifies the current workspace scanner contract.",
+      "files": [
+        "tests/app/workspace/workspace_scanner_test.cpp"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests.pcm",
+      "purpose": "Declares the current targets for tests/pcm.",
+      "files": [
+        "tests/pcm/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "test.pcm.pcm_queue_test",
+      "purpose": "Verifies the current pcm queue contract.",
+      "files": [
+        "tests/pcm/pcm_queue_test.cpp"
+      ]
+    },
+    {
+      "id": "test.pcm.stream_spec_test",
+      "purpose": "Verifies the current stream spec contract.",
+      "files": [
+        "tests/pcm/stream_spec_test.cpp"
+      ]
+    }
+  ]
+}

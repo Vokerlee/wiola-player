@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "build.tests.engine",
+      "purpose": "Declares the current targets for tests/engine.",
+      "files": [
+        "tests/engine/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "build.tests.engine.pipeline",
+      "purpose": "Declares the current targets for tests/engine/pipeline.",
+      "files": [
+        "tests/engine/pipeline/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "test.engine.fake_decoder_test",
+      "purpose": "Verifies the current fake decoder contract.",
+      "files": [
+        "tests/engine/fake_decoder_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.loader_test",
+      "purpose": "Verifies the current loader contract.",
+      "files": [
+        "tests/engine/loader_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.metadata_coordinator_test",
+      "purpose": "Verifies the current metadata coordinator contract.",
+      "files": [
+        "tests/engine/metadata_coordinator_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.pipeline.pipeline_ownership_test",
+      "purpose": "Verifies the current pipeline ownership contract.",
+      "files": [
+        "tests/engine/pipeline/pipeline_ownership_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.playback_test",
+      "purpose": "Verifies the current playback contract.",
+      "files": [
+        "tests/engine/playback_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.player_test",
+      "purpose": "Verifies the current player contract.",
+      "files": [
+        "tests/engine/player_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.playhead_test",
+      "purpose": "Verifies the current playhead contract.",
+      "files": [
+        "tests/engine/playhead_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.playlist_test",
+      "purpose": "Verifies the current playlist contract.",
+      "files": [
+        "tests/engine/playlist_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.session_test",
+      "purpose": "Verifies the current session contract.",
+      "files": [
+        "tests/engine/session_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.tag_reader_test",
+      "purpose": "Verifies the current tag reader contract.",
+      "files": [
+        "tests/engine/tag_reader_test.cpp"
+      ]
+    },
+    {
+      "id": "test.engine.transport_worker_test",
+      "purpose": "Verifies the current transport worker contract.",
+      "files": [
+        "tests/engine/transport_worker_test.cpp"
+      ]
+    }
+  ]
+}

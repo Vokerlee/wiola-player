@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "architecture.check_ownership",
+      "purpose": "Assembles ownership checking and reports stable command exit outcomes.",
+      "files": [
+        "tools/architecture/commands/check_ownership/README.md",
+        "tools/architecture/commands/check_ownership/__init__.py",
+        "tools/architecture/commands/check_ownership/__main__.py"
+      ]
+    },
+    {
+      "id": "architecture.cmake_inventory",
+      "purpose": "Reads declared targets, first-party sources, dependencies and artifacts from a configured CMake codemodel.",
+      "files": [
+        "tools/architecture/cmake_inventory/README.md",
+        "tools/architecture/cmake_inventory/__init__.py",
+        "tools/architecture/cmake_inventory/inventory.py",
+        "tools/architecture/cmake_inventory/tests/README.md",
+        "tools/architecture/cmake_inventory/tests/__init__.py",
+        "tools/architecture/cmake_inventory/tests/test_inventory.py"
+      ]
+    },
+    {
+      "id": "architecture.command_group",
+      "purpose": "Provides the package entrypoints for architecture commands.",
+      "files": [
+        "tools/architecture/commands/README.md",
+        "tools/architecture/commands/__init__.py"
+      ]
+    },
+    {
+      "id": "architecture.git_inventory",
+      "purpose": "Reads repository-relative tracked paths from Git without changing the index.",
+      "files": [
+        "tools/architecture/inventory/README.md",
+        "tools/architecture/inventory/__init__.py",
+        "tools/architecture/inventory/git_inventory.py",
+        "tools/architecture/inventory/tests/README.md",
+        "tools/architecture/inventory/tests/__init__.py",
+        "tools/architecture/inventory/tests/test_git_inventory.py"
+      ]
+    },
+    {
+      "id": "architecture.ownership",
+      "purpose": "Validates explicit current file ownership and inventory differences.",
+      "files": [
+        "tools/architecture/ownership/README.md",
+        "tools/architecture/ownership/__init__.py",
+        "tools/architecture/ownership/data/README.md",
+        "tools/architecture/ownership/data/assets.json",
+        "tools/architecture/ownership/data/cmake.json",
+        "tools/architecture/ownership/data/github.json",
+        "tools/architecture/ownership/data/repository.json",
+        "tools/architecture/ownership/data/scripts.json",
+        "tools/architecture/ownership/data/src_app.json",
+        "tools/architecture/ownership/data/src_audio.json",
+        "tools/architecture/ownership/data/src_codec.json",
+        "tools/architecture/ownership/data/src_core.json",
+        "tools/architecture/ownership/data/src_desktop.json",
+        "tools/architecture/ownership/data/src_engine.json",
+        "tools/architecture/ownership/data/src_gui.json",
+        "tools/architecture/ownership/data/src_library.json",
+        "tools/architecture/ownership/data/src_lockfree.json",
+        "tools/architecture/ownership/data/src_media.json",
+        "tools/architecture/ownership/data/src_pcm.json",
+        "tools/architecture/ownership/data/src_persistence.json",
+        "tools/architecture/ownership/data/src_platform.json",
+        "tools/architecture/ownership/data/src_root.json",
+        "tools/architecture/ownership/data/src_utils.json",
+        "tools/architecture/ownership/data/tests_app.json",
+        "tools/architecture/ownership/data/tests_audio.json",
+        "tools/architecture/ownership/data/tests_boundaries.json",
+        "tools/architecture/ownership/data/tests_codec.json",
+        "tools/architecture/ownership/data/tests_core.json",
+        "tools/architecture/ownership/data/tests_coverage.json",
+        "tools/architecture/ownership/data/tests_desktop.json",
+        "tools/architecture/ownership/data/tests_engine.json",
+        "tools/architecture/ownership/data/tests_fakes.json",
+        "tools/architecture/ownership/data/tests_fixtures.json",
+        "tools/architecture/ownership/data/tests_gui.json",
+        "tools/architecture/ownership/data/tests_library.json",
+        "tools/architecture/ownership/data/tests_lockfree.json",
+        "tools/architecture/ownership/data/tests_media.json",
+        "tools/architecture/ownership/data/tests_pcm.json",
+        "tools/architecture/ownership/data/tests_persistence.json",
+        "tools/architecture/ownership/data/tests_platform.json",
+        "tools/architecture/ownership/data/tests_root.json",
+        "tools/architecture/ownership/data/tests_scripts.json",
+        "tools/architecture/ownership/data/tests_utils.json",
+        "tools/architecture/ownership/data/tools.json",
+        "tools/architecture/ownership/registry.py",
+        "tools/architecture/ownership/tests/README.md",
+        "tools/architecture/ownership/tests/__init__.py",
+        "tools/architecture/ownership/tests/test_registry.py"
+      ]
+    },
+    {
+      "id": "architecture.package",
+      "purpose": "Groups the current independent architecture tool components.",
+      "files": [
+        "tools/architecture/README.md",
+        "tools/architecture/__init__.py"
+      ]
+    },
+    {
+      "id": "tooling.package",
+      "purpose": "Defines the repository-tool package and contributor entrypoint.",
+      "files": [
+        "tools/README.md",
+        "tools/__init__.py"
+      ]
+    }
+  ]
+}
