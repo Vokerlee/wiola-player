@@ -28,5 +28,15 @@
     "previous": "src/app/playback/playback_snapshot.hpp",
     "current": "src/engine/playback_snapshot/playback_snapshot.hpp",
     "owner": "source.app.playback.playback_snapshot"
+  },
+  {
+    "previous": "src/codec/decode/decoder.hpp",
+    "current": "src/media/audio_decoder/audio_decoder.hpp",
+    "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "src/codec/decode/decoder.cpp",
+    "current": "src/media/audio_decoder/audio_decoder.cpp",
+    "owner": "source.codec.decode.decoder"
   }
 ]

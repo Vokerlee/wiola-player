@@ -30,7 +30,7 @@
 
 namespace {
 
-wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder)
+wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& decoder)
 {
     std::vector<float> samples;
     std::array<float, 126> block{};
@@ -50,7 +50,7 @@ wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder
     };
 }
 
-wiola::codec::Opened open_ogg(const char* name)
+wiola::media::DecoderOpenResult open_ogg(const char* name)
 {
     wiola::codec::MediaBackendRegistry registry;
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
@@ -113,7 +113,7 @@ TEST(OggQualification, ChainedIdenticalPcmKeepsEverySampleAcrossTheLinkBoundary)
     ASSERT_TRUE(link);
     std::vector<float> expected{*link};
     expected.insert(expected.end(), link->begin(), link->end());
-    EXPECT_EQ((*chained)->length_accuracy(), wiola::codec::LengthAccuracy::estimated);
+    EXPECT_EQ((*chained)->length_accuracy(), wiola::media::LengthAccuracy::estimated);
     EXPECT_EQ((*chained)->num_frames(), (*reference)->num_frames());
 
     auto samples{read_all(**chained)};

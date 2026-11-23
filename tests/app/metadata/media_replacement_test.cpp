@@ -22,9 +22,9 @@
 
 #include <codec/backends/ffmpeg/metadata.hpp>
 #include <codec/backends/ffmpeg/metadata_writer.hpp>
-#include <codec/decode/decoder.hpp>
 #include <codec/provider.hpp>
 #include <library/fingerprint.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 
 #include <gtest/gtest.h>
 
@@ -192,7 +192,7 @@ TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
 
 namespace {
 
-class ChunkDecoder final : public wiola::codec::Decoder {
+class ChunkDecoder final : public wiola::media::AudioDecoder {
 public:
     explicit ChunkDecoder(std::size_t chunk, bool changed)
         : AudioDecoder{wiola::pcm::StreamSpec{}, wiola::pcm::Frames{3000}}
@@ -202,7 +202,7 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames requested) override
     {
         const auto count = wiola::pcm::Frames{std::min(requested.count(), chunk_)};
@@ -211,12 +211,12 @@ protected:
             output[i] = static_cast<float>((start + i) % 17) / 17.0F;
         if (changed_ && start == 0)
             output[0] = 100.0F;
-        return wiola::codec::DecodeOutcome{.frames = count};
+        return wiola::media::DecodeOutcome{.frames = count};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome> seek_frame(wiola::pcm::Frames frame) override
+    wiola::media::Result<wiola::media::SeekOutcome> seek_frame(wiola::pcm::Frames frame) override
     {
-        return wiola::codec::SeekOutcome{frame, frame, true};
+        return wiola::media::SeekOutcome{frame, frame, true};
     }
 
 private:
@@ -244,10 +244,10 @@ public:
         return wiola::media::Metadata{};
     }
 
-    wiola::media::Result<std::unique_ptr<wiola::codec::Decoder>>
+    wiola::media::Result<std::unique_ptr<wiola::media::AudioDecoder>>
     create_decoder(const wiola::media::OperationContext&) override
     {
-        return std::unique_ptr<wiola::codec::Decoder>{
+        return std::unique_ptr<wiola::media::AudioDecoder>{
             std::make_unique<ChunkDecoder>(chunk_, changed_)};
     }
 

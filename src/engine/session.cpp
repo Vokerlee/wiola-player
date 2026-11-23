@@ -28,9 +28,8 @@
 #include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/relay.hpp>
 #include <audio/dsp/shaped_source.hpp>
-#include <codec/decode/decoder.hpp>
-#include <codec/decode/open.hpp>
 #include <codec/provider.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 
@@ -294,7 +293,7 @@ void Session::take_up_finished_read()
     if (!completed || !loads_.accept(*completed))
         return;
 
-    codec::Opened& opened{completed->opened};
+    media::DecoderOpenResult& opened{completed->opened};
 
     if (!opened) {
         record_outcome(OperationKind::open, completed->request.generation,
@@ -356,7 +355,7 @@ bool Session::install_read_track()
     if (!read_waiting())
         return false;
 
-    std::unique_ptr<codec::Decoder> source{std::move(ready_)};
+    std::unique_ptr<media::AudioDecoder> source{std::move(ready_)};
     const pcm::StreamSpec spec{source->spec()};
     const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(buffering_.duration)};
 

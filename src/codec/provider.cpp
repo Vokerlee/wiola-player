@@ -86,7 +86,7 @@ public:
         return ffmpeg::remux_metadata(path_, temporary, request, context);
     }
 
-    media::Result<std::unique_ptr<Decoder>>
+    media::Result<std::unique_ptr<media::AudioDecoder>>
     create_decoder(const media::OperationContext& context) override
     {
         if (context.stop_reason() != media::StopReason::none)

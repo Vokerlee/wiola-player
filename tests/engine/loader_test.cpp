@@ -22,7 +22,7 @@
 
 #include <fakes/decoder.hpp>
 
-#include <codec/decode/open.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 
 #include <gtest/gtest.h>
 
@@ -38,19 +38,19 @@
 
 namespace {
 
-using wiola::codec::Opened;
 using wiola::engine::LoadCompletion;
 using wiola::engine::Loader;
 using wiola::engine::LoadIntent;
 using wiola::engine::LoadRequest;
 using wiola::engine::QueueEntryId;
+using wiola::media::DecoderOpenResult;
 using wiola::pcm::Frames;
 using wiola::testing::FakeDecoder;
 using wiola::testing::Gate;
 
-Opened success(std::size_t num_frames = 64)
+wiola::media::DecoderOpenResult success(std::size_t num_frames = 64)
 {
-    return Opened{std::make_unique<FakeDecoder>(Frames{num_frames})};
+    return wiola::media::DecoderOpenResult{std::make_unique<FakeDecoder>(Frames{num_frames})};
 }
 
 LoadRequest request(std::filesystem::path path, std::uint64_t generation = 1)
@@ -98,7 +98,7 @@ TEST(Loader, OpensAFileAndHandsItOver)
 TEST(Loader, SaysWhyAFileWouldNotOpen)
 {
     Loader loader{[](const std::filesystem::path&) {
-        return Opened{wiola::media::unexpected{
+        return wiola::media::DecoderOpenResult{wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable,
                 .detail = "missing"}}};
     }};
@@ -223,16 +223,17 @@ TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
 {
     Gate opening;
     std::atomic<bool> old_was_cancelled{false};
-    Loader loader{[&opening, &old_was_cancelled](const std::filesystem::path& path,
-                      const wiola::media::OperationContext& context) -> Opened {
-        if (path == "old.wav") {
-            opening.wait();
-            old_was_cancelled = context.stop_reason() == wiola::media::StopReason::cancelled;
-            return wiola::media::unexpected{context.error()};
-        }
+    Loader loader{
+        [&opening, &old_was_cancelled](const std::filesystem::path& path,
+            const wiola::media::OperationContext& context) -> wiola::media::DecoderOpenResult {
+            if (path == "old.wav") {
+                opening.wait();
+                old_was_cancelled = context.stop_reason() == wiola::media::StopReason::cancelled;
+                return wiola::media::unexpected{context.error()};
+            }
 
-        return success(20);
-    }};
+            return success(20);
+        }};
 
     loader.start(request("old.wav", 1));
     opening.wait_until_entered();
@@ -248,7 +249,7 @@ TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
 
 TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
 {
-    Loader loader{[](const std::filesystem::path& path) -> Opened {
+    Loader loader{[](const std::filesystem::path& path) -> wiola::media::DecoderOpenResult {
         if (path == "broken.wav")
             throw std::runtime_error{"broken decoder"};
         return success();

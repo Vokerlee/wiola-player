@@ -271,12 +271,12 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stre
     const bool exact_length{has_exact_sample_count(parameters->codec_id) || exact_mp4_aac};
     return FfmpegStreamFacts{
         .stream_index = static_cast<std::size_t>(selected->index),
-        .output = DecoderStreamInfo{.spec = spec,
-                                    .length = length,
-                                    .length_accuracy = length
-                ? (exact_length ? LengthAccuracy::exact : LengthAccuracy::estimated)
-                : LengthAccuracy::unknown,
-                                    .seekable = format_->pb->seekable != 0}
+        .output = media::DecoderStreamInfo{.spec = spec,
+                                           .length = length,
+                                           .length_accuracy = length
+                ? (exact_length ? media::LengthAccuracy::exact : media::LengthAccuracy::estimated)
+                : media::LengthAccuracy::unknown,
+                                           .seekable = format_->pb->seekable != 0}
     };
 }
 

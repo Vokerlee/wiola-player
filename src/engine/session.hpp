@@ -23,8 +23,6 @@
 #include <audio/dsp/equalizer.hpp>
 #include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/volume.hpp>
-#include <codec/decode/decoder.hpp>
-#include <codec/decode/open.hpp>
 #include <core/macros.hpp>
 #include <engine/buffering_config.hpp>
 #include <engine/load/load_coordinator.hpp>
@@ -38,6 +36,7 @@
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <utils/units.hpp>
 
 #include <deque>
@@ -223,7 +222,7 @@ private:
     std::filesystem::path track_;
 
     /// A track that has been read and not yet put on, with the name it goes by.
-    std::unique_ptr<codec::Decoder> ready_;
+    std::unique_ptr<media::AudioDecoder> ready_;
     std::filesystem::path ready_track_;
     std::optional<units::Time> restore_position_;
     std::optional<MediaReplacementState> replacement_;

@@ -29,7 +29,7 @@
 
 namespace {
 
-wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder)
+wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& decoder)
 {
     std::vector<float> samples;
     std::array<float, 126> block{};
@@ -49,7 +49,7 @@ wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder
     };
 }
 
-wiola::codec::Opened open_mp4(const char* name)
+wiola::media::DecoderOpenResult open_mp4(const char* name)
 {
     wiola::codec::MediaBackendRegistry registry;
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
@@ -65,7 +65,7 @@ TEST(Mp4Qualification, AacLcAndAlacDecodeTheirCompleteAudibleTimelines)
         ASSERT_TRUE(decoder) << name;
         EXPECT_EQ((*decoder)->spec().sample_rate, wiola::units::Frequency{44100}) << name;
         EXPECT_EQ((*decoder)->spec().num_channels, 2U) << name;
-        EXPECT_EQ((*decoder)->length_accuracy(), wiola::codec::LengthAccuracy::exact) << name;
+        EXPECT_EQ((*decoder)->length_accuracy(), wiola::media::LengthAccuracy::exact) << name;
         EXPECT_EQ((*decoder)->num_frames(), wiola::pcm::Frames{11025}) << name;
         auto samples{read_all(**decoder)};
         ASSERT_TRUE(samples) << name;

@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <media/media.hpp>
 #include <media/operation_context.hpp>
 
@@ -58,8 +58,7 @@ public:
             .detail = "metadata writing is not supported for this media asset"};
     }
 
-    virtual Result<std::unique_ptr<codec::Decoder>>
-    create_decoder(const OperationContext& context = {}) = 0;
+    virtual DecoderOpenResult create_decoder(const OperationContext& context = {}) = 0;
 
 protected:
     MediaAsset() = default;

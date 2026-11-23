@@ -41,7 +41,7 @@ std::vector<float> decode_block(pcm::StreamSpec spec, const TransportConfig& con
 
 } // namespace
 
-DecodeLoop::DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+DecodeLoop::DecodeLoop(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
     audio::Output& output, Playback& playback, Playhead::Applier applier, TransportWait& wait,
     const TransportConfig& config)
     : source_{std::move(source)}

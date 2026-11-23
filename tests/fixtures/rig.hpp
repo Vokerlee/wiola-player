@@ -21,9 +21,9 @@
 #pragma once
 
 #include <audio/dsp/buffer_source.hpp>
-#include <codec/decode/decoder.hpp>
 #include <engine/transport/player.hpp>
 #include <fakes/output.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <utils/units.hpp>
 
@@ -37,7 +37,7 @@ namespace wiola::testing {
 /// output pulls, so a track plays through as fast as it decodes: a test asking whether something
 /// is still playing wants an output of its own instead.
 struct Rig {
-    explicit Rig(std::unique_ptr<codec::Decoder> source)
+    explicit Rig(std::unique_ptr<media::AudioDecoder> source)
         : buffer{source->spec(),
               *source->spec().checked_frames_at(units::Time{std::chrono::milliseconds{250}})}
         , decoded{source->spec(), buffer.consumer()}

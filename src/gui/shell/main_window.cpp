@@ -49,12 +49,12 @@
 #include <app/playback/active_playlist.hpp>
 #include <app/playback/playback_queue.hpp>
 #include <app/playback/playlist_transfer.hpp>
-#include <codec/decode/open.hpp>
 #include <desktop/library/m3u_playlist.hpp>
 #include <desktop/metadata/media_revision_publisher.hpp>
 #include <desktop/workspace/workspace_watcher.hpp>
 #include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <utils/units.hpp>
 
 #include "document_command_router.hpp"

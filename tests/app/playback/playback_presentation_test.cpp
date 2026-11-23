@@ -44,8 +44,8 @@ protected:
     {
         session = std::make_unique<wiola::engine::Session>(
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-            [](const std::filesystem::path&) -> wiola::codec::Opened {
-                std::unique_ptr<wiola::codec::Decoder> decoder{
+            [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
+                std::unique_ptr<wiola::media::AudioDecoder> decoder{
                     std::make_unique<wiola::testing::FakeDecoder>()};
 
                 return decoder;

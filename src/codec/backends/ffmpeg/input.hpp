@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <codec/decode/decoder.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <media/byte_stream.hpp>
 #include <media/media.hpp>
 
@@ -37,7 +37,7 @@ namespace wiola::codec::ffmpeg {
 
 struct FfmpegStreamFacts {
     std::size_t stream_index;
-    DecoderStreamInfo output;
+    media::DecoderStreamInfo output;
 };
 
 using StreamInfoReader = int (*)(AVFormatContext*, AVDictionary**);

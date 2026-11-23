@@ -20,8 +20,9 @@
 
 #pragma once
 
-#include <codec/decode/open.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <media/byte_stream.hpp>
+#include <media/media.hpp>
 
 #include <array>
 #include <cstddef>
@@ -83,7 +84,7 @@ struct Format {
         template<typename Callable>
         OpenFunction(Callable open)
             : open_{[open = std::move(open)](const std::filesystem::path& path,
-                        const media::OperationContext& context) -> Opened {
+                        const media::OperationContext& context) -> media::DecoderOpenResult {
                 if constexpr (std::is_invocable_v<Callable&, const std::filesystem::path&,
                                   const media::OperationContext&>)
                     return open(path, context);
@@ -95,14 +96,16 @@ struct Format {
 
         [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(open_); }
 
-        Opened operator()(const std::filesystem::path& path,
+        media::DecoderOpenResult operator()(const std::filesystem::path& path,
             const media::OperationContext& context) const
         {
             return open_(path, context);
         }
 
     private:
-        std::function<Opened(const std::filesystem::path&, const media::OperationContext&)> open_;
+        std::function<media::DecoderOpenResult(const std::filesystem::path&,
+            const media::OperationContext&)>
+            open_;
     };
 
     Format(std::string name, std::span<const Marker> markers,

@@ -26,8 +26,7 @@
 #include <audio/device/output.hpp>
 #include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/processing_chain.hpp>
-#include <codec/decode/decoder.hpp>
-#include <codec/decode/open.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 
@@ -77,10 +76,10 @@ bool eventually(Predicate predicate, std::chrono::milliseconds limit = 5s)
     return predicate();
 }
 
-class FinalBlockSource final : public wiola::codec::Decoder {
+class FinalBlockSource final : public wiola::media::AudioDecoder {
 public:
     FinalBlockSource()
-        : wiola::codec::AudioDecoder{
+        : wiola::media::AudioDecoder{
               StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{8}
     }
@@ -90,48 +89,48 @@ public:
     [[nodiscard]] int num_reads() const noexcept { return num_reads_.load(); }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         ++num_reads_;
         std::fill_n(output.begin(), num_frames.count() * 2, 0.25F);
-        return wiola::codec::DecodeOutcome{.frames = num_frames};
+        return wiola::media::DecodeOutcome{.frames = num_frames};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome>
+    wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
-        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+        return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 
 private:
     std::atomic<int> num_reads_{0};
 };
 
-class UnknownLengthSource final : public wiola::codec::Decoder {
+class UnknownLengthSource final : public wiola::media::AudioDecoder {
 public:
     UnknownLengthSource()
-        : wiola::codec::AudioDecoder{
-              wiola::codec::DecoderStreamInfo{.spec = StreamSpec{units::Frequency{44100.0}, 2},
+        : wiola::media::AudioDecoder{
+              wiola::media::DecoderStreamInfo{.spec = StreamSpec{units::Frequency{44100.0}, 2},
                                               .length = std::nullopt,
-                                              .length_accuracy = wiola::codec::LengthAccuracy::unknown}
+                                              .length_accuracy = wiola::media::LengthAccuracy::unknown}
     }
     {
     }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         constexpr wiola::pcm::Frames length{8};
         const wiola::pcm::Frames remaining{length - position_frames()};
         const wiola::pcm::Frames produced{std::min(num_frames, remaining)};
         std::fill_n(output.begin(), produced.count() * 2, 0.0F);
-        return wiola::codec::DecodeOutcome{.frames = produced,
+        return wiola::media::DecodeOutcome{.frames = produced,
             .end_of_stream = position_frames() + produced == length};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome>
+    wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
         if (frame_index > wiola::pcm::Frames{8})
@@ -140,14 +139,14 @@ protected:
                                     .detail = "past actual end"}
             };
 
-        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+        return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
 
-class FailFirstReadSource final : public wiola::codec::Decoder {
+class FailFirstReadSource final : public wiola::media::AudioDecoder {
 public:
     FailFirstReadSource()
-        : wiola::codec::AudioDecoder{
+        : wiola::media::AudioDecoder{
               StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{8}
     }
@@ -155,7 +154,7 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         if (num_reads_++ == 0)
@@ -165,13 +164,13 @@ protected:
             };
 
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
-        return wiola::codec::DecodeOutcome{.frames = num_frames};
+        return wiola::media::DecodeOutcome{.frames = num_frames};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome>
+    wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
-        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+        return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 
 private:
@@ -185,7 +184,7 @@ TEST(Player, PlaysToTheEndOnItsOwn)
     auto source = wiola::testing::open_fixture();
     ASSERT_NE(source, nullptr);
 
-    const wiola::codec::Decoder* played{source.get()};
+    const wiola::media::AudioDecoder* played{source.get()};
     Rig rig{std::move(source)};
     Player& player{rig.player};
 
@@ -658,7 +657,7 @@ TEST(Player, StartsWhereASeekAskedForBeforeIt)
     ASSERT_NE(source, nullptr);
 
     const wiola::pcm::Frames total{source->num_frames()};
-    const wiola::codec::Decoder* begun{source.get()};
+    const wiola::media::AudioDecoder* begun{source.get()};
     Rig rig{std::move(source)};
     Player& player{rig.player};
 
@@ -699,10 +698,10 @@ TEST(Player, KeepsASeekAskedForAfterStopping)
 
 /// A source that takes its time moving, so the gap between asking for a seek and it being carried
 /// out is wide enough to look into. Silence is enough: nothing here listens.
-class SlowSource final : public wiola::codec::Decoder {
+class SlowSource final : public wiola::media::AudioDecoder {
 public:
     SlowSource()
-        : wiola::codec::AudioDecoder{
+        : wiola::media::AudioDecoder{
               wiola::pcm::StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{44100 * 4}
     }
@@ -710,29 +709,29 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
 
-        return wiola::codec::DecodeOutcome{.frames = num_frames};
+        return wiola::media::DecodeOutcome{.frames = num_frames};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome>
+    wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
         std::this_thread::sleep_for(200ms);
 
-        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+        return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
 
 /// A source short enough to run out while what it decoded is still being played, and one that
 /// says how often it was moved.
-class ShortSource final : public wiola::codec::Decoder {
+class ShortSource final : public wiola::media::AudioDecoder {
 public:
     ShortSource()
-        : wiola::codec::AudioDecoder{
+        : wiola::media::AudioDecoder{
               wiola::pcm::StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{4410}
     }
@@ -742,20 +741,20 @@ public:
     [[nodiscard]] int num_seeks() const noexcept { return num_seeks_.load(); }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float> output,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
         wiola::pcm::Frames num_frames) override
     {
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
 
-        return wiola::codec::DecodeOutcome{.frames = num_frames};
+        return wiola::media::DecodeOutcome{.frames = num_frames};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome>
+    wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
         num_seeks_.fetch_add(1);
 
-        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+        return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 
 private:

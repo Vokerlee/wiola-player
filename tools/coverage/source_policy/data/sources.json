@@ -799,20 +799,6 @@
       "workflow": false
     },
     {
-      "path": "src/codec/decode/decoder.cpp",
-      "owner": "source.codec.decode.decoder",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
-      "path": "src/codec/decode/decoder.hpp",
-      "owner": "source.codec.decode.decoder",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
       "path": "src/codec/decode/format.cpp",
       "owner": "source.codec.decode.format",
       "language": "cpp",
@@ -822,13 +808,6 @@
     {
       "path": "src/codec/decode/format.hpp",
       "owner": "source.codec.decode.format",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
-      "path": "src/codec/decode/open.hpp",
-      "owner": "source.codec.decode.open",
       "language": "cpp",
       "role": "production",
       "workflow": false
@@ -2729,6 +2708,41 @@
       "language": "cpp",
       "role": "production",
       "workflow": true
+    },
+    {
+      "path": "src/media/audio_decoder/CMakeLists.txt",
+      "owner": "source.codec.decode.decoder",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/media/audio_decoder/audio_decoder.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/media/audio_decoder/audio_decoder.hpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/media/audio_decoder/tests/decoder_contract_test.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/media/audio_decoder/tests/decoder_port_test.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
     },
     {
       "path": "src/media/byte_stream.hpp",

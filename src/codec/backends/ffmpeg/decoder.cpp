@@ -169,18 +169,19 @@ Backend backend()
                qualified_writes}
     };
     return Backend{"FFmpeg", formats,
-        [](const std::filesystem::path& path, const media::OperationContext& context) -> Opened {
+        [](const std::filesystem::path& path,
+            const media::OperationContext& context) -> media::DecoderOpenResult {
             auto decoder{FfmpegDecoder::open(path, {}, context)};
             if (!decoder)
                 return media::unexpected{decoder.error()};
-            return std::unique_ptr<Decoder>{std::move(*decoder)};
+            return std::unique_ptr<media::AudioDecoder>{std::move(*decoder)};
         }};
 }
 
 FfmpegDecoder::FfmpegDecoder(std::filesystem::path path, std::size_t stream_index,
-    DecoderStreamInfo info, std::unique_ptr<FfmpegInput> input,
+    media::DecoderStreamInfo info, std::unique_ptr<FfmpegInput> input,
     std::unique_ptr<PacketDecoder> packets, FfmpegDecoderOptions options) noexcept
-    : Decoder{info}
+    : media::AudioDecoder{info}
     , path_{std::move(path)}
     , stream_index_{stream_index}
     , options_{options}
@@ -283,7 +284,7 @@ media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
             converter_->discard_first(pcm::Frames{static_cast<std::size_t>(discard)});
     }
 
-    if (length_accuracy() == LengthAccuracy::exact) {
+    if (length_accuracy() == media::LengthAccuracy::exact) {
         const pcm::Frames length{num_frames()};
         const pcm::Frames remaining{reference < length ? length - reference : pcm::Frames{}};
 
@@ -293,7 +294,8 @@ media::Result<bool> FfmpegDecoder::trim_frame(const AVFrame& frame,
     return true;
 }
 
-media::Result<DecodeOutcome> FfmpegDecoder::decode(std::span<float> output, pcm::Frames num_frames)
+media::Result<media::DecodeOutcome> FfmpegDecoder::decode(std::span<float> output,
+    pcm::Frames num_frames)
 {
     const std::span<float> requested{output.first(spec().samples_per(num_frames))};
 
@@ -400,7 +402,7 @@ media::Result<pcm::Frames> FfmpegDecoder::stage_seek(pcm::Frames target)
     converter_->reset();
     source_ended_ = false;
 
-    if (length_accuracy() == LengthAccuracy::exact && target == num_frames())
+    if (length_accuracy() == media::LengthAccuracy::exact && target == num_frames())
         return target;
 
     for (int work{0}; work < options_.seek_work_budget; ++work) {
@@ -465,7 +467,7 @@ int FfmpegDecoder::demux_seek(std::int64_t timestamp) noexcept
         AVSEEK_FLAG_BACKWARD);
 }
 
-media::Result<SeekOutcome> FfmpegDecoder::seek_frame(pcm::Frames frame_index)
+media::Result<media::SeekOutcome> FfmpegDecoder::seek_frame(pcm::Frames frame_index)
 {
     auto candidate{FfmpegDecoder::open(path_, options_, input_->context())};
 
@@ -487,7 +489,7 @@ media::Result<SeekOutcome> FfmpegDecoder::seek_frame(pcm::Frames frame_index)
     link_base_ = frame_index;
     source_ended_ = false;
 
-    return SeekOutcome{.target = frame_index, .achieved = *staged, .exact = true};
+    return media::SeekOutcome{.target = frame_index, .achieved = *staged, .exact = true};
 }
 
 } // namespace wiola::codec::ffmpeg

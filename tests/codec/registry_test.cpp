@@ -29,7 +29,7 @@
 
 namespace {
 
-class EmptyDecoder final : public wiola::codec::AudioDecoder {
+class EmptyDecoder final : public wiola::media::AudioDecoder {
 public:
     EmptyDecoder()
         : AudioDecoder{{}, {}}
@@ -37,16 +37,16 @@ public:
     }
 
 protected:
-    wiola::media::Result<wiola::codec::DecodeOutcome> decode(std::span<float>,
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float>,
         wiola::pcm::Frames) override
     {
-        return wiola::codec::DecodeOutcome{.frames = {}, .end_of_stream = true};
+        return wiola::media::DecodeOutcome{.frames = {}, .end_of_stream = true};
     }
 
-    wiola::media::Result<wiola::codec::SeekOutcome>
+    wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
-        return wiola::codec::SeekOutcome{.target = frame_index, .achieved = frame_index};
+        return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
 
@@ -65,9 +65,9 @@ wiola::codec::Format fake_backend(int& attempts)
     static constexpr std::array<std::string_view, 1> extensions{".fake"};
 
     return {"Fake", markers, extensions,
-        [&attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+        [&attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
             ++attempts;
-            std::unique_ptr<wiola::codec::Decoder> decoder{std::make_unique<EmptyDecoder>()};
+            std::unique_ptr<wiola::media::AudioDecoder> decoder{std::make_unique<EmptyDecoder>()};
             return decoder;
         }};
 }
@@ -97,7 +97,8 @@ TEST(MediaBackendRegistry, StopsImmediatelyWhenAReadableResourceFails)
     int first_attempts{0};
     int second_attempts{0};
     auto first{fake_backend(first_attempts)};
-    first.open = [&first_attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+    first.open =
+        [&first_attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
         ++first_attempts;
 
         return wiola::media::unexpected{
@@ -148,7 +149,8 @@ TEST(MediaBackendRegistry, BoundsFallbackAttempts)
     int first_attempts{0};
     int second_attempts{0};
     auto first{fake_backend(first_attempts)};
-    first.open = [&first_attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+    first.open =
+        [&first_attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
         ++first_attempts;
         return wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::not_mine,
@@ -179,9 +181,10 @@ TEST(MediaBackendRegistry, DescriptorCopiesOwnTheirIdentityAndProbeData)
         };
         const std::array<std::string_view, 1> extensions{extension};
         return wiola::codec::Format{name, markers, extensions,
-            [&attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+            [&attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
                 ++attempts;
-                std::unique_ptr<wiola::codec::Decoder> decoder{std::make_unique<EmptyDecoder>()};
+                std::unique_ptr<wiola::media::AudioDecoder> decoder{
+                    std::make_unique<EmptyDecoder>()};
                 return decoder;
             }};
     }()};
@@ -197,7 +200,7 @@ TEST(MediaBackendRegistry, RecognizedUnsupportedEncodingIsNotReportedAsDamage)
 {
     int attempts{0};
     auto backend{fake_backend(attempts)};
-    backend.open = [](const std::filesystem::path&) -> wiola::codec::Opened {
+    backend.open = [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
         return wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
                                 .detail = "recognized container has an unsupported codec"}
@@ -217,7 +220,7 @@ TEST(MediaBackendRegistry, MultipleFormatsShareOneBackendProbe)
     int attempts{0};
     const std::array formats{fake_backend(attempts), fake_backend(attempts)};
     const wiola::codec::Backend backend{"Combined fake", formats,
-        [&attempts](const std::filesystem::path&) -> wiola::codec::Opened {
+        [&attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
             ++attempts;
             return wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::not_mine,

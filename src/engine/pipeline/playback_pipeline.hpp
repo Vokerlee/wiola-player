@@ -22,10 +22,10 @@
 
 #include <audio/device/output.hpp>
 #include <audio/dsp/buffer_source.hpp>
-#include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/player.hpp>
 #include <engine/transport/transport_config.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 
@@ -36,7 +36,7 @@ namespace wiola::engine {
 /// Owns one decoder-to-output pipeline. Destruction joins transport before releasing its source.
 class PlaybackPipeline {
 public:
-    PlaybackPipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
+    PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source, audio::Output& output,
         pcm::Frames buffer_frames, TransportConfig transport = {});
 
     PlaybackPipeline(const PlaybackPipeline&) = delete;

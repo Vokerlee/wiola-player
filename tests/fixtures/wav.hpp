@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <codec/decode/decoder.hpp>
 #include <codec/decode/registry.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 
 #include <atomic>
 #include <cmath>
@@ -98,7 +98,7 @@ inline std::filesystem::path write_wav(const char* name, std::uint32_t rate = so
 }
 
 /// The same file, opened.
-inline std::unique_ptr<codec::Decoder> open_fixture(const char* name = "wiola_fixture.wav")
+inline std::unique_ptr<media::AudioDecoder> open_fixture(const char* name = "wiola_fixture.wav")
 {
     return std::move(codec::MediaBackendRegistry{}.open(write_wav(name)).value());
 }

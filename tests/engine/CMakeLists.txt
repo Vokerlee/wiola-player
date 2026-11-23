@@ -5,7 +5,7 @@ target_link_options(engine_playlist_test PRIVATE "LINKER:--wrap=_Znwm")
 wiola_add_test(
     engine_fake_decoder_test
     SOURCES fake_decoder_test.cpp
-    LIBS wiola_engine
+    LIBS wiola::audio_decoder
 )
 wiola_add_test(engine_loader_test SOURCES loader_test.cpp LIBS wiola_engine)
 wiola_add_test(

@@ -75,13 +75,13 @@ share one interface. The codec's read operation belongs to the blocking transpor
 source's render operation belongs to the real-time output path.
 
 [`PlaybackPipeline`](../engine/pipeline/playback_pipeline.cpp) is where those worlds are connected.
-It receives a `std::unique_ptr<codec::Decoder>`, constructs a `PcmQueue` from the decoder's stream
+It receives a `std::unique_ptr<media::AudioDecoder>`, constructs a `PcmQueue` from the decoder's stream
 specification, gives the queue's producer to the transport player, and exposes the queue's consumer
 as a `BufferSource`.
 
 ```mermaid
 sequenceDiagram
-    participant Codec as codec::Decoder
+    participant Codec as media::AudioDecoder
     participant Loop as DecodeLoop
     participant Queue as PcmQueue
     participant Source as Source and DSP chain
@@ -158,7 +158,7 @@ operations:
 - `render(span<float>)` fills whole frames and returns the number of samples written.
 
 `render` is a **nonthrowing, bounded, real-time callback contract**. It must not allocate, lock,
-perform file I/O, block, or destroy anything. This is different from `codec::Decoder::read`, which
+perform file I/O, block, or destroy anything. This is different from `media::AudioDecoder::read`, which
 may perform blocking container and codec work on the transport worker.
 
 A short render means the source could not provide the whole requested block. It does not pass an

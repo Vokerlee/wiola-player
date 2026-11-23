@@ -104,6 +104,16 @@
       "identity": "workspace.unreadable-new-entry",
       "target": "app_workspace_reconciliation_test",
       "name": "WorkspaceReconciliation.MissingNewFileCannotBeQualifiedAsKnownOrRelocated"
+    },
+    {
+      "identity": "decoder.backend-independent-media-port",
+      "target": "media_audio_decoder_port_test",
+      "name": "AudioDecoderPort.MediaAssetReturnsAnOwnedDecoderWithoutBackendServices"
+    },
+    {
+      "identity": "decoder.reject-progress-stalls",
+      "target": "media_audio_decoder_contract_test",
+      "name": "AudioDecoder.RejectsBackendProgressStalls"
     }
   ],
   "auxiliary": {

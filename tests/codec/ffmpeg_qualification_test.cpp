@@ -70,7 +70,7 @@ bool matches(const wiola::codec::ffmpeg::Qualification& qualification, const Fix
         qualification.profile == fixture.profile;
 }
 
-wiola::media::Result<wiola::pcm::Frames> read_all(wiola::codec::Decoder& decoder)
+wiola::media::Result<wiola::pcm::Frames> read_all(wiola::media::AudioDecoder& decoder)
 {
     wiola::pcm::Frames total;
     std::array<float, 126> block{};

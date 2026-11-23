@@ -10,3 +10,4 @@ wiola_add_library(
         qualification.cpp
     LIBS wiola_media wiola_ffmpeg
 )
+target_link_libraries(wiola_codec_ffmpeg PUBLIC wiola::audio_decoder)

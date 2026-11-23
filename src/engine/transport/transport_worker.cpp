@@ -37,7 +37,7 @@ const TransportConfig& validated(const TransportConfig& config)
 
 } // namespace
 
-TransportWorker::TransportWorker(std::unique_ptr<codec::Decoder> source,
+TransportWorker::TransportWorker(std::unique_ptr<media::AudioDecoder> source,
     pcm::PcmQueue::Producer buffer, audio::Output& output, ThreadFactory launch,
     TransportConfig config)
     : head_{source->spec().num_channels}

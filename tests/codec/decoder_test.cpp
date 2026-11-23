@@ -30,7 +30,7 @@
 #include <memory>
 #include <string>
 
-using wiola::codec::Decoder;
+using wiola::media::AudioDecoder;
 
 using wiola::pcm::Frames;
 
@@ -42,7 +42,7 @@ std::filesystem::path fixture(const char* name)
 }
 
 /// Reads a decoder to the end and reports how many samples it produced.
-std::size_t drain(wiola::codec::Decoder& source)
+std::size_t drain(wiola::media::AudioDecoder& source)
 {
     std::array<float, 1024> block{};
     std::size_t total{0};
@@ -102,7 +102,7 @@ TEST(OpenFile, GivesNothingWhenNoReaderAccepts)
     const std::filesystem::path junk{std::filesystem::temp_directory_path() / "wiola_junk.wav"};
     std::ofstream{junk, std::ios::binary} << "not audio at all, by any reader";
 
-    const wiola::codec::Opened opened{wiola::codec::MediaBackendRegistry{}.open(junk)};
+    const wiola::media::DecoderOpenResult opened{wiola::codec::MediaBackendRegistry{}.open(junk)};
 
     EXPECT_FALSE(opened);
     EXPECT_EQ(opened.error().category, wiola::media::ErrorCategory::unsupported);
@@ -155,7 +155,7 @@ TEST(OpenFile, IsTrueOnlyWhenItGaveADecoder)
 
 TEST(Decoder, PlaysThroughTheInterface)
 {
-    const std::unique_ptr<Decoder> decoder{
+    const std::unique_ptr<AudioDecoder> decoder{
         std::move(wiola::codec::MediaBackendRegistry{}.open(fixture("tone.flac")).value())};
 
     ASSERT_NE(decoder, nullptr);

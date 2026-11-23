@@ -24,7 +24,7 @@
 
 namespace wiola::engine {
 
-SeekOperation::SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& buffer,
+SeekOperation::SeekOperation(media::AudioDecoder& source, pcm::PcmQueue::Producer& buffer,
     audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
     bool& output_started, std::vector<float>& block) noexcept
     : source_{source}
@@ -49,7 +49,7 @@ bool SeekOperation::begin(bool rewind)
     if (move)
         buffer_.mark_discard();
 
-    const bool within_exact_length{source_.length_accuracy() != codec::LengthAccuracy::exact ||
+    const bool within_exact_length{source_.length_accuracy() != media::LengthAccuracy::exact ||
         target <= source_.num_frames()};
     bool sought{!move};
     pcm::Frames achieved{current_frame()};
@@ -74,7 +74,7 @@ bool SeekOperation::apply()
     quiesce();
     buffer_.mark_discard();
 
-    const bool within_exact_length{source_.length_accuracy() != codec::LengthAccuracy::exact ||
+    const bool within_exact_length{source_.length_accuracy() != media::LengthAccuracy::exact ||
         claim.target <= source_.num_frames()};
     pcm::Frames achieved{current_frame()};
     bool sought{false};

@@ -18,20 +18,20 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/decode/decoder.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 
 #include <algorithm>
 
-namespace wiola::codec {
+namespace wiola::media {
 
-media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
+Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
     const pcm::StreamSpec stream_spec{spec()};
 
     if (output.size() % stream_spec.num_channels != 0)
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::read_failed,
-                         .detail = "decoder output does not contain whole frames"}
+        return unexpected{
+            Error{.category = ErrorCategory::read_failed,
+                  .detail = "decoder output does not contain whole frames"}
         };
 
     if (exhausted_)
@@ -51,18 +51,18 @@ media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
     auto decoded{decode(output, wanted)};
 
     if (!decoded)
-        return media::unexpected{decoded.error()};
+        return unexpected{decoded.error()};
 
     if (decoded->frames > wanted)
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::damaged,
-                         .detail = "decoder reported more frames than requested"}
+        return unexpected{
+            Error{.category = ErrorCategory::damaged,
+                  .detail = "decoder reported more frames than requested"}
         };
 
     if (decoded->frames == pcm::Frames{} && !decoded->end_of_stream)
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::damaged,
-                         .detail = "decoder made no progress and did not finish"}
+        return unexpected{
+            Error{.category = ErrorCategory::damaged,
+                  .detail = "decoder made no progress and did not finish"}
         };
 
     position_ += decoded->frames;
@@ -72,38 +72,38 @@ media::Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
     return DecodeOutcome{.frames = decoded->frames, .end_of_stream = exhausted_};
 }
 
-media::Result<std::size_t> AudioDecoder::render(std::span<float> output)
+Result<std::size_t> AudioDecoder::render(std::span<float> output)
 {
     auto decoded{read(output)};
 
     if (!decoded)
-        return media::unexpected{decoded.error()};
+        return unexpected{decoded.error()};
 
     return spec().samples_per(decoded->frames);
 }
 
-media::Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
+Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
 {
     if (!seekable())
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::seek_failed,
-                         .detail = "decoder stream is not seekable"}
+        return unexpected{
+            Error{.category = ErrorCategory::seek_failed,
+                  .detail = "decoder stream is not seekable"}
         };
 
     if (length_accuracy() == LengthAccuracy::exact && frame_index > num_frames())
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::invalid_seek,
-                         .detail = "seek target is past the end"}
+        return unexpected{
+            Error{.category = ErrorCategory::invalid_seek,
+                  .detail = "seek target is past the end"}
         };
 
     auto sought{seek_frame(frame_index)};
     if (!sought)
-        return media::unexpected{sought.error()};
+        return unexpected{sought.error()};
 
     if (sought->target != frame_index)
-        return media::unexpected{
-            media::Error{.category = media::ErrorCategory::seek_failed,
-                         .detail = "decoder changed the seek target"}
+        return unexpected{
+            Error{.category = ErrorCategory::seek_failed,
+                  .detail = "decoder changed the seek target"}
         };
 
     position_ = sought->achieved;
@@ -111,4 +111,4 @@ media::Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
     return sought;
 }
 
-} // namespace wiola::codec
+} // namespace wiola::media

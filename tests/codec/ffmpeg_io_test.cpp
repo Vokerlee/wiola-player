@@ -268,7 +268,7 @@ TEST(FfmpegInspection, SelectsExactStereoPcmFacts)
     EXPECT_EQ(facts->output.spec.sample_rate, wiola::units::Frequency{44100.0});
     EXPECT_EQ(facts->output.spec.num_channels, 2U);
     EXPECT_EQ(facts->output.length, wiola::pcm::Frames{11025});
-    EXPECT_EQ(facts->output.length_accuracy, wiola::codec::LengthAccuracy::exact);
+    EXPECT_EQ(facts->output.length_accuracy, wiola::media::LengthAccuracy::exact);
     EXPECT_TRUE(facts->output.seekable);
 }
 
