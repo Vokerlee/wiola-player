@@ -31,6 +31,21 @@
       ]
     },
     {
+      "id": "architecture.contracts",
+      "purpose": "Checks declared abstraction cohesion and reports exact legacy ownership debt.",
+      "files": [
+        "tools/architecture/contracts/README.md",
+        "tools/architecture/contracts/__init__.py",
+        "tools/architecture/contracts/catalog.py",
+        "tools/architecture/contracts/data/README.md",
+        "tools/architecture/contracts/data/legacy.json",
+        "tools/architecture/contracts/definitions.py",
+        "tools/architecture/contracts/tests/README.md",
+        "tools/architecture/contracts/tests/__init__.py",
+        "tools/architecture/contracts/tests/test_catalog.py"
+      ]
+    },
+    {
       "id": "architecture.git_inventory",
       "purpose": "Reads repository-relative tracked paths from Git without changing the index.",
       "files": [

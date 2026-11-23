@@ -10,4 +10,4 @@ flowchart LR
   Registry --> Declarations[Declared current ownership]
 ```
 
-[Inventory](inventory/README.md) handles Git. [Ownership](ownership/README.md) validates declarations independently of Git. [CMake inventory](cmake_inventory/README.md) reconciles configured targets without executing a build. [Commands](commands/README.md) assemble the check and return a useful exit status. No component imports the player, CMake, or Qt.
+[Inventory](inventory/README.md) handles Git. [Ownership](ownership/README.md) validates declarations independently of Git. [CMake inventory](cmake_inventory/README.md) reconciles configured targets without executing a build. [Commands](commands/README.md) assemble the check and return a useful exit status. [Abstraction contracts](contracts/README.md) add explicit cohesion and migration-debt checks. No component imports player or Qt implementation.
