@@ -43,6 +43,10 @@ include(dependencies)
 
 add_subdirectory(src)
 
+if(ENABLE_COVERAGE)
+    include(coverage_inventory)
+endif()
+
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
