@@ -1,0 +1,12 @@
+{
+  "tools/architecture/cmake_inventory/tests/test_inventory.py": "architecture.cmake_inventory",
+  "tools/architecture/contracts/tests/test_catalog.py": "architecture.contracts",
+  "tools/architecture/dependency_graph/tests/test_graph.py": "architecture.dependency_graph",
+  "tools/architecture/dependency_policy/tests/test_policy.py": "architecture.dependency_policy",
+  "tools/architecture/inventory/tests/test_git_inventory.py": "architecture.git_inventory",
+  "tools/architecture/ownership/tests/test_registry.py": "architecture.ownership",
+  "tests/scripts/test_affected_selection.py": "test.scripts.test_affected_selection",
+  "tests/scripts/test_coverage_gate.py": "test.scripts.test_coverage_gate",
+  "tests/scripts/test_coverage_inventory.py": "test.scripts.test_coverage_inventory",
+  "tools/testing/catalog/tests/test_catalog.py": "testing.catalog"
+}

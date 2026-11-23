@@ -16,6 +16,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
@@ -49,4 +50,5 @@ endif()
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
+    add_subdirectory(tools/testing/catalog)
 endif()

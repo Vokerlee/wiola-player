@@ -12,3 +12,5 @@ flowchart TD
 ```
 
 [Architecture](architecture/README.md) describes the actual components. Tool paths and policies are explicit inputs or package resources; there are no assumptions about a developer home directory or build output location.
+
+[Testing tools](testing/README.md) separate semantic test roles from actual runtime coupling and check configured discovery against independently required behaviors.

@@ -20,6 +20,15 @@
       ]
     },
     {
+      "id": "architecture.check_tests",
+      "purpose": "Assembles configured test-contract reconciliation",
+      "files": [
+        "tools/architecture/commands/check_tests/README.md",
+        "tools/architecture/commands/check_tests/__init__.py",
+        "tools/architecture/commands/check_tests/__main__.py"
+      ]
+    },
+    {
       "id": "architecture.cmake_inventory",
       "purpose": "Reads declared targets, first-party sources, dependencies and artifacts from a configured CMake codemodel.",
       "files": [
@@ -154,6 +163,31 @@
       "files": [
         "tools/architecture/README.md",
         "tools/architecture/__init__.py"
+      ]
+    },
+    {
+      "id": "testing.catalog",
+      "purpose": "Reconciles test ownership, semantic purpose and applicability",
+      "files": [
+        "tools/testing/catalog/CMakeLists.txt",
+        "tools/testing/catalog/README.md",
+        "tools/testing/catalog/__init__.py",
+        "tools/testing/catalog/catalog.py",
+        "tools/testing/catalog/data/README.md",
+        "tools/testing/catalog/data/python.json",
+        "tools/testing/catalog/data/requirements.json",
+        "tools/testing/catalog/data/targets.json",
+        "tools/testing/catalog/tests/README.md",
+        "tools/testing/catalog/tests/__init__.py",
+        "tools/testing/catalog/tests/test_catalog.py"
+      ]
+    },
+    {
+      "id": "testing.package",
+      "purpose": "Groups independent test-policy tooling",
+      "files": [
+        "tools/testing/README.md",
+        "tools/testing/__init__.py"
       ]
     },
     {
