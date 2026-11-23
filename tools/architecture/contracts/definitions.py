@@ -71,4 +71,19 @@ CONTRACTS = (
         ("Moving empties the source", "Referent lifetime remains external", "Only the owned public subtree is exported"),
         ("src/foundation/borrowed_reference/public/wiola/foundation/borrowed.hpp",),
     ),
+    AbstractionContract(
+        'testing.package', 'tools/testing', 'Groups independent test-policy tooling',
+        ("Complete implementation and tests belong to this owner",),
+        (), grouping=True,
+    ),
+    AbstractionContract(
+        'testing.catalog', 'tools/testing/catalog', 'Reconciles test ownership, semantic purpose and applicability',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/testing/catalog/catalog.py',), grouping=False,
+    ),
+    AbstractionContract(
+        'architecture.check_tests', 'tools/architecture/commands/check_tests', 'Assembles configured test-contract reconciliation',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/architecture/commands/check_tests/__main__.py',), grouping=False,
+    ),
 )

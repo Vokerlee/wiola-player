@@ -2,6 +2,7 @@
   "owners": {
     "architecture.check_dependencies": "tooling",
     "architecture.check_ownership": "tooling",
+    "architecture.check_tests": "tooling",
     "architecture.cmake_inventory": "tooling",
     "architecture.command_group": "tooling",
     "architecture.contracts": "tooling",
@@ -172,6 +173,7 @@
     "source.engine.transport.transport_config": "engine",
     "source.engine.transport.transport_wait": "engine",
     "source.engine.transport.transport_worker": "engine",
+    "source.foundation": "foundation",
     "source.gui.appearance.artwork_presentation": "frontend",
     "source.gui.appearance.presentation_tokens": "frontend",
     "source.gui.appearance.theme": "frontend",
@@ -429,11 +431,13 @@
     "test.scripts.test_coverage_inventory": "test",
     "test.utils.units_test": "test",
     "testing.atomic_output": "test",
+    "testing.catalog": "tooling",
     "testing.decoder": "test",
     "testing.gated_atomic_output": "test",
     "testing.gated_media_provider": "test",
     "testing.gui_interaction": "test",
     "testing.output": "test",
+    "testing.package": "tooling",
     "testing.rig": "test",
     "testing.shaping": "test",
     "testing.temporary_directory": "test",
@@ -453,8 +457,7 @@
     "tool.install_hooks": "tooling",
     "tool.run_desktop_journeys": "tooling",
     "tool.test_affected": "tooling",
-    "tooling.package": "tooling",
-    "source.foundation": "foundation"
+    "tooling.package": "tooling"
   },
   "allowed": {
     "foundation": [],

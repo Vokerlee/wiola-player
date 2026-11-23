@@ -1,0 +1,75 @@
+{
+  "required": [
+    {
+      "identity": "foundation.move-clears-source",
+      "target": "borrowed_reference_test",
+      "name": "BorrowedReference.OwnershipTransfer"
+    },
+    {
+      "identity": "engine.reject-invalid-stream",
+      "target": "engine_session_test",
+      "name": "Session.RejectsAnInvalidStreamBeforeBuildingAPipeline"
+    },
+    {
+      "identity": "engine.stale-load",
+      "target": "engine_session_test",
+      "name": "Session.ClearDuringLoadPreventsAnObsoleteInstall"
+    },
+    {
+      "identity": "engine.replacement-new-intent",
+      "target": "engine_session_test",
+      "name": "Session.ReplacementHandoffHonorsNewerPauseSeekAndQueueClear"
+    },
+    {
+      "identity": "queue.duplicate-occurrence",
+      "target": "app_playback_queue_test",
+      "name": "PlaybackQueue.SelectsTheRequestedDuplicateOccurrenceAndNeverFallsBackForUnknownIds"
+    },
+    {
+      "identity": "tags.validation",
+      "target": "library_tags_test",
+      "name": "TagValue.RejectsBlankControlAndOverLimitText"
+    },
+    {
+      "identity": "library.future-preservation",
+      "target": "gui_library_storage_test",
+      "name": "LibraryStorage.FutureSchemaIsNotReplacedByAnOlderBackupOrNewSave"
+    },
+    {
+      "identity": "library.short-write",
+      "target": "gui_library_storage_test",
+      "name": "LibraryStorage.ShortWritesAreNeverCommitted"
+    },
+    {
+      "identity": "playlist.ordered-duplicates",
+      "target": "gui_saved_playlist_storage_test",
+      "name": "SavedPlaylistStorage.RestoresOrderedEntriesAndDuplicateMediaWithStableIdentities"
+    },
+    {
+      "identity": "session.future-preservation",
+      "target": "desktop_session_preferences_test",
+      "name": "SessionPreferences.FutureSchemaIsPreservedAndReentrantEditsStayPendingForAnotherFlush"
+    },
+    {
+      "identity": "layout.transactional-validation",
+      "target": "gui_layout_document_test",
+      "name": "LayoutDocument.RejectsInvalidComponentsWithoutChangingThePreviousDocument"
+    },
+    {
+      "identity": "presentation.multi-tag-sort",
+      "target": "gui_track_sort_test",
+      "name": "TrackSort.ResolvesCustomTagsWithoutCaseSensitivityAndKeepsMultipleValues"
+    },
+    {
+      "identity": "process.future-library-shutdown",
+      "target": "gui_desktop_journey_test",
+      "name": "DesktopJourney.FutureLibrarySchemaSurvivesARealChildShutdown"
+    }
+  ],
+  "auxiliary": {
+    "BorrowedReference.InstalledConsumer": {
+      "owner": "source.core.borrowed",
+      "script": "src/foundation/borrowed_reference/tests/check_export.py"
+    }
+  }
+}

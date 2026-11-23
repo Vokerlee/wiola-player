@@ -67,6 +67,7 @@ jobs:
           echo "WIOLA_QT_PLUGIN_PATH=$(qtpaths6 --plugin-dir)" >> "$GITHUB_ENV"
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
+      - run: cmake --build --preset ${{ matrix.preset }} --target wiola_check_test_contracts
       - run: cmake --build --preset ${{ matrix.preset }} --target wiola_core_adapter_boundary
       - name: Record the instrumented Qt runtime
         if: matrix.preset == 'linux-tsan'
