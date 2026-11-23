@@ -183,3 +183,9 @@ wiola_add_test(
     SOURCES controls/player_sections_test.cpp
     LIBS wiola_gui
 )
+
+wiola_add_test(
+    gui_document_command_router_test
+    SOURCES shell/document_command_router_test.cpp
+    LIBS wiola_gui Qt6::Test
+)

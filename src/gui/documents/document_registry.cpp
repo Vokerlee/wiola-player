@@ -119,8 +119,16 @@ std::vector<SelectedTrack> DocumentRegistry::selection() const
     const auto id = active();
     if (!id)
         return {};
-    const auto selection = entries_.at(*id).selection;
-    return selection();
+    return selection(*id);
+}
+
+std::vector<SelectedTrack> DocumentRegistry::selection(const DocumentId& id) const
+{
+    const auto found = entries_.find(id);
+    if (found == entries_.end() || !found->second.view)
+        return {};
+    const auto capture = found->second.selection;
+    return capture();
 }
 
 TrackCapabilities DocumentRegistry::capabilities(const DocumentId& id) const

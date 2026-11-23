@@ -32,7 +32,7 @@ namespace wiola::gui {
 
 class SavedPlaylistManager final : public QWidget {
 public:
-    SavedPlaylistManager(library::InMemoryRepository& repository,
+    SavedPlaylistManager(const library::LibraryRepository& repository,
         app::SavedPlaylistCommands& commands, LibraryNavigation& navigation,
         QWidget* parent = nullptr);
 
@@ -47,7 +47,7 @@ private:
     bool finish(bool succeeded, const library::PlaylistId& selected = {});
     void show_save_failed();
 
-    library::InMemoryRepository& repository_;
+    const library::LibraryRepository& repository_;
     app::SavedPlaylistCommands& commands_;
     LibraryNavigation& navigation_;
     QPushButton* create_button_{nullptr};

@@ -69,3 +69,9 @@ wiola_add_test(
     SOURCES session/session_preferences_test.cpp
     LIBS wiola_session_preferences wiola_codec
 )
+
+wiola_add_test(
+    desktop_library_documents_test
+    SOURCES library/library_documents_test.cpp
+    LIBS wiola_library_documents
+)

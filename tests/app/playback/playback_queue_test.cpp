@@ -98,4 +98,31 @@ TEST(PlaybackQueue, AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue)
     EXPECT_EQ(session.playlist().tracks()[2].path(), std::filesystem::path{"two.wav"});
 }
 
+TEST(PlaybackQueue, SelectsTheRequestedDuplicateOccurrenceAndNeverFallsBackForUnknownIds)
+{
+    wiola::engine::Session session;
+    wiola::app::PlaybackService playback{session};
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord track;
+    track.id = {"same"};
+    track.locations = {"duplicate.wav"};
+    ASSERT_TRUE(repository.put_track(track));
+    const auto playlist = repository.create_playlist("Duplicate");
+    const auto first = repository.append_track(playlist, track.id),
+               second = repository.append_track(playlist, track.id);
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(second);
+    const auto result = wiola::app::PlaybackQueue{}.replace_with_saved_playlist(playback,
+        repository, playlist, *second);
+    ASSERT_TRUE(result.requested);
+    EXPECT_EQ(playback.playlist().position(), 1);
+    const auto before = playback.playlist().tracks()[1].id();
+    EXPECT_FALSE(wiola::app::PlaybackQueue{}
+            .replace_with_saved_playlist(playback, repository, playlist,
+                wiola::library::PlaylistEntryId{"unknown"})
+            .requested);
+    EXPECT_EQ(playback.playlist().tracks()[1].id(), before);
+    EXPECT_EQ(playback.playlist().position(), 1);
+}
+
 } // namespace

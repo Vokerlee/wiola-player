@@ -79,6 +79,10 @@ class QActionGroup;
 
 namespace wiola::gui {
 
+class PlayerDialogs;
+class DocumentCommandRouter;
+class MetadataInspectorBinding;
+
 /**
  * Shows one track and the controls for it.
  *
@@ -119,50 +123,8 @@ private:
     void save_window_state();
     void show_layout_choice();
     bool install_layout(const LayoutDocument& document, LayoutChoice choice, bool persist);
-    /// Asks for files and plays them, in the order they were chosen.
-    void choose_tracks();
-
-    /// Asks a listener which files they mean, and answers with nothing when they say none.
-    [[nodiscard]] std::vector<std::filesystem::path> ask_for_tracks();
-
-    /// Asks for files and puts them at the end of the queue.
-    void add_tracks();
-    void import_m3u_playlist();
-    void export_m3u_playlist();
-
-    /// Takes whatever rows are picked out of the queue.
-    void remove_chosen();
-
-    /// Empties the queue.
-    void clear_queue();
-
-    /// Plays the track the listener picked out of the queue.
-    void play_chosen(engine::QueueEntryId id);
-
-    void open_folder();
-    void rescan_workspace(const library::WorkspaceId& id, bool recursive);
-    void play_workspace_selection(WorkspaceDocument& document);
-    void append_workspace_selection(WorkspaceDocument& document);
-    void transfer_workspace(WorkspaceDocument& document, bool choose_destination);
     void show_workspace_navigation();
-    void activate_playlist(const library::PlaylistId& id);
-    void transfer_now_playing(bool choose_destination);
-    void transfer_saved_playlist(const library::PlaylistId& id, SavedPlaylistDocument& document,
-        bool choose_destination);
-    void choose_move_destination(const library::PlaylistId& id, SavedPlaylistDocument& document);
-    void transfer_to(std::optional<library::PlaylistId> destination,
-        const std::vector<app::MediaTransfer>& media);
-    void choose_transfer_destination(const std::vector<app::MediaTransfer>& media);
-    void play_saved_playlist(const library::PlaylistId& id);
-    void play_displayed_paths(std::vector<std::filesystem::path> tracks);
-    void request_metadata(const std::filesystem::path& location);
     void apply_library_changes(const library::LibraryChangeBatch& batch);
-    void finish_custom_tag(app::CustomTagResult result, const QString& success);
-    void finish_standard_metadata(const app::MetadataEditSession& session);
-    void publish_metadata_outcome(const app::MetadataEditOutcome& outcome);
-    void resolve_metadata_conflict(MetadataConflictAction action);
-    void refresh_inspector();
-
     /// Plays the track before or after this one in the list.
     void play_previous();
     void play_next();
@@ -236,14 +198,13 @@ private:
     app::VolumeControl& volume_;
     app::EqualizerControl& equalizer_;
     app::LibrarySession& library_session_;
-    library::InMemoryRepository& library_;
+    const library::LibraryRepository& library_;
     library::LibraryChanges::Subscription library_changes_;
-    const library::RepositoryTransaction::Persist& persist_library_;
-    app::SavedPlaylistCommands& playlist_commands_;
-    app::CustomTagCommands& tag_commands_;
-    app::MetadataEditService& metadata_edits_;
-    app::ActivePlaylist& active_playlist_;
+    const app::ActivePlaylist& active_playlist_;
 
+    std::unique_ptr<PlayerDialogs> dialogs_;
+    DocumentCommandRouter* commands_{nullptr};
+    QPointer<MetadataInspectorBinding> inspector_binding_;
     TransportView* transport_{nullptr};
     VolumeView* volume_view_{nullptr};
     StatusView* status_{nullptr};

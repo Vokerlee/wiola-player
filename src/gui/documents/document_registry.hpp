@@ -51,6 +51,7 @@ public:
     void activate(const QWidget* widget);
     [[nodiscard]] std::optional<DocumentId> active() const;
     [[nodiscard]] std::vector<SelectedTrack> selection() const;
+    [[nodiscard]] std::vector<SelectedTrack> selection(const DocumentId& id) const;
     [[nodiscard]] TrackCapabilities capabilities(const DocumentId& id) const;
     [[nodiscard]] std::vector<std::pair<library::PlaylistId, QPointer<SavedPlaylistDocument>>>
     playlists() const;

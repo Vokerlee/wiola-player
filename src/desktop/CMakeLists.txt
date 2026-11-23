@@ -90,3 +90,10 @@ wiola_add_library(
 )
 set_target_properties(wiola_session_preferences PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core)
+
+wiola_add_library(
+    wiola_library_documents
+    SOURCES library/library_documents.cpp
+    LIBS wiola_library wiola_m3u wiola_persistence_qt wiola_qt_platform
+)
+target_link_libraries(wiola_library_documents PUBLIC Qt6::Core)

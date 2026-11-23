@@ -59,6 +59,22 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
                     id, playback_.playlist().tracks()[*row].path()});
         return selected;
     });
+    connect(queue_, &NowPlayingDocument::track_chosen, &lifetime_, [this](engine::QueueEntryId id) {
+        auto context = capture(DocumentId::queue());
+        context.selection = {
+            {library::MediaId{}, id, {}}
+        };
+        if (commands_.execute)
+            commands_.execute(TrackCommand::play, std::move(context));
+    });
+    connect(queue_, &NowPlayingDocument::removal_asked, &lifetime_,
+        [this] { dispatch(TrackCommand::remove, DocumentId::queue()); });
+    connect(queue_, &NowPlayingDocument::transfer_active_asked, &lifetime_,
+        [this] { dispatch(TrackCommand::transfer, DocumentId::queue()); });
+    connect(queue_, &NowPlayingDocument::transfer_destination_asked, &lifetime_,
+        [this] { dispatch(TrackCommand::transfer_destination, DocumentId::queue()); });
+    connect(queue_, &NowPlayingDocument::order_application_asked, &lifetime_,
+        [this] { dispatch(TrackCommand::apply_order, DocumentId::queue()); });
     static_cast<void>(registry_.activate(DocumentId::queue()));
     auto* empty_layout = new QVBoxLayout{empty_};
     auto* explanation =
@@ -90,6 +106,8 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
         if (const auto id = registry_.identify(widget(index)))
             static_cast<void>(close(*id));
     });
+    connect(&library_, &app::LibrarySession::active_destination_changed, &lifetime_,
+        [this] { refresh_active_destination(); });
     connect(&library_, &app::LibrarySession::workspace_scan_started, &lifetime_,
         [this](const auto& id, std::uint64_t generation) {
             if (auto* view = registry_.workspace(id))
@@ -153,6 +171,27 @@ void DocumentHost::configure_browser(TrackBrowser& browser)
     });
 }
 
+void DocumentHost::dispatch(TrackCommand command, const DocumentId& id)
+{
+    if (commands_.execute)
+        commands_.execute(command, capture(id));
+}
+
+DocumentCommandContext DocumentHost::capture(const DocumentId& id) const
+{
+    DocumentCommandContext context{id, registry_.capabilities(id), registry_.selection(id), {}};
+    if (id.is_queue())
+        context.displayed_paths = queue_->displayed_paths(playback_.playlist());
+    else if (const auto* playlist = id.playlist()) {
+        if (const auto* view = registry_.playlist(*playlist))
+            context.displayed_paths = view->displayed_paths();
+    } else if (const auto* workspace = id.workspace()) {
+        if (const auto* view = registry_.workspace(*workspace))
+            context.displayed_paths = view->displayed_paths();
+    }
+    return context;
+}
+
 bool DocumentHost::activate(const DocumentId& id)
 {
     if (!registry_.activate(id))
@@ -174,28 +213,27 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
     registry_.add(id, *document, [document] { return document->selection(); });
     document->set_active(library_.active_playlist().id() == id);
     document->on_active_requested([this, id] {
-        if (commands_.activate_playlist)
-            commands_.activate_playlist(id);
+        dispatch(TrackCommand::activate_destination, DocumentId::playlist(id));
     });
     document->on_play_requested([this, id] {
         if (commands_.play_playlist)
-            commands_.play_playlist(id);
+            commands_.play_playlist(id, {});
     });
-    document->on_apply_order_requested([this, document] {
-        if (commands_.apply_order)
-            commands_.apply_order(document->displayed_paths());
+    document->on_entry_chosen([this, id](auto entry) {
+        if (commands_.play_playlist)
+            commands_.play_playlist(id, entry);
     });
-    document->on_transfer_active_requested([this, id, document] {
-        if (commands_.transfer_playlist)
-            commands_.transfer_playlist(id, *document, false);
+    document->on_apply_order_requested([this, id] {
+        dispatch(TrackCommand::apply_order, DocumentId::playlist(id));
     });
-    document->on_transfer_destination_requested([this, id, document] {
-        if (commands_.transfer_playlist)
-            commands_.transfer_playlist(id, *document, true);
+    document->on_transfer_active_requested([this, id] {
+        dispatch(TrackCommand::transfer, DocumentId::playlist(id));
     });
-    document->on_transfer_move_requested([this, id, document] {
-        if (commands_.move_playlist)
-            commands_.move_playlist(id, *document);
+    document->on_transfer_destination_requested([this, id] {
+        dispatch(TrackCommand::transfer_destination, DocumentId::playlist(id));
+    });
+    document->on_transfer_move_requested([this, id] {
+        dispatch(TrackCommand::move, DocumentId::playlist(id));
     });
     addTab(document, QString::fromStdString(library_.repository().playlist(id)->name));
     restore_browser(DocumentId::playlist(id), document->browser(), true);
@@ -220,25 +258,20 @@ bool DocumentHost::open_workspace(const library::WorkspaceId& id)
         library_.cancel_workspace_scan(id);
         document->show_cancelled();
     });
-    document->on_play_requested([this, document] {
-        if (commands_.play_workspace)
-            commands_.play_workspace(*document);
+    document->on_play_requested([this, id] {
+        dispatch(TrackCommand::play, DocumentId::workspace(id));
     });
-    document->on_append_requested([this, document] {
-        if (commands_.append_workspace)
-            commands_.append_workspace(*document);
+    document->on_append_requested([this, id] {
+        dispatch(TrackCommand::append, DocumentId::workspace(id));
     });
-    document->on_apply_order_requested([this, document] {
-        if (commands_.apply_order)
-            commands_.apply_order(document->displayed_paths());
+    document->on_apply_order_requested([this, id] {
+        dispatch(TrackCommand::apply_order, DocumentId::workspace(id));
     });
-    document->on_transfer_active_requested([this, document] {
-        if (commands_.transfer_workspace)
-            commands_.transfer_workspace(*document, false);
+    document->on_transfer_active_requested([this, id] {
+        dispatch(TrackCommand::transfer, DocumentId::workspace(id));
     });
-    document->on_transfer_destination_requested([this, document] {
-        if (commands_.transfer_workspace)
-            commands_.transfer_workspace(*document, true);
+    document->on_transfer_destination_requested([this, id] {
+        dispatch(TrackCommand::transfer_destination, DocumentId::workspace(id));
     });
     const auto name = workspace->root.filename();
     addTab(document, name.empty() ? "Workspace" : platform::qt::QtPathAdapter::to_qt(name));
