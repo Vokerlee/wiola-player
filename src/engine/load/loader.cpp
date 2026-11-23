@@ -37,7 +37,7 @@ Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
                 const media::OperationContext& context) {
         auto asset{provider->open(path, context)};
         return asset ? (*asset)->create_decoder(context)
-                     : codec::Opened{media::unexpected{asset.error()}};
+                     : media::DecoderOpenResult{media::unexpected{asset.error()}};
     }}
 {
 }
@@ -46,7 +46,7 @@ Loader::Loader(DecoderOpener open)
     : open_{[open = std::move(open)](const std::filesystem::path& path,
                 const media::OperationContext& context) {
         if (context.stop_reason() != media::StopReason::none)
-            return codec::Opened{media::unexpected{context.error()}};
+            return media::DecoderOpenResult{media::unexpected{context.error()}};
 
         return open(path);
     }}
@@ -120,7 +120,7 @@ void Loader::work(const std::stop_token& stop)
             opening_ = true;
         }
 
-        codec::Opened opened{
+        media::DecoderOpenResult opened{
             media::unexpected{media::Error{.category = media::ErrorCategory::unreadable,
                 .detail = "decoder was not opened"}}};
 

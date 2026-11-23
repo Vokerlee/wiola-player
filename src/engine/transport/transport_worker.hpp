@@ -25,10 +25,10 @@
 #include "playhead.hpp"
 #include "transport_wait.hpp"
 #include <audio/device/output.hpp>
-#include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/transport_config.hpp>
 #include <functional>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <memory>
 #include <pcm/pcm_queue.hpp>
 #include <thread>
@@ -47,7 +47,7 @@ class TransportWorker {
 public:
     using ThreadFactory = std::function<std::jthread(std::function<void()>)>;
 
-    TransportWorker(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+    TransportWorker(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
         audio::Output& output, ThreadFactory launch = {}, TransportConfig config = {});
 
     NO_COPY_SEMANTIC(TransportWorker);

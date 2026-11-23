@@ -21,14 +21,15 @@
 #pragma once
 
 #include <core/macros.hpp>
-#include <media/media.hpp>
+#include <media/result.hpp>
 #include <pcm/stream_spec.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <span>
 
-namespace wiola::codec {
+namespace wiola::media {
 
 enum class LengthAccuracy {
     exact,
@@ -69,10 +70,10 @@ public:
     virtual ~AudioDecoder() = default;
 
     /// Writes only whole frames and reports frames written, EOF, or a typed failure.
-    media::Result<DecodeOutcome> read(std::span<float> output);
+    Result<DecodeOutcome> read(std::span<float> output);
 
     /// Sample-count convenience view for callers that do not need terminal status.
-    media::Result<std::size_t> render(std::span<float> output);
+    Result<std::size_t> render(std::span<float> output);
 
     [[nodiscard]] const DecoderStreamInfo& stream_info() const noexcept { return stream_info_; }
 
@@ -106,7 +107,7 @@ public:
     [[nodiscard]] bool exhausted() const noexcept { return exhausted_; }
 
     /// Reports the achieved frame, or a failure that leaves the decoded position unchanged.
-    media::Result<SeekOutcome> seek(pcm::Frames frame_index);
+    Result<SeekOutcome> seek(pcm::Frames frame_index);
 
 protected:
     AudioDecoder(pcm::StreamSpec spec, pcm::Frames num_frames) noexcept
@@ -120,11 +121,10 @@ protected:
     }
 
     /// Writes at most num_frames whole frames and reports actual exhaustion independently.
-    virtual media::Result<DecodeOutcome> decode(std::span<float> output,
-        pcm::Frames num_frames) = 0;
+    virtual Result<DecodeOutcome> decode(std::span<float> output, pcm::Frames num_frames) = 0;
 
     /// Moves transactionally and reports where decoding will resume.
-    virtual media::Result<SeekOutcome> seek_frame(pcm::Frames frame_index) = 0;
+    virtual Result<SeekOutcome> seek_frame(pcm::Frames frame_index) = 0;
 
 private:
     DecoderStreamInfo stream_info_;
@@ -132,6 +132,7 @@ private:
     bool exhausted_{false};
 };
 
-using Decoder = AudioDecoder;
+/// Immediate decoder creation: an owned decoder or a typed media failure.
+using DecoderOpenResult = Result<std::unique_ptr<AudioDecoder>>;
 
-} // namespace wiola::codec
+} // namespace wiola::media

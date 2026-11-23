@@ -51,8 +51,8 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
 {
     wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [](const std::filesystem::path&) -> wiola::codec::Opened {
-            std::unique_ptr<wiola::codec::Decoder> decoder{
+        [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
+            std::unique_ptr<wiola::media::AudioDecoder> decoder{
                 std::make_unique<wiola::testing::FakeDecoder>()};
             return decoder;
         },
@@ -96,8 +96,8 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
 {
     wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [](const std::filesystem::path&) -> wiola::codec::Opened {
-            std::unique_ptr<wiola::codec::Decoder> decoder{
+        [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
+            std::unique_ptr<wiola::media::AudioDecoder> decoder{
                 std::make_unique<wiola::testing::FakeDecoder>()};
             return decoder;
         },
@@ -121,7 +121,7 @@ TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
     wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&) {
-            return wiola::codec::Opened{wiola::media::unexpected{
+            return wiola::media::DecoderOpenResult{wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
                     .detail = "missing codec"}}};
         },
@@ -153,7 +153,7 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
     wiola::testing::Gate opening;
     wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [&opening](const std::filesystem::path& path) -> wiola::codec::Opened {
+        [&opening](const std::filesystem::path& path) -> wiola::media::DecoderOpenResult {
             if (path == "old.wav") {
                 opening.wait();
                 return wiola::media::unexpected{
@@ -162,7 +162,7 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
                 };
             }
 
-            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
     PlaybackService service{service_session};
@@ -198,8 +198,8 @@ TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
     std::atomic<std::size_t> num_metadata_reads{0};
     wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [](const std::filesystem::path&) -> wiola::codec::Opened {
-            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [&num_metadata_reads](
             const std::filesystem::path&
@@ -238,8 +238,8 @@ TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
     std::atomic<std::size_t> num_metadata_reads{0};
     wiola::engine::Session service_session{
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-        [](const std::filesystem::path&) -> wiola::codec::Opened {
-            return wiola::codec::Opened{std::make_unique<wiola::testing::FakeDecoder>()};
+        [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [&num_metadata_reads](const std::filesystem::path&) {
             ++num_metadata_reads;

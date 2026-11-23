@@ -22,7 +22,7 @@
 
 #include "conversion_api.hpp"
 
-#include <codec/decode/decoder.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <media/media.hpp>
 
 #include <cstddef>
@@ -50,7 +50,8 @@ public:
 
     [[nodiscard]] media::Result<void> submit(const AVFrame& frame);
     [[nodiscard]] media::Result<void> finish();
-    [[nodiscard]] media::Result<DecodeOutcome> read(std::span<float> output, bool source_ended);
+    [[nodiscard]] media::Result<media::DecodeOutcome> read(std::span<float> output,
+        bool source_ended);
     void reset() noexcept;
     void discard_first(pcm::Frames frames) noexcept;
     void truncate(pcm::Frames frames) noexcept;

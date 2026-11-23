@@ -1365,6 +1365,26 @@
     "coupling": ""
   },
   {
+    "target": "media_audio_decoder_contract_test",
+    "owner": "source.codec.decode.decoder",
+    "role": "domain",
+    "sources": [
+      "src/media/audio_decoder/tests/decoder_contract_test.cpp"
+    ],
+    "qt": "none",
+    "coupling": ""
+  },
+  {
+    "target": "media_audio_decoder_port_test",
+    "owner": "source.codec.decode.decoder",
+    "role": "domain",
+    "sources": [
+      "src/media/audio_decoder/tests/decoder_port_test.cpp"
+    ],
+    "qt": "none",
+    "coupling": ""
+  },
+  {
     "target": "media_byte_stream_test",
     "owner": "test.media.byte_stream_test",
     "role": "domain",

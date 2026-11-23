@@ -49,7 +49,7 @@ public:
         return metadata;
     }
 
-    wiola::media::Result<std::unique_ptr<wiola::codec::Decoder>>
+    wiola::media::Result<std::unique_ptr<wiola::media::AudioDecoder>>
     create_decoder(const wiola::media::OperationContext&) override
     {
         return wiola::media::unexpected{

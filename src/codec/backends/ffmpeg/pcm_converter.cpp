@@ -231,7 +231,7 @@ void PcmConverter::truncate(pcm::Frames frames) noexcept
     pending_.resize(offset_ + std::min(samples, pending_.size() - offset_));
 }
 
-media::Result<DecodeOutcome> PcmConverter::read(std::span<float> output, bool source_ended)
+media::Result<media::DecodeOutcome> PcmConverter::read(std::span<float> output, bool source_ended)
 {
     const pcm::Frames available{output_.frames_per(pending_.size() - offset_)};
     const pcm::Frames wanted{std::min(available, output_.frames_per(output.size()))};
@@ -246,7 +246,7 @@ media::Result<DecodeOutcome> PcmConverter::read(std::span<float> output, bool so
         offset_ = 0;
     }
 
-    return DecodeOutcome{.frames = wanted,
+    return media::DecodeOutcome{.frames = wanted,
         .end_of_stream = source_ended && finished_ && !pending()};
 }
 

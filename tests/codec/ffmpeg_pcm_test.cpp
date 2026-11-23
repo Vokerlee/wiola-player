@@ -387,7 +387,7 @@ TEST(FfmpegPcm, DiscardFirstClearsTheConsumedBuffer)
     EXPECT_FALSE(converter.pending());
 }
 
-wiola::media::Result<std::vector<float>> decode_all(wiola::codec::Decoder& decoder)
+wiola::media::Result<std::vector<float>> decode_all(wiola::media::AudioDecoder& decoder)
 {
     std::vector<float> samples;
     std::array<float, 14> block{};

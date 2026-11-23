@@ -5,6 +5,11 @@ from tools.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        'source.codec.decode.decoder', 'src/media/audio_decoder', 'Backend-neutral worker-owned decoder contract and shared read/seek validation',
+        ('No concrete codec, registry, device or GUI dependency', 'Progress and EOF are distinct', 'Read and seek errors retain typed media results'),
+        ('src/media/audio_decoder/audio_decoder.hpp',),
+    ),
+    AbstractionContract(
         'source.app.playback.operation_outcome', 'src/engine/operations', 'Engine asynchronous operation identities, acceptance and completion values',
         ('Zero identifies no asynchronous completion', 'Completion carries an owned media result', 'Overflow is explicit rather than silently complete history'),
         ('src/engine/operations/operation_outcome.hpp',),

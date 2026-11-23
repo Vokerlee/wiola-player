@@ -71,7 +71,7 @@ public:
         return delegate_->write_metadata(request, context);
     }
 
-    media::Result<std::unique_ptr<codec::Decoder>>
+    media::Result<std::unique_ptr<media::AudioDecoder>>
     create_decoder(const media::OperationContext& context) override
     {
         return delegate_->create_decoder(context);

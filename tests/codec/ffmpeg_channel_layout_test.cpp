@@ -28,7 +28,7 @@
 
 namespace {
 
-wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder)
+wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& decoder)
 {
     std::vector<float> samples;
     std::array<float, 126> block{};

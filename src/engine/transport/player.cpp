@@ -26,7 +26,7 @@
 
 namespace wiola::engine {
 
-Player::Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+Player::Player(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
     audio::Output& output, TransportConfig config)
     : output_{output}
     , spec_{source->spec()}
@@ -56,7 +56,7 @@ void Player::seek(units::Time position) noexcept
     const std::optional<pcm::Frames> target{
         spec_.checked_frames_at(std::max(position, units::Time{}))};
 
-    const bool outside_exact_source{target && length_accuracy_ == codec::LengthAccuracy::exact &&
+    const bool outside_exact_source{target && length_accuracy_ == media::LengthAccuracy::exact &&
         length_ && *target > *length_};
     if (target && !outside_exact_source)
         worker_.seek(*target);

@@ -30,7 +30,7 @@
 
 namespace {
 
-wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder)
+wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& decoder)
 {
     std::vector<float> samples;
     std::array<float, 126> block{};
@@ -50,17 +50,17 @@ wiola::media::Result<std::vector<float>> read_all(wiola::codec::Decoder& decoder
     };
 }
 
-wiola::codec::Opened open_file(std::string_view name)
+wiola::media::DecoderOpenResult open_file(std::string_view name)
 {
     wiola::codec::MediaBackendRegistry registry;
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
 }
 
-void expect_complete_timeline(wiola::codec::Decoder& decoder)
+void expect_complete_timeline(wiola::media::AudioDecoder& decoder)
 {
     EXPECT_EQ(decoder.spec().sample_rate, wiola::units::Frequency{44100});
     EXPECT_EQ(decoder.spec().num_channels, 2U);
-    EXPECT_EQ(decoder.length_accuracy(), wiola::codec::LengthAccuracy::exact);
+    EXPECT_EQ(decoder.length_accuracy(), wiola::media::LengthAccuracy::exact);
     EXPECT_EQ(decoder.num_frames(), wiola::pcm::Frames{11025});
 }
 

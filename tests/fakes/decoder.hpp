@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <codec/decode/decoder.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/stream_spec.hpp>
 
 #include <algorithm>
@@ -65,11 +65,11 @@ private:
 };
 
 /// A silent decoder whose read and seek calls can be held or refused independently.
-class FakeDecoder final : public codec::Decoder {
+class FakeDecoder final : public media::AudioDecoder {
 public:
     explicit FakeDecoder(pcm::Frames num_frames = pcm::Frames{4096},
         pcm::StreamSpec spec = {}) noexcept
-        : codec::AudioDecoder{spec, num_frames}
+        : media::AudioDecoder{spec, num_frames}
     {
     }
 
@@ -98,7 +98,7 @@ public:
     [[nodiscard]] pcm::Frames last_seek() const noexcept { return pcm::Frames{last_seek_.load()}; }
 
 protected:
-    media::Result<codec::DecodeOutcome> decode(std::span<float> output,
+    media::Result<media::DecodeOutcome> decode(std::span<float> output,
         pcm::Frames num_frames) override
     {
         if (read_gate_ != nullptr)
@@ -108,10 +108,10 @@ protected:
         last_render_samples_.store(spec().samples_per(num_frames));
         std::fill_n(output.begin(), spec().samples_per(num_frames), 0.0F);
 
-        return codec::DecodeOutcome{.frames = num_frames};
+        return media::DecodeOutcome{.frames = num_frames};
     }
 
-    media::Result<codec::SeekOutcome> seek_frame(pcm::Frames frame_index) override
+    media::Result<media::SeekOutcome> seek_frame(pcm::Frames frame_index) override
     {
         num_seeks_.fetch_add(1);
         last_seek_.store(frame_index.count());
@@ -129,7 +129,7 @@ protected:
         constexpr std::size_t use_target{std::numeric_limits<std::size_t>::max()};
         const std::size_t requested{next_achieved_.exchange(use_target)};
         const pcm::Frames achieved{requested == use_target ? frame_index.count() : requested};
-        return codec::SeekOutcome{.target = frame_index,
+        return media::SeekOutcome{.target = frame_index,
             .achieved = achieved,
             .exact = achieved == frame_index};
     }

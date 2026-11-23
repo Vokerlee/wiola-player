@@ -25,10 +25,10 @@
 #include "transport_wait.hpp"
 #include <audio/device/output.hpp>
 #include <audio/device/output_connection.hpp>
-#include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 
 #include <memory>
@@ -51,7 +51,7 @@ public:
     /// Takes the source it plays, the ends of the buffer, output and playhead it works through,
     /// the output it reads what has been heard from, and the playback it follows. All of them
     /// outlive it. Decode storage is allocated from the owned configuration at construction.
-    DecodeLoop(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+    DecodeLoop(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
         audio::Output& output, Playback& playback, Playhead::Applier applier, TransportWait& wait,
         const TransportConfig& config);
 
@@ -82,7 +82,7 @@ private:
     /// anything is still to be heard, which a pause counts as.
     [[nodiscard]] bool played_out() const noexcept;
 
-    std::unique_ptr<codec::Decoder> source_;
+    std::unique_ptr<media::AudioDecoder> source_;
     pcm::PcmQueue::Producer buffer_;
     audio::OutputConnection connection_;
     const audio::Output& output_;

@@ -20,9 +20,9 @@
 
 #pragma once
 
-#include <codec/decode/open.hpp>
 #include <core/macros.hpp>
 #include <engine/load/load_request.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <media/provider.hpp>
 
 #include <condition_variable>
@@ -35,9 +35,9 @@
 
 namespace wiola::engine {
 
-using DecoderOpener = std::function<codec::Opened(const std::filesystem::path&)>;
-using ContextDecoderOpener =
-    std::function<codec::Opened(const std::filesystem::path&, const media::OperationContext&)>;
+using DecoderOpener = std::function<media::DecoderOpenResult(const std::filesystem::path&)>;
+using ContextDecoderOpener = std::function<media::DecoderOpenResult(const std::filesystem::path&,
+    const media::OperationContext&)>;
 
 /// Latest-request-wins decoder opening with request identity retained in every completion.
 class Loader {

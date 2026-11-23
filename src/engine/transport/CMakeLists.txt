@@ -11,5 +11,6 @@ wiola_add_library(
         seek_operation.cpp
         transport_worker.cpp
         transport_wait.cpp
-    LIBS wiola_audio_device wiola_codec_decode
+    LIBS wiola_audio_device
 )
+target_link_libraries(wiola_engine_transport PUBLIC wiola::audio_decoder)

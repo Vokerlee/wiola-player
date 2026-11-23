@@ -22,8 +22,8 @@
 
 #include "playhead.hpp"
 #include <audio/device/output.hpp>
-#include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 
 #include <vector>
@@ -40,7 +40,7 @@ namespace wiola::engine {
  */
 class SeekOperation {
 public:
-    SeekOperation(codec::Decoder& source, pcm::PcmQueue::Producer& buffer,
+    SeekOperation(media::AudioDecoder& source, pcm::PcmQueue::Producer& buffer,
         audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
         bool& output_started, std::vector<float>& block) noexcept;
 
@@ -61,7 +61,7 @@ private:
     void quiesce() noexcept;
     void prime();
 
-    codec::Decoder& source_;
+    media::AudioDecoder& source_;
     pcm::PcmQueue::Producer& buffer_;
     audio::Output::Control& control_;
     const audio::Output& output_;

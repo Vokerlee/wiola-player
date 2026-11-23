@@ -92,7 +92,7 @@ std::vector<std::string> MediaBackendRegistry::playback_extensions() const
     return extensions;
 }
 
-Opened MediaBackendRegistry::open(const std::filesystem::path& path,
+media::DecoderOpenResult MediaBackendRegistry::open(const std::filesystem::path& path,
     const media::OperationContext& context) const
 {
     const media::FileFacts facts{.path = path, .extension = lowercased_extension(path)};

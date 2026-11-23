@@ -24,8 +24,8 @@
 
 namespace wiola::engine {
 
-PlaybackPipeline::PlaybackPipeline(std::unique_ptr<codec::Decoder> source, audio::Output& output,
-    pcm::Frames buffer_frames, TransportConfig transport)
+PlaybackPipeline::PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
+    audio::Output& output, pcm::Frames buffer_frames, TransportConfig transport)
     : buffer_{source->spec(), buffer_frames}
     , decoded_{source->spec(), buffer_.consumer()}
     , player_{std::move(source), buffer_.producer(), output, transport}

@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <codec/decode/open.hpp>
 #include <engine/queue/track.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 
 #include <cstdint>
 #include <filesystem>
@@ -44,7 +44,7 @@ struct LoadRequest {
 
 struct LoadCompletion {
     LoadRequest request;
-    codec::Opened opened;
+    media::DecoderOpenResult opened;
 };
 
 } // namespace wiola::engine

@@ -21,7 +21,7 @@
 #pragma once
 
 #include <codec/decode/format.hpp>
-#include <codec/decode/open.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 
 #include <cstddef>
 #include <stop_token>
@@ -36,7 +36,7 @@ public:
     explicit MediaBackendRegistry(std::vector<Backend> backends, std::size_t max_attempts = 16);
 
     /// Uses signatures/extensions only to order bounded, cancellable backend-acceptance probes.
-    Opened open(const std::filesystem::path& path,
+    media::DecoderOpenResult open(const std::filesystem::path& path,
         const media::OperationContext& context = {}) const;
 
     [[nodiscard]] const std::vector<Backend>& backends() const noexcept { return backends_; }

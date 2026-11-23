@@ -100,26 +100,11 @@
       ]
     },
     {
-      "id": "source.codec.decode.decoder",
-      "purpose": "Owns the current decoder declaration/implementation in codec/decode.",
-      "files": [
-        "src/codec/decode/decoder.cpp",
-        "src/codec/decode/decoder.hpp"
-      ]
-    },
-    {
       "id": "source.codec.decode.format",
       "purpose": "Owns the current format declaration/implementation in codec/decode.",
       "files": [
         "src/codec/decode/format.cpp",
         "src/codec/decode/format.hpp"
-      ]
-    },
-    {
-      "id": "source.codec.decode.open",
-      "purpose": "Owns the current open declaration/implementation in codec/decode.",
-      "files": [
-        "src/codec/decode/open.hpp"
       ]
     },
     {

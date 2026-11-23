@@ -22,9 +22,9 @@
 
 #include "transport_worker.hpp"
 #include <audio/device/output.hpp>
-#include <codec/decode/decoder.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
+#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
 #include <utils/units.hpp>
@@ -45,7 +45,7 @@ class Player final {
 public:
     /// Takes the source it plays, which must not be null, the buffer it decodes into, and the
     /// output that buffer is played through. Both outlive the player.
-    Player(std::unique_ptr<codec::Decoder> source, pcm::PcmQueue::Producer buffer,
+    Player(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
         audio::Output& output, TransportConfig config = {});
 
     NO_COPY_SEMANTIC(Player);
@@ -95,7 +95,7 @@ private:
     audio::Output& output_;
     pcm::StreamSpec spec_;
     std::optional<pcm::Frames> length_;
-    codec::LengthAccuracy length_accuracy_;
+    media::LengthAccuracy length_accuracy_;
     bool seekable_;
     TransportWorker worker_;
 };
