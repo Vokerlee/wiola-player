@@ -186,7 +186,12 @@ TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLa
         EXPECT_TRUE(window.centralWidget()->isVisible());
         window.close();
     }
-    ASSERT_TRUE(player.shutdown());
+    if (!player.shutdown()) {
+        const auto saved = player.library().flush();
+        FAIL() << "library save io=" << static_cast<int>(saved.io)
+               << " schema=" << static_cast<int>(saved.schema)
+               << " preferences saved=" << player.preferences().flush();
+    }
 }
 
 TEST(DesktopJourney, PackagedPlayerCliExercisesTheActualEntryPoint)

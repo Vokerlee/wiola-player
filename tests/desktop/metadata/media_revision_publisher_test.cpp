@@ -29,6 +29,7 @@
 #include <mutex>
 #include <stdexcept>
 
+#include <fixtures/gated_media_provider.hpp>
 #include <functional>
 
 namespace {
@@ -71,9 +72,16 @@ private:
 
 class FakeProvider final : public wiola::media::MediaProvider {
 public:
-    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
-    open(const std::filesystem::path& path, const wiola::media::OperationContext&) override
+    explicit FakeProvider(wiola::testing::MetadataReadGate* gate = nullptr)
+        : gate_{gate}
     {
+    }
+
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
+    open(const std::filesystem::path& path, const wiola::media::OperationContext& context) override
+    {
+        if (gate_ && path == "barrier.wav")
+            gate_->arrive(context.stop);
         if (path == "throws.wav")
             throw std::runtime_error{"injected read failure"};
         if (path == "error.wav") {
@@ -87,6 +95,9 @@ public:
     }
 
     std::vector<std::string> playback_extensions() const override { return {".wav"}; }
+
+private:
+    wiola::testing::MetadataReadGate* gate_{};
 };
 
 bool pump_until(std::function<bool()> predicate)
@@ -120,6 +131,33 @@ TEST(MediaRevisionPublisher, PublishesOnlyTheNewestRequestForEachIdentity)
     ASSERT_EQ(results.size(), 1);
     EXPECT_EQ(results.front().location, "new.wav");
     ASSERT_TRUE(results.front().metadata.has_value());
+    EXPECT_EQ(results.front().metadata->track.title, "new.wav");
+}
+
+TEST(MediaRevisionPublisher, AQueuedOldResultCannotPublishAfterANewerRequest)
+{
+    wiola::testing::MetadataReadGate gate;
+    std::vector<wiola::app::BackgroundMetadataResult> results;
+    const wiola::library::MediaId target{"target"};
+    wiola::app::MediaRevisionPublisher publisher{*QCoreApplication::instance(),
+        std::make_shared<FakeProvider>(&gate), [&](auto result) {
+            if (result.media == target)
+                results.push_back(std::move(result));
+        }};
+    ASSERT_TRUE(publisher.enqueue(target, "old.wav"));
+    ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"barrier"}, "barrier.wav"));
+    // The same worker has delivered old.wav before entering the following I/O request.
+    // Waiting without pumping owner events keeps that old result queued deterministically.
+    ASSERT_TRUE(gate.wait_entered());
+    EXPECT_TRUE(results.empty());
+    ASSERT_TRUE(publisher.enqueue(target, "new.wav"));
+    gate.release();
+    ASSERT_TRUE(pump_until([&] { return !results.empty(); }));
+    publisher.stop();
+    QCoreApplication::processEvents();
+    ASSERT_EQ(results.size(), 1);
+    EXPECT_EQ(results.front().location, "new.wav");
+    ASSERT_TRUE(results.front().metadata);
     EXPECT_EQ(results.front().metadata->track.title, "new.wav");
 }
 
