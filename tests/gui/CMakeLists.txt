@@ -209,3 +209,13 @@ wiola_add_test(
     SOURCES contracts/reader_contract_test.cpp
     LIBS wiola_gui wiola_session_preferences wiola_persistence_qt
 )
+
+foreach(scale IN ITEMS 1 1.25 1.5 2)
+    add_test(
+        NAME GuiScaling.LayoutEditor.${scale}
+        COMMAND
+            ${CMAKE_COMMAND} -E env QT_SCALE_FACTOR=${scale}
+            $<TARGET_FILE:gui_button_layout_editor_test>
+            --gtest_filter=ButtonLayoutEditor.TextEditingShortcutsDoNotDeleteComponentsAndSmallWindowsCanScroll
+    )
+endforeach()

@@ -27,6 +27,7 @@
 
 #include <QEvent>
 #include <QFormLayout>
+#include <QScrollArea>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -59,7 +60,7 @@ TrackInspector::TrackInspector(QWidget* parent)
 {
     setObjectName("trackInspector");
     setAccessibleName("Track inspector");
-    setMinimumWidth(200);
+    setMinimumWidth(fontMetrics().averageCharWidth() * 16);
 
     context_label_ = value(this, "inspectorContext");
     artwork_label_ = new QLabel{this};
@@ -89,7 +90,17 @@ TrackInspector::TrackInspector(QWidget* parent)
     standard_metadata_ = new StandardMetadataEditor{this};
     conflicts_ = new MetadataConflictPanel{this};
 
-    QVBoxLayout* layout = new QVBoxLayout{this};
+    auto* root = new QVBoxLayout{this};
+    root->setContentsMargins(0, 0, 0, 0);
+    auto* scroll = new QScrollArea{this};
+    scroll->setObjectName("inspectorScroll");
+    scroll->setAccessibleName("Scrollable track inspector");
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    auto* content = new QWidget;
+    auto* layout = new QVBoxLayout{content};
+    scroll->setWidget(content);
+    root->addWidget(scroll);
     layout->addWidget(context_label_);
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
