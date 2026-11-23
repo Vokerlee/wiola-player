@@ -22,7 +22,11 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QFile>
 #include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QWidget>
 
 #include <gtest/gtest.h>
@@ -54,6 +58,25 @@ public:
 
         QDir{}.mkpath(directory);
 
+        QJsonArray states;
+        for (QWidget* widget : QApplication::allWidgets()) {
+            if (widget->objectName().isEmpty())
+                continue;
+            states.append(QJsonObject{
+                {"object",                widget->objectName()             },
+                {"class",                 widget->metaObject()->className()},
+                {"visible",               widget->isVisible()              },
+                {"enabled",               widget->isEnabled()              },
+                {"focus",                 widget->hasFocus()               },
+                {"accessibleName",        widget->accessibleName()         },
+                {"accessibleDescription", widget->accessibleDescription()  },
+                {"width",                 widget->width()                  },
+                {"height",                widget->height()                 }
+            });
+        }
+        QFile state{QDir{directory}.filePath(current_test + "-widgets.json")};
+        if (state.open(QIODevice::WriteOnly))
+            state.write(QJsonDocument{states}.toJson());
         int index{0};
         for (QWidget* widget : QApplication::topLevelWidgets()) {
             if (!widget->isVisible())

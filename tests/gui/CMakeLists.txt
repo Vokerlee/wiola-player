@@ -11,12 +11,12 @@ wiola_add_test(
 wiola_add_test(
     gui_track_search_panel_test
     SOURCES tracks/track_search_panel_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui Qt6::Test
 )
 wiola_add_test(
     gui_tag_filter_panel_test
     SOURCES tracks/tag_filter_panel_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui Qt6::Test
 )
 wiola_add_test(
     gui_track_table_model_test
@@ -226,3 +226,9 @@ wiola_add_test(
     LIBS wiola_gui wiola_player_application Qt6::Test
 )
 qt_finalize_target(gui_desktop_journey_test)
+
+wiola_add_test(
+    gui_interaction_fixture_test
+    SOURCES contracts/interaction_fixture_test.cpp
+    LIBS wiola_gui Qt6::Test
+)

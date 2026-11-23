@@ -22,6 +22,7 @@
 
 #include <QApplication>
 
+#include <fixtures/gui_interaction.hpp>
 #include <gtest/gtest.h>
 
 namespace {
@@ -86,9 +87,5 @@ TEST(TrackSearchPanel, ResetClearsEveryField)
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
-    testing::InitGoogleTest(&argc, argv);
-    QApplication application{argc, argv};
-
-    return RUN_ALL_TESTS();
+    return wiola::testing::run_gui_tests(argc, argv);
 }
