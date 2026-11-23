@@ -19,6 +19,7 @@
  */
 
 #include "equalizer_panel.hpp"
+#include <QScrollArea>
 
 #include <gui/appearance/presentation_tokens.hpp>
 
@@ -26,6 +27,7 @@
 
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 
@@ -80,13 +82,20 @@ EqualizerPanel::EqualizerPanel(app::EqualizerControl& equalizer, QWidget* parent
     setWindowTitle("Equalizer");
 
     enabled_box_ = new QCheckBox{"Equalizer", this};
+    enabled_box_->setAccessibleName("Enable equalizer");
     enabled_box_->setChecked(equalizer_.enabled());
 
     bands_row_ = new QHBoxLayout;
 
     auto* layout = new QVBoxLayout{this};
     layout->addWidget(enabled_box_);
-    layout->addLayout(bands_row_);
+    auto* scroll = new QScrollArea{this};
+    scroll->setObjectName("equalizerBandsScroll");
+    scroll->setWidgetResizable(true);
+    auto* contents = new QWidget;
+    contents->setLayout(bands_row_);
+    scroll->setWidget(contents);
+    layout->addWidget(scroll);
 
     connect(enabled_box_, &QCheckBox::toggled, this,
         [this](bool on) { equalizer_.set_enabled(on); });
@@ -117,14 +126,16 @@ void EqualizerPanel::rebuild_bands()
         slider->setRange(-limit, limit);
         slider->setSingleStep(tokens.equalizer.gain_step);
         slider->setValue(as_steps(equalizer_.band_gain(i)));
-        slider->setFixedHeight(tokens.equalizer.band_slider_height);
+        slider->setMinimumHeight(std::max(tokens.equalizer.band_slider_height,
+            fontMetrics().height() * 6));
+        slider->setAccessibleName(as_label(equalizer_.band_center(i)) + " equalizer gain");
 
         auto* gain = new QLabel{as_gain(slider->value()), bands_};
-        gain->setFixedWidth(tokens.equalizer.band_column_width);
+        gain->setMinimumWidth(fontMetrics().horizontalAdvance("-12.0 dB"));
         gain->setAlignment(Qt::AlignHCenter);
 
         auto* center = new QLabel{as_label(equalizer_.band_center(i)), bands_};
-        center->setFixedWidth(tokens.equalizer.band_column_width);
+        center->setMinimumWidth(fontMetrics().horizontalAdvance(center->text()));
         center->setAlignment(Qt::AlignHCenter);
 
         connect(slider, &QSlider::valueChanged, this, [this, i, gain](int steps) {

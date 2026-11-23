@@ -247,3 +247,9 @@ wiola_add_test(
     SOURCES layout/component_contract_test.cpp
     LIBS wiola_gui Qt6::Test
 )
+
+wiola_add_test(
+    gui_painting_contract_test
+    SOURCES controls/painting_contract_test.cpp
+    LIBS wiola_gui Qt6::Test
+)
