@@ -167,6 +167,27 @@
       ]
     },
     {
+      "id": "build_environment.package",
+      "purpose": "Groups independent host build-environment adapters",
+      "files": [
+        "tools/build_environment/README.md",
+        "tools/build_environment/__init__.py"
+      ]
+    },
+    {
+      "id": "build_environment.ubuntu_packages",
+      "purpose": "Resolves and installs Ubuntu packages with reusable verified archives",
+      "files": [
+        "tools/build_environment/ubuntu_packages/README.md",
+        "tools/build_environment/ubuntu_packages/__init__.py",
+        "tools/build_environment/ubuntu_packages/__main__.py",
+        "tools/build_environment/ubuntu_packages/packages.py",
+        "tools/build_environment/ubuntu_packages/tests/README.md",
+        "tools/build_environment/ubuntu_packages/tests/__init__.py",
+        "tools/build_environment/ubuntu_packages/tests/test_packages.py"
+      ]
+    },
+    {
       "id": "coverage.measurement",
       "purpose": "Reconciles raw coverage with owned source and configured execution",
       "files": [
