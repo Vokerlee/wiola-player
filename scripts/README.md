@@ -27,3 +27,10 @@ while. Run the script from inside a clone, as it finds the toolchain file throug
 
 `QT_MINGW_ROOT` is read by `cmake/mingw-w64.cmake`, so it has to be set in the shell that
 configures the build.
+
+
+The SDK implementation now lives with its identity logic and process contracts in
+[tools/sdk/qt_mingw](../tools/sdk/qt_mingw/README.md). The existing script remains its public
+launcher. CI supplies a second argument for a scratch workspace outside the install prefix,
+so caches contain installed SDK files rather than downloaded sources and compiler objects.
+Only x86-64 POSIX MinGW is supported; the 32-bit and Win32-threading metapackages are not needed.

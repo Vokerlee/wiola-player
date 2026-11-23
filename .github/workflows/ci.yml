@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   format:
@@ -110,6 +110,7 @@ jobs:
       - uses: ./.github/actions/setup-build
         with:
           name: headless
+          qt: "false"
           build-dir: build-headless
       - run: cmake --preset linux-headless
       - run: cmake --build --preset linux-headless -j
@@ -137,14 +138,27 @@ jobs:
         with:
           name: windows
           build-dir: build-win-release
-          packages: mingw-w64 llvm ninja-build curl
-      - uses: actions/cache@v4
+          packages: g++-mingw-w64-x86-64-posix llvm ninja-build curl
+      - name: Identify the Qt SDK toolchain
+        id: qt-context
+        run: |
+          identity="$(cmake -P tools/sdk/qt_mingw/context.cmake)"
+          [[ "$identity" =~ ^[[:xdigit:]]{64}$ ]]
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
         id: qt-mingw
         with:
           path: .qt-mingw
-          key: qt-mingw-${{ hashFiles('scripts/build-qt-mingw.sh', 'cmake/mingw-w64.cmake') }}
-      - if: steps.qt-mingw.outputs.cache-hit != 'true'
-        run: ./scripts/build-qt-mingw.sh "$GITHUB_WORKSPACE/.qt-mingw"
+          key: qt-mingw-${{ runner.os }}-${{ runner.arch }}-${{ steps.qt-context.outputs.identity }}-${{ hashFiles('tools/sdk/qt_mingw/build.sh', 'tools/sdk/qt_mingw/context.cmake', 'cmake/mingw-w64.cmake') }}
+      - name: Build the static Qt SDK outside its install tree
+        if: steps.qt-mingw.outputs.cache-hit != 'true'
+        run: ./scripts/build-qt-mingw.sh "$GITHUB_WORKSPACE/.qt-mingw" "$RUNNER_TEMP/qt-mingw-build"
+      - name: Save the installed SDK before building the player
+        if: steps.qt-mingw.outputs.cache-hit != 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/cache/save@v4
+        with:
+          path: .qt-mingw
+          key: ${{ steps.qt-mingw.outputs.cache-primary-key }}
       - run: cmake --preset windows-release -DENABLE_UNIT_TESTS=ON -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST
         env:
           QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw

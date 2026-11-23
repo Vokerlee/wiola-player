@@ -111,4 +111,19 @@ CONTRACTS = (
         ('Every recorded command succeeds', 'Instrumented source bytes remain stable during collection', 'Process evidence is retained and hashed'),
         ('tools/coverage/python_runner/__main__.py',), grouping=False,
     ),
+    AbstractionContract(
+        'sdk.package', 'tools/sdk', 'Groups independent external SDK builders',
+        ("Complete implementation and tests belong to this owner",),
+        (), grouping=True,
+    ),
+    AbstractionContract(
+        'sdk.qt_mingw', 'tools/sdk/qt_mingw', 'Builds and identifies the x86-64 static Qt SDK',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/sdk/qt_mingw/build.sh', 'tools/sdk/qt_mingw/context.cmake'), grouping=False,
+    ),
+    AbstractionContract(
+        "ci.environment_setup", ".github/actions/setup-build", "Restores caches and installs selected Ubuntu host dependencies",
+        ("Cache presence is not build or test success", "Headless builds do not require host Qt", "Package inputs are argument arrays"),
+        (".github/actions/setup-build/action.yml",),
+    ),
 )

@@ -77,6 +77,8 @@
     "repository.license": "documentation",
     "repository.requirements": "documentation",
     "resources.desktop": "resources",
+    "sdk.package": "tooling",
+    "sdk.qt_mingw": "tooling",
     "source.app.library.artwork_store": "application",
     "source.app.library.location_index": "application",
     "source.app.library.search_index": "application",

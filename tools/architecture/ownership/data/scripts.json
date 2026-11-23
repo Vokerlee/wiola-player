@@ -17,7 +17,7 @@
     },
     {
       "id": "tool.build_qt_mingw",
-      "purpose": "Implements the current build qt mingw development command.",
+      "purpose": "Launches the owned x86-64 MinGW Qt SDK builder for existing callers.",
       "files": [
         "scripts/build-qt-mingw.sh"
       ]

@@ -43,7 +43,6 @@
   "build.tests.persistence": "70e0e28a2d594c8c12bba5330688551d812b08f386a4796b9d3cdd39d09a0b8d",
   "build.tests.platform": "93be596cb13c556ed244bfc7a9afd729d253973d47bb831b10da4690229ff784",
   "build.tests.utils": "f06ad3087441a8ca214f6acfa8b71df2f1e5906ee0f52171cbae9100562006e8",
-  "ci.environment_setup": "edf8d072d22b634e9d3c3f80927c2b045a37621129baee9ecea6bb51a560ccc7",
   "ci.workflow": "b803fcb7f17ed9235f1e5cb1fcd2f5d3b2838429d4368ae4c57ce4436577f03f",
   "source.app.library.artwork_store": "f16c6bf0cfd534d98e06be545baf86e824bb82e89a15c82aaeb4e18dea7bfb43",
   "source.app.library.location_index": "351aa337aab7be5264a224ba60643bb8a8ee469f81a0d2d5858b138db0eb1dd3",
