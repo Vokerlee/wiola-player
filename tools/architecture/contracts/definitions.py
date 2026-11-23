@@ -151,8 +151,4 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/architecture/commands/check_design/__main__.py',), grouping=False,
     ),
-    AbstractionContract(
-        "documentation.github", ".github", "Explains provider boundaries and the PR review interface",
-        ("Provider configuration does not own player runtime behavior",), grouping=True,
-    ),
 )
