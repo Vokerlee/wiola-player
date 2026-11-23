@@ -75,3 +75,9 @@ wiola_add_test(
     SOURCES library/library_documents_test.cpp
     LIBS wiola_library_documents
 )
+
+wiola_add_test(
+    desktop_library_persistence_test
+    SOURCES library/library_persistence_test.cpp
+    LIBS wiola_library_persistence
+)

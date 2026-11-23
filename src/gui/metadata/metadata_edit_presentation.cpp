@@ -58,9 +58,15 @@ QString metadata_edit_message(const app::MetadataEditOutcome& outcome)
     switch (outcome.state) {
     case app::MetadataEditState::queued:
         return QString{"Saving application metadata for %1 track(s)"}.arg(outcome.changed);
+    case app::MetadataEditState::accepted:
+        return QString{"Application metadata updated; saving revision %1"}.arg(outcome.revision);
     case app::MetadataEditState::conflicted:
         return "The track changed since editing started; review before applying";
     case app::MetadataEditState::failed:
+        if (outcome.retained_changes)
+            return QString{"Application metadata remains in memory; revision %1 could not be "
+                           "saved. Retry saving the library."}
+                .arg(outcome.revision);
         switch (outcome.error) {
         case app::StandardMetadataError::empty_edit:
             return "There are no metadata changes to apply";

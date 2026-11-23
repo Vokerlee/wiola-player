@@ -41,6 +41,8 @@
 
 namespace wiola::app {
 
+class LibraryPersistence;
+
 /// Desktop-owned lifetime boundary. All record access and commands belong to the QObject thread;
 /// worker snapshots return through the queued publishers. Windows borrow this session.
 class LibrarySession final : public QObject {
@@ -52,6 +54,8 @@ public:
         QObject* parent = nullptr, persistence::qt::AtomicFileStore::OutputFactory output = {});
     ~LibrarySession() override;
     [[nodiscard]] persistence::qt::LibraryStoreResult shutdown();
+    void retry_save();
+    [[nodiscard]] persistence::qt::LibraryStoreResult flush();
 
     [[nodiscard]] library::InMemoryRepository& repository();
     [[nodiscard]] const library::InMemoryRepository& repository() const;
@@ -97,6 +101,7 @@ public:
     void request_metadata(const library::MediaId& media, const std::filesystem::path& path);
 
 signals:
+    void library_save_finished(std::uint64_t revision, bool durable);
     void active_destination_changed(const std::optional<wiola::library::PlaylistId>& destination);
     void scan_batch(const wiola::app::WorkspaceScanBatch& batch);
     void metadata_outcome(const wiola::app::MetadataEditOutcome& outcome);
@@ -117,6 +122,8 @@ private:
     QSettings settings_;
     persistence::qt::LibraryStore store_;
     library::InMemoryRepository repository_;
+    std::unique_ptr<LibraryPersistence> persistence_worker_;
+    bool save_failed_{};
     library::RepositoryTransaction::Persist persist_;
     SavedPlaylistCommands playlists_;
     CustomTagCommands tags_;

@@ -20,6 +20,7 @@
 
 #include <QCoreApplication>
 #include <QEventLoop>
+#include <QFile>
 #include <QTemporaryDir>
 #include <QThread>
 #include <chrono>
@@ -113,6 +114,111 @@ TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSu
         << terminal.back().outcome.detail;
     EXPECT_EQ(repository.track(record.id)->embedded.title, "Newest");
     service.stop();
+}
+
+void qualify_durable_file_write(bool save_result)
+{
+    using namespace wiola;
+    QTemporaryDir directory;
+    const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("音楽.mp3"));
+    std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+    const auto bytes = [&] {
+        QFile file{platform::qt::QtPathAdapter::to_qt(path)};
+        if (!file.open(QIODevice::ReadOnly))
+            return QByteArray{};
+        return file.readAll();
+    };
+    const auto original = bytes();
+    ASSERT_FALSE(original.isEmpty());
+    library::InMemoryRepository repository;
+    library::TrackRecord record;
+    record.id = {"media"};
+    record.locations = {path};
+    ASSERT_TRUE(repository.put_track(record));
+    auto edit = app::MetadataEditSession::capture({repository.track(record.id)});
+    library::StandardMetadataPatch patch;
+    patch.title = "Durable title";
+    edit.set_draft(patch);
+
+    struct Pending {
+        std::uint64_t revision;
+        std::function<void(bool)> completion;
+    };
+
+    std::deque<Pending> pending;
+    std::vector<app::MetadataWriteResult> terminal;
+    int handoffs = 0;
+    app::MetadataWriteService service{*QCoreApplication::instance(),
+        std::make_shared<codec::LocalMediaProvider>(), repository,
+        [&](const auto&) {
+            const auto revision = repository.staged_delta()->changes.revision;
+            return library::CommitResult::accepted(revision,
+                std::make_shared<library::CommitReceipt>(revision));
+        },
+        [&](const auto& result) {
+            if (result.stage == app::MetadataWriteStage::complete ||
+                result.stage == app::MetadataWriteStage::failed)
+                terminal.push_back(result);
+        }};
+    service.set_handoff([&](const auto&) {
+        ++handoffs;
+        return app::MetadataWriteService::Restore{};
+    });
+    service.set_durability([&](
+                               std::uint64_t revision, auto completion
+                           ) { pending.push_back({revision, std::move(completion)}); },
+        [&] {
+            while (!pending.empty()) {
+                auto completion = std::move(pending.front().completion);
+                pending.pop_front();
+                completion(false);
+            }
+        });
+    ASSERT_EQ(service.submit(edit).size(), 1);
+    ASSERT_TRUE(pump([&] { return !pending.empty(); }));
+    EXPECT_EQ(handoffs, 0);
+    EXPECT_EQ(bytes(), original);
+    auto rejected = std::move(pending.front().completion);
+    pending.pop_front();
+    rejected(false);
+    ASSERT_EQ(terminal.size(), 1);
+    EXPECT_FALSE(terminal.back().outcome.source_modified);
+    EXPECT_EQ(terminal.back().stage, app::MetadataWriteStage::failed);
+    EXPECT_EQ(bytes(), original);
+    ASSERT_EQ(service.submit(edit).size(), 1);
+    ASSERT_TRUE(pump([&] { return !pending.empty(); }));
+    auto intent = std::move(pending.front().completion);
+    pending.pop_front();
+    intent(true);
+    ASSERT_TRUE(pump([&] { return !pending.empty(); }));
+    EXPECT_EQ(handoffs, 1);
+    EXPECT_NE(bytes(), original);
+    EXPECT_EQ(terminal.size(), 1);
+    EXPECT_EQ(repository.track(record.id)->embedded.title, "Durable title");
+    EXPECT_EQ(pending.front().revision, repository.change_revision());
+    auto after = std::move(pending.front().completion);
+    pending.pop_front();
+    after(save_result);
+    ASSERT_EQ(terminal.size(), 2);
+    EXPECT_TRUE(terminal.back().outcome.source_modified);
+    EXPECT_EQ(terminal.back().stage,
+        save_result ? app::MetadataWriteStage::complete : app::MetadataWriteStage::failed);
+    if (!save_result)
+        EXPECT_NE(terminal.back().outcome.detail.find("remain in memory"), std::string::npos);
+    EXPECT_EQ(repository.track(record.id)->embedded.title, "Durable title");
+    service.stop();
+}
+
+TEST(MetadataWriteService,
+    ReplacementWaitsForDurableIntentAndCompletionWaitsForDurableLibraryResult)
+{
+    qualify_durable_file_write(true);
+}
+
+TEST(MetadataWriteService,
+    FailedLibraryAcknowledgmentAfterReplacementKeepsLearnedStateAndReportsSourceModified)
+{
+    qualify_durable_file_write(false);
 }
 
 } // namespace

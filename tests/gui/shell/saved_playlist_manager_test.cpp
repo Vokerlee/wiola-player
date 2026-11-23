@@ -104,6 +104,37 @@ TEST_F(SavedPlaylistManager, ReportsSaveFailureAndValidatesSelectionAndNames)
     EXPECT_TRUE(repository.playlists().empty());
 }
 
+TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlderSave)
+{
+    using namespace wiola;
+    library::InMemoryRepository repository;
+    std::vector<std::shared_ptr<library::CommitReceipt>> receipts;
+    app::SavedPlaylistCommands commands{repository,
+        [&](const auto&) {
+            const auto revision = repository.staged_delta()->changes.revision;
+            auto receipt = std::make_shared<library::CommitReceipt>(revision);
+            receipts.push_back(receipt);
+            return library::CommitResult::accepted(revision, receipt);
+        }};
+    gui::LibraryNavigation navigation;
+    auto manager = std::make_unique<gui::SavedPlaylistManager>(repository, commands, navigation);
+    ASSERT_TRUE(manager->create("First"));
+    ASSERT_TRUE(manager->rename_selected("Second"));
+    auto* status = manager->findChild<QLabel*>("playlistSaveState");
+    ASSERT_NE(status, nullptr);
+    EXPECT_EQ(status->text(), "Changes accepted; saving library");
+    ASSERT_EQ(receipts.size(), 2);
+    receipts[0]->notify(true);
+    EXPECT_EQ(status->text(), "Changes accepted; saving library");
+    receipts[1]->notify(false);
+    EXPECT_EQ(status->text(), "Changes remain in memory; retry saving library");
+    receipts[1]->notify(true);
+    EXPECT_EQ(status->text(), "All changes saved");
+    ASSERT_TRUE(manager->rename_selected("Third"));
+    manager.reset();
+    receipts.back()->notify(true);
+}
+
 } // namespace
 
 int main(int argc, char** argv)

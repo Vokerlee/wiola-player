@@ -59,6 +59,7 @@ wiola_add_library(
     wiola_library_session
     SOURCES library/library_session.cpp
     LIBS
+        wiola_library_persistence
         wiola_app
         wiola_saved_playlists
         wiola_persistence_qt
@@ -97,3 +98,10 @@ wiola_add_library(
     LIBS wiola_library wiola_m3u wiola_persistence_qt wiola_qt_platform
 )
 target_link_libraries(wiola_library_documents PUBLIC Qt6::Core)
+
+wiola_add_library(
+    wiola_library_persistence
+    SOURCES library/library_persistence.cpp
+    LIBS wiola_library wiola_persistence_qt wiola_desktop_delivery
+)
+target_link_libraries(wiola_library_persistence PUBLIC Qt6::Core)

@@ -33,12 +33,19 @@ public:
     using Observer = std::function<void(const MetadataWriteResult&)>;
     using Restore = std::function<void()>;
     using Handoff = std::function<Restore(const std::filesystem::path&)>;
+    using DurabilityGate = std::function<void(std::uint64_t, std::function<void(bool)>)>;
     MetadataWriteService(QObject& owner, std::shared_ptr<media::MediaProvider> provider,
         library::InMemoryRepository& repository, library::RepositoryTransaction::Persist persist,
         Observer observer);
     ~MetadataWriteService();
 
     void set_handoff(Handoff handoff) { handoff_ = std::move(handoff); }
+
+    void set_durability(DurabilityGate gate, std::function<void()> flush)
+    {
+        durability_ = std::move(gate);
+        flush_durability_ = std::move(flush);
+    }
 
     [[nodiscard]] std::vector<MetadataWriteOperationId> submit(const MetadataEditSession& edit);
     void cancel(const library::MediaId& media);
@@ -50,6 +57,7 @@ private:
         std::optional<PreparedMediaReplacement> replacement;
         std::optional<media::Metadata> learned;
         Restore restore;
+        bool intent_durable{};
     };
 
     struct Lifetime {
@@ -62,6 +70,7 @@ private:
     void begin_commit();
     void run();
     void completed(std::shared_ptr<Prepared> prepared);
+    void finish_commit(std::shared_ptr<Prepared> prepared, bool durable = true);
     void finish(MetadataWriteResult result);
     void publish(const MetadataWriteResult& result);
     QueuedDelivery delivery_;
@@ -71,6 +80,8 @@ private:
     library::RepositoryTransaction::Persist persist_;
     Observer observer_;
     Handoff handoff_;
+    DurabilityGate durability_;
+    std::function<void()> flush_durability_;
     std::map<library::MediaId, std::uint64_t> generations_;
     std::map<MetadataWriteOperationId, MetadataWriteJob> operations_;
     std::deque<std::shared_ptr<Prepared>> ready_;

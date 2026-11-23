@@ -39,6 +39,7 @@ enum class StandardMetadataError {
 
 enum class MetadataEditState {
     queued,
+    accepted,
     succeeded,
     failed,
     conflicted,
@@ -52,7 +53,13 @@ struct MetadataEditOutcome {
     std::size_t unchanged{0};
     std::size_t missing{0};
 
-    [[nodiscard]] bool succeeded() const noexcept { return state == MetadataEditState::succeeded; }
+    std::uint64_t revision{};
+    bool retained_changes{};
+
+    [[nodiscard]] bool succeeded() const noexcept
+    {
+        return state == MetadataEditState::accepted || state == MetadataEditState::succeeded;
+    }
 };
 
 class MetadataEditService final {

@@ -53,7 +53,8 @@ library::PlaylistId SavedPlaylistCommands::create(const std::string& name)
     library::RepositoryTransaction transaction{repository_, persist_};
     const library::PlaylistId id = repository_.create_playlist(normalized);
 
-    return transaction.commit() ? id : library::PlaylistId{};
+    last_commit_ = transaction.commit();
+    return last_commit_ ? id : library::PlaylistId{};
 }
 
 bool SavedPlaylistCommands::rename(const library::PlaylistId& id, const std::string& name)
@@ -63,7 +64,10 @@ bool SavedPlaylistCommands::rename(const library::PlaylistId& id, const std::str
         return false;
 
     library::RepositoryTransaction transaction{repository_, persist_};
-    return repository_.rename_playlist(id, normalized) && transaction.commit();
+    if (!repository_.rename_playlist(id, normalized))
+        return false;
+    last_commit_ = transaction.commit();
+    return last_commit_;
 }
 
 library::PlaylistId SavedPlaylistCommands::duplicate(const library::PlaylistId& id)
@@ -82,7 +86,8 @@ library::PlaylistId SavedPlaylistCommands::duplicate(const library::PlaylistId& 
         }
     }
 
-    return transaction.commit() ? duplicate : library::PlaylistId{};
+    last_commit_ = transaction.commit();
+    return last_commit_ ? duplicate : library::PlaylistId{};
 }
 
 bool SavedPlaylistCommands::remove(const library::PlaylistId& id)
@@ -91,7 +96,10 @@ bool SavedPlaylistCommands::remove(const library::PlaylistId& id)
         return false;
 
     library::RepositoryTransaction transaction{repository_, persist_};
-    return repository_.delete_playlist(id) && transaction.commit();
+    if (!repository_.delete_playlist(id))
+        return false;
+    last_commit_ = transaction.commit();
+    return last_commit_;
 }
 
 } // namespace wiola::app

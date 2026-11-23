@@ -164,8 +164,12 @@ TEST(TrackInspector, ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAno
     playing.id = {"playing"};
     playing.embedded.title = "Playing title";
     playing.locations = {"playing.wav"};
-    library.repository().put_track(selected);
-    library.repository().put_track(playing);
+    {
+        wiola::library::RepositoryTransaction seed{library.repository(), library.persistence()};
+        library.repository().put_track(selected);
+        library.repository().put_track(playing);
+        ASSERT_TRUE(seed.commit());
+    }
     auto row = wiola::gui::present_record(wiola::engine::QueueEntryId{2}, playing);
     row.artwork = sample_artwork();
     auto context = wiola::gui::inspector_context(library,
@@ -175,7 +179,11 @@ TEST(TrackInspector, ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAno
         row);
     // Mutating the source record after capture cannot change the presentation snapshot.
     selected.embedded.title = "Later";
-    library.repository().put_track(selected);
+    {
+        wiola::library::RepositoryTransaction change{library.repository(), library.persistence()};
+        library.repository().put_track(selected);
+        ASSERT_TRUE(change.commit());
+    }
     wiola::gui::TrackInspector inspector;
     inspector.show_context(context);
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "Selected title");
