@@ -41,7 +41,10 @@
 #include <QPersistentModelIndex>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
+#include <tuple>
 
 namespace {
 
@@ -401,6 +404,115 @@ TEST_F(TrackTableModelTest, ARowPatchUpdatesOnlyItsOccurrenceWithoutRebuildingTh
     EXPECT_EQ(model.projection_statistics().queries, before.queries);
     EXPECT_EQ(model.projection_statistics().updated_rows, 1);
 }
+
+namespace {
+
+std::string folded(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
+}
+
+TEST_F(TrackTableModelTest, BoundedGeneratedMutationsMatchAnIndependentIdentityOracle)
+{
+    using namespace wiola;
+    gui::TrackTableModel model{styled};
+    QAbstractItemModelTester tester{&model, QAbstractItemModelTester::FailureReportingMode::Fatal};
+    int resets = 0;
+    QObject::connect(&model, &QAbstractItemModel::modelReset, [&] { ++resets; });
+    std::vector<gui::TrackRow> source;
+    int next = 0;
+    for (int step = 0; step < 160; ++step) {
+        SCOPED_TRACE("generated source/query step=" + std::to_string(step));
+        if (source.empty() || step % 4 == 0) {
+            gui::TrackRow row;
+            row.id = library::PlaylistEntryId{"occurrence-" + std::to_string(next)};
+            row.media = {"shared-" + std::to_string(next % 3)};
+            row.metadata.title = next % 2 ? "Alpha" : "BETA";
+            row.metadata.artist = next % 3 ? "Ensemble" : "Solo";
+            row.location = "/music/" + std::to_string(next++) + ".flac";
+            row.tags = {
+                {{"calm"}, "Mood", "CALM"},
+                {{"live"}, "mood", "Live"}
+            };
+            source.push_back(row);
+        } else if (step % 4 == 1) {
+            const auto shared = source[step % source.size()].media;
+            for (auto& row : source)
+                if (row.media == shared) {
+                    row.metadata.title = step % 2 ? "ALPHA" : "Beta";
+                    row.tags.resize(step % 3 ? 1 : 0);
+                }
+        } else if (step % 4 == 2 && source.size() > 2) {
+            source.erase(source.begin() + step % source.size());
+        } else {
+            std::rotate(source.begin(), source.begin() + 1, source.end());
+        }
+        gui::TrackViewState state;
+        if (step % 3 == 0)
+            state.query.title = "al";
+        if (step % 5 == 0)
+            state.query.artist = "ensemble";
+        if (step % 7 == 0)
+            state.query.tags = "calm";
+        if (step % 2)
+            state.query.filters = {
+                {"mood", "calm",
+                 step % 11 == 0 ? library::TagFilterMode::exclude
+                                   : library::TagFilterMode::include}
+            };
+        const bool descending = step % 3 == 1;
+        state.sort_keys = {
+            {.field = gui::TrackSortField::title,
+             .direction = descending ? gui::TrackSortDirection::descending
+                                        : gui::TrackSortDirection::ascending}
+        };
+        // This evaluator intentionally does not call the production search/sort pipeline.
+        std::vector<gui::TrackRow> expected;
+        for (const auto& row : source) {
+            if (folded(row.metadata.title).find(state.query.title) == std::string::npos ||
+                folded(row.metadata.artist).find(state.query.artist) == std::string::npos)
+                continue;
+            const bool calm = std::any_of(row.tags.begin(), row.tags.end(), [](const auto& tag) {
+                return folded(tag.key) == "mood" && folded(tag.value) == "calm";
+            });
+            if (!state.query.tags.empty() && !calm)
+                continue;
+            if (!state.query.filters.empty() &&
+                (state.query.filters.front().mode == library::TagFilterMode::include ? !calm
+                                                                                     : calm))
+                continue;
+            expected.push_back(row);
+        }
+        std::stable_sort(expected.begin(), expected.end(), [&](const auto& a, const auto& b) {
+            const auto left = folded(a.metadata.title), right = folded(b.metadata.title);
+            if (left != right)
+                return descending ? left > right : left < right;
+            return a.location.generic_string() < b.location.generic_string();
+        });
+        model.show_rows(source);
+        ASSERT_TRUE(model.set_view_state(state) || model.view_state() == state);
+        ASSERT_EQ(model.rowCount(), expected.size());
+        EXPECT_FALSE(model.data(QModelIndex{}, Qt::DisplayRole).isValid());
+        EXPECT_FALSE(model.row_id(QModelIndex{}));
+        EXPECT_EQ(model.rowCount(model.index(0, 0)), 0);
+        for (std::size_t row = 0; row < expected.size(); ++row) {
+            EXPECT_EQ(model.row_id(model.index(static_cast<int>(row), 1)), expected[row].id);
+            EXPECT_EQ(model.index_of(expected[row].id, 1).row(), row);
+        }
+        if (!expected.empty()) {
+            const auto identity = expected.front().id;
+            QPersistentModelIndex retained = model.index(0, 1);
+            model.set_current(identity);
+            EXPECT_TRUE(retained.isValid());
+            EXPECT_EQ(model.row_id(retained), identity);
+        }
+    }
+    EXPECT_EQ(resets, 0);
+}
+
+} // namespace
 
 int main(int argc, char** argv)
 {
