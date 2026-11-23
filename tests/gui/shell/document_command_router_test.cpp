@@ -21,11 +21,15 @@
 #include <QApplication>
 #include <QFile>
 #include <QLineEdit>
+#include <QMenu>
+#include <QPointer>
 #include <QPushButton>
+#include <QTabBar>
 #include <QTemporaryDir>
 #include <QTest>
 #include <codec/provider.hpp>
 #include <desktop/playback/playback_preferences.hpp>
+#include <fixtures/gui_interaction.hpp>
 #include <gtest/gtest.h>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/fixtures/player_dialogs.hpp>
@@ -71,6 +75,97 @@ protected:
     std::unique_ptr<app::PlaybackPreferences> preferences;
     std::vector<gui::DocumentCommandOutcome> outcomes;
 };
+
+TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneExactOccurrence)
+{
+    const auto source = library->playlists().create("Source"),
+               destination = library->playlists().create("Destination");
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
+    const auto first = library->repository().append_track(source, library::MediaId{"one"});
+    const auto second = library->repository().append_track(source, library::MediaId{"one"});
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(second);
+    ASSERT_TRUE(seed.commit());
+    ASSERT_TRUE(library->active_playlist().set(destination));
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    gui::DocumentCommands callbacks;
+    callbacks.execute = [&](auto command, auto context) {
+        commands.execute(command, std::move(context));
+    };
+    gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+    host.setUpdatesEnabled(false);
+    host.resize(650, 650);
+    host.show();
+    for (int opening = 0; opening < 2; ++opening) {
+        ASSERT_TRUE(host.open_playlist(source));
+        auto* document = host.registry().playlist(source);
+        auto& table = document->browser().table();
+        auto state = document->browser().capture_browser_state();
+        state.selected = {*second};
+        state.current = *second;
+        document->browser().restore_browser_state(state);
+        QAction* transfer = nullptr;
+        for (auto* action : table.actions())
+            if (action->text() == "Add to active playlist")
+                transfer = action;
+        ASSERT_NE(transfer, nullptr);
+        ASSERT_TRUE(transfer->isEnabled());
+        QMenu menu;
+        menu.setUpdatesEnabled(false);
+        menu.addAction(transfer);
+        menu.popup(QPoint{10, 10});
+        ASSERT_TRUE(wiola::testing::await_gui([&] { return menu.isVisible(); }));
+        QTest::mouseClick(&menu, Qt::LeftButton, Qt::NoModifier,
+            menu.actionGeometry(transfer).center());
+        ASSERT_EQ(library->repository().playlist(destination)->entries.size(), opening + 1);
+        EXPECT_EQ(library->repository().playlist(source)->entries.size(), 2);
+        EXPECT_EQ(library->active_playlist().id(), destination);
+        EXPECT_EQ(host.registry().active(), gui::DocumentId::playlist(source));
+        EXPECT_EQ(table.chosen_rows(), (std::vector<gui::TrackRowId>{*second}));
+        QPointer<QWidget> retired{document};
+        ASSERT_TRUE(host.close(gui::DocumentId::playlist(source)));
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        EXPECT_TRUE(retired.isNull());
+    }
+    ASSERT_EQ(outcomes.size(), 2);
+    EXPECT_EQ(playback.playlist().tracks().size(), 0);
+}
+
+TEST_F(DocumentCommandRouterTest,
+    CancelledDestinationPromptReachedThroughContextActionLeavesSelection)
+{
+    const auto source = library->playlists().create("Source");
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
+    const auto occurrence = library->repository().append_track(source, library::MediaId{"one"});
+    ASSERT_TRUE(occurrence);
+    ASSERT_TRUE(seed.commit());
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    gui::DocumentCommands callbacks;
+    callbacks.execute = [&](auto command, auto context) {
+        commands.execute(command, std::move(context));
+    };
+    gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+    ASSERT_TRUE(host.open_playlist(source));
+    auto& table = host.registry().playlist(source)->browser().table();
+    table.selectRow(0);
+    QAction* transfer = nullptr;
+    for (auto* action : table.actions())
+        if (action->text().startsWith("Add to playlist"))
+            transfer = action;
+    ASSERT_NE(transfer, nullptr);
+    QMenu menu;
+    menu.setUpdatesEnabled(false);
+    menu.addAction(transfer);
+    menu.popup(QPoint{10, 10});
+    QTest::mouseClick(&menu, Qt::LeftButton, Qt::NoModifier,
+        menu.actionGeometry(transfer).center());
+    EXPECT_EQ(dialogs.prompts, 1);
+    EXPECT_TRUE(outcomes.empty());
+    EXPECT_EQ(table.chosen_rows(), (std::vector<gui::TrackRowId>{*occurrence}));
+    EXPECT_EQ(library->repository().playlist(source)->entries.size(), 1);
+}
 
 TEST_F(DocumentCommandRouterTest,
     MoveCapturesDuplicateOccurrenceBeforePromptChangesDocumentAndSelection)
