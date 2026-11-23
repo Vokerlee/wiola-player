@@ -4558,6 +4558,34 @@
       "workflow": false
     },
     {
+      "path": "tools/coverage/llvm_reporting/__init__.py",
+      "owner": "coverage.llvm_reporting",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/llvm_reporting/reporter.py",
+      "owner": "coverage.llvm_reporting",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/llvm_reporting/tests/__init__.py",
+      "owner": "coverage.llvm_reporting",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/llvm_reporting/tests/test_reporter.py",
+      "owner": "coverage.llvm_reporting",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "tools/coverage/measurement/CMakeLists.txt",
       "owner": "coverage.measurement",
       "language": "cmake",

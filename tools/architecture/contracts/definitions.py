@@ -176,4 +176,9 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         ('tools/testing/mutation_checks/__main__.py', 'tools/testing/mutation_checks/verifier.py', 'tools/testing/mutation_checks/catalog.py'), grouping=False,
     ),
+    AbstractionContract(
+        'coverage.llvm_reporting', 'tools/coverage/llvm_reporting', 'Invokes LLVM reports with retained raw diagnostics and strict mapping agreement',
+        ("Complete implementation and tests belong to this owner",),
+        ('tools/coverage/llvm_reporting/reporter.py',), grouping=False,
+    ),
 )

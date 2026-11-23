@@ -221,6 +221,18 @@
       ]
     },
     {
+      "id": "coverage.llvm_reporting",
+      "purpose": "Invokes LLVM reports with retained raw diagnostics and strict mapping agreement",
+      "files": [
+        "tools/coverage/llvm_reporting/README.md",
+        "tools/coverage/llvm_reporting/__init__.py",
+        "tools/coverage/llvm_reporting/reporter.py",
+        "tools/coverage/llvm_reporting/tests/README.md",
+        "tools/coverage/llvm_reporting/tests/__init__.py",
+        "tools/coverage/llvm_reporting/tests/test_reporter.py"
+      ]
+    },
+    {
       "id": "coverage.measurement",
       "purpose": "Reconciles raw coverage with owned source and configured execution",
       "files": [

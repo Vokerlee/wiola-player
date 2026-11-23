@@ -11,6 +11,7 @@
   "tools/architecture/policy_guard/tests/test_policy.py": "architecture.policy_guard",
   "tools/architecture/review_contract/tests/test_review.py": "architecture.review_contract",
   "tools/build_environment/ubuntu_packages/tests/test_packages.py": "build_environment.ubuntu_packages",
+  "tools/coverage/llvm_reporting/tests/test_reporter.py": "coverage.llvm_reporting",
   "tools/coverage/measurement/tests/test_report.py": "coverage.measurement",
   "tools/coverage/source_policy/tests/test_policy.py": "coverage.source_policy",
   "tools/sdk/qt_mingw/tests/test_sdk.py": "sdk.qt_mingw",
