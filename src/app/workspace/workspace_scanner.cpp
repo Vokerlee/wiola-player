@@ -19,6 +19,8 @@
  */
 
 #include "workspace_scanner.hpp"
+#include <library/location.hpp>
+#include <set>
 
 #include <algorithm>
 #include <cctype>
@@ -127,6 +129,11 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
     for (auto& extension : supported_extensions)
         std::ranges::transform(extension, extension.begin(),
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    // Format qualification governs imports, not whether an already known file still exists.
+    std::set<std::string> known_locations;
+    for (const auto& track : known)
+        for (const auto& location : track.locations)
+            known_locations.insert(library::media_id_for(location).value);
     WorkspaceDiscovery discovery{workspace.root, known, stopped};
     WorkspaceScanBatch batch{.workspace = workspace.id,
         .generation = generation,
@@ -163,7 +170,8 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
             }
             batch.directories.push_back(entry.path().lexically_normal());
         } else if (!type_error && entry.is_regular_file(type_error) &&
-            supported(entry.path(), supported_extensions)) {
+            (supported(entry.path(), supported_extensions) ||
+                known_locations.contains(library::media_id_for(entry.path()).value))) {
             if (++tracks > policy_.max_tracks) {
                 failure = WorkspaceScanError::limit_exceeded;
                 return false;
