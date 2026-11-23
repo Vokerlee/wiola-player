@@ -835,3 +835,26 @@ TEST(Session, ReplacementHandoffHonorsNewerPauseSeekAndQueueClear)
     EXPECT_TRUE(fixture.session.playlist().tracks().empty());
     EXPECT_FALSE(fixture.session.play());
 }
+
+TEST(Session, ReplacementTicketsCannotRestoreANewerHandoffOrARemovedOccurrence)
+{
+    Fixture fixture;
+    fixture.consuming = false;
+    const auto path = wiola::testing::write_wav("wiola-ticket-generation.wav");
+    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    const auto first = fixture.session.release_media(path);
+    ASSERT_TRUE(first);
+    ASSERT_EQ(fixture.session.restore_media(*first), OpenResult::loading);
+    ASSERT_TRUE(poll_until(fixture.session, [&] { return fixture.session.loaded(); }));
+    const auto second = fixture.session.release_media(path);
+    ASSERT_TRUE(second);
+    EXPECT_NE(first->generation, second->generation);
+    EXPECT_EQ(fixture.session.restore_media(*first), OpenResult::opened);
+    EXPECT_FALSE(fixture.session.reading());
+    EXPECT_FALSE(fixture.session.loaded());
+    ASSERT_TRUE(fixture.session.remove(0));
+    EXPECT_FALSE(fixture.session.play());
+    fixture.session.restore_media(*second);
+    EXPECT_FALSE(fixture.session.reading());
+    EXPECT_TRUE(fixture.session.playlist().empty());
+}

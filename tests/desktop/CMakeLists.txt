@@ -81,3 +81,10 @@ wiola_add_test(
     SOURCES library/library_persistence_test.cpp
     LIBS wiola_library_persistence
 )
+
+wiola_add_test(
+    desktop_library_lifetime_test
+    SOURCES library/library_lifetime_test.cpp
+    LIBS wiola_library_session wiola_codec Qt6::Test
+    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+)

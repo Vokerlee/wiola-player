@@ -154,6 +154,7 @@ public:
         QueueEntryId entry;
         bool play;
         units::Time position;
+        std::uint64_t generation{};
     };
 
     [[nodiscard]] std::optional<MediaReplacementState>
@@ -226,6 +227,7 @@ private:
     std::filesystem::path ready_track_;
     std::optional<units::Time> restore_position_;
     std::optional<MediaReplacementState> replacement_;
+    std::uint64_t replacement_generation_{};
     OpenResult last_result_{OpenResult::opened};
     /// The output outlives its pipeline so transport is joined before the output is disconnected.
     OutputSession out_;

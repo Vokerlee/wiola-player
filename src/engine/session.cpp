@@ -152,6 +152,11 @@ bool Session::remove(std::size_t index)
     if (index < playlist_.tracks().size())
         loads_.invalidate_if(playlist_.tracks()[index].id());
 
+    if (index < playlist_.tracks().size() && replacement_ &&
+        playlist_.tracks()[index].id() == replacement_->entry) {
+        replacement_.reset();
+        restore_position_.reset();
+    }
     return playlist_.remove(index);
 }
 
@@ -475,7 +480,8 @@ Session::release_media(const std::filesystem::path& path)
         return {};
     if (replacement_ && replacement_->entry == current->id())
         return replacement_;
-    const MediaReplacementState state{current->id(), playing(), time_played()};
+    const MediaReplacementState state{current->id(), playing(), time_played(),
+        ++replacement_generation_};
     loads_.invalidate();
     ready_.reset();
     ready_track_.clear();
@@ -494,7 +500,8 @@ OpenResult Session::restore_media(const MediaReplacementState& state)
     const Track* current = playlist_.current();
     if (!current || current->id() != state.entry)
         return last_result_;
-    if (!replacement_ || replacement_->entry != state.entry)
+    if (!replacement_ || replacement_->entry != state.entry ||
+        replacement_->generation != state.generation)
         return last_result_;
     const auto intent = *replacement_;
     const auto result =
