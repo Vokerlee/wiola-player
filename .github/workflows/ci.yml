@@ -30,7 +30,7 @@ jobs:
       - run: ./scripts/format-cpp.sh --check
       - run: ./scripts/format-cmake.sh --check
       - run: python3 -m unittest discover -s tests/scripts -v
-      - run: python3 -m unittest discover -s tools -p 'test_*.py'
+      - run: python3 -m unittest discover -s tools -t . -p 'test_*.py'
       - run: python3 -m tools.architecture.commands.check_ownership
       - run: python3 -m tools.architecture.commands.check_dependencies
 
@@ -237,8 +237,10 @@ jobs:
       - run: ./scripts/coverage.sh
         env:
           CXX: clang++-18
+      - name: Reconcile C++ and Python coverage with source ownership
+        run: cmake --build --preset linux-coverage --target wiola_coverage_ownership
       - name: Enforce trusted workflow floors and changed decisions
-        run: python3 scripts/coverage_gate.py --base-ref "$WIOLA_COVERAGE_BASE"
+        run: python3 -m scripts.coverage_gate --base-ref "$WIOLA_COVERAGE_BASE"
         env:
           WIOLA_COVERAGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       - name: Upload coverage test diagnostics
@@ -251,6 +253,10 @@ jobs:
             build-coverage/coverage/*.log
             build-coverage/coverage/*mapping-diagnostics.txt
             build-coverage/coverage/gate.json
+            build-coverage/coverage/owners.json
+            build-coverage/coverage/python.json
+            build-coverage/coverage/python-manifest.json
+            build-coverage/coverage/python-profiles-*/
           if-no-files-found: ignore
           retention-days: 7
       # The numbers, on the run's own page.
@@ -287,6 +293,10 @@ jobs:
             build-coverage/coverage/coverage.lcov
             build-coverage/coverage/workflow.lcov
             build-coverage/coverage/gate.json
+            build-coverage/coverage/owners.json
+            build-coverage/coverage/python.json
+            build-coverage/coverage/python-manifest.json
+            build-coverage/coverage/python-profiles-*/
       # Only from main: what a pull request measured is its own, and does not replace the report.
       # The report takes a path of its own, leaving the root for whatever is put there later.
       - if: github.ref == 'refs/heads/main'

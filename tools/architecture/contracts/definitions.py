@@ -91,4 +91,24 @@ CONTRACTS = (
         ("Complete implementation and tests belong to this owner",),
         (), grouping=False,
     ),
+    AbstractionContract(
+        'coverage.package', 'tools/coverage', 'Groups independent measurement and qualification components',
+        ('Grouping contains no runtime measurement implementation',),
+        (), grouping=True,
+    ),
+    AbstractionContract(
+        'coverage.source_policy', 'tools/coverage/source_policy', 'Preserves explicit measurement applicability and source identity',
+        ('Every executable source has explicit applicability', 'Moves preserve owner identity and historical counts', 'Language roles cannot hide maintained tooling'),
+        ('tools/coverage/source_policy/policy.py',), grouping=False,
+    ),
+    AbstractionContract(
+        'coverage.measurement', 'tools/coverage/measurement', 'Reconciles raw coverage with owned source and configured execution',
+        ('Configured production translation units have mappings', 'Declared Python tools include zero-hit statement mappings', 'Test code never inflates production counts', 'Unsupported languages stay visibly unmeasured'),
+        ('tools/coverage/measurement/report.py',), grouping=False,
+    ),
+    AbstractionContract(
+        'coverage.python_runner', 'tools/coverage/python_runner', 'Collects Python tool coverage with retained process evidence',
+        ('Every recorded command succeeds', 'Instrumented source bytes remain stable during collection', 'Process evidence is retained and hashed'),
+        ('tools/coverage/python_runner/__main__.py',), grouping=False,
+    ),
 )
