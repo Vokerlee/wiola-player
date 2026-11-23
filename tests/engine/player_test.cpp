@@ -19,6 +19,7 @@
  */
 
 #include <engine/transport/player.hpp>
+#include <engine/transport/seek_operation.hpp>
 
 #include <fixtures/rig.hpp>
 #include <fixtures/wav.hpp>
@@ -50,6 +51,7 @@
 #include <span>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace {
 
@@ -142,6 +144,28 @@ protected:
         return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
 };
+
+TEST(SeekOperation, AcceptsUnknownLengthWithoutTreatingItAsAnExactZero)
+{
+    UnknownLengthSource source;
+    wiola::pcm::PcmQueue queue{source.spec(), wiola::pcm::Frames{4}};
+    auto producer{queue.producer()};
+    wiola::testing::FakeOutput output;
+    auto control{output.control()};
+    wiola::engine::Playhead playhead{source.spec().num_channels};
+    auto applier{playhead.applier()};
+    bool output_started{false};
+    std::vector<float> block(source.spec().samples_per(wiola::pcm::Frames{4}));
+    wiola::engine::SeekOperation seek{source, producer, control, output, applier, output_started,
+        block};
+
+    playhead.request_seek(wiola::pcm::Frames{4});
+
+    EXPECT_TRUE(seek.apply());
+    EXPECT_FALSE(seek.priming_failed());
+    EXPECT_FALSE(playhead.seek_outstanding());
+    EXPECT_EQ(playhead.position(wiola::pcm::Frames{}), wiola::pcm::Frames{4});
+}
 
 class FailFirstReadSource final : public wiola::media::AudioDecoder {
 public:

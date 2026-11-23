@@ -5093,6 +5093,8 @@
     "desktop_metadata_write_service_test",
     "desktop_queued_delivery_test",
     "desktop_session_preferences_test",
+    "engine_loader_test",
+    "engine_player_test",
     "gui_artwork_presentation_test",
     "gui_browser_view_state_test",
     "gui_button_layout_editor_test",
