@@ -241,3 +241,9 @@ wiola_add_test(
 )
 
 qt_finalize_target(gui_metadata_file_journey_test)
+
+wiola_add_test(
+    gui_layout_component_contract_test
+    SOURCES layout/component_contract_test.cpp
+    LIBS wiola_gui Qt6::Test
+)
