@@ -167,6 +167,56 @@
       ]
     },
     {
+      "id": "coverage.measurement",
+      "purpose": "Reconciles raw coverage with owned source and configured execution",
+      "files": [
+        "tools/coverage/measurement/CMakeLists.txt",
+        "tools/coverage/measurement/README.md",
+        "tools/coverage/measurement/__init__.py",
+        "tools/coverage/measurement/__main__.py",
+        "tools/coverage/measurement/baseline/README.md",
+        "tools/coverage/measurement/baseline/qualified.json",
+        "tools/coverage/measurement/report.py",
+        "tools/coverage/measurement/tests/README.md",
+        "tools/coverage/measurement/tests/__init__.py",
+        "tools/coverage/measurement/tests/test_report.py"
+      ]
+    },
+    {
+      "id": "coverage.package",
+      "purpose": "Groups independent measurement and qualification components",
+      "files": [
+        "tools/coverage/CMakeLists.txt",
+        "tools/coverage/README.md",
+        "tools/coverage/__init__.py"
+      ]
+    },
+    {
+      "id": "coverage.python_runner",
+      "purpose": "Collects Python tool coverage with retained process evidence",
+      "files": [
+        "tools/coverage/python_runner/CMakeLists.txt",
+        "tools/coverage/python_runner/README.md",
+        "tools/coverage/python_runner/__init__.py",
+        "tools/coverage/python_runner/__main__.py"
+      ]
+    },
+    {
+      "id": "coverage.source_policy",
+      "purpose": "Preserves explicit measurement applicability and source identity",
+      "files": [
+        "tools/coverage/source_policy/README.md",
+        "tools/coverage/source_policy/__init__.py",
+        "tools/coverage/source_policy/data/README.md",
+        "tools/coverage/source_policy/data/moves.json",
+        "tools/coverage/source_policy/data/sources.json",
+        "tools/coverage/source_policy/policy.py",
+        "tools/coverage/source_policy/tests/README.md",
+        "tools/coverage/source_policy/tests/__init__.py",
+        "tools/coverage/source_policy/tests/test_policy.py"
+      ]
+    },
+    {
       "id": "testing.catalog",
       "purpose": "Reconciles test ownership, semantic purpose and applicability",
       "files": [

@@ -8,4 +8,4 @@ flowchart LR
   Audit --> Reject[Precise missing or contradictory contract]
 ```
 
-Run with `python3 -m unittest discover -s tools -p 'test_*.py'`. Temporary paths come from the test environment; no personal checkout or build location is required.
+Run with `python3 -m unittest discover -s tools -t . -p 'test_*.py'`. Temporary paths come from the test environment; no personal checkout or build location is required.

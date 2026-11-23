@@ -1,0 +1,4676 @@
+{
+  "files": [
+    {
+      "path": ".github/actions/setup-build/action.yml",
+      "owner": "ci.environment_setup",
+      "language": "yaml",
+      "role": "ci",
+      "workflow": false
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "owner": "ci.workflow",
+      "language": "yaml",
+      "role": "ci",
+      "workflow": false
+    },
+    {
+      "path": "CMakeLists.txt",
+      "owner": "build.root",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "cmake/build.cmake",
+      "owner": "build.integration.build",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "cmake/coverage_inventory.cmake",
+      "owner": "build.integration.coverage_inventory",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "cmake/dependencies.cmake",
+      "owner": "build.integration.dependencies",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "cmake/ffmpeg.cmake",
+      "owner": "build.integration.ffmpeg",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "cmake/mingw-w64.cmake",
+      "owner": "build.integration.mingw_w64",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build-qt-core-tsan.sh",
+      "owner": "tool.build_qt_core_tsan",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build-qt-mingw.sh",
+      "owner": "tool.build_qt_mingw",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/check-gui-mutations.py",
+      "owner": "tool.check_gui_mutations",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/coverage.sh",
+      "owner": "tool.coverage",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/coverage_gate.py",
+      "owner": "tool.coverage_gate",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/coverage_report.py",
+      "owner": "tool.coverage_report",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/format-cmake.sh",
+      "owner": "tool.format_cmake",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/format-cpp.sh",
+      "owner": "tool.format_cpp",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/install-hooks.sh",
+      "owner": "tool.install_hooks",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/run-desktop-journeys.py",
+      "owner": "tool.run_desktop_journeys",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/test-affected.py",
+      "owner": "tool.test_affected",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "owner": "build.src",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/app/CMakeLists.txt",
+      "owner": "build.src.app",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/app/library/artwork_store.cpp",
+      "owner": "source.app.library.artwork_store",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/artwork_store.hpp",
+      "owner": "source.app.library.artwork_store",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/location_index.cpp",
+      "owner": "source.app.library.location_index",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/location_index.hpp",
+      "owner": "source.app.library.location_index",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/search_index.cpp",
+      "owner": "source.app.library.search_index",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/search_index.hpp",
+      "owner": "source.app.library.search_index",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/tag_key_catalog.cpp",
+      "owner": "source.app.library.tag_key_catalog",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/library/tag_key_catalog.hpp",
+      "owner": "source.app.library.tag_key_catalog",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/background_metadata.cpp",
+      "owner": "source.app.metadata.background_metadata",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/background_metadata.hpp",
+      "owner": "source.app.metadata.background_metadata",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/background_metadata_writes.cpp",
+      "owner": "source.app.metadata.background_metadata_writes",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/background_metadata_writes.hpp",
+      "owner": "source.app.metadata.background_metadata_writes",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/custom_tag_commands.cpp",
+      "owner": "source.app.metadata.custom_tag_commands",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/custom_tag_commands.hpp",
+      "owner": "source.app.metadata.custom_tag_commands",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/media_replacement.cpp",
+      "owner": "source.app.metadata.media_replacement",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/media_replacement.hpp",
+      "owner": "source.app.metadata.media_replacement",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_conflicts.cpp",
+      "owner": "source.app.metadata.metadata_conflicts",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_conflicts.hpp",
+      "owner": "source.app.metadata.metadata_conflicts",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_edit_service.cpp",
+      "owner": "source.app.metadata.metadata_edit_service",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_edit_service.hpp",
+      "owner": "source.app.metadata.metadata_edit_service",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_edit_session.cpp",
+      "owner": "source.app.metadata.metadata_edit_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_edit_session.hpp",
+      "owner": "source.app.metadata.metadata_edit_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_merge.cpp",
+      "owner": "source.app.metadata.metadata_merge",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_merge.hpp",
+      "owner": "source.app.metadata.metadata_merge",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_write_job.cpp",
+      "owner": "source.app.metadata.metadata_write_job",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/metadata/metadata_write_job.hpp",
+      "owner": "source.app.metadata.metadata_write_job",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/active_playlist.cpp",
+      "owner": "source.app.playback.active_playlist",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/active_playlist.hpp",
+      "owner": "source.app.playback.active_playlist",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/operation_outcome.hpp",
+      "owner": "source.app.playback.operation_outcome",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playback_presentation.hpp",
+      "owner": "source.app.playback.playback_presentation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playback_queue.cpp",
+      "owner": "source.app.playback.playback_queue",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playback_queue.hpp",
+      "owner": "source.app.playback.playback_queue",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playback_service.cpp",
+      "owner": "source.app.playback.playback_service",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playback_service.hpp",
+      "owner": "source.app.playback.playback_service",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playback_snapshot.hpp",
+      "owner": "source.app.playback.playback_snapshot",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playlist_transfer.cpp",
+      "owner": "source.app.playback.playlist_transfer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/playlist_transfer.hpp",
+      "owner": "source.app.playback.playlist_transfer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/playback/volume_scale.hpp",
+      "owner": "source.app.playback.volume_scale",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/workspace/workspace_discovery.cpp",
+      "owner": "source.app.workspace.workspace_discovery",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/workspace/workspace_discovery.hpp",
+      "owner": "source.app.workspace.workspace_discovery",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/workspace/workspace_reconciliation.cpp",
+      "owner": "source.app.workspace.workspace_reconciliation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/workspace/workspace_reconciliation.hpp",
+      "owner": "source.app.workspace.workspace_reconciliation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/workspace/workspace_scanner.cpp",
+      "owner": "source.app.workspace.workspace_scanner",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/app/workspace/workspace_scanner.hpp",
+      "owner": "source.app.workspace.workspace_scanner",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/audio/CMakeLists.txt",
+      "owner": "build.src.audio",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/device/CMakeLists.txt",
+      "owner": "build.src.audio.device",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/device/device.cpp",
+      "owner": "source.audio.device.device",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/device/device.hpp",
+      "owner": "source.audio.device.device",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/device/output.hpp",
+      "owner": "source.audio.device.output",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/device/output_connection.cpp",
+      "owner": "source.audio.device.output_connection",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/device/output_connection.hpp",
+      "owner": "source.audio.device.output_connection",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/CMakeLists.txt",
+      "owner": "build.src.audio.dsp",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/biquad.cpp",
+      "owner": "source.audio.dsp.biquad",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/biquad.hpp",
+      "owner": "source.audio.dsp.biquad",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/buffer_source.cpp",
+      "owner": "source.audio.dsp.buffer_source",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/buffer_source.hpp",
+      "owner": "source.audio.dsp.buffer_source",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer.cpp",
+      "owner": "source.audio.dsp.equalizer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer.hpp",
+      "owner": "source.audio.dsp.equalizer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer_config.hpp",
+      "owner": "source.audio.dsp.equalizer_config",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer_parameters.cpp",
+      "owner": "source.audio.dsp.equalizer_parameters",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer_parameters.hpp",
+      "owner": "source.audio.dsp.equalizer_parameters",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer_processor.cpp",
+      "owner": "source.audio.dsp.equalizer_processor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/equalizer_processor.hpp",
+      "owner": "source.audio.dsp.equalizer_processor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/output_sanitizer.cpp",
+      "owner": "source.audio.dsp.output_sanitizer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/output_sanitizer.hpp",
+      "owner": "source.audio.dsp.output_sanitizer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/processing_chain.cpp",
+      "owner": "source.audio.dsp.processing_chain",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/processing_chain.hpp",
+      "owner": "source.audio.dsp.processing_chain",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/relay.cpp",
+      "owner": "source.audio.dsp.relay",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/relay.hpp",
+      "owner": "source.audio.dsp.relay",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/shaped_source.cpp",
+      "owner": "source.audio.dsp.shaped_source",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/shaped_source.hpp",
+      "owner": "source.audio.dsp.shaped_source",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/source.hpp",
+      "owner": "source.audio.dsp.source",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/stage.hpp",
+      "owner": "source.audio.dsp.stage",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/volume.cpp",
+      "owner": "source.audio.dsp.volume",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/volume.hpp",
+      "owner": "source.audio.dsp.volume",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/audio/dsp/volume_policy.hpp",
+      "owner": "source.audio.dsp.volume_policy",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/CMakeLists.txt",
+      "owner": "build.src.codec",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/CMakeLists.txt",
+      "owner": "build.src.codec.backends",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/CMakeLists.txt",
+      "owner": "build.src.codec.backends.ffmpeg",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/conversion_api.hpp",
+      "owner": "source.codec.backends.ffmpeg.conversion_api",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/decoder.cpp",
+      "owner": "source.codec.backends.ffmpeg.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/decoder.hpp",
+      "owner": "source.codec.backends.ffmpeg.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/input.cpp",
+      "owner": "source.codec.backends.ffmpeg.input",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/input.hpp",
+      "owner": "source.codec.backends.ffmpeg.input",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/metadata.cpp",
+      "owner": "source.codec.backends.ffmpeg.metadata",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/metadata.hpp",
+      "owner": "source.codec.backends.ffmpeg.metadata",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/metadata_writer.cpp",
+      "owner": "source.codec.backends.ffmpeg.metadata_writer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/metadata_writer.hpp",
+      "owner": "source.codec.backends.ffmpeg.metadata_writer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/packet_decoder.cpp",
+      "owner": "source.codec.backends.ffmpeg.packet_decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/packet_decoder.hpp",
+      "owner": "source.codec.backends.ffmpeg.packet_decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/pcm_converter.cpp",
+      "owner": "source.codec.backends.ffmpeg.pcm_converter",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/pcm_converter.hpp",
+      "owner": "source.codec.backends.ffmpeg.pcm_converter",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/qualification.cpp",
+      "owner": "source.codec.backends.ffmpeg.qualification",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/backends/ffmpeg/qualification.hpp",
+      "owner": "source.codec.backends.ffmpeg.qualification",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/CMakeLists.txt",
+      "owner": "build.src.codec.decode",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/decoder.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/decoder.hpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/format.cpp",
+      "owner": "source.codec.decode.format",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/format.hpp",
+      "owner": "source.codec.decode.format",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/open.hpp",
+      "owner": "source.codec.decode.open",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/registry.cpp",
+      "owner": "source.codec.decode.registry",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/decode/registry.hpp",
+      "owner": "source.codec.decode.registry",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/provider.cpp",
+      "owner": "source.codec.provider",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/codec/provider.hpp",
+      "owner": "source.codec.provider",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/core/cache_line.hpp",
+      "owner": "source.core.cache_line",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/core/handle.hpp",
+      "owner": "source.core.handle",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/core/macros.hpp",
+      "owner": "source.core.macros",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/desktop/CMakeLists.txt",
+      "owner": "build.src.desktop",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/desktop/library/library_documents.cpp",
+      "owner": "source.desktop.library.library_documents",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/library_documents.hpp",
+      "owner": "source.desktop.library.library_documents",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/library_persistence.cpp",
+      "owner": "source.desktop.library.library_persistence",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/library_persistence.hpp",
+      "owner": "source.desktop.library.library_persistence",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/library_session.cpp",
+      "owner": "source.desktop.library.library_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/library_session.hpp",
+      "owner": "source.desktop.library.library_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/m3u_playlist.cpp",
+      "owner": "source.desktop.library.m3u_playlist",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/m3u_playlist.hpp",
+      "owner": "source.desktop.library.m3u_playlist",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/queue_library_migration.cpp",
+      "owner": "source.desktop.library.queue_library_migration",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/queue_library_migration.hpp",
+      "owner": "source.desktop.library.queue_library_migration",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/saved_playlist_commands.cpp",
+      "owner": "source.desktop.library.saved_playlist_commands",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/library/saved_playlist_commands.hpp",
+      "owner": "source.desktop.library.saved_playlist_commands",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/metadata/media_revision_publisher.cpp",
+      "owner": "source.desktop.metadata.media_revision_publisher",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/metadata/media_revision_publisher.hpp",
+      "owner": "source.desktop.metadata.media_revision_publisher",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/metadata/metadata_write_service.cpp",
+      "owner": "source.desktop.metadata.metadata_write_service",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/metadata/metadata_write_service.hpp",
+      "owner": "source.desktop.metadata.metadata_write_service",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/equalizer_control.cpp",
+      "owner": "source.desktop.playback.equalizer_control",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/equalizer_control.hpp",
+      "owner": "source.desktop.playback.equalizer_control",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/playback_preferences.cpp",
+      "owner": "source.desktop.playback.playback_preferences",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/playback_preferences.hpp",
+      "owner": "source.desktop.playback.playback_preferences",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/queue_settings.cpp",
+      "owner": "source.desktop.playback.queue_settings",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/queue_settings.hpp",
+      "owner": "source.desktop.playback.queue_settings",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/volume_control.cpp",
+      "owner": "source.desktop.playback.volume_control",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/playback/volume_control.hpp",
+      "owner": "source.desktop.playback.volume_control",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/player_application.cpp",
+      "owner": "source.desktop.player_application",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/player_application.hpp",
+      "owner": "source.desktop.player_application",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/queued_delivery.cpp",
+      "owner": "source.desktop.queued_delivery",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/queued_delivery.hpp",
+      "owner": "source.desktop.queued_delivery",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/session/session_preferences.cpp",
+      "owner": "source.desktop.session.session_preferences",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/session/session_preferences.hpp",
+      "owner": "source.desktop.session.session_preferences",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/session/session_state.cpp",
+      "owner": "source.desktop.session.session_state",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/session/session_state.hpp",
+      "owner": "source.desktop.session.session_state",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/workspace/workspace_scan_publisher.cpp",
+      "owner": "source.desktop.workspace.workspace_scan_publisher",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/workspace/workspace_scan_publisher.hpp",
+      "owner": "source.desktop.workspace.workspace_scan_publisher",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/workspace/workspace_watcher.cpp",
+      "owner": "source.desktop.workspace.workspace_watcher",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/desktop/workspace/workspace_watcher.hpp",
+      "owner": "source.desktop.workspace.workspace_watcher",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/engine/CMakeLists.txt",
+      "owner": "build.src.engine",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/buffering_config.hpp",
+      "owner": "source.engine.buffering_config",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/CMakeLists.txt",
+      "owner": "build.src.engine.load",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/load_coordinator.hpp",
+      "owner": "source.engine.load.load_coordinator",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/load_request.hpp",
+      "owner": "source.engine.load.load_request",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/loader.cpp",
+      "owner": "source.engine.load.loader",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/loader.hpp",
+      "owner": "source.engine.load.loader",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/metadata_coordinator.cpp",
+      "owner": "source.engine.load.metadata_coordinator",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/metadata_coordinator.hpp",
+      "owner": "source.engine.load.metadata_coordinator",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/tag_reader.cpp",
+      "owner": "source.engine.load.tag_reader",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/load/tag_reader.hpp",
+      "owner": "source.engine.load.tag_reader",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/open_result.hpp",
+      "owner": "source.engine.open_result",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/pipeline/CMakeLists.txt",
+      "owner": "build.src.engine.pipeline",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/pipeline/output_session.cpp",
+      "owner": "source.engine.pipeline.output_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/pipeline/output_session.hpp",
+      "owner": "source.engine.pipeline.output_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/pipeline/playback_pipeline.cpp",
+      "owner": "source.engine.pipeline.playback_pipeline",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/pipeline/playback_pipeline.hpp",
+      "owner": "source.engine.pipeline.playback_pipeline",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/CMakeLists.txt",
+      "owner": "build.src.engine.queue",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/playback_order.cpp",
+      "owner": "source.engine.queue.playback_order",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/playback_order.hpp",
+      "owner": "source.engine.queue.playback_order",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/playlist.cpp",
+      "owner": "source.engine.queue.playlist",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/playlist.hpp",
+      "owner": "source.engine.queue.playlist",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/queue_entry_id.hpp",
+      "owner": "source.engine.queue.queue_entry_id",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/track.cpp",
+      "owner": "source.engine.queue.track",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/queue/track.hpp",
+      "owner": "source.engine.queue.track",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/session.cpp",
+      "owner": "source.engine.session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/session.hpp",
+      "owner": "source.engine.session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/CMakeLists.txt",
+      "owner": "build.src.engine.transport",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/decode_loop.cpp",
+      "owner": "source.engine.transport.decode_loop",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/decode_loop.hpp",
+      "owner": "source.engine.transport.decode_loop",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/playback.cpp",
+      "owner": "source.engine.transport.playback",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/playback.hpp",
+      "owner": "source.engine.transport.playback",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/playback_epoch.cpp",
+      "owner": "source.engine.transport.playback_epoch",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/playback_epoch.hpp",
+      "owner": "source.engine.transport.playback_epoch",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/player.cpp",
+      "owner": "source.engine.transport.player",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/player.hpp",
+      "owner": "source.engine.transport.player",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/playhead.cpp",
+      "owner": "source.engine.transport.playhead",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/playhead.hpp",
+      "owner": "source.engine.transport.playhead",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/seek_mailbox.cpp",
+      "owner": "source.engine.transport.seek_mailbox",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/seek_mailbox.hpp",
+      "owner": "source.engine.transport.seek_mailbox",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/seek_operation.cpp",
+      "owner": "source.engine.transport.seek_operation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/seek_operation.hpp",
+      "owner": "source.engine.transport.seek_operation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/transport_config.hpp",
+      "owner": "source.engine.transport.transport_config",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/transport_wait.cpp",
+      "owner": "source.engine.transport.transport_wait",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/transport_wait.hpp",
+      "owner": "source.engine.transport.transport_wait",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/transport_worker.cpp",
+      "owner": "source.engine.transport.transport_worker",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/engine/transport/transport_worker.hpp",
+      "owner": "source.engine.transport.transport_worker",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/CMakeLists.txt",
+      "owner": "source.foundation",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/CMakeLists.txt",
+      "owner": "source.core.borrowed",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/public/wiola/foundation/borrowed.hpp",
+      "owner": "source.core.borrowed",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/tests/CMakeLists.txt",
+      "owner": "source.core.borrowed",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/tests/borrowed_reference_test.cpp",
+      "owner": "source.core.borrowed",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/tests/check_export.py",
+      "owner": "source.core.borrowed",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/tests/consumer.cpp",
+      "owner": "source.core.borrowed",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/borrowed_reference/tests/private_probe.hpp",
+      "owner": "source.core.borrowed",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/gui/CMakeLists.txt",
+      "owner": "build.src.gui",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/gui/appearance/artwork_presentation.cpp",
+      "owner": "source.gui.appearance.artwork_presentation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/artwork_presentation.hpp",
+      "owner": "source.gui.appearance.artwork_presentation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/presentation_tokens.hpp",
+      "owner": "source.gui.appearance.presentation_tokens",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/theme.cpp",
+      "owner": "source.gui.appearance.theme",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/theme.hpp",
+      "owner": "source.gui.appearance.theme",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/theme_editor.cpp",
+      "owner": "source.gui.appearance.theme_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/theme_editor.hpp",
+      "owner": "source.gui.appearance.theme_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/theme_manager.cpp",
+      "owner": "source.gui.appearance.theme_manager",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/appearance/theme_manager.hpp",
+      "owner": "source.gui.appearance.theme_manager",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/clock.cpp",
+      "owner": "source.gui.controls.clock",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/clock.hpp",
+      "owner": "source.gui.controls.clock",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/equalizer_panel.cpp",
+      "owner": "source.gui.controls.equalizer_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/equalizer_panel.hpp",
+      "owner": "source.gui.controls.equalizer_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/seek_bar.cpp",
+      "owner": "source.gui.controls.seek_bar",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/seek_bar.hpp",
+      "owner": "source.gui.controls.seek_bar",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/status_view.cpp",
+      "owner": "source.gui.controls.status_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/status_view.hpp",
+      "owner": "source.gui.controls.status_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/transport_view.cpp",
+      "owner": "source.gui.controls.transport_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/transport_view.hpp",
+      "owner": "source.gui.controls.transport_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/volume_view.cpp",
+      "owner": "source.gui.controls.volume_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/controls/volume_view.hpp",
+      "owner": "source.gui.controls.volume_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/document_registry.cpp",
+      "owner": "source.gui.documents.document_registry",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/document_registry.hpp",
+      "owner": "source.gui.documents.document_registry",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/now_playing_document.cpp",
+      "owner": "source.gui.documents.now_playing_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/now_playing_document.hpp",
+      "owner": "source.gui.documents.now_playing_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/saved_playlist_document.cpp",
+      "owner": "source.gui.documents.saved_playlist_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/saved_playlist_document.hpp",
+      "owner": "source.gui.documents.saved_playlist_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/workspace_document.cpp",
+      "owner": "source.gui.documents.workspace_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/documents/workspace_document.hpp",
+      "owner": "source.gui.documents.workspace_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/classic_layout.cpp",
+      "owner": "source.gui.layout.classic_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/classic_layout.hpp",
+      "owner": "source.gui.layout.classic_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/component_descriptor.cpp",
+      "owner": "source.gui.layout.component_descriptor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/component_descriptor.hpp",
+      "owner": "source.gui.layout.component_descriptor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_editor_dialog.cpp",
+      "owner": "source.gui.layout.editor.layout_editor_dialog",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_editor_dialog.hpp",
+      "owner": "source.gui.layout.editor.layout_editor_dialog",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_preview_host.cpp",
+      "owner": "source.gui.layout.editor.layout_preview_host",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_preview_host.hpp",
+      "owner": "source.gui.layout.editor.layout_preview_host",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_property_inspector.cpp",
+      "owner": "source.gui.layout.editor.layout_property_inspector",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_property_inspector.hpp",
+      "owner": "source.gui.layout.editor.layout_property_inspector",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_tree_views.cpp",
+      "owner": "source.gui.layout.editor.layout_tree_views",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/editor/layout_tree_views.hpp",
+      "owner": "source.gui.layout.editor.layout_tree_views",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/focused_layout.cpp",
+      "owner": "source.gui.layout.focused_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/focused_layout.hpp",
+      "owner": "source.gui.layout.focused_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_builder.cpp",
+      "owner": "source.gui.layout.layout_builder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_builder.hpp",
+      "owner": "source.gui.layout.layout_builder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_document.cpp",
+      "owner": "source.gui.layout.layout_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_document.hpp",
+      "owner": "source.gui.layout.layout_document",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_editor.cpp",
+      "owner": "source.gui.layout.layout_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_editor.hpp",
+      "owner": "source.gui.layout.layout_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_session.cpp",
+      "owner": "source.gui.layout.layout_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_session.hpp",
+      "owner": "source.gui.layout.layout_session",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_tree.hpp",
+      "owner": "source.gui.layout.layout_tree",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_widget_operations.cpp",
+      "owner": "source.gui.layout.layout_widget_operations",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/layout_widget_operations.hpp",
+      "owner": "source.gui.layout.layout_widget_operations",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/player_layout.cpp",
+      "owner": "source.gui.layout.player_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/player_layout.hpp",
+      "owner": "source.gui.layout.player_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/prepared_layout.cpp",
+      "owner": "source.gui.layout.prepared_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/prepared_layout.hpp",
+      "owner": "source.gui.layout.prepared_layout",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/view_reference.cpp",
+      "owner": "source.gui.layout.view_reference",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/view_reference.hpp",
+      "owner": "source.gui.layout.view_reference",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/view_registry.cpp",
+      "owner": "source.gui.layout.view_registry",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/layout/view_registry.hpp",
+      "owner": "source.gui.layout.view_registry",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/custom_tag_editor.cpp",
+      "owner": "source.gui.metadata.custom_tag_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/custom_tag_editor.hpp",
+      "owner": "source.gui.metadata.custom_tag_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/inspector_context.cpp",
+      "owner": "source.gui.metadata.inspector_context",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/inspector_context.hpp",
+      "owner": "source.gui.metadata.inspector_context",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/metadata_conflict_panel.cpp",
+      "owner": "source.gui.metadata.metadata_conflict_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/metadata_conflict_panel.hpp",
+      "owner": "source.gui.metadata.metadata_conflict_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/metadata_edit_presentation.cpp",
+      "owner": "source.gui.metadata.metadata_edit_presentation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/metadata_edit_presentation.hpp",
+      "owner": "source.gui.metadata.metadata_edit_presentation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/metadata_inspector_binding.cpp",
+      "owner": "source.gui.metadata.metadata_inspector_binding",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/metadata_inspector_binding.hpp",
+      "owner": "source.gui.metadata.metadata_inspector_binding",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/standard_metadata_editor.cpp",
+      "owner": "source.gui.metadata.standard_metadata_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/standard_metadata_editor.hpp",
+      "owner": "source.gui.metadata.standard_metadata_editor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/track_inspector.cpp",
+      "owner": "source.gui.metadata.track_inspector",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/metadata/track_inspector.hpp",
+      "owner": "source.gui.metadata.track_inspector",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/CMakeLists.txt",
+      "owner": "build.src.gui.model",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/gui/model/boundary.cpp",
+      "owner": "source.gui.model.boundary",
+      "language": "cpp",
+      "role": "consumer",
+      "workflow": false
+    },
+    {
+      "path": "src/gui/model/documents/document_id.hpp",
+      "owner": "source.gui.model.documents.document_id",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/documents/queue_rows.cpp",
+      "owner": "source.gui.model.documents.queue_rows",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/documents/queue_rows.hpp",
+      "owner": "source.gui.model.documents.queue_rows",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/documents/saved_playlist_rows.cpp",
+      "owner": "source.gui.model.documents.saved_playlist_rows",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/documents/saved_playlist_rows.hpp",
+      "owner": "source.gui.model.documents.saved_playlist_rows",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/documents/workspace_rows.cpp",
+      "owner": "source.gui.model.documents.workspace_rows",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/documents/workspace_rows.hpp",
+      "owner": "source.gui.model.documents.workspace_rows",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_column_identity.hpp",
+      "owner": "source.gui.model.tracks.track_column_identity",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_commands.hpp",
+      "owner": "source.gui.model.tracks.track_commands",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_identity.hpp",
+      "owner": "source.gui.model.tracks.track_identity",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_row.cpp",
+      "owner": "source.gui.model.tracks.track_row",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_row.hpp",
+      "owner": "source.gui.model.tracks.track_row",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_sort.cpp",
+      "owner": "source.gui.model.tracks.track_sort",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_sort.hpp",
+      "owner": "source.gui.model.tracks.track_sort",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_sorter.cpp",
+      "owner": "source.gui.model.tracks.track_sorter",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_sorter.hpp",
+      "owner": "source.gui.model.tracks.track_sorter",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_view_pipeline.cpp",
+      "owner": "source.gui.model.tracks.track_view_pipeline",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_view_pipeline.hpp",
+      "owner": "source.gui.model.tracks.track_view_pipeline",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_view_state.cpp",
+      "owner": "source.gui.model.tracks.track_view_state",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/model/tracks/track_view_state.hpp",
+      "owner": "source.gui.model.tracks.track_view_state",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/projection/CMakeLists.txt",
+      "owner": "build.src.gui.projection",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/gui/projection/boundary.cpp",
+      "owner": "source.gui.projection.boundary",
+      "language": "cpp",
+      "role": "consumer",
+      "workflow": false
+    },
+    {
+      "path": "src/gui/projection/track_projection.cpp",
+      "owner": "source.gui.projection.track_projection",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/projection/track_projection.hpp",
+      "owner": "source.gui.projection.track_projection",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/action_button_binding.cpp",
+      "owner": "source.gui.shell.action_button_binding",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/action_button_binding.hpp",
+      "owner": "source.gui.shell.action_button_binding",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/action_descriptor.cpp",
+      "owner": "source.gui.shell.action_descriptor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/action_descriptor.hpp",
+      "owner": "source.gui.shell.action_descriptor",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/document_command_context.hpp",
+      "owner": "source.gui.shell.document_command_context",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/document_command_router.cpp",
+      "owner": "source.gui.shell.document_command_router",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/document_command_router.hpp",
+      "owner": "source.gui.shell.document_command_router",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/document_host.cpp",
+      "owner": "source.gui.shell.document_host",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/document_host.hpp",
+      "owner": "source.gui.shell.document_host",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/library_navigation.cpp",
+      "owner": "source.gui.shell.library_navigation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/library_navigation.hpp",
+      "owner": "source.gui.shell.library_navigation",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/main_window.cpp",
+      "owner": "source.gui.shell.main_window",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/main_window.hpp",
+      "owner": "source.gui.shell.main_window",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_actions.cpp",
+      "owner": "source.gui.shell.player_actions",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_actions.hpp",
+      "owner": "source.gui.shell.player_actions",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_dialogs.cpp",
+      "owner": "source.gui.shell.player_dialogs",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_dialogs.hpp",
+      "owner": "source.gui.shell.player_dialogs",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_menu.cpp",
+      "owner": "source.gui.shell.player_menu",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_menu.hpp",
+      "owner": "source.gui.shell.player_menu",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_shortcuts.cpp",
+      "owner": "source.gui.shell.player_shortcuts",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/player_shortcuts.hpp",
+      "owner": "source.gui.shell.player_shortcuts",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/saved_playlist_manager.cpp",
+      "owner": "source.gui.shell.saved_playlist_manager",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/shell/saved_playlist_manager.hpp",
+      "owner": "source.gui.shell.saved_playlist_manager",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/tag_filter_panel.cpp",
+      "owner": "source.gui.tracks.tag_filter_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/tag_filter_panel.hpp",
+      "owner": "source.gui.tracks.tag_filter_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_browser.cpp",
+      "owner": "source.gui.tracks.track_browser",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_browser.hpp",
+      "owner": "source.gui.tracks.track_browser",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_column.cpp",
+      "owner": "source.gui.tracks.track_column",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_column.hpp",
+      "owner": "source.gui.tracks.track_column",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_search_panel.cpp",
+      "owner": "source.gui.tracks.track_search_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_search_panel.hpp",
+      "owner": "source.gui.tracks.track_search_panel",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_table_model.cpp",
+      "owner": "source.gui.tracks.track_table_model",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_table_model.hpp",
+      "owner": "source.gui.tracks.track_table_model",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_table_view.cpp",
+      "owner": "source.gui.tracks.track_table_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/gui/tracks/track_table_view.hpp",
+      "owner": "source.gui.tracks.track_table_view",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/CMakeLists.txt",
+      "owner": "build.src.library",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/library/commit_receipt.cpp",
+      "owner": "source.library.commit_receipt",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/commit_receipt.hpp",
+      "owner": "source.library.commit_receipt",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/fingerprint.cpp",
+      "owner": "source.library.fingerprint",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/fingerprint.hpp",
+      "owner": "source.library.fingerprint",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/identity.hpp",
+      "owner": "source.library.identity",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/in_memory_repository.cpp",
+      "owner": "source.library.in_memory_repository",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/in_memory_repository.hpp",
+      "owner": "source.library.in_memory_repository",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/library_changes.cpp",
+      "owner": "source.library.library_changes",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/library_changes.hpp",
+      "owner": "source.library.library_changes",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/location.cpp",
+      "owner": "source.library.location",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/location.hpp",
+      "owner": "source.library.location",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/metadata.cpp",
+      "owner": "source.library.metadata",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/metadata.hpp",
+      "owner": "source.library.metadata",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/metadata_patch.cpp",
+      "owner": "source.library.metadata_patch",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/metadata_patch.hpp",
+      "owner": "source.library.metadata_patch",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/records.hpp",
+      "owner": "source.library.records",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/repository.hpp",
+      "owner": "source.library.repository",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/repository_transaction.cpp",
+      "owner": "source.library.repository_transaction",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/repository_transaction.hpp",
+      "owner": "source.library.repository_transaction",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/revision_delta.hpp",
+      "owner": "source.library.revision_delta",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/search.cpp",
+      "owner": "source.library.search",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/search.hpp",
+      "owner": "source.library.search",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/snapshot.hpp",
+      "owner": "source.library.snapshot",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/tags.cpp",
+      "owner": "source.library.tags",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/library/tags.hpp",
+      "owner": "source.library.tags",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/lockfree/spsc_ring_buffer.hpp",
+      "owner": "source.lockfree.spsc_ring_buffer",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/main.cpp",
+      "owner": "source.main",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/CMakeLists.txt",
+      "owner": "build.src.media",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/media/artwork_reference.hpp",
+      "owner": "source.media.artwork_reference",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/byte_stream.hpp",
+      "owner": "source.media.byte_stream",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/error.hpp",
+      "owner": "source.media.error",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/local_file_stream.cpp",
+      "owner": "source.media.local_file_stream",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/local_file_stream.hpp",
+      "owner": "source.media.local_file_stream",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/media.hpp",
+      "owner": "source.media.media",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/operation_context.hpp",
+      "owner": "source.media.operation_context",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/provider.hpp",
+      "owner": "source.media.provider",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/media/result.hpp",
+      "owner": "source.media.result",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/pcm/pcm_queue.hpp",
+      "owner": "source.pcm.pcm_queue",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/pcm/stream_spec.hpp",
+      "owner": "source.pcm.stream_spec",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/persistence/CMakeLists.txt",
+      "owner": "build.src.persistence",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/persistence/qt/atomic_file_store.cpp",
+      "owner": "source.persistence.qt.atomic_file_store",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/persistence/qt/atomic_file_store.hpp",
+      "owner": "source.persistence.qt.atomic_file_store",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/persistence/qt/library_json.cpp",
+      "owner": "source.persistence.qt.library_json",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/persistence/qt/library_json.hpp",
+      "owner": "source.persistence.qt.library_json",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/persistence/qt/library_store.cpp",
+      "owner": "source.persistence.qt.library_store",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/persistence/qt/library_store.hpp",
+      "owner": "source.persistence.qt.library_store",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/platform/CMakeLists.txt",
+      "owner": "build.src.platform",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/platform/files/file_replacement.cpp",
+      "owner": "source.platform.files.file_replacement",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/platform/files/file_replacement.hpp",
+      "owner": "source.platform.files.file_replacement",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/platform/qt/player_settings.cpp",
+      "owner": "source.platform.qt.player_settings",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/platform/qt/player_settings.hpp",
+      "owner": "source.platform.qt.player_settings",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/platform/qt/qt_path_adapter.hpp",
+      "owner": "source.platform.qt.qt_path_adapter",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/utils/units.hpp",
+      "owner": "source.utils.units",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "owner": "build.tests",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/CMakeLists.txt",
+      "owner": "build.tests.app",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/library/artwork_store_test.cpp",
+      "owner": "test.app.library.artwork_store_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/library/search_index_test.cpp",
+      "owner": "test.app.library.search_index_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/background_metadata_writes_test.cpp",
+      "owner": "test.app.metadata.background_metadata_writes_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/custom_tag_commands_test.cpp",
+      "owner": "test.app.metadata.custom_tag_commands_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/file_replacement_test.cpp",
+      "owner": "test.app.metadata.file_replacement_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/media_replacement_test.cpp",
+      "owner": "test.app.metadata.media_replacement_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/metadata_batch_edit_test.cpp",
+      "owner": "test.app.metadata.metadata_batch_edit_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/metadata_conflicts_test.cpp",
+      "owner": "test.app.metadata.metadata_conflicts_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/metadata_edit_service_test.cpp",
+      "owner": "test.app.metadata.metadata_edit_service_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/metadata_merge_test.cpp",
+      "owner": "test.app.metadata.metadata_merge_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/metadata/metadata_single_edit_test.cpp",
+      "owner": "test.app.metadata.metadata_single_edit_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/playback/active_playlist_test.cpp",
+      "owner": "test.app.playback.active_playlist_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/playback/playback_presentation_test.cpp",
+      "owner": "test.app.playback.playback_presentation_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/playback/playback_queue_test.cpp",
+      "owner": "test.app.playback.playback_queue_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/playback/playback_service_test.cpp",
+      "owner": "test.app.playback.playback_service_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/playback/playlist_transfer_test.cpp",
+      "owner": "test.app.playback.playlist_transfer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/workspace/workspace_reconciliation_test.cpp",
+      "owner": "test.app.workspace.workspace_reconciliation_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/app/workspace/workspace_scanner_test.cpp",
+      "owner": "test.app.workspace.workspace_scanner_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/CMakeLists.txt",
+      "owner": "build.tests.audio",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/biquad_test.cpp",
+      "owner": "test.audio.biquad_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/buffer_source_test.cpp",
+      "owner": "test.audio.buffer_source_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/device_test.cpp",
+      "owner": "test.audio.device_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/equalizer_test.cpp",
+      "owner": "test.audio.equalizer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/output_sanitizer_test.cpp",
+      "owner": "test.audio.output_sanitizer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/output_test.cpp",
+      "owner": "test.audio.output_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/processing_chain_test.cpp",
+      "owner": "test.audio.processing_chain_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/relay_test.cpp",
+      "owner": "test.audio.relay_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/shaped_source_test.cpp",
+      "owner": "test.audio.shaped_source_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/tone_test.cpp",
+      "owner": "test.audio.tone_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/audio/volume_test.cpp",
+      "owner": "test.audio.volume_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/boundaries/coverage_inventory.cpp",
+      "owner": "test.boundaries.coverage_inventory",
+      "language": "cpp",
+      "role": "consumer",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/CMakeLists.txt",
+      "owner": "build.tests.codec",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/audio_decoder_test.cpp",
+      "owner": "test.codec.audio_decoder_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/backend_qualification_test.cpp",
+      "owner": "test.codec.backend_qualification_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/decoder_test.cpp",
+      "owner": "test.codec.decoder_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_adts_test.cpp",
+      "owner": "test.codec.ffmpeg_adts_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_build_test.cpp",
+      "owner": "test.codec.ffmpeg_build_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_channel_layout_test.cpp",
+      "owner": "test.codec.ffmpeg_channel_layout_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_container_test.cpp",
+      "owner": "test.codec.ffmpeg_container_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_hardening_test.cpp",
+      "owner": "test.codec.ffmpeg_hardening_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_io_test.cpp",
+      "owner": "test.codec.ffmpeg_io_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_lossless_test.cpp",
+      "owner": "test.codec.ffmpeg_lossless_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_metadata_test.cpp",
+      "owner": "test.codec.ffmpeg_metadata_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_metadata_writer_test.cpp",
+      "owner": "test.codec.ffmpeg_metadata_writer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_mp4_test.cpp",
+      "owner": "test.codec.ffmpeg_mp4_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_ogg_test.cpp",
+      "owner": "test.codec.ffmpeg_ogg_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_packet_decoder_test.cpp",
+      "owner": "test.codec.ffmpeg_packet_decoder_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_pcm_test.cpp",
+      "owner": "test.codec.ffmpeg_pcm_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_qualification_test.cpp",
+      "owner": "test.codec.ffmpeg_qualification_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/ffmpeg_sampled_file_test.cpp",
+      "owner": "test.codec.ffmpeg_sampled_file_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/format_test.cpp",
+      "owner": "test.codec.format_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/provider_test.cpp",
+      "owner": "test.codec.provider_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/codec/registry_test.cpp",
+      "owner": "test.codec.registry_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/CMakeLists.txt",
+      "owner": "testing.compatibility_corpus",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/fixture_files.hpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/layout_test.cpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/library_test.cpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/main.cpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/session_test.cpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/settings_test.cpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/compatibility/theme_test.cpp",
+      "owner": "testing.compatibility_corpus",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/core/CMakeLists.txt",
+      "owner": "build.tests.core",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/core/cache_line_test.cpp",
+      "owner": "test.core.cache_line_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/core/handle_test.cpp",
+      "owner": "test.core.handle_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/CMakeLists.txt",
+      "owner": "build.tests.desktop",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/library/library_documents_test.cpp",
+      "owner": "test.desktop.library.library_documents_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/library/library_lifetime_test.cpp",
+      "owner": "test.desktop.library.library_lifetime_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/library/library_persistence_test.cpp",
+      "owner": "test.desktop.library.library_persistence_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/library/m3u_playlist_test.cpp",
+      "owner": "test.desktop.library.m3u_playlist_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/library/queue_library_migration_test.cpp",
+      "owner": "test.desktop.library.queue_library_migration_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/library/saved_playlist_commands_test.cpp",
+      "owner": "test.desktop.library.saved_playlist_commands_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/metadata/media_revision_publisher_test.cpp",
+      "owner": "test.desktop.metadata.media_revision_publisher_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/metadata/metadata_write_service_test.cpp",
+      "owner": "test.desktop.metadata.metadata_write_service_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/playback/equalizer_control_test.cpp",
+      "owner": "test.desktop.playback.equalizer_control_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/playback/queue_settings_test.cpp",
+      "owner": "test.desktop.playback.queue_settings_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/playback/volume_control_test.cpp",
+      "owner": "test.desktop.playback.volume_control_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/player_application_test.cpp",
+      "owner": "test.desktop.player_application_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/queued_delivery_test.cpp",
+      "owner": "test.desktop.queued_delivery_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/session/session_preferences_test.cpp",
+      "owner": "test.desktop.session.session_preferences_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/workspace/workspace_scan_publisher_test.cpp",
+      "owner": "test.desktop.workspace.workspace_scan_publisher_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/desktop/workspace/workspace_watcher_test.cpp",
+      "owner": "test.desktop.workspace.workspace_watcher_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/CMakeLists.txt",
+      "owner": "build.tests.engine",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/fake_decoder_test.cpp",
+      "owner": "test.engine.fake_decoder_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/loader_test.cpp",
+      "owner": "test.engine.loader_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/metadata_coordinator_test.cpp",
+      "owner": "test.engine.metadata_coordinator_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/pipeline/CMakeLists.txt",
+      "owner": "build.tests.engine.pipeline",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/pipeline/pipeline_ownership_test.cpp",
+      "owner": "test.engine.pipeline.pipeline_ownership_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/playback_test.cpp",
+      "owner": "test.engine.playback_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/player_test.cpp",
+      "owner": "test.engine.player_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/playhead_test.cpp",
+      "owner": "test.engine.playhead_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/playlist_test.cpp",
+      "owner": "test.engine.playlist_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/session_test.cpp",
+      "owner": "test.engine.session_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/tag_reader_test.cpp",
+      "owner": "test.engine.tag_reader_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/engine/transport_worker_test.cpp",
+      "owner": "test.engine.transport_worker_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fakes/decoder.hpp",
+      "owner": "testing.decoder",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fakes/output.hpp",
+      "owner": "testing.output",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fakes/tone.hpp",
+      "owner": "testing.tone",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/atomic_output.hpp",
+      "owner": "testing.atomic_output",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/gated_atomic_output.hpp",
+      "owner": "testing.gated_atomic_output",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/gated_media_provider.hpp",
+      "owner": "testing.gated_media_provider",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/gui_interaction.hpp",
+      "owner": "testing.gui_interaction",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/rig.hpp",
+      "owner": "testing.rig",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/shaping.hpp",
+      "owner": "testing.shaping",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/temporary_directory.hpp",
+      "owner": "testing.temporary_directory",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/track_view.hpp",
+      "owner": "testing.track_view",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/wav.hpp",
+      "owner": "testing.wav",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/fixtures/widget_diagnostics.hpp",
+      "owner": "testing.widget_diagnostics",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/CMakeLists.txt",
+      "owner": "build.tests.gui",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/appearance/artwork_presentation_test.cpp",
+      "owner": "test.gui.appearance.artwork_presentation_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/appearance/theme_editor_test.cpp",
+      "owner": "test.gui.appearance.theme_editor_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/appearance/theme_manager_test.cpp",
+      "owner": "test.gui.appearance.theme_manager_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/appearance/theme_test.cpp",
+      "owner": "test.gui.appearance.theme_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/benchmarks/projection_benchmark.cpp",
+      "owner": "test.gui.benchmarks.projection_benchmark",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/contracts/interaction_fixture_test.cpp",
+      "owner": "test.gui.contracts.interaction_fixture_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/contracts/reader_contract_test.cpp",
+      "owner": "test.gui.contracts.reader_contract_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/controls/painting_contract_test.cpp",
+      "owner": "test.gui.controls.painting_contract_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/controls/player_sections_test.cpp",
+      "owner": "test.gui.controls.player_sections_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/documents/document_registry_test.cpp",
+      "owner": "test.gui.documents.document_registry_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/documents/now_playing_document_test.cpp",
+      "owner": "test.gui.documents.now_playing_document_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/documents/saved_playlist_document_test.cpp",
+      "owner": "test.gui.documents.saved_playlist_document_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/documents/workspace_document_test.cpp",
+      "owner": "test.gui.documents.workspace_document_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/fixtures/player_dialogs.hpp",
+      "owner": "test.gui.fixtures.player_dialogs",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/journeys/desktop_journey_test.cpp",
+      "owner": "test.gui.journeys.desktop_journey_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/journeys/restart_child.hpp",
+      "owner": "test.gui.journeys.restart_child",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/journeys/session_journey.hpp",
+      "owner": "test.gui.journeys.session_journey",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/layout/component_contract_test.cpp",
+      "owner": "test.gui.layout.component_contract_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/layout/editor/button_layout_editor_test.cpp",
+      "owner": "test.gui.layout.editor.button_layout_editor_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/layout/layout_builder_test.cpp",
+      "owner": "test.gui.layout.layout_builder_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/layout/layout_document_test.cpp",
+      "owner": "test.gui.layout.layout_document_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/layout/layout_editor_test.cpp",
+      "owner": "test.gui.layout.layout_editor_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/layout/layout_session_test.cpp",
+      "owner": "test.gui.layout.layout_session_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/main_window_shell_test.cpp",
+      "owner": "test.gui.main_window_shell_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/metadata/custom_tag_editor_test.cpp",
+      "owner": "test.gui.metadata.custom_tag_editor_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/metadata/metadata_conflict_panel_test.cpp",
+      "owner": "test.gui.metadata.metadata_conflict_panel_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/metadata/metadata_file_journey_test.cpp",
+      "owner": "test.gui.metadata.metadata_file_journey_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/metadata/standard_metadata_editor_test.cpp",
+      "owner": "test.gui.metadata.standard_metadata_editor_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/metadata/track_inspector_test.cpp",
+      "owner": "test.gui.metadata.track_inspector_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/shell/document_command_router_test.cpp",
+      "owner": "test.gui.shell.document_command_router_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/shell/document_host_test.cpp",
+      "owner": "test.gui.shell.document_host_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/shell/library_navigation_test.cpp",
+      "owner": "test.gui.shell.library_navigation_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/shell/main_window_test.cpp",
+      "owner": "test.gui.shell.main_window_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/shell/player_actions_test.cpp",
+      "owner": "test.gui.shell.player_actions_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/shell/saved_playlist_manager_test.cpp",
+      "owner": "test.gui.shell.saved_playlist_manager_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/browser_view_state_test.cpp",
+      "owner": "test.gui.tracks.browser_view_state_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/tag_filter_panel_test.cpp",
+      "owner": "test.gui.tracks.tag_filter_panel_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_browser_test.cpp",
+      "owner": "test.gui.tracks.track_browser_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_projection_test.cpp",
+      "owner": "test.gui.tracks.track_projection_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_row_test.cpp",
+      "owner": "test.gui.tracks.track_row_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_search_panel_test.cpp",
+      "owner": "test.gui.tracks.track_search_panel_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_sort_test.cpp",
+      "owner": "test.gui.tracks.track_sort_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_sorter_test.cpp",
+      "owner": "test.gui.tracks.track_sorter_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_table_model_test.cpp",
+      "owner": "test.gui.tracks.track_table_model_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/gui/tracks/track_table_view_test.cpp",
+      "owner": "test.gui.tracks.track_table_view_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/CMakeLists.txt",
+      "owner": "build.tests.library",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/fingerprint_test.cpp",
+      "owner": "test.library.fingerprint_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/identity_test.cpp",
+      "owner": "test.library.identity_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/in_memory_repository_test.cpp",
+      "owner": "test.library.in_memory_repository_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/library_changes_test.cpp",
+      "owner": "test.library.library_changes_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/location_test.cpp",
+      "owner": "test.library.location_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/metadata_patch_test.cpp",
+      "owner": "test.library.metadata_patch_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/metadata_test.cpp",
+      "owner": "test.library.metadata_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/records_test.cpp",
+      "owner": "test.library.records_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/repository_transaction_test.cpp",
+      "owner": "test.library.repository_transaction_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/search_test.cpp",
+      "owner": "test.library.search_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/library/tags_test.cpp",
+      "owner": "test.library.tags_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/lockfree/CMakeLists.txt",
+      "owner": "build.tests.lockfree",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/lockfree/spsc_ring_buffer_test.cpp",
+      "owner": "test.lockfree.spsc_ring_buffer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/media/CMakeLists.txt",
+      "owner": "build.tests.media",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/media/byte_stream_test.cpp",
+      "owner": "test.media.byte_stream_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/media/metadata_writer_test.cpp",
+      "owner": "test.media.metadata_writer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/media/track_metadata_test.cpp",
+      "owner": "test.media.track_metadata_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/pcm/CMakeLists.txt",
+      "owner": "build.tests.pcm",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/pcm/pcm_queue_test.cpp",
+      "owner": "test.pcm.pcm_queue_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/pcm/stream_spec_test.cpp",
+      "owner": "test.pcm.stream_spec_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/persistence/CMakeLists.txt",
+      "owner": "build.tests.persistence",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/persistence/library_json_test.cpp",
+      "owner": "test.persistence.library_json_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/persistence/library_storage_test.cpp",
+      "owner": "test.persistence.library_storage_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/persistence/repository_storage_test.cpp",
+      "owner": "test.persistence.repository_storage_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/platform/CMakeLists.txt",
+      "owner": "build.tests.platform",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/platform/qt_path_adapter_test.cpp",
+      "owner": "test.platform.qt_path_adapter_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/scripts/test_affected_selection.py",
+      "owner": "test.scripts.test_affected_selection",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/scripts/test_coverage_gate.py",
+      "owner": "test.scripts.test_coverage_gate",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/scripts/test_coverage_inventory.py",
+      "owner": "test.scripts.test_coverage_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tests/utils/CMakeLists.txt",
+      "owner": "build.tests.utils",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tests/utils/units_test.cpp",
+      "owner": "test.utils.units_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/__init__.py",
+      "owner": "tooling.package",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/__init__.py",
+      "owner": "architecture.package",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/cmake_inventory/__init__.py",
+      "owner": "architecture.cmake_inventory",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/cmake_inventory/inventory.py",
+      "owner": "architecture.cmake_inventory",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/cmake_inventory/tests/__init__.py",
+      "owner": "architecture.cmake_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/cmake_inventory/tests/test_inventory.py",
+      "owner": "architecture.cmake_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/__init__.py",
+      "owner": "architecture.command_group",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_dependencies/__init__.py",
+      "owner": "architecture.check_dependencies",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_dependencies/__main__.py",
+      "owner": "architecture.check_dependencies",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_ownership/__init__.py",
+      "owner": "architecture.check_ownership",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_ownership/__main__.py",
+      "owner": "architecture.check_ownership",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_tests/__init__.py",
+      "owner": "architecture.check_tests",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/commands/check_tests/__main__.py",
+      "owner": "architecture.check_tests",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/contracts/__init__.py",
+      "owner": "architecture.contracts",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/contracts/catalog.py",
+      "owner": "architecture.contracts",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/contracts/definitions.py",
+      "owner": "architecture.contracts",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/contracts/tests/__init__.py",
+      "owner": "architecture.contracts",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/contracts/tests/test_catalog.py",
+      "owner": "architecture.contracts",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_graph/__init__.py",
+      "owner": "architecture.dependency_graph",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_graph/graph.py",
+      "owner": "architecture.dependency_graph",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_graph/tests/__init__.py",
+      "owner": "architecture.dependency_graph",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_graph/tests/test_graph.py",
+      "owner": "architecture.dependency_graph",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_policy/__init__.py",
+      "owner": "architecture.dependency_policy",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_policy/policy.py",
+      "owner": "architecture.dependency_policy",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_policy/tests/__init__.py",
+      "owner": "architecture.dependency_policy",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/dependency_policy/tests/test_policy.py",
+      "owner": "architecture.dependency_policy",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/inventory/__init__.py",
+      "owner": "architecture.git_inventory",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/inventory/git_inventory.py",
+      "owner": "architecture.git_inventory",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/inventory/tests/__init__.py",
+      "owner": "architecture.git_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/inventory/tests/test_git_inventory.py",
+      "owner": "architecture.git_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/ownership/__init__.py",
+      "owner": "architecture.ownership",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/ownership/registry.py",
+      "owner": "architecture.ownership",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/ownership/tests/__init__.py",
+      "owner": "architecture.ownership",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/architecture/ownership/tests/test_registry.py",
+      "owner": "architecture.ownership",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/CMakeLists.txt",
+      "owner": "coverage.package",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/__init__.py",
+      "owner": "coverage.package",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/measurement/CMakeLists.txt",
+      "owner": "coverage.measurement",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/measurement/__init__.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/measurement/__main__.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/measurement/report.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/measurement/tests/__init__.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/measurement/tests/test_report.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/python_runner/CMakeLists.txt",
+      "owner": "coverage.python_runner",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/python_runner/__init__.py",
+      "owner": "coverage.python_runner",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/python_runner/__main__.py",
+      "owner": "coverage.python_runner",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/source_policy/__init__.py",
+      "owner": "coverage.source_policy",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/source_policy/policy.py",
+      "owner": "coverage.source_policy",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/source_policy/tests/__init__.py",
+      "owner": "coverage.source_policy",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/coverage/source_policy/tests/test_policy.py",
+      "owner": "coverage.source_policy",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/__init__.py",
+      "owner": "testing.package",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/catalog/CMakeLists.txt",
+      "owner": "testing.catalog",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/catalog/__init__.py",
+      "owner": "testing.catalog",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/catalog/catalog.py",
+      "owner": "testing.catalog",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/catalog/tests/__init__.py",
+      "owner": "testing.catalog",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "tools/testing/catalog/tests/test_catalog.py",
+      "owner": "testing.catalog",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    }
+  ],
+  "workflow_targets": [
+    "app_active_playlist_test",
+    "app_artwork_store_test",
+    "app_background_metadata_writes_test",
+    "app_custom_tag_commands_test",
+    "app_m3u_playlist_test",
+    "app_media_replacement_test",
+    "app_media_revision_publisher_test",
+    "app_metadata_batch_edit_test",
+    "app_metadata_conflicts_test",
+    "app_metadata_edit_service_test",
+    "app_metadata_merge_test",
+    "app_metadata_single_edit_test",
+    "app_playback_presentation_test",
+    "app_playback_queue_test",
+    "app_playback_service_test",
+    "app_player_application_test",
+    "app_playlist_transfer_test",
+    "app_queue_library_migration_test",
+    "app_saved_playlist_commands_test",
+    "app_search_index_test",
+    "app_workspace_reconciliation_test",
+    "app_workspace_scan_publisher_test",
+    "app_workspace_scanner_test",
+    "app_workspace_watcher_test",
+    "desktop_library_documents_test",
+    "desktop_library_lifetime_test",
+    "desktop_library_persistence_test",
+    "desktop_metadata_write_service_test",
+    "desktop_queued_delivery_test",
+    "desktop_session_preferences_test",
+    "gui_artwork_presentation_test",
+    "gui_browser_view_state_test",
+    "gui_button_layout_editor_test",
+    "gui_custom_tag_editor_test",
+    "gui_desktop_journey_test",
+    "gui_document_command_router_test",
+    "gui_document_host_test",
+    "gui_document_registry_test",
+    "gui_equalizer_control_test",
+    "gui_interaction_fixture_test",
+    "gui_layout_builder_test",
+    "gui_layout_component_contract_test",
+    "gui_layout_document_test",
+    "gui_layout_editor_test",
+    "gui_layout_session_test",
+    "gui_library_json_test",
+    "gui_library_navigation_test",
+    "gui_library_storage_test",
+    "gui_main_window_shell_test",
+    "gui_main_window_test",
+    "gui_metadata_conflict_panel_test",
+    "gui_metadata_file_journey_test",
+    "gui_now_playing_document_test",
+    "gui_painting_contract_test",
+    "gui_player_actions_test",
+    "gui_player_sections_test",
+    "gui_playlist_control_test",
+    "gui_reader_contract_test",
+    "gui_saved_playlist_document_test",
+    "gui_saved_playlist_manager_test",
+    "gui_saved_playlist_storage_test",
+    "gui_standard_metadata_editor_test",
+    "gui_tag_filter_panel_test",
+    "gui_theme_editor_test",
+    "gui_theme_manager_test",
+    "gui_theme_test",
+    "gui_track_browser_test",
+    "gui_track_inspector_test",
+    "gui_track_projection_test",
+    "gui_track_row_test",
+    "gui_track_search_panel_test",
+    "gui_track_sort_test",
+    "gui_track_sorter_test",
+    "gui_track_table_model_test",
+    "gui_track_table_view_test",
+    "gui_volume_control_test",
+    "gui_workspace_document_test",
+    "library_changes_test",
+    "library_fingerprint_test",
+    "library_identity_test",
+    "library_in_memory_repository_test",
+    "library_location_test",
+    "library_metadata_patch_test",
+    "library_metadata_test",
+    "library_records_test",
+    "library_repository_transaction_test",
+    "library_search_test",
+    "library_tags_test",
+    "media_byte_stream_test",
+    "media_metadata_writer_test",
+    "media_track_metadata_test",
+    "platform_file_replacement_test"
+  ]
+}

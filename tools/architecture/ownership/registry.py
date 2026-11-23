@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from importlib.resources import files
 from pathlib import PurePosixPath
 import re
 from typing import Iterable
@@ -27,7 +28,9 @@ def _relative_path(value: object) -> str:
         or any(character in value for character in "\x00\r\n")
         or path.parts[0] == ".git"
     ):
-        raise RegistryError(f"Owned paths must be canonical repository paths: {value!r}")
+        raise RegistryError(
+            f"Owned paths must be canonical repository paths: {value!r}"
+        )
     return value
 
 
@@ -71,10 +74,14 @@ class OwnershipRegistry:
             except json.JSONDecodeError as error:
                 raise RegistryError(f"Invalid ownership JSON: {error.msg}") from error
             if not isinstance(document, dict) or set(document) != {
-                "schema_version", "owners"
+                "schema_version",
+                "owners",
             }:
                 raise RegistryError("Expected schema_version and owners")
-            if type(document["schema_version"]) is not int or document["schema_version"] != 1:
+            if (
+                type(document["schema_version"]) is not int
+                or document["schema_version"] != 1
+            ):
                 raise RegistryError("Unsupported ownership schema version")
             if not isinstance(document["owners"], list):
                 raise RegistryError("Owners must be a list")
@@ -101,7 +108,11 @@ class OwnershipRegistry:
             r"[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*", identity
         ):
             raise RegistryError("Owner identities must be stable dotted names")
-        if not isinstance(purpose, str) or not purpose.strip() or purpose != purpose.strip():
+        if (
+            not isinstance(purpose, str)
+            or not purpose.strip()
+            or purpose != purpose.strip()
+        ):
             raise RegistryError(f"Owner {identity} requires a nonempty purpose")
         if not isinstance(paths, list) or not paths:
             raise RegistryError(f"Owner {identity} requires owned files")
@@ -123,3 +134,15 @@ class OwnershipRegistry:
         return InventoryDifference(
             tuple(sorted(tracked - declared)), tuple(sorted(declared - tracked))
         )
+
+
+def load_current_registry() -> OwnershipRegistry:
+    """Read current declarations through the owning abstraction's public API."""
+    directory = files(__package__).joinpath("data")
+    return OwnershipRegistry(
+        [
+            path.read_text(encoding="utf-8")
+            for path in sorted(directory.iterdir(), key=lambda path: path.name)
+            if path.name.endswith(".json")
+        ]
+    )
