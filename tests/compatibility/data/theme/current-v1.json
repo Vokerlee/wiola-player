@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "selected": "custom",
+  "custom": {
+    "window": "#ffffff",
+    "surface": "#ffffff",
+    "text": "#000000",
+    "muted-text": "#444444",
+    "disabled-text": "#777777",
+    "accent": "#000080",
+    "accent-text": "#ffffff",
+    "focus": "#000080",
+    "error": "#990000"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "open": [
+    {
+      "queue": true
+    },
+    {
+      "playlist": "saved"
+    },
+    {
+      "workspace": "folder"
+    }
+  ],
+  "visible": {
+    "playlist": "saved"
+  },
+  "destination": "saved",
+  "browsers": [
+    {
+      "document": {
+        "queue": true
+      },
+      "state": {
+        "query": {
+          "title": "Соната",
+          "artist": "Бах",
+          "album": "Live",
+          "tags": "Calm",
+          "filters": [
+            {
+              "key": "mood",
+              "value": "Calm",
+              "mode": "include"
+            }
+          ]
+        },
+        "sort": [
+          {
+            "field": "tag",
+            "direction": "descending",
+            "tag": "mood"
+          }
+        ],
+        "columns": [],
+        "selected": [
+          {
+            "queue": "18446744073709551614"
+          },
+          {
+            "queue": "7"
+          }
+        ],
+        "current": {
+          "queue": "7"
+        },
+        "anchor": {
+          "queue": "18446744073709551614"
+        },
+        "offset": -5
+      }
+    }
+  ],
+  "window": [
+    -100,
+    20,
+    1200,
+    800
+  ],
+  "splitters": [
+    {
+      "id": "documents",
+      "sizes": [
+        200,
+        600
+      ]
+    }
+  ],
+  "layout": "custom"
+}

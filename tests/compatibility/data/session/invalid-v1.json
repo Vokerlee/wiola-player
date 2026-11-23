@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "open": [
+    {
+      "queue": true
+    },
+    {
+      "queue": true
+    }
+  ],
+  "browsers": [],
+  "window": [
+    0,
+    0,
+    800,
+    600
+  ],
+  "splitters": [],
+  "layout": "classic"
+}

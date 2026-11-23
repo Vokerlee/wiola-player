@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "tracks": [],
+  "playlists": [
+    {
+      "id": "saved",
+      "entries": [
+        {
+          "id": "orphan",
+          "media": "missing"
+        }
+      ]
+    }
+  ]
+}

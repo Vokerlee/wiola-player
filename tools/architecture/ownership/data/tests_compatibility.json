@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "testing.compatibility_corpus",
+      "purpose": "Qualifies persisted client-data compatibility using independent input oracles",
+      "files": [
+        "tests/compatibility/CMakeLists.txt",
+        "tests/compatibility/README.md",
+        "tests/compatibility/data/README.md",
+        "tests/compatibility/data/layout/README.md",
+        "tests/compatibility/data/layout/current-v2.json",
+        "tests/compatibility/data/layout/future-session.json",
+        "tests/compatibility/data/layout/future.json",
+        "tests/compatibility/data/layout/invalid-v2.json",
+        "tests/compatibility/data/layout/legacy-v1.json",
+        "tests/compatibility/data/layout/session-v1.json",
+        "tests/compatibility/data/library/README.md",
+        "tests/compatibility/data/library/current-v1.json",
+        "tests/compatibility/data/library/future.json",
+        "tests/compatibility/data/library/invalid-reference-v1.json",
+        "tests/compatibility/data/library/minimal-v1.json",
+        "tests/compatibility/data/malformed.json",
+        "tests/compatibility/data/session/README.md",
+        "tests/compatibility/data/session/current-v1.json",
+        "tests/compatibility/data/session/future.json",
+        "tests/compatibility/data/session/invalid-v1.json",
+        "tests/compatibility/data/settings/README.md",
+        "tests/compatibility/data/settings/invalid-occurrences.ini",
+        "tests/compatibility/data/settings/legacy.ini",
+        "tests/compatibility/data/settings/occurrences.ini",
+        "tests/compatibility/data/theme/README.md",
+        "tests/compatibility/data/theme/current-v1.json",
+        "tests/compatibility/data/theme/future.json",
+        "tests/compatibility/data/theme/invalid-v1.json",
+        "tests/compatibility/fixture_files.hpp",
+        "tests/compatibility/layout_test.cpp",
+        "tests/compatibility/library_test.cpp",
+        "tests/compatibility/main.cpp",
+        "tests/compatibility/session_test.cpp",
+        "tests/compatibility/settings_test.cpp",
+        "tests/compatibility/theme_test.cpp"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "root": {
+    "id": "documentTabs",
+    "type": "stack"
+  }
+}
