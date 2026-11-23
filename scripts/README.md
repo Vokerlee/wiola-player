@@ -34,3 +34,12 @@ The SDK implementation now lives with its identity logic and process contracts i
 launcher. CI supplies a second argument for a scratch workspace outside the install prefix,
 so caches contain installed SDK files rather than downloaded sources and compiler objects.
 Only x86-64 POSIX MinGW is supported; the 32-bit and Win32-threading metapackages are not needed.
+
+## Packaged desktop checks
+
+`run-desktop-journeys.py` is a compatibility launcher for
+[the desktop contract composition](../tools/testing/desktop_checks/README.md).
+The shared [GoogleTest protocol](../tools/testing/gtest/README.md) owns process
+discovery, complete case evidence and assertion/crash classification. The runner
+does not guess platform or build paths; pass a Qt platform explicitly when needed
+(for example `--qt-platform offscreen`) or preserve the caller environment.
