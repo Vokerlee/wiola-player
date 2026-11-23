@@ -21,6 +21,7 @@
 #include <app/playback/active_playlist.hpp>
 
 #include <gtest/gtest.h>
+#include <vector>
 
 TEST(ActivePlaylist, TracksDestinationIdentityWithoutDependingOnDocumentSelection)
 {
@@ -40,4 +41,23 @@ TEST(ActivePlaylist, TracksDestinationIdentityWithoutDependingOnDocumentSelectio
 
     EXPECT_TRUE(active.clear_if(second));
     EXPECT_FALSE(active.id().has_value());
+}
+
+TEST(ActivePlaylist, PublishesOnlyRealChangesAndAllowsReentrantObservers)
+{
+    wiola::app::ActivePlaylist active;
+    std::vector<std::optional<wiola::library::PlaylistId>> observed;
+    active.on_changed([&](auto id) {
+        observed.push_back(id);
+        if (id == wiola::library::PlaylistId{"first"})
+            static_cast<void>(active.set(wiola::library::PlaylistId{"second"}));
+    });
+    ASSERT_TRUE(active.set(wiola::library::PlaylistId{"first"}));
+    EXPECT_EQ(active.id(), wiola::library::PlaylistId{"second"});
+    EXPECT_EQ(observed.size(), 2);
+    ASSERT_TRUE(active.set(wiola::library::PlaylistId{"second"}));
+    EXPECT_EQ(observed.size(), 2);
+    ASSERT_TRUE(active.clear_if(wiola::library::PlaylistId{"second"}));
+    EXPECT_EQ(observed.size(), 3);
+    EXPECT_FALSE(observed.back());
 }

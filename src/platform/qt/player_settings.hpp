@@ -25,6 +25,7 @@
 
 #include <QSettings>
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <vector>
@@ -44,6 +45,9 @@ struct PlaylistSettings {
     std::optional<std::filesystem::path> selected;
     int repeat{0};
     bool shuffled{false};
+    std::vector<std::uint64_t> occurrence_ids;
+    std::optional<std::uint64_t> selected_occurrence;
+    bool has_occurrence_ids{false};
 };
 
 /// Converts Qt's string-keyed storage into typed values, with defaults for invalid old data.

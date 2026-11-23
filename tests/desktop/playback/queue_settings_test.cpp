@@ -208,7 +208,7 @@ TEST_F(QueueSettings, DropsTracksThatHaveGoneSince)
     EXPECT_EQ(restored.playlist().tracks().front().path(), kept);
 }
 
-TEST_F(QueueSettings, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
+TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
 {
     const std::filesystem::path repeated{wiola::testing::write_wav("wiola_queue_repeat.wav")};
     const std::filesystem::path other{wiola::testing::write_wav("wiola_queue_other.wav")};
@@ -244,9 +244,44 @@ TEST_F(QueueSettings, RestoresTheFirstOccurrenceOfASelectedDuplicatePath)
     EXPECT_EQ(tracks[2].path(), repeated);
     EXPECT_NE(tracks[0].id(), tracks[2].id());
 
-    EXPECT_EQ(restored.playlist().position(), 0U);
+    EXPECT_EQ(restored.playlist().position(), 2U);
+    EXPECT_EQ(control.restore_mapping().size(), 3);
     EXPECT_EQ(wiola::app::present_playback(restored).playback.track, repeated);
     EXPECT_FALSE(wiola::app::present_playback(restored).playback.playing);
+}
+
+TEST_F(QueueSettings, LegacyPathOnlySelectionMigratesWithoutInventingAnOccurrence)
+{
+    const auto repeated = wiola::testing::write_wav("wiola_legacy_duplicate.wav");
+    const auto other = wiola::testing::write_wav("wiola_legacy_other.wav");
+    settings.setValue("queue",
+        QStringList{QString::fromStdString(other.string()),
+            QString::fromStdString(repeated.string()), QString::fromStdString(repeated.string())});
+    settings.setValue("queue/path", QString::fromStdString(repeated.string()));
+    wiola::engine::Session engine{nowhere()};
+    Presenter playback{engine};
+    Control control{playback, settings};
+    ASSERT_EQ(control.restore(), 0);
+    EXPECT_EQ(playback.playlist().position(), 1);
+    EXPECT_TRUE(control.restore_mapping().empty());
+}
+
+TEST_F(QueueSettings, InvalidOccurrenceMetadataNeverSelectsADuplicateByFilename)
+{
+    const auto repeated = wiola::testing::write_wav("wiola_invalid_duplicate.wav");
+    const auto other = wiola::testing::write_wav("wiola_invalid_other.wav");
+    settings.setValue("queue",
+        QStringList{QString::fromStdString(other.string()),
+            QString::fromStdString(repeated.string()), QString::fromStdString(repeated.string())});
+    settings.setValue("queue/path", QString::fromStdString(repeated.string()));
+    settings.setValue("queue/entry_ids", QStringList{"11", "11", "13"});
+    settings.setValue("queue/selected_id", "11");
+    wiola::engine::Session engine{nowhere()};
+    Presenter playback{engine};
+    Control control{playback, settings};
+    ASSERT_EQ(control.restore(), 0);
+    EXPECT_TRUE(control.restore_mapping().empty());
+    EXPECT_EQ(playback.playlist().position(), 0);
 }
 
 TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone)

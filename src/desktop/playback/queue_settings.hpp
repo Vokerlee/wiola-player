@@ -25,6 +25,7 @@
 #include <QSettings>
 
 #include <cstddef>
+#include <map>
 
 namespace wiola::app {
 
@@ -46,9 +47,16 @@ public:
     /// Keeps what is queued now, and how it is being played through.
     void save();
 
+    [[nodiscard]] const std::map<engine::QueueEntryId, engine::QueueEntryId>&
+    restore_mapping() const
+    {
+        return restored_;
+    }
+
 private:
     app::PlaybackService& playback_;
     QSettings& settings_;
+    std::map<engine::QueueEntryId, engine::QueueEntryId> restored_;
 };
 
 } // namespace wiola::app

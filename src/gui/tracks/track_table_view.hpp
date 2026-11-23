@@ -24,6 +24,7 @@
 #include "track_commands.hpp"
 #include "track_table_model.hpp"
 #include <app/library/tag_key_catalog.hpp>
+#include <desktop/session/session_state.hpp>
 #endif
 
 #include <QKeyEvent>
@@ -55,6 +56,9 @@ public:
 
     void set_tag_catalog(const app::TagKeyCatalog* catalog) { tag_catalog_ = catalog; }
 
+    [[nodiscard]] app::BrowserViewState capture_browser_state();
+    void restore_browser_state(app::BrowserViewState state);
+    void finish_browser_restore();
     void set_capabilities(TrackCapabilities capabilities);
     void show_rows(const std::vector<TrackRow>& tracks, std::optional<TrackRowId> current = {});
     void show_library(const library::LibraryRepository& repository);
@@ -68,6 +72,8 @@ public:
     [[nodiscard]] std::vector<TrackRowId> chosen_rows() const;
 
 signals:
+    void presentation_restored();
+    void browser_preferences_changed();
     void row_chosen(wiola::gui::TrackRowId id);
     void view_state_changed();
     void removal_asked();
@@ -77,9 +83,11 @@ signals:
     void order_application_asked();
 
 protected:
+    void mousePressEvent(QMouseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
+    void apply_pending_restore();
     void remember_columns();
     void restore_columns();
     void rebuild_tag_actions();
@@ -89,8 +97,11 @@ private:
     void restore_selection(const std::vector<TrackRowId>& selected,
         const std::optional<TrackRowId>& current);
 
+    std::optional<app::BrowserViewState> pending_restore_;
+    bool projecting_{false};
     TrackCapabilities capabilities_{TrackCapabilities::all()};
     std::map<TrackCommand, QAction*> command_actions_;
+    std::map<TrackColumnId, QAction*> column_actions_;
     TrackTableModel model_;
     const app::TagKeyCatalog* tag_catalog_{nullptr};
     std::map<TrackColumnId, TrackColumnLayout> column_layout_;

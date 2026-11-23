@@ -27,7 +27,13 @@ bool ActivePlaylist::set(const library::PlaylistId& id)
     if (!id.valid())
         return false;
 
+    if (id_ == id)
+        return true;
     id_ = id;
+    if (observer_) {
+        const auto notify = observer_;
+        notify(id_);
+    }
     return true;
 }
 
@@ -37,6 +43,10 @@ bool ActivePlaylist::clear_if(const library::PlaylistId& id)
         return false;
 
     id_.reset();
+    if (observer_) {
+        const auto notify = observer_;
+        notify(id_);
+    }
     return true;
 }
 

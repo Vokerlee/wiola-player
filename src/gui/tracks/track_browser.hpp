@@ -35,6 +35,18 @@ public:
     TrackBrowser(TrackCapabilities capabilities, QWidget* parent = nullptr);
     ~TrackBrowser() override;
     void show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current = {});
+
+    [[nodiscard]] app::BrowserViewState capture_browser_state()
+    {
+        return table_->capture_browser_state();
+    }
+
+    void restore_browser_state(app::BrowserViewState state)
+    {
+        set_view_state(state.view);
+        table_->restore_browser_state(std::move(state));
+    }
+
     void set_view_state(TrackViewState state);
 
     [[nodiscard]] const TrackViewState& view_state() const noexcept { return table_->view_state(); }

@@ -19,6 +19,7 @@
  */
 
 #include "player_settings.hpp"
+#include <set>
 
 #include "qt_path_adapter.hpp"
 
@@ -87,6 +88,25 @@ PlaylistSettings QtSettingsAdapter::read_playlist() const
         settings.selected = platform::qt::QtPathAdapter::from_qt(selected);
     settings.repeat = settings_.value("queue/repeat", 0).toInt();
     settings.shuffled = settings_.value("queue/shuffled", false).toBool();
+    settings.has_occurrence_ids = settings_.contains("queue/entry_ids");
+    const auto ids = settings_.value("queue/entry_ids").toStringList();
+    std::set<std::uint64_t> unique;
+    if (ids.size() == tracks.size())
+        for (const auto& id : ids) {
+            bool valid = false;
+            const auto token = id.toULongLong(&valid);
+            if (!valid || !token || !unique.insert(token).second) {
+                settings.occurrence_ids.clear();
+                break;
+            }
+            settings.occurrence_ids.push_back(token);
+        }
+    bool valid = false;
+    const auto selected_id = settings_.value("queue/selected_id").toString().toULongLong(&valid);
+    if (valid && selected_id && unique.contains(selected_id) &&
+        settings.occurrence_ids.size() == settings.tracks.size())
+        settings.selected_occurrence = selected_id;
+
     return settings;
 }
 
@@ -101,6 +121,18 @@ void QtSettingsAdapter::write_playlist(const PlaylistSettings& settings)
         settings.selected ? platform::qt::QtPathAdapter::to_qt(*settings.selected) : QString{});
     settings_.setValue("queue/repeat", settings.repeat);
     settings_.setValue("queue/shuffled", settings.shuffled);
+    if (settings.has_occurrence_ids || !settings.occurrence_ids.empty()) {
+        QStringList ids;
+        for (const auto id : settings.occurrence_ids)
+            ids.push_back(QString::number(id));
+        settings_.setValue("queue/entry_ids", ids);
+        settings_.setValue("queue/selected_id",
+            settings.selected_occurrence ? QString::number(*settings.selected_occurrence)
+                                         : QString{});
+    } else {
+        settings_.remove("queue/entry_ids");
+        settings_.remove("queue/selected_id");
+    }
 }
 
 } // namespace wiola::platform::qt

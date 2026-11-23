@@ -67,6 +67,8 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
         [this] { emit command_requested(TrackCommand::move); });
     connect(table_.data(), &TrackTableView::order_application_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::apply_order); });
+    connect(table_.data(), &TrackTableView::presentation_restored, &lifetime_,
+        [this] { emit selection_changed(); });
     connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, &lifetime_,
         [this] { emit selection_changed(); });
     update_results();

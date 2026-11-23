@@ -71,6 +71,7 @@
 #include <vector>
 
 class QSplitter;
+class QCloseEvent;
 class QActionGroup;
 
 namespace wiola::gui {
@@ -108,7 +109,11 @@ public:
     [[nodiscard]] bool import_layout(QByteArrayView bytes);
     [[nodiscard]] QByteArray layout_json() const;
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+
 private:
+    void save_window_state();
     void show_layout_choice();
     bool install_layout(const LayoutDocument& document, LayoutChoice choice, bool persist);
     /// Asks for files and plays them, in the order they were chosen.
@@ -231,6 +236,7 @@ private:
 
     /// The file a run leaves things in.
     QSettings settings_;
+    app::SessionPreferences& ui_preferences_;
     app::QueueSettings& playlist_;
     app::VolumeControl& volume_;
     app::EqualizerControl& equalizer_;

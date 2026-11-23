@@ -97,6 +97,7 @@ public:
     void request_metadata(const library::MediaId& media, const std::filesystem::path& path);
 
 signals:
+    void active_destination_changed(const std::optional<wiola::library::PlaylistId>& destination);
     void scan_batch(const wiola::app::WorkspaceScanBatch& batch);
     void metadata_outcome(const wiola::app::MetadataEditOutcome& outcome);
     void status_changed(const QString& status);

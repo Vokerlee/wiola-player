@@ -19,6 +19,9 @@
  */
 
 #include "track_table_view.hpp"
+#include <QMouseEvent>
+#include <QScopedValueRollback>
+#include <QSignalBlocker>
 
 #include <gui/appearance/presentation_tokens.hpp>
 
@@ -110,6 +113,7 @@ TrackTableView::TrackTableView(QWidget* parent)
         visible->setCheckable(true);
         visible->setChecked(true);
         horizontalHeader()->addAction(visible);
+        column_actions_[model_.column(column).id] = visible;
 
         connect(visible, &QAction::toggled, this,
             [this, id = model_.column(column).id, column](bool shown) {
@@ -118,6 +122,7 @@ TrackTableView::TrackTableView(QWidget* parent)
                 setColumnHidden(column, !shown);
                 if (shown)
                     setColumnWidth(column, column_layout_[id].width);
+                emit browser_preferences_changed();
             });
     }
 
@@ -163,6 +168,111 @@ TrackTableView::TrackTableView(QWidget* parent)
         if (const auto id = model_.row_id(index); id && capabilities_.supports(TrackCommand::play))
             emit row_chosen(*id);
     });
+    connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
+        if (!projecting_)
+            pending_restore_.reset();
+    });
+    connect(horizontalHeader(), &QHeaderView::sectionResized, this, [this] {
+        if (!projecting_)
+            emit browser_preferences_changed();
+    });
+    connect(horizontalHeader(), &QHeaderView::sectionMoved, this, [this] {
+        if (!projecting_)
+            emit browser_preferences_changed();
+    });
+}
+
+app::BrowserViewState TrackTableView::capture_browser_state()
+{
+    remember_columns();
+    app::BrowserViewState state;
+    state.view = view_state();
+    state.columns = column_layout_;
+    if (pending_restore_) {
+        state.selected = pending_restore_->selected;
+        state.current = pending_restore_->current;
+        state.anchor = pending_restore_->anchor;
+        state.anchor_offset = pending_restore_->anchor_offset;
+    } else {
+        state.selected = chosen_rows();
+        state.current = model_.row_id(currentIndex());
+        const auto anchor = indexAt(QPoint{0, 0});
+        state.anchor = model_.row_id(anchor);
+        state.anchor_offset = anchor.isValid() ? visualRect(anchor).top() : 0;
+    }
+    if (state.selected.size() > 10000)
+        state.selected.resize(10000);
+    return state;
+}
+
+void TrackTableView::restore_browser_state(app::BrowserViewState state)
+{
+    {
+        QScopedValueRollback<bool> projection{projecting_, true};
+        for (const auto& [id, column] : state.columns)
+            column_layout_.insert_or_assign(id, column);
+        std::vector<std::pair<int, TrackColumnId>> ordered;
+        for (const auto& [id, column] : column_layout_)
+            ordered.emplace_back(column.order, id);
+        std::ranges::sort(ordered);
+        column_order_.clear();
+        for (const auto& [order, id] : ordered)
+            column_order_.push_back(id);
+        for (std::size_t i = 0; i < column_order_.size(); ++i)
+            column_layout_[column_order_[i]].order = static_cast<int>(i);
+        visible_tags_.clear();
+        for (const auto& [id, column] : column_layout_)
+            if (const auto* tag = std::get_if<CustomTagColumn>(&id); tag && column.visible) {
+                visible_tags_.push_back(tag->key);
+                if (!std::ranges::any_of(available_tags_, [&](const auto& key) {
+                        return library::normalized_tag_text(key) ==
+                            library::normalized_tag_text(tag->key);
+                    }))
+                    available_tags_.push_back(tag->key);
+            }
+        rebuild_tag_actions();
+        update_tag_columns();
+        pending_restore_ = std::move(state);
+    }
+    apply_pending_restore();
+}
+
+void TrackTableView::apply_pending_restore()
+{
+    if (!pending_restore_)
+        return;
+    const auto selected_before = chosen_rows();
+    const auto current_before = model_.row_id(currentIndex());
+    {
+        QScopedValueRollback<bool> projection{projecting_, true};
+        const QSignalBlocker selection_delivery{selectionModel()};
+        restore_selection(pending_restore_->selected, pending_restore_->current);
+        if (pending_restore_->anchor)
+            if (const auto index = model_.index_of(*pending_restore_->anchor); index.isValid()) {
+                scrollTo(index, QAbstractItemView::PositionAtTop);
+                if (verticalScrollMode() == QAbstractItemView::ScrollPerPixel)
+                    verticalScrollBar()->setValue(verticalScrollBar()->value() -
+                        pending_restore_->anchor_offset);
+            }
+        const auto present = [&](const TrackRowId& id) {
+            return model_.index_of(id).isValid();
+        };
+        if (std::ranges::all_of(pending_restore_->selected, present) &&
+            (!pending_restore_->current || present(*pending_restore_->current)) &&
+            (!pending_restore_->anchor || present(*pending_restore_->anchor)))
+            pending_restore_.reset();
+    }
+    if (selected_before != chosen_rows() || current_before != model_.row_id(currentIndex()))
+        emit presentation_restored();
+}
+
+void TrackTableView::finish_browser_restore()
+{
+    apply_pending_restore();
+    if (pending_restore_) {
+        pending_restore_.reset();
+        emit browser_preferences_changed();
+    }
 }
 
 void TrackTableView::set_capabilities(TrackCapabilities capabilities)
@@ -178,50 +288,62 @@ void TrackTableView::set_capabilities(TrackCapabilities capabilities)
 void TrackTableView::show_rows(const std::vector<TrackRow>& tracks,
     std::optional<TrackRowId> current)
 {
-    const auto current_id = model_.row_id(currentIndex());
-    const QPersistentModelIndex anchor = indexAt(QPoint{0, 0});
-    const int offset = anchor.isValid() ? visualRect(anchor).top() : 0;
-    model_.show_rows(tracks, current);
-    if (current_id && !model_.index_of(*current_id).isValid())
-        selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
-    if (anchor.isValid()) {
-        scrollTo(anchor, QAbstractItemView::PositionAtTop);
-        verticalScrollBar()->setValue(verticalScrollBar()->value() - offset);
+    {
+        QScopedValueRollback<bool> projection{projecting_, true};
+
+        const auto current_id = model_.row_id(currentIndex());
+        const QPersistentModelIndex anchor = indexAt(QPoint{0, 0});
+        const int offset = anchor.isValid() ? visualRect(anchor).top() : 0;
+        model_.show_rows(tracks, current);
+        if (current_id && !model_.index_of(*current_id).isValid())
+            selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
+        if (anchor.isValid()) {
+            scrollTo(anchor, QAbstractItemView::PositionAtTop);
+            verticalScrollBar()->setValue(verticalScrollBar()->value() - offset);
+        }
     }
+    apply_pending_restore();
 }
 
 void TrackTableView::show_library(const library::LibraryRepository& repository)
 {
-    const auto current_id = model_.row_id(currentIndex());
-    model_.show_library(repository);
-    if (current_id && !model_.index_of(*current_id).isValid())
-        selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
+    {
+        QScopedValueRollback<bool> projection{projecting_, true};
+        const auto project = [&] {
+            const auto current_id = model_.row_id(currentIndex());
+            model_.show_library(repository);
+            if (current_id && !model_.index_of(*current_id).isValid())
+                selectionModel()->setCurrentIndex({}, QItemSelectionModel::NoUpdate);
 
-    std::vector<std::string> available;
-    if (tag_catalog_)
-        available = tag_catalog_->keys();
-    else {
-        app::TagKeyCatalog local;
-        for (const auto& media : model_.media_ids())
-            if (const auto* record = repository.track(media))
-                local.upsert(*record);
-        available = local.keys();
+            std::vector<std::string> available;
+            if (tag_catalog_)
+                available = tag_catalog_->keys();
+            else {
+                app::TagKeyCatalog local;
+                for (const auto& media : model_.media_ids())
+                    if (const auto* record = repository.track(media))
+                        local.upsert(*record);
+                available = local.keys();
+            }
+            for (const std::string& visible : visible_tags_) {
+                const std::string normalized = library::normalized_tag_text(visible);
+                const bool present = std::ranges::any_of(available, [&](const std::string& key) {
+                    return library::normalized_tag_text(key) == normalized;
+                });
+
+                if (!present)
+                    available.push_back(visible);
+            }
+
+            if (available == available_tags_)
+                return;
+
+            available_tags_ = std::move(available);
+            rebuild_tag_actions();
+        };
+        project();
     }
-    for (const std::string& visible : visible_tags_) {
-        const std::string normalized = library::normalized_tag_text(visible);
-        const bool present = std::ranges::any_of(available, [&](const std::string& key) {
-            return library::normalized_tag_text(key) == normalized;
-        });
-
-        if (!present)
-            available.push_back(visible);
-    }
-
-    if (available == available_tags_)
-        return;
-
-    available_tags_ = std::move(available);
-    rebuild_tag_actions();
+    apply_pending_restore();
 }
 
 void TrackTableView::remember_columns()
@@ -250,6 +372,11 @@ void TrackTableView::restore_columns()
     for (int section = 0; section < model_.columnCount(); ++section) {
         const auto descriptor = model_.column(section);
         const auto& saved = column_layout_.at(descriptor.id);
+        if (const auto action = column_actions_.find(descriptor.id);
+            action != column_actions_.end()) {
+            const QSignalBlocker blocked{action->second};
+            action->second->setChecked(saved.visible);
+        }
         horizontalHeader()->setSectionResizeMode(section, descriptor.resize);
         setColumnWidth(section, saved.width);
         setColumnHidden(section, !saved.visible);
@@ -265,6 +392,8 @@ void TrackTableView::restore_columns()
 void TrackTableView::rebuild_tag_actions()
 {
     for (QAction* action : tag_actions_) {
+        std::erase_if(column_actions_,
+            [action](const auto& item) { return item.second == action; });
         horizontalHeader()->removeAction(action);
         action->deleteLater();
     }
@@ -282,6 +411,7 @@ void TrackTableView::rebuild_tag_actions()
         tag_actions_.push_back(visible);
 
         const auto id = tag_track_column(key).id;
+        column_actions_[id] = visible;
         if (column_layout_
                 .try_emplace(id,
                     TrackColumnLayout{120, static_cast<int>(column_layout_.size()),
@@ -292,12 +422,15 @@ void TrackTableView::rebuild_tag_actions()
             remember_columns();
             column_layout_[id].visible = shown;
             update_tag_columns();
+            emit browser_preferences_changed();
         });
     }
 }
 
 void TrackTableView::update_tag_columns()
 {
+    QScopedValueRollback<bool> projection{projecting_, true};
+    const QSignalBlocker selection_signals{selectionModel()};
     visible_tags_.clear();
     for (const auto& key : available_tags_)
         if (column_layout_.at(tag_track_column(key).id).visible)
@@ -313,6 +446,8 @@ void TrackTableView::update_tag_columns()
 
 bool TrackTableView::set_view_state(TrackViewState state)
 {
+    pending_restore_.reset();
+    QScopedValueRollback<bool> projection{projecting_, true};
     const auto current = model_.row_id(currentIndex());
     if (!model_.set_view_state(std::move(state)))
         return false;
@@ -439,8 +574,15 @@ std::vector<TrackRowId> TrackTableView::chosen_rows() const
     return tracks;
 }
 
+void TrackTableView::mousePressEvent(QMouseEvent* event)
+{
+    pending_restore_.reset();
+    QTableView::mousePressEvent(event);
+}
+
 void TrackTableView::keyPressEvent(QKeyEvent* event)
 {
+    pending_restore_.reset();
     if (event->key() == Qt::Key_Delete && capabilities_.supports(TrackCommand::remove)) {
         emit removal_asked();
         return;

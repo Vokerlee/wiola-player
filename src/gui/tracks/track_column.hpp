@@ -19,28 +19,13 @@
  */
 
 #pragma once
+#include "track_column_identity.hpp"
 #include "track_sort.hpp"
 #include <QHeaderView>
 #include <array>
 #include <variant>
 
 namespace wiola::gui {
-
-enum StandardTrackColumn {
-    cover,
-    title,
-    artist,
-    album,
-    length,
-    num_columns,
-};
-
-struct CustomTagColumn {
-    std::string key;
-    auto operator<=>(const CustomTagColumn&) const = default;
-};
-
-using TrackColumnId = std::variant<StandardTrackColumn, CustomTagColumn>;
 
 struct TrackColumnDescriptor {
     TrackColumnId id;
@@ -53,11 +38,5 @@ struct TrackColumnDescriptor {
 
 [[nodiscard]] const std::array<TrackColumnDescriptor, num_columns>& standard_track_columns();
 [[nodiscard]] TrackColumnDescriptor tag_track_column(std::string label);
-
-struct TrackColumnLayout {
-    int width{};
-    int order{};
-    bool visible{true};
-};
 
 } // namespace wiola::gui

@@ -22,6 +22,7 @@
 
 #include <library/identity.hpp>
 
+#include <functional>
 #include <optional>
 
 namespace wiola::app {
@@ -32,7 +33,12 @@ public:
     [[nodiscard]] bool clear_if(const library::PlaylistId& id);
     [[nodiscard]] const std::optional<library::PlaylistId>& id() const noexcept;
 
+    using Observer = std::function<void(std::optional<library::PlaylistId>)>;
+
+    void on_changed(Observer observer) { observer_ = std::move(observer); }
+
 private:
+    Observer observer_;
     std::optional<library::PlaylistId> id_;
 };
 
