@@ -45,4 +45,21 @@ CONTRACTS = (
          "Public declarations and READMEs belong to their abstraction"),
         ("tools/architecture/contracts/catalog.py",),
     ),
+    AbstractionContract(
+        "architecture.dependency_graph", "tools/architecture/dependency_graph", "Observes explicit source and configured prerequisites",
+        ("Source text is never executed", "Configured prerequisites are not claimed as direct links",
+         "Observed edges carry source and destination owners"),
+        ("tools/architecture/dependency_graph/graph.py",),
+    ),
+    AbstractionContract(
+        "architecture.dependency_policy", "tools/architecture/dependency_policy", "Checks dependency direction and public boundaries",
+        ("Module membership is explicit", "New and stale exceptions fail",
+         "Qt capability is granted only to named modules"),
+        ("tools/architecture/dependency_policy/policy.py",),
+    ),
+    AbstractionContract(
+        "architecture.check_dependencies", "tools/architecture/commands/check_dependencies", "Runs dependency checks",
+        ("Source and configured evidence are distinguished", "Checking does not configure or build"),
+        ("tools/architecture/commands/check_dependencies/__main__.py",),
+    ),
 )

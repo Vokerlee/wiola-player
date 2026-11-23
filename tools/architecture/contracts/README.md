@@ -16,3 +16,5 @@ flowchart LR
 These checks prove explicit physical ownership and declared invariants, not that the invariant is semantically correct. Behavioral tests and review remain necessary; adding an unrelated class inside an existing file is not justified by an unchanged file-set digest. The final architecture must retire the legacy debt.
 
 Run `python3 -m unittest tools.architecture.contracts.tests.test_catalog` for the [contracts](tests/README.md).
+
+`load_current_catalog()` in the public `catalog.py` API loads the current definitions and exact legacy inventory. Consumers use the immutable `contracts` tuple instead of importing private definition or data files.

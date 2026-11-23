@@ -30,6 +30,9 @@ jobs:
       - run: ./scripts/format-cpp.sh --check
       - run: ./scripts/format-cmake.sh --check
       - run: python3 -m unittest discover -s tests/scripts -v
+      - run: python3 -m unittest discover -s tools -p 'test_*.py'
+      - run: python3 -m tools.architecture.commands.check_ownership
+      - run: python3 -m tools.architecture.commands.check_dependencies
 
   test:
     name: test (${{ matrix.preset }})

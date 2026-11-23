@@ -17,6 +17,7 @@ class BuildTarget:
     generated_sources: tuple[str, ...]
     dependencies: tuple[str, ...]
     artifacts: tuple[Path, ...]
+    compile_definitions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,9 @@ class CMakeInventory:
                     tuple(sorted(set(generated))),
                     tuple(sorted(names[item["id"]] for item in target.get("dependencies", []))),
                     artifacts,
+                    tuple(sorted({definition["define"]
+                                  for group in target.get("compileGroups", [])
+                                  for definition in group.get("defines", [])})),
                 ))
             return cls(source_root, tuple(sorted(targets, key=lambda target: target.name)))
         except (KeyError, TypeError, OSError, json.JSONDecodeError) as error:
