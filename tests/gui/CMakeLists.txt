@@ -171,3 +171,9 @@ wiola_add_test(
     SOURCES tracks/browser_view_state_test.cpp
     LIBS wiola_gui Qt6::Test
 )
+
+wiola_add_test(
+    gui_theme_manager_test
+    SOURCES appearance/theme_manager_test.cpp
+    LIBS wiola_gui
+)

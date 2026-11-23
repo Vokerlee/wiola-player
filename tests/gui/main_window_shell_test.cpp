@@ -103,8 +103,8 @@ protected:
     {
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
         settings.clear();
-        for (const auto& name :
-            {"layout.json", "layout.json.bak", "session.json", "session.json.bak"})
+        for (const auto& name : {"layout.json", "layout.json.bak", "session.json",
+                 "session.json.bak", "theme.json", "theme.json.bak"})
             QFile::remove(QFileInfo{settings.fileName()}.dir().filePath(name));
         settings.sync();
     }
@@ -969,6 +969,32 @@ TEST_F(MainWindowShell,
         }
         ASSERT_TRUE(player.shutdown());
     }
+}
+
+TEST_F(MainWindowShell,
+    ReopeningThemeEditorsUsesCurrentAcceptedColorsAndCustomChoiceSurvivesSwitching)
+{
+    wiola::engine::Session session;
+    wiola::app::LibrarySession library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::app::PlaybackService playback{session};
+    wiola::app::PlaybackPreferences preferences{playback};
+    wiola::gui::MainWindow window{playback, library, preferences};
+    for (const auto& color : {QColor{"#f0f0f0"}, QColor{"#eeeeee"}}) {
+        action(*menu(window, "&Tools"), "Edit theme...")->trigger();
+        auto* dialog = window.findChild<QDialog*>("themeEditor");
+        ASSERT_NE(dialog, nullptr);
+        auto* editor = static_cast<wiola::gui::ThemeEditor*>(dialog);
+        if (color == QColor{"#eeeeee"})
+            EXPECT_EQ(editor->colors().window, QColor{"#f0f0f0"});
+        editor->set_color(wiola::gui::ThemeColorRole::window, color);
+        dialog->findChild<QPushButton*>("applyThemeEdit")->click();
+        EXPECT_EQ(window.palette().color(QPalette::Window), color);
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    }
+    action(*menu(window, "&View"), "Dark theme")->trigger();
+    action(*menu(window, "&View"), "Custom theme")->trigger();
+    EXPECT_EQ(window.palette().color(QPalette::Window), QColor{"#eeeeee"});
+    EXPECT_TRUE(action(*menu(window, "&View"), "Custom theme")->isChecked());
 }
 
 } // namespace

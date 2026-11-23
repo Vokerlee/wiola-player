@@ -50,7 +50,10 @@ TEST(ThemeEditor, RejectsLowContrastAndAppliesAnEditableCopy)
     EXPECT_TRUE(status->text().contains("4.5:1"));
 
     int applications = 0;
-    editor.on_apply([&](const wiola::gui::ThemeColors&) { ++applications; });
+    editor.on_apply([&](const wiola::gui::ThemeColors&) {
+        ++applications;
+        return true;
+    });
     apply->click();
     EXPECT_EQ(applications, 0);
 
@@ -61,6 +64,22 @@ TEST(ThemeEditor, RejectsLowContrastAndAppliesAnEditableCopy)
     editor.set_color(wiola::gui::ThemeColorRole::window, QColor{"#f0f0f0"});
     apply->click();
     EXPECT_EQ(applications, 1);
+    EXPECT_EQ(editor.result(), QDialog::Accepted);
+}
+
+TEST(ThemeEditor, FailedDurableAcceptanceRetainsTheDraftForRetry)
+{
+    wiola::gui::ThemeEditor editor{wiola::gui::theme_colors(wiola::gui::Theme::light)};
+    editor.set_color(wiola::gui::ThemeColorRole::window, QColor{"#f0f0f0"});
+    editor.on_apply([](const auto&) { return false; });
+    auto* apply = editor.findChild<QPushButton*>("applyThemeEdit");
+    ASSERT_NE(apply, nullptr);
+    apply->click();
+    EXPECT_NE(editor.result(), QDialog::Accepted);
+    EXPECT_EQ(editor.colors().window, QColor{"#f0f0f0"});
+    EXPECT_TRUE(editor.findChild<QLabel*>("themeContrastStatus")->text().contains("retained"));
+    editor.on_apply([](const auto&) { return true; });
+    apply->click();
     EXPECT_EQ(editor.result(), QDialog::Accepted);
 }
 

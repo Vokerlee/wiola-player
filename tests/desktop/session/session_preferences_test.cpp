@@ -20,11 +20,11 @@
 
 #include <QCoreApplication>
 #include <QFile>
-#include <QSaveFile>
 #include <QTemporaryDir>
 #include <codec/provider.hpp>
 #include <desktop/library/library_session.hpp>
 #include <desktop/session/session_preferences.hpp>
+#include <fixtures/atomic_output.hpp>
 #include <gtest/gtest.h>
 #include <platform/qt/qt_path_adapter.hpp>
 
@@ -47,36 +47,7 @@ void write(const QString& path, QByteArrayView bytes)
     ASSERT_EQ(file.write(bytes.data(), bytes.size()), bytes.size());
 }
 
-class FaultOutput final : public persistence::qt::AtomicOutput {
-public:
-    FaultOutput(const std::filesystem::path& path, bool& fail, std::function<void()> hook = {})
-        : file_{platform::qt::QtPathAdapter::to_qt(path)}
-        , fail_{fail}
-        , hook_{std::move(hook)}
-    {
-        opened_ = file_.open(QIODevice::WriteOnly);
-    }
-
-    qint64 write(QByteArrayView bytes) override
-    {
-        return opened_ ? file_.write(bytes.data(), bytes.size()) : -1;
-    }
-
-    bool commit() override
-    {
-        if (hook_) {
-            auto callback = std::move(hook_);
-            callback();
-        }
-        return !fail_ && opened_ && file_.commit();
-    }
-
-private:
-    QSaveFile file_;
-    bool& fail_;
-    bool opened_{};
-    std::function<void()> hook_;
-};
+using FaultOutput = wiola::testing::FaultAtomicOutput;
 
 TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWithoutPrecisionLoss)
 {
@@ -255,6 +226,6 @@ int main(int argc, char** argv)
     QCoreApplication application{argc, argv};
     QTemporaryDir isolated;
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, isolated.path());
-    testing::InitGoogleTest(&argc, argv);
+    ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

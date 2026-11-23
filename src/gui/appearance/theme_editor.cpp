@@ -38,19 +38,9 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     setWindowTitle("Edit theme");
 
     auto* fields = new QFormLayout;
-    const std::array fields_to_show{
-        std::pair{ThemeColorRole::window,        "Window"        },
-        std::pair{ThemeColorRole::surface,       "Surface"       },
-        std::pair{ThemeColorRole::text,          "Text"          },
-        std::pair{ThemeColorRole::muted_text,    "Secondary text"},
-        std::pair{ThemeColorRole::disabled_text, "Disabled text" },
-        std::pair{ThemeColorRole::accent,        "Selection"     },
-        std::pair{ThemeColorRole::accent_text,   "Selected text" },
-        std::pair{ThemeColorRole::focus,         "Keyboard focus"},
-        std::pair{ThemeColorRole::error,         "Error"         },
-    };
-
-    for (const auto& [role, label] : fields_to_show) {
+    for (const auto& descriptor : theme_color_descriptors()) {
+        const auto role = descriptor.role;
+        const auto label = descriptor.label;
         auto* swatch = new QPushButton{this};
         swatch->setObjectName("themeColor:" + QString::fromLatin1(theme_color_key(role)));
         swatch->setAccessibleName(QString{"Change %1 color"}.arg(label));
@@ -91,9 +81,12 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     connect(light, &QPushButton::clicked, this, [this] { set_colors(theme_colors(Theme::light)); });
     connect(dark, &QPushButton::clicked, this, [this] { set_colors(theme_colors(Theme::dark)); });
     connect(apply_, &QPushButton::clicked, this, [this] {
-        if (apply_observer_)
-            apply_observer_(colors_);
-        accept();
+        if (!theme_contrast_error(colors_).isEmpty())
+            return;
+        if (!apply_observer_ || apply_observer_(colors_))
+            accept();
+        else
+            status_->setText("Could not save the theme; your changes were retained");
     });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 

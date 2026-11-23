@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include <span>
 
 #include <QColor>
 #include <QIcon>
@@ -45,6 +46,14 @@ enum class ThemeColorRole {
     error,
 };
 
+struct ThemeColorDescriptor {
+    ThemeColorRole role;
+    const char* key;
+    const char* label;
+};
+
+[[nodiscard]] std::span<const ThemeColorDescriptor> theme_color_descriptors();
+
 struct ThemeColors {
     QColor window;
     QColor surface;
@@ -55,6 +64,7 @@ struct ThemeColors {
     QColor accent_text;
     QColor focus;
     QColor error;
+    bool operator==(const ThemeColors&) const = default;
 };
 
 [[nodiscard]] ThemeColors theme_colors(Theme theme);

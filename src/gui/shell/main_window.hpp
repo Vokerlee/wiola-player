@@ -31,6 +31,7 @@
 #include <desktop/playback/playback_preferences.hpp>
 #include <desktop/playback/queue_settings.hpp>
 #include <desktop/playback/volume_control.hpp>
+#include <gui/appearance/theme_manager.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
 #include <gui/documents/now_playing_document.hpp>
@@ -236,6 +237,7 @@ private:
 
     /// The file a run leaves things in.
     QSettings settings_;
+    std::shared_ptr<ThemeManager> theme_;
     app::SessionPreferences& ui_preferences_;
     app::QueueSettings& playlist_;
     app::VolumeControl& volume_;
