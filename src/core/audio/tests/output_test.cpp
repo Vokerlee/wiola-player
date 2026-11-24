@@ -286,3 +286,51 @@ TEST(OutputControl, GivesBackWhatItHeldWhenItIsGivenAnother)
     EXPECT_TRUE(back.start()) << "the first device was never given back";
     EXPECT_EQ(first.num_starts(), 1);
 }
+
+TEST(OutputConnection, RepeatedAcquisitionPreservesItsExistingClaim)
+{
+    FakeOutput output;
+    wiola::audio::OutputConnection connection{output};
+    ASSERT_TRUE(connection.control().start());
+
+    EXPECT_TRUE(connection.try_acquire());
+    EXPECT_TRUE(connection.try_acquire());
+
+    EXPECT_TRUE(output.running());
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(output.num_stops(), 0);
+    EXPECT_FALSE(static_cast<bool>(output.control()));
+}
+
+TEST(OutputConnection, CandidateCanAcquireAfterThePreviousConnectionIsDestroyed)
+{
+    FakeOutput output;
+    auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
+    ASSERT_TRUE(previous->control().start());
+    wiola::audio::OutputConnection candidate{output};
+    EXPECT_FALSE(candidate.try_acquire());
+    EXPECT_TRUE(output.running());
+    EXPECT_EQ(output.num_stops(), 0);
+    previous.reset();
+
+    ASSERT_TRUE(candidate.try_acquire());
+    ASSERT_TRUE(candidate.control().start());
+    EXPECT_TRUE(output.running());
+    EXPECT_EQ(output.num_starts(), 2);
+    EXPECT_EQ(output.num_stops(), 1);
+}
+
+TEST(OutputConnection, OnlyOnePreparedCandidateAcquiresTheReturnedClaim)
+{
+    FakeOutput output;
+    auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
+    wiola::audio::OutputConnection first{output};
+    wiola::audio::OutputConnection second{output};
+    previous.reset();
+
+    EXPECT_TRUE(first.try_acquire());
+    EXPECT_FALSE(second.try_acquire());
+    EXPECT_TRUE(first.control().start());
+    EXPECT_FALSE(second.control().start());
+    EXPECT_EQ(output.num_starts(), 1);
+}

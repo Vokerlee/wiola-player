@@ -43,7 +43,8 @@ namespace wiola::engine {
  * out. Whoever holds one of these has no way to reach any of them, which is what keeps a
  * listener's thread out of a device that this one is driving.
  *
- * `begin` and everything after it belong to the transport worker thread.
+ * Output claim acquisition belongs to the setup thread; run and everything it calls belong
+ * to the transport worker thread.
  */
 class DecodeLoop {
 public:
@@ -59,6 +60,10 @@ public:
     DecodeLoop(DecodeLoop&&) = delete;
     DecodeLoop& operator=(DecodeLoop&&) = delete;
     ~DecodeLoop() = default;
+
+    /// Setup thread, before launch and after any prior worker joined. A replacement candidate
+    /// may have been constructed while the previous track still held the output claim.
+    void acquire_output() noexcept { static_cast<void>(connection_.try_acquire()); }
 
     /// Runs initial seek, priming, output start and decoding on the worker thread.
     /// Every exit quiesces output and settles one terminal reason. Unexpected decoder failures

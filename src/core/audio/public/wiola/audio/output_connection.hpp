@@ -34,7 +34,8 @@ namespace wiola::audio {
 class OutputConnection {
 public:
     explicit OutputConnection(Output& output) noexcept
-        : control_{output.control()}
+        : output_{output}
+        , control_{output.control()}
     {
     }
 
@@ -47,10 +48,20 @@ public:
 
     [[nodiscard]] Output::Control& control() noexcept { return control_; }
 
+    /// Setup thread, with prior playback joined: acquire an available claim if this candidate
+    /// was constructed while another owner held it. Never steals or releases a held claim.
+    [[nodiscard]] bool try_acquire() noexcept
+    {
+        if (!control_)
+            control_ = output_.control();
+        return static_cast<bool>(control_);
+    }
+
     /// Stops playback and returns only after an active source callback has completed.
     void stop() noexcept { control_.stop(); }
 
 private:
+    Output& output_;
     Output::Control control_;
 };
 

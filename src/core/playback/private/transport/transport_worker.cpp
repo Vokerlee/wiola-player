@@ -74,6 +74,8 @@ bool TransportWorker::start()
     if (!playback_.begin())
         return false;
 
+    loop_.acquire_output();
+
     try {
         thread_ = launch_([this, rewind = previous != PlaybackState::idle] { loop_.run(rewind); });
     } catch (...) {

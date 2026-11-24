@@ -23,6 +23,8 @@
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 
+#include <wiola/audio/output_connection.hpp>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -324,3 +326,46 @@ TEST(TransportWorker, RejectsAnInvalidConfigurationBeforeStarting)
 }
 
 } // namespace
+
+TEST(TransportWorker, PreparedCandidateClaimsOutputAfterThePreviousOwnerIsReleased)
+{
+    FakeOutput output;
+    output.refuse_starts();
+    auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
+    wiola::pcm::PcmQueue queue{{}, Frames{64}};
+    bool claimed_before_launch{false};
+    TransportWorker worker{std::make_unique<FakeDecoder>(Frames{64}), queue.producer(), output,
+        [&](std::function<void()> work) {
+            claimed_before_launch = !static_cast<bool>(output.control());
+            return std::jthread{std::move(work)};
+        }};
+    previous.reset();
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+
+    EXPECT_TRUE(claimed_before_launch);
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(worker.state(), State::faulted);
+}
+
+TEST(TransportWorker, OutputContentionFaultsWithoutTouchingTheOwnerAndCanBeRetried)
+{
+    FakeOutput output;
+    output.refuse_starts();
+    auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
+    wiola::pcm::PcmQueue queue{{}, Frames{64}};
+    TransportWorker worker{std::make_unique<FakeDecoder>(Frames{64}), queue.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 0);
+    EXPECT_EQ(output.num_stops(), 0);
+    previous.reset();
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(worker.state(), State::faulted);
+}
