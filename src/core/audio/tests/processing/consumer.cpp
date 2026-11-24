@@ -28,16 +28,62 @@
 
 #include <array>
 #include <cmath>
+#include <memory>
+
+namespace {
+
+// A downstream stage implements only the public preparation/processing contract.
+class StreamObserver final : public wiola::audio::Stage {
+public:
+    std::unique_ptr<Preparation> prepare(wiola::pcm::StreamSpec spec) override
+    {
+        return std::make_unique<Prepared>(*this, spec);
+    }
+
+    void process(std::span<float>) noexcept override { }
+
+    wiola::pcm::StreamSpec configured{};
+    unsigned commits{0};
+
+private:
+    class Prepared final : public Preparation {
+    public:
+        Prepared(StreamObserver& owner, wiola::pcm::StreamSpec spec) noexcept
+            : owner_{owner}
+            , spec_{spec}
+        {
+        }
+
+    private:
+        void activate() noexcept override
+        {
+            owner_.configured = spec_;
+            ++owner_.commits;
+        }
+
+        StreamObserver& owner_;
+        wiola::pcm::StreamSpec spec_;
+    };
+};
+
+} // namespace
 
 int main()
 {
     wiola::audio::Equalizer equalizer{{}};
     wiola::audio::Volume volume;
+    StreamObserver observer;
     volume.set_gain(0.5F);
     wiola::audio::ProcessingChain chain{
-        {equalizer, volume}
+        {equalizer, volume, observer}
     };
-    chain.configure({});
+    const auto prepared{chain.prepare({})};
+    if (!prepared || observer.commits != 0)
+        return 2;
+    prepared->commit();
+    prepared->commit();
+    if (observer.commits != 1 || observer.configured != wiola::pcm::StreamSpec{})
+        return 3;
     std::array samples{0.5F, -0.5F};
     chain.process(samples);
     if (samples[0] != 0.25F || samples[1] != -0.25F)

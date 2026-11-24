@@ -44,7 +44,7 @@ public:
     [[nodiscard]] float gain() const noexcept;
 
     /// Nothing here follows the stream, so this is what it costs to say so.
-    void configure(pcm::StreamSpec spec) noexcept override;
+    [[nodiscard]] std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) noexcept override;
 
     void process(std::span<float> samples) noexcept override;
 

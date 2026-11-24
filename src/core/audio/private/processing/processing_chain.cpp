@@ -20,7 +20,30 @@
 
 #include <wiola/audio/processing_chain.hpp>
 
+#include <utility>
+
 namespace wiola::audio {
+
+namespace {
+
+class PreparedChain final : public Stage::Preparation {
+public:
+    explicit PreparedChain(std::vector<std::unique_ptr<Stage::Preparation>> stages) noexcept
+        : stages_{std::move(stages)}
+    {
+    }
+
+private:
+    void activate() noexcept override
+    {
+        for (const auto& stage : stages_)
+            stage->commit();
+    }
+
+    std::vector<std::unique_ptr<Stage::Preparation>> stages_;
+};
+
+} // namespace
 
 ProcessingChain::ProcessingChain(std::initializer_list<std::reference_wrapper<Stage>> stages)
 {
@@ -29,10 +52,17 @@ ProcessingChain::ProcessingChain(std::initializer_list<std::reference_wrapper<St
         stages_.push_back(&stage.get());
 }
 
-void ProcessingChain::configure(pcm::StreamSpec spec)
+std::unique_ptr<Stage::Preparation> ProcessingChain::prepare(pcm::StreamSpec spec)
 {
-    for (Stage* stage : stages_)
-        stage->configure(spec);
+    std::vector<std::unique_ptr<Stage::Preparation>> prepared;
+    prepared.reserve(stages_.size());
+    for (Stage* stage : stages_) {
+        if (auto candidate{stage->prepare(spec)})
+            prepared.push_back(std::move(candidate));
+    }
+    if (prepared.empty())
+        return nullptr;
+    return std::make_unique<PreparedChain>(std::move(prepared));
 }
 
 void ProcessingChain::process(std::span<float> samples) noexcept
