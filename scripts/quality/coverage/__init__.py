@@ -1,1 +1,0 @@
-"""Owned coverage qualification tooling."""

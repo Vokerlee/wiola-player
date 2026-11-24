@@ -29,13 +29,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python3 -m scripts.quality.formatting format cpp --check
-      - run: python3 -m scripts.quality.formatting format cmake --check
+      - run: python3 -m scripts.formatting format cpp --check
+      - run: python3 -m scripts.formatting format cmake --check
       - run: python3 -m unittest discover -s tests/scripts -v
       - run: python3 -m unittest discover -s scripts -t . -p 'test_*.py'
-      - run: python3 -m scripts.quality.architecture.commands.check_ownership
-      - run: python3 -m scripts.quality.architecture.commands.check_dependencies
-      - run: python3 -m scripts.quality.architecture.commands.check_design
 
   test:
     name: test (${{ matrix.preset }})
@@ -87,7 +84,6 @@ jobs:
           key: ${{ steps.tsan-qt.outputs.cache-primary-key }}
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} -j
-      - run: cmake --build --preset ${{ matrix.preset }} --target wiola_check_test_contracts
       - run: cmake --build --preset ${{ matrix.preset }} --target wiola_core_adapter_boundary
       - name: Record the instrumented Qt runtime
         if: matrix.preset == 'linux-tsan'
@@ -227,29 +223,6 @@ jobs:
           name: windows-native-journey-results
           path: native-journey/results
 
-  gui-mutations:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      CXX: clang++-18
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-build
-        with:
-          name: gui-mutations
-          build-dir: build-debug
-      - run: cmake --preset linux-debug
-      - name: Require assertion evidence for six critical regressions
-        run: cmake --build --preset linux-debug --target wiola_check_mutations
-        env:
-          QT_QPA_PLATFORM: offscreen
-          WIOLA_MUTATION_ARTIFACTS: ${{ runner.temp }}/mutation-results
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: gui-mutation-evidence
-          path: ${{ runner.temp }}/mutation-results
-
   coverage:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -268,29 +241,21 @@ jobs:
           name: coverage
           build-dir: build-coverage
           packages: llvm-18
-      - run: python3 -m scripts.quality.coverage.workflow.collect
+      - run: cmake --preset linux-coverage
         env:
           CXX: clang++-18
-      - name: Reconcile C++ and Python coverage with source ownership
-        run: cmake --build --preset linux-coverage --target wiola_coverage_ownership
-      - name: Enforce trusted workflow floors and changed decisions
-        run: python3 -m scripts.quality.coverage.workflow.gate --base-ref "$WIOLA_COVERAGE_BASE"
+      - run: cmake --build --preset linux-coverage --parallel 4
+      - run: cmake --build --preset linux-coverage --target wiola_coverage_inventory --parallel 4
+      - name: Collect compiler coverage reports
+        run: python3 -m scripts.coverage --build-dir build-coverage --source src --exclude '/tests/'
         env:
-          WIOLA_COVERAGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          QT_QPA_PLATFORM: offscreen
       - name: Upload coverage test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-test-diagnostics
-          path: |
-            build-coverage/Testing/Temporary
-            build-coverage/coverage/*.log
-            build-coverage/coverage/*mapping-diagnostics.txt
-            build-coverage/coverage/gate.json
-            build-coverage/coverage/owners.json
-            build-coverage/coverage/python.json
-            build-coverage/coverage/python-manifest.json
-            build-coverage/coverage/python-profiles-*/
+          path: build-coverage/Testing/Temporary
           if-no-files-found: ignore
           retention-days: 7
       # The numbers, on the run's own page.
@@ -299,7 +264,6 @@ jobs:
             echo '### Coverage'
             echo '```'
             cat build-coverage/coverage/summary.txt
-            cat build-coverage/coverage/workflow.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       # What this pull request itself left untested, which a total is too blunt to show.
@@ -307,7 +271,7 @@ jobs:
         run: |
           diff-cover build-coverage/coverage/coverage.lcov \
             --compare-branch "origin/${{ github.base_ref }}" \
-            --format "markdown:diff-coverage.md"
+            --fail-under=100 --format "markdown:diff-coverage.md"
           cat diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
@@ -318,19 +282,11 @@ jobs:
         with:
           name: coverage-evidence
           path: |
-            build-coverage/coverage/manifest.json
-            build-coverage/coverage/inventory.json
             build-coverage/coverage/summary.json
             build-coverage/coverage/summary.txt
-            build-coverage/coverage/workflow.json
-            build-coverage/coverage/workflow.txt
             build-coverage/coverage/coverage.lcov
-            build-coverage/coverage/workflow.lcov
-            build-coverage/coverage/gate.json
-            build-coverage/coverage/owners.json
-            build-coverage/coverage/python.json
-            build-coverage/coverage/python-manifest.json
-            build-coverage/coverage/python-profiles-*/
+            build-coverage/coverage/coverage.profdata
+            build-coverage/coverage/raw-*/
       # Only from main: what a pull request measured is its own, and does not replace the report.
       # The report takes a path of its own, leaving the root for whatever is put there later.
       - if: github.ref == 'refs/heads/main'

@@ -17,10 +17,9 @@ flowchart LR
 
 Current other commands:
 
-- `python3 -m scripts.quality.formatting` owns [formatting and hooks](quality/formatting/README.md), as described in [CONTRIBUTING.md](../CONTRIBUTING.md).
+- `python3 -m scripts.formatting` owns [formatting and hooks](formatting/README.md), as described in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - `python3 -m scripts.testing.desktop` runs the [desktop composition](testing/desktop/README.md) through the toolkit-independent [GoogleTest protocol](testing/gtest/README.md).
-- `python3 -m scripts.testing.mutations` runs [mutation qualification](testing/mutations/README.md); CMake supplies its actual build directory through `wiola_check_mutations`.
-- `python3 -m scripts.quality.coverage.workflow.collect` runs the [coverage workflow](quality/coverage/README.md), with source scope and retained evidence owned alongside it.
+- `python3 -m scripts.coverage --build-dir BUILD --source src --exclude '/tests/'` collects LLVM reports from an already-built instrumented configuration. CI owns thresholds; there is no source-owner registry or checked-in coverage baseline.
 - `test-affected.py` builds and runs explicitly selected test targets.
 
 Caller-provided paths and configured target metadata determine runtime artifacts. Commands must preserve caller environments, retain original diagnostics and report failures accurately. Development tooling has the same ownership and test requirements as player code.
