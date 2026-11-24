@@ -51,6 +51,9 @@ if(WIOLA_BUILD_TESTS)
 
     wiola_add_public_consumer_test(
         BorrowedReference.InstalledConsumer
-        "${CMAKE_CURRENT_SOURCE_DIR}/tests/public_package.json"
+        PACKAGE wiola_borrowed_reference
+        TARGET wiola::borrowed_reference
+        CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/tests/consumer.cpp"
+        COMPONENTS wiola_borrowed_reference
     )
 endif()

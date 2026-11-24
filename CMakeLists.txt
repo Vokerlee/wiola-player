@@ -46,9 +46,7 @@ include(build)
 include(dependencies)
 
 if(WIOLA_BUILD_TESTS)
-    include(
-        "${CMAKE_CURRENT_SOURCE_DIR}/scripts/testing/public_api/register.cmake"
-    )
+    include(TestPublicPackage)
 endif()
 
 add_subdirectory(src)

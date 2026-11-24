@@ -22,5 +22,8 @@ wiola_media_add_test(pcm_stream_spec_test stream_spec_test.cpp)
 
 wiola_add_public_consumer_test(
     Media.InstalledConsumer
-    "${CMAKE_CURRENT_SOURCE_DIR}/public_package.json"
+    PACKAGE wiola_media
+    TARGET wiola::media
+    CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/consumer.cpp"
+    COMPONENTS wiola_quantities wiola_media
 )

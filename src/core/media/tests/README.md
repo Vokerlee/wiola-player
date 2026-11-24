@@ -15,4 +15,4 @@ flowchart LR
 
 Configure with `-DWIOLA_COMPONENTS=media` and build the local targets declared in `CMakeLists.txt`. Ordinary player builds compose these same targets. `media_byte_stream_test` remains a separate mixed native-file/stream integration suite until its concrete I/O fixture is separated.
 
-`public_package.json` and `consumer.cpp` own this component's installed API probe. The shared `scripts.testing.public_api` checker qualifies a relocated install, every declared public header, positive linkage and precise private-include rejection. Native consumers also execute; cross consumers only link. Per-phase evidence remains under the configured test directory.
+The installed-consumer case is registered in this directory's `CMakeLists.txt`. CMake installs and relocates the package, compiles every actual installed header independently, and links the C++ consumer. Native consumers also run; cross consumers only link. Each run retains compiler/test logs in its own `Testing/PublicPackage-*` directory under the configured build. No Python checker or JSON header manifest is involved.
