@@ -19,10 +19,10 @@
  */
 
 #include <codec/provider.hpp>
-#include <engine/session.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <wiola/audio/stage.hpp>
+#include <wiola/playback/session.hpp>
 
 #include <gtest/gtest.h>
 

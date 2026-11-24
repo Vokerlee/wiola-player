@@ -4,6 +4,10 @@ add_library(
     tag_reader.cpp
     metadata_coordinator.cpp
 )
+set_target_properties(
+    wiola_playback_metadata
+    PROPERTIES EXPORT_NAME playback_metadata
+)
 target_compile_features(wiola_playback_metadata PUBLIC cxx_std_23)
 target_include_directories(
     wiola_playback_metadata

@@ -1,29 +1,22 @@
-# Playback contracts
+# Playback contract and lifecycle tests
 
-`playback_contract_test` links only `wiola::playback_api`, GoogleTest and selected instrumentation. It verifies media-to-open-status translation and occurrence identity behavior. Existing Session, Playlist and presentation suites continue to verify outcome correlation, retention, revisions and actual snapshot production through their service APIs.
+These cases belong to the playback component and link actual scoped targets. Kernel tests use controlled C++ media/render ports without a codec, device or GUI SDK. Real encoded decoder-to-transport/Session journeys remain under codec integration.
 
 ```mermaid
 flowchart LR
-    Cases[Portable contract cases] --> API[Playback public API]
-    Consumer[Installed C++ consumer] --> API
-    Buffering[Buffering tests] --> Private[Scoped private buffering target]
-    Transport[Transport tests] --> Protocol[Scoped private transport target]
+    SessionCases[Session lifecycle cases] --> Kernel[Public playback kernel]
+    Internal[Focused invariant cases] --> Private[Private buffering / transport / policy]
+    APIConsumer[Relocated values-only consumer] --> API[Public values / read ports]
+    RuntimeConsumer[Relocated lifecycle consumer] --> Kernel
+    Kernel --> Ports[Supplied media / output / processing ports]
 ```
 
-`Playback.InstalledConsumer` uses ordinary CMake to install/relocate the package, compile every actual installed header independently and link `consumer.cpp`. Only media/quantities packages are installed with it; audio, devices, transport, worker and GUI libraries are unnecessary. Native consumers run, while cross consumers compile/link only. There is no header manifest or Python checker.
+`engine_session_test` qualifies queue/loading coordination, outcomes, cancellation, candidate rollback, play intent, media handoff and active teardown. Its media fixture stores DecoderStreamInfo values under scoped resource keys, synchronizes worker lookups and returns owned values. It creates no encoded files or format guesses and imports no codec data directory. Tests explicitly declare the built-in processing implementation where they supply it as a collaborator.
 
-[Buffering tests](buffering/README.md) cover the separate private queue/render mechanism. No standalone operations or snapshot module remains.
+[Pipeline cases](pipeline/README.md) exercise complete decoder/queue/player ownership, output cache/lease identity and callback quiescence. [Buffering](buffering/README.md), [transport](transport/README.md), [loading](loading/README.md), [queue](queue/README.md) and [metadata](metadata/README.md) cases own their focused contracts and failure witnesses.
 
-[Transport tests](transport/README.md) cover state, playhead, worker failures and player commands without a codec, filesystem or output SDK. A real FFmpeg-to-player integration journey remains in `tests/codec/player_integration_test.cpp`.
+`playback_contract_test` links the public values target only. It checks typed errors, ownership, occurrence identity and safe per-instance policies. Queue allocation cases fail each allocation until success rather than encoding an implementation count. A separate frontend case replaces backing storage and switches equal-revision owners through QueueView, retaining owned row facts.
 
-[Loading tests](loading/README.md) independently qualify request identity, cooperative cancellation, decoder lifetime, external callbacks outside locks and late completion rejection.
+`Playback.InstalledConsumer` installs/relocates only the values/media/quantity closure. `PlaybackRuntime.InstalledConsumer` installs the complete kernel with public audio/media/ownership dependencies and supplies its own decoder, provider, Stage and output. It checks open completion, learned facts, actual processed PCM, pause/resume, seek, stop, clear and teardown. No DSP archive or frontend/backend SDK is installed for that consumer. Both CMake cases compile every actual installed public header independently; there is no header manifest or custom runner. Native clients run; cross clients compile/link only.
 
-The public QueueEntry contract and installed consumer check owned path/metadata observations and immutable shared artwork without importing private queue storage. Queue rollback tests enumerate allocations until success instead of encoding implementation allocation counts.
-
-The installed consumer supplies its own QueueView implementation from public headers. Queue owner tests exercise live mutation through that read port; frontend projection cases replace backing storage and switch owners with equal revision numbers, checking retained facts and occurrence selection without depending on private ordering.
-
-Public policy contracts reject nonpositive/nonfinite buffering durations, empty decode blocks and nonpositive polling periods. The relocated consumer compiles these configuration headers and OutputFactory independently. Session/application cases inject the same MediaProvider port as production; the C++ fake owns its callbacks instead of requiring public test-only kernel constructors.
-
-Session lifecycle cases continue through the facade after implementation hiding, including cancellation, allocation rollback, active callback teardown and media handoff. The compiler can consume its header with only public playback/media/quantity include roots (plus the current facade location), without private worker, storage, transport or DSP include roots. This does not yet constitute an installed Session export.
-
-Session unit cases supply explicit DecoderStreamInfo and learned metadata through the same MediaProvider port as a driver. Resource names are scoped test keys, not encoded files or format guesses. The small synchronized C++ fixture outlives the Session workers and returns owned capability values. The unit executable links no codec target or fixture-data directory; [real provider-to-Session integration](../../../../tests/codec/README.md) belongs to the codec tests.
+Installed clients use their producer's build configuration, including installation and execution for multi-configuration generators. The local unoptimized MinGW13 static C++23 failure is [GCC PR110572](https://gcc.gnu.org/pipermail/gcc-bugs/2024-June/868781.html); the Windows64 matrix qualifies Release, while a compiler containing the upstream fix is needed for that affected unoptimized configuration. No linker multiple-definition suppression is used.

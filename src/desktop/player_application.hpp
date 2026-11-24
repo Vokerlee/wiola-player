@@ -23,8 +23,8 @@
 #include <app/playback/playback_service.hpp>
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
-#include <engine/session.hpp>
 #include <functional>
+#include <wiola/playback/output_factory.hpp>
 #endif
 #include <QObject>
 #include <QTimer>

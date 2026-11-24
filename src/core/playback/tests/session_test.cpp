@@ -24,10 +24,10 @@
 
 #include <wiola/audio/output.hpp>
 
-#include <engine/session.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
+#include <wiola/playback/session.hpp>
 
 #include <allocation_failure.hpp>
 #include <fakes/decoder.hpp>

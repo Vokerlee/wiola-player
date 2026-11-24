@@ -52,7 +52,6 @@
 #include <desktop/library/m3u_playlist.hpp>
 #include <desktop/metadata/media_revision_publisher.hpp>
 #include <desktop/workspace/workspace_watcher.hpp>
-#include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/units.hpp>

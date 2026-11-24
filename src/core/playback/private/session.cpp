@@ -19,7 +19,7 @@
  */
 
 #include "session_impl.hpp"
-#include <engine/session.hpp>
+#include <wiola/playback/session.hpp>
 
 #include <memory>
 #include <utility>
