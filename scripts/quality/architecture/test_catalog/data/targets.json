@@ -1459,7 +1459,7 @@
     "owner": "test.utils.units_test",
     "role": "domain",
     "sources": [
-      "tests/utils/units_test.cpp"
+      "src/foundation/quantities/tests/units_test.cpp"
     ],
     "qt": "none",
     "coupling": ""

@@ -103,8 +103,11 @@ target_include_directories(
     INTERFACE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}/generated"
 )
 
-# Borrowed references have an owned export; legacy consumers receive that declared API.
-target_link_libraries(wiola_core INTERFACE wiola_borrowed_reference)
+# Portable foundation components have owned exports; legacy consumers receive those APIs.
+target_link_libraries(
+    wiola_core
+    INTERFACE wiola_borrowed_reference wiola_quantities
+)
 
 # Adds a library built the way this project builds them: it can see the public headers, and it is
 # compiled with the project's warnings. `LIBS` is whatever else it needs, kept private, since a

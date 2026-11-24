@@ -9,3 +9,5 @@ flowchart LR
 ```
 
 [Borrowed reference](borrowed_reference/README.md) owns its public template, tests and export definition. No foundation implementation selects a GUI, media backend or application policy.
+
+[Quantities](quantities/README.md) owns time/frequency values and a standard-only public target. Related values stay together; no unit tag is an independent component.

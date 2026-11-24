@@ -22,7 +22,7 @@
 
 #include <fakes/tone.hpp>
 #include <pcm/stream_spec.hpp>
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
 

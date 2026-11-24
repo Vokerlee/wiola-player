@@ -4,6 +4,17 @@ from scripts.quality.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "source.utils.units",
+        "src/foundation/quantities",
+        "Owns portable time and frequency quantities and their public export",
+        (
+            "Only standard C++23 is required",
+            "Related values and private arithmetic share one owner",
+        ),
+        ("src/foundation/quantities/public/wiola/units.hpp",),
+        parts=("test.utils.units_test",),
+    ),
+    AbstractionContract(
         "tool.format_cpp",
         "scripts/quality/formatting",
         "Owns tracked-source formatting and one delegating hook",

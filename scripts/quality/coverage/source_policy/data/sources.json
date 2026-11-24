@@ -2395,6 +2395,34 @@
       "workflow": false
     },
     {
+      "path": "src/foundation/quantities/CMakeLists.txt",
+      "owner": "source.utils.units",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/quantities/public/wiola/units.hpp",
+      "owner": "source.utils.units",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/quantities/tests/CMakeLists.txt",
+      "owner": "source.utils.units",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/foundation/quantities/tests/units_test.cpp",
+      "owner": "test.utils.units_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "src/gui/CMakeLists.txt",
       "owner": "build.src.gui",
       "language": "cmake",
@@ -3767,13 +3795,6 @@
       "workflow": false
     },
     {
-      "path": "src/utils/units.hpp",
-      "owner": "source.utils.units",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
       "path": "tests/CMakeLists.txt",
       "owner": "build.tests",
       "language": "cmake",
@@ -5051,20 +5072,6 @@
       "path": "tests/scripts/test_affected_selection.py",
       "owner": "test.scripts.test_affected_selection",
       "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tests/utils/CMakeLists.txt",
-      "owner": "build.tests.utils",
-      "language": "cmake",
-      "role": "build",
-      "workflow": false
-    },
-    {
-      "path": "tests/utils/units_test.cpp",
-      "owner": "test.utils.units_test",
-      "language": "cpp",
       "role": "test",
       "workflow": false
     }

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
 
@@ -119,6 +119,10 @@ TEST(Units, MultipliesFrequencyByTimeIntoCycles)
     static_assert(440_Hz * 2_s == 880.0);
     static_assert(1_kHz * 3_ms == 3.0);
     static_assert(std::is_same_v<decltype(440_Hz * 2_s), double>);
+    Frequency rate{48000};
+    Time interval{0.25};
+    EXPECT_DOUBLE_EQ(rate * interval, 12000.0);
+    EXPECT_DOUBLE_EQ(interval * rate, 12000.0);
 }
 
 TEST(Units, RejectsAdditiveOperationsOnFrequency)
@@ -177,6 +181,12 @@ TEST(Units, DividesLikeQuantitiesIntoARatio)
     static_assert(std::is_same_v<decltype(440_Hz / 2.0), Frequency>);
 
     static_assert(!Addable<Frequency, Frequency>);
+    Frequency rate{48000};
+    Frequency reference{12000};
+    Time interval{1.0};
+    Time quantum{0.25};
+    EXPECT_DOUBLE_EQ(rate / reference, 4.0);
+    EXPECT_DOUBLE_EQ(interval / quantum, 4.0);
 }
 
 TEST(Units, ReadsItsOwnUnitsWithGet)
@@ -287,6 +297,7 @@ TEST(Units, ReadsEveryUnitAtRuntime)
     EXPECT_DOUBLE_EQ(interval.to<Hz>(), 500.0);
     EXPECT_DOUBLE_EQ(interval.to<KHz>(), 0.5);
     EXPECT_DOUBLE_EQ(interval.to<MHz>(), 0.0005);
+    EXPECT_DOUBLE_EQ(interval.get<Sec>(), 0.002);
     EXPECT_DOUBLE_EQ(interval.get<Ms>(), 2.0);
     EXPECT_DOUBLE_EQ(interval.get<Us>(), 2000.0);
 
@@ -296,6 +307,7 @@ TEST(Units, ReadsEveryUnitAtRuntime)
     EXPECT_DOUBLE_EQ(rate.to<KHz>(), 48.0);
     EXPECT_DOUBLE_EQ(rate.to<Sec>(), 1.0 / 48000.0);
     EXPECT_DOUBLE_EQ(rate.to<Us>(), 1000000.0 / 48000.0);
+    EXPECT_DOUBLE_EQ(rate.get<Hz>(), 48000.0);
     EXPECT_DOUBLE_EQ(rate.get<KHz>(), 48.0);
 }
 
@@ -329,6 +341,10 @@ TEST(Units, OrdersEqualValuesAtRuntime)
     EXPECT_TRUE(interval < longer);
     EXPECT_FALSE(interval < same);
     EXPECT_TRUE(interval <= same);
+    EXPECT_TRUE(interval == same);
+    EXPECT_FALSE(interval == longer);
+    EXPECT_EQ(interval <=> same, std::partial_ordering::equivalent);
+    EXPECT_EQ(longer <=> interval, std::partial_ordering::greater);
 
     Frequency rate = 48_kHz;
     Frequency twin = 48000_Hz;
@@ -337,6 +353,10 @@ TEST(Units, OrdersEqualValuesAtRuntime)
     EXPECT_TRUE(rate < higher);
     EXPECT_FALSE(rate < twin);
     EXPECT_TRUE(rate <= twin);
+    EXPECT_TRUE(rate == twin);
+    EXPECT_FALSE(rate == higher);
+    EXPECT_EQ(rate <=> twin, std::partial_ordering::equivalent);
+    EXPECT_EQ(higher <=> rate, std::partial_ordering::greater);
 }
 
 TEST(Units, LeavesNotANumberUnordered)
@@ -347,6 +367,7 @@ TEST(Units, LeavesNotANumberUnordered)
     EXPECT_FALSE(undefined < interval);
     EXPECT_FALSE(undefined > interval);
     EXPECT_FALSE(undefined == interval);
+    EXPECT_EQ(undefined <=> interval, std::partial_ordering::unordered);
 
     Frequency rate = 48_kHz;
     Frequency unknown{std::numeric_limits<double>::quiet_NaN()};
@@ -354,6 +375,7 @@ TEST(Units, LeavesNotANumberUnordered)
     EXPECT_FALSE(unknown < rate);
     EXPECT_FALSE(unknown > rate);
     EXPECT_FALSE(unknown == rate);
+    EXPECT_EQ(unknown <=> rate, std::partial_ordering::unordered);
 }
 
 TEST(Units, BuildsFromWholeLiterals)

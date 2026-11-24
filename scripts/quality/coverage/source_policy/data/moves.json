@@ -623,5 +623,15 @@
     "previous": "tools/build_environment/ubuntu_packages/tests/test_packages.py",
     "current": "scripts/build/packages/tests/test_packages.py",
     "owner": "build_environment.ubuntu_packages"
+  },
+  {
+    "previous": "src/utils/units.hpp",
+    "current": "src/foundation/quantities/public/wiola/units.hpp",
+    "owner": "source.utils.units"
+  },
+  {
+    "previous": "tests/utils/units_test.cpp",
+    "current": "src/foundation/quantities/tests/units_test.cpp",
+    "owner": "test.utils.units_test"
   }
 ]
