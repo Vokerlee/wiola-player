@@ -20,6 +20,5 @@ Current other commands:
 - `python3 -m scripts.formatting` owns [formatting and hooks](formatting/README.md), as described in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - C++ tests run through CTest. Native Windows CI consumes the `wiola_desktop_tests` CMake install component and executes its GoogleTest binaries directly; fixtures and reports stay in that package.
 - `python3 -m scripts.coverage --build-dir BUILD --source src --exclude '/tests/'` collects LLVM reports from an already-built instrumented configuration. CI owns thresholds; there is no source-owner registry or checked-in coverage baseline.
-- `test-affected.py` builds and runs explicitly selected test targets.
 
 Caller-provided paths and configured target metadata determine runtime artifacts. Commands must preserve caller environments, retain original diagnostics and report failures accurately. Development tooling has the same ownership and test requirements as player code.

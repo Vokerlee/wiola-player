@@ -31,7 +31,6 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python3 -m scripts.formatting format cpp --check
       - run: python3 -m scripts.formatting format cmake --check
-      - run: python3 -m unittest discover -s tests/scripts -v
       - run: python3 -m unittest discover -s scripts -t . -p 'test_*.py'
 
   test:
