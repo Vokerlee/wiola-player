@@ -66,7 +66,6 @@ public:
     void run(bool rewind) noexcept;
 
 private:
-    [[nodiscard]] bool begin(bool rewind);
     void decode();
 
     /// Carries out a requested seek, marking what was decoded for the old place as stale.

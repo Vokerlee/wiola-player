@@ -20,11 +20,13 @@
 
 #pragma once
 
+#include "playback.hpp"
 #include "playhead.hpp"
 #include <buffering/pcm_queue.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace wiola::engine {
@@ -39,28 +41,34 @@ namespace wiola::engine {
  */
 class SeekOperation {
 public:
+    enum class Outcome {
+        applied,
+        preserved,
+        read_failed,
+        cancelled,
+        superseded,
+    };
+
     SeekOperation(media::AudioDecoder& source, pcm::PcmQueue::Producer& buffer,
         audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
-        bool& output_started, std::vector<float>& block) noexcept;
+        bool& output_started, std::vector<float>& block, const Playback& playback) noexcept;
 
     SeekOperation(const SeekOperation&) = delete;
     SeekOperation& operator=(const SeekOperation&) = delete;
     SeekOperation(SeekOperation&&) = delete;
     SeekOperation& operator=(SeekOperation&&) = delete;
 
-    /// Applies a seek held from before playback, or rewinds when `rewind` is set, then primes.
-    /// False when the backend refused and the preserved cursor was committed instead.
-    [[nodiscard]] bool begin(bool rewind);
+    /// Applies a pending request or replay rewind, then primes the committed epoch.
+    [[nodiscard]] Outcome begin(bool rewind);
 
-    /// Quiesces output, applies the latest claimed seek, and primes the resulting epoch.
-    [[nodiscard]] bool apply();
-
-    [[nodiscard]] bool priming_failed() const noexcept { return priming_failed_; }
+    /// No pending request is a no-op. A newer request or stop interrupts priming.
+    [[nodiscard]] Outcome apply();
 
 private:
-    [[nodiscard]] pcm::Frames current_frame() const noexcept;
+    [[nodiscard]] Outcome reposition(const Playhead::Claim& claim, bool move);
+    [[nodiscard]] Outcome prime(Outcome settled);
+    [[nodiscard]] std::optional<Outcome> interruption() const noexcept;
     void quiesce() noexcept;
-    void prime();
 
     media::AudioDecoder& source_;
     pcm::PcmQueue::Producer& buffer_;
@@ -69,7 +77,7 @@ private:
     Playhead::Applier& applier_;
     bool& output_started_;
     std::vector<float>& block_;
-    bool priming_failed_{false};
+    const Playback& playback_;
 };
 
 } // namespace wiola::engine

@@ -160,14 +160,14 @@ TEST(SeekOperation, AcceptsUnknownLengthWithoutTreatingItAsAnExactZero)
     wiola::engine::Playhead playhead{source.spec().num_channels};
     auto applier{playhead.applier()};
     bool output_started{false};
+    wiola::engine::Playback playback;
     std::vector<float> block(source.spec().samples_per(wiola::pcm::Frames{4}));
     wiola::engine::SeekOperation seek{source, producer, control, output, applier, output_started,
-        block};
+        block, playback};
 
     playhead.request_seek(wiola::pcm::Frames{4});
 
-    EXPECT_TRUE(seek.apply());
-    EXPECT_FALSE(seek.priming_failed());
+    EXPECT_EQ(seek.apply(), wiola::engine::SeekOperation::Outcome::applied);
     EXPECT_FALSE(playhead.seek_outstanding());
     EXPECT_EQ(playhead.position(wiola::pcm::Frames{}), wiola::pcm::Frames{4});
 }
@@ -684,7 +684,7 @@ TEST(Player, StartsWhereASeekAskedForBeforeIt)
     ASSERT_NE(source, nullptr);
 
     const wiola::pcm::Frames total{source->num_frames()};
-    const wiola::media::AudioDecoder* begun{source.get()};
+    const auto* begun{source.get()};
     Rig rig{std::move(source)};
     Player& player{rig.player};
 
@@ -694,7 +694,9 @@ TEST(Player, StartsWhereASeekAskedForBeforeIt)
 
     EXPECT_GT(player.time_played().get<units::Sec>(), 0.9);
 
-    // The source belongs to the decoding thread while it runs, and to us once it has stopped.
+    ASSERT_TRUE(eventually([&] { return begun->num_seeks() > 0 && rig.output.running(); }));
+
+    // Inspect the decoder cursor only after the worker has joined.
     player.stop();
     player.wait();
 

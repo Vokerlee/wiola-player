@@ -1,6 +1,10 @@
 include(GoogleTest)
 
-foreach(suite IN ITEMS playback playhead transport_worker player)
+foreach(
+    suite
+    IN
+    ITEMS playback playhead transport_worker player seek_operation
+)
     add_executable(engine_${suite}_test ${suite}_test.cpp)
     target_link_libraries(
         engine_${suite}_test
