@@ -18,3 +18,5 @@ Cases testing the provider boundary can instead supply an asset factory. It can 
 FakeDecoder supplies explicit stream information, including unknown duration and seekability, and can hold reads/seeks behind Gate. FakeOutput can remain passive or drive the actual callback source; start/stop/destruction own callback quiescence. Gates order a scenario without assuming that a worker finishes within an arbitrary sleep. No production kernel constructor, global registry or script is needed to install these collaborators.
 
 `fake_decoder_test` lives with the controlled decoder and qualifies its held-read/seek gates and source-position behavior. It links the public media contract directly.
+
+MemoryByteStream owns forward-only bytes for signature and portable stream cases. It reports consumed cursor position, explicit unsupported seeking and an optional controlled read failure through the same ByteStream hooks as a driver. Signature cases can therefore test actual parsing without native files or another failing-stream implementation.

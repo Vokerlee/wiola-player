@@ -20,6 +20,7 @@
 
 #include <codec/backends/ffmpeg/input.hpp>
 
+#include <fixtures/temporary_directory.hpp>
 #include <media/local_file_stream.hpp>
 
 #include <gtest/gtest.h>
@@ -53,7 +54,8 @@ public:
     {
     }
 
-    wiola::media::Result<std::size_t> read(std::span<std::byte> output,
+private:
+    wiola::media::Result<std::size_t> read_impl(std::span<std::byte> output,
         const wiola::media::OperationContext&) override
     {
         if (throw_reads_)
@@ -75,7 +77,7 @@ public:
         return count;
     }
 
-    wiola::media::Result<void> seek(std::int64_t offset, wiola::media::SeekOrigin origin,
+    wiola::media::Result<void> seek_impl(std::int64_t offset, wiola::media::SeekOrigin origin,
         const wiola::media::OperationContext&) override
     {
         ++seek_calls_;
@@ -106,7 +108,7 @@ public:
         return {};
     }
 
-    wiola::media::Result<std::uint64_t> tell(const wiola::media::OperationContext&) override
+    wiola::media::Result<std::uint64_t> tell_impl(const wiola::media::OperationContext&) override
     {
         ++tell_calls_;
 
@@ -122,6 +124,7 @@ public:
         return cursor_;
     }
 
+public:
     void fail_reads() noexcept { fail_reads_ = true; }
 
     void throw_reads() noexcept { throw_reads_ = true; }
@@ -175,8 +178,8 @@ std::vector<std::byte> fixture_bytes(const char* name = "tone.wav")
 
 TEST(FfmpegInput, OpensAUnicodeLocalPathThroughCustomIo)
 {
-    const std::filesystem::path path{
-        std::filesystem::temp_directory_path() / "wiola_музыка_файл.wav"};
+    wiola::testing::TemporaryDirectory directory;
+    const auto path{directory.path() / std::filesystem::path{u8"музыка_файл.wav"}};
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", path,
         std::filesystem::copy_options::overwrite_existing);
     auto stream{wiola::media::LocalFileStream::open(path)};
@@ -187,7 +190,6 @@ TEST(FfmpegInput, OpensAUnicodeLocalPathThroughCustomIo)
     ASSERT_TRUE(input);
     EXPECT_GT((*input)->format()->nb_streams, 0U);
     EXPECT_EQ((*input)->format()->pb->seekable != 0, true);
-    std::filesystem::remove(path);
 }
 
 TEST(FfmpegInput, RejectsEverySecondaryOpen)

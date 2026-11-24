@@ -16,6 +16,11 @@ endfunction()
 
 wiola_media_add_test(media_audio_decoder_contract_test decoder_contract_test.cpp)
 wiola_media_add_test(media_audio_decoder_port_test decoder_port_test.cpp)
+wiola_media_add_test(media_byte_stream_contract_test byte_stream_test.cpp)
+target_include_directories(
+    media_byte_stream_contract_test
+    PRIVATE "${PROJECT_SOURCE_DIR}/tests"
+)
 wiola_media_add_test(media_track_metadata_test track_metadata_test.cpp)
 wiola_media_add_test(media_metadata_writer_test metadata_writer_test.cpp)
 wiola_media_add_test(pcm_stream_spec_test stream_spec_test.cpp)

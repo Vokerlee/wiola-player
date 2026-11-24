@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Narrow seekable byte access independent of filenames and backend libraries.
+ * @brief Blocking byte access independent of filenames and backend libraries.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -44,15 +44,26 @@ public:
 
     virtual ~ByteStream() = default;
 
-    /// A short successful read is EOF; an error is never encoded as a short read.
-    [[nodiscard]] virtual Result<std::size_t> read(std::span<std::byte> out,
-        const OperationContext& context = {}) = 0;
-    [[nodiscard]] virtual Result<void> seek(std::int64_t offset, SeekOrigin origin,
-        const OperationContext& context = {}) = 0;
-    [[nodiscard]] virtual Result<std::uint64_t> tell(const OperationContext& context = {}) = 0;
+    /// A short successful nonempty read is EOF; errors remain typed failures. An empty request
+    /// succeeds without backend work after context admission. Reported bytes never exceed out.
+    [[nodiscard]] Result<std::size_t> read(std::span<std::byte> out,
+        const OperationContext& context = {});
+    /// A failed seek preserves the cursor; unsupported movement is a typed backend failure.
+    [[nodiscard]] Result<void> seek(std::int64_t offset, SeekOrigin origin,
+        const OperationContext& context = {});
+    /// Unknown or unsupported position is a failure, distinct from a successful zero cursor.
+    [[nodiscard]] Result<std::uint64_t> tell(const OperationContext& context = {});
 
 protected:
     ByteStream() = default;
+
+    /// Hooks execute only after cancellation/deadline admission. A blocking backend continues
+    /// to cooperate with the same context; unexpected exceptions retain the caller's policy.
+    virtual Result<std::size_t> read_impl(std::span<std::byte> out,
+        const OperationContext& context) = 0;
+    virtual Result<void> seek_impl(std::int64_t offset, SeekOrigin origin,
+        const OperationContext& context) = 0;
+    virtual Result<std::uint64_t> tell_impl(const OperationContext& context) = 0;
 };
 
 } // namespace wiola::media

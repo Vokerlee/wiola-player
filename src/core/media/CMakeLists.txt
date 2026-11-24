@@ -1,6 +1,11 @@
 include(GNUInstallDirs)
 
-add_library(wiola_media_core STATIC private/audio_decoder.cpp)
+add_library(
+    wiola_media_core
+    STATIC
+    private/audio_decoder.cpp
+    private/byte_stream.cpp
+)
 add_library(wiola::media ALIAS wiola_media_core)
 set_target_properties(
     wiola_media_core

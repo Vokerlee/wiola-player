@@ -21,69 +21,35 @@
 #include <codec/decode/format.hpp>
 #include <codec/decode/registry.hpp>
 
-#include <media/local_file_stream.hpp>
+#include <fakes/byte_stream.hpp>
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
-#include <filesystem>
-#include <fstream>
+#include <cstddef>
+#include <span>
 #include <string_view>
+#include <vector>
 
 namespace {
 
 using wiola::codec::FileHead;
 using wiola::codec::Marker;
 
-FileHead read_head(const std::filesystem::path& path)
+FileHead head_of(std::string_view bytes)
 {
-    auto stream = wiola::media::LocalFileStream::open(path);
-
-    if (!stream)
-        return {};
-
-    auto head = FileHead::read(**stream);
+    const auto raw{std::as_bytes(std::span{bytes.data(), bytes.size()})};
+    wiola::testing::MemoryByteStream stream{
+        std::vector<std::byte>{raw.begin(), raw.end()}
+    };
+    const auto head{FileHead::read(stream)};
+    EXPECT_TRUE(head);
     return head ? *head : FileHead{};
 }
 
-/// Writes `bytes` to a file of its own and reads its head back.
-FileHead head_of(const char* name, std::string_view bytes)
-{
-    const std::filesystem::path path{std::filesystem::temp_directory_path() / name};
-    std::ofstream out{path, std::ios::binary};
-
-    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-    out.close();
-
-    return read_head(path);
-}
-
-class ReadFailure final : public wiola::media::ByteStream {
-public:
-    wiola::media::Result<std::size_t> read(std::span<std::byte>,
-        const wiola::media::OperationContext&) override
-    {
-        return wiola::media::unexpected{
-            wiola::media::Error{.category = wiola::media::ErrorCategory::read_failed,
-                                .detail = "injected header failure"}
-        };
-    }
-
-    wiola::media::Result<void> seek(std::int64_t, wiola::media::SeekOrigin,
-        const wiola::media::OperationContext&) override
-    {
-        return {};
-    }
-
-    wiola::media::Result<std::uint64_t> tell(const wiola::media::OperationContext&) override
-    {
-        return std::uint64_t{0};
-    }
-};
-
 TEST(FileHead, PropagatesAReadFailure)
 {
-    ReadFailure stream;
+    wiola::testing::MemoryByteStream stream;
+    stream.fail_reads();
 
     auto head{FileHead::read(stream)};
 
@@ -91,27 +57,14 @@ TEST(FileHead, PropagatesAReadFailure)
     EXPECT_EQ(head.error().category, wiola::media::ErrorCategory::read_failed);
 }
 
-TEST(FileHead, IsEmptyWhenThereIsNoFile)
-{
-    const FileHead head{read_head("/nonexistent/wiola.wav")};
-
-    EXPECT_TRUE(head.empty());
-    EXPECT_FALSE(head.carries(Marker{0, "RIFF"}));
-}
-
 TEST(FileHead, IsEmptyForAnEmptyFile)
 {
-    EXPECT_TRUE(head_of("wiola_head_empty.bin", "").empty());
-}
-
-TEST(FileHead, IsEmptyForADirectory)
-{
-    EXPECT_TRUE(read_head(std::filesystem::temp_directory_path()).empty());
+    EXPECT_TRUE(head_of("").empty());
 }
 
 TEST(FileHead, CarriesAMarkerWhereItSaysItIs)
 {
-    const FileHead head{head_of("wiola_head_riff.bin", "RIFF\1\2\3\4WAVEfmt ")};
+    const FileHead head{head_of("RIFF\1\2\3\4WAVEfmt ")};
 
     EXPECT_FALSE(head.empty());
     EXPECT_TRUE(head.carries(Marker{0, "RIFF"}));
@@ -121,7 +74,7 @@ TEST(FileHead, CarriesAMarkerWhereItSaysItIs)
 /// The offset is part of the marker: the same bytes elsewhere are not it.
 TEST(FileHead, DoesNotCarryAMarkerAtAnotherOffset)
 {
-    const FileHead head{head_of("wiola_head_riff.bin", "RIFF\1\2\3\4WAVEfmt ")};
+    const FileHead head{head_of("RIFF\1\2\3\4WAVEfmt ")};
 
     EXPECT_FALSE(head.carries(Marker{4, "RIFF"}));
     EXPECT_FALSE(head.carries(Marker{0, "WAVE"}));
@@ -129,7 +82,7 @@ TEST(FileHead, DoesNotCarryAMarkerAtAnotherOffset)
 
 TEST(FileHead, CarriesNothingPastWhatWasRead)
 {
-    const FileHead head{head_of("wiola_head_short.bin", "RIFF")};
+    const FileHead head{head_of("RIFF")};
 
     EXPECT_FALSE(head.empty());
     EXPECT_TRUE(head.carries(Marker{0, "RIFF"}));
@@ -142,7 +95,7 @@ TEST(FileHead, CarriesNothingPastWhatWasRead)
 /// Only the first bytes are kept, so a marker further in than that is never found.
 TEST(FileHead, KeepsOnlyTheLeadingBytes)
 {
-    const FileHead head{head_of("wiola_head_long.bin", "0123456789abcdefghijklmnop")};
+    const FileHead head{head_of("0123456789abcdefghijklmnop")};
 
     EXPECT_TRUE(head.carries(Marker{12, "cdef"}));
     EXPECT_FALSE(head.carries(Marker{13, "defg"}));
@@ -152,7 +105,7 @@ TEST(FileHead, KeepsOnlyTheLeadingBytes)
 /// A signature is bytes, not text: the high ones compare as themselves.
 TEST(FileHead, ComparesBytesRatherThanCharacters)
 {
-    const FileHead head{head_of("wiola_head_sync.bin", "\xFF\xFB\x90\x64rest")};
+    const FileHead head{head_of("\xFF\xFB\x90\x64rest")};
 
     EXPECT_TRUE(head.carries(Marker{0, "\xFF\xFB"}));
     EXPECT_FALSE(head.carries(Marker{0, "\x7F\x7B"}));
