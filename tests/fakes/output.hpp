@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <audio/output/output.hpp>
-#include <audio/output/source.hpp>
+#include <wiola/audio/output.hpp>
+#include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <algorithm>

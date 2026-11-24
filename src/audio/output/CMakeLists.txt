@@ -1,2 +1,0 @@
-wiola_add_library(wiola_audio_output SOURCES output_connection.cpp)
-target_link_libraries(wiola_audio_output PUBLIC wiola::media)

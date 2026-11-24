@@ -25,5 +25,8 @@ wiola_add_library(
 )
 target_link_libraries(
     wiola_app
-    PUBLIC wiola::engine_operations wiola::engine_playback_snapshot
+    PUBLIC
+        wiola::engine_operations
+        wiola::engine_playback_snapshot
+        wiola_engine_session
 )

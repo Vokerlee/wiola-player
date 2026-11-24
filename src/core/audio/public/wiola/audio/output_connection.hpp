@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include <audio/output/output.hpp>
-#include <core/macros.hpp>
+#include <wiola/audio/output.hpp>
 
 namespace wiola::audio {
 
@@ -34,12 +33,17 @@ namespace wiola::audio {
  */
 class OutputConnection {
 public:
-    explicit OutputConnection(Output& output) noexcept;
+    explicit OutputConnection(Output& output) noexcept
+        : control_{output.control()}
+    {
+    }
 
-    NO_COPY_SEMANTIC(OutputConnection);
-    NO_MOVE_SEMANTIC(OutputConnection);
+    OutputConnection(const OutputConnection&) = delete;
+    OutputConnection& operator=(const OutputConnection&) = delete;
+    OutputConnection(OutputConnection&&) = delete;
+    OutputConnection& operator=(OutputConnection&&) = delete;
 
-    ~OutputConnection();
+    ~OutputConnection() { stop(); }
 
     [[nodiscard]] Output::Control& control() noexcept { return control_; }
 

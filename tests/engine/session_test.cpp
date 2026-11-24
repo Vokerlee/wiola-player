@@ -20,11 +20,11 @@
 
 #include <fixtures/wav.hpp>
 
-#include <audio/output/output.hpp>
+#include <wiola/audio/output.hpp>
 
-#include <audio/output/source.hpp>
 #include <codec/provider.hpp>
 #include <engine/session.hpp>
+#include <wiola/audio/source.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 

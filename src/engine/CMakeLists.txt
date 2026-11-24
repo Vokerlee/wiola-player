@@ -8,16 +8,15 @@ add_subdirectory(transport)
 wiola_add_library(
     wiola_engine_session
     SOURCES session.cpp
-    LIBS
-        wiola_audio_dsp
-        wiola_engine_load
-        wiola_engine_pipeline
-        wiola_engine_queue
-        wiola_engine_transport
+    LIBS wiola_engine_load wiola_engine_queue wiola_engine_transport
 )
 target_link_libraries(
     wiola_engine_session
-    PUBLIC wiola::engine_operations wiola::engine_playback_snapshot
+    PUBLIC
+        wiola::engine_operations
+        wiola::engine_playback_snapshot
+        wiola_audio_dsp
+        wiola_engine_pipeline
 )
 
 wiola_add_module(
