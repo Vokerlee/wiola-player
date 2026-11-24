@@ -2,10 +2,41 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <stop_token>
 #include <wiola/media/artwork_reference.hpp>
 #include <wiola/media/byte_stream.hpp>
 #include <wiola/media/provider.hpp>
 using namespace wiola;
+
+class ForwardBytes final : public media::ByteStream {
+private:
+    media::Result<std::size_t> read_impl(std::span<std::byte> out,
+        const media::OperationContext&) override
+    {
+        if (consumed_)
+            return std::size_t{};
+        out.front() = std::byte{0x2A};
+        consumed_ = true;
+        return std::size_t{1};
+    }
+
+    media::Result<void> seek_impl(std::int64_t, media::SeekOrigin,
+        const media::OperationContext&) override
+    {
+        return media::unexpected{
+            media::Error{media::ErrorCategory::unsupported, "forward-only consumer"}
+        };
+    }
+
+    media::Result<std::uint64_t> tell_impl(const media::OperationContext&) override
+    {
+        return std::uint64_t{consumed_ ? 1U : 0U};
+    }
+
+    bool consumed_{false};
+};
 
 class Decoder final : public media::AudioDecoder {
 public:
@@ -58,6 +89,21 @@ public:
 
 int main()
 {
+    ForwardBytes stream;
+    std::array<std::byte, 2> bytes{};
+    const auto bytes_read{stream.read(bytes)};
+    const auto cursor{stream.tell()};
+    const auto unsupported{stream.seek(0, media::SeekOrigin::start)};
+    if (!bytes_read || *bytes_read != 1 || bytes.front() != std::byte{0x2A} || !cursor ||
+        *cursor != 1 || unsupported ||
+        unsupported.error().category != media::ErrorCategory::unsupported)
+        return 6;
+    std::stop_source stopped;
+    stopped.request_stop();
+    const auto rejected_read{stream.read(bytes, {.stop = stopped.get_token(), .deadline = {}})};
+    if (rejected_read || rejected_read.error().category != media::ErrorCategory::cancelled)
+        return 7;
+
     const media::DecoderStreamInfo missing_exact_length{.spec = {},
         .length = std::nullopt,
         .length_accuracy = media::LengthAccuracy::exact};

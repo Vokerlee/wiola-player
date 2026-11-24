@@ -33,13 +33,15 @@ public:
     [[nodiscard]] static Result<std::unique_ptr<LocalFileStream>>
     open(const std::filesystem::path& path, const OperationContext& context = {});
 
-    [[nodiscard]] Result<std::size_t> read(std::span<std::byte> out,
-        const OperationContext& context = {}) override;
-    [[nodiscard]] Result<void> seek(std::int64_t offset, SeekOrigin origin,
-        const OperationContext& context = {}) override;
-    [[nodiscard]] Result<std::uint64_t> tell(const OperationContext& context = {}) override;
-
 private:
+    LocalFileStream() = default;
+
+    Result<std::size_t> read_impl(std::span<std::byte> out,
+        const OperationContext& context) override;
+    Result<void> seek_impl(std::int64_t offset, SeekOrigin origin,
+        const OperationContext& context) override;
+    Result<std::uint64_t> tell_impl(const OperationContext& context) override;
+
     std::ifstream file_;
 };
 

@@ -1,5 +1,5 @@
 wiola_add_test(
-    media_byte_stream_test
-    SOURCES byte_stream_test.cpp
-    LIBS wiola_codec_decode
+    media_local_file_stream_test
+    SOURCES local_file_stream_test.cpp
+    LIBS wiola_local_file_stream
 )
