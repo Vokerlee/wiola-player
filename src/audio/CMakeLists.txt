@@ -1,5 +1,4 @@
 add_subdirectory(device)
-add_subdirectory(dsp)
 
 wiola_add_module(
     wiola_audio

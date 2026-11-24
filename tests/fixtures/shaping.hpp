@@ -20,9 +20,9 @@
 
 #pragma once
 
-#include <audio/dsp/equalizer.hpp>
-#include <audio/dsp/processing_chain.hpp>
-#include <audio/dsp/volume.hpp>
+#include <wiola/audio/equalizer.hpp>
+#include <wiola/audio/processing_chain.hpp>
+#include <wiola/audio/volume.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 namespace wiola::testing {

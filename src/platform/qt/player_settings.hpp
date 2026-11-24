@@ -21,7 +21,7 @@
 #pragma once
 
 #include <app/playback/volume_scale.hpp>
-#include <audio/dsp/equalizer_config.hpp>
+#include <wiola/audio/equalizer_config.hpp>
 
 #include <QSettings>
 

@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <span>
@@ -38,8 +37,10 @@ class Stage {
 public:
     Stage() = default;
 
-    NO_COPY_SEMANTIC(Stage);
-    NO_MOVE_SEMANTIC(Stage);
+    Stage(const Stage&) = delete;
+    Stage& operator=(const Stage&) = delete;
+    Stage(Stage&&) = delete;
+    Stage& operator=(Stage&&) = delete;
 
     virtual ~Stage() = default;
 

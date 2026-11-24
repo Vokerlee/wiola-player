@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <audio/dsp/output_sanitizer.hpp>
-#include <audio/dsp/stage.hpp>
-#include <core/macros.hpp>
+#include <wiola/audio/output_sanitizer.hpp>
+#include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <functional>
@@ -40,8 +39,10 @@ class ProcessingChain {
 public:
     ProcessingChain(std::initializer_list<std::reference_wrapper<Stage>> stages = {});
 
-    NO_COPY_SEMANTIC(ProcessingChain);
-    NO_MOVE_SEMANTIC(ProcessingChain);
+    ProcessingChain(const ProcessingChain&) = delete;
+    ProcessingChain& operator=(const ProcessingChain&) = delete;
+    ProcessingChain(ProcessingChain&&) = delete;
+    ProcessingChain& operator=(ProcessingChain&&) = delete;
 
     /// Retunes the fixed stages between tracks, never during a callback.
     void configure(pcm::StreamSpec spec);

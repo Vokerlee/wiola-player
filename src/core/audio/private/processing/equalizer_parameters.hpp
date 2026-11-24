@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <audio/dsp/biquad.hpp>
-#include <audio/dsp/equalizer_config.hpp>
-#include <core/macros.hpp>
+#include <processing/biquad.hpp>
+#include <wiola/audio/equalizer_config.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
@@ -40,8 +39,10 @@ class EqualizerParameters {
 public:
     EqualizerParameters(pcm::StreamSpec spec, EqualizerConfig config = {});
 
-    NO_COPY_SEMANTIC(EqualizerParameters);
-    NO_MOVE_SEMANTIC(EqualizerParameters);
+    EqualizerParameters(const EqualizerParameters&) = delete;
+    EqualizerParameters& operator=(const EqualizerParameters&) = delete;
+    EqualizerParameters(EqualizerParameters&&) = delete;
+    EqualizerParameters& operator=(EqualizerParameters&&) = delete;
 
     /// Rebuilds prepared banks for `spec`. The output must be stopped while configuring.
     void configure(pcm::StreamSpec spec) noexcept;

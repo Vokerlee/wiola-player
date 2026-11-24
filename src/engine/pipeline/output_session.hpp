@@ -20,11 +20,11 @@
 
 #pragma once
 
-#include <audio/dsp/processing_chain.hpp>
-#include <audio/dsp/relay.hpp>
-#include <audio/dsp/shaped_source.hpp>
 #include <core/macros.hpp>
 #include <wiola/audio/output.hpp>
+#include <wiola/audio/processing_chain.hpp>
+#include <wiola/audio/relay.hpp>
+#include <wiola/audio/shaped_source.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <functional>

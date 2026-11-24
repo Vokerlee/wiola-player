@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/equalizer_parameters.hpp>
+#include <processing/equalizer_parameters.hpp>
 
 #include <algorithm>
 #include <cmath>

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/relay.hpp>
+#include <wiola/audio/relay.hpp>
 
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <span>
 
 namespace {
@@ -147,4 +148,17 @@ TEST(Relay, PassesOnAShortAnswer)
     EXPECT_EQ(relay.render(block), 2u);
     EXPECT_EQ(block[1], 0.5F);
     EXPECT_EQ(block[2], 0.0F);
+}
+
+TEST(Relay, PolymorphicDestructionPreservesTheBorrowedSource)
+{
+    Constant source{0.5F, 2};
+    auto relay = std::make_unique<Relay>(stereo);
+    relay->point_at(source);
+    std::unique_ptr<Source> port = std::move(relay);
+    port.reset();
+
+    std::array<float, 2> output{};
+    EXPECT_EQ(source.render(output), output.size());
+    EXPECT_FLOAT_EQ(output[0], 0.5F);
 }

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/processing_chain.hpp>
+#include <wiola/audio/processing_chain.hpp>
 
 namespace wiola::audio {
 

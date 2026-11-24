@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/volume.hpp>
+#include <wiola/audio/volume.hpp>
 
 #include <algorithm>
 #include <stdexcept>

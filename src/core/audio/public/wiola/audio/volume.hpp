@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Final finite full-scale output policy.
+ * @brief How loud the output is.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,18 +20,40 @@
 
 #pragma once
 
-#include <audio/dsp/stage.hpp>
+#include <wiola/audio/stage.hpp>
+#include <wiola/audio/volume_policy.hpp>
 #include <wiola/media/stream_spec.hpp>
 
+#include <atomic>
 #include <span>
 
 namespace wiola::audio {
 
-/// Replaces NaN and infinity with silence and clamps finite samples to full scale.
-class OutputSanitizer final : public Stage {
+/// One gain over everything: 0 is silence, 1 the samples as they arrived, and up to
+/// the policy's `max_boost` more than arrived.
+class Volume final : public Stage {
 public:
+    explicit Volume(VolumePolicy policy = {});
+
+    /// The immutable gain bounds this volume was built with.
+    [[nodiscard]] const VolumePolicy& policy() const noexcept { return policy_; }
+
+    /// Clamped to that range, and anything that is not a number is taken as silence.
+    void set_gain(float gain) noexcept;
+
+    [[nodiscard]] float gain() const noexcept;
+
+    /// Nothing here follows the stream, so this is what it costs to say so.
     void configure(pcm::StreamSpec spec) noexcept override;
+
     void process(std::span<float> samples) noexcept override;
+
+private:
+    VolumePolicy policy_;
+    std::atomic<float> gain_{1.0F};
 };
+
+static_assert(std::atomic<float>::is_always_lock_free,
+    "a setting is read on the thread that feeds the device, which cannot wait for a lock");
 
 } // namespace wiola::audio

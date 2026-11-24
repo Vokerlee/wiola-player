@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/output_sanitizer.hpp>
+#include <wiola/audio/output_sanitizer.hpp>
 
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

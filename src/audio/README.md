@@ -11,6 +11,8 @@ callback and why other work must stay on application or transport threads.
 For the compressed-input side, start with the [codec guide](../codec/README.md). For sample, frame,
 and channel-layout theory, see the [PCM guide](../core/media/README.md).
 
+Portable contracts and processing live in [core/audio](../core/audio/README.md); the queue/render bridge lives in [core/playback](../core/playback/README.md). This directory currently assembles those targets with the concrete device adapter. The walkthrough below follows their composition rather than assigning their implementation to this folder.
+
 ## 1. The complete path
 
 ```mermaid
@@ -227,7 +229,7 @@ A `Device` is constructed with a source, but a music player changes sources when
 changes. Recreating the device every time would be unnecessary when the next track has the same
 format.
 
-[`Relay`](dsp/relay.hpp) solves this by holding an atomic pointer to the current `Source`. Its own
+[`Relay`](../core/audio/public/wiola/audio/relay.hpp) solves this by holding an atomic pointer to the current `Source`. Its own
 stream specification remains fixed. The application points it at each track's `BufferSource` in
 turn; the callback follows the pointer it observes.
 
@@ -273,8 +275,8 @@ playback fault visible to the application.
 
 ## 8. ShapedSource inserts DSP without changing the source
 
-[`ShapedSource`](dsp/shaped_source.cpp) wraps another `Source`. It first renders from that source,
-then applies a [`ProcessingChain`](dsp/processing_chain.hpp) to the samples in place.
+[`ShapedSource`](../core/audio/private/processing/shaped_source.cpp) wraps another `Source`. It first renders from that source,
+then applies a [`ProcessingChain`](../core/audio/public/wiola/audio/processing_chain.hpp) to the samples in place.
 
 The wrapped source still determines the stream specification. DSP changes sample values, not the
 meaning of frame boundaries or channel positions.
@@ -295,9 +297,9 @@ always last and is not an optional user setting.
 
 The equalizer has two sides:
 
-- [`EqualizerParameters`](dsp/equalizer_parameters.hpp) belongs to the control thread. It stores
+- [`EqualizerParameters`](../core/audio/private/processing/equalizer_parameters.hpp) belongs to the control thread. It stores
   user settings and prepares complete coefficient banks.
-- [`EqualizerProcessor`](dsp/equalizer_processor.hpp) belongs to the processing thread. It owns the
+- [`EqualizerProcessor`](../core/audio/private/processing/equalizer_processor.hpp) belongs to the processing thread. It owns the
   filter history and applies those banks to PCM.
 
 A bank contains the active band count, coefficients, enable state, whether any shaping is needed,
@@ -336,7 +338,7 @@ When the equalizer is disabled or every band has zero gain, processing is bypass
 
 ## 10. Biquads shape each channel independently
 
-Each equalizer band is a second-order peaking filter implemented by [`Biquad`](dsp/biquad.hpp).
+Each equalizer band is a second-order peaking filter implemented by [`Biquad`](../core/audio/private/processing/biquad.hpp).
 Its coefficients depend on sample rate, band center, quality, and gain. Rates that are too low for
 the highest configured centers reduce the number of active bands.
 
@@ -358,7 +360,7 @@ belonged to a different stream.
 
 ## 11. Volume is a small atomic gain stage
 
-[`Volume`](dsp/volume.cpp) multiplies every sample by one gain:
+[`Volume`](../core/audio/private/processing/volume.cpp) multiplies every sample by one gain:
 
 - `0` is silence;
 - `1` leaves samples untouched;
@@ -373,7 +375,7 @@ signal above full scale, which is why the final sanitizer is necessary.
 
 ## 12. OutputSanitizer is the final safety boundary
 
-[`OutputSanitizer`](dsp/output_sanitizer.cpp) examines every sample after EQ and volume:
+[`OutputSanitizer`](../core/audio/private/processing/output_sanitizer.cpp) examines every sample after EQ and volume:
 
 - NaN and infinity become `0`;
 - finite values are clamped to `[-1, 1]`.
@@ -445,14 +447,14 @@ reads, and source destruction all have owners outside it.
 Follow one PCM block through the implementation:
 
 1. [`buffer_source.cpp`](../core/playback/private/buffering/buffer_source.cpp) — queue consumption.
-2. [`relay.cpp`](dsp/relay.cpp) — switching the current source.
-3. [`shaped_source.cpp`](dsp/shaped_source.cpp) — inserting the processing chain.
-4. [`processing_chain.cpp`](dsp/processing_chain.cpp) — fixed stage order and final sanitizing.
-5. [`equalizer_parameters.cpp`](dsp/equalizer_parameters.cpp) — control-side bank preparation.
-6. [`equalizer_processor.cpp`](dsp/equalizer_processor.cpp) — real-time filter application.
-7. [`biquad.cpp`](dsp/biquad.cpp) — per-channel second-order filtering and history.
-8. [`volume.cpp`](dsp/volume.cpp) — atomic gain.
-9. [`output_sanitizer.cpp`](dsp/output_sanitizer.cpp) — finite full-scale output.
+2. [`relay.cpp`](../core/audio/private/processing/relay.cpp) — switching the current source.
+3. [`shaped_source.cpp`](../core/audio/private/processing/shaped_source.cpp) — inserting the processing chain.
+4. [`processing_chain.cpp`](../core/audio/private/processing/processing_chain.cpp) — fixed stage order and final sanitizing.
+5. [`equalizer_parameters.cpp`](../core/audio/private/processing/equalizer_parameters.cpp) — control-side bank preparation.
+6. [`equalizer_processor.cpp`](../core/audio/private/processing/equalizer_processor.cpp) — real-time filter application.
+7. [`biquad.cpp`](../core/audio/private/processing/biquad.cpp) — per-channel second-order filtering and history.
+8. [`volume.cpp`](../core/audio/private/processing/volume.cpp) — atomic gain.
+9. [`output_sanitizer.cpp`](../core/audio/private/processing/output_sanitizer.cpp) — finite full-scale output.
 10. [`device.cpp`](device/device.cpp) — Miniaudio configuration, callback, channel mapping, and
     played-frame accounting.
 11. [`output_session.cpp`](../engine/pipeline/output_session.cpp) — output reuse and format changes.

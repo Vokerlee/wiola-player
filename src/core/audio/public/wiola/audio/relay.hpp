@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 
@@ -46,8 +45,10 @@ class Relay final : public Source {
 public:
     explicit Relay(pcm::StreamSpec spec) noexcept;
 
-    NO_COPY_SEMANTIC(Relay);
-    NO_MOVE_SEMANTIC(Relay);
+    Relay(const Relay&) = delete;
+    Relay& operator=(const Relay&) = delete;
+    Relay(Relay&&) = delete;
+    Relay& operator=(Relay&&) = delete;
 
     ~Relay() override = default;
 
