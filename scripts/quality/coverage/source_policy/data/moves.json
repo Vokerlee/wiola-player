@@ -598,5 +598,30 @@
     "previous": "tools/testing/catalog/tests/test_catalog.py",
     "current": "scripts/quality/architecture/test_catalog/tests/test_catalog.py",
     "owner": "testing.catalog"
+  },
+  {
+    "previous": "tools/build_environment/ubuntu_packages/__init__.py",
+    "current": "scripts/build/packages/__init__.py",
+    "owner": "build_environment.ubuntu_packages"
+  },
+  {
+    "previous": "tools/build_environment/ubuntu_packages/__main__.py",
+    "current": "scripts/build/packages/__main__.py",
+    "owner": "build_environment.ubuntu_packages"
+  },
+  {
+    "previous": "tools/build_environment/ubuntu_packages/packages.py",
+    "current": "scripts/build/packages/_packages.py",
+    "owner": "build_environment.ubuntu_packages"
+  },
+  {
+    "previous": "tools/build_environment/ubuntu_packages/tests/__init__.py",
+    "current": "scripts/build/packages/tests/__init__.py",
+    "owner": "build_environment.ubuntu_packages"
+  },
+  {
+    "previous": "tools/build_environment/ubuntu_packages/tests/test_packages.py",
+    "current": "scripts/build/packages/tests/test_packages.py",
+    "owner": "build_environment.ubuntu_packages"
   }
 ]

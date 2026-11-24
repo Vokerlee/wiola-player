@@ -20,7 +20,7 @@ def _execute(
 ) -> list[list[str]]:
     commands = []
     # Test discovery entrypoints are separate from instrumented production source_roots.
-    test_packages = (("tools", root), ("scripts", root), ("tests/scripts", None))
+    test_packages = (("scripts", root), ("tests/scripts", None))
     tests = [
         [
             "-m",

@@ -81,13 +81,6 @@ CONTRACTS = (
         ("src/engine/playback_snapshot/playback_snapshot.hpp",),
     ),
     AbstractionContract(
-        "tooling.package",
-        "tools",
-        "Repository-tool package and contributor entrypoint",
-        ("Player runtime does not depend on development tools",),
-        grouping=True,
-    ),
-    AbstractionContract(
         "architecture.package",
         "scripts/quality/architecture",
         "Groups independent architecture checks",
@@ -291,21 +284,13 @@ CONTRACTS = (
         (".github/actions/setup-build/action.yml",),
     ),
     AbstractionContract(
-        "build_environment.package",
-        "tools/build_environment",
-        "Groups independent host build-environment adapters",
-        ("Complete implementation and tests belong to this owner",),
-        (),
-        grouping=True,
-    ),
-    AbstractionContract(
         "build_environment.ubuntu_packages",
-        "tools/build_environment/ubuntu_packages",
+        "scripts/build/packages",
         "Resolves and installs Ubuntu packages with reusable verified archives",
         ("Complete implementation and tests belong to this owner",),
         (
-            "tools/build_environment/ubuntu_packages/packages.py",
-            "tools/build_environment/ubuntu_packages/__main__.py",
+            "scripts/build/packages/_packages.py",
+            "scripts/build/packages/__main__.py",
         ),
         grouping=False,
     ),
