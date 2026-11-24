@@ -71,7 +71,7 @@ seek candidates without sharing mutable FFmpeg state.
 
 ## 2. From a filename to an admitted audio stream
 
-Opening a path creates a [`media::MediaAsset`](../media/provider.hpp). An asset represents something
+Opening a path creates a [`media::MediaAsset`](../core/media/public/wiola/media/provider.hpp). An asset represents something
 that can be inspected or decoded; it is not a playback cursor. Metadata reads and decoders created
 from the same asset remain independent.
 
@@ -101,7 +101,7 @@ other codecs use the inspected stream rate.
 
 The selected stream and its output description are assembled in
 [`FfmpegInput::inspect`](backends/ffmpeg/input.cpp). The input uses a Wiola-owned
-[`media::ByteStream`](../media/byte_stream.hpp), so reads, seeks, file-size queries, cancellation,
+[`media::ByteStream`](../core/media/public/wiola/media/byte_stream.hpp), so reads, seeks, file-size queries, cancellation,
 and secondary-resource rejection do not depend on FFmpeg opening the path by itself.
 
 ## 3. Metadata is a separate visit to the container
@@ -360,10 +360,10 @@ the real-time audio callback.
 
 Containers and codecs are exposed to damaged and hostile files. Wiola bounds probing, metadata,
 artwork, packet work, conversion work, frame sizes, and seek preroll. Failures become
-[`media::Result`](../media/result.hpp) values with stable categories rather than leaking FFmpeg error
+[`media::Result`](../core/media/public/wiola/media/result.hpp) values with stable categories rather than leaking FFmpeg error
 codes into the engine.
 
-An [`OperationContext`](../media/operation_context.hpp) carries cooperative cancellation and an
+An [`OperationContext`](../core/media/public/wiola/media/operation_context.hpp) carries cooperative cancellation and an
 optional deadline. Input callbacks and decode/seek loops observe it. This stops unnecessary opens
 and long operations without trying to kill a thread inside third-party code.
 

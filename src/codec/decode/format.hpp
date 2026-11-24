@@ -51,7 +51,8 @@ public:
     [[nodiscard]] static media::Result<FileHead> read(media::ByteStream& stream,
         const media::OperationContext& context = {});
 
-    /// Whether `marker` is present where it says it should be.
+    /// Whether marker's complete range lies in the retained prefix and contains its bytes.
+    /// Offset is checked before subtracting remaining length; no overflowing sum is formed.
     [[nodiscard]] bool carries(const Marker& marker) const noexcept;
 
     /// Whether nothing could be read at all.

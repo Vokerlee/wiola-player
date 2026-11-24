@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <limits>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -90,6 +91,26 @@ TEST(FileHead, CarriesNothingPastWhatWasRead)
     // Beginning inside what was read is not enough; all of it has to be there.
     EXPECT_FALSE(head.carries(Marker{2, "FFxx"}));
     EXPECT_FALSE(head.carries(Marker{8, "WAVE"}));
+}
+
+TEST(FileHead, RejectsOverflowingMarkerRanges)
+{
+    const auto head{head_of("RIFF")};
+    const auto maximum{std::numeric_limits<std::size_t>::max()};
+    EXPECT_FALSE(head.carries(Marker{maximum, "RIFF"}));
+    EXPECT_FALSE(head.carries(Marker{maximum - 1, "RIFF"}));
+    EXPECT_FALSE(head.carries(Marker{maximum - 2, "RIFF"}));
+}
+
+TEST(FileHead, EmptyMarkersStillRequireAValidPosition)
+{
+    const auto head{head_of("RIFF")};
+    EXPECT_TRUE(head.carries(Marker{0, ""}));
+    EXPECT_TRUE(head.carries(Marker{4, ""}));
+    EXPECT_FALSE(head.carries(Marker{5, ""}));
+    const FileHead empty;
+    EXPECT_TRUE(empty.carries(Marker{0, ""}));
+    EXPECT_FALSE(empty.carries(Marker{1, ""}));
 }
 
 /// Only the first bytes are kept, so a marker further in than that is never found.
