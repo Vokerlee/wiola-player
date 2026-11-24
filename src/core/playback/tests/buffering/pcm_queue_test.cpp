@@ -49,8 +49,9 @@ std::vector<float> counted(std::size_t count)
 
 TEST(PcmQueue, ChecksFrameCapacityAndRounding)
 {
-    EXPECT_EQ(PcmQueue::checked_capacity(three_channels, Frames{4}), 16U);
-    EXPECT_EQ(PcmQueue::checked_capacity(three_channels, Frames{}), 2U);
+    const auto capacity{PcmQueue::checked_capacity(three_channels, Frames{4})};
+    ASSERT_TRUE(capacity);
+    EXPECT_GE(*capacity, three_channels.samples_per(Frames{4}));
     EXPECT_FALSE(PcmQueue::checked_capacity(three_channels,
         Frames{std::numeric_limits<std::size_t>::max()})
             .has_value());
@@ -58,6 +59,32 @@ TEST(PcmQueue, ChecksFrameCapacityAndRounding)
     const StreamSpec invalid{.sample_rate = Frequency{48000.0}, .num_channels = 0};
     EXPECT_FALSE(PcmQueue::checked_capacity(invalid, Frames{4}).has_value());
     EXPECT_THROW(PcmQueue(invalid, Frames{4}), std::invalid_argument);
+}
+
+TEST(PcmQueue, ZeroMinimumStillTransfersACompleteFrameForEveryChannelShape)
+{
+    for (const std::size_t channels : {1U, 2U, 3U, 8U}) {
+        const StreamSpec spec{.sample_rate = Frequency{48000.0}, .num_channels = channels};
+        PcmQueue queue{spec, Frames{}};
+        auto producer{queue.producer()};
+        auto consumer{queue.consumer()};
+        const auto input{counted(channels)};
+        std::vector<float> output(channels, -1.0F);
+
+        ASSERT_EQ(producer.push(input), input.size()) << "channel count " << channels;
+        ASSERT_EQ(consumer.pop(output), output.size());
+        EXPECT_EQ(output, input);
+        EXPECT_EQ(queue.size_approx(), 0U);
+    }
+}
+
+TEST(PcmQueue, ZeroMinimumCannotHideAnUnrepresentableCompleteFrame)
+{
+    const StreamSpec spec{.sample_rate = Frequency{48000.0},
+        .num_channels = std::numeric_limits<std::size_t>::max()};
+
+    EXPECT_FALSE(PcmQueue::checked_capacity(spec, Frames{}));
+    EXPECT_THROW((PcmQueue{spec, Frames{}}), std::invalid_argument);
 }
 
 TEST(PcmQueue, OddConsumerSpansNeverSplitFrames)

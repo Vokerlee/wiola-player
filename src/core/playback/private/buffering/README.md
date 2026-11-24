@@ -18,7 +18,7 @@ sequenceDiagram
 
 Claim producer and consumer endpoints once on the setup thread before worker execution. Claims themselves are not concurrent operations. The queue outlives both endpoints; moving an endpoint leaves its previous holder inert. Each running endpoint owns its index, with release/acquire publication to the other thread. Observer counts are approximate and cannot establish transaction ordering.
 
-Capacity rounds to a power of two with a minimum of two elements, including a zero minimum request. Unrepresentable rounding throws before `bit_ceil` or allocation. PCM construction validates stream shape and frame-to-sample conversion first; unused trailing samples never form a partial frame. Allocation happens at construction, never in push/pop/render.
+The generic ring rounds capacity to a power of two with a minimum of two elements. PCM construction first reserves at least one complete frame, including a zero requested minimum; the ring's two-sample minimum alone cannot hold a three-channel frame. Stream shape, frame-to-sample conversion and rounding are checked before allocation. Unrepresentable requests throw before `bit_ceil` or storage allocation; unused trailing samples never form a partial frame. Allocation happens at construction, never in push/pop/render.
 
 An acquired region remains valid until its matching commit. Do not acquire again or use a copying operation on that endpoint before committing. Discard is producer-marked and consumer-acknowledged; it does not invalidate a read region already handed out. Stop/quiesce participants before releasing storage or performing external pipeline replacement. There is no concurrent reset operation.
 

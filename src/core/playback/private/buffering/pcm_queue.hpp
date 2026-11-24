@@ -106,7 +106,8 @@ public:
     [[nodiscard]] static std::optional<std::size_t> checked_capacity(StreamSpec spec,
         Frames minimum_frames) noexcept
     {
-        const std::optional<std::size_t> samples{spec.checked_samples_per(minimum_frames)};
+        const Frames frames{std::max(minimum_frames, Frames{1})};
+        const std::optional<std::size_t> samples{spec.checked_samples_per(frames)};
         return samples ? Ring::checked_capacity(*samples) : std::nullopt;
     }
 
