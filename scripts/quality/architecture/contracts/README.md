@@ -2,7 +2,7 @@
 
 `ContractCatalog` checks an explicitly reviewed responsibility, invariants, public files and complete owning subtree against the file registry. One component can explicitly contain several stable inventory parts. This preserves source/measurement identity when related declarations and implementation belong together, without requiring another folder or API for every historical class/header ID.
 
-The primary owner lists the component README. All declared parts stay within the same root; public files may belong to any of them. Every part belongs to at most one component, and reviewed parts leave the exact legacy allowance. An undeclared/unrelated owner remains forbidden inside the subtree. A grouping folder describes independent children rather than combining their implementations.
+The primary owner lists the component README. All declared parts stay within the same root; public files belong to runtime members. Every part belongs to at most one component, and reviewed parts leave the exact legacy allowance. An undeclared/unrelated owner remains forbidden inside the subtree. A grouping folder describes independent children rather than combining their implementations.
 
 ```mermaid
 flowchart LR
@@ -14,7 +14,9 @@ flowchart LR
   Audit --> Debt[Visible existing migration debt]
 ```
 
-`definitions.py` describes reviewed **current** contracts. `AbstractionContract.parts` names additional inventory IDs forming the same component; `owner_ids` returns the immutable primary/part membership. Parts must share one declared module capability in dependency policy. Internal private access stays inside that reviewed component, while external callers use its public surface. Declaring membership never grants new module or Qt permissions.
+`definitions.py` describes reviewed **current** contracts. `AbstractionContract.parts` names additional runtime inventory IDs forming the same component. They share one declared module capability. `test_parts` names its explicitly owned test members: their files stay under the component's `tests` subtree, remain assigned to the test module and cannot be public files. This keeps tests beside the implementation without granting test dependencies to production code. `owner_ids` returns immutable primary/runtime/test membership, preserving stable inventory identities and existing measurement roles.
+
+Internal private access stays inside that reviewed component, while external callers use its public surface. The dependency policy still checks module direction on every edge, including production-to-test edges. Declaring membership never grants new module or Qt permissions.
 
 The data file freezes still-unreviewed legacy owners by exact file-set digest. It is not an exemption for whole directories, a future plan, or approval of the old architecture. New ownership or changed file membership needs a reviewed contract. Remove every participating legacy record when adding that contract.
 
