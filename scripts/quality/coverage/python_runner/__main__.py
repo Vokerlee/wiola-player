@@ -84,10 +84,10 @@ def _execute(
     return commands
 
 
-def _process_profiles(directory: Path) -> dict[str, str]:
+def _process_profiles(data_file: Path) -> dict[str, str]:
     return {
         path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(directory.glob(".coverage.*"))
+        for path in sorted(data_file.parent.glob(data_file.name + ".*"))
     }
 
 
@@ -111,7 +111,7 @@ def main() -> int:
     args.output = args.output.resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     raw = Path(tempfile.mkdtemp(prefix="python-profiles-", dir=args.output.parent))
-    data_file = raw / ".coverage"
+    data_file = raw / "process-coverage"
     collector = coverage.Coverage(
         data_file=str(data_file), data_suffix=True, branch=True, source=roots
     )
@@ -126,7 +126,7 @@ def main() -> int:
     }
     if before != after:
         raise ValueError("Instrumented Python source changed during collection")
-    profiles = _process_profiles(raw)
+    profiles = _process_profiles(data_file)
     if len(profiles) != len(commands) + 1:
         raise ValueError(
             "Expected one Python profile per completed command and collector"
@@ -160,7 +160,7 @@ def main() -> int:
         cwd=root,
         check=True,
     )
-    if _process_profiles(raw) != profiles:
+    if _process_profiles(data_file) != profiles:
         raise ValueError("Python process profiles changed during reporting")
     manifest = dict(
         coverage_version=coverage.__version__,

@@ -11,3 +11,5 @@ flowchart LR
 ```
 
 Use the interpreter with requirements installed: `python3 -m unittest scripts.quality.coverage.python_runner.tests.test_profiles`. The fixture has no player identities or C++ suite. Full collector qualification additionally runs the actual owned script consumers.
+
+The success fixture also builds a ZIP using visible-file selection, restores the manifest and verifies every original profile hash from the archive. The former dot-prefixed files fail this regression because the archived metadata refers to missing payloads. File selection for mutation checks derives from the explicit data-file argument.

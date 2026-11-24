@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import warnings
+import zipfile
 
 from scripts.quality.architecture.ownership.registry import OwnershipRegistry
 from scripts.quality.coverage.source_policy.policy import SourcePolicy, SourceRecord
@@ -108,7 +109,8 @@ cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
         (directory,) = self.output.parent.glob("python-profiles-*")
         actual = {
             path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in directory.glob(".coverage.*")
+            for path in directory.iterdir()
+            if path.name in manifest["process_profiles"]
         }
         self.assertEqual(len(actual), 2)
         self.assertEqual(manifest["process_profiles"], actual)
@@ -116,6 +118,22 @@ cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
         self.assertEqual(
             json.loads(self.output.read_text())["totals"]["covered_lines"], 1
         )
+
+        # Artifact upload excludes dot-prefixed path components by default. A transport
+        # round trip must preserve every original profile identified by the manifest.
+        archive = self.root / "profiles.zip"
+        with zipfile.ZipFile(archive, "w") as bundle:
+            for path in self.output.parent.rglob("*"):
+                relative = path.relative_to(self.output.parent)
+                if path.is_file() and not any(
+                    part.startswith(".") for part in relative.parts
+                ):
+                    bundle.write(path, str(relative))
+        with zipfile.ZipFile(archive) as bundle:
+            restored = json.loads(bundle.read("python-manifest.json"))
+            for name, digest in restored["process_profiles"].items():
+                archived = bundle.read(directory.name + "/" + name)
+                self.assertEqual(hashlib.sha256(archived).hexdigest(), digest)
 
     def test_missing_command_profile_cannot_qualify(self):
         with self.inputs(execute=lambda *args: [["missing-profile"]]):
@@ -158,7 +176,8 @@ cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
         def reporting(command, **kwargs):
             result = original(command, **kwargs)
             if command[1:4] == ["-m", "coverage", "json"]:
-                profile = next(self.output.parent.glob("python-profiles-*/.coverage.*"))
+                data_file = Path(command[command.index("--data-file") + 1])
+                profile = next(data_file.parent.glob(data_file.name + ".*"))
                 profile.write_bytes(b"changed after reporting")
             return result
 
