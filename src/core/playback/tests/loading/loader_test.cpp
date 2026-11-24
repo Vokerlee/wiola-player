@@ -22,6 +22,7 @@
 
 #include <fakes/decoder.hpp>
 
+#include <fakes/provider.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
 #include <gtest/gtest.h>
@@ -149,6 +150,96 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
     ASSERT_FALSE(completed->opened.has_value());
     EXPECT_EQ(completed->opened.error().category, wiola::media::ErrorCategory::unreadable);
     EXPECT_EQ(completed->opened.error().detail, "missing");
+}
+
+TEST(Loader, NullProviderAssetBecomesADamagedCompletionAndTheWorkerCanRecover)
+{
+    wiola::testing::FakeMediaProvider valid{
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            return success();
+        },
+        [](const std::filesystem::path&) {
+            return wiola::media::Result{wiola::media::Metadata{}};
+        }};
+    Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context)
+            -> wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> {
+            if (path == "empty.media")
+                return std::unique_ptr<wiola::media::MediaAsset>{};
+            return valid.open(path, context);
+        }
+    )};
+
+    loader.start(request("empty.media", 7));
+    const auto failed{wait_for(loader)};
+    ASSERT_TRUE(failed);
+    EXPECT_EQ(failed->request.generation, 7U);
+    EXPECT_EQ(failed->request.entry, QueueEntryId{7});
+    EXPECT_EQ(failed->request.path, "empty.media");
+    ASSERT_FALSE(failed->opened);
+    EXPECT_EQ(failed->opened.error().category, wiola::media::ErrorCategory::damaged);
+    EXPECT_EQ(failed->opened.error().detail, "media provider returned no asset");
+
+    loader.start(request("working.media", 8));
+    const auto recovered{wait_for(loader)};
+    ASSERT_TRUE(recovered);
+    EXPECT_EQ(recovered->request.generation, 8U);
+    ASSERT_TRUE(recovered->opened);
+    ASSERT_NE(*recovered->opened, nullptr);
+    EXPECT_EQ((*recovered->opened)->num_frames(), Frames{64});
+}
+
+TEST(Loader, ProviderErrorKeepsItsCategoryAndDiagnostic)
+{
+    Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
+        [](const std::filesystem::path&, const wiola::media::OperationContext&)
+            -> wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> {
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::timed_out,
+                                    .detail = "resource deadline reached"}
+            };
+        }
+    )};
+
+    loader.start(request("resource.media"));
+    const auto failed{wait_for(loader)};
+
+    ASSERT_TRUE(failed);
+    ASSERT_FALSE(failed->opened);
+    EXPECT_EQ(failed->opened.error().category, wiola::media::ErrorCategory::timed_out);
+    EXPECT_EQ(failed->opened.error().detail, "resource deadline reached");
+}
+
+TEST(Loader, ProviderAndAssetReceiveTheSameActiveContext)
+{
+    std::stop_token opened_with;
+    std::stop_token decoded_with;
+    wiola::testing::FakeMediaProvider valid{
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
+            EXPECT_EQ(path, "resource.media");
+            decoded_with = context.stop;
+            return success();
+        },
+        [](const std::filesystem::path&) {
+            return wiola::media::Result{wiola::media::Metadata{}};
+        }};
+    Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
+            opened_with = context.stop;
+            return valid.open(path, context);
+        }
+    )};
+
+    loader.start(request("resource.media"));
+    const auto completed{wait_for(loader)};
+
+    ASSERT_TRUE(completed);
+    ASSERT_TRUE(completed->opened);
+    EXPECT_TRUE(opened_with.stop_possible());
+    EXPECT_EQ(opened_with, decoded_with);
+    EXPECT_FALSE(decoded_with.stop_requested());
+    loader.cancel();
+    EXPECT_FALSE(decoded_with.stop_requested());
 }
 
 TEST(Loader, HandsTheAnswerOverOnlyOnce)

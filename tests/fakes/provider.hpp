@@ -32,13 +32,27 @@ namespace wiola::testing {
 /// Test media supplied through the public driver port, without kernel-specific constructors.
 class FakeMediaProvider final : public media::MediaProvider {
 public:
+    using AssetFactory = std::function<media::Result<std::unique_ptr<media::MediaAsset>>(
+        const std::filesystem::path&, const media::OperationContext&
+    )>;
     using DecoderFactory = std::function<media::DecoderOpenResult(const std::filesystem::path&,
         const media::OperationContext&)>;
     using MetadataRead =
         std::function<media::Result<media::Metadata>(const std::filesystem::path&)>;
 
     FakeMediaProvider(DecoderFactory decoder, MetadataRead metadata)
-        : callbacks_{std::make_shared<const Callbacks>(std::move(decoder), std::move(metadata))}
+        : FakeMediaProvider{[callbacks = std::make_shared<const Callbacks>(std::move(decoder),
+                                 std::move(metadata))](
+                                const std::filesystem::path& path, const media::OperationContext&
+                            ) -> media::Result<std::unique_ptr<media::MediaAsset>> {
+            return std::unique_ptr<media::MediaAsset>{std::make_unique<Asset>(callbacks, path)};
+        }}
+    {
+    }
+
+    /// Allows provider boundary failures without inventing another fake provider/asset pair.
+    explicit FakeMediaProvider(AssetFactory open)
+        : open_{std::move(open)}
     {
     }
 
@@ -47,7 +61,7 @@ public:
     {
         if (context.stop_reason() != media::StopReason::none)
             return media::unexpected{context.error()};
-        return std::unique_ptr<media::MediaAsset>{std::make_unique<Asset>(callbacks_, path)};
+        return open_(path, context);
     }
 
     std::vector<std::string> playback_extensions() const override { return {}; }
@@ -92,7 +106,7 @@ private:
         std::filesystem::path path_;
     };
 
-    std::shared_ptr<const Callbacks> callbacks_;
+    AssetFactory open_;
 };
 
 } // namespace wiola::testing

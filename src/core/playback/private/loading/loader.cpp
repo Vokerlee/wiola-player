@@ -29,8 +29,13 @@ Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
     : open_{[provider = std::move(provider)](const std::filesystem::path& path,
                 const media::OperationContext& context) {
         auto asset{provider->open(path, context)};
-        return asset ? (*asset)->create_decoder(context)
-                     : media::DecoderOpenResult{media::unexpected{asset.error()}};
+        if (!asset)
+            return media::DecoderOpenResult{media::unexpected{asset.error()}};
+        if (!*asset)
+            return media::DecoderOpenResult{
+                media::unexpected{media::Error{.category = media::ErrorCategory::damaged,
+                    .detail = "media provider returned no asset"}}};
+        return (*asset)->create_decoder(context);
     }}
 {
 }
