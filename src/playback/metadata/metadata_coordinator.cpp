@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <metadata/metadata_coordinator.hpp>
+#include "metadata_coordinator.hpp"
 #include <metadata/tag_reader.hpp>
 
 #include <memory>

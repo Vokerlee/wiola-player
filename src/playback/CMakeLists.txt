@@ -1,16 +1,30 @@
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/headers.cmake")
 
 # Application clients can consume values without linking transport/worker implementation.
 add_library(wiola_playback_api INTERFACE)
 add_library(wiola::playback_api ALIAS wiola_playback_api)
 set_target_properties(wiola_playback_api PROPERTIES EXPORT_NAME playback_api)
 target_compile_features(wiola_playback_api INTERFACE cxx_std_23)
-target_include_directories(
+wiola_export_headers(
     wiola_playback_api
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    wiola/playback
+    wiola_playback
+    HEADERS
+        buffering/buffering_config.hpp
+        error.hpp
+        loading/open_result.hpp
+        operation_outcome.hpp
+        pipeline/output_factory.hpp
+        queue/queue_entry.hpp
+        queue/queue_entry_id.hpp
+        queue/queue_view.hpp
+        queue/repeat_mode.hpp
+        session.hpp
+        snapshot.hpp
+        transport/state.hpp
+        transport/transport_config.hpp
 )
 target_link_libraries(
     wiola_playback_api
@@ -20,13 +34,6 @@ install(
     TARGETS wiola_playback_api
     EXPORT wiola_playback_targets
     COMPONENT wiola_playback
-)
-install(
-    DIRECTORY public/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    COMPONENT wiola_playback
-    FILES_MATCHING
-    PATTERN "*.hpp"
 )
 install(
     EXPORT wiola_playback_targets
@@ -51,9 +58,9 @@ install(
 add_library(
     wiola_playback_buffer
     STATIC
-    private/buffering/buffer_source.cpp
-    private/buffering/relay.cpp
-    private/buffering/shaped_source.cpp
+    buffering/buffer_source.cpp
+    buffering/relay.cpp
+    buffering/shaped_source.cpp
 )
 set_target_properties(
     wiola_playback_buffer
@@ -62,7 +69,7 @@ set_target_properties(
 target_compile_features(wiola_playback_buffer PUBLIC cxx_std_23)
 target_include_directories(
     wiola_playback_buffer
-    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/private>
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 target_link_libraries(
     wiola_playback_buffer
@@ -73,23 +80,23 @@ if(COMMAND wiola_apply_build_controls)
 endif()
 
 find_package(Threads REQUIRED)
-add_subdirectory(private/transport)
-add_subdirectory(private/loading)
-add_subdirectory(private/queue)
-add_subdirectory(private/metadata)
+add_subdirectory(transport)
+add_subdirectory(loading)
+add_subdirectory(queue)
+add_subdirectory(metadata)
 
-add_subdirectory(private/pipeline)
+add_subdirectory(pipeline)
 
-add_library(wiola_playback STATIC private/session.cpp private/session_impl.cpp)
+add_library(wiola_playback STATIC session.cpp session_impl.cpp)
 add_library(wiola::playback ALIAS wiola_playback)
 set_target_properties(wiola_playback PROPERTIES EXPORT_NAME playback)
 target_compile_features(wiola_playback PUBLIC cxx_std_23)
 target_include_directories(
     wiola_playback
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-    PRIVATE private
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(
     wiola_playback

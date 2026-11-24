@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Decoder, frame queue, and transport ownership for one loaded track.
+ * @brief A source rendered through a supplied processing stage.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,25 +18,30 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <pipeline/playback_pipeline.hpp>
+#include "shaped_source.hpp"
 
-#include <utility>
+#include <algorithm>
 
 namespace wiola::engine {
 
-PlaybackPipeline::PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
-    std::unique_ptr<OutputSession::Lease> output, pcm::Frames buffer_frames,
-    TransportConfig transport)
-    : buffer_{source->spec(), buffer_frames}
-    , decoded_{source->spec(), buffer_.consumer()}
-    , output_{std::move(output)}
-    , player_{std::move(source), buffer_.producer(), output_->output(), transport}
+ShapedSource::ShapedSource(audio::Source& source, audio::Stage& processing) noexcept
+    : source_{source}
+    , processing_{processing}
 {
 }
 
-void PlaybackPipeline::activate(OutputSession& output) noexcept
+std::size_t ShapedSource::render(std::span<float> interleaved) noexcept
 {
-    output.activate(*output_, decoded_);
+    const std::size_t num_rendered{std::min(source_.render(interleaved), interleaved.size())};
+
+    processing_.process(interleaved.first(num_rendered));
+
+    return num_rendered;
+}
+
+pcm::StreamSpec ShapedSource::spec() const noexcept
+{
+    return source_.spec();
 }
 
 } // namespace wiola::engine

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <pipeline/output_session.hpp>
+#include "output_session.hpp"
 
 #include <buffering/relay.hpp>
 #include <buffering/shaped_source.hpp>

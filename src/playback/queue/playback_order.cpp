@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <queue/playback_order.hpp>
+#include "playback_order.hpp"
 
 #include <algorithm>
 #include <numeric>
