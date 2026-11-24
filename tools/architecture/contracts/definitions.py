@@ -4,6 +4,29 @@ from tools.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "scripts.quality",
+        "scripts/quality",
+        "Groups architecture and coverage quality tools",
+        ("Children own complete implementations and contracts",),
+        grouping=True,
+    ),
+    AbstractionContract(
+        "tool.coverage_report",
+        "scripts/quality/coverage/workflow",
+        "Collects and qualifies reproducible LLVM workflow evidence",
+        ("Trusted floors and source/profile identity remain explicit",),
+        (
+            "scripts/quality/coverage/workflow/collect.py",
+            "scripts/quality/coverage/workflow/gate.py",
+        ),
+        parts=(
+            "tool.coverage_gate",
+            "test.scripts.test_coverage_gate",
+            "test.scripts.test_coverage_inventory",
+            "coverage.policy_data",
+        ),
+    ),
+    AbstractionContract(
         "scripts.testing",
         "scripts/testing",
         "Groups independent test protocol and project test compositions",
@@ -205,7 +228,7 @@ CONTRACTS = (
     ),
     AbstractionContract(
         "coverage.package",
-        "tools/coverage",
+        "scripts/quality/coverage",
         "Groups independent measurement and qualification components",
         ("Grouping contains no runtime measurement implementation",),
         (),
@@ -213,19 +236,19 @@ CONTRACTS = (
     ),
     AbstractionContract(
         "coverage.source_policy",
-        "tools/coverage/source_policy",
+        "scripts/quality/coverage/source_policy",
         "Preserves explicit measurement applicability and source identity",
         (
             "Every executable source has explicit applicability",
             "Moves preserve owner identity and historical counts",
             "Language roles cannot hide maintained tooling",
         ),
-        ("tools/coverage/source_policy/policy.py",),
+        ("scripts/quality/coverage/source_policy/policy.py",),
         grouping=False,
     ),
     AbstractionContract(
         "coverage.measurement",
-        "tools/coverage/measurement",
+        "scripts/quality/coverage/measurement",
         "Reconciles raw coverage with owned source and configured execution",
         (
             "Configured production translation units have mappings",
@@ -233,19 +256,19 @@ CONTRACTS = (
             "Test code never inflates production counts",
             "Unsupported languages stay visibly unmeasured",
         ),
-        ("tools/coverage/measurement/report.py",),
+        ("scripts/quality/coverage/measurement/report.py",),
         grouping=False,
     ),
     AbstractionContract(
         "coverage.python_runner",
-        "tools/coverage/python_runner",
+        "scripts/quality/coverage/python_runner",
         "Collects Python tool coverage with retained process evidence",
         (
             "Every recorded command succeeds",
             "Instrumented source bytes remain stable during collection",
             "Process evidence is retained and hashed",
         ),
-        ("tools/coverage/python_runner/__main__.py",),
+        ("scripts/quality/coverage/python_runner/__main__.py",),
         grouping=False,
     ),
     AbstractionContract(
@@ -357,10 +380,10 @@ CONTRACTS = (
     ),
     AbstractionContract(
         "coverage.llvm_reporting",
-        "tools/coverage/llvm_reporting",
+        "scripts/quality/coverage/llvm_reporting",
         "Invokes LLVM reports with retained raw diagnostics and strict mapping agreement",
         ("Complete implementation and tests belong to this owner",),
-        ("tools/coverage/llvm_reporting/reporter.py",),
+        ("scripts/quality/coverage/llvm_reporting/reporter.py",),
         grouping=False,
     ),
     AbstractionContract(

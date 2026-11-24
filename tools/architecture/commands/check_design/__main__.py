@@ -10,15 +10,19 @@ import sys
 from tools.architecture.inventory.git_inventory import GitInventory
 from tools.architecture.policy_guard.policy import PolicyGuard, PolicySnapshot
 from tools.architecture.review_contract.review import ChangeReview, validate_subject
-from tools.coverage.source_policy.policy import SourcePolicy, SourceRecord, SourceMove
+from scripts.quality.coverage.source_policy.policy import (
+    SourcePolicy,
+    SourceRecord,
+    SourceMove,
+)
 
 POLICY_FILES = {
     "legacy": "tools/architecture/contracts/data/legacy.json",
     "exceptions": "tools/architecture/dependency_policy/data/legacy.json",
     "dependencies": "tools/architecture/dependency_policy/data/modules.json",
     "requirements": "tools/testing/catalog/data/requirements.json",
-    "sources": "tools/coverage/source_policy/data/sources.json",
-    "moves": "tools/coverage/source_policy/data/moves.json",
+    "sources": "scripts/quality/coverage/source_policy/data/sources.json",
+    "moves": "scripts/quality/coverage/source_policy/data/moves.json",
 }
 
 

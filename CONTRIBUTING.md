@@ -135,7 +135,7 @@ restate their settings anywhere else.
 ```bash
 sudo apt install llvm-18               # the profile tools, one version per clang
 
-scripts/coverage.sh                    # build instrumented, run the tests, print the report
+python3 -m scripts.quality.coverage.workflow.collect                    # build instrumented, run the tests, print the report
 ```
 
 The build is the `linux-coverage` preset, so `build-coverage/` and `build/` never meet. Debug, because

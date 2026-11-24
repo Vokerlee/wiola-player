@@ -269,13 +269,13 @@ jobs:
           name: coverage
           build-dir: build-coverage
           packages: llvm-18
-      - run: ./scripts/coverage.sh
+      - run: python3 -m scripts.quality.coverage.workflow.collect
         env:
           CXX: clang++-18
       - name: Reconcile C++ and Python coverage with source ownership
         run: cmake --build --preset linux-coverage --target wiola_coverage_ownership
       - name: Enforce trusted workflow floors and changed decisions
-        run: python3 -m scripts.coverage_gate --base-ref "$WIOLA_COVERAGE_BASE"
+        run: python3 -m scripts.quality.coverage.workflow.gate --base-ref "$WIOLA_COVERAGE_BASE"
         env:
           WIOLA_COVERAGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       - name: Upload coverage test diagnostics

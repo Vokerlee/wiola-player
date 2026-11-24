@@ -5,7 +5,7 @@
       "id": "coverage.policy_data",
       "purpose": "Defines the measured coverage baseline and qualified test identities.",
       "files": [
-        "tests/coverage/workflow-baseline.json"
+        "scripts/quality/coverage/workflow/workflow-baseline.json"
       ]
     }
   ]

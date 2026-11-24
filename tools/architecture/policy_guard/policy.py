@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 from types import MappingProxyType
 
-from tools.coverage.source_policy.policy import SourcePolicy
+from scripts.quality.coverage.source_policy.policy import SourcePolicy
 
 
 @dataclass(frozen=True)

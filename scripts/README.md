@@ -20,7 +20,7 @@ Current other commands:
 - `format-cpp.sh`, `format-cmake.sh` and `install-hooks.sh` are described in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - `python3 -m scripts.testing.desktop` runs the [desktop composition](testing/desktop/README.md) through the toolkit-independent [GoogleTest protocol](testing/gtest/README.md).
 - `python3 -m scripts.testing.mutations` runs [mutation qualification](testing/mutations/README.md); CMake supplies its actual build directory through `wiola_check_mutations`.
-- `coverage.sh` runs the coverage collector; [coverage qualification](../tools/coverage/README.md) explains source scope and retained evidence.
+- `python3 -m scripts.quality.coverage.workflow.collect` runs the [coverage workflow](quality/coverage/README.md), with source scope and retained evidence owned alongside it.
 - `test-affected.py` builds and runs explicitly selected test targets.
 
 Caller-provided paths and configured target metadata determine runtime artifacts. Commands must preserve caller environments, retain original diagnostics and report failures accurately. Development tooling has the same ownership and test requirements as player code.
