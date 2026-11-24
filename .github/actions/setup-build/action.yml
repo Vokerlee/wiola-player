@@ -54,17 +54,9 @@ runs:
         WIOLA_HOST_QT: ${{ inputs.qt }}
         WIOLA_EXTRA_PACKAGES: ${{ inputs.packages }}
       run: |
-        packages=(ccache)
-        case "$WIOLA_HOST_QT" in
-          true) packages+=(qt6-base-dev qt6-qpa-plugins) ;;
-          false) ;;
-          *) echo "qt must be true or false" >&2; exit 2 ;;
-        esac
-        read -r -a extra_packages <<< "$WIOLA_EXTRA_PACKAGES"
-        packages+=("${extra_packages[@]}")
-
-        identity="$(python3 -m tools.build_environment.ubuntu_packages plan \
-          --output "$RUNNER_TEMP/wiola-apt-plan.json" -- "${packages[@]}")"
+        identity="$(python3 -m scripts.build.packages plan \
+          --host-qt "$WIOLA_HOST_QT" --extra-packages "$WIOLA_EXTRA_PACKAGES" \
+          --output "$RUNNER_TEMP/wiola-apt-plan.json")"
         [[ "$identity" =~ ^[[:xdigit:]]{64}$ ]]
         echo "identity=$identity" >> "$GITHUB_OUTPUT"
 
@@ -78,7 +70,7 @@ runs:
     - name: Install host packages
       shell: bash
       run: |
-        python3 -m tools.build_environment.ubuntu_packages install \
+        python3 -m scripts.build.packages install \
           --plan "$RUNNER_TEMP/wiola-apt-plan.json" \
           --archives "$GITHUB_WORKSPACE/.cache/ubuntu-packages"
 

@@ -14,7 +14,7 @@
   "scripts/quality/architecture/ownership/tests/test_registry.py": "architecture.ownership",
   "scripts/quality/architecture/policy_guard/tests/test_policy.py": "architecture.policy_guard",
   "scripts/quality/architecture/review_contract/tests/test_review.py": "architecture.review_contract",
-  "tools/build_environment/ubuntu_packages/tests/test_packages.py": "build_environment.ubuntu_packages",
+  "scripts/build/packages/tests/test_packages.py": "build_environment.ubuntu_packages",
   "scripts/quality/coverage/llvm_reporting/tests/test_reporter.py": "coverage.llvm_reporting",
   "scripts/quality/coverage/measurement/tests/test_report.py": "coverage.measurement",
   "scripts/quality/coverage/source_policy/tests/test_policy.py": "coverage.source_policy",
@@ -22,5 +22,6 @@
   "scripts/testing/desktop/tests/test_environment.py": "testing.desktop_checks",
   "scripts/testing/gtest/tests/test_protocol.py": "testing.gtest",
   "scripts/testing/mutations/tests/test_checks.py": "testing.mutation_checks",
-  "scripts/testing/mutations/tests/test_edit.py": "testing.source_mutation"
+  "scripts/testing/mutations/tests/test_edit.py": "testing.source_mutation",
+  "scripts/build/packages/tests/test_profile.py": "build_environment.ubuntu_packages"
 }

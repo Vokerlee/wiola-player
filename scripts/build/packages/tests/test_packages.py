@@ -1,4 +1,6 @@
 import json
+from contextlib import redirect_stderr
+from io import StringIO
 import os
 from pathlib import Path
 import subprocess
@@ -6,11 +8,13 @@ import sys
 import tempfile
 import unittest
 
-from tools.build_environment.ubuntu_packages.packages import (
+from scripts.build.packages import (
     PackageArchive,
     PackagePlan,
     UbuntuPackages,
 )
+
+from scripts.build.packages.__main__ import main
 
 URIS = """Reading package lists...
 'http://mirror.example/pool/compiler.deb' compiler_13_amd64.deb 120 MD5Sum:abcdef
@@ -159,7 +163,7 @@ class UbuntuPackagesTest(unittest.TestCase):
         command = [
             sys.executable,
             "-m",
-            "tools.build_environment.ubuntu_packages",
+            "scripts.build.packages",
             "plan",
             "--output",
             str(plan),
@@ -175,7 +179,7 @@ class UbuntuPackagesTest(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "tools.build_environment.ubuntu_packages",
+                "scripts.build.packages",
                 "install",
                 "--plan",
                 str(plan),
@@ -195,3 +199,69 @@ class UbuntuPackagesTest(unittest.TestCase):
         self.assertEqual(failed.returncode, 1)
         self.assertIn("Ubuntu package setup failed", failed.stderr)
         self.assertFalse(plan.exists())
+
+    def test_host_profile_cli_owns_requirements_without_changing_archive_identity(self):
+        environment = dict(
+            os.environ, PATH=str(self.root) + os.pathsep + os.environ["PATH"]
+        )
+        plan = self.root / "host-plan.json"
+        for qt, extras, expected in [
+            (
+                "true",
+                "llvm-18 ccache",
+                ("ccache", "llvm-18", "qt6-base-dev", "qt6-qpa-plugins"),
+            ),
+            (
+                "false",
+                "g++-mingw-w64-x86-64-posix",
+                ("ccache", "g++-mingw-w64-x86-64-posix"),
+            ),
+        ]:
+            with self.subTest(qt=qt):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "scripts.build.packages",
+                        "plan",
+                        "--host-qt",
+                        qt,
+                        "--extra-packages",
+                        extras,
+                        "--output",
+                        str(plan),
+                    ],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                selected = PackagePlan.read(plan)
+                self.assertEqual(selected.packages, expected)
+                self.assertEqual(result.stdout.strip(), selected.identity)
+                generic = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "scripts.build.packages",
+                        "plan",
+                        "--output",
+                        str(plan),
+                        "--",
+                        *expected,
+                    ],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(generic.returncode, 0, generic.stderr)
+                self.assertEqual(generic.stdout.strip(), selected.identity)
+
+    def test_empty_cli_request_fails_without_starting_privileged_commands(self):
+        output = StringIO()
+        with redirect_stderr(output):
+            code = main(["plan", "--output", str(self.root / "unpublished.json")])
+        self.assertEqual(code, 1)
+        self.assertIn("Expected explicit APT package", output.getvalue())
+        self.assertFalse(self.log.exists())
+        self.assertFalse((self.root / "unpublished.json").exists())

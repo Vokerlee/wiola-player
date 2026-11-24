@@ -11,3 +11,5 @@ flowchart LR
 ```
 
 [cmake](cmake/README.md) reads File API metadata, builds a named target and resolves its declared artifact. Callers provide configuration and decide what a resulting executable means.
+
+[packages](packages/README.md) owns Ubuntu host requirements, APT resolution/verification and reusable archive identity. CI supplies explicit choices and transports caches; it does not duplicate the package recipe.

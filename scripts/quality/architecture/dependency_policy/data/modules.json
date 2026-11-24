@@ -60,7 +60,6 @@
     "build.tests.persistence": "build",
     "build.tests.platform": "build",
     "build.tests.utils": "build",
-    "build_environment.package": "tooling",
     "build_environment.ubuntu_packages": "tooling",
     "ci.environment_setup": "ci",
     "ci.workflow": "ci",
@@ -472,7 +471,6 @@
     "tool.hooks.pre_commit": "tooling",
     "tool.install_hooks": "tooling",
     "tool.test_affected": "tooling",
-    "tooling.package": "tooling",
     "scripts.testing": "tooling",
     "scripts.quality": "tooling"
   },
