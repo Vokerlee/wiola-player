@@ -197,6 +197,28 @@ TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
     EXPECT_FALSE(output.running());
 }
 
+TEST(TransportWorker, StopDuringInitialSeekNeverStartsOutputOrPrimes)
+{
+    auto source{std::make_unique<FakeDecoder>()};
+    auto* decoder{source.get()};
+    Gate seeking;
+    source->block_seeks_on(seeking);
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    FakeOutput output;
+    TransportWorker worker{std::move(source), buffer.producer(), output};
+    worker.seek(Frames{8});
+    ASSERT_TRUE(worker.start());
+    seeking.wait_until_entered();
+    worker.stop();
+    seeking.release();
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::stopped);
+    EXPECT_EQ(output.num_starts(), 0);
+    EXPECT_EQ(decoder->num_reads(), 0);
+    EXPECT_FALSE(output.running());
+}
+
 TEST(TransportWorker, OutputStartFailureIsEventualRatherThanRequestRefusal)
 {
     auto source{std::make_unique<FakeDecoder>()};

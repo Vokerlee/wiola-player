@@ -52,14 +52,15 @@ DecodeLoop::DecodeLoop(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueu
     , applier_{std::move(applier)}
     , wait_{wait}
     , block_{decode_block(source_->spec(), config)}
-    , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_, block_}
+    , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_, block_,
+          playback_}
 {
 }
 
 void DecodeLoop::run(bool rewind) noexcept
 {
     try {
-        if (begin(rewind))
+        if (seek_.begin(rewind) != SeekOperation::Outcome::read_failed)
             decode();
         else
             playback_.finish(Playback::TerminalReason::faulted);
@@ -71,30 +72,10 @@ void DecodeLoop::run(bool rewind) noexcept
     playback_.finish(Playback::TerminalReason::ended);
 }
 
-bool DecodeLoop::begin(bool rewind)
-{
-    static_cast<void>(seek_.begin(rewind));
-
-    if (seek_.priming_failed())
-        return false;
-
-    if (!connection_.control().start())
-        return false;
-
-    output_started_ = true;
-
-    return true;
-}
-
 void DecodeLoop::apply_seek()
 {
-    static_cast<void>(seek_.apply());
-
-    if (seek_.priming_failed())
+    if (seek_.apply() == SeekOperation::Outcome::read_failed)
         playback_.finish(Playback::TerminalReason::faulted);
-
-    // Whatever was asked for while the seek was being carried out.
-    follow_playback();
 }
 
 void DecodeLoop::stop_output() noexcept
@@ -140,25 +121,22 @@ void DecodeLoop::decode()
     // Any final state ends this: a listener's stop, a device that went away, or the end of the
     // track below.
     while (!playback_.finished()) {
-        // Every turn, because a listener's thread only moves the state: this is the one place a
-        // pause reaches the device, and the only one before the waits below.
-        follow_playback();
-
-        // A device that was started and is no longer running was not stopped by anything here.
-        // Waiting on one that has gone away is how playback looks like it is still going with
-        // nothing coming out of it.
-        if (output_started_ && !output_.running()) {
-            playback_.finish(Playback::TerminalReason::faulted);
-            break;
-        }
-
         if (applier_.seek_outstanding()) {
             apply_seek();
-
-            // The block was decoded at the place that has just been left.
             num_decoded = 0;
             num_handed = 0;
             exhausted = false;
+            // Settle stop/newer requests before restarting output or reading another block.
+            continue;
+        }
+
+        follow_playback();
+        if (playback_.finished())
+            break;
+
+        if (output_started_ && !output_.running()) {
+            playback_.finish(Playback::TerminalReason::faulted);
+            break;
         }
 
         // Only once the last block has gone over in full, so that what would not fit is handed

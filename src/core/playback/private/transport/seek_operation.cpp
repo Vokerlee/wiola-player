@@ -26,7 +26,7 @@ namespace wiola::engine {
 
 SeekOperation::SeekOperation(media::AudioDecoder& source, pcm::PcmQueue::Producer& buffer,
     audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
-    bool& output_started, std::vector<float>& block) noexcept
+    bool& output_started, std::vector<float>& block, const Playback& playback) noexcept
     : source_{source}
     , buffer_{buffer}
     , control_{control}
@@ -34,66 +34,52 @@ SeekOperation::SeekOperation(media::AudioDecoder& source, pcm::PcmQueue::Produce
     , applier_{applier}
     , output_started_{output_started}
     , block_{block}
+    , playback_{playback}
 {
 }
 
-bool SeekOperation::begin(bool rewind)
+SeekOperation::Outcome SeekOperation::begin(bool rewind)
 {
-    priming_failed_ = false;
-    const Playhead::Claim claim{applier_.claim()};
-    const pcm::Frames target{claim.outstanding ? claim.target : pcm::Frames{}};
-    const bool move{rewind || claim.outstanding};
+    const auto claim{applier_.claim()};
+    return reposition(claim, rewind || claim.outstanding);
+}
+
+SeekOperation::Outcome SeekOperation::apply()
+{
+    const auto claim{applier_.claim()};
+    return claim.outstanding ? reposition(claim, true) : Outcome::preserved;
+}
+
+SeekOperation::Outcome SeekOperation::reposition(const Playhead::Claim& claim, bool move)
+{
+    if (playback_.finished())
+        return Outcome::cancelled;
 
     quiesce();
-
     if (move)
         buffer_.mark_discard();
 
-    const bool within_exact_length{source_.length_accuracy() != media::LengthAccuracy::exact ||
-        target <= source_.num_frames()};
-    bool sought{!move};
-    pcm::Frames achieved{current_frame()};
-    if (move && within_exact_length) {
-        auto result{source_.seek(target)};
-        if (result) {
-            sought = true;
-            achieved = result->achieved;
-        }
+    Outcome settled{Outcome::preserved};
+    if (move) {
+        const auto target{claim.outstanding ? claim.target : pcm::Frames{}};
+        // The decoder owns seek validation and preserves its cursor on failure.
+        if (source_.seek(target))
+            settled = Outcome::applied;
     }
-    applier_.begin_at(achieved, output_.frames_played(), claim);
-    prime();
 
-    return sought;
+    // A blocking seek may have completed after a stop or replacement request. Its actual
+    // decoder position is still acknowledged; only this claim is retired, never a newer one.
+    applier_.begin_at(source_.position_frames(), output_.frames_played(), claim);
+    return prime(settled);
 }
 
-bool SeekOperation::apply()
+std::optional<SeekOperation::Outcome> SeekOperation::interruption() const noexcept
 {
-    priming_failed_ = false;
-    const Playhead::Claim claim{applier_.claim()};
-
-    quiesce();
-    buffer_.mark_discard();
-
-    const bool within_exact_length{source_.length_accuracy() != media::LengthAccuracy::exact ||
-        claim.target <= source_.num_frames()};
-    pcm::Frames achieved{current_frame()};
-    bool sought{false};
-    if (claim.outstanding && within_exact_length) {
-        auto result{source_.seek(claim.target)};
-        if (result) {
-            sought = true;
-            achieved = result->achieved;
-        }
-    }
-    applier_.begin_at(achieved, output_.frames_played(), claim);
-    prime();
-
-    return sought;
-}
-
-pcm::Frames SeekOperation::current_frame() const noexcept
-{
-    return source_.position_frames();
+    if (playback_.finished())
+        return Outcome::cancelled;
+    if (applier_.seek_outstanding())
+        return Outcome::superseded;
+    return std::nullopt;
 }
 
 void SeekOperation::quiesce() noexcept
@@ -105,20 +91,23 @@ void SeekOperation::quiesce() noexcept
     output_started_ = false;
 }
 
-void SeekOperation::prime()
+SeekOperation::Outcome SeekOperation::prime(Outcome settled)
 {
-    while (buffer_.space_approx() >= block_.size()) {
+    while (true) {
+        if (const auto pending{interruption()})
+            return *pending;
+        if (buffer_.space_approx() < block_.size())
+            return settled;
+
         const auto decoded{source_.read(block_)};
-
-        if (!decoded) {
-            priming_failed_ = true;
-            break;
-        }
-
+        if (const auto after_read{interruption()})
+            return *after_read;
+        if (!decoded)
+            return Outcome::read_failed;
         if (decoded->frames == pcm::Frames{})
-            break;
+            return settled;
 
-        const std::size_t samples{source_.spec().samples_per(decoded->frames)};
+        const auto samples{source_.spec().samples_per(decoded->frames)};
         applier_.push(buffer_.push(std::span{block_}.first(samples)));
     }
 }
