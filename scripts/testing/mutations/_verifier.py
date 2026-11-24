@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Mapping, Protocol
 
-from tools.architecture.ownership.registry import OwnershipRegistry
+from scripts.quality.architecture.ownership.registry import OwnershipRegistry
 from scripts.testing.gtest import GoogleTestRunner
 from ._edit import SourceConflict, SourceMutation
 

@@ -9,8 +9,8 @@ import subprocess
 import sys
 
 from scripts.build.cmake import CMakeBuild, CMakeInventory
-from tools.architecture.inventory.git_inventory import GitInventory
-from tools.architecture.ownership.registry import load_current_registry
+from scripts.quality.architecture.inventory.git_inventory import GitInventory
+from scripts.quality.architecture.ownership.registry import load_current_registry
 from scripts.testing.gtest import GoogleTestRunner
 
 from ._catalog import MutationCatalog

@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 from types import MappingProxyType
 
-from tools.architecture.ownership.registry import OwnershipRegistry
+from scripts.quality.architecture.ownership.registry import OwnershipRegistry
 
 
 @dataclass(frozen=True)

@@ -51,7 +51,7 @@ endif()
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
-    add_subdirectory(tools/testing/catalog)
+    add_subdirectory(scripts/quality/architecture/test_catalog)
     if(WIOLA_BUILD_GUI AND NOT CMAKE_CROSSCOMPILING)
         add_subdirectory(scripts/testing/mutations)
         if(ENABLE_TSAN)

@@ -34,9 +34,9 @@ jobs:
       - run: python3 -m unittest discover -s tests/scripts -v
       - run: python3 -m unittest discover -s tools -t . -p 'test_*.py'
       - run: python3 -m unittest discover -s scripts -t . -p 'test_*.py'
-      - run: python3 -m tools.architecture.commands.check_ownership
-      - run: python3 -m tools.architecture.commands.check_dependencies
-      - run: python3 -m tools.architecture.commands.check_design
+      - run: python3 -m scripts.quality.architecture.commands.check_ownership
+      - run: python3 -m scripts.quality.architecture.commands.check_dependencies
+      - run: python3 -m scripts.quality.architecture.commands.check_design
 
   test:
     name: test (${{ matrix.preset }})
