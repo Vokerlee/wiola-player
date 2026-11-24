@@ -58,7 +58,7 @@ wiola_add_test(
 wiola_add_test(
     app_playback_queue_test
     SOURCES playback/playback_queue_test.cpp
-    LIBS wiola_app
+    LIBS wiola_app wiola_codec
 )
 wiola_add_test(
     app_playback_service_test

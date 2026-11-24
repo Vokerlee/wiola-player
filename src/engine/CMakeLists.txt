@@ -9,8 +9,7 @@ wiola_add_library(
     wiola_engine_session
     SOURCES session.cpp
     LIBS
-        wiola_audio
-        wiola_codec
+        wiola_audio_dsp
         wiola_engine_load
         wiola_engine_pipeline
         wiola_engine_queue

@@ -15,4 +15,4 @@ sequenceDiagram
     Output-->>Test: stop returns
 ```
 
-The shared `tests/fakes/output.hpp` fixture supplies a controlled output used by other engine tests as well. It is a test dependency, not a production driver. The repository's test composition registers this subtree after defining its existing test helper. Run only `audio_output_test` for changes confined to this protocol; caller changes also require their affected targets.
+The shared `tests/fakes/output.hpp` fixture supplies a controlled output used by other engine tests as well. Its `passive_output` factory supplies a nonconsuming output for caller tests that drive transport intent explicitly. It is a test dependency, not a production driver. The repository's test composition registers this subtree after defining its existing test helper. Run only `audio_output_test` for changes confined to this protocol; caller changes also require their affected targets.

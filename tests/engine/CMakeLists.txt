@@ -46,6 +46,6 @@ wiola_add_test(
 wiola_add_test(
     engine_session_test
     SOURCES session_test.cpp
-    LIBS wiola_engine
+    LIBS wiola_engine_session wiola_codec
     DATA "${PROJECT_SOURCE_DIR}/tests/codec/data"
 )

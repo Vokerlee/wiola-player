@@ -56,13 +56,7 @@ namespace wiola::engine {
  */
 class Session {
 public:
-    /// Plays through the system output.
-    Session();
-
-    /// Plays through whatever `make_output` builds, which is asked once per track.
-    explicit Session(OutputFactory make_output);
-
-    /// Uses one format-neutral provider for loading and metadata.
+    /// The host supplies output creation and one format-neutral provider for loading/metadata.
     Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider);
 
     /// Uses the supplied media collaborators, for deterministic engine tests.

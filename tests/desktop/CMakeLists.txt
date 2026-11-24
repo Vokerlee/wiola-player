@@ -44,17 +44,17 @@ wiola_add_test(
 wiola_add_test(
     gui_playlist_control_test
     SOURCES playback/queue_settings_test.cpp
-    LIBS wiola_playback_preferences
+    LIBS wiola_playback_preferences wiola_codec
 )
 wiola_add_test(
     gui_equalizer_control_test
     SOURCES playback/equalizer_control_test.cpp
-    LIBS wiola_playback_preferences
+    LIBS wiola_playback_preferences wiola_codec
 )
 wiola_add_test(
     gui_volume_control_test
     SOURCES playback/volume_control_test.cpp
-    LIBS wiola_playback_preferences
+    LIBS wiola_playback_preferences wiola_codec
 )
 
 wiola_add_test(

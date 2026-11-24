@@ -7,6 +7,7 @@
 #include <QSignalSpy>
 #include <QSlider>
 #include <app/playback/playback_service.hpp>
+#include <codec/provider.hpp>
 #include <engine/session.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/gui_interaction.hpp>
@@ -137,8 +138,8 @@ TEST_F(GuiInteraction, FocusIsVisibleAndMouseCommitDiffersFromCancelledOrDisplay
 
 TEST_F(GuiInteraction, LargeFontEqualizerRemainsScrollableAndKeyboardAdjustsTheLiveBand)
 {
-    wiola::engine::Session engine{
-        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); }};
+    wiola::engine::Session engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     const auto generated = wiola::testing::write_wav("wiola-equalizer-access.wav");
     const auto path = wiola::platform::qt::QtPathAdapter::from_qt(data_.filePath("equalizer.wav"));
     std::filesystem::copy_file(generated, path);

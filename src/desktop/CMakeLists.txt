@@ -37,7 +37,11 @@ target_link_libraries(wiola_saved_playlists PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_player_application
     SOURCES player_application.cpp
-    LIBS wiola_library_session wiola_playback_preferences wiola_codec
+    LIBS
+        wiola_library_session
+        wiola_playback_preferences
+        wiola_codec
+        wiola_audio_device
 )
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_player_application PUBLIC Qt6::Core)
