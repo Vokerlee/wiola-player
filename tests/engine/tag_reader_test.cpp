@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -51,7 +52,11 @@ std::vector<TagReader::Reading> wait_for(TagReader& reader)
 
 TEST(TagReader, HasNothingBeforeItIsAsked)
 {
-    TagReader reader;
+    static_assert(!std::is_default_constructible_v<TagReader>);
+    TagReader reader{[](const std::filesystem::path&) {
+        ADD_FAILURE() << "an idle tag reader must not read metadata";
+        return Tags{};
+    }};
 
     EXPECT_FALSE(reader.busy());
     EXPECT_TRUE(reader.take().empty());

@@ -38,6 +38,7 @@
 #include <stdexcept>
 #include <stop_token>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 namespace {
@@ -77,7 +78,11 @@ std::optional<LoadCompletion> wait_for(Loader& loader)
 
 TEST(Loader, HasNothingBeforeItIsAsked)
 {
-    Loader loader;
+    static_assert(!std::is_default_constructible_v<Loader>);
+    Loader loader{[](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        ADD_FAILURE() << "an idle loader must not open media";
+        return success();
+    }};
 
     EXPECT_FALSE(loader.busy());
     EXPECT_FALSE(loader.take().has_value());

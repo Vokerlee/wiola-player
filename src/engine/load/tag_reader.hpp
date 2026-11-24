@@ -57,7 +57,7 @@ public:
         media::Result<media::Metadata> result;
     };
 
-    TagReader();
+    /// The provider or reader is selected by the host, never by the worker.
     explicit TagReader(std::shared_ptr<media::MediaProvider> provider,
         std::size_t max_pending = 256, std::size_t max_completed = 256);
     explicit TagReader(MetadataReader read, std::size_t max_pending = 256,
