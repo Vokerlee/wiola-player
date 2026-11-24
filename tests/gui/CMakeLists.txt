@@ -224,7 +224,7 @@ wiola_add_test(
     gui_desktop_journey_test
     SOURCES journeys/desktop_journey_test.cpp
     LIBS wiola_gui wiola_player_application Qt6::Test
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 qt_finalize_target(gui_desktop_journey_test)
 target_compile_definitions(
@@ -242,7 +242,7 @@ wiola_add_test(
     gui_metadata_file_journey_test
     SOURCES metadata/metadata_file_journey_test.cpp
     LIBS wiola_gui wiola_player_application Qt6::Test
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
 qt_finalize_target(gui_metadata_file_journey_test)
@@ -274,7 +274,7 @@ install(
     RUNTIME DESTINATION bin COMPONENT wiola_desktop_tests EXCLUDE_FROM_ALL
 )
 install(
-    DIRECTORY "${PROJECT_SOURCE_DIR}/tests/codec/data/"
+    DIRECTORY "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data/"
     DESTINATION media
     COMPONENT wiola_desktop_tests
     EXCLUDE_FROM_ALL

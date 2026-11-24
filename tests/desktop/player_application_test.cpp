@@ -24,12 +24,12 @@
 #include <QFile>
 #include <QLineEdit>
 #include <QPushButton>
-#include <codec/provider.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/provider.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <QApplication>

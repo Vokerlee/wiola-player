@@ -22,11 +22,11 @@
 #include <QEvent>
 #include <QPushButton>
 #include <QTemporaryDir>
-#include <codec/provider.hpp>
 #include <fakes/output.hpp>
 #include <gtest/gtest.h>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/shell/document_host.hpp>
+#include <media/local/provider.hpp>
 #include <memory>
 
 namespace {

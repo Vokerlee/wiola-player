@@ -21,11 +21,11 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QTemporaryDir>
-#include <codec/provider.hpp>
 #include <desktop/library/library_session.hpp>
 #include <desktop/session/session_preferences.hpp>
 #include <fixtures/atomic_output.hpp>
 #include <gtest/gtest.h>
+#include <media/local/provider.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace {

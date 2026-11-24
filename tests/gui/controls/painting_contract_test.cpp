@@ -7,7 +7,6 @@
 #include <QSignalSpy>
 #include <QSlider>
 #include <app/playback/playback_service.hpp>
-#include <codec/provider.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/gui_interaction.hpp>
 #include <fixtures/wav.hpp>
@@ -15,6 +14,7 @@
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
 #include <limits>
+#include <media/local/provider.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace {

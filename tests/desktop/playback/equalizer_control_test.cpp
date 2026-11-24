@@ -18,11 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/provider.hpp>
 #include <desktop/playback/equalizer_control.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
+#include <media/local/provider.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

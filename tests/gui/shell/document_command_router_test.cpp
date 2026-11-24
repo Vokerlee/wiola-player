@@ -27,7 +27,6 @@
 #include <QTabBar>
 #include <QTemporaryDir>
 #include <QTest>
-#include <codec/provider.hpp>
 #include <desktop/playback/playback_preferences.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/gui_interaction.hpp>
@@ -39,6 +38,7 @@
 #include <gui/shell/document_host.hpp>
 #include <gui/shell/main_window.hpp>
 #include <gui/tracks/track_browser.hpp>
+#include <media/local/provider.hpp>
 
 namespace {
 

@@ -178,3 +178,36 @@ function(wiola_set_icon target icon)
     )
     target_sources(${target} PRIVATE "${resource}")
 endfunction()
+
+function(wiola_add_test name)
+    cmake_parse_arguments(PARSE_ARGV 1 arg "" "DATA" "SOURCES;LIBS")
+
+    add_executable(${name} ${arg_SOURCES})
+    target_link_libraries(
+        ${name}
+        PRIVATE
+            GTest::gtest_main
+            wiola_core
+            wiola_coverage
+            wiola_sanitizer
+            wiola_warnings
+            ${arg_LIBS}
+    )
+    set_target_properties(
+        ${name}
+        PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+
+    # What the tests share among themselves. The project's own headers arrive with wiola_core.
+    target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/tests")
+
+    if(arg_DATA)
+        target_compile_definitions(
+            ${name}
+            PRIVATE WIOLA_TEST_DATA_DIR="${arg_DATA}"
+        )
+    endif()
+
+    include(GoogleTest)
+    gtest_discover_tests(${name})
+endfunction()

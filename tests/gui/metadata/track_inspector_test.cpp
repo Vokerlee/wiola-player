@@ -18,10 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/provider.hpp>
 #include <desktop/library/library_session.hpp>
 #include <gui/metadata/track_inspector.hpp>
 #include <gui/model/documents/queue_rows.hpp>
+#include <media/local/provider.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <queue/playlist.hpp>
