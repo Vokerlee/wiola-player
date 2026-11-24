@@ -13,6 +13,7 @@ if __package__ in {None, ""}:
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.architecture.inventory.git_inventory import GitInventory
 from scripts import coverage_report
 from tools.coverage.source_policy.policy import load_current_policy
 
@@ -188,13 +189,12 @@ def main():
     failures = compare(current, baseline)
     if args.base_ref:
         baseline_path = args.baseline.resolve().relative_to(root).as_posix()
-        trusted = subprocess.run(
-            ["git", "show", args.base_ref + ":" + baseline_path],
-            capture_output=True,
-            text=True,
-        )
-        if trusted.returncode == 0:
-            previous = policy.migrate_report(json.loads(trusted.stdout))
+        try:
+            trusted = GitInventory(root).read_previous(baseline_path, args.base_ref)
+        except subprocess.CalledProcessError:
+            trusted = None
+        if trusted is not None:
+            previous = policy.migrate_report(json.loads(trusted))
             failures.extend(
                 "Trusted base: " + message for message in compare(current, previous)
             )

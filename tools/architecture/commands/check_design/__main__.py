@@ -24,7 +24,9 @@ POLICY_FILES = {
 
 def _snapshot(git: GitInventory, reference: str | None) -> PolicySnapshot:
     data = {
-        name: json.loads(git.read(path, reference))
+        name: json.loads(
+            git.read_previous(path, reference) if reference else git.read(path)
+        )
         for name, path in POLICY_FILES.items()
     }
     rules = data["dependencies"]
