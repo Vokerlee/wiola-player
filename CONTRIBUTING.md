@@ -37,7 +37,7 @@ cmake -S . -B build-components -DWIOLA_COMPONENTS=media -DBUILD_TESTING=OFF
 cmake --build build-components
 ```
 
-Supported selections are borrowed_reference, quantities and media; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, only quantities/decoder need the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [Build context](scripts/build/context/README.md) describes scope; the decoder public install boundary is still being extracted.
+Supported selections are borrowed_reference, quantities and media; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, only quantities/decoder need the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [CMake component selection](cmake/components.cmake) defines scope; the decoder public install boundary is still being extracted.
 
 ### Windows
 
@@ -125,44 +125,36 @@ Use the maintained command so developer, hook and CI checks select inputs and in
 ```bash
 pip install -r requirements.txt
 
-python3 -m scripts.quality.formatting format cpp
-python3 -m scripts.quality.formatting format cmake
-python3 -m scripts.quality.formatting format all --check
-python3 -m scripts.quality.formatting format cpp --check --files src/main.cpp
-python3 -m scripts.quality.formatting install-hooks
+python3 -m scripts.formatting format cpp
+python3 -m scripts.formatting format cmake
+python3 -m scripts.formatting format all --check
+python3 -m scripts.formatting format cpp --check --files src/main.cpp
+python3 -m scripts.formatting install-hooks
 ```
 
 Default selection includes existing tracked files. `--files` selects only explicit tracked paths relative to the worktree root. Missing tools and formatter failures fail the hook as well as CI; installation preserves regular custom hook files. The hook checks working-tree files, not separately staged partial-file contents.
 
-`.clang-format` and `.gersemirc` decide style; requirements.txt pins the tool versions. Keep these facts in their owning files. [The formatting component](scripts/quality/formatting/README.md) explains selection and hook invariants.
+`.clang-format` and `.gersemirc` decide style; requirements.txt pins the tool versions. Keep these facts in their owning files. [The formatting component](scripts/formatting/README.md) explains selection and hook invariants.
 
 ## Coverage
 
-```bash
-sudo apt install llvm-18               # the profile tools, one version per clang
+Use the instrumented CMake preset and LLVM tools matching its Clang version:
 
-python3 -m scripts.quality.coverage.workflow.collect                    # build instrumented, run the tests, print the report
+```bash
+cmake --preset linux-coverage
+cmake --build --preset linux-coverage --parallel 4
+cmake --build --preset linux-coverage --target wiola_coverage_inventory --parallel 4
+python3 -m scripts.coverage --build-dir build-coverage --source src --exclude '/tests/'
 ```
 
-The build is the `linux-coverage` preset, so `build-coverage/` and `build/` never meet. Debug, because
-optimized code no longer sits on the lines it was written on and the counts stop matching the
-source. The script needs clang, takes the one in `CXX` if that is set, and looks the profile tools
-up by the compiler's version, since a profile is not read by another.
+The helper runs CTest with a fresh profile directory and invokes `llvm-profdata` and `llvm-cov`. Reports are generated build artifacts: `summary.txt`, LLVM's `summary.json`, `coverage.lcov`, and `html/index.html`. The link-only inventory includes unexecuted production libraries in a full report. No owner registry, file-movement table, stored coverage floor or Python test-coverage framework is required.
 
-The report covers `src/`, and nothing else can enter it. A header-only dependency
-is compiled into our translation units and instrumented with them, so leaving it out is a matter
-of naming what is ours rather than of filtering out what is not. The player is measured beside
-the tests, so the GUI reads 0 until there are GUI tests. Line by line, open
-`build-coverage/coverage/html/index.html`.
+For a focused report, build the affected instrumented test targets and pass `--target TARGET...`. Only their tests and executable mappings are used; this report describes that selected scope. `--source` chooses the source directory and `--exclude` passes a filename expression to LLVM. The example excludes colocated tests from the production report.
 
-`warning: N functions have mismatched data` is expected. It is what one profile covering several
-test binaries looks like, and the numbers are unaffected.
-
-The script also writes `coverage.lcov`, which is what CI hands to `diff-cover` to say how much of
-a pull request's own lines are covered. The same locally:
+Coverage thresholds belong to CI. The current workflow uses the ordinary `diff-cover` command to require full coverage of changed measured production lines in pull requests. Aggregate coverage remains visible in LLVM's reports; this is not a claim of full repository coverage.
 
 ```bash
-diff-cover build-coverage/coverage/coverage.lcov --compare-branch origin/main
+diff-cover build-coverage/coverage/coverage.lcov --compare-branch origin/main --fail-under=100
 ```
 
 ## Commit names
