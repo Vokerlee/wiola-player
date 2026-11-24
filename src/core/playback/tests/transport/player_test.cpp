@@ -454,6 +454,27 @@ TEST(Player, IgnoresNonFiniteAndUnrepresentableSeekTimes)
     player.wait();
 }
 
+TEST(Player, UnseekableMediaDoesNotPublishOrExecuteASeek)
+{
+    auto source{
+        std::make_unique<wiola::testing::FakeDecoder>(wiola::media::DecoderStreamInfo{.spec = {},
+            .length = wiola::pcm::Frames{4096},
+            .length_accuracy = wiola::media::LengthAccuracy::exact,
+            .seekable = false})};
+    const auto* decoder{source.get()};
+    wiola::pcm::PcmQueue buffer{source->spec(), wiola::pcm::Frames{512}};
+    wiola::testing::FakeOutput output;
+    Player player{std::move(source), buffer.producer(), output};
+
+    EXPECT_FALSE(player.seekable());
+    player.seek(0.01_s);
+
+    EXPECT_EQ(player.time_played(), units::Time{});
+    EXPECT_EQ(player.state(), State::idle);
+    EXPECT_EQ(decoder->num_seeks(), 0);
+    EXPECT_EQ(decoder->num_reads(), 0);
+}
+
 TEST(Player, ClampsANegativeSeekToTheBeginning)
 {
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{100})};

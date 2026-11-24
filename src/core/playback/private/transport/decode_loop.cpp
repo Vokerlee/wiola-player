@@ -33,7 +33,7 @@ std::vector<float> decode_block(pcm::StreamSpec spec, const TransportConfig& con
 {
     const std::optional<std::size_t> size{spec.checked_samples_per(config.decode_chunk)};
 
-    if (!config.valid() || !size)
+    if (!size)
         throw std::invalid_argument{"invalid decode block configuration"};
 
     return std::vector<float>(*size);
@@ -143,6 +143,11 @@ void DecodeLoop::decode()
         // over rather than decoded again.
         if (!exhausted && num_handed == num_decoded) {
             auto decoded{source_->read(block_)};
+
+            // A command accepted during a blocking read outranks that old epoch's data,
+            // failure or EOF. Recheck before submitting samples or settling the track.
+            if (playback_.finished() || applier_.seek_outstanding())
+                continue;
 
             if (!decoded) {
                 playback_.finish(Playback::TerminalReason::faulted);
