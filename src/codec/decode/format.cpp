@@ -21,7 +21,6 @@
 #include "format.hpp"
 
 #include <algorithm>
-#include <fstream>
 
 namespace wiola::codec {
 
@@ -40,7 +39,7 @@ media::Result<FileHead> FileHead::read(media::ByteStream& stream,
 
 bool FileHead::carries(const Marker& marker) const noexcept
 {
-    if (marker.offset + marker.bytes.size() > size_)
+    if (marker.offset > size_ || marker.bytes.size() > size_ - marker.offset)
         return false;
 
     return std::ranges::equal(marker.bytes,
