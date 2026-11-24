@@ -130,6 +130,7 @@ project(independent_package LANGUAGES CXX)
 cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
 add_library(example STATIC implementation.cpp)
 set_target_properties(example PROPERTIES EXPORT_NAME api)
+target_compile_features(example PUBLIC cxx_std_17)
 target_include_directories(example PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public> $<INSTALL_INTERFACE:include>)
 install(TARGETS example EXPORT example_targets ARCHIVE DESTINATION lib COMPONENT example)
 install(DIRECTORY public/ DESTINATION include COMPONENT example)
@@ -170,6 +171,10 @@ install(EXPORT example_targets FILE example-config.cmake NAMESPACE example:: DES
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_real_relocated_archive_links_runs_and_checks_headers(self):
+        self.consumer.write_text(
+            "#include <example.hpp>\n#include <filesystem>\n#include <iostream>\n"
+            "int main() { std::cout << std::filesystem::current_path().string(); return answer() == 42 ? 0 : 1; }\n"
+        )
         toolchain = self.root / "explicit toolchain.cmake"
         toolchain.write_text("# Caller-owned compiler context\n")
         checker = PublicConsumerCheck(
@@ -184,7 +189,12 @@ install(EXPORT example_targets FILE example-config.cmake NAMESPACE example:: DES
         self.assertEqual(
             (self.artifacts / "consumer.cpp").read_bytes(), self.consumer.read_bytes()
         )
-        self.assertTrue((self.artifacts / "run.log").is_file())
+        runtime_directory = Path((self.artifacts / "run.log").read_text())
+        self.assertNotEqual(runtime_directory, Path.cwd())
+        self.assertFalse(runtime_directory.is_relative_to(self.inventory.source_root))
+        self.assertFalse(
+            runtime_directory.exists(), "The isolated runtime workspace must be removed"
+        )
         checker.check(self.probe, self.root / "link-only", run=False)
         self.assertFalse((self.root / "link-only/run.log").exists())
 

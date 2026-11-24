@@ -104,6 +104,7 @@ class PublicConsumerCheck:
                 with (artifacts / "run.log").open("w", encoding="utf-8") as output:
                     subprocess.run(
                         [str(consumer.executable("public_consumer"))],
+                        cwd=work,
                         stdout=output,
                         stderr=subprocess.STDOUT,
                         check=True,
