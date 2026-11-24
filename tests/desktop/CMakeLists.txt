@@ -32,7 +32,7 @@ wiola_add_test(
 wiola_add_test(
     app_queue_library_migration_test
     SOURCES library/queue_library_migration_test.cpp
-    LIBS wiola_queue_migration
+    LIBS wiola_queue_migration wiola_qt_settings
 )
 
 wiola_add_test(
