@@ -32,13 +32,14 @@ namespace wiola::engine {
 class LoadCoordinator {
 public:
     [[nodiscard]] LoadRequest begin(QueueEntryId entry, std::filesystem::path path,
-        LoadIntent intent)
+        LoadIntent intent, std::optional<units::Time> position = {})
     {
         ++generation_;
         active_ = LoadRequest{.generation = generation_,
             .entry = entry,
             .path = std::move(path),
-            .intent = intent};
+            .intent = intent,
+            .position = position};
         return *active_;
     }
 
@@ -55,6 +56,19 @@ public:
         invalidate();
         return true;
     }
+
+    /// Retires only an intent for this resource, returning its owned restoration intent.
+    [[nodiscard]] std::optional<LoadRequest>
+    invalidate_resource(const std::filesystem::path& path) noexcept
+    {
+        if (!active_ || active_->path != path)
+            return {};
+        auto retired{std::move(active_)};
+        invalidate();
+        return retired;
+    }
+
+    [[nodiscard]] bool pending() const noexcept { return active_.has_value(); }
 
     /// Accepts a completion at most once, and only for the exact active request.
     [[nodiscard]] bool accept(const LoadCompletion& completion) noexcept

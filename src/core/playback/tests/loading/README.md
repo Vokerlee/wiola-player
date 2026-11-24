@@ -6,6 +6,8 @@ Provider-boundary cases supply public MediaProvider/MediaAsset collaborators thr
 
 `engine_load_coordinator_test` checks exact generation/occurrence/resource/intent matching, at-most-once acceptance, supersession and invalidation. It does not implement another scheduler or duplicate the worker mechanism. Session integration tests check that stop, clear and empty queue replacement reject late installation and propagate cancellation to the supplied opener.
 
+Restoration position participates in exact request identity. Resource-specific invalidation returns the original owned intent, preserves unrelated requests and rejects the retired completion. A resumed request has a new generation and cannot accept a result with a missing or different position.
+
 ```mermaid
 flowchart LR
     WorkerCases[Loader lifecycle cases] --> Loader[Supplied opener / controlled completion]

@@ -135,8 +135,8 @@ public:
 
     [[nodiscard]] bool loaded() const noexcept;
 
-    /// The file that is loaded, or nothing when none is. A load that fails leaves it as it was,
-    /// along with the track it names.
+    /// The last installed resource, empty before the first installation. A failed candidate
+    /// or temporary handoff retains its identity independently of the selected queue entry.
     [[nodiscard]] const std::filesystem::path& track() const noexcept;
 
     bool play() noexcept;
@@ -146,8 +146,8 @@ public:
     /// Ends playback and returns to the beginning of the track.
     void stop() noexcept;
 
-    /// Quiesces the current decoder and reads it again, restoring play intent and position when
-    /// the replacement is ready. Returns immediately while that read continues.
+    /// Identifies an occurrence/generation to restore after a temporary installed-media handoff.
+    /// The held intent remains owned by Session; later commands supersede this copied snapshot.
     struct MediaReplacementState {
         QueueEntryId entry;
         bool play;
@@ -155,8 +155,14 @@ public:
         std::uint64_t generation{};
     };
 
+    /// Quiesces the installed decoder/output when path names its resource, independently of
+    /// queue selection. A pending open for the same resource is cancelled with its intent kept;
+    /// an unrelated open remains pending. This does not exclude other provider/metadata I/O.
     [[nodiscard]] std::optional<MediaReplacementState>
     release_media(const std::filesystem::path& path);
+    /// Restores the latest held intent without changing queue selection. An unrelated pending
+    /// open takes precedence: success revokes the ticket, failure permits deferred restoration.
+    /// New selections, queue replacement/removal of the held occurrence, or clear revoke it.
     OpenResult restore_media(const MediaReplacementState& state);
 
     /// Moves playback to `position`, measured from the start of the track.

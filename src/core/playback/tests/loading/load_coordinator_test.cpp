@@ -55,6 +55,9 @@ TEST(LoadCoordinator, RequiresTheExactActiveRequestAndAcceptsItOnlyOnce)
     wrong = active;
     wrong.intent = LoadIntent::install;
     EXPECT_FALSE(coordinator.accept(completion(wrong)));
+    wrong = active;
+    wrong.position = wiola::units::Time{0.5};
+    EXPECT_FALSE(coordinator.accept(completion(wrong)));
     EXPECT_TRUE(coordinator.accept(completion(active)));
     EXPECT_FALSE(coordinator.accept(completion(active)));
 }
@@ -97,6 +100,32 @@ TEST(LoadCoordinator, InvalidateDropsIntentAndPermitsANewRequest)
     EXPECT_FALSE(coordinator.accept(completion(old)));
     const auto current{coordinator.begin(QueueEntryId{2}, "new.wav", LoadIntent::install)};
     EXPECT_TRUE(coordinator.accept(completion(current)));
+}
+
+TEST(LoadCoordinator, ResourceInvalidationReturnsOnlyItsExactOwnedIntent)
+{
+    LoadCoordinator coordinator;
+    EXPECT_FALSE(coordinator.pending());
+    EXPECT_FALSE(coordinator.invalidate_resource("same.media"));
+    const auto active{coordinator.begin(QueueEntryId{7}, "same.media", LoadIntent::play,
+        wiola::units::Time{0.5})};
+    EXPECT_TRUE(coordinator.pending());
+    EXPECT_FALSE(coordinator.invalidate_resource("unrelated.media"));
+    EXPECT_TRUE(coordinator.pending());
+    const auto retired{coordinator.invalidate_resource("same.media")};
+    ASSERT_TRUE(retired);
+    EXPECT_EQ(*retired, active);
+    EXPECT_FALSE(coordinator.pending());
+    EXPECT_FALSE(coordinator.accept(completion(active)));
+    const auto resumed{
+        coordinator.begin(retired->entry, retired->path, retired->intent, retired->position)};
+    EXPECT_NE(resumed.generation, active.generation);
+    auto wrong{resumed};
+    wrong.position.reset();
+    EXPECT_FALSE(coordinator.accept(completion(wrong)));
+    EXPECT_TRUE(coordinator.pending());
+    EXPECT_TRUE(coordinator.accept(completion(resumed)));
+    EXPECT_FALSE(coordinator.pending());
 }
 
 } // namespace

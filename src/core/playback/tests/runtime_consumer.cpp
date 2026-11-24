@@ -235,5 +235,15 @@ int main()
         session.state() != engine::PlaybackState::stopped)
         return fail("stop did not settle transport/output");
     session.clear();
-    return session.playlist().empty() ? 0 : fail("clear retained queue occurrences");
+    if (!session.playlist().empty())
+        return fail("clear retained queue occurrences");
+    const auto resource{session.track()};
+    const auto held{session.release_media(resource)};
+    if (!held || session.loaded() || session.restore_media(*held) != engine::OpenResult::loading ||
+        !await(session, [&] { return session.loaded(); }))
+        return fail("retained media could not be handed off independently of its queue");
+    if (!session.playlist().empty() || session.track() != resource || session.playing() ||
+        session.time_played() != units::Time{})
+        return fail("restoration changed queue selection, stopped intent or resource identity");
+    return 0;
 }

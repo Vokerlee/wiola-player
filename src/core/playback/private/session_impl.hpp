@@ -77,7 +77,10 @@ struct Session::Impl {
 
 private:
     /// Starts an identified load with the requested transport intent.
-    OpenResult begin_reading(const QueueEntry& track, LoadIntent intent);
+    OpenResult begin_reading(QueueEntryId entry, std::filesystem::path path, LoadIntent intent,
+        std::optional<units::Time> position = {});
+    [[nodiscard]] bool wants_playback() const noexcept;
+    void restore_when_ready();
     void record_outcome(OperationKind operation, OperationId id,
         std::optional<OperationError> error = std::nullopt);
 
@@ -93,7 +96,7 @@ private:
     /// Prepares a complete candidate before retiring current playback. Failure preserves the
     /// active pipeline; installation and its owned path are committed without allocation.
     bool install_track(std::unique_ptr<media::AudioDecoder> source, std::filesystem::path path,
-        OperationId request);
+        QueueEntryId entry, OperationId request);
 
     /// Takes up the next track when one has run out. A listener who pressed stop, or a device
     /// that went away, is not a cue to play anything.
@@ -111,9 +114,14 @@ private:
     std::deque<OperationOutcome> outcomes_;
     bool outcomes_overflowed_{false};
     std::filesystem::path track_;
+    QueueEntryId installed_entry_;
 
-    std::optional<units::Time> restore_position_;
-    std::optional<MediaReplacementState> replacement_;
+    struct Handoff {
+        MediaReplacementState intent;
+        bool restore_requested{false};
+    };
+
+    std::optional<Handoff> replacement_;
     std::uint64_t replacement_generation_{};
     OpenResult last_result_{OpenResult::opened};
     /// The cache retains reusable streams; each pipeline pins its own output independently.

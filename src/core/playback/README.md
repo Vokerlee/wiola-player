@@ -30,6 +30,10 @@ The selected buffer duration must represent at least one complete frame and a re
 
 The kernel exposes play/pause/resume, queue operations and occurrence/generation-checked release/restore handoffs. Application toggle policy composes those commands. Changes to intent or position during a handoff remain owned by Session; stale restoration cannot replace a newer occurrence.
 
+Installed media retains its own occurrence and resource path: a failed candidate or queue removal does not rename the decoder that is still playing. Handoff matches that installed resource, including a decoder retained after its queue entry disappears. It preserves unrelated pending opens; requesting restoration before their completion waits for their outcome. A successful newer install revokes the held ticket; failure allows restoration without moving queue selection. A pending occurrence for the same resource is cancelled, and its new-track intent replaces the old position. Explicit selection while held preserves the latest play intent and revokes the old ticket. The identified load request owns restoration position, so another request cannot inherit a Session shadow position. Non-finite held seeks are ignored and negative seeks clamp to zero.
+
+This primitive quiesces the installed decoder/output pipeline. Exclusion of other provider or metadata I/O during a file transaction belongs to that transaction and its driver; the playback handoff does not claim a global resource lock.
+
 Implementation and focused tests have one owner:
 
 | Mechanism | Code and invariant guide | Tests |
