@@ -14,27 +14,10 @@ target_include_directories(
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_link_libraries(wiola_media_core PUBLIC wiola::quantities)
-# Build controls are optional for an independent source consumer. An instrumented archive still
-# exports its selected runtime options, never the project's private build targets.
-foreach(build_control IN ITEMS wiola_coverage wiola_sanitizer wiola_warnings)
-    if(TARGET ${build_control})
-        target_link_libraries(
-            wiola_media_core
-            PRIVATE $<BUILD_INTERFACE:${build_control}>
-        )
-        get_target_property(
-            runtime_options
-            ${build_control}
-            INTERFACE_LINK_OPTIONS
-        )
-        if(runtime_options)
-            target_link_options(
-                wiola_media_core
-                INTERFACE "$<INSTALL_INTERFACE:${runtime_options}>"
-            )
-        endif()
-    endif()
-endforeach()
+# A standalone source consumer supplies its own build options.
+if(COMMAND wiola_apply_build_controls)
+    wiola_apply_build_controls(wiola_media_core)
+endif()
 
 install(
     TARGETS wiola_media_core

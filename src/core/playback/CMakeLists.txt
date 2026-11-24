@@ -52,11 +52,9 @@ target_link_libraries(
     wiola_playback_buffer
     PUBLIC wiola::audio_output wiola::borrowed_reference wiola::media
 )
-foreach(build_control IN ITEMS wiola_coverage wiola_sanitizer wiola_warnings)
-    if(TARGET ${build_control})
-        target_link_libraries(wiola_playback_buffer PRIVATE ${build_control})
-    endif()
-endforeach()
+if(COMMAND wiola_apply_build_controls)
+    wiola_apply_build_controls(wiola_playback_buffer)
+endif()
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)

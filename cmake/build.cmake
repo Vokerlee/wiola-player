@@ -109,6 +109,35 @@ target_link_libraries(
     INTERFACE wiola_borrowed_reference wiola_quantities wiola::media
 )
 
+# Keep instrumentation and warnings private to the source build. Installed static libraries
+# carry the selected runtime options, not references to this project's private build targets.
+# Standalone source consumers own their compiler options when this helper is unavailable.
+function(wiola_apply_build_controls target)
+    foreach(
+        build_control
+        IN
+        ITEMS wiola_coverage wiola_sanitizer wiola_warnings
+    )
+        if(TARGET ${build_control})
+            target_link_libraries(
+                ${target}
+                PRIVATE $<BUILD_INTERFACE:${build_control}>
+            )
+            get_target_property(
+                runtime_options
+                ${build_control}
+                INTERFACE_LINK_OPTIONS
+            )
+            if(runtime_options)
+                target_link_options(
+                    ${target}
+                    INTERFACE "$<INSTALL_INTERFACE:${runtime_options}>"
+                )
+            endif()
+        endif()
+    endforeach()
+endfunction()
+
 # Adds a library built the way this project builds them: it can see the public headers, and it is
 # compiled with the project's warnings. `LIBS` is whatever else it needs, kept private, since a
 # static library's dependencies are its own business.
@@ -116,11 +145,8 @@ function(wiola_add_library name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;LIBS")
 
     add_library(${name} STATIC ${arg_SOURCES})
-    target_link_libraries(
-        ${name}
-        PUBLIC wiola_core
-        PRIVATE wiola_coverage wiola_sanitizer wiola_warnings ${arg_LIBS}
-    )
+    wiola_apply_build_controls(${name})
+    target_link_libraries(${name} PUBLIC wiola_core PRIVATE ${arg_LIBS})
 endfunction()
 
 # Groups the libraries a module was split into, so that whatever depends on the module names the
