@@ -18,30 +18,30 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/shaped_source.hpp>
+#pragma once
 
-#include <algorithm>
+#include <wiola/audio/source.hpp>
+#include <wiola/audio/stage.hpp>
+#include <wiola/media/stream_spec.hpp>
 
-namespace wiola::audio {
+#include <cstddef>
+#include <span>
 
-ShapedSource::ShapedSource(Source& source, Stage& processing) noexcept
-    : source_{source}
-    , processing_{processing}
-{
-}
+namespace wiola::engine {
 
-std::size_t ShapedSource::render(std::span<float> interleaved) noexcept
-{
-    const std::size_t num_rendered{std::min(source_.render(interleaved), interleaved.size())};
+/// What another source gives, shaped by the supplied stage. Both outlive it.
+/// The host supplies its complete processing policy, commonly a ProcessingChain.
+class ShapedSource final : public audio::Source {
+public:
+    ShapedSource(audio::Source& source, audio::Stage& processing) noexcept;
 
-    processing_.process(interleaved.first(num_rendered));
+    std::size_t render(std::span<float> interleaved) noexcept override;
 
-    return num_rendered;
-}
+    [[nodiscard]] pcm::StreamSpec spec() const noexcept override;
 
-pcm::StreamSpec ShapedSource::spec() const noexcept
-{
-    return source_.spec();
-}
+private:
+    audio::Source& source_;
+    audio::Stage& processing_;
+};
 
-} // namespace wiola::audio
+} // namespace wiola::engine

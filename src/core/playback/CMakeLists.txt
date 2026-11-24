@@ -42,7 +42,13 @@ install(
 )
 
 # PCM transport storage and its render bridge are private playback implementation.
-add_library(wiola_playback_buffer STATIC private/buffering/buffer_source.cpp)
+add_library(
+    wiola_playback_buffer
+    STATIC
+    private/buffering/buffer_source.cpp
+    private/buffering/relay.cpp
+    private/buffering/shaped_source.cpp
+)
 target_compile_features(wiola_playback_buffer PUBLIC cxx_std_23)
 target_include_directories(
     wiola_playback_buffer

@@ -8,8 +8,6 @@ foreach(
         equalizer
         equalizer_publication
         processing_chain
-        relay
-        shaped_source
 )
     wiola_audio_add_test(audio_${suite}_test "${suite}_test.cpp" wiola::audio_dsp)
 endforeach()

@@ -10,7 +10,7 @@ target_link_libraries(
         wiola_playback_loading
         wiola_playback_metadata
         wiola_playback_queue
-        wiola_audio_dsp
+        wiola::audio_output
 )
 
 wiola_add_module(
