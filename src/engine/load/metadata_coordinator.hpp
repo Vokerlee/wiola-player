@@ -21,6 +21,7 @@
 #pragma once
 
 #include <engine/load/tag_reader.hpp>
+#include <queue/track.hpp>
 
 #include <cstddef>
 #include <cstdint>

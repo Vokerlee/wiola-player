@@ -1,6 +1,6 @@
 # Playback contracts and buffering
 
-This component owns portable playback values, buffering, decoder loading and the complete private transport protocol. Session/metadata/pipeline services still consume these targets from `src/engine`; their public facade has not completed its export yet.
+This component owns portable playback values, buffering, decoder loading, queue policy and the complete private transport protocol. Session/metadata/pipeline services still consume these targets from `src/engine`; their public facade has not completed its export yet.
 
 ```mermaid
 flowchart LR
@@ -25,5 +25,7 @@ Receipts distinguish acceptance from completion. Correlate outcomes by operation
 `wiola_playback_transport` is an internal source-build target for the complete [transport protocol](private/transport/README.md): state arbitration, player commands, worker, decode loop, playhead, seek transaction/mailbox and epoch. It depends on public media/output contracts and private buffering; it imports no DSP, Qt, codec or global source-root target. Its [tests](tests/transport/README.md) use controlled PCM sources; a real decoder-to-player journey remains with codec integration tests.
 
 `wiola_playback_loading` owns the [decoder load lifecycle](private/loading/README.md) and [tests](tests/loading/README.md): bounded physical opening/cancellation and exact logical request acceptance. Metadata inspection retains its distinct owner while its separate lifecycle change is pending.
+
+`wiola_playback_queue` owns [queue ordering/identity/metadata invariants](private/queue/README.md) and [focused tests](tests/queue/README.md), independent of transport and metadata worker scheduling.
 
 Configure the currently owned closure with `-DWIOLA_COMPONENTS=playback`, without Qt/FFmpeg/miniaudio. [Contract tests](tests/README.md) also verify the relocated installed API independently of buffering and the current legacy engine.

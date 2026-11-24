@@ -19,13 +19,13 @@
  */
 
 #pragma once
-#include <engine/queue/playlist.hpp>
-#include <engine/queue/track.hpp>
 #include <functional>
 #include <gui/model/tracks/track_row.hpp>
 #include <library/library_changes.hpp>
 #include <library/repository.hpp>
 #include <map>
+#include <queue/playlist.hpp>
+#include <queue/track.hpp>
 #include <span>
 #include <unordered_map>
 

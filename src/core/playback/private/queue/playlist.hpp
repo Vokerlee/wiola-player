@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <engine/queue/playback_order.hpp>
-#include <engine/queue/track.hpp>
+#include <queue/playback_order.hpp>
+#include <queue/track.hpp>
 
 #include <cstddef>
 #include <cstdint>

@@ -1,7 +1,5 @@
 add_subdirectory(pipeline)
 
-wiola_add_test(engine_playlist_test SOURCES playlist_test.cpp LIBS wiola_engine)
-target_link_options(engine_playlist_test PRIVATE "LINKER:--wrap=_Znwm")
 wiola_add_test(
     engine_fake_decoder_test
     SOURCES fake_decoder_test.cpp
@@ -15,7 +13,7 @@ wiola_add_test(
 wiola_add_test(
     engine_metadata_coordinator_test
     SOURCES metadata_coordinator_test.cpp
-    LIBS wiola_engine_metadata wiola_engine_queue
+    LIBS wiola_engine_metadata wiola_playback_queue
 )
 wiola_add_test(
     engine_session_test

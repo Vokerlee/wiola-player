@@ -59,6 +59,7 @@ endif()
 find_package(Threads REQUIRED)
 add_subdirectory(private/transport)
 add_subdirectory(private/loading)
+add_subdirectory(private/queue)
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)

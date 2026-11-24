@@ -21,8 +21,8 @@
 #pragma once
 
 #include <core/macros.hpp>
-#include <engine/queue/track.hpp>
 #include <wiola/media/provider.hpp>
+#include <wiola/playback/queue_entry_id.hpp>
 
 #include <condition_variable>
 #include <cstdint>

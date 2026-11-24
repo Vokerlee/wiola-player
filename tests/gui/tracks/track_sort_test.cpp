@@ -22,9 +22,9 @@
 
 #include <gui/model/tracks/track_sort.hpp>
 
-#include <engine/queue/playlist.hpp>
 #include <library/in_memory_repository.hpp>
 #include <library/location.hpp>
+#include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
 

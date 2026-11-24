@@ -22,11 +22,11 @@
 
 #include <QAction>
 #include <QApplication>
-#include <engine/queue/playlist.hpp>
 #include <gtest/gtest.h>
 #include <gui/model/documents/queue_rows.hpp>
 #include <gui/tracks/track_table_model.hpp>
 #include <gui/tracks/track_table_view.hpp>
+#include <queue/playlist.hpp>
 
 namespace {
 

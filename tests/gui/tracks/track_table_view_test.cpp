@@ -23,9 +23,9 @@
 #include <fixtures/track_view.hpp>
 #include <gui/tracks/track_table_view.hpp>
 
-#include <engine/queue/playlist.hpp>
 #include <library/in_memory_repository.hpp>
 #include <library/location.hpp>
+#include <queue/playlist.hpp>
 
 #include <QAction>
 #include <QApplication>

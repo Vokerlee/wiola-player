@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/queue/track.hpp>
+#include <queue/track.hpp>
 
 #include <utility>
 
