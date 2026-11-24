@@ -417,6 +417,86 @@ TEST(AudioDecoder, RejectsABackendThatChangesTheSeekTarget)
     EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
 }
 
+TEST(AudioDecoder, RejectsInconsistentBackendSeekOutcomesWithoutChangingState)
+{
+    using wiola::media::SeekOutcome;
+    using wiola::pcm::Frames;
+    const std::array invalid_outcomes{
+        SeekOutcome{.target = Frames{1}, .achieved = Frames{2}, .exact = true },
+        SeekOutcome{.target = Frames{1}, .achieved = Frames{5}, .exact = false},
+    };
+    for (const auto& outcome : invalid_outcomes) {
+        for (const auto initial : std::array{Frames{2}, Frames{4}}) {
+            int calls{0};
+            CallbackDecoder decoder{exact_stream(Frames{4}),
+                [](Frames) { return wiola::media::DecodeOutcome{}; },
+                [&calls, initial, outcome](Frames target) {
+                    ++calls;
+                    if (calls == 1)
+                        return SeekOutcome{.target = target, .achieved = initial};
+                    return outcome;
+                }};
+            ASSERT_TRUE(decoder.seek(initial));
+            const bool exhausted{decoder.exhausted()};
+
+            const auto sought{decoder.seek(outcome.target)};
+
+            ASSERT_FALSE(sought);
+            EXPECT_EQ(sought.error().category, wiola::media::ErrorCategory::seek_failed);
+            EXPECT_FALSE(sought.error().detail.empty());
+            EXPECT_EQ(decoder.position_frames(), initial);
+            EXPECT_EQ(decoder.exhausted(), exhausted);
+            EXPECT_EQ(calls, 2);
+        }
+    }
+}
+
+TEST(AudioDecoder, AcceptsApproximateSeeksWithinAnExactLength)
+{
+    using wiola::pcm::Frames;
+    for (const auto achieved : std::array{Frames{}, Frames{2}, Frames{4}}) {
+        CallbackDecoder decoder{exact_stream(Frames{4}),
+            [](Frames) { return wiola::media::DecodeOutcome{}; },
+            [achieved](Frames target) {
+                return wiola::media::SeekOutcome{.target = target,
+                    .achieved = achieved,
+                    .exact = false};
+            }};
+
+        const auto sought{decoder.seek(Frames{1})};
+
+        ASSERT_TRUE(sought);
+        EXPECT_EQ(sought->target, Frames{1});
+        EXPECT_EQ(sought->achieved, achieved);
+        EXPECT_FALSE(sought->exact);
+        EXPECT_EQ(decoder.position_frames(), achieved);
+        EXPECT_EQ(decoder.exhausted(), achieved == Frames{4});
+    }
+}
+
+TEST(AudioDecoder, DoesNotBoundInexactSeeksByADurationHint)
+{
+    using wiola::media::LengthAccuracy;
+    using wiola::pcm::Frames;
+    for (const auto accuracy : std::array{LengthAccuracy::estimated, LengthAccuracy::unknown}) {
+        auto info{exact_stream(Frames{2})};
+        info.length_accuracy = accuracy;
+        CallbackDecoder decoder{info, [](Frames) { return wiola::media::DecodeOutcome{}; },
+            [](Frames target) {
+                return wiola::media::SeekOutcome{.target = target,
+                    .achieved = target + Frames{1},
+                    .exact = false};
+            }};
+
+        const auto sought{decoder.seek(Frames{10})};
+
+        ASSERT_TRUE(sought);
+        EXPECT_EQ(sought->achieved, Frames{11});
+        EXPECT_EQ(decoder.position_frames(), Frames{11});
+        EXPECT_FALSE(decoder.exhausted());
+    }
+}
+
 TEST(AudioDecoder, AShortReadIsProgressRatherThanEndOfFile)
 {
     ShortDecoder decoder;

@@ -134,6 +134,11 @@
       "identity": "decoder.exact-length-required",
       "target": "media_audio_decoder_contract_test",
       "name": "AudioDecoder.RejectsAnExactLengthWithoutAValue"
+    },
+    {
+      "identity": "decoder.consistent-seek-outcome",
+      "target": "media_audio_decoder_contract_test",
+      "name": "AudioDecoder.RejectsInconsistentBackendSeekOutcomesWithoutChangingState"
     }
   ],
   "auxiliary": {
