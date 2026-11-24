@@ -89,7 +89,9 @@ class LLVMReporter:
             [
                 *self.command,
                 *map(str, arguments),
-                *(["-dump"] if operation == "report" else []),
+                # LLVM debug reports write to a shared stream from worker threads.
+                # Serialize that operation; exports/HTML retain normal parallelism.
+                *(["-num-threads=1", "-dump"] if operation == "report" else []),
             ],
             stdout=destination,
             stderr=subprocess.PIPE,
