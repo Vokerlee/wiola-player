@@ -20,6 +20,7 @@
 
 #include <wiola/audio/equalizer.hpp>
 
+#include <allocation_failure.hpp>
 #include <fakes/tone.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -32,6 +33,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -429,4 +431,83 @@ TEST(Equalizer, IgnoresAnOutOfRangeBandWithoutChangingAcceptedGains)
     EXPECT_FLOAT_EQ(equalizer.band_gain(outside), 0.0F);
     EXPECT_FLOAT_EQ(equalizer.band_gain(0), 3.0F);
     EXPECT_FLOAT_EQ(equalizer.preamp(), preamp);
+}
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(Equalizer, FailedStreamPreparationPreservesTheActiveState)
+{
+    constexpr StreamSpec replacement{.sample_rate = 22050_Hz, .num_channels = 8};
+    bool observed_failure{false};
+    for (std::size_t after{0};; ++after) {
+        Equalizer equalizer{stereo};
+        Equalizer reference{stereo};
+        for (auto* instance : {&equalizer, &reference}) {
+            instance->set_band_gain(5, -6.0F);
+            instance->set_band_gain(9, 3.0F);
+        }
+        auto history{samples()};
+        auto reference_history{history};
+        equalizer.process(history);
+        reference.process(reference_history);
+        const auto* config{&equalizer.config()};
+        const auto* layout{&equalizer.layout()};
+        bool failed{false};
+        {
+            const wiola::testing::AllocationFailure failure{after};
+            try {
+                equalizer.configure(replacement);
+            } catch (const std::bad_alloc&) {
+                failed = true;
+            }
+        }
+        if (!failed) {
+            EXPECT_TRUE(observed_failure);
+            EXPECT_EQ(equalizer.num_bands(), 9u);
+            EXPECT_FLOAT_EQ(equalizer.band_gain(9), 3.0F);
+            break;
+        }
+        observed_failure = true;
+        EXPECT_EQ(&equalizer.config(), config);
+        EXPECT_EQ(&equalizer.layout(), layout);
+        EXPECT_EQ(equalizer.num_bands(), 10u);
+        EXPECT_FLOAT_EQ(equalizer.preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(equalizer.band_gain(5), -6.0F);
+        EXPECT_FLOAT_EQ(equalizer.band_gain(9), 3.0F);
+        EXPECT_TRUE(equalizer.enabled());
+
+        auto next{samples()};
+        auto expected{next};
+        equalizer.process(next);
+        reference.process(expected);
+        EXPECT_EQ(next, expected);
+
+        equalizer.configure(replacement);
+        EXPECT_EQ(equalizer.num_bands(), 9u);
+        EXPECT_FLOAT_EQ(equalizer.preamp(), 0.0F);
+        EXPECT_FLOAT_EQ(equalizer.band_gain(9), 3.0F);
+    }
+}
+#endif
+
+TEST(Equalizer, ReconfigurationKeepsConfigurationReferencesAndDisabledSettings)
+{
+    Equalizer equalizer{stereo};
+    const auto* config{&equalizer.config()};
+    const auto* layout{&equalizer.layout()};
+    equalizer.set_band_gain(5, 6.0F);
+    equalizer.set_enabled(false);
+
+    equalizer.configure({.sample_rate = 22050_Hz, .num_channels = 1});
+
+    EXPECT_EQ(&equalizer.config(), config);
+    EXPECT_EQ(&equalizer.layout(), layout);
+    EXPECT_FALSE(equalizer.enabled());
+    EXPECT_FLOAT_EQ(equalizer.band_gain(5), 6.0F);
+    auto untouched{samples()};
+    equalizer.process(untouched);
+    EXPECT_EQ(untouched, samples());
+    equalizer.set_enabled(true);
+    EXPECT_NEAR(response_db(equalizer, {.sample_rate = 22050_Hz, .num_channels = 1},
+                    equalizer.band_center(0)),
+        -6.0, 0.3);
 }

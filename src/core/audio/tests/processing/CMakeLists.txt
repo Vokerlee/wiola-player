@@ -21,3 +21,8 @@ foreach(target IN ITEMS audio_biquad_test audio_equalizer_publication_test)
     )
 endforeach()
 target_link_libraries(audio_equalizer_publication_test PRIVATE Threads::Threads)
+
+target_link_libraries(
+    audio_equalizer_test
+    PRIVATE wiola_test_allocation_failure
+)
