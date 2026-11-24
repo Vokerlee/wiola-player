@@ -20,17 +20,10 @@
 
 #include "loader.hpp"
 
-#include <codec/provider.hpp>
-
 #include <new>
 #include <utility>
 
 namespace wiola::engine {
-
-Loader::Loader()
-    : Loader{std::make_shared<codec::LocalMediaProvider>()}
-{
-}
 
 Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
     : open_{[provider = std::move(provider)](const std::filesystem::path& path,

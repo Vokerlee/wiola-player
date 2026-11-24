@@ -21,19 +21,12 @@
 #include "tag_reader.hpp"
 #include <wiola/media/artwork_reference.hpp>
 
-#include <codec/provider.hpp>
-
 #include <algorithm>
 #include <new>
 #include <stdexcept>
 #include <utility>
 
 namespace wiola::engine {
-
-TagReader::TagReader()
-    : TagReader{std::make_shared<codec::LocalMediaProvider>()}
-{
-}
 
 TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t max_pending,
     std::size_t max_completed)

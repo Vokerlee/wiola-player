@@ -43,7 +43,7 @@ using DecoderOpener = std::function<media::DecoderOpenResult(const std::filesyst
 /// Latest-request-wins decoder opening with request identity retained in every completion.
 class Loader {
 public:
-    Loader();
+    /// The provider or opener is selected by the host, never by the worker.
     explicit Loader(std::shared_ptr<media::MediaProvider> provider);
     explicit Loader(DecoderOpener open);
 
