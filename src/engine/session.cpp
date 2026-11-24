@@ -20,7 +20,6 @@
 
 #include <engine/session.hpp>
 
-#include <engine/load/tag_reader.hpp>
 #include <loading/loader.hpp>
 #include <transport/player.hpp>
 

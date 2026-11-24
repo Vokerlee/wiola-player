@@ -20,13 +20,15 @@
 
 #pragma once
 
-#include <engine/load/tag_reader.hpp>
+#include <metadata/metadata_worker.hpp>
 #include <queue/track.hpp>
+#include <wiola/media/provider.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -46,8 +48,12 @@ public:
     explicit MetadataCoordinator(MetadataReader reader, std::size_t max_pending = 256,
         std::size_t max_completed = 256);
 
-    NO_COPY_SEMANTIC(MetadataCoordinator);
-    NO_MOVE_SEMANTIC(MetadataCoordinator);
+    explicit MetadataCoordinator(std::unique_ptr<MetadataWorker> worker);
+
+    MetadataCoordinator(const MetadataCoordinator&) = delete;
+    MetadataCoordinator& operator=(const MetadataCoordinator&) = delete;
+    MetadataCoordinator(MetadataCoordinator&&) = delete;
+    MetadataCoordinator& operator=(MetadataCoordinator&&) = delete;
 
     /// Replaces the queue generation and cancels all older queued/completed work.
     void replace(std::span<const Track> tracks);
@@ -66,11 +72,12 @@ private:
     void start(Groups& groups);
     void submit();
 
-    TagReader reader_;
     std::uint64_t generation_{0};
     Groups entries_;
-    std::vector<TagReader::Request> deferred_;
+    std::vector<MetadataWorker::Request> deferred_;
     std::size_t next_submission_{0};
+    // Stop/join the owned worker before destroying the policy state it serves.
+    std::unique_ptr<MetadataWorker> reader_;
 };
 
 } // namespace wiola::engine
