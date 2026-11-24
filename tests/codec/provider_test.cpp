@@ -20,6 +20,8 @@
 
 #include <codec/provider.hpp>
 
+#include <fixtures/temporary_directory.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -117,8 +119,9 @@ TEST(MediaProvider, CreatesIndependentDecodersForOneAsset)
 
 TEST(MediaProvider, RejectsAnUnavailableResourceBeforeCreatingAnAsset)
 {
+    wiola::testing::TemporaryDirectory directory;
     wiola::codec::LocalMediaProvider provider;
-    auto asset{provider.open("/nonexistent/wiola.wav")};
+    auto asset{provider.open(directory.path() / "wiola.wav")};
 
     ASSERT_FALSE(asset);
     EXPECT_EQ(asset.error().category, wiola::media::ErrorCategory::unreadable);
@@ -126,8 +129,8 @@ TEST(MediaProvider, RejectsAnUnavailableResourceBeforeCreatingAnAsset)
 
 TEST(MediaProvider, PropagatesInspectionFailureFromTheDecoderRegistry)
 {
-    const std::filesystem::path path{
-        std::filesystem::temp_directory_path() / "wiola_provider_not_audio.bin"};
+    wiola::testing::TemporaryDirectory directory;
+    const std::filesystem::path path{directory.path() / "wiola_provider_not_audio.bin"};
     std::ofstream{path} << "not audio";
 
     wiola::codec::LocalMediaProvider provider;

@@ -20,6 +20,8 @@
 
 #include <codec/decode/registry.hpp>
 
+#include <fixtures/temporary_directory.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -50,9 +52,9 @@ protected:
     }
 };
 
-std::filesystem::path fake_file()
+std::filesystem::path fake_file(const std::filesystem::path& directory)
 {
-    const auto path{std::filesystem::temp_directory_path() / "wiola_registry.fake"};
+    const auto path{directory / "wiola_registry.fake"};
     std::ofstream{path, std::ios::binary}.write("FAKE payload", 12);
     return path;
 }
@@ -94,6 +96,7 @@ TEST(MediaBackendRegistry, PropagatesAHeaderReadFailure)
 
 TEST(MediaBackendRegistry, StopsImmediatelyWhenAReadableResourceFails)
 {
+    wiola::testing::TemporaryDirectory directory;
     int first_attempts{0};
     int second_attempts{0};
     auto first{fake_backend(first_attempts)};
@@ -110,7 +113,7 @@ TEST(MediaBackendRegistry, StopsImmediatelyWhenAReadableResourceFails)
         {first, fake_backend(second_attempts)}
     };
 
-    auto decoder{registry.open(fake_file())};
+    auto decoder{registry.open(fake_file(directory.path()))};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::unreadable);
@@ -120,10 +123,11 @@ TEST(MediaBackendRegistry, StopsImmediatelyWhenAReadableResourceFails)
 
 TEST(MediaBackendRegistry, SelectsAnInjectedBackendByContent)
 {
+    wiola::testing::TemporaryDirectory directory;
     int attempts{0};
     wiola::codec::MediaBackendRegistry registry{{fake_backend(attempts)}};
 
-    auto decoder{registry.open(fake_file())};
+    auto decoder{registry.open(fake_file(directory.path()))};
 
     EXPECT_TRUE(decoder);
     EXPECT_EQ(attempts, 1);
@@ -131,13 +135,14 @@ TEST(MediaBackendRegistry, SelectsAnInjectedBackendByContent)
 
 TEST(MediaBackendRegistry, SeparatesPlaybackCapabilityFromDiscoveryMetadata)
 {
+    wiola::testing::TemporaryDirectory directory;
     int attempts{0};
     auto backend{fake_backend(attempts)};
     backend.capabilities.playback = false;
     backend.capabilities.metadata = true;
     wiola::codec::MediaBackendRegistry registry{{backend}};
 
-    auto decoder{registry.open(fake_file())};
+    auto decoder{registry.open(fake_file(directory.path()))};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::unsupported);
@@ -146,6 +151,7 @@ TEST(MediaBackendRegistry, SeparatesPlaybackCapabilityFromDiscoveryMetadata)
 
 TEST(MediaBackendRegistry, BoundsFallbackAttempts)
 {
+    wiola::testing::TemporaryDirectory directory;
     int first_attempts{0};
     int second_attempts{0};
     auto first{fake_backend(first_attempts)};
@@ -162,7 +168,7 @@ TEST(MediaBackendRegistry, BoundsFallbackAttempts)
         1
     };
 
-    auto decoder{registry.open(fake_file())};
+    auto decoder{registry.open(fake_file(directory.path()))};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(first_attempts, 1);
@@ -171,6 +177,7 @@ TEST(MediaBackendRegistry, BoundsFallbackAttempts)
 
 TEST(MediaBackendRegistry, DescriptorCopiesOwnTheirIdentityAndProbeData)
 {
+    wiola::testing::TemporaryDirectory directory;
     int attempts{0};
     auto backend{[&attempts] {
         std::string name{"Dynamically qualified fake"};
@@ -192,12 +199,13 @@ TEST(MediaBackendRegistry, DescriptorCopiesOwnTheirIdentityAndProbeData)
 
     EXPECT_EQ(registry.backends().front().name, "Dynamically qualified fake");
     EXPECT_EQ(registry.backends().front().formats.front().extensions.front(), ".fake");
-    EXPECT_TRUE(registry.open(fake_file()));
+    EXPECT_TRUE(registry.open(fake_file(directory.path())));
     EXPECT_EQ(attempts, 1);
 }
 
 TEST(MediaBackendRegistry, RecognizedUnsupportedEncodingIsNotReportedAsDamage)
 {
+    wiola::testing::TemporaryDirectory directory;
     int attempts{0};
     auto backend{fake_backend(attempts)};
     backend.open = [](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
@@ -208,7 +216,7 @@ TEST(MediaBackendRegistry, RecognizedUnsupportedEncodingIsNotReportedAsDamage)
     };
     const wiola::codec::MediaBackendRegistry registry{{backend}};
 
-    auto decoder{registry.open(fake_file())};
+    auto decoder{registry.open(fake_file(directory.path()))};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::unsupported);
@@ -217,6 +225,7 @@ TEST(MediaBackendRegistry, RecognizedUnsupportedEncodingIsNotReportedAsDamage)
 
 TEST(MediaBackendRegistry, MultipleFormatsShareOneBackendProbe)
 {
+    wiola::testing::TemporaryDirectory directory;
     int attempts{0};
     const std::array formats{fake_backend(attempts), fake_backend(attempts)};
     const wiola::codec::Backend backend{"Combined fake", formats,
@@ -229,7 +238,7 @@ TEST(MediaBackendRegistry, MultipleFormatsShareOneBackendProbe)
         }};
     const wiola::codec::MediaBackendRegistry registry{{backend}};
 
-    auto decoder{registry.open(fake_file())};
+    auto decoder{registry.open(fake_file(directory.path()))};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(attempts, 1);
@@ -237,12 +246,14 @@ TEST(MediaBackendRegistry, MultipleFormatsShareOneBackendProbe)
 
 TEST(MediaBackendRegistry, CancellationIsObservableBeforeBackendOpening)
 {
+    wiola::testing::TemporaryDirectory directory;
     int attempts{0};
     const wiola::codec::MediaBackendRegistry registry{{fake_backend(attempts)}};
     std::stop_source cancelled;
     cancelled.request_stop();
 
-    auto decoder{registry.open(fake_file(), {.stop = cancelled.get_token(), .deadline = {}})};
+    auto decoder{registry.open(fake_file(directory.path()),
+        {.stop = cancelled.get_token(), .deadline = {}})};
 
     ASSERT_FALSE(decoder);
     EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::cancelled);

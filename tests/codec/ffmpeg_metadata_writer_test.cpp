@@ -21,6 +21,8 @@
 #include <codec/backends/ffmpeg/metadata.hpp>
 #include <codec/backends/ffmpeg/metadata_writer.hpp>
 
+#include <fixtures/temporary_directory.hpp>
+
 #include <gtest/gtest.h>
 
 extern "C" {
@@ -44,20 +46,6 @@ std::filesystem::path fixture(const char* name)
     return std::filesystem::path{WIOLA_TEST_DATA_DIR} / name;
 }
 
-std::filesystem::path temporary(const char* name)
-{
-    const std::filesystem::path path = std::filesystem::temp_directory_path() / name;
-    std::filesystem::remove(path);
-
-    return path;
-}
-
-struct RemoveOnExit {
-    std::filesystem::path path;
-
-    ~RemoveOnExit() { std::filesystem::remove(path); }
-};
-
 std::vector<char> bytes(const std::filesystem::path& path)
 {
     std::ifstream input{path, std::ios::binary};
@@ -74,8 +62,8 @@ wiola::media::MetadataWriteRequest title_request()
 
 TEST(MetadataRemux, WritesRequestedFieldsWithoutChangingTheSource)
 {
-    const auto output = temporary("wiola-remux.mp3");
-    RemoveOnExit cleanup{output};
+    wiola::testing::TemporaryDirectory directory;
+    const auto output = directory.path() / "wiola-remux.mp3";
     const auto original = bytes(fixture("tone.mp3"));
 
     wiola::media::MetadataWriteRequest request;
@@ -99,8 +87,8 @@ TEST(MetadataRemux, WritesRequestedFieldsWithoutChangingTheSource)
 
 TEST(MetadataRemux, NeverOverwritesExistingOutputOrTheSource)
 {
-    const auto output = temporary("wiola-remux-existing.mp3");
-    RemoveOnExit cleanup{output};
+    wiola::testing::TemporaryDirectory directory;
+    const auto output = directory.path() / "wiola-remux-existing.mp3";
     {
         std::ofstream existing{output};
         existing << "keep";
@@ -124,8 +112,8 @@ TEST(MetadataRemux, NeverOverwritesExistingOutputOrTheSource)
 
 TEST(MetadataRemux, EmptyAndCancelledRequestsLeaveNoPartialOutput)
 {
-    const auto output = temporary("wiola-remux-empty.mp3");
-    RemoveOnExit cleanup{output};
+    wiola::testing::TemporaryDirectory directory;
+    const auto output = directory.path() / "wiola-remux-empty.mp3";
 
     auto outcome = wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), output, {});
     EXPECT_EQ(outcome.state, MetadataWriteState::unchanged);
@@ -146,10 +134,9 @@ TEST(MetadataRemux, EmptyAndCancelledRequestsLeaveNoPartialOutput)
 
 TEST(MetadataRemux, RejectsMalformedMp3WithoutLeavingOutput)
 {
-    const auto input = temporary("wiola-remux-malformed.mp3");
-    const auto output = temporary("wiola-remux-malformed-output.mp3");
-    RemoveOnExit cleanup_input{input};
-    RemoveOnExit cleanup_output{output};
+    wiola::testing::TemporaryDirectory directory;
+    const auto input = directory.path() / "wiola-remux-malformed.mp3";
+    const auto output = directory.path() / "wiola-remux-malformed-output.mp3";
     {
         std::ofstream malformed{input, std::ios::binary};
         malformed << "not an MP3";
@@ -170,10 +157,9 @@ TEST(MetadataRemux, RejectsMalformedMp3WithoutLeavingOutput)
 
 TEST(MetadataRemux, InterruptedAndDiskFullWritesRemovePartialOutput)
 {
-    const auto cancelled_output = temporary("wiola-remux-interrupted.mp3");
-    const auto full_output = temporary("wiola-remux-disk-full.mp3");
-    RemoveOnExit cleanup_cancelled{cancelled_output};
-    RemoveOnExit cleanup_full{full_output};
+    wiola::testing::TemporaryDirectory directory;
+    const auto cancelled_output = directory.path() / "wiola-remux-interrupted.mp3";
+    const auto full_output = directory.path() / "wiola-remux-disk-full.mp3";
 
     std::stop_source stop;
     wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
