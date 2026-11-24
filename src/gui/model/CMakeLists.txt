@@ -9,7 +9,7 @@ wiola_add_library(
         documents/queue_rows.cpp
         documents/saved_playlist_rows.cpp
         documents/workspace_rows.cpp
-    LIBS wiola_app wiola_library wiola_engine
+    LIBS wiola_app wiola_library
 )
 add_executable(wiola_model_boundary EXCLUDE_FROM_ALL boundary.cpp)
 target_link_libraries(

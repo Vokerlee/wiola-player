@@ -1,0 +1,26 @@
+add_library(
+    wiola_playback_pipeline
+    STATIC
+    output_session.cpp
+    playback_pipeline.cpp
+)
+set_target_properties(
+    wiola_playback_pipeline
+    PROPERTIES EXPORT_NAME playback_pipeline
+)
+target_compile_features(wiola_playback_pipeline PUBLIC cxx_std_23)
+target_include_directories(
+    wiola_playback_pipeline
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+)
+target_link_libraries(
+    wiola_playback_pipeline
+    PUBLIC
+        wiola::audio_output
+        wiola::playback_api
+        wiola_playback_transport
+        wiola_playback_buffer
+)
+if(COMMAND wiola_apply_build_controls)
+    wiola_apply_build_controls(wiola_playback_pipeline)
+endif()

@@ -9,4 +9,4 @@ These targets link the scoped buffering target and GoogleTest directly, without 
 - `playback_relay_test`: attachment, short output, source replacement and preserving borrowed source lifetime.
 - `playback_shaped_source_test`: supplied Stage dispatch, prefix-only processing, unused tail and stream identity. It explicitly links the built-in chain only as one test-supplied implementation.
 
-Existing case names and target identities are retained. Mode-specific allocation witnesses remain in their supported configurations. Concurrency cases use controlled endpoints and native TSan; the overflow regression also has a direct UBSan reproduction. No device, FFmpeg or Qt implementation is needed.
+Existing buffering cases are retained; relay and shaped-source cases use playback-owned targets. Mode-specific allocation witnesses remain in their supported configurations. Concurrency cases use controlled endpoints and native TSan; the overflow regression also has a direct UBSan reproduction. No device, FFmpeg or Qt implementation is needed.

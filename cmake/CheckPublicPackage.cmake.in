@@ -4,6 +4,10 @@ cmake_minimum_required(VERSION 3.28)
 string(RANDOM LENGTH 12 ALPHABET 0123456789abcdef run_id)
 set(work "@CMAKE_CURRENT_BINARY_DIR@/Testing/PublicPackage-${run_id}")
 file(MAKE_DIRECTORY "${work}")
+set(configuration "@CMAKE_BUILD_TYPE@")
+if(DEFINED WIOLA_CONSUMER_CONFIG AND NOT WIOLA_CONSUMER_CONFIG STREQUAL "")
+    set(configuration "${WIOLA_CONSUMER_CONFIG}")
+endif()
 
 function(package_step name)
     execute_process(
@@ -31,6 +35,8 @@ foreach(component IN ITEMS @arg_COMPONENTS@)
         "@CMAKE_BINARY_DIR@"
         --component
         "${component}"
+        --config
+        "${configuration}"
         --prefix
         "${work}/initial prefix"
     )
@@ -55,6 +61,7 @@ package_step(
     "${work}/build"
     "-DCMAKE_CXX_COMPILER=@CMAKE_CXX_COMPILER@"
     "-DCMAKE_SYSTEM_NAME=@CMAKE_SYSTEM_NAME@"
+    "-DCMAKE_BUILD_TYPE=${configuration}"
     "-DCMAKE_PREFIX_PATH=${work}/relocated prefix"
     ${toolchain_arguments}
 )
@@ -65,6 +72,8 @@ package_step(
     "${work}/build"
     --parallel
     2
+    --config
+    "${configuration}"
 )
 if(NOT @CMAKE_CROSSCOMPILING@)
     package_step(
@@ -74,6 +83,8 @@ if(NOT @CMAKE_CROSSCOMPILING@)
         "${work}/build"
         --output-on-failure
         --no-tests=error
+        --build-config
+        "${configuration}"
     )
 endif()
 message(STATUS "Public package @arg_PACKAGE@ passed. Logs: ${work}")

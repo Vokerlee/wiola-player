@@ -1,4 +1,8 @@
 add_library(wiola_playback_loading STATIC loader.cpp)
+set_target_properties(
+    wiola_playback_loading
+    PROPERTIES EXPORT_NAME playback_loading
+)
 target_compile_features(wiola_playback_loading PUBLIC cxx_std_23)
 target_include_directories(
     wiola_playback_loading

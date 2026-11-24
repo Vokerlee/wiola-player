@@ -21,11 +21,11 @@
 #pragma once
 
 #include "playback_presentation.hpp"
-#include <engine/session.hpp>
 #include <wiola/audio/equalizer_config.hpp>
 #include <wiola/audio/volume_policy.hpp>
 #include <wiola/playback/operation_outcome.hpp>
 #include <wiola/playback/queue_view.hpp>
+#include <wiola/playback/session.hpp>
 
 #include <memory>
 

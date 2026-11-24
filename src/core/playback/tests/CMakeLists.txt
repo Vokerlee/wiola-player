@@ -3,6 +3,7 @@ add_subdirectory(transport)
 add_subdirectory(loading)
 add_subdirectory(queue)
 add_subdirectory(metadata)
+add_subdirectory(pipeline)
 
 add_executable(playback_contract_test contract_test.cpp)
 target_link_libraries(
@@ -23,4 +24,36 @@ wiola_add_public_consumer_test(
     TARGET wiola::playback_api
     CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/consumer.cpp"
     COMPONENTS wiola_quantities wiola_media wiola_playback
+)
+
+add_executable(engine_session_test session_test.cpp)
+target_link_libraries(
+    engine_session_test
+    PRIVATE
+        wiola::playback
+        wiola_test_allocation_failure
+        wiola::audio_dsp
+        GTest::gtest_main
+)
+target_include_directories(
+    engine_session_test
+    PRIVATE "${PROJECT_SOURCE_DIR}/tests"
+)
+if(COMMAND wiola_apply_build_controls)
+    wiola_apply_build_controls(engine_session_test)
+endif()
+gtest_discover_tests(engine_session_test)
+
+wiola_add_public_consumer_test(
+    PlaybackRuntime.InstalledConsumer
+    PACKAGE wiola_playback
+    TARGET wiola::playback
+    CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/runtime_consumer.cpp"
+    COMPONENTS
+        wiola_borrowed_reference
+        wiola_quantities
+        wiola_media
+        wiola_audio
+        wiola_playback
+        wiola_playback_runtime
 )

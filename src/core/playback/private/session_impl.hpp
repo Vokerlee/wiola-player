@@ -20,13 +20,13 @@
 
 #pragma once
 
-#include <engine/pipeline/output_session.hpp>
-#include <engine/pipeline/playback_pipeline.hpp>
-#include <engine/session.hpp>
 #include <loading/load_coordinator.hpp>
 #include <loading/loader.hpp>
 #include <metadata/metadata_coordinator.hpp>
+#include <pipeline/output_session.hpp>
+#include <pipeline/playback_pipeline.hpp>
 #include <queue/playlist.hpp>
+#include <wiola/playback/session.hpp>
 
 #include <deque>
 #include <memory>

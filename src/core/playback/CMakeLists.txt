@@ -1,4 +1,5 @@
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 # Application clients can consume values without linking transport/worker implementation.
 add_library(wiola_playback_api INTERFACE)
@@ -34,10 +35,15 @@ install(
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wiola_playback
     COMPONENT wiola_playback
 )
+configure_package_config_file(
+    package.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/wiola_playback-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wiola_playback
+    NO_SET_AND_CHECK_MACRO
+)
 install(
-    FILES package.cmake
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/wiola_playback-config.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wiola_playback
-    RENAME wiola_playback-config.cmake
     COMPONENT wiola_playback
 )
 
@@ -48,6 +54,10 @@ add_library(
     private/buffering/buffer_source.cpp
     private/buffering/relay.cpp
     private/buffering/shaped_source.cpp
+)
+set_target_properties(
+    wiola_playback_buffer
+    PROPERTIES EXPORT_NAME playback_buffer
 )
 target_compile_features(wiola_playback_buffer PUBLIC cxx_std_23)
 target_include_directories(
@@ -67,6 +77,54 @@ add_subdirectory(private/transport)
 add_subdirectory(private/loading)
 add_subdirectory(private/queue)
 add_subdirectory(private/metadata)
+
+add_subdirectory(private/pipeline)
+
+add_library(wiola_playback STATIC private/session.cpp private/session_impl.cpp)
+add_library(wiola::playback ALIAS wiola_playback)
+set_target_properties(wiola_playback PROPERTIES EXPORT_NAME playback)
+target_compile_features(wiola_playback PUBLIC cxx_std_23)
+target_include_directories(
+    wiola_playback
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE private
+)
+target_link_libraries(
+    wiola_playback
+    PUBLIC wiola::playback_api wiola::audio_output
+    PRIVATE
+        wiola_playback_pipeline
+        wiola_playback_transport
+        wiola_playback_loading
+        wiola_playback_metadata
+        wiola_playback_queue
+)
+if(COMMAND wiola_apply_build_controls)
+    wiola_apply_build_controls(wiola_playback)
+endif()
+
+# Static implementation archives belong to this one runtime export; their headers stay private.
+install(
+    TARGETS
+        wiola_playback
+        wiola_playback_pipeline
+        wiola_playback_transport
+        wiola_playback_buffer
+        wiola_playback_loading
+        wiola_playback_metadata
+        wiola_playback_queue
+    EXPORT wiola_playback_runtime_targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT wiola_playback_runtime
+)
+install(
+    EXPORT wiola_playback_runtime_targets
+    FILE wiola_playback-runtime-targets.cmake
+    NAMESPACE wiola::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wiola_playback
+    COMPONENT wiola_playback_runtime
+)
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)

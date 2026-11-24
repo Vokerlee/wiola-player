@@ -1,5 +1,9 @@
 # Queue ordering and metadata are independent of decoding, devices and worker scheduling.
 add_library(wiola_playback_queue STATIC playback_order.cpp playlist.cpp)
+set_target_properties(
+    wiola_playback_queue
+    PROPERTIES EXPORT_NAME playback_queue
+)
 target_compile_features(wiola_playback_queue PUBLIC cxx_std_23)
 target_include_directories(
     wiola_playback_queue

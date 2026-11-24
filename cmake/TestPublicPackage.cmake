@@ -38,6 +38,7 @@ function(wiola_add_public_consumer_test name)
     add_test(
         NAME ${name}
         COMMAND
-            "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/${name}.cmake"
+            "${CMAKE_COMMAND}" "-DWIOLA_CONSUMER_CONFIG=$<CONFIG>" -P
+            "${CMAKE_CURRENT_BINARY_DIR}/${name}.cmake"
     )
 endfunction()

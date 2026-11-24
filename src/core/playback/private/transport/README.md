@@ -20,7 +20,7 @@ Only the worker seeks, reads, primes or starts/stops output. `DecodeLoop::run` c
 
 `Playhead` has one movable applier. Its mailbox serializes requests, claims and position/epoch observations; submitted frames are worker-owned. `SeekOperation` quiesces output, changes the decoder, acknowledges an achieved position and primes the new epoch. Failures retain the actual decoder position rather than publishing an unachieved request.
 
-The target's build-only include root exposes `<transport/...>` to internal playback clients. These implementation headers are not installed. Application clients consume the public playback values and existing Session facade; the remaining Session/load/pipeline relocation is separate work.
+The target's build-only include root exposes `<transport/...>` to internal playback clients. These implementation headers are not installed. Application clients consume public playback values and the exported Session facade. Complete Session/loading/pipeline ownership stays in this component; private transport headers are not part of that export.
 
 Seek startup and active requests use the same transaction. Its returned outcome distinguishes applied position, preserved cursor, read failure, cancellation and supersession; there is no mutable failure flag for a caller to remember to inspect. The decoder validates its own exact/approximate length rules. A no-request apply leaves output and queued audio alone.
 

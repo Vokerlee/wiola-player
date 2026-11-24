@@ -125,6 +125,6 @@ wiola_add_test(
 wiola_add_test(
     codec_session_integration_test
     SOURCES session_integration_test.cpp
-    LIBS wiola_codec wiola_engine_session wiola::audio_output
+    LIBS wiola_codec wiola::playback wiola::audio_output
     DATA "${fixtures}"
 )

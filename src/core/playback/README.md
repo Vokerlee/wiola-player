@@ -1,47 +1,42 @@
-# Playback contracts and buffering
+# Playback kernel
 
-This component owns portable playback values, buffering, decoder loading, queue policy and the complete private transport protocol. Session/pipeline services still consume these targets from `src/engine`; their public facade has not completed its export yet. Session borrows the host-supplied Stage and owns no equalizer/volume topology. The application facade owns its built-in processing and Session together.
+This component owns Session, queue observations, decoder loading, metadata applicability, buffering and transport. The application supplies media, output construction and processing through public C++ ports. Built-in equalizer/volume composition belongs to the application; the kernel requires no DSP archive, Qt, FFmpeg or miniaudio.
 
 ```mermaid
 flowchart LR
-    Presentation[Application or presentation] --> API[Public playback values / QueueView]
-    Session[Session and pipeline] --> API
-    Session --> Transport[Private transport protocol]
-    Transport --> API
-    Transport --> Buffer
-    Session --> Buffer[Private PCM buffering and render bridge]
-    Buffer --> Audio[Public audio render contract]
-    API --> Media[Portable media results and quantities]
+    App[Application commands / observations] --> Session[Public Session facade]
+    Session --> Private[Private orchestration]
+    Private --> Queue[Queue / QueueView]
+    Private --> Loading[Decoder loading]
+    Private --> Metadata[Metadata applicability / worker]
+    Private --> Pipeline[Owned per-track pipeline]
+    Pipeline --> Transport[Transport / PCM buffering]
+    Pipeline --> Render[Source / Output / Stage ports]
+    Loading --> Media[MediaProvider / MediaAsset / AudioDecoder]
+    Metadata --> Media
 ```
 
-Link `wiola::playback_api` for `<wiola/playback/...>`. It exposes playback state, open status, asynchronous outcomes, snapshots, repeat mode and read-only queue observations together. It imports no transport class, atomics, output driver or application implementation. Installed consumers use `find_package(wiola_playback CONFIG REQUIRED)`.
+Link `wiola::playback` and include `<wiola/playback/session.hpp>` for the complete kernel. Session's opaque implementation owns its workers, queue, outcomes and active pipeline; private edits stay outside application/frontend headers. The always-present Loader is a direct member. TransportConfig and BufferingConfig are independent immutable per-instance policies; invalid configuration or a null provider fails before work starts.
 
-`PlaybackState` describes transport intent/terminal outcome rather than an output device's observation. A snapshot owns its resource path and optional duration; unknown duration is distinct from known zero. Structural, metadata and selection revisions remain separate. Snapshots do not retain a worker or borrow Session state.
+`wiola::playback_api` supplies portable state, typed outcomes, snapshots, repeat mode, queue identity and read-only observations. These values can be consumed without the runtime archive. A snapshot owns its path and optional duration; unknown duration differs from known zero. QueueEntry copies own path/metadata and share only immutable artwork. QueueView is a live read port on the owning control thread: reacquire borrowed spans/pointers after any mutation attempt, including failed reserve. Structural, metadata and selection revisions retain distinct roles.
 
-Receipts distinguish acceptance from completion. Correlate outcomes by operation kind and ID; zero denotes no asynchronous completion. A completion has no error on success, or an owned `OperationError` distinguishing media failure from output setup failure. Consumers retain the original typed media category and diagnostic; an unavailable device is not classified as invalid media. `open_failed` classifies either alternative for presentation without importing a device driver. A batch owns its diagnostic data, and `overflowed` means older results were discarded. Queue occurrence IDs are separate from row position and reserve zero for unassigned entries. These values create no scheduler, registry or universal command bus.
+One control thread issues commands, collects completions and installs prepared resources. Blocking decoder/metadata work runs on owned workers. Output callbacks use bounded Source/Stage operations without allocation, I/O or waiting for control work. The supplied Stage outlives Session and its outputs; sharing it requires an implementation that supports that concurrency. Prepare may coexist with old callbacks; commit and destruction occur on the control thread after callbacks quiesce.
 
-`wiola_playback_buffer` is an internal source-build target with a scoped `private/` include root. The complete [buffering implementation](private/buffering/README.md) and [tests](tests/buffering/README.md) stay together. `BufferSource` adapts that queue to the public audio `Source`; portable audio processing never depends on playback storage.
+Opening distinguishes acceptance, successful installation and eventual device-start failure. The kernel prepares processing, output lease, queue/player and owned path before retiring active playback. Its last fallible step retains the completion; activation/swaps then cannot fail or allocate. A failed candidate preserves the prior pipeline without rewinding its source. OperationError keeps media failure separate from output setup failure, including diagnostics. Outcome batches own their values and report retention overflow.
 
-`wiola_playback_transport` is an internal source-build target for the complete [transport protocol](private/transport/README.md): state arbitration, player commands, worker, decode loop, playhead, seek transaction/mailbox and epoch. It depends on public media/output contracts and private buffering; it imports no DSP, Qt, codec or global source-root target. Its [tests](tests/transport/README.md) use controlled PCM sources; a real decoder-to-player journey remains with codec integration tests.
+The kernel exposes play/pause/resume, queue operations and occurrence/generation-checked release/restore handoffs. Application toggle policy composes those commands. Changes to intent or position during a handoff remain owned by Session; stale restoration cannot replace a newer occurrence.
 
-`wiola_playback_loading` owns the [decoder load lifecycle](private/loading/README.md) and [tests](tests/loading/README.md): bounded physical opening/cancellation and exact logical request acceptance. Metadata inspection has its own consumer-owned worker port and applicability policy.
+Implementation and focused tests have one owner:
 
-`wiola_playback_queue` owns [queue ordering/identity/metadata invariants](private/queue/README.md) and [focused tests](tests/queue/README.md), independent of transport and metadata worker scheduling.
+| Mechanism | Code and invariant guide | Tests |
+| --- | --- | --- |
+| PCM queue and callback source bridges | [buffering](private/buffering/README.md) | [buffering cases](tests/buffering/README.md) |
+| Transport, state and seek protocol | [transport](private/transport/README.md) | [transport cases](tests/transport/README.md) |
+| Decoder request/cancellation lifecycle | [loading](private/loading/README.md) | [loading cases](tests/loading/README.md) |
+| Queue identity, ordering and metadata | [queue](private/queue/README.md) | [queue cases](tests/queue/README.md) |
+| Metadata applicability and bounded work | [metadata](private/metadata/README.md) | [metadata cases](tests/metadata/README.md) |
+| Per-track bundle and reusable output lifetime | [pipeline](private/pipeline/README.md) | [pipeline cases](tests/pipeline/README.md) |
 
-`wiola_playback_metadata` owns [metadata inspection policy and bounded work](private/metadata/README.md), with [tests](tests/metadata/README.md) that substitute controlled delivery without running the physical reader. Decoder loading and queue metadata inspection retain distinct lifetimes.
+Configure with `-DWIOLA_COMPONENTS=playback` to build this closure without backend/frontend SDK discovery. Session unit tests supply decoded-stream facts through MediaProvider; real encoded-media journeys belong to codec integration. [Tests](tests/README.md) use ordinary CTest and relocated installed consumers.
 
-Configure the currently owned closure with `-DWIOLA_COMPONENTS=playback`, without Qt/FFmpeg/miniaudio. [Contract tests](tests/README.md) also verify the relocated installed API independently of buffering and the current legacy engine.
-
-`QueueEntry` is a public owned observation of one queue occurrence, with identity/location, one canonical media metadata value, immutable artwork and revision. Private Playlist owns input-path conversion, fallback titles and occurrence identity assignment. Value copies retain their own facts. This header exports only the owned observation; ordering and storage remain private.
-
-`QueueView` is a live read-only port on the owning control thread. Callers reacquire borrowed entry spans/pointers after any mutation attempt, or copy an entry to retain its facts. It exposes occurrence lookup, current position and the structural/metadata revisions needed by presentation. RepeatMode is independent of private ordering/storage and retains existing persisted ordinals. Application and frontend signatures name these public contracts; only Session owns the concrete Playlist.
-
-Session construction uses the existing MediaProvider port for both decoder loading and metadata. Worker-specific decoder/metadata callback types remain private. BufferingConfig and TransportConfig are independent public per-instance policies; invalid capacities/durations and null providers fail before asynchronous work starts. OutputFactory names host-supplied stopped-output construction without importing a device implementation.
-
-The kernel exposes explicit play/pause/resume commands and release/restore handoff operations. Toggle policy belongs to the application facade. Completing a load with play intent starts the new pipeline directly; it does not toggle based on incidental state. Callers use the same handoff as metadata replacement rather than a second reload shortcut.
-
-The source-build [Session facade](../../engine/session.hpp) contains public values and an opaque implementation pointer. Its private implementation owns queue, loading, metadata, outcomes and the active pipeline; the always-present Loader is a direct member rather than a nullable heap object. Per-instance transport/buffering policies are immutable after construction. Worker/storage dependencies are private target requirements, so a presentation consumer does not import their headers through Session. The legacy source-root target still exists; this header boundary is distinct from a fully scoped installed Session export.
-
-The callback source relay and supplied-Stage bridge are private buffering/render helpers owned here. Stage itself is a pure public audio render port. The kernel's production target closure requires no built-in equalizer/volume/chain archive; application composition and tests that supply those implementations declare that dependency themselves.
-
-Kernel lifecycle unit collaborators provide decoded-stream capabilities and metadata directly through MediaProvider. They require no codec library, encoded files or format-specific fixture paths. Real decoder/metadata-to-Session journeys live with codec integration; stream-format interpretation remains outside this kernel.
+Installed clients use `find_package(wiola_playback CONFIG REQUIRED COMPONENTS runtime)` and `wiola::playback`. The `wiola_playback` install component owns headers/API metadata; `wiola_playback_runtime` adds the compiled closure. A values-only installation supports `COMPONENTS api` and `wiola::playback_api` without the audio/worker runtime dependencies. Static implementation archives are exported for linking, while implementation headers and checkout include roots remain private.
