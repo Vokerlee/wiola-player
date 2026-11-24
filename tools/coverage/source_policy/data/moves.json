@@ -218,5 +218,50 @@
     "previous": "tools/testing/gtest/tests/test_protocol.py",
     "current": "scripts/testing/gtest/tests/test_protocol.py",
     "owner": "testing.gtest"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/CMakeLists.txt",
+    "current": "scripts/testing/mutations/CMakeLists.txt",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/__init__.py",
+    "current": "scripts/testing/mutations/__init__.py",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/__main__.py",
+    "current": "scripts/testing/mutations/__main__.py",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/catalog.py",
+    "current": "scripts/testing/mutations/_catalog.py",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/tests/__init__.py",
+    "current": "scripts/testing/mutations/tests/__init__.py",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/tests/test_checks.py",
+    "current": "scripts/testing/mutations/tests/test_checks.py",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/mutation_checks/verifier.py",
+    "current": "scripts/testing/mutations/_verifier.py",
+    "owner": "testing.mutation_checks"
+  },
+  {
+    "previous": "tools/testing/source_mutation/mutation.py",
+    "current": "scripts/testing/mutations/_edit.py",
+    "owner": "testing.source_mutation"
+  },
+  {
+    "previous": "tools/testing/source_mutation/tests/test_mutation.py",
+    "current": "scripts/testing/mutations/tests/test_edit.py",
+    "owner": "testing.source_mutation"
   }
 ]

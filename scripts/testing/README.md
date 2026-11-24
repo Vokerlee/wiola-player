@@ -12,4 +12,4 @@ flowchart LR
 
 [GoogleTest](gtest/README.md) owns discovery, execution and exact report evidence without Qt, project identities or build layouts. Import its public API from `scripts.testing.gtest`. [Desktop composition](desktop/README.md) supplies only the project's fixture environment and caller-selected GUI adapter: `python3 -m scripts.testing.desktop --help`.
 
-Environment changes are confined to child processes. Executable paths come from callers or configured build metadata, never guessed output directories. Test-policy catalog and mutation tools retain their existing ownership until their complete family migration; they are not additional implementations of these protocols.
+Environment changes are confined to child processes. Executable paths come from callers or configured build metadata, never guessed output directories. [Mutation qualification](mutations/README.md) owns checked edits, regression recipes and original/mutant/restored evidence in one component. The test-policy catalog retains its existing owner until the quality-family migration.

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.testing.source_mutation.mutation import SourceConflict, SourceMutation
+from scripts.testing.mutations._edit import SourceConflict, SourceMutation
 
 
 class SourceMutationTest(unittest.TestCase):
@@ -74,7 +74,7 @@ class SourceMutationTest(unittest.TestCase):
     def test_failed_replacement_leaves_original_bytes_and_no_temporary_files(self):
         mutation = self.mutation()
         with patch(
-            "tools.testing.source_mutation.mutation.os.replace",
+            "scripts.testing.mutations._edit.os.replace",
             side_effect=OSError("disk failure"),
         ):
             with self.assertRaises(OSError):
@@ -86,7 +86,7 @@ class SourceMutationTest(unittest.TestCase):
     def test_unwritable_source_directory_fails_before_any_source_edit(self):
         mutation = self.mutation()
         with patch(
-            "tools.testing.source_mutation.mutation.tempfile.NamedTemporaryFile",
+            "scripts.testing.mutations._edit.tempfile.NamedTemporaryFile",
             side_effect=PermissionError("read-only directory"),
         ):
             with self.assertRaises(PermissionError):

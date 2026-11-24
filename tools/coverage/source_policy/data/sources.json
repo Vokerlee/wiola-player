@@ -113,13 +113,6 @@
       "workflow": false
     },
     {
-      "path": "scripts/check-gui-mutations.py",
-      "owner": "tool.check_gui_mutations",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
       "path": "scripts/coverage.sh",
       "owner": "tool.coverage",
       "language": "shell",
@@ -381,6 +374,69 @@
     {
       "path": "scripts/testing/gtest/tests/test_protocol.py",
       "owner": "testing.gtest",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/CMakeLists.txt",
+      "owner": "testing.mutation_checks",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/__init__.py",
+      "owner": "testing.mutation_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/__main__.py",
+      "owner": "testing.mutation_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/_catalog.py",
+      "owner": "testing.mutation_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/_edit.py",
+      "owner": "testing.source_mutation",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/_verifier.py",
+      "owner": "testing.mutation_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/tests/__init__.py",
+      "owner": "testing.mutation_checks",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/tests/test_checks.py",
+      "owner": "testing.mutation_checks",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/mutations/tests/test_edit.py",
+      "owner": "testing.source_mutation",
       "language": "python",
       "role": "test",
       "workflow": false
@@ -4966,83 +5022,6 @@
     {
       "path": "tools/testing/catalog/tests/test_catalog.py",
       "owner": "testing.catalog",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/CMakeLists.txt",
-      "owner": "testing.mutation_checks",
-      "language": "cmake",
-      "role": "build",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/__init__.py",
-      "owner": "testing.mutation_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/__main__.py",
-      "owner": "testing.mutation_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/catalog.py",
-      "owner": "testing.mutation_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/tests/__init__.py",
-      "owner": "testing.mutation_checks",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/tests/test_checks.py",
-      "owner": "testing.mutation_checks",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/mutation_checks/verifier.py",
-      "owner": "testing.mutation_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/source_mutation/__init__.py",
-      "owner": "testing.source_mutation",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/source_mutation/mutation.py",
-      "owner": "testing.source_mutation",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/source_mutation/tests/__init__.py",
-      "owner": "testing.source_mutation",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/source_mutation/tests/test_mutation.py",
-      "owner": "testing.source_mutation",
       "language": "python",
       "role": "test",
       "workflow": false

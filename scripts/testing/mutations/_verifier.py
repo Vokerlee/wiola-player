@@ -6,9 +6,9 @@ from typing import Mapping, Protocol
 
 from tools.architecture.ownership.registry import OwnershipRegistry
 from scripts.testing.gtest import GoogleTestRunner
-from tools.testing.source_mutation.mutation import SourceConflict, SourceMutation
+from ._edit import SourceConflict, SourceMutation
 
-from .catalog import MutationCase
+from ._catalog import MutationCase
 
 
 class BuildPort(Protocol):

@@ -466,7 +466,6 @@
     "testing.track_view": "test",
     "testing.wav": "test",
     "testing.widget_diagnostics": "test",
-    "tool.check_gui_mutations": "tooling",
     "tool.coverage": "tooling",
     "tool.coverage_gate": "tooling",
     "tool.coverage_report": "tooling",

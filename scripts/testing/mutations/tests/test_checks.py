@@ -1,4 +1,8 @@
 import json
+from contextlib import redirect_stderr
+from io import StringIO
+import signal
+from unittest.mock import patch
 from pathlib import Path
 import subprocess
 import tempfile
@@ -6,9 +10,10 @@ from types import SimpleNamespace
 import unittest
 
 from tools.architecture.ownership.registry import OwnershipRegistry
-from tools.testing.mutation_checks.catalog import MutationCase, MutationCatalog
-from tools.testing.mutation_checks.verifier import MutationVerifier
-from tools.testing.source_mutation.mutation import SourceConflict
+from scripts.testing.mutations import MutationCase, MutationCatalog
+from scripts.testing.mutations import MutationVerifier
+from scripts.testing.mutations.__main__ import main, _interrupted
+from scripts.testing.mutations._edit import SourceConflict
 
 
 def registry(paths):
@@ -236,3 +241,44 @@ class MutationVerifierTest(unittest.TestCase):
             self.verifier("restored-fail").verify(case())
         self.assertEqual(self.source.read_bytes(), self.original)
         self.assertFalse(self.evidence()["restored"])
+
+
+class MutationCommandTest(unittest.TestCase):
+    def test_invalid_deadline_fails_before_loading_or_editing_sources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = StringIO()
+            previous = signal.getsignal(signal.SIGTERM)
+            with redirect_stderr(output):
+                code = main(["--build-dir", temporary, "--test-timeout", "0"])
+            self.assertEqual(code, 1)
+            self.assertIn("Test timeout must be positive", output.getvalue())
+            self.assertIn(
+                str(Path(temporary) / "Testing" / "Mutations"), output.getvalue()
+            )
+            self.assertEqual(list(Path(temporary).iterdir()), [])
+            self.assertEqual(signal.getsignal(signal.SIGTERM), previous)
+
+    def test_interruption_returns_interrupt_status_and_restores_signal_handler(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = StringIO()
+            previous = signal.getsignal(signal.SIGTERM)
+            with patch(
+                "scripts.testing.mutations.__main__.load_current_registry",
+                side_effect=KeyboardInterrupt,
+            ), redirect_stderr(output):
+                code = main(["--build-dir", temporary])
+            self.assertEqual(code, 130)
+            self.assertIn("interrupted", output.getvalue())
+            self.assertEqual(signal.getsignal(signal.SIGTERM), previous)
+            self.assertEqual(list(Path(temporary).iterdir()), [])
+
+    def test_sigterm_is_translated_to_scoped_interruption(self):
+        previous = signal.getsignal(signal.SIGTERM)
+        try:
+            signal.signal(signal.SIGTERM, _interrupted)
+            with self.assertRaisesRegex(
+                KeyboardInterrupt, "Mutation qualification interrupted"
+            ):
+                signal.raise_signal(signal.SIGTERM)
+        finally:
+            signal.signal(signal.SIGTERM, previous)
