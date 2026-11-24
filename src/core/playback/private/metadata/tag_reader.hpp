@@ -20,43 +20,27 @@
 
 #pragma once
 
-#include <core/macros.hpp>
+#include <metadata/metadata_worker.hpp>
 #include <wiola/media/provider.hpp>
-#include <wiola/playback/queue_entry_id.hpp>
 
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <span>
+#include <stop_token>
 #include <thread>
 #include <vector>
 
 namespace wiola::engine {
 
-using MetadataReader = std::function<media::Result<media::Metadata>(const std::filesystem::path&)>;
-using ContextMetadataReader =
-    std::function<media::Result<media::Metadata>(const std::filesystem::path&,
-        const media::OperationContext&)>;
-
 /// Bounded tag worker. Submission accepts as much of a batch as capacity permits.
-class TagReader {
+class TagReader final : public MetadataWorker {
 public:
-    struct Request {
-        std::uint64_t generation{0};
-        QueueEntryId id;
-        std::filesystem::path path;
-    };
-
-    struct Reading {
-        std::uint64_t generation{0};
-        QueueEntryId id;
-        std::filesystem::path path;
-        media::Result<media::Metadata> result;
-    };
-
     /// The provider or reader is selected by the host, never by the worker.
     explicit TagReader(std::shared_ptr<media::MediaProvider> provider,
         std::size_t max_pending = 256, std::size_t max_completed = 256);
@@ -67,25 +51,27 @@ public:
         std::size_t max_completed = 256,
         std::size_t max_completed_artwork_bytes = 64 * 1024 * 1024);
 
-    NO_COPY_SEMANTIC(TagReader);
-    NO_MOVE_SEMANTIC(TagReader);
+    TagReader(const TagReader&) = delete;
+    TagReader& operator=(const TagReader&) = delete;
+    TagReader(TagReader&&) = delete;
+    TagReader& operator=(TagReader&&) = delete;
 
-    ~TagReader();
+    ~TagReader() override;
 
     /// Accepts a prefix of `requests` and returns its size. A full queue accepts none.
-    std::size_t start(std::span<Request> requests);
+    std::size_t submit(std::span<Request> requests) override;
 
-    std::size_t start(std::vector<Request>&& requests) { return start(std::span{requests}); }
+    std::size_t submit(std::vector<Request>&& requests) { return submit(std::span{requests}); }
 
-    void cancel_before(std::uint64_t generation);
-    [[nodiscard]] std::vector<Reading> take();
-    [[nodiscard]] bool busy() const noexcept;
+    void cancel_before(std::uint64_t generation) override;
+    [[nodiscard]] std::vector<Reading> take() override;
+    [[nodiscard]] bool busy() const noexcept override;
 
 private:
     void work(const std::stop_token& stop);
 
     ContextMetadataReader reader_;
-    std::stop_source active_stop_;
+    std::stop_source active_stop_{std::nostopstate};
     const std::size_t max_pending_;
     const std::size_t max_completed_;
     const std::size_t max_completed_artwork_bytes_;
@@ -96,7 +82,7 @@ private:
     std::vector<Reading> read_;
     std::size_t completed_artwork_bytes_{0};
     std::uint64_t latest_generation_{0};
-    bool reading_{false};
+    std::optional<std::uint64_t> active_generation_;
     std::jthread thread_;
 };
 

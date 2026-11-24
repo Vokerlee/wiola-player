@@ -18,29 +18,41 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/load/metadata_coordinator.hpp>
+#include <metadata/metadata_coordinator.hpp>
+#include <metadata/tag_reader.hpp>
 
+#include <memory>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::engine {
 
 MetadataCoordinator::MetadataCoordinator(std::shared_ptr<media::MediaProvider> provider,
     std::size_t max_pending, std::size_t max_completed)
-    : reader_{std::move(provider), max_pending, max_completed}
+    : MetadataCoordinator{
+          std::make_unique<TagReader>(std::move(provider), max_pending, max_completed)}
 {
 }
 
 MetadataCoordinator::MetadataCoordinator(MetadataReader reader, std::size_t max_pending,
     std::size_t max_completed)
-    : reader_{std::move(reader), max_pending, max_completed}
+    : MetadataCoordinator{
+          std::make_unique<TagReader>(std::move(reader), max_pending, max_completed)}
 {
+}
+
+MetadataCoordinator::MetadataCoordinator(std::unique_ptr<MetadataWorker> worker)
+    : reader_{std::move(worker)}
+{
+    if (!reader_)
+        throw std::invalid_argument{"metadata worker must not be null"};
 }
 
 void MetadataCoordinator::replace(std::span<const Track> tracks)
 {
     Groups groups{group(tracks)};
     ++generation_;
-    reader_.cancel_before(generation_);
+    reader_->cancel_before(generation_);
 
     deferred_.clear();
     next_submission_ = 0;
@@ -72,7 +84,7 @@ void MetadataCoordinator::append(std::span<const Track> tracks)
 void MetadataCoordinator::cancel()
 {
     ++generation_;
-    reader_.cancel_before(generation_);
+    reader_->cancel_before(generation_);
 
     entries_.clear();
     deferred_.clear();
@@ -83,10 +95,12 @@ std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
 {
     std::vector<Reading> readings;
 
-    for (TagReader::Reading& read : reader_.take()) {
+    for (MetadataWorker::Reading& read : reader_->take()) {
+        if (read.generation != generation_)
+            continue;
         const auto entries{entries_.find(read.path)};
 
-        if (entries == entries_.end())
+        if (entries == entries_.end() || entries->second.front() != read.id)
             continue;
 
         readings.push_back(Reading{.entries = std::move(entries->second),
@@ -102,7 +116,7 @@ std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
 
 bool MetadataCoordinator::busy() const noexcept
 {
-    return reader_.busy() || next_submission_ < deferred_.size();
+    return reader_->busy() || next_submission_ < deferred_.size();
 }
 
 MetadataCoordinator::Groups MetadataCoordinator::group(std::span<const Track> tracks) const
@@ -121,9 +135,9 @@ void MetadataCoordinator::start(Groups& groups)
 
     for (const auto& [path, entries] : groups) {
         if (!entries.empty())
-            deferred_.push_back(
-                TagReader::Request{.generation = generation_, .id = entries.front(), .path = path}
-            );
+            deferred_.push_back(MetadataWorker::Request{.generation = generation_,
+                .id = entries.front(),
+                .path = path});
     }
 
     submit();
@@ -139,7 +153,7 @@ void MetadataCoordinator::submit()
     }
 
     const std::span remaining{std::span{deferred_}.subspan(next_submission_)};
-    next_submission_ += reader_.start(remaining);
+    next_submission_ += reader_->submit(remaining);
 
     if (next_submission_ == deferred_.size()) {
         deferred_.clear();

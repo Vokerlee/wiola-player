@@ -18,16 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/load/metadata_coordinator.hpp>
+#include <metadata/metadata_coordinator.hpp>
 
 #include <fakes/decoder.hpp>
 #include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <filesystem>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
@@ -55,6 +58,115 @@ std::vector<MetadataCoordinator::Reading> wait_for(MetadataCoordinator& coordina
         readings.push_back(std::move(reading));
 
     return readings;
+}
+
+class ControlledMetadataWorker final : public wiola::engine::MetadataWorker {
+public:
+    std::size_t submit(std::span<Request> requests) override
+    {
+        for (auto& request : requests) {
+            submitted.push_back(request);
+            pending.push_back(std::move(request));
+        }
+        return requests.size();
+    }
+
+    void cancel_before(std::uint64_t generation) override
+    {
+        std::erase_if(pending,
+            [generation](const auto& request) { return request.generation < generation; });
+    }
+
+    std::vector<Reading> take() override { return std::exchange(ready, {}); }
+
+    bool busy() const noexcept override { return !pending.empty(); }
+
+    void deliver(const Request& request, wiola::media::Metadata metadata = {})
+    {
+        std::erase_if(pending, [&](const auto& current) {
+            return current.generation == request.generation && current.id == request.id &&
+                current.path == request.path;
+        });
+        ready.push_back({.generation = request.generation,
+            .id = request.id,
+            .path = request.path,
+            .result = std::move(metadata)});
+    }
+
+    std::vector<Request> submitted;
+    std::vector<Request> pending;
+    std::vector<Reading> ready;
+};
+
+TEST(MetadataCoordinator, RejectsANullWorkerAtConstruction)
+{
+    EXPECT_THROW((MetadataCoordinator{std::unique_ptr<wiola::engine::MetadataWorker>{}}),
+        std::invalid_argument);
+}
+
+TEST(MetadataCoordinator, LateResultForTheSamePathCannotBindToANewerOccurrence)
+{
+    auto worker{std::make_unique<ControlledMetadataWorker>()};
+    auto* controlled{worker.get()};
+    MetadataCoordinator coordinator{std::move(worker)};
+    Playlist queue;
+    queue.set({Track::of("same.wav")});
+    coordinator.replace(queue.tracks());
+    const auto old{controlled->submitted.back()};
+    queue.set({Track::of("same.wav")});
+    coordinator.replace(queue.tracks());
+    const auto current{controlled->submitted.back()};
+    controlled->deliver(old);
+    EXPECT_TRUE(coordinator.take().empty());
+    EXPECT_TRUE(coordinator.busy());
+    controlled->deliver(current);
+    const auto accepted{coordinator.take()};
+    ASSERT_EQ(accepted.size(), 1U);
+    EXPECT_EQ(accepted.front().entries, std::vector{queue.current()->id()});
+    EXPECT_FALSE(coordinator.busy());
+}
+
+TEST(MetadataCoordinator, WrongRequestIdentityLeavesTheRealRequestPending)
+{
+    auto worker{std::make_unique<ControlledMetadataWorker>()};
+    auto* controlled{worker.get()};
+    MetadataCoordinator coordinator{std::move(worker)};
+    Playlist queue;
+    queue.set({Track::of("current.wav")});
+    coordinator.replace(queue.tracks());
+    const auto current{controlled->submitted.back()};
+    auto wrong{current};
+    ++wrong.generation;
+    controlled->deliver(wrong);
+    wrong = current;
+    wrong.id = wiola::engine::QueueEntryId{};
+    controlled->deliver(wrong);
+    wrong = current;
+    wrong.path = "foreign.wav";
+    controlled->deliver(wrong);
+    EXPECT_TRUE(coordinator.take().empty());
+    controlled->deliver(current);
+    ASSERT_EQ(coordinator.take().size(), 1U);
+    controlled->deliver(current);
+    EXPECT_TRUE(coordinator.take().empty());
+}
+
+TEST(MetadataCoordinator, OutOfOrderCompletionRetainsEachOccurrenceAssociation)
+{
+    auto worker{std::make_unique<ControlledMetadataWorker>()};
+    auto* controlled{worker.get()};
+    MetadataCoordinator coordinator{std::move(worker)};
+    Playlist queue;
+    queue.set({Track::of("first.wav"), Track::of("second.wav")});
+    coordinator.replace(queue.tracks());
+    const auto first{controlled->submitted.front()};
+    const auto second{controlled->submitted.back()};
+    controlled->deliver(second);
+    controlled->deliver(first);
+    const auto accepted{coordinator.take()};
+    ASSERT_EQ(accepted.size(), 2U);
+    EXPECT_EQ(accepted[0].entries, std::vector{queue.tracks()[1].id()});
+    EXPECT_EQ(accepted[1].entries, std::vector{queue.tracks()[0].id()});
 }
 
 TEST(MetadataCoordinator, CoalescesDuplicatePathsWithoutMergingEntryIdentity)

@@ -60,6 +60,7 @@ find_package(Threads REQUIRED)
 add_subdirectory(private/transport)
 add_subdirectory(private/loading)
 add_subdirectory(private/queue)
+add_subdirectory(private/metadata)
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
