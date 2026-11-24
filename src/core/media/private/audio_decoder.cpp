@@ -131,6 +131,18 @@ Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
                   .detail = "decoder changed the seek target"}
         };
 
+    if (sought->exact && sought->achieved != sought->target)
+        return unexpected{
+            Error{.category = ErrorCategory::seek_failed,
+                  .detail = "decoder reported an inconsistent exact seek"}
+        };
+
+    if (length_accuracy() == LengthAccuracy::exact && sought->achieved > num_frames())
+        return unexpected{
+            Error{.category = ErrorCategory::seek_failed,
+                  .detail = "decoder seek position is past the end"}
+        };
+
     position_ = sought->achieved;
     exhausted_ = length_accuracy() == LengthAccuracy::exact && position_ == num_frames();
     return sought;

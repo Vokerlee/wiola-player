@@ -51,6 +51,7 @@ struct DecodeOutcome {
 struct SeekOutcome {
     pcm::Frames target;
     pcm::Frames achieved;
+    /// An exact seek must achieve its target; approximate seeks report their actual position.
     bool exact{true};
 };
 
