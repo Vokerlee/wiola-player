@@ -124,6 +124,16 @@
       "identity": "decoder.empty-request-preserves-stream",
       "target": "media_audio_decoder_contract_test",
       "name": "AudioDecoder.EmptyOutputDoesNotExhaustAStreamWithFramesRemaining"
+    },
+    {
+      "identity": "decoder.invalid-stream-descriptor",
+      "target": "media_audio_decoder_contract_test",
+      "name": "AudioDecoder.RejectsInvalidStreamSpecificationsBeforeBackendCalls"
+    },
+    {
+      "identity": "decoder.exact-length-required",
+      "target": "media_audio_decoder_contract_test",
+      "name": "AudioDecoder.RejectsAnExactLengthWithoutAValue"
     }
   ],
   "auxiliary": {

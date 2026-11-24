@@ -24,8 +24,28 @@
 
 namespace wiola::media {
 
+Result<void> AudioDecoder::validate_stream_info() const
+{
+    if (!spec().valid())
+        return unexpected{
+            Error{.category = ErrorCategory::damaged,
+                  .detail = "decoder stream specification is invalid"}
+        };
+
+    if (length_accuracy() == LengthAccuracy::exact && !duration_frames())
+        return unexpected{
+            Error{.category = ErrorCategory::damaged, .detail = "exact decoder length is missing"}
+        };
+
+    return {};
+}
+
 Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
+    const auto valid{validate_stream_info()};
+    if (!valid)
+        return unexpected{valid.error()};
+
     const pcm::StreamSpec stream_spec{spec()};
 
     if (output.size() % stream_spec.num_channels != 0)
@@ -85,6 +105,10 @@ Result<std::size_t> AudioDecoder::render(std::span<float> output)
 
 Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
 {
+    const auto valid{validate_stream_info()};
+    if (!valid)
+        return unexpected{valid.error()};
+
     if (!seekable())
         return unexpected{
             Error{.category = ErrorCategory::seek_failed,

@@ -128,7 +128,9 @@ protected:
     virtual Result<SeekOutcome> seek_frame(pcm::Frames frame_index) = 0;
 
 private:
-    DecoderStreamInfo stream_info_;
+    [[nodiscard]] Result<void> validate_stream_info() const;
+
+    const DecoderStreamInfo stream_info_;
     pcm::Frames position_{};
     bool exhausted_{false};
 };
