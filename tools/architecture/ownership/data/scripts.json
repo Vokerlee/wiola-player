@@ -10,24 +10,21 @@
       ]
     },
     {
-      "id": "tool.coverage",
-      "purpose": "Implements the current coverage development command.",
-      "files": [
-        "scripts/coverage.sh"
-      ]
-    },
-    {
       "id": "tool.coverage_gate",
       "purpose": "Implements the current coverage gate development command.",
       "files": [
-        "scripts/coverage_gate.py"
+        "scripts/quality/coverage/workflow/gate.py"
       ]
     },
     {
       "id": "tool.coverage_report",
       "purpose": "Implements the current coverage report development command.",
       "files": [
-        "scripts/coverage_report.py"
+        "scripts/quality/coverage/workflow/collect.py",
+        "scripts/quality/coverage/workflow/README.md",
+        "scripts/quality/coverage/workflow/__init__.py",
+        "scripts/quality/coverage/workflow/tests/README.md",
+        "scripts/quality/coverage/workflow/tests/__init__.py"
       ]
     },
     {
@@ -79,6 +76,14 @@
       "files": [
         "scripts/testing/README.md",
         "scripts/testing/__init__.py"
+      ]
+    },
+    {
+      "id": "scripts.quality",
+      "purpose": "Groups architecture and coverage quality tools",
+      "files": [
+        "scripts/quality/README.md",
+        "scripts/quality/__init__.py"
       ]
     }
   ]

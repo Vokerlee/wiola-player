@@ -2,7 +2,11 @@ from dataclasses import replace
 import unittest
 
 from tools.architecture.policy_guard.policy import PolicyGuard, PolicySnapshot
-from tools.coverage.source_policy.policy import SourcePolicy, SourceRecord, SourceMove
+from scripts.quality.coverage.source_policy.policy import (
+    SourcePolicy,
+    SourceRecord,
+    SourceMove,
+)
 
 
 def snapshot():

@@ -67,7 +67,7 @@
     "coverage.llvm_reporting": "tooling",
     "coverage.measurement": "tooling",
     "coverage.package": "tooling",
-    "coverage.policy_data": "test",
+    "coverage.policy_data": "tooling",
     "coverage.python_runner": "tooling",
     "coverage.source_policy": "tooling",
     "documentation.github": "documentation",
@@ -442,8 +442,8 @@
     "test.persistence.repository_storage_test": "test",
     "test.platform.qt_path_adapter_test": "test",
     "test.scripts.test_affected_selection": "test",
-    "test.scripts.test_coverage_gate": "test",
-    "test.scripts.test_coverage_inventory": "test",
+    "test.scripts.test_coverage_gate": "tooling",
+    "test.scripts.test_coverage_inventory": "tooling",
     "test.utils.units_test": "test",
     "testing.atomic_output": "test",
     "testing.catalog": "tooling",
@@ -466,7 +466,6 @@
     "testing.track_view": "test",
     "testing.wav": "test",
     "testing.widget_diagnostics": "test",
-    "tool.coverage": "tooling",
     "tool.coverage_gate": "tooling",
     "tool.coverage_report": "tooling",
     "tool.format_cmake": "tooling",
@@ -475,7 +474,8 @@
     "tool.install_hooks": "tooling",
     "tool.test_affected": "tooling",
     "tooling.package": "tooling",
-    "scripts.testing": "tooling"
+    "scripts.testing": "tooling",
+    "scripts.quality": "tooling"
   },
   "allowed": {
     "foundation": [],

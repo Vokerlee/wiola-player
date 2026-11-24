@@ -46,7 +46,7 @@ add_subdirectory(src)
 
 if(ENABLE_COVERAGE)
     include(coverage_inventory)
-    add_subdirectory(tools/coverage)
+    add_subdirectory(scripts/quality/coverage)
 endif()
 
 if(WIOLA_BUILD_TESTS)

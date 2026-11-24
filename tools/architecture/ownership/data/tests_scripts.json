@@ -12,14 +12,14 @@
       "id": "test.scripts.test_coverage_gate",
       "purpose": "Verifies the current test coverage gate contract.",
       "files": [
-        "tests/scripts/test_coverage_gate.py"
+        "scripts/quality/coverage/workflow/tests/test_gate.py"
       ]
     },
     {
       "id": "test.scripts.test_coverage_inventory",
       "purpose": "Verifies the current test coverage inventory contract.",
       "files": [
-        "tests/scripts/test_coverage_inventory.py"
+        "scripts/quality/coverage/workflow/tests/test_inventory.py"
       ]
     }
   ]
