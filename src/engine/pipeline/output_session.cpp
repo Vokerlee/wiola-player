@@ -20,8 +20,8 @@
 
 #include <engine/pipeline/output_session.hpp>
 
-#include <wiola/audio/relay.hpp>
-#include <wiola/audio/shaped_source.hpp>
+#include <buffering/relay.hpp>
+#include <buffering/shaped_source.hpp>
 
 #include <exception>
 #include <new>
@@ -53,16 +53,14 @@ std::unique_ptr<audio::Output> construct_output(audio::Source& source,
 
 struct OutputSession::Stream {
     Stream(pcm::StreamSpec stream_spec, audio::Stage& processing, const OutputFactory& make_output)
-        : spec{stream_spec}
-        , relay{stream_spec}
+        : relay{stream_spec}
         , shaped{relay, processing}
         , output{construct_output(shaped, make_output)}
     {
     }
 
-    pcm::StreamSpec spec;
-    audio::Relay relay;
-    audio::ShapedSource shaped;
+    Relay relay;
+    ShapedSource shaped;
     std::unique_ptr<audio::Output> output;
     const Lease* attached{nullptr};
 };
@@ -109,7 +107,7 @@ void OutputSession::activate(Lease& lease, audio::Source& source) noexcept
 
 bool OutputSession::open_for(pcm::StreamSpec spec) const noexcept
 {
-    return stream_ && stream_->spec == spec;
+    return stream_ && stream_->relay.spec() == spec;
 }
 
 } // namespace wiola::engine

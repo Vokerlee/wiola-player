@@ -22,6 +22,7 @@ target_sources(
                 public/wiola/audio/source.hpp
                 public/wiola/audio/output.hpp
                 public/wiola/audio/output_connection.hpp
+                public/wiola/audio/stage.hpp
 )
 target_link_libraries(
     wiola_audio_output
@@ -38,8 +39,6 @@ add_library(
     private/processing/equalizer_publication.cpp
     private/processing/output_sanitizer.cpp
     private/processing/processing_chain.cpp
-    private/processing/relay.cpp
-    private/processing/shaped_source.cpp
     private/processing/volume.cpp
 )
 add_library(wiola::audio_dsp ALIAS wiola_audio_dsp)
@@ -58,13 +57,10 @@ target_sources(
         FILE_SET HEADERS
             BASE_DIRS "${audio_public}"
             FILES
-                public/wiola/audio/stage.hpp
                 public/wiola/audio/equalizer.hpp
                 public/wiola/audio/equalizer_config.hpp
                 public/wiola/audio/output_sanitizer.hpp
                 public/wiola/audio/processing_chain.hpp
-                public/wiola/audio/relay.hpp
-                public/wiola/audio/shaped_source.hpp
                 public/wiola/audio/volume.hpp
                 public/wiola/audio/volume_policy.hpp
 )

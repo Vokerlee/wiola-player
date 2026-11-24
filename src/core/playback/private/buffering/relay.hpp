@@ -27,7 +27,7 @@
 #include <cstddef>
 #include <span>
 
-namespace wiola::audio {
+namespace wiola::engine {
 
 /**
  * A source that plays whatever it has been pointed at, so that a device can outlive a track.
@@ -41,7 +41,7 @@ namespace wiola::audio {
  * what makes that true: stopping waits for the callback to return, so a track let go after that
  * is a track nothing is reading.
  */
-class Relay final : public Source {
+class Relay final : public audio::Source {
 public:
     explicit Relay(pcm::StreamSpec spec) noexcept;
 
@@ -53,7 +53,7 @@ public:
     ~Relay() override = default;
 
     /// Plays `source` from here on, which must be of the spec this was built for.
-    void point_at(Source& source) noexcept;
+    void point_at(audio::Source& source) noexcept;
 
     /// Plays nothing from here on.
     void point_at_nothing() noexcept;
@@ -70,7 +70,7 @@ public:
 
 private:
     const pcm::StreamSpec spec_;
-    std::atomic<Source*> source_{nullptr};
+    std::atomic<audio::Source*> source_{nullptr};
 };
 
-} // namespace wiola::audio
+} // namespace wiola::engine

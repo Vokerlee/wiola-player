@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/relay.hpp>
+#include <buffering/relay.hpp>
 
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -35,8 +35,8 @@
 namespace {
 
 using namespace wiola::units::literals;
-using wiola::audio::Relay;
 using wiola::audio::Source;
+using wiola::engine::Relay;
 using wiola::pcm::StreamSpec;
 
 constexpr StreamSpec stereo{.sample_rate = 48_kHz, .num_channels = 2};

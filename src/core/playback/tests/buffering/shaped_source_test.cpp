@@ -20,8 +20,8 @@
 
 #include <wiola/audio/processing_chain.hpp>
 
+#include <buffering/shaped_source.hpp>
 #include <fixtures/shaping.hpp>
-#include <wiola/audio/shaped_source.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -37,8 +37,8 @@ namespace {
 
 using wiola::audio::ProcessingChain;
 using namespace wiola::units;
-using wiola::audio::ShapedSource;
 using wiola::audio::Source;
+using wiola::engine::ShapedSource;
 using wiola::pcm::StreamSpec;
 
 constexpr StreamSpec stereo{.sample_rate = 48_kHz, .num_channels = 2};

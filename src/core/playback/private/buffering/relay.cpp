@@ -18,16 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/relay.hpp>
+#include <buffering/relay.hpp>
 
-namespace wiola::audio {
+namespace wiola::engine {
 
 Relay::Relay(pcm::StreamSpec spec) noexcept
     : spec_{spec}
 {
 }
 
-void Relay::point_at(Source& source) noexcept
+void Relay::point_at(audio::Source& source) noexcept
 {
     source_.store(&source, std::memory_order_release);
 }
@@ -44,7 +44,7 @@ bool Relay::pointed() const noexcept
 
 std::size_t Relay::render(std::span<float> interleaved) noexcept
 {
-    Source* source{source_.load(std::memory_order_acquire)};
+    audio::Source* source{source_.load(std::memory_order_acquire)};
 
     return source != nullptr ? source->render(interleaved) : 0;
 }
@@ -54,4 +54,4 @@ pcm::StreamSpec Relay::spec() const noexcept
     return spec_;
 }
 
-} // namespace wiola::audio
+} // namespace wiola::engine
