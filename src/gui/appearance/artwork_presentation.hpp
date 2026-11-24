@@ -25,7 +25,7 @@
 #include <functional>
 #include <library/identity.hpp>
 #include <map>
-#include <media/artwork_reference.hpp>
+#include <wiola/media/artwork_reference.hpp>
 
 namespace wiola::gui {
 

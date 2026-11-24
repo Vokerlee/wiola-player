@@ -1369,7 +1369,7 @@
     "owner": "source.codec.decode.decoder",
     "role": "domain",
     "sources": [
-      "src/media/audio_decoder/tests/decoder_contract_test.cpp"
+      "src/core/media/tests/decoder_contract_test.cpp"
     ],
     "qt": "none",
     "coupling": ""
@@ -1379,7 +1379,7 @@
     "owner": "source.codec.decode.decoder",
     "role": "domain",
     "sources": [
-      "src/media/audio_decoder/tests/decoder_port_test.cpp"
+      "src/core/media/tests/decoder_port_test.cpp"
     ],
     "qt": "none",
     "coupling": ""
@@ -1399,7 +1399,7 @@
     "owner": "test.media.metadata_writer_test",
     "role": "domain",
     "sources": [
-      "tests/media/metadata_writer_test.cpp"
+      "src/core/media/tests/metadata_writer_test.cpp"
     ],
     "qt": "none",
     "coupling": ""
@@ -1409,7 +1409,7 @@
     "owner": "test.media.track_metadata_test",
     "role": "domain",
     "sources": [
-      "tests/media/track_metadata_test.cpp"
+      "src/core/media/tests/track_metadata_test.cpp"
     ],
     "qt": "none",
     "coupling": ""
@@ -1429,7 +1429,7 @@
     "owner": "test.pcm.stream_spec_test",
     "role": "domain",
     "sources": [
-      "tests/pcm/stream_spec_test.cpp"
+      "src/core/media/tests/stream_spec_test.cpp"
     ],
     "qt": "none",
     "coupling": ""

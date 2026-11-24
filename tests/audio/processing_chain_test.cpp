@@ -23,7 +23,7 @@
 #include <audio/dsp/stage.hpp>
 #include <fakes/tone.hpp>
 #include <fixtures/shaping.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>

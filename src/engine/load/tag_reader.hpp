@@ -22,7 +22,7 @@
 
 #include <core/macros.hpp>
 #include <engine/queue/track.hpp>
-#include <media/provider.hpp>
+#include <wiola/media/provider.hpp>
 
 #include <condition_variable>
 #include <cstdint>

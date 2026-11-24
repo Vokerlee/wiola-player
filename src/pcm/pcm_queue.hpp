@@ -21,7 +21,7 @@
 #pragma once
 
 #include <lockfree/spsc_ring_buffer.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 
 #include <algorithm>
 #include <cassert>

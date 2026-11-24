@@ -19,8 +19,8 @@
  */
 
 #include <fixtures/temporary_directory.hpp>
-#include <media/byte_stream.hpp>
 #include <media/local_file_stream.hpp>
+#include <wiola/media/byte_stream.hpp>
 
 #include <gtest/gtest.h>
 

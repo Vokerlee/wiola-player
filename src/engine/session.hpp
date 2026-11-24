@@ -36,7 +36,7 @@
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
+#include <wiola/media/audio_decoder.hpp>
 #include <wiola/units.hpp>
 
 #include <deque>

@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <core/macros.hpp>
-#include <media/operation_context.hpp>
-#include <media/result.hpp>
+#include <wiola/media/operation_context.hpp>
+#include <wiola/media/result.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -38,8 +37,10 @@ enum class SeekOrigin {
 
 class ByteStream {
 public:
-    NO_COPY_SEMANTIC(ByteStream);
-    NO_MOVE_SEMANTIC(ByteStream);
+    ByteStream(const ByteStream&) = delete;
+    ByteStream& operator=(const ByteStream&) = delete;
+    ByteStream(ByteStream&&) = delete;
+    ByteStream& operator=(ByteStream&&) = delete;
 
     virtual ~ByteStream() = default;
 

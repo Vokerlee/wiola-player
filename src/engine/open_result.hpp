@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <media/error.hpp>
+#include <wiola/media/error.hpp>
 
 namespace wiola::engine {
 

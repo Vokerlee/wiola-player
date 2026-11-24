@@ -29,9 +29,9 @@
 #include <audio/dsp/relay.hpp>
 #include <audio/dsp/shaped_source.hpp>
 #include <codec/provider.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/stream_spec.hpp>
 
 #include <memory>
 #include <optional>

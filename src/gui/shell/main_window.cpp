@@ -54,7 +54,7 @@
 #include <desktop/workspace/workspace_watcher.hpp>
 #include <engine/session.hpp>
 #include <library/in_memory_repository.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
+#include <wiola/media/audio_decoder.hpp>
 #include <wiola/units.hpp>
 
 #include "document_command_router.hpp"

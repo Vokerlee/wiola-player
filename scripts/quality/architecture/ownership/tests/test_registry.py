@@ -30,7 +30,9 @@ class OwnershipRegistryTest(unittest.TestCase):
                 ),
                 document(
                     declaration(
-                        "media.provider", ["src/media/provider.hpp"], "Identifies media"
+                        "media.provider",
+                        ["src/core/media/public/wiola/media/provider.hpp"],
+                        "Identifies media",
                     )
                 ),
             ]
@@ -41,7 +43,7 @@ class OwnershipRegistryTest(unittest.TestCase):
         self.assertTrue(
             registry.compare(
                 [
-                    "src/media/provider.hpp",
+                    "src/core/media/public/wiola/media/provider.hpp",
                     "src/engine/session.hpp",
                     "src/engine/session.cpp",
                 ]

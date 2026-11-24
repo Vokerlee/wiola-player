@@ -22,7 +22,7 @@
 
 #include "input.hpp"
 
-#include <media/media.hpp>
+#include <wiola/media/metadata.hpp>
 
 #include <cstddef>
 #include <memory>

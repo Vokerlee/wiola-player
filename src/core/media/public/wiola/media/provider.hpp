@@ -20,10 +20,9 @@
 
 #pragma once
 
-#include <core/macros.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
-#include <media/media.hpp>
-#include <media/operation_context.hpp>
+#include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/metadata.hpp>
+#include <wiola/media/operation_context.hpp>
 
 #include <filesystem>
 #include <memory>
@@ -34,8 +33,10 @@ namespace wiola::media {
 
 class MediaAsset {
 public:
-    NO_COPY_SEMANTIC(MediaAsset);
-    NO_MOVE_SEMANTIC(MediaAsset);
+    MediaAsset(const MediaAsset&) = delete;
+    MediaAsset& operator=(const MediaAsset&) = delete;
+    MediaAsset(MediaAsset&&) = delete;
+    MediaAsset& operator=(MediaAsset&&) = delete;
 
     virtual ~MediaAsset() = default;
 
@@ -66,8 +67,10 @@ protected:
 
 class MediaProvider {
 public:
-    NO_COPY_SEMANTIC(MediaProvider);
-    NO_MOVE_SEMANTIC(MediaProvider);
+    MediaProvider(const MediaProvider&) = delete;
+    MediaProvider& operator=(const MediaProvider&) = delete;
+    MediaProvider(MediaProvider&&) = delete;
+    MediaProvider& operator=(MediaProvider&&) = delete;
 
     virtual ~MediaProvider() = default;
 

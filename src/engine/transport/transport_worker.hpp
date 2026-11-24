@@ -28,10 +28,10 @@
 #include <core/macros.hpp>
 #include <engine/transport/transport_config.hpp>
 #include <functional>
-#include <media/audio_decoder/audio_decoder.hpp>
 #include <memory>
 #include <pcm/pcm_queue.hpp>
 #include <thread>
+#include <wiola/media/audio_decoder.hpp>
 
 namespace wiola::engine {
 

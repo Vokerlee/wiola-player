@@ -21,7 +21,7 @@
 #pragma once
 
 #include <codec/decode/registry.hpp>
-#include <media/provider.hpp>
+#include <wiola/media/provider.hpp>
 
 namespace wiola::codec {
 

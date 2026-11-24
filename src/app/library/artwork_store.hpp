@@ -22,7 +22,7 @@
 #include <library/identity.hpp>
 #include <list>
 #include <map>
-#include <media/artwork_reference.hpp>
+#include <wiola/media/artwork_reference.hpp>
 
 namespace wiola::app {
 

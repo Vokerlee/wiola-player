@@ -19,7 +19,7 @@
  */
 
 #include <engine/transport/playhead.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 
 #include <gtest/gtest.h>
 

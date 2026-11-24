@@ -1,8 +1,8 @@
 #pragma once
 #include <atomic>
 #include <condition_variable>
-#include <media/provider.hpp>
 #include <mutex>
+#include <wiola/media/provider.hpp>
 
 namespace wiola::testing {
 

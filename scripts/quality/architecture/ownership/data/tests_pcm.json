@@ -19,7 +19,7 @@
       "id": "test.pcm.stream_spec_test",
       "purpose": "Verifies the current stream spec contract.",
       "files": [
-        "tests/pcm/stream_spec_test.cpp"
+        "src/core/media/tests/stream_spec_test.cpp"
       ]
     }
   ]

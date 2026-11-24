@@ -4,7 +4,7 @@ Pulse-code modulation, or PCM, represents a waveform as a sequence of numeric am
 measurements. This guide starts with that theory and then shows exactly how Wiola stores mono,
 stereo, and 5.1-side audio in memory.
 
-The two central types are [`StreamSpec`](stream_spec.hpp), which describes the stream, and
+The two central types are [`StreamSpec`](../core/media/public/wiola/media/stream_spec.hpp), which describes the stream, and
 [`PcmQueue`](pcm_queue.hpp), which moves complete frames from the decoder thread to the audio
 callback.
 
@@ -50,7 +50,7 @@ frame count  = sample count / num_channels
 duration     = frame count / sample rate
 ```
 
-Wiola reinforces this distinction with the [`Frames`](stream_spec.hpp) type. Plain `std::size_t`
+Wiola reinforces this distinction with the [`Frames`](../core/media/public/wiola/media/stream_spec.hpp) type. Plain `std::size_t`
 values and spans count individual samples; `Frames` counts complete channel groups. Arithmetic that
 could overflow or start with an invalid stream has checked conversion functions in `StreamSpec`.
 
@@ -209,7 +209,7 @@ This explains why frame alignment is an invariant rather than an optimization. A
 stereo swaps left and right. A one-float shift in 5.1-side changes every subsequent speaker mapping.
 Even if the number of floats remains valid, the audio no longer has the intended meaning.
 
-[`StreamSpec`](stream_spec.hpp) records all three pieces of information needed to interpret the
+[`StreamSpec`](../core/media/public/wiola/media/stream_spec.hpp) records all three pieces of information needed to interpret the
 buffer:
 
 - `sample_rate`: frames per second;
@@ -277,11 +277,11 @@ codec frames
 
 ## 10. Where to verify the behavior
 
-Start with the contracts in [`stream_spec.hpp`](stream_spec.hpp) and
+Start with the contracts in [`stream_spec.hpp`](../core/media/public/wiola/media/stream_spec.hpp) and
 [`pcm_queue.hpp`](pcm_queue.hpp). Their tests exercise unit conversion, overflow checks, complete
 frame alignment, short reads and writes, and channel-aware capacity rounding:
 
-- [`stream_spec_test.cpp`](../../tests/pcm/stream_spec_test.cpp)
+- [`stream_spec_test.cpp`](../../src/core/media/tests/stream_spec_test.cpp)
 - [`pcm_queue_test.cpp`](../../tests/pcm/pcm_queue_test.cpp)
 
 For the ends of the path, continue with

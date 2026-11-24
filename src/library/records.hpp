@@ -21,7 +21,7 @@
 #pragma once
 
 #include <library/identity.hpp>
-#include <media/media.hpp>
+#include <wiola/media/metadata.hpp>
 
 #include <cstdint>
 #include <filesystem>

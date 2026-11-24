@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <media/byte_stream.hpp>
+#include <wiola/media/byte_stream.hpp>
 
 #include <filesystem>
 #include <fstream>

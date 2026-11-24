@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <media/result.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/result.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <cstddef>

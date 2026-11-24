@@ -25,7 +25,7 @@
 #include <audio/dsp/relay.hpp>
 #include <audio/dsp/shaped_source.hpp>
 #include <core/macros.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 
 #include <functional>
 #include <memory>

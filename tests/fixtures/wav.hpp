@@ -21,7 +21,7 @@
 #pragma once
 
 #include <codec/decode/registry.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
+#include <wiola/media/audio_decoder.hpp>
 
 #include <atomic>
 #include <cmath>

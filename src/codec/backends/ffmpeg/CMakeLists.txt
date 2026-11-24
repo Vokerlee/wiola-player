@@ -8,6 +8,6 @@ wiola_add_library(
         packet_decoder.cpp
         pcm_converter.cpp
         qualification.cpp
-    LIBS wiola_media wiola_ffmpeg
+    LIBS wiola_local_file_stream wiola_ffmpeg
 )
-target_link_libraries(wiola_codec_ffmpeg PUBLIC wiola::audio_decoder)
+target_link_libraries(wiola_codec_ffmpeg PUBLIC wiola::media)

@@ -22,8 +22,8 @@
 
 #include "conversion_api.hpp"
 
-#include <media/audio_decoder/audio_decoder.hpp>
-#include <media/media.hpp>
+#include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/metadata.hpp>
 
 #include <cstddef>
 #include <cstdint>
