@@ -17,6 +17,31 @@ from ._fixtures import MeasurementFixture
 
 
 class ComponentScopeTest(MeasurementFixture):
+    def test_colocated_test_members_never_enter_production_totals(self):
+        test = SourceRecord("src/primitive/tests/test.cpp", "tests", "cpp", "test")
+        policy = SourcePolicy([*self.policy.records.values(), test], [])
+        contract = AbstractionContract(
+            "primitive",
+            "src/primitive",
+            "Primitive",
+            ("Portable",),
+            test_parts=("tests",),
+        )
+        raw = self.raw(total=1, covered=1)
+        expected = CoverageMeasurement(policy, self.root, owners=["primitive"]).cpp(
+            raw, self.inventory
+        )
+        raw["data"][0]["files"] += self.raw(test.path, total=500, covered=500)["data"][
+            0
+        ]["files"]
+        actual = CoverageMeasurement(policy, self.root, owners=contract.owner_ids).cpp(
+            raw, self.inventory
+        )
+        self.assertEqual(actual["totals"], expected["totals"])
+        self.assertEqual(actual["owners"], expected["owners"])
+        self.assertNotIn(test.path, actual["files"])
+        self.assertEqual(actual["scope"]["owners"], ["primitive", "tests"])
+
     def test_owner_selection_excludes_unrelated_configured_sources_and_keeps_part_gaps(
         self,
     ):

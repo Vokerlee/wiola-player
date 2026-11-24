@@ -39,6 +39,41 @@ def contract(**changes):
 
 
 class ContractCatalogTest(unittest.TestCase):
+    def test_explicit_test_members_are_colocated_without_becoming_public(self):
+        part = {
+            "id": "component.tests",
+            "purpose": "Qualifies the component",
+            "files": ["src/component/tests/test.cpp"],
+        }
+        owners = registry(extra=[part])
+        declaration = contract(test_parts=("component.tests",))
+        self.assertEqual(declaration.owner_ids, ("component", "component.tests"))
+        self.assertTrue(ContractCatalog([declaration], {}).audit(owners).accepted)
+        exposed = contract(
+            test_parts=("component.tests",),
+            public_files=("src/component/tests/test.cpp",),
+        )
+        self.assertTrue(
+            any(
+                "Public file" in issue.detail
+                for issue in ContractCatalog([exposed], {}).audit(owners).issues
+            )
+        )
+
+    def test_test_members_cannot_hide_runtime_or_external_files(self):
+        for path in ("src/component/runtime.cpp", "elsewhere/test.cpp"):
+            with self.subTest(path=path):
+                part = {"id": "component.tests", "purpose": "Tests", "files": [path]}
+                audit = ContractCatalog(
+                    [contract(test_parts=("component.tests",))], {}
+                ).audit(registry(extra=[part]))
+                self.assertTrue(
+                    any(
+                        "Test member outside tests" in issue.detail
+                        for issue in audit.issues
+                    )
+                )
+
     def test_explicit_parts_form_one_component_without_extra_folders_or_readmes(self):
         part = {
             "id": "component.values",
@@ -116,12 +151,23 @@ class ContractCatalogTest(unittest.TestCase):
             ContractCatalog([contract(parts=("part",))], {"part": "0" * 64})
         with self.assertRaises(ValueError):
             contract(parts="part")
+        for change in (
+            {"test_parts": "part"},
+            {"test_parts": ("component",)},
+            {"parts": ("part",), "test_parts": ("part",)},
+            {"test_parts": ("part",), "grouping": True},
+        ):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                ContractCatalog([contract(**change)], {})
 
     def test_component_parts_do_not_borrow_mutable_declaration_input(self):
         parts = ["part"]
-        declaration = contract(parts=parts)
+        tests = ["test.part"]
+        declaration = contract(parts=parts, test_parts=tests)
         parts.append("unreviewed")
+        tests.append("unreviewed.test")
         self.assertEqual(declaration.parts, ("part",))
+        self.assertEqual(declaration.test_parts, ("test.part",))
 
     def test_complete_abstraction_and_owned_public_api_are_accepted(self):
         audit = ContractCatalog([contract()], {}).audit(registry())

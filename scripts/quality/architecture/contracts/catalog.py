@@ -23,18 +23,21 @@ class AbstractionContract:
     public_files: tuple[str, ...] = ()
     grouping: bool = False
     parts: tuple[str, ...] = ()
+    test_parts: tuple[str, ...] = ()
 
     def __post_init__(self):
-        if isinstance(self.parts, str):
-            raise ContractError(
-                "Component parts must be a collection of inventory identities"
-            )
-        object.__setattr__(self, "parts", tuple(self.parts))
+        for name in ("parts", "test_parts"):
+            value = getattr(self, name)
+            if isinstance(value, str):
+                raise ContractError(
+                    "Component parts must be a collection of inventory identities"
+                )
+            object.__setattr__(self, name, tuple(value))
 
     @property
     def owner_ids(self) -> tuple[str, ...]:
         """Stable inventory parts forming this one reviewed component."""
-        return (self.owner, *self.parts)
+        return (self.owner, *self.parts, *self.test_parts)
 
 
 @dataclass(frozen=True)
@@ -100,7 +103,7 @@ class ContractCatalog:
                 identity in self._by_owner for identity in identities
             ):
                 raise ContractError(f"Duplicate abstraction contract: {contract.owner}")
-            if contract.grouping and contract.parts:
+            if contract.grouping and (contract.parts or contract.test_parts):
                 raise ContractError(
                     "A grouping describes children, not implementation parts"
                 )
@@ -154,11 +157,21 @@ class ContractCatalog:
             identity = contract.owner
             root = PurePosixPath(contract.root)
             component_files = set()
+            implementation_files = set()
             for part in contract.owner_ids:
                 if part not in owners:
                     continue
                 for path in owners[part].files:
                     component_files.add(path)
+                    if part in contract.test_parts:
+                        if not PurePosixPath(path).is_relative_to(root / "tests"):
+                            issues.append(
+                                ContractIssue(
+                                    part, f"Test member outside tests: {path}"
+                                )
+                            )
+                    else:
+                        implementation_files.add(path)
                     if not PurePosixPath(path).is_relative_to(root):
                         issues.append(
                             ContractIssue(part, f"Implementation outside owner: {path}")
@@ -171,7 +184,7 @@ class ContractCatalog:
                     )
                 )
             for path in contract.public_files:
-                if path not in component_files:
+                if path not in implementation_files:
                     issues.append(
                         ContractIssue(identity, f"Public file is not owned: {path}")
                     )

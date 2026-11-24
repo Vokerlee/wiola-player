@@ -9,6 +9,70 @@ from scripts.quality.architecture.dependency_policy.policy import (
 
 
 class DependencyPolicyTest(unittest.TestCase):
+    def test_colocated_tests_keep_their_module_and_only_internal_private_access(self):
+        policy = DependencyPolicy(
+            {"core": "engine", "tests": "test", "app": "application"},
+            {"engine": [], "test": ["engine"], "application": ["engine"]},
+            [],
+            [
+                AbstractionContract(
+                    "core",
+                    "core",
+                    "Core",
+                    ("Portable",),
+                    ("core/api.hpp",),
+                    test_parts=("tests",),
+                )
+            ],
+        )
+        self.assertEqual(
+            policy.inspect(
+                [
+                    DependencyEdge(
+                        "core/tests/test.cpp", "core/private.hpp", "tests", "core"
+                    )
+                ]
+            ),
+            (),
+        )
+        for edge, detail in (
+            (
+                DependencyEdge(
+                    "core/core.cpp", "core/tests/helper.hpp", "core", "tests"
+                ),
+                "Forbidden module direction",
+            ),
+            (
+                DependencyEdge("app/app.cpp", "core/tests/helper.hpp", "app", "tests"),
+                "Forbidden module direction",
+            ),
+            (
+                DependencyEdge("app/app.cpp", "core/private.hpp", "app", "core"),
+                "private file",
+            ),
+        ):
+            with self.subTest(edge=edge):
+                self.assertTrue(
+                    any(detail in item.detail for item in policy.inspect([edge]))
+                )
+
+    def test_test_members_cannot_borrow_runtime_or_unknown_module_capabilities(self):
+        for module in ("engine", "application", None):
+            owners = {"core": "engine"}
+            if module is not None:
+                owners["tests"] = module
+            with self.subTest(module=module), self.assertRaises(ValueError):
+                DependencyPolicy(
+                    owners,
+                    {"engine": [], "application": [], "test": ["engine"]},
+                    [],
+                    [
+                        AbstractionContract(
+                            "core", "core", "Core", ("Portable",), test_parts=("tests",)
+                        )
+                    ],
+                )
+
     def component_policy(self):
         return DependencyPolicy(
             {"engine": "engine", "values": "engine", "app": "application"},

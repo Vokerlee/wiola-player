@@ -33,13 +33,18 @@ class DependencyPolicy:
         self._qt_modules = frozenset(qt_modules)
         self._contracts = {}
         for contract in ContractCatalog(contracts, {}).contracts:
-            if contract.parts and (
+            runtime_parts = (contract.owner, *contract.parts)
+            if (contract.parts or contract.test_parts) and (
                 any(identity not in self._owners for identity in contract.owner_ids)
-                or len({self._owners[identity] for identity in contract.owner_ids}) != 1
+                or len({self._owners[identity] for identity in runtime_parts}) != 1
             ):
                 raise ValueError(
                     "Component parts must share one declared module capability"
                 )
+            if any(
+                self._owners[identity] != "test" for identity in contract.test_parts
+            ):
+                raise ValueError("Component test members must retain the test module")
             self._contracts.update(
                 (identity, contract) for identity in contract.owner_ids
             )
