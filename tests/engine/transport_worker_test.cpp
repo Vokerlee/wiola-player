@@ -25,9 +25,11 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <thread>
 
@@ -39,6 +41,139 @@ using wiola::testing::FakeDecoder;
 using wiola::testing::FakeOutput;
 using wiola::testing::Gate;
 using State = wiola::engine::PlaybackState;
+
+// Fail once at a controlled worker phase; all observations below happen after joining it.
+class ThrowingDecoder final : public wiola::media::AudioDecoder {
+public:
+    enum class Phase {
+        priming,
+        decoding,
+        seeking,
+    };
+
+    ThrowingDecoder(Phase phase, const FakeOutput& output, Gate* reading = nullptr)
+        : AudioDecoder{{}, Frames{4096}}
+        , phase_{phase}
+        , output_{output}
+        , reading_{reading}
+    {
+    }
+
+    [[nodiscard]] bool failed() const noexcept { return failed_; }
+
+private:
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
+        Frames frames) override
+    {
+        if (output_.running() && !held_) {
+            held_ = true;
+            if (reading_)
+                reading_->wait();
+        }
+        if (!failed_ &&
+            (phase_ == Phase::priming || (phase_ == Phase::decoding && output_.running())))
+            fail();
+        std::fill(output.begin(), output.end(), 0.0F);
+        return wiola::media::DecodeOutcome{.frames = frames};
+    }
+
+    wiola::media::Result<wiola::media::SeekOutcome> seek_frame(Frames target) override
+    {
+        if (!failed_ && phase_ == Phase::seeking)
+            fail();
+        return wiola::media::SeekOutcome{.target = target, .achieved = target};
+    }
+
+    [[noreturn]] void fail()
+    {
+        failed_ = true;
+        throw std::runtime_error{"decoder failed"};
+    }
+
+    Phase phase_;
+    const FakeOutput& output_;
+    Gate* reading_;
+    bool held_{false};
+    bool failed_{false};
+};
+
+TEST(TransportWorker, PrimingExceptionFaultsWithoutStartingOutput)
+{
+    FakeOutput output;
+    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::priming, output)};
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    TransportWorker worker{std::move(source), buffer.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 0);
+    EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWorker, DecodeExceptionStopsOutputAndAllowsAnotherStart)
+{
+    FakeOutput output;
+    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::decoding, output)};
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    TransportWorker worker{std::move(source), buffer.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(output.num_stops(), 1);
+    EXPECT_FALSE(output.running());
+
+    EXPECT_TRUE(worker.start());
+    worker.stop();
+    worker.wait();
+    EXPECT_EQ(worker.state(), State::stopped);
+    EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWorker, AcceptedStopWinsOverALaterDecoderException)
+{
+    FakeOutput output;
+    Gate reading;
+    auto source{
+        std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::decoding, output, &reading)};
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    TransportWorker worker{std::move(source), buffer.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    reading.wait_until_entered();
+    worker.stop();
+    reading.release();
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::stopped);
+    EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWorker, SeekExceptionAfterOutputStartedLeavesItStopped)
+{
+    FakeOutput output;
+    Gate reading;
+    auto source{
+        std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::seeking, output, &reading)};
+    const auto* decoder{source.get()};
+    wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
+    TransportWorker worker{std::move(source), buffer.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    reading.wait_until_entered();
+    worker.seek(Frames{8});
+    reading.release();
+    worker.wait();
+
+    EXPECT_TRUE(decoder->failed());
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_FALSE(output.running());
+}
 
 TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
 {
