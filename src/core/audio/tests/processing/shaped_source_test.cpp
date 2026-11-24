@@ -71,6 +71,34 @@ private:
     std::size_t num_samples_;
 };
 
+/// A downstream implementation, with no ProcessingChain or built-in equalizer dependency.
+class SuppliedStage final : public wiola::audio::Stage {
+public:
+    std::unique_ptr<Preparation> prepare(StreamSpec) noexcept override { return nullptr; }
+
+    void process(std::span<float> samples) noexcept override
+    {
+        ++calls;
+        for (auto& sample : samples)
+            sample *= 0.5F;
+    }
+
+    std::size_t calls{0};
+};
+
+TEST(ShapedSource, AppliesAnIndependentlySuppliedStageOnlyToRenderedSamples)
+{
+    FixedSource inner{stereo, 0.5F, 2};
+    SuppliedStage processing;
+    ShapedSource source{inner, processing};
+    std::array block{1.0F, 1.0F, 1.0F, 1.0F};
+
+    EXPECT_EQ(source.render(block), 2U);
+    EXPECT_EQ(block, (std::array{0.25F, 0.25F, 1.0F, 1.0F}));
+    EXPECT_EQ(processing.calls, 1U);
+    EXPECT_EQ(source.spec(), stereo);
+}
+
 TEST(ShapedSource, ReportsTheSpecOfWhatItWraps)
 {
     FixedSource inner{mono, 1.0F, 8};

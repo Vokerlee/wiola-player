@@ -52,11 +52,10 @@ std::unique_ptr<audio::Output> construct_output(audio::Source& source,
 } // namespace
 
 struct OutputSession::Stream {
-    Stream(pcm::StreamSpec stream_spec, audio::ProcessingChain& chain,
-        const OutputFactory& make_output)
+    Stream(pcm::StreamSpec stream_spec, audio::Stage& processing, const OutputFactory& make_output)
         : spec{stream_spec}
         , relay{stream_spec}
-        , shaped{relay, chain}
+        , shaped{relay, processing}
         , output{construct_output(shaped, make_output)}
     {
     }
@@ -68,8 +67,8 @@ struct OutputSession::Stream {
     const Lease* attached{nullptr};
 };
 
-OutputSession::OutputSession(audio::ProcessingChain& chain, OutputFactory make_output) noexcept
-    : chain_{chain}
+OutputSession::OutputSession(audio::Stage& processing, OutputFactory make_output) noexcept
+    : processing_{processing}
     , make_output_{std::move(make_output)}
 {
 }
@@ -96,7 +95,8 @@ audio::Output& OutputSession::Lease::output() const noexcept
 
 std::unique_ptr<OutputSession::Lease> OutputSession::prepare(pcm::StreamSpec spec)
 {
-    auto stream{open_for(spec) ? stream_ : std::make_shared<Stream>(spec, chain_, make_output_)};
+    auto stream{
+        open_for(spec) ? stream_ : std::make_shared<Stream>(spec, processing_, make_output_)};
     return std::unique_ptr<Lease>{new Lease{std::move(stream)}};
 }
 

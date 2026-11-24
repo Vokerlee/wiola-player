@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Another source with the chain applied.
+ * @brief A source rendered through a supplied processing stage.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -24,9 +24,9 @@
 
 namespace wiola::audio {
 
-ShapedSource::ShapedSource(Source& source, ProcessingChain& chain) noexcept
+ShapedSource::ShapedSource(Source& source, Stage& processing) noexcept
     : source_{source}
-    , chain_{chain}
+    , processing_{processing}
 {
 }
 
@@ -34,7 +34,7 @@ std::size_t ShapedSource::render(std::span<float> interleaved) noexcept
 {
     const std::size_t num_rendered{std::min(source_.render(interleaved), interleaved.size())};
 
-    chain_.process(interleaved.first(num_rendered));
+    processing_.process(interleaved.first(num_rendered));
 
     return num_rendered;
 }
