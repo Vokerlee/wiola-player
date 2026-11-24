@@ -157,9 +157,10 @@ TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
     })};
 
     ASSERT_NE(outcome, outcomes.values.end());
-    ASSERT_FALSE(outcome->result);
-    EXPECT_EQ(outcome->result.error().category, wiola::media::ErrorCategory::unsupported);
-    EXPECT_EQ(outcome->result.error().detail, "missing codec");
+    ASSERT_TRUE(outcome->error);
+    EXPECT_EQ(std::get<wiola::media::Error>(*outcome->error).category,
+        wiola::media::ErrorCategory::unsupported);
+    EXPECT_EQ(std::get<wiola::media::Error>(*outcome->error).detail, "missing codec");
     EXPECT_TRUE(service.take_outcomes().values.empty());
 }
 
@@ -202,7 +203,7 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
         ++open_outcomes;
         EXPECT_EQ(outcome.id, current.id);
         EXPECT_NE(outcome.id, old.id);
-        EXPECT_TRUE(outcome.result);
+        EXPECT_FALSE(outcome.error);
     }
 
     EXPECT_EQ(open_outcomes, 1U);
@@ -243,9 +244,10 @@ TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
     })};
 
     ASSERT_NE(metadata, outcomes.values.end());
-    ASSERT_FALSE(metadata->result);
-    EXPECT_EQ(metadata->result.error().category, wiola::media::ErrorCategory::damaged);
-    EXPECT_EQ(metadata->result.error().detail, "bad tags");
+    ASSERT_TRUE(metadata->error);
+    EXPECT_EQ(std::get<wiola::media::Error>(*metadata->error).category,
+        wiola::media::ErrorCategory::damaged);
+    EXPECT_EQ(std::get<wiola::media::Error>(*metadata->error).detail, "bad tags");
     EXPECT_TRUE(service.loaded());
     EXPECT_EQ(service.open_result(), wiola::engine::OpenResult::opened);
 }

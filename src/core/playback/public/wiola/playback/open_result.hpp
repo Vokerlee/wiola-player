@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <wiola/media/error.hpp>
+#include <wiola/playback/error.hpp>
 
 namespace wiola::engine {
 
@@ -30,6 +30,7 @@ enum class OpenResult {
     unreadable,
     unsupported,
     damaged,
+    output_unavailable,
 };
 
 [[nodiscard]] constexpr OpenResult open_failed(media::ErrorCategory category) noexcept
@@ -42,6 +43,13 @@ enum class OpenResult {
     default:
         return OpenResult::unreadable;
     }
+}
+
+[[nodiscard]] inline OpenResult open_failed(const OperationError& error) noexcept
+{
+    if (const auto* media_error{std::get_if<media::Error>(&error)})
+        return open_failed(media_error->category);
+    return OpenResult::output_unavailable;
 }
 
 } // namespace wiola::engine

@@ -175,7 +175,8 @@ public:
 private:
     /// Starts an identified load with the requested transport intent.
     OpenResult begin_reading(const Track& track, LoadIntent intent);
-    void record_outcome(OperationKind operation, OperationId id, media::Result<void> result);
+    void record_outcome(OperationKind operation, OperationId id,
+        std::optional<OperationError> error = std::nullopt);
 
     /// Puts on whatever has finished being read, and plays it if that is what it was read for.
     void take_up_finished_read();

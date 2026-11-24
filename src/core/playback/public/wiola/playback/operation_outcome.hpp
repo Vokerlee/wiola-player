@@ -20,9 +20,10 @@
 
 #pragma once
 
-#include <wiola/media/result.hpp>
+#include <wiola/playback/error.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace wiola::engine {
@@ -49,7 +50,8 @@ struct OperationReceipt {
 struct OperationOutcome {
     OperationId id{0};
     OperationKind operation{OperationKind::open};
-    media::Result<void> result;
+    /// Absent on success; an owned media or output-setup failure otherwise.
+    std::optional<OperationError> error;
 };
 
 struct OperationOutcomes {
