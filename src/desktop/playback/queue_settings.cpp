@@ -30,9 +30,9 @@ namespace wiola::app {
 
 namespace {
 
-engine::Playlist::Repeat repeat_of(int stored) noexcept
+engine::RepeatMode repeat_of(int stored) noexcept
 {
-    using Repeat = engine::Playlist::Repeat;
+    using Repeat = engine::RepeatMode;
 
     switch (stored) {
     case static_cast<int>(Repeat::track):

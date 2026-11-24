@@ -20,6 +20,7 @@
 
 #include <gui/documents/now_playing_document.hpp>
 #include <gui/tracks/track_table_view.hpp>
+#include <queue/playlist.hpp>
 
 #include <QAction>
 #include <QApplication>

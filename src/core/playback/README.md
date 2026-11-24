@@ -4,7 +4,7 @@ This component owns portable playback values, buffering, decoder loading, queue 
 
 ```mermaid
 flowchart LR
-    Presentation[Application or presentation] --> API[Public playback values]
+    Presentation[Application or presentation] --> API[Public playback values / QueueView]
     Session[Session and pipeline] --> API
     Session --> Transport[Private transport protocol]
     Transport --> API
@@ -14,7 +14,7 @@ flowchart LR
     API --> Media[Portable media results and quantities]
 ```
 
-Link `wiola::playback_api` for `<wiola/playback/...>`. It exposes playback state, open status, asynchronous outcomes, snapshots and queue occurrence IDs together. It imports no transport class, atomics, output driver or application implementation. Installed consumers use `find_package(wiola_playback CONFIG REQUIRED)`.
+Link `wiola::playback_api` for `<wiola/playback/...>`. It exposes playback state, open status, asynchronous outcomes, snapshots, repeat mode and read-only queue observations together. It imports no transport class, atomics, output driver or application implementation. Installed consumers use `find_package(wiola_playback CONFIG REQUIRED)`.
 
 `PlaybackState` describes transport intent/terminal outcome rather than an output device's observation. A snapshot owns its resource path and optional duration; unknown duration is distinct from known zero. Structural, metadata and selection revisions remain separate. Snapshots do not retain a worker or borrow Session state.
 
@@ -33,3 +33,5 @@ Receipts distinguish acceptance from completion. Correlate outcomes by operation
 Configure the currently owned closure with `-DWIOLA_COMPONENTS=playback`, without Qt/FFmpeg/miniaudio. [Contract tests](tests/README.md) also verify the relocated installed API independently of buffering and the current legacy engine.
 
 `QueueEntry` is a public owned observation of one queue occurrence, with identity/location, one canonical media metadata value, immutable artwork and revision. Private Playlist owns input-path conversion, fallback titles and occurrence identity assignment. Value copies retain their own facts. This header exports only the owned observation; ordering and storage remain private.
+
+`QueueView` is a live read-only port on the owning control thread. Callers reacquire borrowed entry spans/pointers after any mutation attempt, or copy an entry to retain its facts. It exposes occurrence lookup, current position and the structural/metadata revisions needed by presentation. RepeatMode is independent of private ordering/storage and retains existing persisted ordinals. Application and frontend signatures name these public contracts; only Session owns the concrete Playlist.

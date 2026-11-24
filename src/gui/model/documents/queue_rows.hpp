@@ -24,10 +24,10 @@
 #include <library/library_changes.hpp>
 #include <library/repository.hpp>
 #include <map>
-#include <queue/playlist.hpp>
 #include <span>
 #include <unordered_map>
 #include <wiola/playback/queue_entry.hpp>
+#include <wiola/playback/queue_view.hpp>
 
 namespace wiola::gui {
 
@@ -51,9 +51,9 @@ public:
 
     void invalidate() { structure_.reset(); }
 
-    [[nodiscard]] QueueRowChanges reconcile(const engine::Playlist& playlist,
+    [[nodiscard]] QueueRowChanges reconcile(const engine::QueueView& playlist,
         const library::LibraryRepository* repository);
-    [[nodiscard]] QueueRowChanges apply_library(const engine::Playlist& playlist,
+    [[nodiscard]] QueueRowChanges apply_library(const engine::QueueView& playlist,
         const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch);
 
     [[nodiscard]] const std::vector<TrackRow>& rows() const { return rows_; }
@@ -64,9 +64,9 @@ private:
     [[nodiscard]] TrackRow present(const engine::QueueEntry& track,
         const library::LibraryRepository* repository) const;
     void replace(std::size_t position, TrackRow row);
-    [[nodiscard]] std::vector<TrackRow> update_library(const engine::Playlist& playlist,
+    [[nodiscard]] std::vector<TrackRow> update_library(const engine::QueueView& playlist,
         const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch);
-    const engine::Playlist* playlist_{};
+    const engine::QueueView* playlist_{};
     std::optional<std::size_t> structure_, metadata_;
     std::optional<engine::QueueEntryId> current_;
     std::vector<TrackRow> rows_;

@@ -25,6 +25,7 @@
 #include <wiola/audio/equalizer_config.hpp>
 #include <wiola/audio/volume_policy.hpp>
 #include <wiola/playback/operation_outcome.hpp>
+#include <wiola/playback/queue_view.hpp>
 
 #include <memory>
 
@@ -89,11 +90,11 @@ public:
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
     [[nodiscard]] bool seekable() const noexcept;
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
-    [[nodiscard]] const engine::Playlist& playlist() const noexcept;
+    [[nodiscard]] const engine::QueueView& playlist() const noexcept;
     [[nodiscard]] const std::filesystem::path& track() const noexcept;
 
-    void set_repeat(engine::Playlist::Repeat repeat) noexcept;
-    [[nodiscard]] engine::Playlist::Repeat repeat() const noexcept;
+    void set_repeat(engine::RepeatMode repeat) noexcept;
+    [[nodiscard]] engine::RepeatMode repeat() const noexcept;
     void shuffle(bool on);
     [[nodiscard]] bool shuffled() const noexcept;
 

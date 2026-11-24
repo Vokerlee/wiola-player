@@ -1,12 +1,12 @@
 wiola_add_test(
     gui_track_sort_test
     SOURCES tracks/track_sort_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui wiola_playback_queue
 )
 wiola_add_test(
     gui_track_sorter_test
     SOURCES tracks/track_sorter_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui wiola_playback_queue
 )
 wiola_add_test(
     gui_track_search_panel_test
@@ -21,17 +21,17 @@ wiola_add_test(
 wiola_add_test(
     gui_track_table_model_test
     SOURCES tracks/track_table_model_test.cpp
-    LIBS wiola_gui Qt6::Test
+    LIBS wiola_gui wiola_playback_queue Qt6::Test
 )
 wiola_add_test(
     gui_track_table_view_test
     SOURCES tracks/track_table_view_test.cpp
-    LIBS wiola_gui Qt6::Test
+    LIBS wiola_gui wiola_playback_queue Qt6::Test
 )
 wiola_add_test(
     gui_now_playing_document_test
     SOURCES documents/now_playing_document_test.cpp
-    LIBS wiola_gui Qt6::Test
+    LIBS wiola_gui wiola_playback_queue Qt6::Test
 )
 wiola_add_test(
     gui_library_navigation_test
@@ -56,7 +56,7 @@ wiola_add_test(
 wiola_add_test(
     gui_track_inspector_test
     SOURCES metadata/track_inspector_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui wiola_playback_queue
 )
 wiola_add_test(
     gui_saved_playlist_manager_test
@@ -145,7 +145,7 @@ wiola_add_test(
 wiola_add_test(
     gui_track_row_test
     SOURCES tracks/track_row_test.cpp
-    LIBS wiola_gui
+    LIBS wiola_gui wiola_playback_queue
 )
 
 wiola_add_test(

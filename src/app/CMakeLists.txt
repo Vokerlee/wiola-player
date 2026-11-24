@@ -25,9 +25,5 @@ wiola_add_library(
 )
 target_link_libraries(
     wiola_app
-    PUBLIC
-        wiola::playback_api
-        wiola_engine_session
-        wiola_playback_queue
-        wiola::audio_dsp
+    PUBLIC wiola::playback_api wiola_engine_session wiola::audio_dsp
 )

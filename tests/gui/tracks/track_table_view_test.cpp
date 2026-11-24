@@ -38,9 +38,9 @@
 
 namespace {
 
-wiola::engine::QueueEntryId id_at(const wiola::engine::Playlist& playlist, std::size_t row)
+wiola::engine::QueueEntryId id_at(const wiola::engine::QueueView& playlist, std::size_t row)
 {
-    return playlist.tracks().at(row).id();
+    return playlist.tracks()[row].id();
 }
 
 QAction* action(QWidget& widget, const QString& text)
@@ -164,7 +164,8 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
     view.selectionModel()->setCurrentIndex(view.model()->index(2, 0),
         QItemSelectionModel::NoUpdate);
 
-    std::vector<wiola::engine::QueueEntry> reordered{playlist.tracks()};
+    std::vector<wiola::engine::QueueEntry> reordered{playlist.tracks().begin(),
+        playlist.tracks().end()};
     std::ranges::reverse(reordered);
     view.show_rows(wiola::gui::queue_rows(reordered));
 

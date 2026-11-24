@@ -19,3 +19,5 @@ flowchart LR
 [Loading tests](loading/README.md) independently qualify request identity, cooperative cancellation, decoder lifetime, external callbacks outside locks and late completion rejection.
 
 The public QueueEntry contract and installed consumer check owned path/metadata observations and immutable shared artwork without importing private queue storage. Queue rollback tests enumerate allocations until success instead of encoding implementation allocation counts.
+
+The installed consumer supplies its own QueueView implementation from public headers. Queue owner tests exercise live mutation through that read port; frontend projection cases replace backing storage and switch owners with equal revision numbers, checking retained facts and occurrence selection without depending on private ordering.

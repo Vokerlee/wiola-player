@@ -256,7 +256,7 @@ void PlaybackService::seek_to(double fraction) noexcept
 
 void PlaybackService::cycle_repeat() noexcept
 {
-    using Repeat = engine::Playlist::Repeat;
+    using Repeat = engine::RepeatMode;
     switch (repeat()) {
     case Repeat::none:
         set_repeat(Repeat::all);
@@ -338,7 +338,7 @@ std::vector<std::string> PlaybackService::playback_extensions() const
     return impl_->session.playback_extensions();
 }
 
-const engine::Playlist& PlaybackService::playlist() const noexcept
+const engine::QueueView& PlaybackService::playlist() const noexcept
 {
     return impl_->session.playlist();
 }
@@ -348,14 +348,14 @@ const std::filesystem::path& PlaybackService::track() const noexcept
     return impl_->session.track();
 }
 
-void PlaybackService::set_repeat(engine::Playlist::Repeat repeat) noexcept
+void PlaybackService::set_repeat(engine::RepeatMode repeat) noexcept
 {
     if (!impl_->accepting)
         return;
     impl_->session.set_repeat(repeat);
 }
 
-engine::Playlist::Repeat PlaybackService::repeat() const noexcept
+engine::RepeatMode PlaybackService::repeat() const noexcept
 {
     return impl_->session.repeat();
 }

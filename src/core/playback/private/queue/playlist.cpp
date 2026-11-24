@@ -127,17 +127,12 @@ void Playlist::clear() noexcept
     order_.clear();
 }
 
-bool Playlist::empty() const noexcept
-{
-    return tracks_.empty();
-}
-
 std::size_t Playlist::revision() const noexcept
 {
     return revision_;
 }
 
-const std::vector<QueueEntry>& Playlist::tracks() const noexcept
+std::span<const QueueEntry> Playlist::tracks() const noexcept
 {
     return tracks_;
 }
@@ -234,12 +229,12 @@ bool Playlist::previous() noexcept
     return changed;
 }
 
-void Playlist::set_repeat(Repeat repeat) noexcept
+void Playlist::set_repeat(RepeatMode repeat) noexcept
 {
     order_.set_repeat(repeat);
 }
 
-Playlist::Repeat Playlist::repeat() const noexcept
+RepeatMode Playlist::repeat() const noexcept
 {
     return order_.repeat();
 }

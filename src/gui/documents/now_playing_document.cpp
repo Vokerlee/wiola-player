@@ -82,7 +82,7 @@ void NowPlayingDocument::present_changes(const QueueRowChanges& changes)
     }
 }
 
-bool NowPlayingDocument::show_playlist(const engine::Playlist& playlist)
+bool NowPlayingDocument::show_playlist(const engine::QueueView& playlist)
 {
     const auto changes = source_.reconcile(playlist, library_);
     present_changes(changes);
@@ -96,7 +96,7 @@ void NowPlayingDocument::show_library(const library::LibraryRepository& reposito
     browser_->bind_library(repository);
 }
 
-bool NowPlayingDocument::show_library_changes(const engine::Playlist& playlist,
+bool NowPlayingDocument::show_library_changes(const engine::QueueView& playlist,
     const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch)
 {
     library_ = &repository;
@@ -106,7 +106,7 @@ bool NowPlayingDocument::show_library_changes(const engine::Playlist& playlist,
 }
 
 std::vector<std::filesystem::path>
-NowPlayingDocument::displayed_paths(const engine::Playlist& playlist) const
+NowPlayingDocument::displayed_paths(const engine::QueueView& playlist) const
 {
     std::vector<std::filesystem::path> paths;
 

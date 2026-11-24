@@ -21,7 +21,7 @@
 #pragma once
 #include "action_descriptor.hpp"
 
-#include <queue/playlist.hpp>
+#include <wiola/playback/repeat_mode.hpp>
 
 #include <QAction>
 #include <QIcon>
@@ -47,7 +47,7 @@ public:
     void set_available(PlayerAction id, bool available);
     void reload_icons(const QWidget& styled);
     void set_playing(bool playing);
-    void set_repeat(engine::Playlist::Repeat repeat);
+    void set_repeat(engine::RepeatMode repeat);
     void set_shuffled(bool shuffled);
 
 private:

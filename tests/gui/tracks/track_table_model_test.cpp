@@ -54,9 +54,9 @@ protected:
     QWidget styled;
 };
 
-wiola::engine::QueueEntryId id_at(const wiola::engine::Playlist& playlist, std::size_t row)
+wiola::engine::QueueEntryId id_at(const wiola::engine::QueueView& playlist, std::size_t row)
 {
-    return playlist.tracks().at(row).id();
+    return playlist.tracks()[row].id();
 }
 
 std::shared_ptr<wiola::media::Artwork> sample_artwork(Qt::GlobalColor color)
@@ -182,7 +182,7 @@ TEST_F(TrackTableModelTest, FollowsTheCurrentIdentityAcrossReordering)
     wiola::engine::Playlist first;
     first.set({"first.wav", "second.wav"});
 
-    std::vector<wiola::engine::QueueEntry> original{first.tracks()};
+    std::vector<wiola::engine::QueueEntry> original{first.tracks().begin(), first.tracks().end()};
     std::vector<wiola::engine::QueueEntry> reordered{original};
     reordered[0] = original[1];
     reordered[1] = original[0];

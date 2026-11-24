@@ -103,7 +103,7 @@ bool PlaybackOrder::next() noexcept
     if (!place_)
         return false;
 
-    if (repeat_ == Repeat::track)
+    if (repeat_ == RepeatMode::track)
         return true;
 
     if (*place_ + 1 < order_.size()) {
@@ -111,7 +111,7 @@ bool PlaybackOrder::next() noexcept
         return true;
     }
 
-    if (repeat_ != Repeat::all)
+    if (repeat_ != RepeatMode::all)
         return false;
 
     place_ = 0;
@@ -123,7 +123,7 @@ bool PlaybackOrder::previous() noexcept
     if (!place_)
         return false;
 
-    if (repeat_ == Repeat::track)
+    if (repeat_ == RepeatMode::track)
         return true;
 
     if (*place_ > 0) {
@@ -131,7 +131,7 @@ bool PlaybackOrder::previous() noexcept
         return true;
     }
 
-    if (repeat_ != Repeat::all)
+    if (repeat_ != RepeatMode::all)
         return false;
 
     place_ = order_.size() - 1;

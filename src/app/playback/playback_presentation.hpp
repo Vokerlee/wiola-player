@@ -19,7 +19,7 @@
  */
 
 #pragma once
-#include <queue/playlist.hpp>
+#include <wiola/playback/repeat_mode.hpp>
 #include <wiola/playback/snapshot.hpp>
 
 namespace wiola::app {
@@ -28,7 +28,7 @@ class PlaybackService;
 
 struct PlayerPresentation {
     engine::PlaybackSnapshot playback;
-    engine::Playlist::Repeat repeat{engine::Playlist::Repeat::none};
+    engine::RepeatMode repeat{engine::RepeatMode::none};
     bool shuffled{false};
 };
 

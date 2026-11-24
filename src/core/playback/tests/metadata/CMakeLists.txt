@@ -14,3 +14,9 @@ foreach(suite IN ITEMS tag_reader metadata_coordinator)
     endif()
     gtest_discover_tests(engine_${suite}_test)
 endforeach()
+
+# Policy tests supply actual queue occurrences; the worker/policy library owns no queue storage.
+target_link_libraries(
+    engine_metadata_coordinator_test
+    PRIVATE wiola_playback_queue
+)
