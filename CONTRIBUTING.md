@@ -8,8 +8,8 @@
 | Compiler | GCC 13 or Clang 17 | `g++`, C++23 |
 | Qt | 6, Widgets | `qt6-base-dev` |
 
-Qt is the only dependency that has to be installed, and no build works without it. dr_libs,
-miniaudio, CLI11 and GoogleTest are fetched during configure, pinned in `cmake/dependencies.cmake`.
+The ordinary GUI build needs an installed Qt. Portable component builds below do not.
+FFmpeg configuration lives in cmake/ffmpeg.cmake; miniaudio and test-only GoogleTest are fetched at the versions pinned in cmake/dependencies.cmake.
 
 ### Linux
 
@@ -27,6 +27,17 @@ times slower than the deadline allows.
 
 `-DENABLE_UNIT_TESTS=OFF` skips the tests and GoogleTest with them. In-source builds are refused,
 so configure from the repository root as above.
+
+### Portable components
+
+Configure only an existing foundation/media component when working without player SDKs:
+
+```bash
+cmake -S . -B build-components -DWIOLA_COMPONENTS=audio_decoder -DBUILD_TESTING=OFF
+cmake --build build-components
+```
+
+Supported selections are borrowed_reference, quantities and audio_decoder; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, only quantities/decoder need the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [Build context](scripts/build/context/README.md) describes scope; the decoder public install boundary is still being extracted.
 
 ### Windows
 

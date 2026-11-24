@@ -113,6 +113,34 @@
       "workflow": false
     },
     {
+      "path": "scripts/build/context/__init__.py",
+      "owner": "scripts.build.context",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/context/select.cmake",
+      "owner": "scripts.build.context",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/context/tests/__init__.py",
+      "owner": "scripts.build.context",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/build/context/tests/test_context.py",
+      "owner": "scripts.build.context",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "scripts/build/packages/__init__.py",
       "owner": "build_environment.ubuntu_packages",
       "language": "python",

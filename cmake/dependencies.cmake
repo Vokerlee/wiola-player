@@ -3,29 +3,30 @@
 
 include(FetchContent)
 
-include(ffmpeg)
-
 # Dependency option() calls must honor the scoped normal variables set below.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-if(WIOLA_BUILD_GUI)
-    find_package(Qt6 REQUIRED COMPONENTS Widgets)
+if(NOT WIOLA_COMPONENT_BUILD)
+    include(ffmpeg)
+    if(WIOLA_BUILD_GUI)
+        find_package(Qt6 REQUIRED COMPONENTS Widgets)
+    endif()
+
+    set(MINIAUDIO_NO_LIBVORBIS ON)
+    set(MINIAUDIO_NO_LIBOPUS ON)
+
+    FetchContent_Declare(
+        miniaudio
+        GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+        GIT_TAG 0.11.25
+        GIT_SHALLOW TRUE
+    )
+
+    FetchContent_MakeAvailable(miniaudio)
 endif()
 
-set(MINIAUDIO_NO_LIBVORBIS ON)
-set(MINIAUDIO_NO_LIBOPUS ON)
-
-FetchContent_Declare(
-    miniaudio
-    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
-    GIT_TAG 0.11.25
-    GIT_SHALLOW TRUE
-)
-
-FetchContent_MakeAvailable(miniaudio)
-
 # Nothing but the tests needs this, and a build without them should not go to the network for it.
-if(WIOLA_BUILD_TESTS)
+if(WIOLA_BUILD_TESTS AND WIOLA_NEEDS_GTEST)
     if(WIOLA_BUILD_GUI)
         find_package(Qt6 REQUIRED COMPONENTS Test)
     endif()

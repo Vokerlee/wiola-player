@@ -471,7 +471,8 @@
     "tool.install_hooks": "tooling",
     "tool.test_affected": "tooling",
     "scripts.testing": "tooling",
-    "scripts.quality": "tooling"
+    "scripts.quality": "tooling",
+    "scripts.build.context": "tooling"
   },
   "allowed": {
     "foundation": [],

@@ -4,6 +4,16 @@ from scripts.quality.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "scripts.build.context",
+        "scripts/build/context",
+        "Owns explicit portable component selection and dependency closure",
+        (
+            "SDK selection never depends on host OS or source folder spelling",
+            "Unselected mechanisms are not prepared",
+        ),
+        ("scripts/build/context/select.cmake",),
+    ),
+    AbstractionContract(
         "source.utils.units",
         "src/foundation/quantities",
         "Owns portable time and frequency quantities and their public export",
