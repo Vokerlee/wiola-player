@@ -18,6 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if __has_include(<wiola/audio/equalizer.hpp>)
+#error "The output-only installation must not contain processing headers"
+#endif
+
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/output_connection.hpp>
 #include <wiola/audio/source.hpp>

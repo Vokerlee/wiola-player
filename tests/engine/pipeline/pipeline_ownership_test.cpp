@@ -18,11 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/processing_chain.hpp>
 #include <engine/pipeline/output_session.hpp>
 #include <engine/pipeline/playback_pipeline.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <wiola/audio/processing_chain.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 

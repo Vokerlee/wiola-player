@@ -20,9 +20,6 @@
 
 #pragma once
 
-#include <audio/dsp/equalizer.hpp>
-#include <audio/dsp/processing_chain.hpp>
-#include <audio/dsp/volume.hpp>
 #include <core/macros.hpp>
 #include <engine/buffering_config.hpp>
 #include <engine/load/load_coordinator.hpp>
@@ -33,6 +30,9 @@
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
+#include <wiola/audio/equalizer.hpp>
+#include <wiola/audio/processing_chain.hpp>
+#include <wiola/audio/volume.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>

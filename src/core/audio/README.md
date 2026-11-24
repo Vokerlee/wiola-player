@@ -1,21 +1,25 @@
-# Audio contracts
+# Portable audio
 
-This component owns the PCM pull interface, exclusive output control and the connection that quiesces callbacks before source teardown. `Source`, `Output` and `OutputConnection` form one protocol. Their small definitions are header-only; the public target adds no device, decoder or GUI implementation.
+This component owns render/output contracts and portable processing. Public headers, complete implementations and focused tests live together. Device construction belongs to the miniaudio driver; the PCM queue/render bridge belongs to playback. No Qt, codec SDK or device backend is required to configure or test this component.
 
 ```mermaid
 flowchart LR
-    Transport[Playback owner] --> Connection[OutputConnection]
-    Connection --> Control[Exclusive Output control]
-    Driver[Output implementation] --> Output[Output port]
-    Control --> Output
-    Driver --> Source[Source pull port]
-    Processing[Portable processing sources] --> Source
+    Driver[Output driver] --> Output[Source / Output / OutputConnection]
+    Processing[ProcessingChain and stages] --> Output
+    Equalizer[Equalizer facade] --> Private[Private parameter banks / processor / biquads]
+    Processing --> Equalizer
+    Playback[Playback render bridge] --> Output
+    Output --> Media[Media and ownership contracts]
 ```
 
-Link `wiola::audio_output` and include `<wiola/audio/source.hpp>`, `<wiola/audio/output.hpp>` or `<wiola/audio/output_connection.hpp>`. Only `public/` is exported. The target depends on the media and borrowed-reference APIs; it has no checkout-wide include path. Configure only this closure with `-DWIOLA_COMPONENTS=audio`, or consume its installed target with `find_package(wiola_audio CONFIG REQUIRED)`.
+`wiola::audio_output` is header-only. Include `<wiola/audio/source.hpp>`, `<wiola/audio/output.hpp>` or `<wiola/audio/output_connection.hpp>`. An output-only installation contains no processing archive or processing headers. Installed consumers use `find_package(wiola_audio CONFIG REQUIRED COMPONENTS output)`.
 
-`Source::render` is a bounded, nonthrowing real-time call: no allocation, locking, I/O or destruction of owned resources may occur there. Its stream format stays fixed for its lifetime. The sample count is bounded by the supplied span. Blocking decoding belongs to the separate media decoder contract.
+`wiola::audio_dsp` supplies stages, processing chain, equalizer, volume, output sanitizer, relay and source shaping. Its public configuration uses media/quantity values. Include the corresponding `<wiola/audio/...>` header and use `find_package(wiola_audio CONFIG REQUIRED COMPONENTS dsp)`. The separate target keeps output drivers independent of processing implementation.
 
-Claim and release output control on the setup/owner thread. Moving control clears its previous holder; another claim while one is held is inert. The output outlives its control. Releasing a bare control only returns the claim; `OutputConnection` also stops the output and waits for active callbacks. Declare it after the source ownership so reverse destruction quiesces callbacks before releasing the source.
+`Stage::process` and `Source::render` are bounded nonthrowing real-time operations: no allocation, locking, I/O or destruction of owned resources. Stream reconfiguration and storage preparation happen with output stopped. A chain borrows its fixed stages, and a relay borrows its selected source; callers retain those objects until callbacks are quiescent. Gain controls follow their documented control-thread/publication rules.
 
-The complete protocol and [tests](tests/README.md) live here. Device construction remains in the miniaudio adapter; processing and transport consume the same public contract without linking that adapter.
+Claim and release output control on the setup thread. Moves leave the prior holder inert; another claim while one is held is inert. Bare control destruction only returns the claim. `OutputConnection` additionally stops the output and waits for callbacks; declare it after source ownership so reverse destruction quiesces readers before releasing storage.
+
+`Equalizer` hides its parameter publication/filter-history implementation behind one owned implementation allocated during construction. Its configuration references remain valid for the equalizer's lifetime. Processing and gain updates add no allocation; destruction/reconfiguration stay outside callbacks. The [private processing guide](private/processing/README.md) describes thread ownership.
+
+Configure with `-DWIOLA_COMPONENTS=audio`. CMake header file sets define the actual output/processing install surfaces; only supported public headers are installed. [Tests](tests/README.md) run directly through CTest and ordinary relocated C++ consumers, without manifests or custom runners.

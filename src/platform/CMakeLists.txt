@@ -9,4 +9,4 @@ wiola_add_library(
     SOURCES qt/player_settings.cpp
     LIBS wiola_qt_platform
 )
-target_link_libraries(wiola_qt_settings PUBLIC Qt6::Core)
+target_link_libraries(wiola_qt_settings PUBLIC Qt6::Core wiola::audio_dsp)

@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Another source with the chain applied.
+ * @brief Final finite full-scale output policy.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,30 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/shaped_source.hpp>
+#include <wiola/audio/output_sanitizer.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 namespace wiola::audio {
 
-ShapedSource::ShapedSource(Source& source, ProcessingChain& chain) noexcept
-    : source_{source}
-    , chain_{chain}
+void OutputSanitizer::configure(pcm::StreamSpec /*spec*/) noexcept { }
+
+void OutputSanitizer::process(std::span<float> samples) noexcept
 {
-}
-
-std::size_t ShapedSource::render(std::span<float> interleaved) noexcept
-{
-    const std::size_t num_rendered{std::min(source_.render(interleaved), interleaved.size())};
-
-    chain_.process(interleaved.first(num_rendered));
-
-    return num_rendered;
-}
-
-pcm::StreamSpec ShapedSource::spec() const noexcept
-{
-    return source_.spec();
+    for (float& sample : samples)
+        sample = std::isfinite(sample) ? std::clamp(sample, -1.0F, 1.0F) : 0.0F;
 }
 
 } // namespace wiola::audio

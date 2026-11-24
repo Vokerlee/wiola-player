@@ -20,14 +20,13 @@
 
 #pragma once
 
-#include <audio/dsp/equalizer_parameters.hpp>
-#include <audio/dsp/equalizer_processor.hpp>
-#include <audio/dsp/stage.hpp>
-#include <core/macros.hpp>
+#include <wiola/audio/equalizer_config.hpp>
+#include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <span>
 
 namespace wiola::audio {
@@ -38,34 +37,38 @@ public:
     explicit Equalizer(pcm::StreamSpec spec, BandLayout layout = {});
     Equalizer(pcm::StreamSpec spec, EqualizerConfig config);
 
-    NO_COPY_SEMANTIC(Equalizer);
-    NO_MOVE_SEMANTIC(Equalizer);
+    Equalizer(const Equalizer&) = delete;
+    Equalizer& operator=(const Equalizer&) = delete;
+    Equalizer(Equalizer&&) = delete;
+    Equalizer& operator=(Equalizer&&) = delete;
+
+    ~Equalizer() override;
 
     /// The output must be stopped while configuring for another stream.
     void configure(pcm::StreamSpec spec) override;
 
-    [[nodiscard]] const EqualizerConfig& config() const noexcept { return parameters_.config(); }
+    [[nodiscard]] const EqualizerConfig& config() const noexcept;
 
-    [[nodiscard]] const BandLayout& layout() const noexcept { return parameters_.layout(); }
+    [[nodiscard]] const BandLayout& layout() const noexcept;
 
-    [[nodiscard]] std::size_t num_bands() const noexcept { return parameters_.num_bands(); }
+    [[nodiscard]] std::size_t num_bands() const noexcept;
 
     [[nodiscard]] units::Frequency band_center(std::size_t index) const noexcept;
 
     void set_band_gain(std::size_t index, float db) noexcept;
     [[nodiscard]] float band_gain(std::size_t index) const noexcept;
 
-    [[nodiscard]] float preamp() const noexcept { return parameters_.preamp(); }
+    [[nodiscard]] float preamp() const noexcept;
 
     void set_enabled(bool enabled) noexcept;
 
-    [[nodiscard]] bool enabled() const noexcept { return parameters_.enabled(); }
+    [[nodiscard]] bool enabled() const noexcept;
 
     void process(std::span<float> samples) noexcept override;
 
 private:
-    EqualizerParameters parameters_;
-    EqualizerProcessor processor_;
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace wiola::audio

@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/volume.hpp>
+#include <wiola/audio/volume.hpp>
 
-#include <audio/dsp/volume_policy.hpp>
+#include <wiola/audio/volume_policy.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
@@ -64,6 +64,14 @@ TEST(Volume, RejectsAnInvalidBoostPolicy)
 }
 
 } // namespace
+
+TEST(Volume, RejectsABoostPolicyBelowUnity)
+{
+    wiola::audio::VolumePolicy policy;
+    policy.max_boost = 0.5F;
+
+    EXPECT_THROW(Volume{policy}, std::invalid_argument);
+}
 
 TEST(Volume, StartsAtFullVolume)
 {

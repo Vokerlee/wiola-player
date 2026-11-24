@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/dsp/equalizer.hpp>
+#include <wiola/audio/equalizer.hpp>
 
 #include <fakes/tone.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -117,11 +117,12 @@ TEST(EqualizerConfig, RejectsInvalidLayouts)
 
 TEST(EqualizerConfig, RejectsUnsafeProcessingBounds)
 {
-    std::array<EqualizerConfig, 4> configs{};
+    std::array<EqualizerConfig, 5> configs{};
     configs[0].highest_band_share = 0.0;
     configs[1].highest_band_share = 0.5;
     configs[2].max_band_gain_db = std::numeric_limits<float>::quiet_NaN();
     configs[3].max_band_gain_db = 0.0F;
+    configs[4].highest_band_share = std::numeric_limits<double>::quiet_NaN();
 
     for (const EqualizerConfig& config : configs) {
         EXPECT_FALSE(config.valid());
@@ -401,4 +402,31 @@ TEST(Equalizer, PublishesCoherentBanksDuringRapidUpdates)
     writer.join();
 
     EXPECT_TRUE(finite);
+}
+
+TEST(Equalizer, RetainsItsAuthoredPolicyAcrossStreamReconfiguration)
+{
+    EqualizerConfig config;
+    config.max_band_gain_db = 6.0F;
+    Equalizer equalizer{stereo, config};
+    config.max_band_gain_db = 3.0F;
+    equalizer.configure({.sample_rate = Frequency{24000.0}, .num_channels = 1});
+
+    EXPECT_FLOAT_EQ(equalizer.config().max_band_gain_db, 6.0F);
+    equalizer.set_band_gain(0, 12.0F);
+    EXPECT_FLOAT_EQ(equalizer.band_gain(0), 6.0F);
+}
+
+TEST(Equalizer, IgnoresAnOutOfRangeBandWithoutChangingAcceptedGains)
+{
+    Equalizer equalizer{stereo};
+    equalizer.set_band_gain(0, 3.0F);
+    const float preamp = equalizer.preamp();
+    const auto outside = equalizer.layout().count;
+
+    equalizer.set_band_gain(outside, 12.0F);
+
+    EXPECT_FLOAT_EQ(equalizer.band_gain(outside), 0.0F);
+    EXPECT_FLOAT_EQ(equalizer.band_gain(0), 3.0F);
+    EXPECT_FLOAT_EQ(equalizer.preamp(), preamp);
 }

@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <audio/dsp/biquad.hpp>
-#include <audio/dsp/equalizer_config.hpp>
-#include <core/macros.hpp>
+#include <processing/biquad.hpp>
+#include <wiola/audio/equalizer_config.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <array>
@@ -38,8 +37,10 @@ class EqualizerProcessor {
 public:
     explicit EqualizerProcessor(EqualizerParameters& parameters) noexcept;
 
-    NO_COPY_SEMANTIC(EqualizerProcessor);
-    NO_MOVE_SEMANTIC(EqualizerProcessor);
+    EqualizerProcessor(const EqualizerProcessor&) = delete;
+    EqualizerProcessor& operator=(const EqualizerProcessor&) = delete;
+    EqualizerProcessor(EqualizerProcessor&&) = delete;
+    EqualizerProcessor& operator=(EqualizerProcessor&&) = delete;
 
     /// Preallocates history for `spec`. The output must be stopped while configuring.
     void configure(pcm::StreamSpec spec);
