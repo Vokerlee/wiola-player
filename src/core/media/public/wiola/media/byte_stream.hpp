@@ -48,7 +48,8 @@ public:
     /// succeeds without backend work after context admission. Reported bytes never exceed out.
     [[nodiscard]] Result<std::size_t> read(std::span<std::byte> out,
         const OperationContext& context = {});
-    /// A failed seek preserves the cursor; unsupported movement is a typed backend failure.
+    /// Rejected movement preserves the cursor; irrecoverable I/O reports unreadable rather
+    /// than claiming a preserved cursor. Unsupported movement remains a typed backend failure.
     [[nodiscard]] Result<void> seek(std::int64_t offset, SeekOrigin origin,
         const OperationContext& context = {});
     /// Unknown or unsupported position is a failure, distinct from a successful zero cursor.

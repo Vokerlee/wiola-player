@@ -26,6 +26,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -89,6 +90,44 @@ TEST_F(LocalFileStreamTest, ShortReadsAndRepeatedEofRemainSuccessful)
     const auto repeated{stream->read(output)};
     ASSERT_TRUE(repeated);
     EXPECT_EQ(*repeated, 4U);
+}
+
+TEST_F(LocalFileStreamTest, FailedSeeksPreserveTheCursorAndTheNextRead)
+{
+    const std::array<std::pair<SeekOrigin, std::int64_t>, 3> movements{
+        {{SeekOrigin::start, -1}, {SeekOrigin::current, -3}, {SeekOrigin::end, -5}}
+    };
+    for (const auto& [origin, offset] : movements) {
+        SCOPED_TRACE(offset);
+        ASSERT_TRUE(stream->seek(2, SeekOrigin::start));
+        const auto rejected{stream->seek(offset, origin)};
+        ASSERT_FALSE(rejected);
+        EXPECT_EQ(rejected.error().category, ErrorCategory::seek_failed);
+
+        // Each movement targets byte -1. Read immediately: tell or another seek would clear
+        // the old failure flag and conceal a poisoned stream.
+        std::array<std::byte, 2> output{};
+        const auto read{stream->read(output)};
+        ASSERT_TRUE(read);
+        EXPECT_EQ(*read, output.size());
+        EXPECT_EQ(output, (std::array{std::byte{'c'}, std::byte{'d'}}));
+        const auto cursor{stream->tell()};
+        ASSERT_TRUE(cursor);
+        EXPECT_EQ(*cursor, 4U);
+    }
+}
+
+TEST_F(LocalFileStreamTest, FailedSeekAtEofPreservesAUsableEof)
+{
+    std::array<std::byte, 6> output{};
+    const auto read{stream->read(output)};
+    ASSERT_TRUE(read);
+    EXPECT_EQ(*read, 4U);
+    const auto rejected{stream->seek(-5, SeekOrigin::end)};
+    ASSERT_FALSE(rejected);
+    const auto eof{stream->read(output)};
+    ASSERT_TRUE(eof);
+    EXPECT_EQ(*eof, 0U);
 }
 
 TEST_F(LocalFileStreamTest, StopAndDeadlineRejectEveryOperationWithoutMovingTheCursor)

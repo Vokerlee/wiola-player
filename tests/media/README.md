@@ -10,3 +10,5 @@ flowchart LR
 ```
 
 Cases exercise actual bytes, cursor movement, short/repeated EOF, context rejection without mutation, and missing/nonregular-file failures. Construction requires a successful open. Portable stream admission and signature parsing are tested in their own owners with controlled byte sources, without a decoder dependency here.
+
+Rejected seeks from start/current/end target a negative absolute byte. Cases read immediately after rejection, before `tell` or another seek could clear stream flags, and verify the original tail. A separate EOF case verifies rejected movement does not turn ordinary exhaustion into a read failure. The raw report retains native I/O failure paths outside these ordinary file rejection/recovery scenarios.
