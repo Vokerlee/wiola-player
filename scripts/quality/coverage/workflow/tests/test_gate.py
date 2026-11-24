@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 from scripts.quality.coverage.workflow import gate
+from scripts.quality.coverage.source_policy.policy import SourcePolicy, SourceRecord
 
 
 def report(total=100, hit=90):
@@ -45,9 +46,12 @@ class CoverageGate(unittest.TestCase):
         diff = "+++ b/src/gui/view.cpp\n@@ -8,0 +9,3 @@\n+if (valid) {\n+    apply();\n+}\n"
         changes = gate.changed_lines(diff)
         self.assertEqual(changes, {"src/gui/view.cpp": {9, 10, 11}})
+        policy = SourcePolicy(
+            [SourceRecord("src/gui/view.cpp", "view", "cpp", "production")], []
+        )
         lcov = "SF:/tmp/repo/src/gui/view.cpp\nDA:9,1\nDA:10,0\nBRDA:9,0,0,1\nBRDA:9,0,1,-\nend_of_record\n"
         failures, unmapped = gate.check_changed(
-            changes, gate.lcov_records(lcov, Path("/tmp/repo"))
+            changes, gate.lcov_records(lcov, Path("/tmp/repo")), policy
         )
         self.assertEqual(len(failures), 2)
         self.assertEqual(unmapped, ["src/gui/view.cpp:11"])
@@ -55,7 +59,9 @@ class CoverageGate(unittest.TestCase):
             "BRDA:9,0,1,-", "BRDA:9,0,1,1"
         )
         self.assertEqual(
-            gate.check_changed(changes, gate.lcov_records(fixed, Path("/tmp/repo")))[0],
+            gate.check_changed(
+                changes, gate.lcov_records(fixed, Path("/tmp/repo")), policy
+            )[0],
             [],
         )
 
@@ -97,6 +103,44 @@ class CoverageGate(unittest.TestCase):
     def test_deletions_do_not_shift_added_line_numbers(self):
         diff = "+++ b/src/a.cpp\n@@ -1,2 +1,2 @@\n-old\n+new\n same\n@@ -8,0 +9 @@\n+next\n"
         self.assertEqual(gate.changed_lines(diff), {"src/a.cpp": {1, 9}})
+
+    def test_changed_scope_uses_declared_roles_instead_of_folder_names(self):
+        records = (
+            SourceRecord("src/feature/tests/fake.cpp", "fixture", "cpp", "test"),
+            SourceRecord(
+                "src/feature/tests/consumer.cpp", "fixture", "cpp", "consumer"
+            ),
+            SourceRecord("scripts/backend/driver.cpp", "driver", "cpp", "production"),
+            SourceRecord("src/feature/CMakeLists.txt", "build", "cmake", "build"),
+            SourceRecord("scripts/tool.py", "tool", "python", "tooling"),
+        )
+        policy = SourcePolicy(records, [])
+        changed = {source.path: {1} for source in records}
+        changed["README.md"] = {1}
+        mapped = {
+            path: {"lines": {1: 0}, "branches": {1: [("0", "0", 0)]}}
+            for path in changed
+        }
+        failures, unmapped = gate.check_changed(changed, mapped, policy)
+        self.assertEqual(
+            failures,
+            [
+                "scripts/backend/driver.cpp:1: added executable line has zero hits",
+                "scripts/backend/driver.cpp:1: added decision 0/0 has zero hits",
+            ],
+        )
+        self.assertEqual(unmapped, [])
+        mapped["scripts/backend/driver.cpp"] = {"lines": {}, "branches": {}}
+        failures, unmapped = gate.check_changed(changed, mapped, policy)
+        self.assertEqual(failures, [])
+        self.assertEqual(unmapped, ["scripts/backend/driver.cpp:1"])
+
+    def test_unknown_source_cannot_escape_explicit_applicability(self):
+        for path in ("src/missing.cpp", "elsewhere/private.hpp", "scripts/missing.py"):
+            with self.subTest(path=path), self.assertRaisesRegex(
+                ValueError, "no explicit applicability"
+            ):
+                gate.check_changed({path: {1}}, {}, SourcePolicy([], []))
 
 
 if __name__ == "__main__":

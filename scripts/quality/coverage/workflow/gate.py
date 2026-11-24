@@ -9,7 +9,10 @@ import subprocess
 
 from scripts.quality.architecture.inventory.git_inventory import GitInventory
 from . import collect as coverage_report
-from scripts.quality.coverage.source_policy.policy import load_current_policy
+from scripts.quality.coverage.source_policy.policy import (
+    load_current_policy,
+    source_language,
+)
 
 METRICS = coverage_report.METRICS
 
@@ -114,9 +117,18 @@ def lcov_records(text, root):
     return records
 
 
-def check_changed(changed, records):
+def check_changed(changed, records, policy):
     failures, unmapped = [], []
     for path, numbers in changed.items():
+        source = policy.records.get(path)
+        if source is None:
+            if source_language(path) is not None:
+                raise ValueError(
+                    "Changed source has no explicit applicability: " + path
+                )
+            continue
+        if source.language != "cpp" or source.role != "production":
+            continue
         values = records.get(path, {"lines": {}, "branches": {}})
         for number in sorted(numbers):
             if number not in values["lines"]:
@@ -221,11 +233,12 @@ def main():
     unmapped = []
     if args.base_ref:
         diff = coverage_report.capture(
-            ["git", "diff", "--unified=0", args.base_ref, "HEAD", "--", "src"]
+            ["git", "diff", "--unified=0", args.base_ref, "HEAD"]
         )
         extra, unmapped = check_changed(
             changed_lines(diff),
             lcov_records((args.report / "workflow.lcov").read_text(), root),
+            policy,
         )
         failures.extend(extra)
     gaps = [
