@@ -20,10 +20,10 @@
 
 #include <app/metadata/media_replacement.hpp>
 
-#include <codec/backends/ffmpeg/metadata.hpp>
-#include <codec/backends/ffmpeg/metadata_writer.hpp>
-#include <codec/provider.hpp>
 #include <library/fingerprint.hpp>
+#include <media/codecs/ffmpeg/metadata.hpp>
+#include <media/codecs/ffmpeg/metadata_writer.hpp>
+#include <media/local/provider.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
 #include <gtest/gtest.h>

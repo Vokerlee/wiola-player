@@ -20,7 +20,7 @@
 
 #include "player_application.hpp"
 #include <audio/miniaudio/device.hpp>
-#include <codec/provider.hpp>
+#include <media/local/provider.hpp>
 #include <stdexcept>
 
 namespace wiola::app {

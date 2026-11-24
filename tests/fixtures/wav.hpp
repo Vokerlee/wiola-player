@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <codec/decode/registry.hpp>
+#include <media/codecs/registry.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
 #include <atomic>

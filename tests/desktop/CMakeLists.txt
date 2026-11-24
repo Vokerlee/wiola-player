@@ -22,7 +22,7 @@ wiola_add_test(
     app_player_application_test
     SOURCES player_application_test.cpp
     LIBS wiola_player_application wiola_gui
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 wiola_add_test(
     app_saved_playlist_commands_test
@@ -61,7 +61,7 @@ wiola_add_test(
     desktop_metadata_write_service_test
     SOURCES metadata/metadata_write_service_test.cpp
     LIBS wiola_metadata_writes wiola_codec wiola_qt_platform
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
 wiola_add_test(
@@ -86,5 +86,5 @@ wiola_add_test(
     desktop_library_lifetime_test
     SOURCES library/library_lifetime_test.cpp
     LIBS wiola_library_session wiola_codec Qt6::Test
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )

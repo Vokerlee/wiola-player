@@ -22,9 +22,9 @@
 
 #include <app/playback/playback_service.hpp>
 
-#include <codec/provider.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
+#include <media/local/provider.hpp>
 
 #include <QSettings>
 #include <QString>

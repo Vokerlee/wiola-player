@@ -8,8 +8,8 @@ This guide follows that PCM through buffering, source switching, equalization, v
 sanitizing, and the platform audio device. It also explains why some work is safe in the audio
 callback and why other work must stay on application or transport threads.
 
-For the compressed-input side, start with the [codec guide](../../codec/README.md). For sample, frame,
-and channel-layout theory, see the [PCM guide](../../core/media/README.md).
+For the compressed-input side, start with the [codec guide](../../media/codecs/README.md). For sample, frame,
+and channel-layout theory, see the [PCM guide](../../media/README.md).
 
 The [audio owner](../README.md) contains portable contracts and processing; the [playback owner](../../core/playback/README.md) contains the queue/render bridge. This directory owns the concrete miniaudio device adapter and its callback lifecycle. The walkthrough follows its composition with the other audio parts.
 
@@ -37,7 +37,7 @@ Nothing in that path should open files, wait for a decoder, allocate memory, or 
 ## 2. What the device does—and does not accept
 
 [`Device`](device.hpp) is Wiola's default system audio output, implemented with Miniaudio.
-When it starts, it reads a [`pcm::StreamSpec`](../../core/media/public/wiola/media/stream_spec.hpp) from its source and configures
+When it starts, it reads a [`pcm::StreamSpec`](../../media/stream_spec.hpp) from its source and configures
 a playback stream with:
 
 - 32-bit floating-point samples;
@@ -459,4 +459,4 @@ Follow one PCM block through the implementation:
     played-frame accounting.
 11. [`output_session.cpp`](../../core/playback/private/pipeline/output_session.cpp) — output reuse and format changes.
 
-Portable [contract and DSP tests](../tests/) and native [device tests](tests/) cover their respective owners. Native Windows playback still requires a real Windows audio-device smoke test; a MinGW cross-build alone cannot prove driver behavior.
+Portable [contract and DSP tests](../tests) and native [device tests](tests) cover their respective owners. Native Windows playback still requires a real Windows audio-device smoke test; a MinGW cross-build alone cannot prove driver behavior.

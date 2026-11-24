@@ -19,10 +19,10 @@
  */
 
 #include <app/metadata/background_metadata_writes.hpp>
-#include <codec/provider.hpp>
 #include <fstream>
 #include <iterator>
 #include <library/in_memory_repository.hpp>
+#include <media/local/provider.hpp>
 
 #include <gtest/gtest.h>
 

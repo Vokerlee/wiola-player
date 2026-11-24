@@ -19,8 +19,8 @@
  */
 
 #include <app/playback/playback_queue.hpp>
-#include <codec/provider.hpp>
 #include <fakes/output.hpp>
+#include <media/local/provider.hpp>
 
 #include <library/in_memory_repository.hpp>
 

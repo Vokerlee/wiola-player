@@ -1,12 +1,12 @@
 #include <QCoreApplication>
 #include <QTemporaryDir>
 #include <QTest>
-#include <codec/provider.hpp>
 #include <desktop/library/library_session.hpp>
 #include <fixtures/gated_media_provider.hpp>
 #include <gtest/gtest.h>
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/provider.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace {

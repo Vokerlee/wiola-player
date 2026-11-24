@@ -1,7 +1,6 @@
 #include <QSignalSpy>
 #include <QToolButton>
 #include <array>
-#include <codec/provider.hpp>
 #include <desktop/player_application.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/gui_interaction.hpp>
@@ -11,6 +10,7 @@
 #include <gui/shell/main_window.hpp>
 #include <gui/tracks/track_browser.hpp>
 #include <library/location.hpp>
+#include <media/local/provider.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace {

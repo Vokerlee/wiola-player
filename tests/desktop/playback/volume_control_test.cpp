@@ -19,9 +19,9 @@
  */
 
 #include <app/playback/volume_scale.hpp>
-#include <codec/provider.hpp>
 #include <desktop/playback/volume_control.hpp>
 #include <fakes/output.hpp>
+#include <media/local/provider.hpp>
 #include <platform/qt/player_settings.hpp>
 
 #include <QSettings>

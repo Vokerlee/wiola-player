@@ -12,7 +12,7 @@ wiola_add_test(
     app_background_metadata_writes_test
     SOURCES metadata/background_metadata_writes_test.cpp
     LIBS wiola_app wiola_codec
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 wiola_add_test(
     app_metadata_conflicts_test
@@ -23,7 +23,7 @@ wiola_add_test(
     app_media_replacement_test
     SOURCES metadata/media_replacement_test.cpp
     LIBS wiola_app wiola_codec
-    DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
+    DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 wiola_add_test(
     app_metadata_edit_service_test

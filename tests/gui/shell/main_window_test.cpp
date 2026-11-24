@@ -18,7 +18,6 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <codec/provider.hpp>
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
 #include <desktop/playback/volume_control.hpp>
@@ -34,6 +33,7 @@
 #include <gui/shell/document_host.hpp>
 #include <gui/shell/main_window.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
+#include <media/local/provider.hpp>
 
 #include <fixtures/wav.hpp>
 #include <fixtures/widget_diagnostics.hpp>
