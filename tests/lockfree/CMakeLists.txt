@@ -1,1 +1,0 @@
-wiola_add_test(spsc_ring_buffer_test SOURCES spsc_ring_buffer_test.cpp)

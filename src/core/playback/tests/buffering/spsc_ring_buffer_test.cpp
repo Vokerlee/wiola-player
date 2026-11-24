@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <lockfree/spsc_ring_buffer.hpp>
+#include <buffering/spsc_ring_buffer.hpp>
 
 #include <gtest/gtest.h>
 
@@ -29,6 +29,7 @@
 #include <limits>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <stop_token>
 #include <thread>
 #include <utility>
@@ -61,6 +62,7 @@ TEST(SPSCRingBuffer, RoundsCapacityUpToPowerOfTwo)
     EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{5}.capacity(), 8u);
     EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{8}.capacity(), 8u);
     EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{1}.capacity(), 2u);
+    EXPECT_EQ(wiola::lockfree::SPSCRingBuffer<float>{0}.capacity(), 2u);
 }
 
 TEST(SPSCRingBuffer, RejectsCapacityWhoseRoundingWouldOverflow)
@@ -74,6 +76,67 @@ TEST(SPSCRingBuffer, RejectsCapacityWhoseRoundingWouldOverflow)
     static_assert(Buffer::checked_capacity(largest_power_of_two) == largest_power_of_two);
     static_assert(!Buffer::checked_capacity(largest_power_of_two + 1).has_value());
     static_assert(!Buffer::checked_capacity(std::numeric_limits<std::size_t>::max()).has_value());
+}
+
+template<typename T>
+class RingEndpointContract : public ::testing::Test { };
+
+using RingElementTypes = ::testing::Types<float, int>;
+TYPED_TEST_SUITE(RingEndpointContract, RingElementTypes);
+
+TYPED_TEST(RingEndpointContract, ConstructorRejectsCapacityWhoseRoundingWouldOverflow)
+{
+    using Buffer = wiola::lockfree::SPSCRingBuffer<TypeParam>;
+    constexpr auto largest_power_of_two = std::size_t{1}
+        << (std::numeric_limits<std::size_t>::digits - 1);
+
+    EXPECT_THROW(Buffer{largest_power_of_two + 1}, std::invalid_argument);
+    EXPECT_THROW(Buffer{std::numeric_limits<std::size_t>::max()}, std::invalid_argument);
+}
+
+TYPED_TEST(RingEndpointContract, InertProducerCannotPublishOrDiscardLiveData)
+{
+    wiola::lockfree::SPSCRingBuffer<TypeParam> buffer{4};
+    auto producer = buffer.producer();
+    auto consumer = buffer.consumer();
+    auto inert = buffer.producer();
+    const std::array input{TypeParam{1}, TypeParam{2}};
+    ASSERT_EQ(producer.push(input), input.size());
+
+    EXPECT_FALSE(static_cast<bool>(inert));
+    EXPECT_EQ(inert.push(input), 0U);
+    EXPECT_FALSE(inert.try_push(TypeParam{3}));
+    EXPECT_EQ(inert.acquire_write().size(), 0U);
+    inert.commit_write(0);
+    inert.mark_discard();
+    EXPECT_EQ(inert.space_approx(), 0U);
+
+    std::array<TypeParam, 2> output{};
+    ASSERT_EQ(consumer.pop(output), output.size());
+    EXPECT_EQ(output, input);
+}
+
+TYPED_TEST(RingEndpointContract, InertConsumerCannotReadOrCommitLiveData)
+{
+    wiola::lockfree::SPSCRingBuffer<TypeParam> buffer{4};
+    auto producer = buffer.producer();
+    auto consumer = buffer.consumer();
+    auto inert = buffer.consumer();
+    const std::array input{TypeParam{1}, TypeParam{2}};
+    ASSERT_EQ(producer.push(input), input.size());
+
+    const std::array untouched{TypeParam{-1}, TypeParam{-1}};
+    auto output = untouched;
+    EXPECT_FALSE(static_cast<bool>(inert));
+    EXPECT_EQ(inert.pop(output), 0U);
+    EXPECT_FALSE(inert.try_pop());
+    EXPECT_EQ(inert.acquire_read().size(), 0U);
+    inert.commit_read(0);
+    EXPECT_EQ(output, untouched);
+    EXPECT_EQ(buffer.size_approx(), input.size());
+
+    ASSERT_EQ(consumer.pop(output), output.size());
+    EXPECT_EQ(output, input);
 }
 
 TEST(SPSCRingBuffer, PopsWhatWasPushed)

@@ -24,11 +24,11 @@
 #include "playback.hpp"
 #include "playhead.hpp"
 #include "transport_wait.hpp"
+#include <buffering/pcm_queue.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/transport_config.hpp>
 #include <functional>
 #include <memory>
-#include <pcm/pcm_queue.hpp>
 #include <thread>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>

@@ -24,10 +24,10 @@
 #include <engine/load/tag_reader.hpp>
 #include <engine/transport/player.hpp>
 
-#include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/relay.hpp>
 #include <audio/dsp/shaped_source.hpp>
-#include <pcm/pcm_queue.hpp>
+#include <buffering/buffer_source.hpp>
+#include <buffering/pcm_queue.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 

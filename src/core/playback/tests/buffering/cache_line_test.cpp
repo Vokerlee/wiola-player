@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <core/cache_line.hpp>
+#include <buffering/cache_line.hpp>
 
 #include <gtest/gtest.h>
 

@@ -21,10 +21,5 @@ wiola_add_test(
     SOURCES shaped_source_test.cpp
     LIBS wiola_audio_dsp
 )
-wiola_add_test(
-    audio_buffer_source_test
-    SOURCES buffer_source_test.cpp
-    LIBS wiola_audio_dsp
-)
 wiola_add_test(audio_tone_test SOURCES tone_test.cpp LIBS wiola_audio_dsp)
 wiola_add_test(audio_device_test SOURCES device_test.cpp LIBS wiola_audio)
