@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include <audio/dsp/buffer_source.hpp>
+#include <buffering/buffer_source.hpp>
+#include <buffering/pcm_queue.hpp>
 #include <engine/transport/player.hpp>
 #include <fakes/output.hpp>
-#include <pcm/pcm_queue.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/units.hpp>
 

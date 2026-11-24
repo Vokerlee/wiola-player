@@ -3,7 +3,6 @@ wiola_add_library(
     wiola_audio_dsp
     SOURCES
         biquad.cpp
-        buffer_source.cpp
         equalizer.cpp
         equalizer_parameters.cpp
         equalizer_processor.cpp

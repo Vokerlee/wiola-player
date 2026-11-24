@@ -23,10 +23,10 @@
 #include "playhead.hpp"
 #include "seek_operation.hpp"
 #include "transport_wait.hpp"
+#include <buffering/pcm_queue.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
-#include <pcm/pcm_queue.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/output_connection.hpp>
 #include <wiola/media/audio_decoder.hpp>

@@ -21,8 +21,8 @@
 #pragma once
 
 #include "playhead.hpp"
+#include <buffering/pcm_queue.hpp>
 #include <core/macros.hpp>
-#include <pcm/pcm_queue.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 

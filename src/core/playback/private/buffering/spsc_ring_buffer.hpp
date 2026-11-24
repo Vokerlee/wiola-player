@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include <core/cache_line.hpp>
-#include <core/macros.hpp>
+#include <buffering/cache_line.hpp>
 #include <wiola/foundation/handle.hpp>
 
 #include <algorithm>
@@ -33,7 +32,9 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace wiola::lockfree {
 
@@ -82,8 +83,10 @@ public:
     [[nodiscard]] static constexpr std::optional<std::size_t>
     checked_capacity(std::size_t minimum_capacity) noexcept;
 
-    NO_COPY_SEMANTIC(SPSCRingBuffer);
-    NO_MOVE_SEMANTIC(SPSCRingBuffer);
+    SPSCRingBuffer(const SPSCRingBuffer&) = delete;
+    SPSCRingBuffer& operator=(const SPSCRingBuffer&) = delete;
+    SPSCRingBuffer(SPSCRingBuffer&&) = delete;
+    SPSCRingBuffer& operator=(SPSCRingBuffer&&) = delete;
     ~SPSCRingBuffer() = default;
 
     /**
@@ -177,6 +180,14 @@ private:
     void copy_in(std::size_t w, std::span<const T> src) noexcept;
     void copy_out(std::size_t r, std::span<T> dst) noexcept;
 
+    [[nodiscard]] static std::size_t require_capacity(std::size_t minimum_capacity)
+    {
+        const auto capacity = checked_capacity(minimum_capacity);
+        if (!capacity)
+            throw std::invalid_argument{"SPSC capacity rounding would overflow"};
+        return *capacity;
+    }
+
     const std::size_t mask_;
     const std::unique_ptr<T[]> storage_;
 
@@ -217,7 +228,7 @@ SPSCRingBuffer<T>::checked_capacity(std::size_t minimum_capacity) noexcept
 
 template<RingElement T>
 SPSCRingBuffer<T>::SPSCRingBuffer(std::size_t minimum_capacity)
-    : mask_{std::bit_ceil(std::max<std::size_t>(minimum_capacity, 2)) - 1}
+    : mask_{require_capacity(minimum_capacity) - 1}
     , storage_{std::make_unique_for_overwrite<T[]>(mask_ + 1)}
 {
 }

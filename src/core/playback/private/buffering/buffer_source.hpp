@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <pcm/pcm_queue.hpp>
+#include <buffering/pcm_queue.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 

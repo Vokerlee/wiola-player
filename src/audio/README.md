@@ -9,7 +9,7 @@ sanitizing, and the platform audio device. It also explains why some work is saf
 callback and why other work must stay on application or transport threads.
 
 For the compressed-input side, start with the [codec guide](../codec/README.md). For sample, frame,
-and channel-layout theory, see the [PCM guide](../pcm/README.md).
+and channel-layout theory, see the [PCM guide](../core/media/README.md).
 
 ## 1. The complete path
 
@@ -212,8 +212,8 @@ flowchart LR
 
 ## 5. Why BufferSource sits between decoding and output
 
-[`BufferSource`](dsp/buffer_source.cpp) is a `Source` adapter over the consumer end of a
-[`PcmQueue`](../pcm/pcm_queue.hpp). Its `render` simply pops interleaved samples.
+[`BufferSource`](../core/playback/private/buffering/buffer_source.cpp) is a `Source` adapter over the consumer end of a
+[`PcmQueue`](../core/playback/private/buffering/pcm_queue.hpp). Its `render` simply pops interleaved samples.
 
 The transport worker is the producer; the device callback is the consumer. The queue preserves
 complete frames, so a short read or write cannot rotate stereo or surround channels.
@@ -444,7 +444,7 @@ reads, and source destruction all have owners outside it.
 
 Follow one PCM block through the implementation:
 
-1. [`buffer_source.cpp`](dsp/buffer_source.cpp) — queue consumption.
+1. [`buffer_source.cpp`](../core/playback/private/buffering/buffer_source.cpp) — queue consumption.
 2. [`relay.cpp`](dsp/relay.cpp) — switching the current source.
 3. [`shaped_source.cpp`](dsp/shaped_source.cpp) — inserting the processing chain.
 4. [`processing_chain.cpp`](dsp/processing_chain.cpp) — fixed stage order and final sanitizing.

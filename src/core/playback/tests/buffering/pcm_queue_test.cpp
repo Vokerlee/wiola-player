@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <pcm/pcm_queue.hpp>
+#include <buffering/pcm_queue.hpp>
 
 #include <gtest/gtest.h>
 
@@ -117,6 +117,48 @@ TEST(PcmQueue, ShortPushEndsAtACompleteFrame)
     ASSERT_EQ(consumer.pop(one_frame), 3U);
     ASSERT_EQ(producer.push(two_frames), 3U);
     EXPECT_EQ(queue.size_approx(), 6U);
+}
+
+TEST(PcmQueue, InertEndpointsPreserveTheLiveFrameStream)
+{
+    PcmQueue queue{three_channels, Frames{2}};
+    auto producer = queue.producer();
+    auto consumer = queue.consumer();
+    auto inert_producer = queue.producer();
+    auto inert_consumer = queue.consumer();
+    const std::array input{1.0F, 2.0F, 3.0F};
+    ASSERT_EQ(producer.push(input), input.size());
+
+    EXPECT_EQ(inert_producer.push(input), 0U);
+    EXPECT_EQ(inert_producer.space_approx(), 0U);
+    inert_producer.mark_discard();
+    std::array output{-1.0F, -1.0F, -1.0F};
+    EXPECT_EQ(inert_consumer.pop(output), 0U);
+    EXPECT_EQ(output.front(), -1.0F);
+
+    ASSERT_EQ(consumer.pop(output), input.size());
+    EXPECT_EQ(output, input);
+}
+
+TEST(PcmQueue, DiscardReclaimsOldFramesBeforeReadingTheNextStream)
+{
+    PcmQueue queue{three_channels, Frames{2}};
+    auto producer = queue.producer();
+    auto consumer = queue.consumer();
+    const std::array old_frames{1.0F, 2.0F, 3.0F, 4.0F, 5.0F, 6.0F};
+    ASSERT_EQ(producer.push(old_frames), old_frames.size());
+    producer.mark_discard();
+    EXPECT_EQ(queue.size_approx(), old_frames.size());
+
+    std::array output{-1.0F, -1.0F, -1.0F};
+    EXPECT_EQ(consumer.pop(output), 0U);
+    EXPECT_EQ(output.front(), -1.0F);
+    EXPECT_EQ(queue.size_approx(), 0U);
+
+    const std::array next_frame{7.0F, 8.0F, 9.0F};
+    ASSERT_EQ(producer.push(next_frame), next_frame.size());
+    ASSERT_EQ(consumer.pop(output), output.size());
+    EXPECT_EQ(output, next_frame);
 }
 
 } // namespace
