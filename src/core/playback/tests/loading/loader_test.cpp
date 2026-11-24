@@ -158,7 +158,7 @@ TEST(Loader, NullProviderAssetBecomesADamagedCompletionAndTheWorkerCanRecover)
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return success();
         },
-        [](const std::filesystem::path&) {
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::Result{wiola::media::Metadata{}};
         }};
     Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -220,7 +220,7 @@ TEST(Loader, ProviderAndAssetReceiveTheSameActiveContext)
             decoded_with = context.stop;
             return success();
         },
-        [](const std::filesystem::path&) {
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::Result{wiola::media::Metadata{}};
         }};
     Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(

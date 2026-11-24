@@ -27,7 +27,6 @@
 #include <cstdint>
 #include <deque>
 #include <filesystem>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -41,14 +40,9 @@ namespace wiola::engine {
 /// Bounded tag worker. Submission accepts as much of a batch as capacity permits.
 class TagReader final : public MetadataWorker {
 public:
-    /// The provider or reader is selected by the host, never by the worker.
+    /// Driver I/O uses the same provider port as loading; the worker owns scheduling only.
     explicit TagReader(std::shared_ptr<media::MediaProvider> provider,
-        std::size_t max_pending = 256, std::size_t max_completed = 256);
-    explicit TagReader(MetadataReader read, std::size_t max_pending = 256,
-        std::size_t max_completed = 256,
-        std::size_t max_completed_artwork_bytes = 64 * 1024 * 1024);
-    explicit TagReader(ContextMetadataReader read, std::size_t max_pending = 256,
-        std::size_t max_completed = 256,
+        std::size_t max_pending = 256, std::size_t max_completed = 256,
         std::size_t max_completed_artwork_bytes = 64 * 1024 * 1024);
 
     TagReader(const TagReader&) = delete;
@@ -70,7 +64,7 @@ public:
 private:
     void work(const std::stop_token& stop);
 
-    ContextMetadataReader reader_;
+    std::shared_ptr<media::MediaProvider> provider_;
     std::stop_source active_stop_{std::nostopstate};
     const std::size_t max_pending_;
     const std::size_t max_completed_;

@@ -50,7 +50,7 @@ PlaybackService idle_service()
                                         .detail = "unexpected idle open"}
                 };
             },
-            [](const std::filesystem::path&) {
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
                 ADD_FAILURE() << "an idle session must not read metadata";
                 return wiola::media::Metadata{};
             }
@@ -77,7 +77,9 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
                     std::make_unique<wiola::testing::FakeDecoder>()};
                 return decoder;
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     service.open({"track.wav"});
@@ -132,7 +134,9 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
                     std::make_unique<wiola::testing::FakeDecoder>()};
                 return decoder;
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     service.open({"headless.wav"});
@@ -157,7 +161,9 @@ TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
                     wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
                         .detail = "missing codec"}}};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     const auto receipt{service.open({"unsupported.wav"})};
@@ -200,7 +206,9 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     const auto old{service.open({"old.wav"})};
@@ -240,8 +248,9 @@ TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [&num_metadata_reads](const std::filesystem::path&)
-                -> wiola::media::Result<wiola::media::Metadata> {
+            [&num_metadata_reads](
+                const std::filesystem::path&, const wiola::media::OperationContext&
+            ) -> wiola::media::Result<wiola::media::Metadata> {
                 ++num_metadata_reads;
                 return wiola::media::unexpected{
                     wiola::media::Error{.category = wiola::media::ErrorCategory::damaged,
@@ -283,7 +292,8 @@ TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [&num_metadata_reads](const std::filesystem::path&) {
+            [&num_metadata_reads](const std::filesystem::path&,
+                const wiola::media::OperationContext&) {
                 ++num_metadata_reads;
                 return wiola::media::Metadata{};
             }
@@ -350,7 +360,9 @@ TEST(PlaybackService, DestructionQuiescesActiveCallbacksBeforeItsProcessingStora
                         wiola::media::DecoderStreamInfo{.spec = {}, .length = std::nullopt}
                     )};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )
     )};
     service->open({"continuous"});
@@ -375,7 +387,9 @@ TEST(PlaybackService, ShutdownRejectsNewCommandsWithoutChangingAcceptedQueueOrSe
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     service.open({"first", "selected", "last"});
     while (service.reading())
@@ -439,7 +453,9 @@ TEST(PlaybackService, MediaHandoffRestoresOnlyWhileTheApplicationStillAcceptsWor
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     service.open({"editable"});
     while (service.reading())
@@ -477,7 +493,9 @@ TEST(PlaybackService, FractionSeekLeavesAnUnknownLengthStreamUntouched)
                         wiola::media::DecoderStreamInfo{.spec = {}, .length = std::nullopt}
                     )};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     service.open({"unknown-length"});
     while (service.reading())

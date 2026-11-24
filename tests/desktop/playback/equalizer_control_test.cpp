@@ -139,7 +139,9 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
                     std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{64},
                         StreamSpec{.sample_rate = 8_kHz, .num_channels = 2})};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     narrow.open({"narrow-stream"});
     while (narrow.reading())

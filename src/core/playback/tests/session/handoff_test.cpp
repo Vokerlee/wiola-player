@@ -185,7 +185,9 @@ TEST(Session, HandoffPreservesAnUnrelatedOpenAndRestoresOnlyAfterItsFailure)
                         return wiola::media::DecoderOpenResult{
                             std::make_unique<wiola::testing::FakeDecoder>()};
                     },
-                    [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                    [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                        return wiola::media::Metadata{};
+                    }
                 )};
             ASSERT_EQ(load_and_wait(session, "active.media"), OpenResult::opened);
             ASSERT_TRUE(session.play());
@@ -248,7 +250,9 @@ TEST(Session, HandoffCancelsASameResourceOpenButKeepsItsNewOccurrenceIntent)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(session.open({"same.media", "same.media"}), OpenResult::loading);
     ASSERT_TRUE(poll_until(session, [&] { return session.loaded(); }));

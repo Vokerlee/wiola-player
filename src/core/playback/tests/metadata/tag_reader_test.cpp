@@ -60,10 +60,12 @@ std::vector<TagReader::Reading> wait_for(TagReader& reader)
 TEST(TagReader, HasNothingBeforeItIsAsked)
 {
     static_assert(!std::is_default_constructible_v<TagReader>);
-    TagReader reader{[](const std::filesystem::path&) {
-        ADD_FAILURE() << "an idle tag reader must not read metadata";
-        return Tags{};
-    }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            ADD_FAILURE() << "an idle tag reader must not read metadata";
+            return Tags{};
+        }
+    )};
 
     EXPECT_FALSE(reader.busy());
     EXPECT_TRUE(reader.take().empty());
@@ -71,11 +73,13 @@ TEST(TagReader, HasNothingBeforeItIsAsked)
 
 TEST(TagReader, ReadsWithTheSuppliedCollaborator)
 {
-    TagReader reader{[](const std::filesystem::path& path) {
-        Tags tags;
-        tags.track.artist = path.stem().string();
-        return tags;
-    }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path& path, const wiola::media::OperationContext&) {
+            Tags tags;
+            tags.track.artist = path.stem().string();
+            return tags;
+        }
+    )};
 
     reader.submit({
         {.id = wiola::engine::QueueEntryId{1}, .path = "first.wav" },
@@ -101,7 +105,7 @@ TEST(TagReader, NullProviderAssetReportsFailureAndLaterMetadataStillCompletes)
             ADD_FAILURE() << "metadata inspection must not construct a decoder";
             return wiola::media::DecoderOpenResult{std::unique_ptr<wiola::media::AudioDecoder>{}};
         },
-        [](const std::filesystem::path&) {
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             Tags tags;
             tags.track.title = "valid metadata";
             return wiola::media::Result{std::move(tags)};
@@ -165,7 +169,7 @@ TEST(TagReader, CancellationDuringProviderOpenReachesTheReturnedAsset)
             ADD_FAILURE() << "metadata inspection must not construct a decoder";
             return wiola::media::DecoderOpenResult{std::unique_ptr<wiola::media::AudioDecoder>{}};
         },
-        [&](const std::filesystem::path& path) {
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext&) {
             inspected.push_back(path);
             return wiola::media::Result{Tags{}};
         }};
@@ -206,12 +210,14 @@ TEST(TagReader, CancellationDuringProviderOpenReachesTheReturnedAsset)
 TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
 {
     Gate reading;
-    TagReader reader{[&reading](const std::filesystem::path&) {
-        reading.wait();
-        Tags tags;
-        tags.track.title = "released";
-        return tags;
-    }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [&reading](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            reading.wait();
+            Tags tags;
+            tags.track.title = "released";
+            return tags;
+        }
+    )};
 
     reader.submit({
         {.id = wiola::engine::QueueEntryId{7}, .path = "track.wav"}
@@ -230,7 +236,9 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
 
 TEST(TagReader, IgnoresAnEmptyBatch)
 {
-    TagReader reader{[](const std::filesystem::path&) { return Tags{}; }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) { return Tags{}; }
+    )};
 
     std::vector<TagReader::Request> requests;
 
@@ -242,11 +250,13 @@ TEST(TagReader, IgnoresAnEmptyBatch)
 
 TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
 {
-    TagReader reader{[](const std::filesystem::path& path) -> Tags {
-        if (path == "broken.wav")
-            throw std::runtime_error{"broken metadata"};
-        return Tags{};
-    }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path& path, const wiola::media::OperationContext&) -> Tags {
+            if (path == "broken.wav")
+                throw std::runtime_error{"broken metadata"};
+            return Tags{};
+        }
+    )};
 
     reader.submit({
         {.id = wiola::engine::QueueEntryId{1}, .path = "broken.wav" },
@@ -272,17 +282,20 @@ TEST(TagReader, PreservesTypedFailuresAndContinuesWithTheNextRequest)
         {ErrorCategory::limit_exceeded, "limited.wav"    },
         {ErrorCategory::damaged,        "damaged.wav"    },
     };
-    TagReader reader{[&failures](const std::filesystem::path& path) -> wiola::media::Result<Tags> {
-        const auto failure{std::ranges::find_if(failures,
-            [&path](const auto& candidate) { return candidate.second == path; })};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [&failures](const std::filesystem::path& path,
+            const wiola::media::OperationContext&) -> wiola::media::Result<Tags> {
+            const auto failure{std::ranges::find_if(failures,
+                [&path](const auto& candidate) { return candidate.second == path; })};
 
-        if (failure == failures.end())
-            return Tags{};
+            if (failure == failures.end())
+                return Tags{};
 
-        return wiola::media::unexpected{
-            wiola::media::Error{.category = failure->first, .detail = path.stem().string()}
-        };
-    }};
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = failure->first, .detail = path.stem().string()}
+            };
+        }
+    )};
     std::vector<TagReader::Request> requests;
 
     for (std::size_t index{0}; index < failures.size(); ++index)
@@ -308,10 +321,13 @@ TEST(TagReader, PreservesTypedFailuresAndContinuesWithTheNextRequest)
 TEST(TagReader, AcceptsOnlyThePrefixThatFits)
 {
     Gate reading;
-    TagReader reader{[&reading](const std::filesystem::path&) {
-                         reading.wait();
-                         return Tags{};
-                     },
+    TagReader reader{
+        wiola::testing::FakeMediaProvider::metadata_only(
+            [&reading](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                reading.wait();
+                return Tags{};
+            }
+        ),
         1, 3};
     std::vector<TagReader::Request> requests{
         {.id = wiola::engine::QueueEntryId{1}, .path = "first.wav" },
@@ -334,11 +350,13 @@ TEST(TagReader, AcceptsOnlyThePrefixThatFits)
 
 TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)
 {
-    TagReader reader{[](const std::filesystem::path&) {
-                         Tags tags;
-                         tags.artwork.data.resize(5);
-                         return tags;
-                     },
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+                         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                             Tags tags;
+                             tags.artwork.data.resize(5);
+                             return tags;
+                         }
+                     ),
         1, 1, 4};
 
     reader.submit({
@@ -355,7 +373,7 @@ TEST(TagReader, GenerationCancellationReachesTheActiveReadOnly)
 {
     Gate reading;
     std::atomic<bool> old_was_cancelled{false};
-    TagReader reader{
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [&reading, &old_was_cancelled](const std::filesystem::path& path,
             const wiola::media::OperationContext& context) -> wiola::media::Result<Tags> {
             if (path == "old.wav") {
@@ -365,7 +383,8 @@ TEST(TagReader, GenerationCancellationReachesTheActiveReadOnly)
             }
 
             return Tags{};
-        }};
+        }
+    )};
 
     reader.submit({
         {.generation = 1, .id = wiola::engine::QueueEntryId{1}, .path = "old.wav"}
@@ -389,12 +408,13 @@ TEST(TagReader, CancellationCallbacksCanQueryWorkerStateWithoutDeadlocking)
     Gate reading;
     std::atomic<bool> observed{false};
     TagReader* current{};
-    TagReader reader{
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] { observed = current->busy(); }};
             reading.wait();
             return Tags{};
-        }};
+        }
+    )};
     current = &reader;
     reader.submit({
         {.generation = 1, .id = wiola::engine::QueueEntryId{1}, .path = "old.wav"}
@@ -410,12 +430,13 @@ TEST(TagReader, CancelBeforeDoesNotCancelANewerActiveGeneration)
 {
     Gate reading;
     std::atomic<bool> cancelled{false};
-    TagReader reader{
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] { cancelled = true; }};
             reading.wait();
             return Tags{};
-        }};
+        }
+    )};
     reader.submit({
         {.generation = 5, .id = wiola::engine::QueueEntryId{1}, .path = "new.wav"}
     });
@@ -432,14 +453,17 @@ TEST(TagReader, CancellationRetiresAnOlderCompletionEvenWhenNewerResultsFillTheB
 {
     Gate older_read;
     TagReader reader{
-        [&](const std::filesystem::path& path) -> wiola::media::Result<Tags> {
-            if (path == "old.wav")
-                older_read.wait();
-            return wiola::media::unexpected{
-                wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
-                                    .detail = "retained failure"}
-            };
-        },
+        wiola::testing::FakeMediaProvider::metadata_only(
+            [&](const std::filesystem::path& path,
+                const wiola::media::OperationContext&) -> wiola::media::Result<Tags> {
+                if (path == "old.wav")
+                    older_read.wait();
+                return wiola::media::unexpected{
+                    wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
+                                        .detail = "retained failure"}
+                };
+            }
+        ),
         2, 1};
     reader.submit({
         {.generation = 2, .id = wiola::engine::QueueEntryId{2}, .path = "new.wav"},
@@ -462,12 +486,15 @@ TEST(TagReader, CancellationDropsOnlyOlderQueuedRequests)
 {
     Gate reading;
     std::atomic<int> calls{0};
-    TagReader reader{[&](const std::filesystem::path& path, const wiola::media::OperationContext&) {
-                         ++calls;
-                         if (path == "active.wav")
-                             reading.wait();
-                         return Tags{};
-                     },
+    TagReader reader{
+        wiola::testing::FakeMediaProvider::metadata_only(
+            [&](const std::filesystem::path& path, const wiola::media::OperationContext&) {
+                ++calls;
+                if (path == "active.wav")
+                    reading.wait();
+                return Tags{};
+            }
+        ),
         2, 2};
     reader.submit({
         {.generation = 1, .id = wiola::engine::QueueEntryId{1}, .path = "active.wav"}
@@ -488,11 +515,13 @@ TEST(TagReader, CancellationDropsOnlyOlderQueuedRequests)
 TEST(TagReader, RetainedArtworkAndLaterBatchesStayWithinTheCompletedByteBudget)
 {
     constexpr std::size_t budget{4};
-    TagReader reader{[](const std::filesystem::path&) {
-                         Tags tags;
-                         tags.artwork.data.resize(3);
-                         return tags;
-                     },
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+                         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                             Tags tags;
+                             tags.artwork.data.resize(3);
+                             return tags;
+                         }
+                     ),
         2, 4, budget};
     reader.submit({
         {.generation = 2, .id = wiola::engine::QueueEntryId{1}, .path = "first.wav"}
@@ -528,10 +557,12 @@ TEST(TagReader, RetainedArtworkAndLaterBatchesStayWithinTheCompletedByteBudget)
 TEST(TagReader, AlreadyObsoleteSubmissionsNeverInvokeTheBackend)
 {
     std::atomic<int> reads{0};
-    TagReader reader{[&](const std::filesystem::path&) {
-        ++reads;
-        return Tags{};
-    }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [&](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            ++reads;
+            return Tags{};
+        }
+    )};
     reader.cancel_before(5);
     reader.submit({
         {.generation = 4, .id = wiola::engine::QueueEntryId{1}, .path = "old.wav"}
@@ -545,15 +576,16 @@ TEST(TagReader, ShutdownCancelsTheActiveContextBeforeJoining)
     Gate reading;
     std::atomic<bool> observed{false};
     TagReader* current{};
-    auto reader{std::make_unique<TagReader>([&](const std::filesystem::path&,
-                                                const wiola::media::OperationContext& context) {
-        std::stop_callback callback{context.stop, [&] {
-                                        observed = current->busy();
-                                        reading.release();
-                                    }};
-        reading.wait();
-        return Tags{};
-    })};
+    auto reader{std::make_unique<TagReader>(wiola::testing::FakeMediaProvider::metadata_only(
+        [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            std::stop_callback callback{context.stop, [&] {
+                                            observed = current->busy();
+                                            reading.release();
+                                        }};
+            reading.wait();
+            return Tags{};
+        }
+    ))};
     current = reader.get();
     reader->submit({
         {.generation = 1, .id = wiola::engine::QueueEntryId{1}, .path = "old.wav"}
@@ -569,16 +601,18 @@ TEST(TagReader, ShutdownJoinsWhenTheCompletionBudgetIsAlreadyFull)
     std::atomic<int> reads{0};
     std::atomic<bool> cancelled{false};
     auto reader{std::make_unique<TagReader>(
-        [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
-            if (++reads == 2) {
-                std::stop_callback callback{context.stop, [&] {
-                                                cancelled = true;
-                                                second_read.release();
-                                            }};
-                second_read.wait();
+        wiola::testing::FakeMediaProvider::metadata_only(
+            [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+                if (++reads == 2) {
+                    std::stop_callback callback{context.stop, [&] {
+                                                    cancelled = true;
+                                                    second_read.release();
+                                                }};
+                    second_read.wait();
+                }
+                return Tags{};
             }
-            return Tags{};
-        },
+        ),
         2, 1
     )};
     reader->submit({
@@ -601,7 +635,11 @@ TEST(TagReader, AllocationFailureRemainsFatalInsteadOfBecomingBadMetadata)
     EXPECT_EXIT(
         {
             std::set_terminate([] { std::_Exit(EXIT_FAILURE); });
-            TagReader reader{[](const std::filesystem::path&) -> Tags { throw std::bad_alloc{}; }};
+            TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+                [](const std::filesystem::path&, const wiola::media::OperationContext&) -> Tags {
+                    throw std::bad_alloc{};
+                }
+            )};
             reader.submit({
                 {.id = wiola::engine::QueueEntryId{1}, .path = "allocation.wav"}
             });
@@ -616,7 +654,9 @@ TEST(TagReader, AllocationFailureRemainsFatalInsteadOfBecomingBadMetadata)
 
 TEST(TagReader, RejectsZeroQueueAndArtworkBudgets)
 {
-    const wiola::engine::MetadataReader read{[](const std::filesystem::path&) { return Tags{}; }};
+    const auto read{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) { return Tags{}; }
+    )};
     EXPECT_THROW((TagReader{read, 0, 1, 1}), std::invalid_argument);
     EXPECT_THROW((TagReader{read, 1, 0, 1}), std::invalid_argument);
     EXPECT_THROW((TagReader{read, 1, 1, 0}), std::invalid_argument);
@@ -624,12 +664,15 @@ TEST(TagReader, RejectsZeroQueueAndArtworkBudgets)
 
 TEST(TagReader, BoundsBackendDiagnosticDetail)
 {
-    TagReader reader{[](const std::filesystem::path&) -> wiola::media::Result<Tags> {
-        return wiola::media::unexpected{
-            wiola::media::Error{.category = wiola::media::ErrorCategory::damaged,
-                                .detail = std::string(2048, 'x')}
-        };
-    }};
+    TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path&,
+            const wiola::media::OperationContext&) -> wiola::media::Result<Tags> {
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::damaged,
+                                    .detail = std::string(2048, 'x')}
+            };
+        }
+    )};
 
     reader.submit({
         {.id = wiola::engine::QueueEntryId{9}, .path = "verbose.wav"}
@@ -639,4 +682,10 @@ TEST(TagReader, BoundsBackendDiagnosticDetail)
     ASSERT_EQ(readings.size(), 1U);
     ASSERT_FALSE(readings.front().result);
     EXPECT_EQ(readings.front().result.error().detail.size(), 1024U);
+}
+
+TEST(TagReader, RejectsANullProviderBeforeAcceptingWork)
+{
+    EXPECT_THROW((TagReader{std::shared_ptr<wiola::media::MediaProvider>{}}),
+        std::invalid_argument);
 }

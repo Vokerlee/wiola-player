@@ -29,42 +29,14 @@
 namespace wiola::engine {
 
 TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t max_pending,
-    std::size_t max_completed)
-    : TagReader{[provider = std::move(provider)](const std::filesystem::path& path,
-                    const media::OperationContext& context) {
-                    auto asset{provider->open(path, context)};
-                    if (!asset)
-                        return media::Result<media::Metadata>{media::unexpected{asset.error()}};
-                    if (!*asset)
-                        return media::Result<media::Metadata>{media::unexpected{
-                            media::Error{.category = media::ErrorCategory::damaged,
-                                .detail = "media provider returned no asset"}}};
-                    return (*asset)->read_metadata(context);
-                },
-          max_pending, max_completed}
-{
-}
-
-TagReader::TagReader(MetadataReader read, std::size_t max_pending, std::size_t max_completed,
-    std::size_t max_completed_artwork_bytes)
-    : TagReader{[read = std::move(read)](const std::filesystem::path& path,
-                    const media::OperationContext& context) {
-                    if (context.stop_reason() != media::StopReason::none)
-                        return media::Result<media::Metadata>{media::unexpected{context.error()}};
-
-                    return read(path);
-                },
-          max_pending, max_completed, max_completed_artwork_bytes}
-{
-}
-
-TagReader::TagReader(ContextMetadataReader read, std::size_t max_pending, std::size_t max_completed,
-    std::size_t max_completed_artwork_bytes)
-    : reader_{std::move(read)}
+    std::size_t max_completed, std::size_t max_completed_artwork_bytes)
+    : provider_{std::move(provider)}
     , max_pending_{max_pending}
     , max_completed_{max_completed}
     , max_completed_artwork_bytes_{max_completed_artwork_bytes}
 {
+    if (!provider_)
+        throw std::invalid_argument{"metadata provider must not be null"};
     if (max_pending_ == 0 || max_completed_ == 0 || max_completed_artwork_bytes_ == 0)
         throw std::invalid_argument{"metadata capacities must be positive"};
 }
@@ -176,7 +148,16 @@ void TagReader::work(const std::stop_token& stop)
         media::Result<media::Metadata> result{media::Metadata{}};
 
         try {
-            result = reader_(request.path, context);
+            auto asset{provider_->open(request.path, context)};
+            if (!asset)
+                result = media::unexpected{asset.error()};
+            else if (!*asset)
+                result = media::unexpected{
+                    media::Error{.category = media::ErrorCategory::damaged,
+                                 .detail = "media provider returned no asset"}
+                };
+            else
+                result = (*asset)->read_metadata(context);
         } catch (const std::bad_alloc&) {
             // Allocation failure is fatal: no reliable error object or queue storage can be made.
             throw;

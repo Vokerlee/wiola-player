@@ -45,9 +45,6 @@ public:
 
     explicit MetadataCoordinator(std::shared_ptr<media::MediaProvider> provider,
         std::size_t max_pending = 256, std::size_t max_completed = 256);
-    explicit MetadataCoordinator(MetadataReader reader, std::size_t max_pending = 256,
-        std::size_t max_completed = 256);
-
     explicit MetadataCoordinator(std::unique_ptr<MetadataWorker> worker);
 
     MetadataCoordinator(const MetadataCoordinator&) = delete;
