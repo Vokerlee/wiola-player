@@ -280,7 +280,7 @@ void Session::take_up_finished_read()
         return;
     }
 
-    const bool play{completed->request.intent == LoadIntent::play};
+    const bool should_play{completed->request.intent == LoadIntent::play};
 
     if (!install_track(std::move(*opened), std::move(completed->request.path),
             completed->request.generation)) {
@@ -293,8 +293,8 @@ void Session::take_up_finished_read()
         restore_position_.reset();
     }
 
-    if (play)
-        static_cast<void>(play_or_pause());
+    if (should_play)
+        static_cast<void>(play());
 }
 
 void Session::advance_if_ended()
@@ -374,27 +374,6 @@ bool Session::loaded() const noexcept
     return pipeline_ != nullptr;
 }
 
-bool Session::play_or_pause()
-{
-    if (replacement_) {
-        replacement_->play = !replacement_->play;
-        return true;
-    }
-    if (!loaded())
-        return false;
-
-    // The state says which of the three this means: silence it, carry on, or begin - the last of
-    // which also covers playing a track that has already finished.
-    switch (state()) {
-    case PlaybackState::playing:
-        return pipeline_->player().pause();
-    case PlaybackState::paused:
-        return pipeline_->player().resume();
-    default:
-        return pipeline_->player().start();
-    }
-}
-
 bool Session::play() noexcept
 {
     if (replacement_) {
@@ -470,13 +449,6 @@ OpenResult Session::restore_media(const MediaReplacementState& state)
         begin_reading(*current, intent.play ? LoadIntent::play : LoadIntent::install);
     restore_position_ = intent.position;
     return result;
-}
-
-OpenResult Session::reload_current()
-{
-    const auto state =
-        release_media(playlist_.current() ? playlist_.current()->path() : std::filesystem::path{});
-    return state ? restore_media(*state) : last_result_;
 }
 
 void Session::seek(units::Time position) noexcept
