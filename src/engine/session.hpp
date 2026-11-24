@@ -28,8 +28,7 @@
 #include <engine/pipeline/output_session.hpp>
 #include <engine/pipeline/playback_pipeline.hpp>
 #include <engine/queue/playlist.hpp>
-#include <engine/transport/playback.hpp>
-#include <engine/transport/transport_config.hpp>
+#include <transport/transport_config.hpp>
 #include <wiola/audio/equalizer.hpp>
 #include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/volume.hpp>

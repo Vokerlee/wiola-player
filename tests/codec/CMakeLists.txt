@@ -115,3 +115,9 @@ wiola_add_test(
     LIBS wiola_codec
     DATA "${fixtures}"
 )
+
+wiola_add_test(
+    codec_player_integration_test
+    SOURCES player_integration_test.cpp
+    LIBS wiola_codec wiola_playback_transport
+)

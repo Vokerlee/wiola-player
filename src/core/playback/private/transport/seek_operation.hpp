@@ -22,7 +22,6 @@
 
 #include "playhead.hpp"
 #include <buffering/pcm_queue.hpp>
-#include <core/macros.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
@@ -44,8 +43,10 @@ public:
         audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
         bool& output_started, std::vector<float>& block) noexcept;
 
-    NO_COPY_SEMANTIC(SeekOperation);
-    NO_MOVE_SEMANTIC(SeekOperation);
+    SeekOperation(const SeekOperation&) = delete;
+    SeekOperation& operator=(const SeekOperation&) = delete;
+    SeekOperation(SeekOperation&&) = delete;
+    SeekOperation& operator=(SeekOperation&&) = delete;
 
     /// Applies a seek held from before playback, or rewinds when `rewind` is set, then primes.
     /// False when the backend refused and the preserved cursor was committed instead.

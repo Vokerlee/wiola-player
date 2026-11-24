@@ -24,9 +24,8 @@
 #include "seek_operation.hpp"
 #include "transport_wait.hpp"
 #include <buffering/pcm_queue.hpp>
-#include <core/macros.hpp>
-#include <engine/transport/playback.hpp>
-#include <engine/transport/transport_config.hpp>
+#include <transport/playback.hpp>
+#include <transport/transport_config.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/output_connection.hpp>
 #include <wiola/media/audio_decoder.hpp>
@@ -55,8 +54,10 @@ public:
         audio::Output& output, Playback& playback, Playhead::Applier applier, TransportWait& wait,
         const TransportConfig& config);
 
-    NO_COPY_SEMANTIC(DecodeLoop);
-    NO_MOVE_SEMANTIC(DecodeLoop);
+    DecodeLoop(const DecodeLoop&) = delete;
+    DecodeLoop& operator=(const DecodeLoop&) = delete;
+    DecodeLoop(DecodeLoop&&) = delete;
+    DecodeLoop& operator=(DecodeLoop&&) = delete;
     ~DecodeLoop() = default;
 
     /// Runs initial seek, priming, output start and decoding on the worker thread.

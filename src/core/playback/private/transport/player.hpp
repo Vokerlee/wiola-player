@@ -22,8 +22,7 @@
 
 #include "transport_worker.hpp"
 #include <buffering/pcm_queue.hpp>
-#include <core/macros.hpp>
-#include <engine/transport/playback.hpp>
+#include <transport/playback.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -48,8 +47,10 @@ public:
     Player(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
         audio::Output& output, TransportConfig config = {});
 
-    NO_COPY_SEMANTIC(Player);
-    NO_MOVE_SEMANTIC(Player);
+    Player(const Player&) = delete;
+    Player& operator=(const Player&) = delete;
+    Player(Player&&) = delete;
+    Player& operator=(Player&&) = delete;
 
     /// Stops playback and waits for the thread, so a player is never destroyed while it runs.
     ~Player();
