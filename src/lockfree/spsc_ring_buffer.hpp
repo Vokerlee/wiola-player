@@ -21,8 +21,8 @@
 #pragma once
 
 #include <core/cache_line.hpp>
-#include <core/handle.hpp>
 #include <core/macros.hpp>
+#include <wiola/foundation/handle.hpp>
 
 #include <algorithm>
 #include <atomic>

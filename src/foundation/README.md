@@ -10,6 +10,6 @@ flowchart LR
   Borrowed --> Standard[C++ standard library]
 ```
 
-[Borrowed reference](borrowed_reference/README.md) owns its public template, tests and export definition. No foundation implementation selects a GUI, media backend or application policy.
+[Borrowed references and handles](borrowed_reference/README.md) own borrowed storage, exclusive capability transfer, focused tests and one export definition. No foundation implementation selects a GUI, media backend or application policy.
 
 [Quantities](quantities/README.md) owns time/frequency values and a standard-only public target. Related values stay together; no unit tag is an independent component.

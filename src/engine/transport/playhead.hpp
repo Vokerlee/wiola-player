@@ -22,8 +22,8 @@
 
 #include "seek_mailbox.hpp"
 
-#include <core/handle.hpp>
 #include <core/macros.hpp>
+#include <wiola/foundation/handle.hpp>
 
 #include <cstddef>
 

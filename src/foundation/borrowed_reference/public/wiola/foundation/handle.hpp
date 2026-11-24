@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/foundation/borrowed.hpp>
 
 namespace wiola::core {
@@ -66,8 +65,10 @@ private:
 template<typename Owner>
 class Handle {
 public:
-    NO_COPY_SEMANTIC(Handle);
-    DEFAULT_MOVE_SEMANTIC(Handle);
+    Handle(const Handle&) = delete;
+    Handle& operator=(const Handle&) = delete;
+    Handle(Handle&&) noexcept = default;
+    Handle& operator=(Handle&&) noexcept = default;
 
     ~Handle() = default;
 

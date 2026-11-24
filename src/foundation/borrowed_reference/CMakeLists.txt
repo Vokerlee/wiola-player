@@ -35,6 +35,19 @@ install(
 )
 
 if(WIOLA_BUILD_TESTS)
+    include(GoogleTest)
+    add_executable(core_handle_test tests/handle_test.cpp)
+    target_link_libraries(
+        core_handle_test
+        PRIVATE
+            wiola::borrowed_reference
+            GTest::gtest_main
+            wiola_sanitizer
+            wiola_coverage
+            wiola_warnings
+    )
+    gtest_discover_tests(core_handle_test)
+
     add_executable(borrowed_reference_test tests/borrowed_reference_test.cpp)
     target_link_libraries(
         borrowed_reference_test

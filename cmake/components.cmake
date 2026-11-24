@@ -1,7 +1,7 @@
 # Canonical portable component names and their currently required closure.
 set(WIOLA_FOUNDATION_COMPONENTS borrowed_reference quantities)
 set(WIOLA_PORTABLE_COMPONENTS ${WIOLA_FOUNDATION_COMPONENTS} media)
-set(WIOLA_GTEST_COMPONENTS quantities media)
+set(WIOLA_GTEST_COMPONENTS borrowed_reference quantities media)
 set(WIOLA_COMPONENTS
     ""
     CACHE STRING
