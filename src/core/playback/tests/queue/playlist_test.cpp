@@ -18,7 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/queue/playlist.hpp>
+#include "allocation_failure.hpp"
+#include <queue/playlist.hpp>
 
 #include <wiola/units.hpp>
 
@@ -41,19 +42,11 @@ using wiola::engine::Track;
 using wiola::engine::TrackMetadata;
 using Repeat = wiola::engine::Playlist::Repeat;
 
-thread_local std::size_t allocations_before_failure{std::numeric_limits<std::size_t>::max()};
-
-class AllocationFailure {
-public:
-    explicit AllocationFailure(std::size_t after) { allocations_before_failure = after; }
-
-    ~AllocationFailure() { allocations_before_failure = std::numeric_limits<std::size_t>::max(); }
-};
-
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
 template<typename Operation>
 bool allocation_fails(std::size_t after, Operation operation)
 {
-    const AllocationFailure failure{after};
+    const wiola::testing::AllocationFailure failure{after};
 
     try {
         operation();
@@ -63,6 +56,8 @@ bool allocation_fails(std::size_t after, Operation operation)
 
     return false;
 }
+
+#endif
 
 /// Three tracks, named so that a test can say which one it is standing at.
 std::vector<Track> three()
@@ -80,19 +75,6 @@ const std::filesystem::path& path_of(const Playlist& playlist)
 }
 
 } // namespace
-
-extern "C" void* __real__Znwm(std::size_t size);
-
-extern "C" void* __wrap__Znwm(std::size_t size)
-{
-    if (allocations_before_failure == 0)
-        throw std::bad_alloc{};
-
-    if (allocations_before_failure != std::numeric_limits<std::size_t>::max())
-        --allocations_before_failure;
-
-    return __real__Znwm(size);
-}
 
 TEST(Playlist, StandsNowhereWhileItIsEmpty)
 {
@@ -532,6 +514,7 @@ TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
     EXPECT_EQ(playlist.tracks()[0].title(), "updated");
 }
 
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
 TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
 {
     for (std::size_t after{0}; after < 3; ++after) {
@@ -595,5 +578,7 @@ TEST(Playlist, AppendAllocationFailuresLeaveTheAcceptedQueueUntouched)
         EXPECT_EQ(playlist.index_of(playlist.tracks()[4].id()), 4U);
     }
 }
+
+#endif
 
 static_assert(noexcept(std::declval<Playlist&>().remove(0)));

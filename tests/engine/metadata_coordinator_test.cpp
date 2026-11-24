@@ -20,8 +20,8 @@
 
 #include <engine/load/metadata_coordinator.hpp>
 
-#include <engine/queue/playlist.hpp>
 #include <fakes/decoder.hpp>
+#include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
 

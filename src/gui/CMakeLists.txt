@@ -77,4 +77,7 @@ wiola_add_library(
 
 # Qt needs its own generated sources, and its headers are part of using this library.
 set_target_properties(wiola_gui PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_gui PUBLIC Qt6::Widgets wiola_app)
+target_link_libraries(
+    wiola_gui
+    PUBLIC Qt6::Widgets wiola_app wiola_playback_queue
+)

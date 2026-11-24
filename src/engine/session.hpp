@@ -25,9 +25,9 @@
 #include <engine/load/metadata_coordinator.hpp>
 #include <engine/pipeline/output_session.hpp>
 #include <engine/pipeline/playback_pipeline.hpp>
-#include <engine/queue/playlist.hpp>
 #include <loading/load_coordinator.hpp>
 #include <loading/loader.hpp>
+#include <queue/playlist.hpp>
 #include <transport/transport_config.hpp>
 #include <wiola/audio/equalizer.hpp>
 #include <wiola/audio/processing_chain.hpp>

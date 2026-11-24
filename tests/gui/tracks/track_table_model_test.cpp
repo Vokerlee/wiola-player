@@ -24,9 +24,9 @@
 
 #include <gui/tracks/track_table_model.hpp>
 
-#include <engine/queue/playlist.hpp>
 #include <library/in_memory_repository.hpp>
 #include <library/location.hpp>
+#include <queue/playlist.hpp>
 
 #include <QApplication>
 #include <QBuffer>

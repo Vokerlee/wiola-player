@@ -17,4 +17,7 @@ target_link_libraries(
     PRIVATE wiola_gui_model wiola_sanitizer wiola_coverage
 )
 
-target_link_libraries(wiola_gui_model PUBLIC wiola::playback_api)
+target_link_libraries(
+    wiola_gui_model
+    PUBLIC wiola::playback_api wiola_playback_queue
+)

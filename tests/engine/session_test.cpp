@@ -28,9 +28,9 @@
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 
-#include <engine/queue/track.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <queue/track.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>

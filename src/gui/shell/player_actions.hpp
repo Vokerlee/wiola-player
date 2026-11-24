@@ -21,7 +21,7 @@
 #pragma once
 #include "action_descriptor.hpp"
 
-#include <engine/queue/playlist.hpp>
+#include <queue/playlist.hpp>
 
 #include <QAction>
 #include <QIcon>

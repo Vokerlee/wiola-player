@@ -24,7 +24,7 @@
 #include <gui/model/documents/queue_rows.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
-#include <engine/queue/playlist.hpp>
+#include <queue/playlist.hpp>
 
 #include <QApplication>
 #include <QBuffer>

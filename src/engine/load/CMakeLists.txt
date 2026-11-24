@@ -7,5 +7,5 @@ wiola_add_library(
 )
 target_link_libraries(
     wiola_engine_metadata
-    PUBLIC wiola::media wiola::playback_api
+    PUBLIC wiola::media wiola::playback_api wiola_playback_queue
 )
