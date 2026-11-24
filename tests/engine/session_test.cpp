@@ -187,7 +187,9 @@ TEST(Session, AnswersWhileNothingIsLoaded)
 {
     Fixture fixture;
 
-    EXPECT_FALSE(fixture.session.play_or_pause());
+    EXPECT_FALSE(fixture.session.play());
+    EXPECT_FALSE(fixture.session.pause());
+    EXPECT_FALSE(fixture.session.resume());
 
     fixture.session.stop();
     fixture.session.seek(units::Time{1.0});
@@ -360,7 +362,7 @@ TEST(Session, KeepsWhatWasLoadedWhenTheNextFileFails)
 
     ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
         OpenResult::opened);
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
     ASSERT_EQ(fixture.session.state(), State::playing);
 
     EXPECT_EQ(load_and_wait(fixture.session, std::filesystem::path{"no-such-track.wav"}),
@@ -382,7 +384,7 @@ TEST(Session, KeepsPlayingWhileTheNextFileIsRead)
 
     ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
         OpenResult::opened);
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     EXPECT_EQ(fixture.session.open({wiola::testing::write_wav("wiola_other.wav")}),
         OpenResult::loading);
@@ -435,14 +437,14 @@ TEST(Session, PlaysAndPauses)
     ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
         OpenResult::opened);
 
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
     EXPECT_EQ(fixture.session.state(), State::playing);
     EXPECT_TRUE(fixture.session.playing());
 
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.pause());
     EXPECT_EQ(fixture.session.state(), State::paused);
 
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.resume());
     EXPECT_EQ(fixture.session.state(), State::playing);
 }
 
@@ -452,7 +454,7 @@ TEST(Session, StopsAtTheBeginning)
 
     ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
         OpenResult::opened);
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     fixture.session.seek(units::Time{1.0});
     fixture.session.stop();
@@ -500,7 +502,7 @@ TEST(Session, PlaysTheNextTrackWhenOneEnds)
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     EXPECT_TRUE(poll_until(fixture.session, [&fixture, &next] {
         return fixture.session.track() == next;
@@ -516,7 +518,7 @@ TEST(Session, StaysAtTheEndOfTheList)
     const std::filesystem::path only{wiola::testing::write_wav("wiola_session.wav")};
 
     ASSERT_EQ(load_and_wait(fixture.session, only), OpenResult::opened);
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     ASSERT_TRUE(poll_until(fixture.session,
         [&fixture] { return fixture.session.state() == State::ended; }));
@@ -539,7 +541,7 @@ TEST(Session, PlaysNothingNextWhenTheListenerStops)
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     fixture.session.stop();
     fixture.session.catch_up();
@@ -585,7 +587,7 @@ TEST(Session, AddsToTheQueueWithoutDisturbingWhatIsPlaying)
     const std::filesystem::path added{wiola::testing::write_wav("wiola_session_added.wav")};
 
     ASSERT_EQ(load_and_wait(fixture.session, first), OpenResult::opened);
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     fixture.session.add({added});
 
@@ -639,7 +641,7 @@ TEST(Session, KeepsPlayingATrackTakenOutOfTheQueue)
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     EXPECT_TRUE(fixture.session.remove(0));
 
@@ -658,7 +660,7 @@ TEST(Session, EmptiesTheQueueAndEndsPlayback)
                   wiola::testing::write_wav("wiola_session_next.wav")}),
         OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     fixture.session.clear();
 
@@ -781,7 +783,7 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     ASSERT_TRUE(fixture.session.next_track());
     EXPECT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.playing(); }));
@@ -901,7 +903,7 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
 
     session.open({"first.wav", second});
     ASSERT_TRUE(poll_until(session, [&session] { return session.loaded(); }));
-    ASSERT_TRUE(session.play_or_pause());
+    ASSERT_TRUE(session.play());
     ASSERT_TRUE(session.next_track());
     opening.wait_until_entered();
 
@@ -964,7 +966,7 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
     EXPECT_TRUE(session.playlist().empty());
 }
 
-TEST(Session, ReloadQuiescesAndRestoresTheCurrentPlayIntent)
+TEST(Session, ReplacementHandoffQuiescesAndRestoresTheCurrentPlayIntent)
 {
     Fixture fixture;
     fixture.consuming = false;
@@ -972,13 +974,16 @@ TEST(Session, ReloadQuiescesAndRestoresTheCurrentPlayIntent)
 
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
     fixture.session.add({wiola::testing::write_wav("wiola_session_reload_next.wav")});
-    ASSERT_TRUE(fixture.session.play_or_pause());
+    ASSERT_TRUE(fixture.session.play());
 
     fixture.session.seek(units::Time{0.4});
     ASSERT_TRUE(poll_until(fixture.session,
         [&fixture] { return fixture.session.time_played().get<units::Sec>() >= 0.4; }));
 
-    EXPECT_EQ(fixture.session.reload_current(), OpenResult::loading);
+    const auto handoff{fixture.session.release_media(path)};
+    ASSERT_TRUE(handoff);
+    EXPECT_FALSE(fixture.session.loaded());
+    EXPECT_EQ(fixture.session.restore_media(*handoff), OpenResult::loading);
     EXPECT_FALSE(fixture.session.loaded());
 
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));

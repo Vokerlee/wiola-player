@@ -137,9 +137,6 @@ public:
     /// along with the track it names.
     [[nodiscard]] const std::filesystem::path& track() const noexcept;
 
-    /// Starts, pauses or resumes, whichever playback is due. False when the output could not
-    /// be opened, and when there is nothing loaded.
-    bool play_or_pause();
     bool play() noexcept;
     bool pause() noexcept;
     bool resume() noexcept;
@@ -159,7 +156,6 @@ public:
     [[nodiscard]] std::optional<MediaReplacementState>
     release_media(const std::filesystem::path& path);
     OpenResult restore_media(const MediaReplacementState& state);
-    OpenResult reload_current();
 
     /// Moves playback to `position`, measured from the start of the track.
     void seek(units::Time position) noexcept;
