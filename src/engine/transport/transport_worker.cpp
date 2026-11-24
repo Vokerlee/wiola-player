@@ -75,7 +75,7 @@ bool TransportWorker::start()
         return false;
 
     try {
-        thread_ = launch_([this, rewind = previous != PlaybackState::idle] { work(rewind); });
+        thread_ = launch_([this, rewind = previous != PlaybackState::idle] { loop_.run(rewind); });
     } catch (...) {
         playback_.finish(Playback::TerminalReason::faulted);
         return false;
@@ -134,16 +134,6 @@ bool TransportWorker::finished() const noexcept
 pcm::Frames TransportWorker::position(pcm::Frames frames_played) const noexcept
 {
     return head_.position(frames_played);
-}
-
-void TransportWorker::work(bool rewind) noexcept
-{
-    if (!loop_.begin(rewind)) {
-        playback_.finish(Playback::TerminalReason::faulted);
-        return;
-    }
-
-    loop_.run();
 }
 
 } // namespace wiola::engine

@@ -71,8 +71,6 @@ public:
     [[nodiscard]] pcm::Frames position(pcm::Frames frames_played) const noexcept;
 
 private:
-    void work(bool rewind) noexcept;
-
     Playback playback_;
     Playhead head_;
     TransportWait wait_;

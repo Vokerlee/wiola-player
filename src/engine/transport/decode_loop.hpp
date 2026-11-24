@@ -59,16 +59,15 @@ public:
     NO_MOVE_SEMANTIC(DecodeLoop);
     ~DecodeLoop() = default;
 
-    /// Winds the source to wherever a seek asked for, fills the buffer and starts the device.
-    /// `rewind` when playback has run before, so that what is buffered and where the source sits
-    /// are both left belonging to the place about to be played. False when no device started.
-    [[nodiscard]] bool begin(bool rewind);
-
-    /// Feeds the device until the source is spent and what it left has been heard, or until
-    /// playback is stopped. One thread runs this, and it is the only one that may.
-    void run();
+    /// Runs initial seek, priming, output start and decoding on the worker thread.
+    /// Every exit quiesces output and settles one terminal reason. Unexpected decoder failures
+    /// become faulted without escaping the worker; an already accepted terminal reason wins.
+    void run(bool rewind) noexcept;
 
 private:
+    [[nodiscard]] bool begin(bool rewind);
+    void decode();
+
     /// Carries out a requested seek, marking what was decoded for the old place as stale.
     void apply_seek();
 
@@ -91,8 +90,7 @@ private:
     TransportWait& wait_;
     std::vector<float> block_;
 
-    /// What the output was last asked for. This thread's, and seeded by `begin` before there is
-    /// a thread at all.
+    /// What the output was last asked for, owned exclusively by the worker execution.
     bool output_started_{false};
     SeekOperation seek_;
 };

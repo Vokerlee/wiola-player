@@ -56,6 +56,21 @@ DecodeLoop::DecodeLoop(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueu
 {
 }
 
+void DecodeLoop::run(bool rewind) noexcept
+{
+    try {
+        if (begin(rewind))
+            decode();
+        else
+            playback_.finish(Playback::TerminalReason::faulted);
+    } catch (...) {
+        playback_.finish(Playback::TerminalReason::faulted);
+    }
+
+    stop_output();
+    playback_.finish(Playback::TerminalReason::ended);
+}
+
 bool DecodeLoop::begin(bool rewind)
 {
     static_cast<void>(seek_.begin(rewind));
@@ -113,7 +128,7 @@ void DecodeLoop::follow_playback()
     playback_.finish(Playback::TerminalReason::faulted);
 }
 
-void DecodeLoop::run()
+void DecodeLoop::decode()
 {
     // What the last decode left, and how much of it has gone into the buffer. A block that would
     // not fit is kept here rather than waited out, so nothing below is ever held up by more than
@@ -186,9 +201,6 @@ void DecodeLoop::run()
         // will play, and `played_out` above is measured against it.
         applier_.push(num_taken);
     }
-
-    stop_output();
-    playback_.finish(Playback::TerminalReason::ended);
 }
 
 bool DecodeLoop::played_out() const noexcept
