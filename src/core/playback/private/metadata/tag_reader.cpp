@@ -33,8 +33,13 @@ TagReader::TagReader(std::shared_ptr<media::MediaProvider> provider, std::size_t
     : TagReader{[provider = std::move(provider)](const std::filesystem::path& path,
                     const media::OperationContext& context) {
                     auto asset{provider->open(path, context)};
-                    return asset ? (*asset)->read_metadata(context)
-                                 : media::Result<media::Metadata>{media::unexpected{asset.error()}};
+                    if (!asset)
+                        return media::Result<media::Metadata>{media::unexpected{asset.error()}};
+                    if (!*asset)
+                        return media::Result<media::Metadata>{media::unexpected{
+                            media::Error{.category = media::ErrorCategory::damaged,
+                                .detail = "media provider returned no asset"}}};
+                    return (*asset)->read_metadata(context);
                 },
           max_pending, max_completed}
 {
