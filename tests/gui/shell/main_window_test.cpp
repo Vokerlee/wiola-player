@@ -439,7 +439,9 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
 

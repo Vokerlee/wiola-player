@@ -91,7 +91,9 @@ TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(load_and_wait(session, "supplied-processing"), OpenResult::opened);
     ASSERT_TRUE(processing.prepared_for);
@@ -119,7 +121,9 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
                         .num_channels = 0})};
                 return wiola::media::DecoderOpenResult{std::move(decoder)};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     EXPECT_EQ(session.open({"invalid.wav"}), OpenResult::loading);
@@ -143,7 +147,9 @@ TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>()};
                 },
-                [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                    return wiola::media::Metadata{};
+                }
             ),
             wiola::engine::TransportConfig{}, wiola::engine::BufferingConfig{.duration = duration}};
 
@@ -170,7 +176,7 @@ TEST(Session, RejectsInvalidConstructionBeforeStartingAnyCollaborator)
             ++media_calls;
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
-        [&](const std::filesystem::path&) {
+        [&](const std::filesystem::path&, const wiola::media::OperationContext&) {
             ++media_calls;
             return wiola::media::Metadata{};
         }
@@ -286,7 +292,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, next_spec)};
                 },
-                [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                    return wiola::media::Metadata{};
+                }
             )};
         ASSERT_EQ(load_and_wait(session, "current"), OpenResult::opened);
         processing.equalizer.set_band_gain(9, 3.0F);
@@ -347,7 +355,9 @@ TEST(Session, NullDecoderCompletionReportsFailureWithoutOpeningOutput)
                 return wiola::media::DecoderOpenResult{
                     std::unique_ptr<wiola::media::AudioDecoder>{}};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     EXPECT_EQ(load_and_wait(session, "empty-decoder"), OpenResult::damaged);
     EXPECT_FALSE(session.loaded());
@@ -372,7 +382,9 @@ TEST(Session, InvalidStreamCompletionCannotReportASuccessfulOpen)
                         wiola::pcm::StreamSpec{.sample_rate = units::Frequency{},
                             .num_channels = 2})};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(load_and_wait(session, "invalid-stream"), OpenResult::damaged);
     const auto outcomes{session.take_outcomes()};
@@ -412,7 +424,9 @@ TEST(Session, InvalidDecoderCapabilitiesCannotRetireTheActivePipeline)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(load_and_wait(session, "active.media"), OpenResult::opened);
     ASSERT_TRUE(session.play());
@@ -457,7 +471,9 @@ TEST(Session, UnrepresentableBufferPoliciesFailBeforePreparingResources)
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>()};
                 },
-                [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                    return wiola::media::Metadata{};
+                }
             ),
             {}, {.duration = duration}};
 
@@ -492,7 +508,9 @@ TEST(Session, DeviceStartFailureIsAnEventualTransportFailureAfterInstallation)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(load_and_wait(session, "installed"), OpenResult::opened);
     ASSERT_TRUE(session.play());
@@ -544,7 +562,7 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, next_spec)};
                 },
-                [](const std::filesystem::path&) {
+                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
                     wiola::media::Metadata tags;
                     tags.track.title = "settled";
                     return tags;

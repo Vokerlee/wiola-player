@@ -53,7 +53,9 @@ protected:
 
                     return decoder;
                 },
-                [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                    return wiola::media::Metadata{};
+                }
             )
         );
     }

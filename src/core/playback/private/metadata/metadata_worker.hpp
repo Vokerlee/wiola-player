@@ -21,23 +21,16 @@
 #pragma once
 
 #include <wiola/media/metadata.hpp>
-#include <wiola/media/operation_context.hpp>
 #include <wiola/media/result.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <functional>
 #include <span>
 #include <vector>
 
 namespace wiola::engine {
-
-using MetadataReader = std::function<media::Result<media::Metadata>(const std::filesystem::path&)>;
-using ContextMetadataReader =
-    std::function<media::Result<media::Metadata>(const std::filesystem::path&,
-        const media::OperationContext&)>;
 
 /// Consumer-owned bounded metadata work. Delivery owns its values; policy accepts current identity.
 /// Submission/cancellation/collection have one lifecycle caller; busy supports concurrent queries.

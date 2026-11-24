@@ -537,7 +537,7 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [&num_reads](const std::filesystem::path&) {
+            [&num_reads](const std::filesystem::path&, const wiola::media::OperationContext&) {
                 ++num_reads;
                 wiola::media::Metadata metadata;
                 metadata.track.title = "read";
@@ -569,7 +569,8 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) -> wiola::media::Result<wiola::media::Metadata> {
+            [](const std::filesystem::path&, const wiola::media::OperationContext&)
+                -> wiola::media::Result<wiola::media::Metadata> {
                 return wiola::media::unexpected{
                     wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
                                         .detail = "no tag format"}
@@ -598,7 +599,9 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     session.open({"late.wav"});
@@ -628,7 +631,9 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
 
     session.open({"first.wav", second});
@@ -660,7 +665,9 @@ TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(session.open({"late.wav"}), OpenResult::loading);
     opening.wait_until_entered();
@@ -684,7 +691,9 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     session.open({"late.wav"});
     opening.wait_until_entered();
@@ -711,7 +720,9 @@ TEST(Session, RemovingThePendingOccurrenceCancelsItsOpenWithoutReplacingActivePl
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
         )};
     ASSERT_EQ(load_and_wait(session, "active.media"), OpenResult::opened);
     ASSERT_TRUE(session.play());

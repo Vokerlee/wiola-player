@@ -117,7 +117,7 @@ public:
                       return wiola::media::DecoderOpenResult{
                           std::make_unique<wiola::testing::FakeDecoder>(*info)};
                   },
-                  [this](const std::filesystem::path& path)
+                  [this](const std::filesystem::path& path, const wiola::media::OperationContext&)
                       -> wiola::media::Result<wiola::media::Metadata> {
                       const auto info{lookup(path)};
                       if (!info)

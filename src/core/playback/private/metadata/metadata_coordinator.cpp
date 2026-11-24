@@ -34,13 +34,6 @@ MetadataCoordinator::MetadataCoordinator(std::shared_ptr<media::MediaProvider> p
 {
 }
 
-MetadataCoordinator::MetadataCoordinator(MetadataReader reader, std::size_t max_pending,
-    std::size_t max_completed)
-    : MetadataCoordinator{
-          std::make_unique<TagReader>(std::move(reader), max_pending, max_completed)}
-{
-}
-
 MetadataCoordinator::MetadataCoordinator(std::unique_ptr<MetadataWorker> worker)
     : reader_{std::move(worker)}
 {

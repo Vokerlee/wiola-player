@@ -21,6 +21,7 @@
 #include <metadata/metadata_coordinator.hpp>
 
 #include <fakes/decoder.hpp>
+#include <fakes/provider.hpp>
 #include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
@@ -214,10 +215,12 @@ TEST(MetadataCoordinator, CoalescesDuplicatePathsWithoutMergingEntryIdentity)
     Playlist playlist;
     playlist.set({"same.wav", "same.wav"});
     std::atomic<std::size_t> num_reads{0};
-    MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
-        ++num_reads;
-        return wiola::media::Metadata{};
-    }};
+    MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
+        [&num_reads](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            ++num_reads;
+            return wiola::media::Metadata{};
+        }
+    )};
 
     coordinator.replace(playlist.tracks());
     const auto readings{wait_for(coordinator)};
@@ -235,11 +238,13 @@ TEST(MetadataCoordinator, DropsAnObsoleteGenerationAfterItsPhysicalRead)
     old_queue.set({"old.wav"});
     Playlist new_queue;
     new_queue.set({"new.wav"});
-    MetadataCoordinator coordinator{[&opening](const std::filesystem::path& path) {
-        if (path == "old.wav")
-            opening.wait();
-        return wiola::media::Metadata{};
-    }};
+    MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
+        [&opening](const std::filesystem::path& path, const wiola::media::OperationContext&) {
+            if (path == "old.wav")
+                opening.wait();
+            return wiola::media::Metadata{};
+        }
+    )};
 
     coordinator.replace(old_queue.tracks());
     opening.wait_until_entered();
@@ -261,10 +266,13 @@ TEST(MetadataCoordinator, FeedsMoreThanTheWorkerCapacityIncrementally)
             "track-" + std::to_string(index) + ".wav");
 
     std::atomic<std::size_t> num_reads{0};
-    MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
-                                        ++num_reads;
-                                        return wiola::media::Metadata{};
-                                    },
+    MetadataCoordinator coordinator{
+        wiola::testing::FakeMediaProvider::metadata_only(
+            [&num_reads](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                ++num_reads;
+                return wiola::media::Metadata{};
+            }
+        ),
         3, 2};
 
     coordinator.replace(tracks);
@@ -283,10 +291,13 @@ TEST(MetadataCoordinator, CoalescesAppendedDuplicatesBeforeDeferredSubmission)
     Playlist playlist;
     playlist.set({"same.wav"});
     std::atomic<std::size_t> num_reads{0};
-    MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
-                                        ++num_reads;
-                                        return wiola::media::Metadata{};
-                                    },
+    MetadataCoordinator coordinator{
+        wiola::testing::FakeMediaProvider::metadata_only(
+            [&num_reads](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                ++num_reads;
+                return wiola::media::Metadata{};
+            }
+        ),
         1, 1};
 
     coordinator.replace(playlist.tracks());
@@ -305,12 +316,15 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWhenTheGenerationChanges)
 {
     Gate reading;
     std::atomic<std::size_t> num_reads{0};
-    MetadataCoordinator coordinator{[&reading, &num_reads](const std::filesystem::path& path) {
-                                        ++num_reads;
-                                        if (path != "new.wav")
-                                            reading.wait();
-                                        return wiola::media::Metadata{};
-                                    },
+    MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
+                                        [&reading, &num_reads](const std::filesystem::path& path,
+                                            const wiola::media::OperationContext&) {
+                                            ++num_reads;
+                                            if (path != "new.wav")
+                                                reading.wait();
+                                            return wiola::media::Metadata{};
+                                        }
+                                    ),
         1, 1};
     Playlist old_queue;
     old_queue.set({"old-0.wav", "old-1.wav", "old-2.wav"});
@@ -333,11 +347,14 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWithoutStartingIt)
 {
     Gate reading;
     std::atomic<std::size_t> num_reads{0};
-    MetadataCoordinator coordinator{[&reading, &num_reads](const std::filesystem::path&) {
-                                        ++num_reads;
-                                        reading.wait();
-                                        return wiola::media::Metadata{};
-                                    },
+    MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
+                                        [&reading, &num_reads](const std::filesystem::path&,
+                                            const wiola::media::OperationContext&) {
+                                            ++num_reads;
+                                            reading.wait();
+                                            return wiola::media::Metadata{};
+                                        }
+                                    ),
         1, 1};
     Playlist queue;
     queue.set({"first.wav", "second.wav", "third.wav"});
@@ -356,12 +373,14 @@ TEST(MetadataCoordinator, PreservesTypedFailureBesideCoalescedEntryIdentity)
 {
     Playlist playlist;
     playlist.set({"same.wav", "same.wav"});
-    MetadataCoordinator coordinator{[](const std::filesystem::path&) {
-        return wiola::media::unexpected{
-            wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
-                                .detail = "unknown tags"}
-        };
-    }};
+    MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
+                                    .detail = "unknown tags"}
+            };
+        }
+    )};
 
     coordinator.replace(playlist.tracks());
     const auto readings{wait_for(coordinator)};

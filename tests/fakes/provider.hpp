@@ -37,8 +37,23 @@ public:
     )>;
     using DecoderFactory = std::function<media::DecoderOpenResult(const std::filesystem::path&,
         const media::OperationContext&)>;
-    using MetadataRead =
-        std::function<media::Result<media::Metadata>(const std::filesystem::path&)>;
+    using MetadataRead = std::function<media::Result<media::Metadata>(const std::filesystem::path&,
+        const media::OperationContext&)>;
+
+    /// A metadata-only driver still uses the complete public asset contract.
+    [[nodiscard]] static std::shared_ptr<FakeMediaProvider> metadata_only(MetadataRead metadata)
+    {
+        return std::make_shared<FakeMediaProvider>(
+            [](const std::filesystem::path&,
+                const media::OperationContext&) -> media::DecoderOpenResult {
+                return media::unexpected{
+                    media::Error{.category = media::ErrorCategory::unsupported,
+                                 .detail = "decoding is not supplied by this test"}
+                };
+            },
+            std::move(metadata)
+        );
+    }
 
     FakeMediaProvider(DecoderFactory decoder, MetadataRead metadata)
         : FakeMediaProvider{[callbacks = std::make_shared<const Callbacks>(std::move(decoder),
@@ -93,7 +108,7 @@ private:
         {
             if (context.stop_reason() != media::StopReason::none)
                 return media::unexpected{context.error()};
-            return callbacks_->metadata(path_);
+            return callbacks_->metadata(path_, context);
         }
 
         media::DecoderOpenResult create_decoder(const media::OperationContext& context) override

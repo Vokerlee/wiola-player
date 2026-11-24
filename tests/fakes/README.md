@@ -11,7 +11,7 @@ flowchart LR
     Output --> Source[Actual rendered source]
 ```
 
-FakeMediaProvider owns its supplied read/open callbacks. Each asset retains them and owns its resource path, so it cannot borrow a temporary provider's fields. It forwards the opening context to the controlled decoder factory and checks cancellation before metadata work. Inspection is explicitly unsupported; tests requiring inspection use the real media contract collaborator for that behavior. Captured references remain the case's responsibility and must outlive outstanding work.
+FakeMediaProvider owns its supplied read/open callbacks. Each asset retains them and owns its resource path, so it cannot borrow a temporary provider's fields. It forwards the active operation context to controlled decoder and metadata work, checking cancellation before metadata work. The `metadata_only` factory supplies the same asset contract with decoding explicitly unsupported. Inspection is explicitly unsupported; tests requiring inspection use the real media contract collaborator for that behavior. Captured references remain the case's responsibility and must outlive outstanding work.
 
 Cases testing the provider boundary can instead supply an asset factory. It can return an error, a null asset or an independently controlled asset through the same public port. The usual decoder/metadata constructor builds its owned assets through that same factory path; tests need no duplicate provider implementation.
 
