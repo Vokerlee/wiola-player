@@ -41,6 +41,7 @@
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
+#include <stop_token>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -791,6 +792,47 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
     EXPECT_EQ(session.track(), std::filesystem::path{"first.wav"});
     EXPECT_EQ(session.state(), State::stopped);
     EXPECT_FALSE(session.playing());
+}
+
+TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
+{
+    wiola::testing::Gate opening;
+    std::atomic<bool> cancelled{false};
+    Session session{wiola::testing::passive_output,
+        [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            std::stop_callback callback{context.stop, [&] { cancelled = true; }};
+            opening.wait();
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    ASSERT_EQ(session.open({"late.wav"}), OpenResult::loading);
+    opening.wait_until_entered();
+    session.stop();
+    EXPECT_TRUE(cancelled);
+    opening.release();
+    ASSERT_TRUE(poll_until(session, [&] { return !session.reading(); }));
+    EXPECT_FALSE(session.loaded());
+}
+
+TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
+{
+    wiola::testing::Gate opening;
+    std::atomic<bool> cancelled{false};
+    Session session{wiola::testing::passive_output,
+        [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            std::stop_callback callback{context.stop, [&] { cancelled = true; }};
+            opening.wait();
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    session.open({"late.wav"});
+    opening.wait_until_entered();
+    session.open({});
+    EXPECT_TRUE(cancelled);
+    opening.release();
+    ASSERT_TRUE(poll_until(session, [&] { return !session.reading(); }));
+    EXPECT_FALSE(session.loaded());
+    EXPECT_TRUE(session.playlist().empty());
 }
 
 TEST(Session, ReloadQuiescesAndRestoresTheCurrentPlayIntent)

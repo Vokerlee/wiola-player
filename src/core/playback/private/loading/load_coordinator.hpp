@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <engine/load/load_request.hpp>
+#include <loading/load_request.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -48,10 +48,12 @@ public:
         active_.reset();
     }
 
-    void invalidate_if(QueueEntryId entry) noexcept
+    [[nodiscard]] bool invalidate_if(QueueEntryId entry) noexcept
     {
-        if (active_ && active_->entry == entry)
-            invalidate();
+        if (!active_ || active_->entry != entry)
+            return false;
+        invalidate();
+        return true;
     }
 
     /// Accepts a completion at most once, and only for the exact active request.

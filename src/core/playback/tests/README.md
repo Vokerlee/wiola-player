@@ -15,3 +15,5 @@ flowchart LR
 [Buffering tests](buffering/README.md) cover the separate private queue/render mechanism. No standalone operations or snapshot module remains.
 
 [Transport tests](transport/README.md) cover state, playhead, worker failures and player commands without a codec, filesystem or output SDK. A real FFmpeg-to-player integration journey remains in `tests/codec/player_integration_test.cpp`.
+
+[Loading tests](loading/README.md) independently qualify request identity, cooperative cancellation, decoder lifetime, external callbacks outside locks and late completion rejection.

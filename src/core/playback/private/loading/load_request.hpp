@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <engine/queue/track.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/playback/queue_entry_id.hpp>
 
 #include <cstdint>
 #include <filesystem>
