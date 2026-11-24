@@ -92,7 +92,7 @@ void Player::stop() noexcept
     worker_.stop();
 }
 
-Playback::State Player::state() const noexcept
+PlaybackState Player::state() const noexcept
 {
     return worker_.state();
 }

@@ -80,7 +80,7 @@ public:
     /// Blocks until playback has ended.
     void wait();
 
-    [[nodiscard]] Playback::State state() const noexcept;
+    [[nodiscard]] PlaybackState state() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
     [[nodiscard]] bool finished() const noexcept;
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;

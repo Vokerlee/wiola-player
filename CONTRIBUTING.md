@@ -37,7 +37,7 @@ cmake -S . -B build-components -DWIOLA_COMPONENTS=media -DBUILD_TESTING=OFF
 cmake --build build-components
 ```
 
-Supported selections are borrowed_reference, quantities, media and audio; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, the selected component suites use the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [CMake component selection](cmake/components.cmake) defines scope; each public component has a relocated installed-consumer test.
+Supported selections are borrowed_reference, quantities, media, audio and playback; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, the selected component suites use the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [CMake component selection](cmake/components.cmake) defines scope; each public component has a relocated installed-consumer test. The playback selection currently owns its public values and private buffering; Session orchestration remains under engine.
 
 ### Windows
 

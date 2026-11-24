@@ -320,7 +320,7 @@ void Session::advance_if_ended()
 {
     // A track that ran out is the cue to play the next. A listener who pressed stop is not, and
     // neither is a device that went away.
-    if (state() != Playback::State::ended)
+    if (state() != PlaybackState::ended)
         return;
 
     // One already on its way is the same cue, answered.
@@ -404,9 +404,9 @@ bool Session::play_or_pause()
     // The state says which of the three this means: silence it, carry on, or begin - the last of
     // which also covers playing a track that has already finished.
     switch (state()) {
-    case Playback::State::playing:
+    case PlaybackState::playing:
         return pipeline_->player().pause();
-    case Playback::State::paused:
+    case PlaybackState::paused:
         return pipeline_->player().resume();
     default:
         return pipeline_->player().start();
@@ -428,7 +428,7 @@ bool Session::pause() noexcept
         replacement_->play = false;
         return true;
     }
-    return loaded() && state() == Playback::State::playing && pipeline_->player().pause();
+    return loaded() && state() == PlaybackState::playing && pipeline_->player().pause();
 }
 
 bool Session::resume() noexcept
@@ -437,7 +437,7 @@ bool Session::resume() noexcept
         replacement_->play = true;
         return true;
     }
-    return loaded() && state() == Playback::State::paused && pipeline_->player().resume();
+    return loaded() && state() == PlaybackState::paused && pipeline_->player().resume();
 }
 
 void Session::stop() noexcept
@@ -514,9 +514,9 @@ void Session::seek(units::Time position) noexcept
         pipeline_->player().seek(position);
 }
 
-Playback::State Session::state() const noexcept
+PlaybackState Session::state() const noexcept
 {
-    return loaded() ? pipeline_->player().state() : Playback::State::idle;
+    return loaded() ? pipeline_->player().state() : PlaybackState::idle;
 }
 
 bool Session::playing() const noexcept

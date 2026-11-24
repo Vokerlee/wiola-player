@@ -59,23 +59,23 @@ TransportWorker::~TransportWorker()
 
 bool TransportWorker::start()
 {
-    const Playback::State previous{playback_.state()};
+    const PlaybackState previous{playback_.state()};
 
-    if (previous == Playback::State::playing || previous == Playback::State::paused)
+    if (previous == PlaybackState::playing || previous == PlaybackState::paused)
         return false;
 
     if (thread_.joinable())
         thread_.join();
 
     // Replay reports its beginning immediately; the worker carries out the actual rewind.
-    if (previous != Playback::State::idle && !head_.seek_outstanding())
+    if (previous != PlaybackState::idle && !head_.seek_outstanding())
         head_.request_seek(pcm::Frames{});
 
     if (!playback_.begin())
         return false;
 
     try {
-        thread_ = launch_([this, rewind = previous != Playback::State::idle] { work(rewind); });
+        thread_ = launch_([this, rewind = previous != PlaybackState::idle] { work(rewind); });
     } catch (...) {
         playback_.finish(Playback::TerminalReason::faulted);
         return false;
@@ -116,7 +116,7 @@ void TransportWorker::wait()
         thread_.join();
 }
 
-Playback::State TransportWorker::state() const noexcept
+PlaybackState TransportWorker::state() const noexcept
 {
     return playback_.state();
 }

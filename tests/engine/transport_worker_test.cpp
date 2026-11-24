@@ -38,7 +38,7 @@ using wiola::pcm::Frames;
 using wiola::testing::FakeDecoder;
 using wiola::testing::FakeOutput;
 using wiola::testing::Gate;
-using State = wiola::engine::Playback::State;
+using State = wiola::engine::PlaybackState;
 
 TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
 {

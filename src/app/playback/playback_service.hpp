@@ -21,8 +21,8 @@
 #pragma once
 
 #include "playback_presentation.hpp"
-#include <engine/operations/operation_outcome.hpp>
 #include <engine/session.hpp>
+#include <wiola/playback/operation_outcome.hpp>
 
 namespace wiola::app {
 
@@ -72,7 +72,7 @@ public:
     [[nodiscard]] bool loaded() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
     [[nodiscard]] engine::OpenResult open_result() const noexcept;
-    [[nodiscard]] engine::Playback::State state() const noexcept;
+    [[nodiscard]] engine::PlaybackState state() const noexcept;
     [[nodiscard]] units::Time time_played() const noexcept;
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;
     [[nodiscard]] bool seekable() const noexcept;

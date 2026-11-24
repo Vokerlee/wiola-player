@@ -81,11 +81,11 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
     ASSERT_TRUE(service.loaded());
 
     EXPECT_EQ(service.play(), CommandResult::accepted);
-    EXPECT_EQ(service.state(), wiola::engine::Playback::State::playing);
+    EXPECT_EQ(service.state(), wiola::engine::PlaybackState::playing);
     EXPECT_EQ(service.pause(), CommandResult::accepted);
-    EXPECT_EQ(service.state(), wiola::engine::Playback::State::paused);
+    EXPECT_EQ(service.state(), wiola::engine::PlaybackState::paused);
     EXPECT_EQ(service.resume(), CommandResult::accepted);
-    EXPECT_EQ(service.state(), wiola::engine::Playback::State::playing);
+    EXPECT_EQ(service.state(), wiola::engine::PlaybackState::playing);
     service.stop();
 }
 

@@ -767,7 +767,7 @@ void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
 
     // A device that goes away is not a listener pressing stop, and is the one thing about
     // playback worth interrupting them for.
-    const bool faulted{playback.state == engine::Playback::State::faulted};
+    const bool faulted{playback.state == engine::PlaybackState::faulted};
 
     if (faulted && !said_fault_) {
         said_fault_ = true;

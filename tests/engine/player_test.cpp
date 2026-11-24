@@ -61,7 +61,7 @@ using wiola::audio::ProcessingChain;
 using wiola::engine::Player;
 using wiola::pcm::StreamSpec;
 using wiola::testing::Rig;
-using State = wiola::engine::Playback::State;
+using State = wiola::engine::PlaybackState;
 namespace units = wiola::units;
 
 /// Waits for `predicate`, so a test never depends on how fast a device happens to run.
