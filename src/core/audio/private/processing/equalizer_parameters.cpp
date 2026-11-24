@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <processing/biquad.hpp>
 #include <processing/equalizer_parameters.hpp>
 
 #include <algorithm>
@@ -84,7 +85,7 @@ void EqualizerParameters::set_enabled(bool enabled) noexcept
 
 void EqualizerParameters::publish() noexcept
 {
-    Bank prepared{};
+    EqualizerPublication::Bank prepared{};
     prepared.num_bands = num_bands_;
     prepared.enabled = enabled_;
 
@@ -100,32 +101,12 @@ void EqualizerParameters::publish() noexcept
     preamp_db_ = -lifted;
     prepared.preamp = amplitude(preamp_db_);
 
-    std::size_t state{state_.load(std::memory_order_acquire)};
-    std::size_t desired{};
-    do {
-        const std::size_t published{state >> 8};
-        const std::size_t active{state & 0xffU};
-        std::size_t slot{0};
-        while (slot == published || slot == active)
-            ++slot;
-
-        banks_[slot] = prepared;
-        desired = (slot << 8) | active;
-    } while (!state_.compare_exchange_weak(state, desired, std::memory_order_acq_rel,
-        std::memory_order_acquire));
+    publication_.publish(prepared);
 }
 
-const EqualizerParameters::Bank& EqualizerParameters::acquire_for_processing() noexcept
+const EqualizerPublication::Bank& EqualizerParameters::acquire_for_processing() noexcept
 {
-    std::size_t state{state_.load(std::memory_order_acquire)};
-    std::size_t desired{};
-    do {
-        const std::size_t published{state >> 8};
-        desired = (published << 8) | published;
-    } while (!state_.compare_exchange_weak(state, desired, std::memory_order_acq_rel,
-        std::memory_order_acquire));
-
-    return banks_[desired >> 8];
+    return publication_.acquire();
 }
 
 } // namespace wiola::audio
