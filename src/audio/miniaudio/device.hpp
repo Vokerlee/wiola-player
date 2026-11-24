@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -57,8 +56,10 @@ public:
     /// Takes what it plays, which outlives the device and decides the format the output opens in.
     explicit Device(Source& source);
 
-    NO_COPY_SEMANTIC(Device);
-    NO_MOVE_SEMANTIC(Device);
+    Device(const Device&) = delete;
+    Device& operator=(const Device&) = delete;
+    Device(Device&&) = delete;
+    Device& operator=(Device&&) = delete;
     ~Device();
 
     /// What the output is doing, asked of the audio stack each time.

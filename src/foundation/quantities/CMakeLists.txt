@@ -1,26 +1,15 @@
 include(GNUInstallDirs)
+include("${CMAKE_CURRENT_LIST_DIR}/../../../cmake/headers.cmake")
 
 add_library(wiola_quantities INTERFACE)
 add_library(wiola::quantities ALIAS wiola_quantities)
 set_target_properties(wiola_quantities PROPERTIES EXPORT_NAME quantities)
 target_compile_features(wiola_quantities INTERFACE cxx_std_23)
-target_include_directories(
-    wiola_quantities
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
+wiola_export_headers(wiola_quantities wiola wiola_quantities HEADERS units.hpp)
 install(
     TARGETS wiola_quantities
     EXPORT wiola_quantities_targets
     COMPONENT wiola_quantities
-)
-install(
-    DIRECTORY public/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    COMPONENT wiola_quantities
-    FILES_MATCHING
-    PATTERN "*.hpp"
 )
 install(
     EXPORT wiola_quantities_targets
