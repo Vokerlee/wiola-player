@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from tools.architecture.inventory.git_inventory import GitInventory
+from scripts.quality.architecture.inventory.git_inventory import GitInventory
 from . import collect as coverage_report
 from scripts.quality.coverage.source_policy.policy import load_current_policy
 

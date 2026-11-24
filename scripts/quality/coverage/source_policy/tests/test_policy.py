@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.architecture.ownership.registry import OwnershipRegistry
+from scripts.quality.architecture.ownership.registry import OwnershipRegistry
 from scripts.quality.coverage.source_policy.policy import (
     SourcePolicy,
     SourceRecord,

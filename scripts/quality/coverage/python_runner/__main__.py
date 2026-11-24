@@ -11,7 +11,7 @@ import tempfile
 import coverage
 
 from scripts.build.cmake import CMakeInventory
-from tools.architecture.ownership.registry import load_current_registry
+from scripts.quality.architecture.ownership.registry import load_current_registry
 from scripts.quality.coverage.source_policy.policy import load_current_policy
 
 
@@ -37,19 +37,19 @@ def _execute(
     checks = [
         [
             "-m",
-            "tools.architecture.commands.check_ownership",
+            "scripts.quality.architecture.commands.check_ownership",
             "--build-dir",
             str(build_directory.resolve()),
         ],
         [
             "-m",
-            "tools.architecture.commands.check_dependencies",
+            "scripts.quality.architecture.commands.check_dependencies",
             "--build-dir",
             str(build_directory.resolve()),
         ],
         [
             "-m",
-            "tools.architecture.commands.check_tests",
+            "scripts.quality.architecture.commands.check_tests",
             "--build-dir",
             str(build_directory.resolve()),
         ],

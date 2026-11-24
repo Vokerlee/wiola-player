@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 from scripts.build.cmake import CMakeInventory
-from tools.architecture.ownership.registry import load_current_registry
+from scripts.quality.architecture.ownership.registry import load_current_registry
 from scripts.quality.coverage.measurement.report import CoverageMeasurement
 from scripts.quality.coverage.source_policy.policy import load_current_policy
 

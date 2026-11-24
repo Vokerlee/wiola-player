@@ -378,5 +378,225 @@
     "previous": "tools/coverage/source_policy/tests/test_policy.py",
     "current": "scripts/quality/coverage/source_policy/tests/test_policy.py",
     "owner": "coverage.source_policy"
+  },
+  {
+    "previous": "tools/architecture/__init__.py",
+    "current": "scripts/quality/architecture/__init__.py",
+    "owner": "architecture.package"
+  },
+  {
+    "previous": "tools/architecture/commands/__init__.py",
+    "current": "scripts/quality/architecture/commands/__init__.py",
+    "owner": "architecture.command_group"
+  },
+  {
+    "previous": "tools/architecture/commands/check_dependencies/__init__.py",
+    "current": "scripts/quality/architecture/commands/check_dependencies/__init__.py",
+    "owner": "architecture.check_dependencies"
+  },
+  {
+    "previous": "tools/architecture/commands/check_dependencies/__main__.py",
+    "current": "scripts/quality/architecture/commands/check_dependencies/__main__.py",
+    "owner": "architecture.check_dependencies"
+  },
+  {
+    "previous": "tools/architecture/commands/check_design/__init__.py",
+    "current": "scripts/quality/architecture/commands/check_design/__init__.py",
+    "owner": "architecture.check_design"
+  },
+  {
+    "previous": "tools/architecture/commands/check_design/__main__.py",
+    "current": "scripts/quality/architecture/commands/check_design/__main__.py",
+    "owner": "architecture.check_design"
+  },
+  {
+    "previous": "tools/architecture/commands/check_ownership/__init__.py",
+    "current": "scripts/quality/architecture/commands/check_ownership/__init__.py",
+    "owner": "architecture.check_ownership"
+  },
+  {
+    "previous": "tools/architecture/commands/check_ownership/__main__.py",
+    "current": "scripts/quality/architecture/commands/check_ownership/__main__.py",
+    "owner": "architecture.check_ownership"
+  },
+  {
+    "previous": "tools/architecture/commands/check_tests/__init__.py",
+    "current": "scripts/quality/architecture/commands/check_tests/__init__.py",
+    "owner": "architecture.check_tests"
+  },
+  {
+    "previous": "tools/architecture/commands/check_tests/__main__.py",
+    "current": "scripts/quality/architecture/commands/check_tests/__main__.py",
+    "owner": "architecture.check_tests"
+  },
+  {
+    "previous": "tools/architecture/contracts/__init__.py",
+    "current": "scripts/quality/architecture/contracts/__init__.py",
+    "owner": "architecture.contracts"
+  },
+  {
+    "previous": "tools/architecture/contracts/catalog.py",
+    "current": "scripts/quality/architecture/contracts/catalog.py",
+    "owner": "architecture.contracts"
+  },
+  {
+    "previous": "tools/architecture/contracts/definitions.py",
+    "current": "scripts/quality/architecture/contracts/definitions.py",
+    "owner": "architecture.contracts"
+  },
+  {
+    "previous": "tools/architecture/contracts/tests/__init__.py",
+    "current": "scripts/quality/architecture/contracts/tests/__init__.py",
+    "owner": "architecture.contracts"
+  },
+  {
+    "previous": "tools/architecture/contracts/tests/test_catalog.py",
+    "current": "scripts/quality/architecture/contracts/tests/test_catalog.py",
+    "owner": "architecture.contracts"
+  },
+  {
+    "previous": "tools/architecture/dependency_graph/__init__.py",
+    "current": "scripts/quality/architecture/dependency_graph/__init__.py",
+    "owner": "architecture.dependency_graph"
+  },
+  {
+    "previous": "tools/architecture/dependency_graph/graph.py",
+    "current": "scripts/quality/architecture/dependency_graph/graph.py",
+    "owner": "architecture.dependency_graph"
+  },
+  {
+    "previous": "tools/architecture/dependency_graph/tests/__init__.py",
+    "current": "scripts/quality/architecture/dependency_graph/tests/__init__.py",
+    "owner": "architecture.dependency_graph"
+  },
+  {
+    "previous": "tools/architecture/dependency_graph/tests/test_graph.py",
+    "current": "scripts/quality/architecture/dependency_graph/tests/test_graph.py",
+    "owner": "architecture.dependency_graph"
+  },
+  {
+    "previous": "tools/architecture/dependency_policy/__init__.py",
+    "current": "scripts/quality/architecture/dependency_policy/__init__.py",
+    "owner": "architecture.dependency_policy"
+  },
+  {
+    "previous": "tools/architecture/dependency_policy/policy.py",
+    "current": "scripts/quality/architecture/dependency_policy/policy.py",
+    "owner": "architecture.dependency_policy"
+  },
+  {
+    "previous": "tools/architecture/dependency_policy/tests/__init__.py",
+    "current": "scripts/quality/architecture/dependency_policy/tests/__init__.py",
+    "owner": "architecture.dependency_policy"
+  },
+  {
+    "previous": "tools/architecture/dependency_policy/tests/test_policy.py",
+    "current": "scripts/quality/architecture/dependency_policy/tests/test_policy.py",
+    "owner": "architecture.dependency_policy"
+  },
+  {
+    "previous": "tools/architecture/inventory/__init__.py",
+    "current": "scripts/quality/architecture/inventory/__init__.py",
+    "owner": "architecture.git_inventory"
+  },
+  {
+    "previous": "tools/architecture/inventory/git_inventory.py",
+    "current": "scripts/quality/architecture/inventory/git_inventory.py",
+    "owner": "architecture.git_inventory"
+  },
+  {
+    "previous": "tools/architecture/inventory/tests/__init__.py",
+    "current": "scripts/quality/architecture/inventory/tests/__init__.py",
+    "owner": "architecture.git_inventory"
+  },
+  {
+    "previous": "tools/architecture/inventory/tests/test_git_inventory.py",
+    "current": "scripts/quality/architecture/inventory/tests/test_git_inventory.py",
+    "owner": "architecture.git_inventory"
+  },
+  {
+    "previous": "tools/architecture/ownership/__init__.py",
+    "current": "scripts/quality/architecture/ownership/__init__.py",
+    "owner": "architecture.ownership"
+  },
+  {
+    "previous": "tools/architecture/ownership/registry.py",
+    "current": "scripts/quality/architecture/ownership/registry.py",
+    "owner": "architecture.ownership"
+  },
+  {
+    "previous": "tools/architecture/ownership/tests/__init__.py",
+    "current": "scripts/quality/architecture/ownership/tests/__init__.py",
+    "owner": "architecture.ownership"
+  },
+  {
+    "previous": "tools/architecture/ownership/tests/test_registry.py",
+    "current": "scripts/quality/architecture/ownership/tests/test_registry.py",
+    "owner": "architecture.ownership"
+  },
+  {
+    "previous": "tools/architecture/policy_guard/__init__.py",
+    "current": "scripts/quality/architecture/policy_guard/__init__.py",
+    "owner": "architecture.policy_guard"
+  },
+  {
+    "previous": "tools/architecture/policy_guard/policy.py",
+    "current": "scripts/quality/architecture/policy_guard/policy.py",
+    "owner": "architecture.policy_guard"
+  },
+  {
+    "previous": "tools/architecture/policy_guard/tests/__init__.py",
+    "current": "scripts/quality/architecture/policy_guard/tests/__init__.py",
+    "owner": "architecture.policy_guard"
+  },
+  {
+    "previous": "tools/architecture/policy_guard/tests/test_policy.py",
+    "current": "scripts/quality/architecture/policy_guard/tests/test_policy.py",
+    "owner": "architecture.policy_guard"
+  },
+  {
+    "previous": "tools/architecture/review_contract/__init__.py",
+    "current": "scripts/quality/architecture/review_contract/__init__.py",
+    "owner": "architecture.review_contract"
+  },
+  {
+    "previous": "tools/architecture/review_contract/review.py",
+    "current": "scripts/quality/architecture/review_contract/review.py",
+    "owner": "architecture.review_contract"
+  },
+  {
+    "previous": "tools/architecture/review_contract/tests/__init__.py",
+    "current": "scripts/quality/architecture/review_contract/tests/__init__.py",
+    "owner": "architecture.review_contract"
+  },
+  {
+    "previous": "tools/architecture/review_contract/tests/test_review.py",
+    "current": "scripts/quality/architecture/review_contract/tests/test_review.py",
+    "owner": "architecture.review_contract"
+  },
+  {
+    "previous": "tools/testing/catalog/CMakeLists.txt",
+    "current": "scripts/quality/architecture/test_catalog/CMakeLists.txt",
+    "owner": "testing.catalog"
+  },
+  {
+    "previous": "tools/testing/catalog/__init__.py",
+    "current": "scripts/quality/architecture/test_catalog/__init__.py",
+    "owner": "testing.catalog"
+  },
+  {
+    "previous": "tools/testing/catalog/catalog.py",
+    "current": "scripts/quality/architecture/test_catalog/catalog.py",
+    "owner": "testing.catalog"
+  },
+  {
+    "previous": "tools/testing/catalog/tests/__init__.py",
+    "current": "scripts/quality/architecture/test_catalog/tests/__init__.py",
+    "owner": "testing.catalog"
+  },
+  {
+    "previous": "tools/testing/catalog/tests/test_catalog.py",
+    "current": "scripts/quality/architecture/test_catalog/tests/test_catalog.py",
+    "owner": "testing.catalog"
   }
 ]

@@ -11,9 +11,9 @@ import shutil
 import subprocess
 
 from scripts.build.cmake import CMakeBuild, CMakeInventory
-from tools.architecture.ownership.registry import load_current_registry
+from scripts.quality.architecture.ownership.registry import load_current_registry
 from scripts.quality.coverage.source_policy.policy import load_current_policy
-from tools.testing.catalog.catalog import load_current_catalog
+from scripts.quality.architecture.test_catalog.catalog import load_current_catalog
 from scripts.quality.coverage.llvm_reporting.reporter import (
     LLVMReporter,
     coverage_diagnostics,

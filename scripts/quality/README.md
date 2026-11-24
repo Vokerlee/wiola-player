@@ -8,4 +8,4 @@ flowchart LR
   Changes --> Architecture[Architecture and trusted review checks]
 ```
 
-[Coverage](coverage/README.md) owns raw collection, source applicability, reporting and workflow qualification. Architecture checks retain their current owner until the next complete family migration. These tools preserve historical identities and do not silently lower floors during reorganization.
+[Coverage](coverage/README.md) owns raw collection, source applicability, reporting and workflow qualification. [Architecture checks](architecture/README.md) own inventory, cohesion, source/configured dependency rules, trusted review and test catalog qualification. Run `python3 -m scripts.quality.architecture.commands.check_design --help` for the composition entrypoint. These tools preserve historical identities and do not silently lower floors during reorganization.

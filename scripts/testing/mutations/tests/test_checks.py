@@ -9,7 +9,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 
-from tools.architecture.ownership.registry import OwnershipRegistry
+from scripts.quality.architecture.ownership.registry import OwnershipRegistry
 from scripts.testing.mutations import MutationCase, MutationCatalog
 from scripts.testing.mutations import MutationVerifier
 from scripts.testing.mutations.__main__ import main, _interrupted

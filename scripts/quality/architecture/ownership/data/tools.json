@@ -1,0 +1,421 @@
+{
+  "schema_version": 1,
+  "owners": [
+    {
+      "id": "architecture.check_dependencies",
+      "purpose": "Assembles current dependency checks and reports violations.",
+      "files": [
+        "scripts/quality/architecture/commands/check_dependencies/README.md",
+        "scripts/quality/architecture/commands/check_dependencies/__init__.py",
+        "scripts/quality/architecture/commands/check_dependencies/__main__.py"
+      ]
+    },
+    {
+      "id": "architecture.check_design",
+      "purpose": "Assembles trusted design acceptance and existing architecture checks",
+      "files": [
+        "scripts/quality/architecture/commands/check_design/README.md",
+        "scripts/quality/architecture/commands/check_design/__init__.py",
+        "scripts/quality/architecture/commands/check_design/__main__.py"
+      ]
+    },
+    {
+      "id": "architecture.check_ownership",
+      "purpose": "Assembles ownership checking and reports stable command exit outcomes.",
+      "files": [
+        "scripts/quality/architecture/commands/check_ownership/README.md",
+        "scripts/quality/architecture/commands/check_ownership/__init__.py",
+        "scripts/quality/architecture/commands/check_ownership/__main__.py"
+      ]
+    },
+    {
+      "id": "architecture.check_tests",
+      "purpose": "Assembles configured test-contract reconciliation",
+      "files": [
+        "scripts/quality/architecture/commands/check_tests/README.md",
+        "scripts/quality/architecture/commands/check_tests/__init__.py",
+        "scripts/quality/architecture/commands/check_tests/__main__.py"
+      ]
+    },
+    {
+      "id": "architecture.cmake_inventory",
+      "purpose": "Reads declared targets, first-party sources, dependencies and artifacts from a configured CMake codemodel.",
+      "files": [
+        "scripts/build/cmake/_inventory.py",
+        "scripts/build/cmake/tests/test_inventory.py"
+      ]
+    },
+    {
+      "id": "architecture.command_group",
+      "purpose": "Provides the package entrypoints for architecture commands.",
+      "files": [
+        "scripts/quality/architecture/commands/README.md",
+        "scripts/quality/architecture/commands/__init__.py"
+      ]
+    },
+    {
+      "id": "architecture.contracts",
+      "purpose": "Checks declared abstraction cohesion and reports exact legacy ownership debt.",
+      "files": [
+        "scripts/quality/architecture/contracts/README.md",
+        "scripts/quality/architecture/contracts/__init__.py",
+        "scripts/quality/architecture/contracts/catalog.py",
+        "scripts/quality/architecture/contracts/data/README.md",
+        "scripts/quality/architecture/contracts/data/legacy.json",
+        "scripts/quality/architecture/contracts/definitions.py",
+        "scripts/quality/architecture/contracts/tests/README.md",
+        "scripts/quality/architecture/contracts/tests/__init__.py",
+        "scripts/quality/architecture/contracts/tests/test_catalog.py"
+      ]
+    },
+    {
+      "id": "architecture.dependency_graph",
+      "purpose": "Observes explicit source and configured dependency edges.",
+      "files": [
+        "scripts/quality/architecture/dependency_graph/README.md",
+        "scripts/quality/architecture/dependency_graph/__init__.py",
+        "scripts/quality/architecture/dependency_graph/graph.py",
+        "scripts/quality/architecture/dependency_graph/tests/README.md",
+        "scripts/quality/architecture/dependency_graph/tests/__init__.py",
+        "scripts/quality/architecture/dependency_graph/tests/test_graph.py"
+      ]
+    },
+    {
+      "id": "architecture.dependency_policy",
+      "purpose": "Checks dependency direction, Qt capability and public boundaries.",
+      "files": [
+        "scripts/quality/architecture/dependency_policy/README.md",
+        "scripts/quality/architecture/dependency_policy/__init__.py",
+        "scripts/quality/architecture/dependency_policy/data/README.md",
+        "scripts/quality/architecture/dependency_policy/data/legacy.json",
+        "scripts/quality/architecture/dependency_policy/data/modules.json",
+        "scripts/quality/architecture/dependency_policy/policy.py",
+        "scripts/quality/architecture/dependency_policy/tests/README.md",
+        "scripts/quality/architecture/dependency_policy/tests/__init__.py",
+        "scripts/quality/architecture/dependency_policy/tests/test_policy.py"
+      ]
+    },
+    {
+      "id": "architecture.git_inventory",
+      "purpose": "Reads repository-relative tracked paths from Git without changing the index.",
+      "files": [
+        "scripts/quality/architecture/inventory/README.md",
+        "scripts/quality/architecture/inventory/__init__.py",
+        "scripts/quality/architecture/inventory/git_inventory.py",
+        "scripts/quality/architecture/inventory/tests/README.md",
+        "scripts/quality/architecture/inventory/tests/__init__.py",
+        "scripts/quality/architecture/inventory/tests/test_git_inventory.py"
+      ]
+    },
+    {
+      "id": "architecture.ownership",
+      "purpose": "Validates explicit current file ownership and inventory differences.",
+      "files": [
+        "scripts/quality/architecture/ownership/README.md",
+        "scripts/quality/architecture/ownership/__init__.py",
+        "scripts/quality/architecture/ownership/data/README.md",
+        "scripts/quality/architecture/ownership/data/assets.json",
+        "scripts/quality/architecture/ownership/data/cmake.json",
+        "scripts/quality/architecture/ownership/data/github.json",
+        "scripts/quality/architecture/ownership/data/repository.json",
+        "scripts/quality/architecture/ownership/data/scripts.json",
+        "scripts/quality/architecture/ownership/data/src_app.json",
+        "scripts/quality/architecture/ownership/data/src_audio.json",
+        "scripts/quality/architecture/ownership/data/src_codec.json",
+        "scripts/quality/architecture/ownership/data/src_core.json",
+        "scripts/quality/architecture/ownership/data/src_desktop.json",
+        "scripts/quality/architecture/ownership/data/src_engine.json",
+        "scripts/quality/architecture/ownership/data/src_foundation.json",
+        "scripts/quality/architecture/ownership/data/src_gui.json",
+        "scripts/quality/architecture/ownership/data/src_library.json",
+        "scripts/quality/architecture/ownership/data/src_lockfree.json",
+        "scripts/quality/architecture/ownership/data/src_media.json",
+        "scripts/quality/architecture/ownership/data/src_pcm.json",
+        "scripts/quality/architecture/ownership/data/src_persistence.json",
+        "scripts/quality/architecture/ownership/data/src_platform.json",
+        "scripts/quality/architecture/ownership/data/src_root.json",
+        "scripts/quality/architecture/ownership/data/src_utils.json",
+        "scripts/quality/architecture/ownership/data/tests_app.json",
+        "scripts/quality/architecture/ownership/data/tests_audio.json",
+        "scripts/quality/architecture/ownership/data/tests_boundaries.json",
+        "scripts/quality/architecture/ownership/data/tests_codec.json",
+        "scripts/quality/architecture/ownership/data/tests_compatibility.json",
+        "scripts/quality/architecture/ownership/data/tests_core.json",
+        "scripts/quality/architecture/ownership/data/tests_coverage.json",
+        "scripts/quality/architecture/ownership/data/tests_desktop.json",
+        "scripts/quality/architecture/ownership/data/tests_engine.json",
+        "scripts/quality/architecture/ownership/data/tests_fakes.json",
+        "scripts/quality/architecture/ownership/data/tests_fixtures.json",
+        "scripts/quality/architecture/ownership/data/tests_gui.json",
+        "scripts/quality/architecture/ownership/data/tests_library.json",
+        "scripts/quality/architecture/ownership/data/tests_lockfree.json",
+        "scripts/quality/architecture/ownership/data/tests_media.json",
+        "scripts/quality/architecture/ownership/data/tests_pcm.json",
+        "scripts/quality/architecture/ownership/data/tests_persistence.json",
+        "scripts/quality/architecture/ownership/data/tests_platform.json",
+        "scripts/quality/architecture/ownership/data/tests_root.json",
+        "scripts/quality/architecture/ownership/data/tests_scripts.json",
+        "scripts/quality/architecture/ownership/data/tests_utils.json",
+        "scripts/quality/architecture/ownership/data/tools.json",
+        "scripts/quality/architecture/ownership/registry.py",
+        "scripts/quality/architecture/ownership/tests/README.md",
+        "scripts/quality/architecture/ownership/tests/__init__.py",
+        "scripts/quality/architecture/ownership/tests/test_registry.py"
+      ]
+    },
+    {
+      "id": "architecture.package",
+      "purpose": "Groups the current independent architecture tool components.",
+      "files": [
+        "scripts/quality/architecture/README.md",
+        "scripts/quality/architecture/__init__.py"
+      ]
+    },
+    {
+      "id": "architecture.policy_guard",
+      "purpose": "Rejects silent weakening of accepted architecture policy",
+      "files": [
+        "scripts/quality/architecture/policy_guard/README.md",
+        "scripts/quality/architecture/policy_guard/__init__.py",
+        "scripts/quality/architecture/policy_guard/policy.py",
+        "scripts/quality/architecture/policy_guard/tests/README.md",
+        "scripts/quality/architecture/policy_guard/tests/__init__.py",
+        "scripts/quality/architecture/policy_guard/tests/test_policy.py"
+      ]
+    },
+    {
+      "id": "architecture.review_contract",
+      "purpose": "Validates review contracts and repository subject conventions",
+      "files": [
+        "scripts/quality/architecture/review_contract/README.md",
+        "scripts/quality/architecture/review_contract/__init__.py",
+        "scripts/quality/architecture/review_contract/review.py",
+        "scripts/quality/architecture/review_contract/tests/README.md",
+        "scripts/quality/architecture/review_contract/tests/__init__.py",
+        "scripts/quality/architecture/review_contract/tests/test_review.py"
+      ]
+    },
+    {
+      "id": "build_environment.package",
+      "purpose": "Groups independent host build-environment adapters",
+      "files": [
+        "tools/build_environment/README.md",
+        "tools/build_environment/__init__.py"
+      ]
+    },
+    {
+      "id": "build_environment.ubuntu_packages",
+      "purpose": "Resolves and installs Ubuntu packages with reusable verified archives",
+      "files": [
+        "tools/build_environment/ubuntu_packages/README.md",
+        "tools/build_environment/ubuntu_packages/__init__.py",
+        "tools/build_environment/ubuntu_packages/__main__.py",
+        "tools/build_environment/ubuntu_packages/packages.py",
+        "tools/build_environment/ubuntu_packages/tests/README.md",
+        "tools/build_environment/ubuntu_packages/tests/__init__.py",
+        "tools/build_environment/ubuntu_packages/tests/test_packages.py"
+      ]
+    },
+    {
+      "id": "coverage.llvm_reporting",
+      "purpose": "Invokes LLVM reports with retained raw diagnostics and strict mapping agreement",
+      "files": [
+        "scripts/quality/coverage/llvm_reporting/README.md",
+        "scripts/quality/coverage/llvm_reporting/__init__.py",
+        "scripts/quality/coverage/llvm_reporting/reporter.py",
+        "scripts/quality/coverage/llvm_reporting/tests/README.md",
+        "scripts/quality/coverage/llvm_reporting/tests/__init__.py",
+        "scripts/quality/coverage/llvm_reporting/tests/test_reporter.py"
+      ]
+    },
+    {
+      "id": "coverage.measurement",
+      "purpose": "Reconciles raw coverage with owned source and configured execution",
+      "files": [
+        "scripts/quality/coverage/measurement/CMakeLists.txt",
+        "scripts/quality/coverage/measurement/README.md",
+        "scripts/quality/coverage/measurement/__init__.py",
+        "scripts/quality/coverage/measurement/__main__.py",
+        "scripts/quality/coverage/measurement/baseline/README.md",
+        "scripts/quality/coverage/measurement/baseline/qualified.json",
+        "scripts/quality/coverage/measurement/report.py",
+        "scripts/quality/coverage/measurement/tests/README.md",
+        "scripts/quality/coverage/measurement/tests/__init__.py",
+        "scripts/quality/coverage/measurement/tests/test_report.py"
+      ]
+    },
+    {
+      "id": "coverage.package",
+      "purpose": "Groups independent measurement and qualification components",
+      "files": [
+        "scripts/quality/coverage/CMakeLists.txt",
+        "scripts/quality/coverage/README.md",
+        "scripts/quality/coverage/__init__.py"
+      ]
+    },
+    {
+      "id": "coverage.python_runner",
+      "purpose": "Collects Python tool coverage with retained process evidence",
+      "files": [
+        "scripts/quality/coverage/python_runner/CMakeLists.txt",
+        "scripts/quality/coverage/python_runner/README.md",
+        "scripts/quality/coverage/python_runner/__init__.py",
+        "scripts/quality/coverage/python_runner/__main__.py"
+      ]
+    },
+    {
+      "id": "coverage.source_policy",
+      "purpose": "Preserves explicit measurement applicability and source identity",
+      "files": [
+        "scripts/quality/coverage/source_policy/README.md",
+        "scripts/quality/coverage/source_policy/__init__.py",
+        "scripts/quality/coverage/source_policy/data/README.md",
+        "scripts/quality/coverage/source_policy/data/moves.json",
+        "scripts/quality/coverage/source_policy/data/sources.json",
+        "scripts/quality/coverage/source_policy/policy.py",
+        "scripts/quality/coverage/source_policy/tests/README.md",
+        "scripts/quality/coverage/source_policy/tests/__init__.py",
+        "scripts/quality/coverage/source_policy/tests/test_policy.py"
+      ]
+    },
+    {
+      "id": "sdk.package",
+      "purpose": "Groups the shared Qt source provider and target SDK recipes",
+      "files": [
+        "scripts/qt/README.md",
+        "scripts/qt/__init__.py"
+      ]
+    },
+    {
+      "id": "sdk.qt_core_tsan",
+      "purpose": "Builds, qualifies and verifies the native instrumented Qt Core runtime",
+      "files": [
+        "scripts/qt/tsan/CMakeLists.txt",
+        "scripts/qt/tsan/README.md",
+        "scripts/qt/tsan/__init__.py",
+        "scripts/qt/tsan/__main__.py",
+        "scripts/qt/tsan/build.py",
+        "scripts/qt/tsan/context.py",
+        "scripts/qt/tsan/runtime.py",
+        "scripts/qt/tsan/tests/README.md",
+        "scripts/qt/tsan/tests/__init__.py",
+        "scripts/qt/tsan/tests/test_recipe.py",
+        "scripts/qt/tsan/verify.py"
+      ]
+    },
+    {
+      "id": "sdk.qt_mingw",
+      "purpose": "Builds and identifies the x86-64 static Qt SDK",
+      "files": [
+        "scripts/qt/windows/README.md",
+        "scripts/qt/windows/__init__.py",
+        "scripts/qt/windows/build.sh",
+        "scripts/qt/windows/context.cmake",
+        "scripts/qt/windows/tests/README.md",
+        "scripts/qt/windows/tests/__init__.py",
+        "scripts/qt/windows/tests/test_sdk.py"
+      ]
+    },
+    {
+      "id": "sdk.qt_source",
+      "purpose": "Acquires reviewed Qt sources with verified archives, safe extraction and immutable cache receipts",
+      "files": [
+        "scripts/qt/source/README.md",
+        "scripts/qt/source/__init__.py",
+        "scripts/qt/source/__main__.py",
+        "scripts/qt/source/pins.json",
+        "scripts/qt/source/provider.py",
+        "scripts/qt/source/tests/README.md",
+        "scripts/qt/source/tests/__init__.py",
+        "scripts/qt/source/tests/test_provider.py"
+      ]
+    },
+    {
+      "id": "testing.catalog",
+      "purpose": "Reconciles test ownership, semantic purpose and applicability",
+      "files": [
+        "scripts/quality/architecture/test_catalog/CMakeLists.txt",
+        "scripts/quality/architecture/test_catalog/README.md",
+        "scripts/quality/architecture/test_catalog/__init__.py",
+        "scripts/quality/architecture/test_catalog/catalog.py",
+        "scripts/quality/architecture/test_catalog/data/README.md",
+        "scripts/quality/architecture/test_catalog/data/python.json",
+        "scripts/quality/architecture/test_catalog/data/requirements.json",
+        "scripts/quality/architecture/test_catalog/data/targets.json",
+        "scripts/quality/architecture/test_catalog/tests/README.md",
+        "scripts/quality/architecture/test_catalog/tests/__init__.py",
+        "scripts/quality/architecture/test_catalog/tests/test_catalog.py"
+      ]
+    },
+    {
+      "id": "testing.cmake_build",
+      "purpose": "Builds configured CMake targets and resolves their declared executable artifacts",
+      "files": [
+        "scripts/build/cmake/README.md",
+        "scripts/build/cmake/__init__.py",
+        "scripts/build/cmake/_build.py",
+        "scripts/build/cmake/tests/README.md",
+        "scripts/build/cmake/tests/__init__.py",
+        "scripts/build/cmake/tests/test_build.py"
+      ]
+    },
+    {
+      "id": "testing.desktop_checks",
+      "purpose": "Composes desktop fixture environment and packaged test execution",
+      "files": [
+        "scripts/testing/desktop/README.md",
+        "scripts/testing/desktop/__init__.py",
+        "scripts/testing/desktop/__main__.py",
+        "scripts/testing/desktop/environment.py",
+        "scripts/testing/desktop/tests/README.md",
+        "scripts/testing/desktop/tests/__init__.py",
+        "scripts/testing/desktop/tests/test_environment.py"
+      ]
+    },
+    {
+      "id": "testing.gtest",
+      "purpose": "Executes the GoogleTest discovery and report protocol with complete case evidence",
+      "files": [
+        "scripts/testing/gtest/README.md",
+        "scripts/testing/gtest/__init__.py",
+        "scripts/testing/gtest/_report.py",
+        "scripts/testing/gtest/_runner.py",
+        "scripts/testing/gtest/tests/README.md",
+        "scripts/testing/gtest/tests/__init__.py",
+        "scripts/testing/gtest/tests/test_protocol.py"
+      ]
+    },
+    {
+      "id": "testing.mutation_checks",
+      "purpose": "Qualifies declared regressions through owned source, build and GoogleTest protocols",
+      "files": [
+        "scripts/testing/mutations/CMakeLists.txt",
+        "scripts/testing/mutations/README.md",
+        "scripts/testing/mutations/__init__.py",
+        "scripts/testing/mutations/__main__.py",
+        "scripts/testing/mutations/cases.json",
+        "scripts/testing/mutations/_catalog.py",
+        "scripts/testing/mutations/tests/README.md",
+        "scripts/testing/mutations/tests/__init__.py",
+        "scripts/testing/mutations/tests/test_checks.py",
+        "scripts/testing/mutations/_verifier.py"
+      ]
+    },
+    {
+      "id": "testing.source_mutation",
+      "purpose": "Applies one atomic source edit and restores exact bytes without overwriting concurrent edits",
+      "files": [
+        "scripts/testing/mutations/_edit.py",
+        "scripts/testing/mutations/tests/test_edit.py"
+      ]
+    },
+    {
+      "id": "tooling.package",
+      "purpose": "Defines the repository-tool package and contributor entrypoint.",
+      "files": [
+        "tools/README.md",
+        "tools/__init__.py"
+      ]
+    }
+  ]
+}

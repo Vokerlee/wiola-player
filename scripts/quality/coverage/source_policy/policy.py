@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 from typing import Iterable
 
-from tools.architecture.ownership.registry import OwnershipRegistry
+from scripts.quality.architecture.ownership.registry import OwnershipRegistry
 
 LANGUAGES = {
     ".cpp": "cpp",
