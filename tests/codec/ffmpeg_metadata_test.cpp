@@ -21,6 +21,8 @@
 #include <codec/backends/ffmpeg/metadata.hpp>
 #include <codec/provider.hpp>
 
+#include <fixtures/temporary_directory.hpp>
+
 #include <gtest/gtest.h>
 
 extern "C" {
@@ -59,7 +61,8 @@ void append(Bytes& out, std::initializer_list<unsigned> values)
         out.push_back(static_cast<std::byte>(value));
 }
 
-std::filesystem::path tagged_copy(const char* name, const Bytes& frames)
+std::filesystem::path tagged_copy(const std::filesystem::path& directory, const char* name,
+    const Bytes& frames)
 {
     Bytes tag;
     append(tag, "ID3");
@@ -71,7 +74,7 @@ std::filesystem::path tagged_copy(const char* name, const Bytes& frames)
             static_cast<unsigned>(frames.size() & 0x7FU)});
     tag.insert(tag.end(), frames.begin(), frames.end());
 
-    const std::filesystem::path made{std::filesystem::temp_directory_path() / name};
+    const std::filesystem::path made{directory / name};
     std::ifstream sound{fixtures() / "tone.mp3", std::ios::binary};
     std::ofstream out{made, std::ios::binary};
 
@@ -141,7 +144,8 @@ void append_be32(Bytes& out, std::uint32_t value)
         out.push_back(static_cast<std::byte>((value >> shift) & 0xFFU));
 }
 
-std::filesystem::path flac_with_artwork(const char* name, const Bytes& drawn)
+std::filesystem::path flac_with_artwork(const std::filesystem::path& directory, const char* name,
+    const Bytes& drawn)
 {
     std::ifstream input{fixtures() / "tone.flac", std::ios::binary};
     const std::vector<char> encoded{std::istreambuf_iterator<char>{input},
@@ -187,7 +191,7 @@ std::filesystem::path flac_with_artwork(const char* name, const Bytes& drawn)
     file.insert(file.begin() + static_cast<std::ptrdiff_t>(offset + 4), picture.begin(),
         picture.end());
 
-    const auto path = std::filesystem::temp_directory_path() / name;
+    const auto path = directory / name;
     std::ofstream output{path, std::ios::binary};
     output.write(reinterpret_cast<const char*>(file.data()),
         static_cast<std::streamsize>(file.size()));
@@ -250,7 +254,9 @@ std::vector<float> decoded_samples(const std::filesystem::path& path)
 
 TEST(FfmpegMetadata, RejectsAFileThatIsNotThere)
 {
-    const auto metadata{wiola::codec::ffmpeg::read_metadata(fixtures() / "no-such-track.mp3")};
+    wiola::testing::TemporaryDirectory directory;
+    const auto metadata{
+        wiola::codec::ffmpeg::read_metadata(directory.path() / "no-such-track.mp3")};
 
     ASSERT_FALSE(metadata);
     EXPECT_EQ(metadata.error().category, wiola::media::ErrorCategory::unreadable);
@@ -271,7 +277,9 @@ TEST(FfmpegMetadata, ReadsDurationWithoutTextOrArtwork)
 
 TEST(FfmpegMetadata, ReadsAnId3TitleFromMp3)
 {
-    const auto track{tagged_copy("wiola_ffmpeg_tagged.mp3", title_frame("Together Forever"))};
+    wiola::testing::TemporaryDirectory directory;
+    const auto track{
+        tagged_copy(directory.path(), "wiola_ffmpeg_tagged.mp3", title_frame("Together Forever"))};
     const auto metadata{wiola::codec::ffmpeg::read_metadata(track)};
 
     ASSERT_TRUE(metadata);
@@ -280,6 +288,7 @@ TEST(FfmpegMetadata, ReadsAnId3TitleFromMp3)
 
 TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
 {
+    wiola::testing::TemporaryDirectory directory;
     Bytes frames;
     append_frame(frames, title_frame("Extended"));
     append_frame(frames, text_frame("TCON", "Jazz"));
@@ -288,7 +297,7 @@ TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
     append_frame(frames, text_frame("TCOM", "Composer"));
     append_frame(frames, text_frame("TRCK", "3/12"));
     append_frame(frames, text_frame("TPOS", "2/3"));
-    const auto track{tagged_copy("wiola_ffmpeg_extended.mp3", frames)};
+    const auto track{tagged_copy(directory.path(), "wiola_ffmpeg_extended.mp3", frames)};
 
     const auto metadata{wiola::codec::ffmpeg::read_metadata(track)};
     ASSERT_TRUE(metadata);
@@ -307,7 +316,9 @@ TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
 
 TEST(FfmpegMetadata, DetectsMetadataWithoutAFileExtension)
 {
-    const auto track{tagged_copy("wiola_ffmpeg_tagged.whatever", title_frame("Together Forever"))};
+    wiola::testing::TemporaryDirectory directory;
+    const auto track{tagged_copy(directory.path(), "wiola_ffmpeg_tagged.whatever",
+        title_frame("Together Forever"))};
     const auto metadata{wiola::codec::ffmpeg::read_metadata(track)};
 
     ASSERT_TRUE(metadata);
@@ -323,10 +334,12 @@ TEST(FfmpegMetadata, ReadsAFlacWithoutMetadataBlocks)
 
 TEST(FfmpegMetadata, ReadsAnId3AttachedPicture)
 {
+    wiola::testing::TemporaryDirectory directory;
     constexpr char drawn_bytes[]{"\x89PNG\r\n\x1a\n and then some"};
     Bytes drawn;
     append(drawn, std::string_view{drawn_bytes, sizeof(drawn_bytes) - 1});
-    const auto track{tagged_copy("wiola_ffmpeg_with_cover.mp3", artwork_frame(drawn))};
+    const auto track{
+        tagged_copy(directory.path(), "wiola_ffmpeg_with_cover.mp3", artwork_frame(drawn))};
 
     const auto metadata{wiola::codec::ffmpeg::read_metadata(track)};
 
@@ -338,11 +351,13 @@ TEST(FfmpegMetadata, ReadsAnId3AttachedPicture)
 
 TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
 {
+    wiola::testing::TemporaryDirectory directory;
     constexpr char drawn_bytes[]{"\x89PNG\r\n\x1a\n and then some"};
     Bytes drawn;
     append(drawn, std::string_view{drawn_bytes, sizeof(drawn_bytes) - 1});
 
-    const auto track = tagged_copy("wiola_ffmpeg_write_cover.mp3", artwork_frame(drawn));
+    const auto track =
+        tagged_copy(directory.path(), "wiola_ffmpeg_write_cover.mp3", artwork_frame(drawn));
     const auto original_samples = decoded_samples(track);
 
     wiola::codec::LocalMediaProvider provider;
@@ -359,12 +374,6 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
 
     const std::filesystem::path output = outcome.staged_output;
 
-    struct RemoveOutput {
-        std::filesystem::path path;
-
-        ~RemoveOutput() { std::filesystem::remove(path); }
-    } cleanup{output};
-
     const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
     ASSERT_TRUE(metadata) << metadata.error().detail;
     EXPECT_EQ(metadata->track.title, "Updated title");
@@ -376,11 +385,12 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
 
 TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
 {
+    wiola::testing::TemporaryDirectory directory;
     constexpr char drawn_bytes[]{"\x89PNG\r\n\x1a\n FLAC picture"};
     Bytes drawn;
     append(drawn, std::string_view{drawn_bytes, sizeof(drawn_bytes) - 1});
 
-    const auto track = flac_with_artwork("wiola_ffmpeg_write_cover.flac", drawn);
+    const auto track = flac_with_artwork(directory.path(), "wiola_ffmpeg_write_cover.flac", drawn);
     const auto original_samples = decoded_samples(track);
     wiola::codec::LocalMediaProvider provider;
 
@@ -396,12 +406,6 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
 
     const std::filesystem::path commented = outcome.staged_output;
 
-    struct RemoveOutput {
-        std::filesystem::path path;
-
-        ~RemoveOutput() { std::filesystem::remove(path); }
-    } cleanup_commented{commented};
-
     asset = provider.open(commented);
     ASSERT_TRUE(asset);
     wiola::media::MetadataWriteRequest second;
@@ -410,7 +414,6 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
     const std::filesystem::path output = outcome.staged_output;
-    RemoveOutput cleanup{output};
     const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
 
     ASSERT_TRUE(metadata) << metadata.error().detail;
@@ -426,8 +429,10 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
 
 TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
 {
+    wiola::testing::TemporaryDirectory directory;
     for (const char* name : {"attached-art.m4a", "tone-alac.mp4"}) {
-        const auto track = fixtures() / name;
+        const auto track = directory.path() / name;
+        std::filesystem::copy_file(fixtures() / name, track);
         const auto original_metadata = wiola::codec::ffmpeg::read_metadata(track);
         ASSERT_TRUE(original_metadata) << name;
         const auto original_samples = decoded_samples(track);
@@ -445,12 +450,6 @@ TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
 
         const std::filesystem::path output = outcome.staged_output;
 
-        struct RemoveOutput {
-            std::filesystem::path path;
-
-            ~RemoveOutput() { std::filesystem::remove(path); }
-        } cleanup{output};
-
         const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
         ASSERT_TRUE(metadata) << metadata.error().detail;
         EXPECT_EQ(metadata->track.title, "Updated MP4");
@@ -464,8 +463,10 @@ TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
 
 TEST(FfmpegMetadata, QualifiedOggAndOpusWritingPreservesPacketsAndChainedPcm)
 {
+    wiola::testing::TemporaryDirectory directory;
     for (const char* name : {"tone-vorbis.ogg", "tone.opus", "chained-same-shape.ogg"}) {
-        const auto track = fixtures() / name;
+        const auto track = directory.path() / name;
+        std::filesystem::copy_file(fixtures() / name, track);
         const auto original_metadata = wiola::codec::ffmpeg::read_metadata(track);
         ASSERT_TRUE(original_metadata) << name;
         const auto original_samples = decoded_samples(track);
@@ -483,12 +484,6 @@ TEST(FfmpegMetadata, QualifiedOggAndOpusWritingPreservesPacketsAndChainedPcm)
         ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
         const std::filesystem::path output = outcome.staged_output;
-
-        struct RemoveOutput {
-            std::filesystem::path path;
-
-            ~RemoveOutput() { std::filesystem::remove(path); }
-        } cleanup{output};
 
         const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
         ASSERT_TRUE(metadata) << metadata.error().detail;
@@ -587,8 +582,8 @@ TEST(FfmpegMetadata, KeepsArtworkBytesWhenTheImageCodecHasNoMimeMapping)
 
 TEST(FfmpegMetadata, SeparatesUnrecognizedInputFromUnsupportedAudio)
 {
-    const std::filesystem::path invalid{
-        std::filesystem::temp_directory_path() / "wiola_metadata_invalid.bin"};
+    wiola::testing::TemporaryDirectory directory;
+    const std::filesystem::path invalid{directory.path() / "wiola_metadata_invalid.bin"};
     std::ofstream{invalid} << "not audio";
 
     auto unrecognized{wiola::codec::ffmpeg::read_metadata(invalid)};
