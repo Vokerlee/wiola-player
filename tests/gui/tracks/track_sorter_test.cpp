@@ -42,8 +42,7 @@ TrackSortKey key(TrackSortField field, TrackSortDirection direction = TrackSortD
 TEST(TrackSorter, AppliesMultipleKeysWithDeterministicIdentityFallback)
 {
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("b.wav"), wiola::engine::Track::of("a.wav"),
-        wiola::engine::Track::of("c.wav")});
+    playlist.set({"b.wav", "a.wav", "c.wav"});
     playlist.describe(playlist.tracks()[0].id(),
         {.title = "Same", .artist = "Zed", .album = {}, .duration = {}});
     playlist.describe(playlist.tracks()[1].id(),
@@ -72,8 +71,7 @@ TEST(TrackSorter, AppliesMultipleKeysWithDeterministicIdentityFallback)
 TEST(TrackSorter, KeepsMissingDurationsLastAndUsesTagKeys)
 {
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("unknown.wav"), wiola::engine::Track::of("short.wav"),
-        wiola::engine::Track::of("long.wav")});
+    playlist.set({"unknown.wav", "short.wav", "long.wav"});
     playlist.describe(playlist.tracks()[1].id(),
         {.title = {}, .artist = {}, .album = {}, .duration = wiola::units::Time{1}});
     playlist.describe(playlist.tracks()[2].id(),

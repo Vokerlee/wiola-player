@@ -115,7 +115,7 @@ TEST(TrackRows, SelectionAndActivationRetainDistinctSavedOccurrenceIdentities)
 TEST(TrackRows, QueueAdapterKeepsDuplicateOccurrencesAndMediaIdentitySeparate)
 {
     engine::Playlist queue;
-    queue.set({engine::Track::of("same.wav"), engine::Track::of("same.wav")});
+    queue.set({"same.wav", "same.wav"});
     const auto rows = gui::queue_rows(queue.tracks());
     ASSERT_EQ(rows.size(), 2);
     EXPECT_NE(rows[0].id, rows[1].id);

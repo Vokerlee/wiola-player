@@ -20,6 +20,7 @@
 
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
+#include <wiola/playback/queue_entry.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 
 #include <gtest/gtest.h>
@@ -93,4 +94,23 @@ TEST(PlaybackContracts, CompletionRetainsItsOwnFailureAfterTheOriginalChanges)
     ASSERT_TRUE(outcome.error);
     EXPECT_EQ(std::get<engine::OutputSetupError>(*outcome.error).detail, "owned diagnostic");
     EXPECT_EQ(outcome.id, 7U);
+}
+
+TEST(PlaybackContracts, EntryObservationOwnsFactsAndSharesOnlyImmutableArtwork)
+{
+    using namespace wiola;
+    std::filesystem::path path{"original.wav"};
+    media::TrackMetadata metadata;
+    metadata.title = "original title";
+    const auto artwork{std::make_shared<const media::Artwork>()};
+    const engine::QueueEntry entry{engine::QueueEntryId{7}, path, metadata, artwork, 3};
+    path.clear();
+    metadata.title.clear();
+    const auto retained{entry};
+
+    EXPECT_EQ(retained.id(), engine::QueueEntryId{7});
+    EXPECT_EQ(retained.path(), std::filesystem::path{"original.wav"});
+    EXPECT_EQ(retained.metadata().title, "original title");
+    EXPECT_EQ(retained.artwork(), artwork);
+    EXPECT_EQ(retained.revision(), 3U);
 }

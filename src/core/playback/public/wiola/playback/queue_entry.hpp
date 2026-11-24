@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Stable queue identity, immutable location, and mutable track metadata.
+ * @brief Owned immutable observation of one playback queue occurrence.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,31 +19,36 @@
  */
 
 #pragma once
-#include <wiola/playback/queue_entry_id.hpp>
 
 #include <wiola/media/metadata.hpp>
+#include <wiola/playback/queue_entry_id.hpp>
 
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <utility>
 
 namespace wiola::engine {
 
-/// Facts learned after queueing, separate from the resource they describe.
-using TrackMetadata = media::TrackMetadata;
-
-/// One queue entry. Identity and location are assigned once and cannot be replaced by metadata.
-class Track {
+/// Owned facts for one occurrence. A queue exposes const entries; metadata updates preserve
+/// identity/location. Copies retain their own metadata and share only immutable artwork.
+class QueueEntry {
 public:
-    /// Creates an unassigned entry; Playlist assigns its stable identity when queueing it.
-    [[nodiscard]] static Track of(std::filesystem::path path);
+    QueueEntry(QueueEntryId id, std::filesystem::path path, media::TrackMetadata metadata = {},
+        std::shared_ptr<const media::Artwork> artwork = {}, std::uint64_t revision = 0) noexcept
+        : id_{id}
+        , path_{std::move(path)}
+        , metadata_{std::move(metadata)}
+        , artwork_{std::move(artwork)}
+        , revision_{revision}
+    {
+    }
 
     [[nodiscard]] constexpr QueueEntryId id() const noexcept { return id_; }
 
     [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
 
-    /// Borrowed immutable facts; a metadata update or queue mutation can invalidate the view.
-    [[nodiscard]] const TrackMetadata& metadata() const noexcept { return metadata_; }
+    [[nodiscard]] const media::TrackMetadata& metadata() const noexcept { return metadata_; }
 
     [[nodiscard]] const std::shared_ptr<const media::Artwork>& artwork() const noexcept
     {
@@ -53,11 +58,11 @@ public:
     [[nodiscard]] constexpr std::uint64_t revision() const noexcept { return revision_; }
 
 private:
-    QueueEntryId id_{};
+    QueueEntryId id_;
     std::filesystem::path path_;
-    TrackMetadata metadata_;
+    media::TrackMetadata metadata_;
     std::shared_ptr<const media::Artwork> artwork_;
-    std::uint64_t revision_{0};
+    std::uint64_t revision_;
 
     friend class Playlist;
 };

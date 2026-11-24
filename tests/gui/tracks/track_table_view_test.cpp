@@ -102,7 +102,7 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.setCurrentIndex(view.model()->index(1, 0));
 
@@ -154,8 +154,7 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav"),
-        wiola::engine::Track::of("third.wav")});
+    playlist.set({"first.wav", "second.wav", "third.wav"});
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     view.selectionModel()->select(view.model()->index(0, 0),
@@ -165,7 +164,7 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
     view.selectionModel()->setCurrentIndex(view.model()->index(2, 0),
         QItemSelectionModel::NoUpdate);
 
-    std::vector<wiola::engine::Track> reordered{playlist.tracks()};
+    std::vector<wiola::engine::QueueEntry> reordered{playlist.tracks()};
     std::ranges::reverse(reordered);
     view.show_rows(wiola::gui::queue_rows(reordered));
 
@@ -183,7 +182,7 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.selectionModel()->select(view.model()->index(0, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
@@ -285,7 +284,7 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("b.wav"), wiola::engine::Track::of("a.wav")});
+    playlist.set({"b.wav", "a.wav"});
     playlist.describe(id_at(playlist, 0),
         {.title = "Zulu", .artist = {}, .album = {}, .duration = {}});
     playlist.describe(id_at(playlist, 1),
@@ -317,8 +316,7 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("same.wav"), wiola::engine::Track::of("same.wav"),
-        wiola::engine::Track::of("other.wav")});
+    playlist.set({"same.wav", "same.wav", "other.wav"});
     playlist.describe(id_at(playlist, 0),
         {.title = "Same", .artist = "Zulu", .album = {}, .duration = {}});
     playlist.describe(id_at(playlist, 1),

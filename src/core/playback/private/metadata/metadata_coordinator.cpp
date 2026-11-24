@@ -48,7 +48,7 @@ MetadataCoordinator::MetadataCoordinator(std::unique_ptr<MetadataWorker> worker)
         throw std::invalid_argument{"metadata worker must not be null"};
 }
 
-void MetadataCoordinator::replace(std::span<const Track> tracks)
+void MetadataCoordinator::replace(std::span<const QueueEntry> tracks)
 {
     Groups groups{group(tracks)};
     ++generation_;
@@ -61,7 +61,7 @@ void MetadataCoordinator::replace(std::span<const Track> tracks)
     entries_ = std::move(groups);
 }
 
-void MetadataCoordinator::append(std::span<const Track> tracks)
+void MetadataCoordinator::append(std::span<const QueueEntry> tracks)
 {
     Groups additions{group(tracks)};
 
@@ -119,11 +119,11 @@ bool MetadataCoordinator::busy() const noexcept
     return reader_->busy() || next_submission_ < deferred_.size();
 }
 
-MetadataCoordinator::Groups MetadataCoordinator::group(std::span<const Track> tracks) const
+MetadataCoordinator::Groups MetadataCoordinator::group(std::span<const QueueEntry> tracks) const
 {
     Groups groups;
 
-    for (const Track& track : tracks)
+    for (const QueueEntry& track : tracks)
         groups[track.path()].push_back(track.id());
 
     return groups;

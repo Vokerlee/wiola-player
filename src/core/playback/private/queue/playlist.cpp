@@ -25,14 +25,30 @@
 
 namespace wiola::engine {
 
-void Playlist::set(std::vector<Track> tracks)
+namespace {
+
+std::pair<std::vector<QueueEntry>, QueueEntryId>
+make_entries(std::vector<std::filesystem::path> paths, QueueEntryId next)
 {
-    QueueEntryId next{next_id_};
+    std::vector<QueueEntry> entries;
+    entries.reserve(paths.size());
+    for (auto& path : paths) {
+        media::TrackMetadata metadata;
+        metadata.title = path.stem().string();
+        entries.emplace_back(next, std::move(path), std::move(metadata));
+        ++next.value;
+    }
+    return {std::move(entries), next};
+}
+
+} // namespace
+
+void Playlist::set(std::vector<std::filesystem::path> paths)
+{
+    auto [tracks, next]{make_entries(std::move(paths), next_id_)};
     std::map<QueueEntryId, std::size_t> indices;
 
     for (std::size_t index{0}; index < tracks.size(); ++index) {
-        tracks[index].id_ = next;
-        ++next.value;
         indices.emplace(tracks[index].id(), index);
     }
 
@@ -47,31 +63,24 @@ void Playlist::set(std::vector<Track> tracks)
     ++structural_revision_;
 }
 
-void Playlist::add(Track track)
+void Playlist::add(std::vector<std::filesystem::path> paths)
 {
-    add(std::vector<Track>{std::move(track)});
-}
-
-void Playlist::add(std::vector<Track> tracks)
-{
-    if (tracks.empty())
+    if (paths.empty())
         return;
 
+    auto [tracks, next]{make_entries(std::move(paths), next_id_)};
     tracks_.reserve(tracks_.size() + tracks.size());
     order_.reserve(tracks_.size() + tracks.size());
 
-    QueueEntryId next{next_id_};
     std::map<QueueEntryId, std::size_t> additions;
 
-    for (Track& track : tracks) {
-        track.id_ = next;
-        ++next.value;
+    for (const QueueEntry& track : tracks) {
         additions.emplace(track.id(), tracks_.size() + additions.size());
     }
 
     indices_.merge(additions);
 
-    for (Track& track : tracks) {
+    for (QueueEntry& track : tracks) {
         tracks_.push_back(std::move(track));
         order_.add();
     }
@@ -99,7 +108,7 @@ bool Playlist::remove(std::size_t index) noexcept
 
     ++revision_;
     ++structural_revision_;
-    const Track* selected{current()};
+    const QueueEntry* selected{current()};
     const QueueEntryId selected_id{selected ? selected->id() : QueueEntryId{}};
     if (previous_position != position() || previous_id != selected_id)
         ++selection_revision_;
@@ -128,18 +137,18 @@ std::size_t Playlist::revision() const noexcept
     return revision_;
 }
 
-const std::vector<Track>& Playlist::tracks() const noexcept
+const std::vector<QueueEntry>& Playlist::tracks() const noexcept
 {
     return tracks_;
 }
 
-const Track* Playlist::current() const noexcept
+const QueueEntry* Playlist::current() const noexcept
 {
     const auto selected{order_.position()};
     return selected ? &tracks_[*selected] : nullptr;
 }
 
-bool Playlist::describe(QueueEntryId id, TrackMetadata metadata)
+bool Playlist::describe(QueueEntryId id, media::TrackMetadata metadata)
 {
     const auto index{index_of(id)};
 
@@ -167,8 +176,8 @@ bool Playlist::illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork>
     return true;
 }
 
-void Playlist::apply_metadata(std::span<const QueueEntryId> entries, const TrackMetadata& metadata,
-    std::shared_ptr<const media::Artwork> artwork)
+void Playlist::apply_metadata(std::span<const QueueEntryId> entries,
+    const media::TrackMetadata& metadata, std::shared_ptr<const media::Artwork> artwork)
 {
     bool changed{false};
 

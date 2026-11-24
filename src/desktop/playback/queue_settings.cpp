@@ -103,18 +103,17 @@ std::size_t QueueSettings::restore()
 void QueueSettings::save()
 {
     const app::PlayerPresentation presentation{app::present_playback(playback_)};
-    platform::qt::PlaylistSettings settings{.tracks = {},
-        .selected = {},
-        .repeat = static_cast<int>(presentation.repeat),
-        .shuffled = presentation.shuffled};
+    platform::qt::PlaylistSettings settings;
+    settings.repeat = static_cast<int>(presentation.repeat);
+    settings.shuffled = presentation.shuffled;
 
-    for (const engine::Track& track : playback_.playlist().tracks()) {
+    for (const engine::QueueEntry& track : playback_.playlist().tracks()) {
         settings.tracks.push_back(track.path());
         settings.occurrence_ids.push_back(track.id().value);
     }
     settings.has_occurrence_ids = true;
 
-    if (const engine::Track* current = playback_.playlist().current()) {
+    if (const engine::QueueEntry* current = playback_.playlist().current()) {
         settings.selected = current->path();
         settings.selected_occurrence = current->id().value;
     }

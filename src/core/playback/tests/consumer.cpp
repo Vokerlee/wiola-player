@@ -19,6 +19,7 @@
  */
 
 #include <wiola/playback/operation_outcome.hpp>
+#include <wiola/playback/queue_entry.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 #include <wiola/playback/snapshot.hpp>
 
@@ -63,5 +64,12 @@ int main()
     engine::OperationOutcome success;
     if (success.error)
         return 4;
+    media::TrackMetadata facts;
+    facts.title = "owned title";
+    const engine::QueueEntry entry{engine::QueueEntryId{receipt.id}, "resource", facts};
+    facts.title.clear();
+    if (entry.id() != engine::QueueEntryId{receipt.id} || entry.path() != "resource" ||
+        entry.metadata().title != "owned title" || entry.artwork() || entry.revision() != 0)
+        return 5;
     return !engine::QueueEntryId{receipt.id}.valid();
 }

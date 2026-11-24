@@ -25,9 +25,9 @@
 #include <library/repository.hpp>
 #include <map>
 #include <queue/playlist.hpp>
-#include <queue/track.hpp>
 #include <span>
 #include <unordered_map>
+#include <wiola/playback/queue_entry.hpp>
 
 namespace wiola::gui {
 
@@ -61,7 +61,7 @@ public:
     [[nodiscard]] std::optional<engine::QueueEntryId> current() const { return current_; }
 
 private:
-    [[nodiscard]] TrackRow present(const engine::Track& track,
+    [[nodiscard]] TrackRow present(const engine::QueueEntry& track,
         const library::LibraryRepository* repository) const;
     void replace(std::size_t position, TrackRow row);
     [[nodiscard]] std::vector<TrackRow> update_library(const engine::Playlist& playlist,
@@ -77,8 +77,8 @@ private:
     Resolver resolve_media_;
 };
 
-[[nodiscard]] TrackRow queue_row(const engine::Track& track);
-[[nodiscard]] std::vector<TrackRow> queue_rows(std::span<const engine::Track> tracks);
+[[nodiscard]] TrackRow queue_row(const engine::QueueEntry& track);
+[[nodiscard]] std::vector<TrackRow> queue_rows(std::span<const engine::QueueEntry> tracks);
 [[nodiscard]] std::vector<engine::QueueEntryId> queue_entry_ids(std::span<const TrackRowId> rows);
 [[nodiscard]] std::optional<engine::QueueEntryId>
 queue_entry_id(const std::optional<TrackRowId>& row);

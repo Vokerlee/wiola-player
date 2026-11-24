@@ -40,9 +40,9 @@
 namespace {
 
 using wiola::engine::Playlist;
+using wiola::engine::QueueEntry;
 using wiola::engine::QueueEntryId;
-using wiola::engine::Track;
-using wiola::engine::TrackMetadata;
+using wiola::media::TrackMetadata;
 using Repeat = wiola::engine::Playlist::Repeat;
 
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
@@ -63,11 +63,10 @@ bool allocation_fails(std::size_t after, Operation operation)
 #endif
 
 /// Three tracks, named so that a test can say which one it is standing at.
-std::vector<Track> three()
+std::vector<std::filesystem::path> three()
 {
-    return {Track::of(std::filesystem::path{"first.wav"}),
-        Track::of(std::filesystem::path{"second.wav"}),
-        Track::of(std::filesystem::path{"third.wav"})};
+    return {std::filesystem::path{"first.wav"}, std::filesystem::path{"second.wav"},
+        std::filesystem::path{"third.wav"}};
 }
 
 /// The file a track is, which is what a test says it stands at.
@@ -113,8 +112,8 @@ TEST(Playlist, StandsAtTheFirstTrackAdded)
 {
     Playlist playlist;
 
-    playlist.add(Track::of(std::filesystem::path{"only.wav"}));
-    playlist.add(Track::of(std::filesystem::path{"after.wav"}));
+    playlist.add({std::filesystem::path{"only.wav"}});
+    playlist.add({std::filesystem::path{"after.wav"}});
 
     EXPECT_EQ(playlist.tracks().size(), 2U);
     EXPECT_EQ(path_of(playlist), std::filesystem::path{"only.wav"});
@@ -274,7 +273,7 @@ TEST(Playlist, NamesATrackAfterItsFileUntilItIsToldOtherwise)
 {
     Playlist playlist;
 
-    playlist.add(Track::of(std::filesystem::path{"/music/first.wav"}));
+    playlist.add({std::filesystem::path{"/music/first.wav"}});
 
     ASSERT_NE(playlist.current(), nullptr);
     EXPECT_EQ(playlist.current()->metadata().title, "first") << "a name is not an extension";
@@ -291,7 +290,7 @@ TEST(Playlist, TakesWhatIsFoundOutAboutATrack)
     ASSERT_TRUE(playlist.go_to(1));
     const wiola::engine::QueueEntryId selected{playlist.current()->id()};
 
-    wiola::engine::TrackMetadata told;
+    wiola::media::TrackMetadata told;
     told.title = "Together Forever";
     told.artist = "Rick Astley";
     told.album = "Whenever You Need Somebody";
@@ -319,7 +318,7 @@ TEST(Playlist, CountsEveryChangeToWhatIsQueued)
     const std::size_t filled{playlist.revision()};
     EXPECT_NE(filled, empty);
 
-    playlist.add(Track::of(std::filesystem::path{"fourth.wav"}));
+    playlist.add({std::filesystem::path{"fourth.wav"}});
     const std::size_t added{playlist.revision()};
     EXPECT_NE(added, filled);
 
@@ -396,7 +395,7 @@ TEST(Playlist, StandsNowhereOnceTheLastTrackIsTakenOut)
 {
     Playlist playlist;
 
-    playlist.add(Track::of(std::filesystem::path{"only.wav"}));
+    playlist.add({std::filesystem::path{"only.wav"}});
     ASSERT_TRUE(playlist.remove(0));
 
     EXPECT_TRUE(playlist.empty());
@@ -449,14 +448,14 @@ TEST(Playlist, MakesNoSelectionExplicit)
 TEST(Playlist, GivesDuplicatePathsIndependentIdentities)
 {
     Playlist playlist;
-    playlist.set({Track::of("same.wav"), Track::of("same.wav")});
+    playlist.set({"same.wav", "same.wav"});
     const wiola::engine::QueueEntryId removed{playlist.tracks()[0].id()};
     const wiola::engine::QueueEntryId kept{playlist.tracks()[1].id()};
 
     EXPECT_NE(removed, kept);
     ASSERT_TRUE(playlist.remove(0));
 
-    wiola::engine::TrackMetadata metadata;
+    wiola::media::TrackMetadata metadata;
     metadata.title = "Only the remaining entry";
     EXPECT_FALSE(playlist.describe(removed, metadata));
     ASSERT_TRUE(playlist.describe(kept, metadata));
@@ -467,11 +466,11 @@ TEST(Playlist, GivesDuplicatePathsIndependentIdentities)
 TEST(Playlist, DoesNotReuseIdentitiesAfterClear)
 {
     Playlist playlist;
-    playlist.add(Track::of("before.wav"));
+    playlist.add({"before.wav"});
     const wiola::engine::QueueEntryId before{playlist.tracks().front().id()};
 
     playlist.clear();
-    playlist.add(Track::of("after.wav"));
+    playlist.add({"after.wav"});
 
     EXPECT_NE(playlist.tracks().front().id(), before);
     EXPECT_FALSE(playlist.describe(before, {}));
@@ -480,13 +479,13 @@ TEST(Playlist, DoesNotReuseIdentitiesAfterClear)
 TEST(Playlist, AppliesOneMetadataBatchWithoutRepeatedQueueRevisions)
 {
     Playlist playlist;
-    std::vector<Track> tracks;
+    std::vector<std::filesystem::path> tracks;
     for (std::size_t index = 0; index < 1000; ++index)
-        tracks.push_back(Track::of("track" + std::to_string(index) + ".wav"));
+        tracks.push_back("track" + std::to_string(index) + ".wav");
     playlist.set(std::move(tracks));
 
     std::vector<QueueEntryId> entries;
-    for (const Track& track : playlist.tracks())
+    for (const QueueEntry& track : playlist.tracks())
         entries.push_back(track.id());
 
     const std::size_t revision{playlist.revision()};
@@ -497,14 +496,14 @@ TEST(Playlist, AppliesOneMetadataBatchWithoutRepeatedQueueRevisions)
 
     EXPECT_EQ(playlist.revision(), revision + 1);
     EXPECT_EQ(playlist.metadata_revision(), metadata_revision + 1);
-    for (const Track& track : playlist.tracks())
+    for (const QueueEntry& track : playlist.tracks())
         EXPECT_EQ(track.metadata().title, "known");
 }
 
 TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
 {
     Playlist playlist;
-    playlist.set({Track::of("first.wav"), Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     const QueueEntryId removed{playlist.tracks()[0].id()};
     const QueueEntryId surviving{playlist.tracks()[1].id()};
 
@@ -551,7 +550,7 @@ TEST(Playlist, EmptyReplacementPreservesRepeatChoiceWithoutInventingASelection)
     EXPECT_TRUE(playlist.empty());
     EXPECT_FALSE(playlist.position());
     EXPECT_EQ(playlist.repeat(), Repeat::all);
-    playlist.add(Track::of("new.wav"));
+    playlist.add({"new.wav"});
     EXPECT_EQ(playlist.position(), 0U);
     EXPECT_TRUE(playlist.previous());
     EXPECT_EQ(playlist.position(), 0U);
@@ -567,7 +566,7 @@ TEST(Playlist, EmptyAppendLeavesTheAcceptedQueueAndRevisionsUntouched)
     const auto metadata{playlist.metadata_revision()};
     const auto selection{playlist.selection_revision()};
     const auto id{playlist.current()->id()};
-    playlist.add(std::vector<Track>{});
+    playlist.add(std::vector<std::filesystem::path>{});
     EXPECT_EQ(playlist.current()->id(), id);
     EXPECT_EQ(playlist.revision(), revision);
     EXPECT_EQ(playlist.structural_revision(), structure);
@@ -618,7 +617,8 @@ TEST(Playlist, ObsoleteMetadataBatchesCannotInvalidateLiveQueueObservations)
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
 TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
 {
-    for (std::size_t after{0}; after < 3; ++after) {
+    bool observed_failure{false};
+    for (std::size_t after{0};; ++after) {
         Playlist playlist;
         playlist.set(three());
         playlist.go_to(1);
@@ -626,12 +626,16 @@ TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
             playlist.tracks()[2].id()};
         const std::size_t revision{playlist.revision()};
         const std::size_t structural_revision{playlist.structural_revision()};
-        std::vector replacement{Track::of("new-first.wav"), Track::of("new-second.wav")};
+        std::vector<std::filesystem::path> replacement{"new-first.wav", "new-second.wav"};
 
-        ASSERT_TRUE(allocation_fails(
-            after, [&playlist, &replacement] { playlist.set(std::move(replacement)); }
-        )) << "allocation index "
-           << after;
+        if (!allocation_fails(after, [&] { playlist.set(std::move(replacement)); })) {
+            EXPECT_TRUE(observed_failure);
+            ASSERT_EQ(playlist.tracks().size(), 2U);
+            EXPECT_EQ(playlist.tracks()[0].id(), QueueEntryId{4});
+            EXPECT_EQ(playlist.tracks()[1].id(), QueueEntryId{5});
+            break;
+        }
+        observed_failure = true;
 
         ASSERT_EQ(playlist.tracks().size(), 3U);
         EXPECT_EQ(playlist.revision(), revision);
@@ -643,26 +647,31 @@ TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
             EXPECT_EQ(playlist.index_of(ids[index]), index);
         }
 
-        playlist.add(Track::of("accepted.wav"));
+        playlist.add({"accepted.wav"});
         EXPECT_EQ(playlist.tracks().back().id(), QueueEntryId{4});
     }
 }
 
 TEST(Playlist, AppendAllocationFailuresLeaveTheAcceptedQueueUntouched)
 {
-    for (std::size_t after{0}; after < 4; ++after) {
+    bool observed_failure{false};
+    for (std::size_t after{0};; ++after) {
         Playlist playlist;
         playlist.set(three());
         const std::vector ids{playlist.tracks()[0].id(), playlist.tracks()[1].id(),
             playlist.tracks()[2].id()};
         const std::size_t revision{playlist.revision()};
         const std::size_t structural_revision{playlist.structural_revision()};
-        std::vector additions{Track::of("fourth.wav"), Track::of("fifth.wav")};
+        std::vector<std::filesystem::path> additions{"fourth.wav", "fifth.wav"};
 
-        ASSERT_TRUE(
-            allocation_fails(after, [&playlist, &additions] { playlist.add(std::move(additions)); })
-        ) << "allocation index "
-          << after;
+        if (!allocation_fails(after, [&] { playlist.add(std::move(additions)); })) {
+            EXPECT_TRUE(observed_failure);
+            ASSERT_EQ(playlist.tracks().size(), 5U);
+            EXPECT_EQ(playlist.tracks()[3].id(), QueueEntryId{4});
+            EXPECT_EQ(playlist.tracks()[4].id(), QueueEntryId{5});
+            break;
+        }
+        observed_failure = true;
 
         ASSERT_EQ(playlist.tracks().size(), 3U);
         EXPECT_EQ(playlist.revision(), revision);
@@ -673,7 +682,7 @@ TEST(Playlist, AppendAllocationFailuresLeaveTheAcceptedQueueUntouched)
             EXPECT_EQ(playlist.index_of(ids[index]), index);
         }
 
-        playlist.add(std::vector{Track::of("fourth.wav"), Track::of("fifth.wav")});
+        playlist.add({"fourth.wav", "fifth.wav"});
         EXPECT_EQ(playlist.tracks()[3].id(), QueueEntryId{4});
         EXPECT_EQ(playlist.tracks()[4].id(), QueueEntryId{5});
         EXPECT_EQ(playlist.index_of(playlist.tracks()[4].id()), 4U);

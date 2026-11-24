@@ -49,7 +49,7 @@ TEST(NowPlayingDocument, PresentsTheActualEngineQueueAndCurrentTrack)
 {
     wiola::gui::NowPlayingDocument document;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     playlist.go_to(1);
 
     document.show_playlist(playlist);
@@ -74,7 +74,7 @@ TEST(NowPlayingDocument, ForwardsIdentityBasedCommandsFromItsTable)
 {
     wiola::gui::NowPlayingDocument document;
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     document.show_playlist(playlist);
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
@@ -109,9 +109,9 @@ TEST(NowPlayingDocument, ForwardsIdentityBasedCommandsFromItsTable)
 TEST(NowPlayingDocument, IdleRefreshAndPlayingMarkerDoNotRebuildOrQueryTheSource)
 {
     using namespace wiola;
-    std::vector<engine::Track> tracks;
+    std::vector<std::filesystem::path> tracks;
     for (int i = 0; i < 1000; ++i)
-        tracks.push_back(engine::Track::of("/music/" + std::to_string(i) + ".wav"));
+        tracks.push_back("/music/" + std::to_string(i) + ".wav");
     engine::Playlist playlist;
     playlist.set(std::move(tracks));
     gui::NowPlayingDocument document;
@@ -141,7 +141,7 @@ TEST(NowPlayingDocument, LibraryOverridesRefreshDuplicateOccurrencesWithoutReadi
 {
     using namespace wiola;
     engine::Playlist playlist;
-    playlist.set({engine::Track::of("/missing.wav"), engine::Track::of("/missing.wav")});
+    playlist.set({"/missing.wav", "/missing.wav"});
     library::InMemoryRepository repository;
     library::TrackRecord record;
     record.id = library::media_id_for("/missing.wav");
@@ -162,9 +162,9 @@ TEST(NowPlayingDocument,
     LibraryBatchesPatchOnlyMatchingOccurrencesAndKeepRawFieldsUntilLearningCompletes)
 {
     using namespace wiola;
-    std::vector<engine::Track> tracks;
+    std::vector<std::filesystem::path> tracks;
     for (int i = 0; i < 1000; ++i)
-        tracks.push_back(engine::Track::of("/music/" + std::to_string(i == 1 ? 0 : i) + ".wav"));
+        tracks.push_back("/music/" + std::to_string(i == 1 ? 0 : i) + ".wav");
     engine::Playlist playlist;
     playlist.set(std::move(tracks));
     playlist.describe(playlist.tracks()[0].id(), {.title = "Raw title", .artist = "Raw artist"});
