@@ -9,6 +9,6 @@ flowchart LR
   Protocol --> Evidence[Complete selected-case evidence]
 ```
 
-Run `python3 -m tools.testing.desktop_checks --help`. The existing `scripts/run-desktop-journeys.py` remains a compatibility launcher. Existing binary/artifact/revision/filter/minimum/media arguments remain accepted; `--timeout`, `--qt-platform` and repeated `--require-case` make execution bounds, GUI adapter selection and semantic requirements explicit. The project composition retains the desktop suite's default filter; the shared runner has no project case names.
+Run `python3 -m scripts.testing.desktop --help`. This is the sole entrypoint; no root launcher or second implementation is retained. Existing binary/artifact/revision/filter/minimum/media arguments remain accepted; `--timeout`, `--qt-platform` and repeated `--require-case` make execution bounds, GUI adapter selection and semantic requirements explicit. The project composition retains the desktop suite's default filter; the shared runner has no project case names.
 
 The caller owns platform selection, including `QT_QPA_PLATFORM=windows` for a native Windows check and `offscreen` when deliberately running a Qt check without a display. An inherited choice is preserved. Replacing the GUI affects this fixture adapter and the desktop contracts rather than the reusable process/report protocol. Every selected case must actually finish, even when the caller requests a smaller minimum; minimum counts cannot hide skipped or missing cases.

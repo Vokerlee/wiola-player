@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 from .environment import DesktopEnvironment
-from tools.testing.gtest.runner import GoogleTestRunner, TestExecutionError
+from scripts.testing.gtest import GoogleTestRunner, TestExecutionError
 
 
 def main(argv=None) -> int:

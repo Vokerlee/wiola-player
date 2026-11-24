@@ -363,26 +363,26 @@
       "id": "testing.desktop_checks",
       "purpose": "Composes desktop fixture environment and packaged test execution",
       "files": [
-        "tools/testing/desktop_checks/README.md",
-        "tools/testing/desktop_checks/__init__.py",
-        "tools/testing/desktop_checks/__main__.py",
-        "tools/testing/desktop_checks/environment.py",
-        "tools/testing/desktop_checks/tests/README.md",
-        "tools/testing/desktop_checks/tests/__init__.py",
-        "tools/testing/desktop_checks/tests/test_environment.py"
+        "scripts/testing/desktop/README.md",
+        "scripts/testing/desktop/__init__.py",
+        "scripts/testing/desktop/__main__.py",
+        "scripts/testing/desktop/environment.py",
+        "scripts/testing/desktop/tests/README.md",
+        "scripts/testing/desktop/tests/__init__.py",
+        "scripts/testing/desktop/tests/test_environment.py"
       ]
     },
     {
       "id": "testing.gtest",
       "purpose": "Executes the GoogleTest discovery and report protocol with complete case evidence",
       "files": [
-        "tools/testing/gtest/README.md",
-        "tools/testing/gtest/__init__.py",
-        "tools/testing/gtest/report.py",
-        "tools/testing/gtest/runner.py",
-        "tools/testing/gtest/tests/README.md",
-        "tools/testing/gtest/tests/__init__.py",
-        "tools/testing/gtest/tests/test_protocol.py"
+        "scripts/testing/gtest/README.md",
+        "scripts/testing/gtest/__init__.py",
+        "scripts/testing/gtest/_report.py",
+        "scripts/testing/gtest/_runner.py",
+        "scripts/testing/gtest/tests/README.md",
+        "scripts/testing/gtest/tests/__init__.py",
+        "scripts/testing/gtest/tests/test_protocol.py"
       ]
     },
     {
