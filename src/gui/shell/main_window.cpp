@@ -125,6 +125,9 @@ QString as_status(engine::OpenResult result)
     case engine::OpenResult::unreadable:
         return QString{"cannot read that file"};
 
+    case engine::OpenResult::output_unavailable:
+        return QString{"audio output is unavailable"};
+
     default:
         return QString{"cannot read that file"};
     }

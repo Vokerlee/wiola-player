@@ -25,6 +25,7 @@
 namespace wiola::engine {
 
 enum class OpenResult {
+    /// A complete decoder/output pipeline is installed; device start is a separate operation.
     opened,
     loading,
     unreadable,

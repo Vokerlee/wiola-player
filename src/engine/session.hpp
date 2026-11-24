@@ -49,6 +49,9 @@ namespace wiola::engine {
 /**
  * Builds what a track is played through, and keeps it built while it plays.
  *
+ * One control thread calls commands and observations. Decoder work and device callbacks run
+ * on owned workers; completion delivery and installation are observed after a control turn.
+ *
  * A buffer and an output are cut for the format of the track that is loaded, so opening another
  * one replaces them. The chain outlives them all: a setting belongs to the listener rather than
  * to what is playing.
@@ -187,12 +190,10 @@ private:
     /// Reads whatever the list now stands at, playing it if something was playing.
     OpenResult read_current_track(bool playing);
 
-    /// Whether a track has been read and is waiting to go on.
-    [[nodiscard]] bool read_waiting() const noexcept;
-
-    /// Puts the track that was read in place of whatever is loaded, from its beginning and not
-    /// playing. False when nothing is waiting.
-    bool install_read_track();
+    /// Prepares a complete candidate before retiring current playback. Failure preserves the
+    /// active pipeline; installation and its owned path are committed without allocation.
+    bool install_track(std::unique_ptr<media::AudioDecoder> source, std::filesystem::path path,
+        OperationId request);
 
     /// Takes up the next track when one has run out. A listener who pressed stop, or a device
     /// that went away, is not a cue to play anything.
@@ -215,9 +216,6 @@ private:
     bool outcomes_overflowed_{false};
     std::filesystem::path track_;
 
-    /// A track that has been read and not yet put on, with the name it goes by.
-    std::unique_ptr<media::AudioDecoder> ready_;
-    std::filesystem::path ready_track_;
     std::optional<units::Time> restore_position_;
     std::optional<MediaReplacementState> replacement_;
     std::uint64_t replacement_generation_{};

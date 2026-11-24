@@ -8,6 +8,6 @@ wiola_add_test(
 wiola_add_test(
     engine_session_test
     SOURCES session_test.cpp
-    LIBS wiola_engine_session wiola_codec
+    LIBS wiola_engine_session wiola_codec wiola_test_allocation_failure
     DATA "${PROJECT_SOURCE_DIR}/tests/codec/data"
 )

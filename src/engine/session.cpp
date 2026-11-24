@@ -87,8 +87,6 @@ OpenResult Session::open(std::vector<std::filesystem::path> tracks)
     if (playlist_.empty()) {
         loads_.invalidate();
         loader_->cancel();
-        ready_.reset();
-        ready_track_.clear();
         return last_result_;
     }
 
@@ -207,10 +205,8 @@ bool Session::shuffled() const noexcept
 OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
 {
     replacement_.reset();
-    // Whatever was read and not put on was read for a track nobody is waiting for any more.
+    // A fresh request supersedes any pending media-replacement position.
     restore_position_.reset();
-    ready_.reset();
-    ready_track_.clear();
 
     LoadRequest request{loads_.begin(track.id(), track.path(), intent)};
     open_request_id_ = request.generation;
@@ -225,14 +221,14 @@ void Session::record_outcome(OperationKind operation, OperationId id,
 {
     constexpr std::size_t max_retained_outcomes{64};
 
-    if (outcomes_.size() == max_retained_outcomes) {
-        outcomes_.pop_front();
-        outcomes_overflowed_ = true;
-    }
-
+    // Appending can allocate; retain the accepted history if it fails.
     outcomes_.push_back(
         OperationOutcome{.id = id, .operation = operation, .error = std::move(error)}
     );
+    if (outcomes_.size() > max_retained_outcomes) {
+        outcomes_.pop_front();
+        outcomes_overflowed_ = true;
+    }
 }
 
 OpenResult Session::read_current_track(bool playing)
@@ -299,15 +295,10 @@ void Session::take_up_finished_read()
         return;
     }
 
-    record_outcome(OperationKind::open, completed->request.generation);
-
-    ready_ = std::move(*opened);
-    ready_track_ = completed->request.path;
-    last_result_ = OpenResult::opened;
-
     const bool play{completed->request.intent == LoadIntent::play};
 
-    if (!install_read_track()) {
+    if (!install_track(std::move(*opened), std::move(completed->request.path),
+            completed->request.generation)) {
         restore_position_.reset();
         return;
     }
@@ -329,7 +320,7 @@ void Session::advance_if_ended()
         return;
 
     // One already on its way is the same cue, answered.
-    if (reading() || read_waiting())
+    if (reading())
         return;
 
     if (!playlist_.next())
@@ -338,40 +329,44 @@ void Session::advance_if_ended()
     static_cast<void>(read_current_track(true));
 }
 
-bool Session::read_waiting() const noexcept
+bool Session::install_track(std::unique_ptr<media::AudioDecoder> source, std::filesystem::path path,
+    OperationId request)
 {
-    return ready_ != nullptr;
-}
-
-bool Session::install_read_track()
-{
-    if (!read_waiting())
+    const auto reject{[this, request](OperationError error) {
+        const auto status{open_failed(error)};
+        record_outcome(OperationKind::open, request, std::move(error));
+        last_result_ = status;
         return false;
-
-    std::unique_ptr<media::AudioDecoder> source{std::move(ready_)};
+    }};
+    if (!source)
+        return reject(media::Error{media::ErrorCategory::damaged,
+            "decoder opener returned no source"});
     const pcm::StreamSpec spec{source->spec()};
     const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(buffering_.duration)};
+    if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames))
+        return reject(media::Error{media::ErrorCategory::damaged,
+            "decoder stream cannot support the configured playback buffer"});
 
-    if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames)) {
-        ready_track_.clear();
-        last_result_ = OpenResult::damaged;
-        return false;
+    try {
+        auto processing{chain_.prepare(spec)};
+        auto output{out_.prepare(spec)};
+        auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
+            *buffer_frames, transport_)};
+
+        // This is the last fallible operation. One lifecycle caller observes the completion
+        // after this function returns; the following commit cannot fail or allocate.
+        record_outcome(OperationKind::open, request);
+        pipeline_.reset();
+        if (processing)
+            processing->commit();
+        pipeline->activate(out_);
+        pipeline_.swap(pipeline);
+        track_.swap(path);
+        last_result_ = OpenResult::opened;
+        return true;
+    } catch (const OutputSession::Unavailable& failure) {
+        return reject(OutputSetupError{failure.what()});
     }
-
-    // The bundle joins transport before its lease detaches the borrowed source.
-    pipeline_.reset();
-
-    chain_.configure(spec);
-    auto output{out_.prepare(spec)};
-    auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
-        *buffer_frames, transport_)};
-    pipeline->activate(out_);
-    pipeline_ = std::move(pipeline);
-
-    track_ = ready_track_;
-    ready_track_.clear();
-
-    return true;
 }
 
 bool Session::reading() const noexcept
@@ -450,8 +445,6 @@ void Session::stop() noexcept
     }
     loads_.invalidate();
     loader_->cancel();
-    ready_.reset();
-    ready_track_.clear();
 
     if (!loaded())
         return;
@@ -474,8 +467,6 @@ Session::release_media(const std::filesystem::path& path)
         ++replacement_generation_};
     loads_.invalidate();
     loader_->cancel();
-    ready_.reset();
-    ready_track_.clear();
     pipeline_.reset();
     replacement_ = state;
     return state;
