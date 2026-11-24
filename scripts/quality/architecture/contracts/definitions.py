@@ -4,6 +4,17 @@ from scripts.quality.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "tool.format_cpp",
+        "scripts/quality/formatting",
+        "Owns tracked-source formatting and one delegating hook",
+        (
+            "Source selection and formatter protocols have one owner",
+            "Failures are never skipped",
+        ),
+        ("scripts/quality/formatting/__init__.py",),
+        parts=("tool.format_cmake", "tool.install_hooks", "tool.hooks.pre_commit"),
+    ),
+    AbstractionContract(
         "scripts.quality",
         "scripts/quality",
         "Groups architecture and coverage quality tools",

@@ -109,26 +109,21 @@ the copyright line: `@copyright (c) 2026, <vokerlee@gmail.com>`. Copy this block
 
 ## Formatting
 
-Only the scripts. Never `clang-format` or `gersemi` by hand - they format what the scripts choose,
-which is every tracked file, not whatever happened to be edited.
+Use the maintained command so developer, hook and CI checks select inputs and invoke the same pinned tools.
 
 ```bash
-pip install -r requirements.txt        # the pinned python tools
+pip install -r requirements.txt
 
-scripts/format-cpp.sh                  # rewrite every tracked C/C++ file
-scripts/format-cpp.sh --check          # report instead, and fail if anything differs
-
-scripts/format-cmake.sh                # rewrite every tracked CMake file
-scripts/format-cmake.sh --check        # report instead, and fail if anything differs
-
-scripts/install-hooks.sh               # run both checks before every commit, from now on
+python3 -m scripts.quality.formatting format cpp
+python3 -m scripts.quality.formatting format cmake
+python3 -m scripts.quality.formatting format all --check
+python3 -m scripts.quality.formatting format cpp --check --files src/main.cpp
+python3 -m scripts.quality.formatting install-hooks
 ```
 
-`format-cmake.sh` hands its argument to gersemi, so anything gersemi takes works there -
-`--diff`, for one. `format-cpp.sh` knows only `--check`; any other argument rewrites.
+Default selection includes existing tracked files. `--files` selects only explicit tracked paths relative to the worktree root. Missing tools and formatter failures fail the hook as well as CI; installation preserves regular custom hook files. The hook checks working-tree files, not separately staged partial-file contents.
 
-`.clang-format` and `.gersemirc` decide everything. Do not argue with them in review, and do not
-restate their settings anywhere else.
+`.clang-format` and `.gersemirc` decide style; requirements.txt pins the tool versions. Keep these facts in their owning files. [The formatting component](scripts/quality/formatting/README.md) explains selection and hook invariants.
 
 ## Coverage
 

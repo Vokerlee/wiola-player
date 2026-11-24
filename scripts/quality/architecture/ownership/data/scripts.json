@@ -31,28 +31,34 @@
       "id": "tool.format_cmake",
       "purpose": "Implements the current format cmake development command.",
       "files": [
-        "scripts/format-cmake.sh"
+        "scripts/quality/formatting/_rules.py"
       ]
     },
     {
       "id": "tool.format_cpp",
       "purpose": "Implements the current format cpp development command.",
       "files": [
-        "scripts/format-cpp.sh"
+        "scripts/quality/formatting/__init__.py",
+        "scripts/quality/formatting/__main__.py",
+        "scripts/quality/formatting/_format.py",
+        "scripts/quality/formatting/README.md",
+        "scripts/quality/formatting/tests/__init__.py",
+        "scripts/quality/formatting/tests/README.md",
+        "scripts/quality/formatting/tests/test_formatting.py"
       ]
     },
     {
       "id": "tool.hooks.pre_commit",
       "purpose": "Implements the current pre commit development command.",
       "files": [
-        "scripts/hooks/pre-commit"
+        "scripts/quality/formatting/pre_commit.sh"
       ]
     },
     {
       "id": "tool.install_hooks",
       "purpose": "Implements the current install hooks development command.",
       "files": [
-        "scripts/install-hooks.sh"
+        "scripts/quality/formatting/_hooks.py"
       ]
     },
     {
