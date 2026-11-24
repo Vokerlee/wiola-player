@@ -21,6 +21,7 @@
 #include <metadata/tag_reader.hpp>
 
 #include <fakes/decoder.hpp>
+#include <fakes/provider.hpp>
 
 #include <gtest/gtest.h>
 
@@ -91,6 +92,115 @@ TEST(TagReader, ReadsWithTheSuppliedCollaborator)
     EXPECT_EQ(readings[1].path, std::filesystem::path{"second.wav"});
     EXPECT_EQ(readings[1].result->track.artist, "second");
     EXPECT_TRUE(reader.take().empty());
+}
+
+TEST(TagReader, NullProviderAssetReportsFailureAndLaterMetadataStillCompletes)
+{
+    wiola::testing::FakeMediaProvider valid{
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            ADD_FAILURE() << "metadata inspection must not construct a decoder";
+            return wiola::media::DecoderOpenResult{std::unique_ptr<wiola::media::AudioDecoder>{}};
+        },
+        [](const std::filesystem::path&) {
+            Tags tags;
+            tags.track.title = "valid metadata";
+            return wiola::media::Result{std::move(tags)};
+        }};
+    TagReader reader{std::make_shared<wiola::testing::FakeMediaProvider>(
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context)
+            -> wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> {
+            if (path == "empty.media")
+                return std::unique_ptr<wiola::media::MediaAsset>{};
+            return valid.open(path, context);
+        }
+    )};
+
+    reader.submit({
+        {.generation = 7, .id = wiola::engine::QueueEntryId{1}, .path = "empty.media"},
+        {.generation = 7, .id = wiola::engine::QueueEntryId{2}, .path = "valid.media"}
+    });
+    const auto readings{wait_for(reader)};
+
+    ASSERT_EQ(readings.size(), 2U);
+    EXPECT_EQ(readings[0].generation, 7U);
+    EXPECT_EQ(readings[0].id, wiola::engine::QueueEntryId{1});
+    EXPECT_EQ(readings[0].path, "empty.media");
+    ASSERT_FALSE(readings[0].result);
+    EXPECT_EQ(readings[0].result.error().category, wiola::media::ErrorCategory::damaged);
+    EXPECT_EQ(readings[0].result.error().detail, "media provider returned no asset");
+    EXPECT_EQ(readings[1].id, wiola::engine::QueueEntryId{2});
+    ASSERT_TRUE(readings[1].result);
+    EXPECT_EQ(readings[1].result->track.title, "valid metadata");
+}
+
+TEST(TagReader, ProviderErrorPreservesItsCategoryAndDiagnostic)
+{
+    TagReader reader{std::make_shared<wiola::testing::FakeMediaProvider>(
+        [](const std::filesystem::path&, const wiola::media::OperationContext&)
+            -> wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> {
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::timed_out,
+                                    .detail = "resource deadline reached"}
+            };
+        }
+    )};
+    reader.submit({
+        {.id = wiola::engine::QueueEntryId{1}, .path = "resource.media"}
+    });
+    const auto readings{wait_for(reader)};
+
+    ASSERT_EQ(readings.size(), 1U);
+    ASSERT_FALSE(readings[0].result);
+    EXPECT_EQ(readings[0].result.error().category, wiola::media::ErrorCategory::timed_out);
+    EXPECT_EQ(readings[0].result.error().detail, "resource deadline reached");
+}
+
+TEST(TagReader, CancellationDuringProviderOpenReachesTheReturnedAsset)
+{
+    Gate opening;
+    std::atomic<bool> cancelled{false};
+    std::vector<std::filesystem::path> inspected;
+    wiola::testing::FakeMediaProvider valid{
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            ADD_FAILURE() << "metadata inspection must not construct a decoder";
+            return wiola::media::DecoderOpenResult{std::unique_ptr<wiola::media::AudioDecoder>{}};
+        },
+        [&](const std::filesystem::path& path) {
+            inspected.push_back(path);
+            return wiola::media::Result{Tags{}};
+        }};
+    TagReader reader{std::make_shared<wiola::testing::FakeMediaProvider>(
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
+            if (path == "old.media") {
+                std::stop_callback callback{context.stop, [&] {
+                                                cancelled = true;
+                                                opening.release();
+                                            }};
+                opening.wait();
+                // Simulate a provider that still returns an asset after cancellation.
+                // The asset must receive the original stopped context before reading tags.
+                return valid.open(path, {});
+            }
+            return valid.open(path, context);
+        }
+    )};
+
+    reader.submit({
+        {.generation = 1, .id = wiola::engine::QueueEntryId{1}, .path = "old.media"}
+    });
+    opening.wait_until_entered();
+    reader.cancel_before(2);
+    reader.submit({
+        {.generation = 2, .id = wiola::engine::QueueEntryId{2}, .path = "new.media"}
+    });
+    const auto readings{wait_for(reader)};
+
+    EXPECT_TRUE(cancelled);
+    EXPECT_EQ(inspected, (std::vector<std::filesystem::path>{"new.media"}));
+    ASSERT_EQ(readings.size(), 1U);
+    EXPECT_EQ(readings[0].generation, 2U);
+    EXPECT_EQ(readings[0].path, "new.media");
+    EXPECT_TRUE(readings[0].result);
 }
 
 TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
@@ -451,6 +561,38 @@ TEST(TagReader, ShutdownCancelsTheActiveContextBeforeJoining)
     reading.wait_until_entered();
     reader.reset();
     EXPECT_TRUE(observed);
+}
+
+TEST(TagReader, ShutdownJoinsWhenTheCompletionBudgetIsAlreadyFull)
+{
+    Gate second_read;
+    std::atomic<int> reads{0};
+    std::atomic<bool> cancelled{false};
+    auto reader{std::make_unique<TagReader>(
+        [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            if (++reads == 2) {
+                std::stop_callback callback{context.stop, [&] {
+                                                cancelled = true;
+                                                second_read.release();
+                                            }};
+                second_read.wait();
+            }
+            return Tags{};
+        },
+        2, 1
+    )};
+    reader->submit({
+        {.id = wiola::engine::QueueEntryId{1}, .path = "first.media" },
+        {.id = wiola::engine::QueueEntryId{2}, .path = "second.media"}
+    });
+    second_read.wait_until_entered();
+
+    // Reaching the second read proves the first result occupies the only completion slot.
+    // No collection frees it; shutdown must cancel and join on either side of publication.
+    reader.reset();
+
+    EXPECT_TRUE(cancelled);
+    EXPECT_EQ(reads, 2);
 }
 
 #if GTEST_HAS_DEATH_TEST

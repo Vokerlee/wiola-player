@@ -29,6 +29,7 @@
 #include <atomic>
 #include <cstddef>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -64,11 +65,12 @@ class ControlledMetadataWorker final : public wiola::engine::MetadataWorker {
 public:
     std::size_t submit(std::span<Request> requests) override
     {
-        for (auto& request : requests) {
+        const auto accepted{requests.first(std::min(requests.size(), acceptance_limit))};
+        for (auto& request : accepted) {
             submitted.push_back(request);
             pending.push_back(std::move(request));
         }
-        return requests.size();
+        return accepted.size();
     }
 
     void cancel_before(std::uint64_t generation) override
@@ -96,7 +98,45 @@ public:
     std::vector<Request> submitted;
     std::vector<Request> pending;
     std::vector<Reading> ready;
+    std::size_t acceptance_limit{std::numeric_limits<std::size_t>::max()};
 };
+
+TEST(MetadataCoordinator, DeferredWorkRemainsBusyWhenTheWorkerIsIdle)
+{
+    auto worker{std::make_unique<ControlledMetadataWorker>()};
+    auto* controlled{worker.get()};
+    controlled->acceptance_limit = 0;
+    MetadataCoordinator coordinator{std::move(worker)};
+    Playlist queue;
+    queue.set({"first.media", "second.media"});
+
+    coordinator.replace(queue.tracks());
+    EXPECT_TRUE(controlled->submitted.empty());
+    EXPECT_FALSE(controlled->busy());
+    EXPECT_TRUE(coordinator.busy());
+
+    controlled->acceptance_limit = 1;
+    EXPECT_TRUE(coordinator.take().empty());
+    ASSERT_EQ(controlled->submitted.size(), 1U);
+    const auto first{controlled->submitted.front()};
+    controlled->deliver(first);
+    EXPECT_FALSE(controlled->busy());
+    EXPECT_TRUE(coordinator.busy());
+
+    const auto accepted_first{coordinator.take()};
+    ASSERT_EQ(accepted_first.size(), 1U);
+    EXPECT_EQ(accepted_first[0].entries, std::vector{first.id});
+    ASSERT_EQ(controlled->submitted.size(), 2U);
+    const auto second{controlled->submitted.back()};
+    EXPECT_NE(first.id, second.id);
+    controlled->deliver(second);
+
+    const auto accepted_second{coordinator.take()};
+    ASSERT_EQ(accepted_second.size(), 1U);
+    EXPECT_EQ(accepted_second[0].entries, std::vector{second.id});
+    EXPECT_FALSE(coordinator.busy());
+    EXPECT_TRUE(coordinator.take().empty());
+}
 
 TEST(MetadataCoordinator, RejectsANullWorkerAtConstruction)
 {
