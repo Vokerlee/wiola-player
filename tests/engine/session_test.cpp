@@ -20,12 +20,10 @@
 
 #include <fakes/provider.hpp>
 #include <fixtures/shaping.hpp>
-#include <fixtures/wav.hpp>
 #include <wiola/audio/processing_chain.hpp>
 
 #include <wiola/audio/output.hpp>
 
-#include <codec/provider.hpp>
 #include <engine/session.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/audio_decoder.hpp>
@@ -45,7 +43,9 @@
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <optional>
 #include <span>
@@ -103,8 +103,32 @@ bool poll_until(Session& session, Predicate settled)
     return settled();
 }
 
-/// A session that plays nowhere real, and counts the outputs it was asked to build.
+/// Supplies decoded-stream facts, not encoded files. The store outlives Session's owned workers.
 struct Fixture {
+private:
+    mutable std::mutex media_mutex_;
+    std::map<std::filesystem::path, wiola::media::DecoderStreamInfo> media_;
+    std::size_t next_resource_{};
+
+    std::optional<wiola::media::DecoderStreamInfo> lookup(const std::filesystem::path& path) const
+    {
+        const std::lock_guard lock{media_mutex_};
+        const auto found{media_.find(path)};
+        return found == media_.end() ? std::nullopt : std::optional{found->second};
+    }
+
+    static wiola::media::unexpected missing()
+    {
+        return wiola::media::unexpected{
+            wiola::media::Error{wiola::media::ErrorCategory::unreadable,
+                                "controlled resource was not supplied"}
+        };
+    }
+
+public:
+    // Longer than priming and the seek positions exercised by these controlled cases.
+    static constexpr units::Time duration{std::chrono::milliseconds{1500}};
+
     Fixture()
         : session{processing.chain,
               [this](wiola::audio::Source& source) {
@@ -112,13 +136,42 @@ struct Fixture {
                   return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)
                                    : std::make_unique<wiola::testing::FakeOutput>();
               },
-              std::make_shared<wiola::codec::LocalMediaProvider>()}
+              std::make_shared<wiola::testing::FakeMediaProvider>(
+                  [this](const std::filesystem::path& path,
+                      const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
+                      const auto info{lookup(path)};
+                      if (!info)
+                          return missing();
+                      return wiola::media::DecoderOpenResult{
+                          std::make_unique<wiola::testing::FakeDecoder>(*info)};
+                  },
+                  [this](const std::filesystem::path& path)
+                      -> wiola::media::Result<wiola::media::Metadata> {
+                      const auto info{lookup(path)};
+                      if (!info)
+                          return missing();
+                      wiola::media::Metadata result;
+                      result.track.duration = info->spec.time_per(info->length.value());
+                      return result;
+                  }
+              )}
     {
+    }
+
+    std::filesystem::path track(wiola::pcm::StreamSpec spec = {})
+    {
+        const std::filesystem::path path{"resource-" + std::to_string(++next_resource_) + ".media"};
+        const wiola::media::DecoderStreamInfo info{.spec = spec,
+            .length = spec.checked_frames_at(duration).value(),
+            .length_accuracy = wiola::media::LengthAccuracy::exact,
+            .seekable = true};
+        const std::lock_guard lock{media_mutex_};
+        media_.emplace(path, info);
+        return path;
     }
 
     /// Set before loading, when a test needs a track that cannot run out from under it.
     bool consuming{true};
-
     std::size_t num_outputs{0};
     wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
     Session session;
@@ -202,14 +255,12 @@ TEST(Session, LoadsATrack)
 {
     Fixture fixture;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
 
     EXPECT_TRUE(fixture.session.loaded());
     EXPECT_EQ(fixture.num_outputs, 1U);
     ASSERT_TRUE(fixture.session.total_time());
-    EXPECT_NEAR(fixture.session.total_time()->get<units::Sec>(), wiola::testing::source_seconds,
-        0.01);
+    EXPECT_EQ(*fixture.session.total_time(), Fixture::duration);
 }
 
 TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
@@ -330,7 +381,7 @@ TEST(Session, NamesTheTrackItLoaded)
 {
     Fixture fixture;
 
-    const std::filesystem::path path{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path path{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
 
@@ -343,7 +394,7 @@ TEST(Session, KeepsTheNameOfTheTrackAFailedLoadDidNotReplace)
 {
     Fixture fixture;
 
-    const std::filesystem::path path{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path path{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
     ASSERT_EQ(load_and_wait(fixture.session, std::filesystem::path{"no-such-track.wav"}),
@@ -360,8 +411,7 @@ TEST(Session, KeepsWhatWasLoadedWhenTheNextFileFails)
     // that drains at the speed it is fed runs a track out in the time these lines take.
     fixture.consuming = false;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
     ASSERT_EQ(fixture.session.state(), State::playing);
 
@@ -382,12 +432,10 @@ TEST(Session, KeepsPlayingWhileTheNextFileIsRead)
     // that drains at the speed it is fed runs a track out in the time these lines take.
     fixture.consuming = false;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
 
-    EXPECT_EQ(fixture.session.open({wiola::testing::write_wav("wiola_other.wav")}),
-        OpenResult::loading);
+    EXPECT_EQ(fixture.session.open({fixture.track()}), OpenResult::loading);
     EXPECT_EQ(fixture.session.state(), State::playing);
     EXPECT_TRUE(fixture.session.loaded());
 
@@ -405,7 +453,7 @@ TEST(Session, KeepsPlayingWhileTheNextFileIsRead)
 TEST(Session, KeepsTheDeviceAcrossTracksOfTheSameFormat)
 {
     Fixture fixture;
-    const std::filesystem::path path{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path path{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
@@ -419,12 +467,12 @@ TEST(Session, OpensAnotherDeviceWhenTheFormatChanges)
 {
     Fixture fixture;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
     ASSERT_EQ(fixture.num_outputs, 1U);
 
     ASSERT_EQ(load_and_wait(fixture.session,
-                  wiola::testing::write_wav("wiola_session_48k.wav", 48000)),
+                  fixture.track(wiola::pcm::StreamSpec{.sample_rate = units::Frequency{44100.0},
+                      .num_channels = 2})),
         OpenResult::opened);
 
     EXPECT_EQ(fixture.num_outputs, 2U);
@@ -434,8 +482,7 @@ TEST(Session, PlaysAndPauses)
 {
     Fixture fixture;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
 
     ASSERT_TRUE(fixture.session.play());
     EXPECT_EQ(fixture.session.state(), State::playing);
@@ -452,8 +499,7 @@ TEST(Session, StopsAtTheBeginning)
 {
     Fixture fixture;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
 
     fixture.session.seek(units::Time{1.0});
@@ -467,8 +513,7 @@ TEST(Session, SeeksWhereItIsAsked)
 {
     Fixture fixture;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
 
     fixture.session.seek(units::Time{1.0});
 
@@ -479,7 +524,7 @@ TEST(Session, SeeksWhereItIsAsked)
 TEST(Session, PreservesSuppliedProcessingSettingsAcrossTracks)
 {
     Fixture fixture;
-    const std::filesystem::path path{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path path{fixture.track()};
 
     fixture.processing.volume.set_gain(0.25F);
     fixture.processing.equalizer.set_band_gain(3, 6.0F);
@@ -497,8 +542,8 @@ TEST(Session, PlaysTheNextTrackWhenOneEnds)
 {
     Fixture fixture;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -515,7 +560,7 @@ TEST(Session, StaysAtTheEndOfTheList)
 {
     Fixture fixture;
 
-    const std::filesystem::path only{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path only{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, only), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
@@ -536,8 +581,8 @@ TEST(Session, PlaysNothingNextWhenTheListenerStops)
     Fixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -562,8 +607,8 @@ TEST(Session, PlaysTheNextTrackAndTheOneBefore)
     Fixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -583,8 +628,8 @@ TEST(Session, AddsToTheQueueWithoutDisturbingWhatIsPlaying)
     Fixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path added{wiola::testing::write_wav("wiola_session_added.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path added{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, first), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
@@ -601,9 +646,7 @@ TEST(Session, TakesUpWhatEveryAddedTrackSays)
 {
     Fixture fixture;
 
-    const std::vector<std::filesystem::path> both{std::filesystem::path{WIOLA_TEST_DATA_DIR} /
-            "tone.flac",
-        std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"};
+    const std::vector<std::filesystem::path> both{fixture.track(), fixture.track()};
 
     fixture.session.add(both);
 
@@ -620,7 +663,7 @@ TEST(Session, ReadsTheFirstTrackAddedToAnEmptyQueue)
 {
     Fixture fixture;
 
-    const std::filesystem::path added{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path added{fixture.track()};
 
     fixture.session.add({added});
 
@@ -636,8 +679,8 @@ TEST(Session, KeepsPlayingATrackTakenOutOfTheQueue)
     Fixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -656,9 +699,7 @@ TEST(Session, EmptiesTheQueueAndEndsPlayback)
     Fixture fixture;
     fixture.consuming = false;
 
-    ASSERT_EQ(fixture.session.open({wiola::testing::write_wav("wiola_session.wav"),
-                  wiola::testing::write_wav("wiola_session_next.wav")}),
-        OpenResult::loading);
+    ASSERT_EQ(fixture.session.open({fixture.track(), fixture.track()}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
     ASSERT_TRUE(fixture.session.play());
 
@@ -677,7 +718,7 @@ TEST(Session, TakesUpWhatQueuedTracksSayAboutThemselves)
 {
     Fixture fixture;
 
-    const std::filesystem::path track{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.flac"};
+    const std::filesystem::path track{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
@@ -698,8 +739,8 @@ TEST(Session, TakesUpWhatEveryTrackOfAnOpenedListSays)
 {
     Fixture fixture;
 
-    const std::filesystem::path first{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.flac"};
-    const std::filesystem::path next{std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav"};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
     const std::vector<std::filesystem::path> both{first, next};
 
     ASSERT_EQ(fixture.session.open(both), OpenResult::loading);
@@ -717,7 +758,7 @@ TEST(Session, NamesAQueuedTrackAfterItsFileToBeginWith)
 {
     Fixture fixture;
 
-    const std::filesystem::path track{wiola::testing::write_wav("wiola_session.wav")};
+    const std::filesystem::path track{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
@@ -730,8 +771,8 @@ TEST(Session, PlaysTheTrackItIsSentTo)
     Fixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -750,8 +791,8 @@ TEST(Session, ShowsTheQueueInTheOrderItWasGiven)
 {
     Fixture fixture;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     fixture.session.shuffle(true);
@@ -765,8 +806,7 @@ TEST(Session, GoesNowhereBeyondTheEndsOfTheList)
 {
     Fixture fixture;
 
-    ASSERT_EQ(load_and_wait(fixture.session, wiola::testing::write_wav("wiola_session.wav")),
-        OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, fixture.track()), OpenResult::opened);
 
     EXPECT_FALSE(fixture.session.next_track());
     EXPECT_FALSE(fixture.session.previous_track());
@@ -778,8 +818,8 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
     Fixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{wiola::testing::write_wav("wiola_session.wav")};
-    const std::filesystem::path next{wiola::testing::write_wav("wiola_session_next.wav")};
+    const std::filesystem::path first{fixture.track()};
+    const std::filesystem::path next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -970,10 +1010,10 @@ TEST(Session, ReplacementHandoffQuiescesAndRestoresTheCurrentPlayIntent)
 {
     Fixture fixture;
     fixture.consuming = false;
-    const auto path = wiola::testing::write_wav("wiola_session_reload.wav");
+    const auto path = fixture.track();
 
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
-    fixture.session.add({wiola::testing::write_wav("wiola_session_reload_next.wav")});
+    fixture.session.add({fixture.track()});
     ASSERT_TRUE(fixture.session.play());
 
     fixture.session.seek(units::Time{0.4});
@@ -999,7 +1039,7 @@ TEST(Session, ReplacementHandoffHonorsNewerPauseSeekAndQueueClear)
 {
     Fixture fixture;
     fixture.consuming = false;
-    const auto path = wiola::testing::write_wav("wiola_session_handoff.wav");
+    const auto path = fixture.track();
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
     auto handoff = fixture.session.release_media(path);
@@ -1023,7 +1063,7 @@ TEST(Session, ReplacementTicketsCannotRestoreANewerHandoffOrARemovedOccurrence)
 {
     Fixture fixture;
     fixture.consuming = false;
-    const auto path = wiola::testing::write_wav("wiola-ticket-generation.wav");
+    const auto path = fixture.track();
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
     const auto first = fixture.session.release_media(path);
     ASSERT_TRUE(first);
