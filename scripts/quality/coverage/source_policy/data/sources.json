@@ -750,6 +750,20 @@
       "workflow": false
     },
     {
+      "path": "scripts/quality/coverage/python_runner/tests/__init__.py",
+      "owner": "coverage.python_runner",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/coverage/python_runner/tests/test_profiles.py",
+      "owner": "coverage.python_runner",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "scripts/quality/coverage/source_policy/__init__.py",
       "owner": "coverage.source_policy",
       "language": "python",
