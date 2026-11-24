@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <cstddef>
@@ -31,8 +30,10 @@ namespace wiola::audio {
 /// Frames on demand, in one format, interleaved. How long they last is not part of this.
 class Source {
 public:
-    NO_COPY_SEMANTIC(Source);
-    NO_MOVE_SEMANTIC(Source);
+    Source(const Source&) = delete;
+    Source& operator=(const Source&) = delete;
+    Source(Source&&) = delete;
+    Source& operator=(Source&&) = delete;
 
     virtual ~Source() = default;
 

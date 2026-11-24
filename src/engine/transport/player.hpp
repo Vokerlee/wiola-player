@@ -21,10 +21,10 @@
 #pragma once
 
 #include "transport_worker.hpp"
-#include <audio/output/output.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
 #include <pcm/pcm_queue.hpp>
+#include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

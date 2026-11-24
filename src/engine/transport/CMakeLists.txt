@@ -13,6 +13,9 @@ wiola_add_library(
         seek_operation.cpp
         transport_worker.cpp
         transport_wait.cpp
-    LIBS wiola_audio_output Threads::Threads
+    LIBS Threads::Threads
 )
-target_link_libraries(wiola_engine_transport PUBLIC wiola::media)
+target_link_libraries(
+    wiola_engine_transport
+    PUBLIC wiola::media wiola::audio_output
+)

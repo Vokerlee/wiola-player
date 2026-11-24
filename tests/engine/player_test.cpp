@@ -26,8 +26,8 @@
 
 #include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/processing_chain.hpp>
-#include <audio/output/output.hpp>
 #include <pcm/pcm_queue.hpp>
+#include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 

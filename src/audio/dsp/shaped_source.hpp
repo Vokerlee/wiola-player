@@ -21,7 +21,7 @@
 #pragma once
 
 #include <audio/dsp/processing_chain.hpp>
-#include <audio/output/source.hpp>
+#include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <cstddef>

@@ -151,7 +151,7 @@ them when their owner goes away.
 
 ## 3. The real-time source contract
 
-[`Source`](output/source.hpp) is the small interface the device understands. It has only two important
+[`Source`](../core/audio/public/wiola/audio/source.hpp) is the small interface the device understands. It has only two important
 operations:
 
 - `spec()` describes the PCM format, fixed for the source's lifetime;
@@ -247,11 +247,11 @@ lifetime. That guarantee comes from stopping and quiescing output before source 
 
 ## 7. Output control and callback lifetime
 
-[`Output`](output/output.hpp) separates observing an output from driving it. Only one
-[`Output::Control`](output/output.hpp) can be held at a time. A second claim is inert, so two
+[`Output`](../core/audio/public/wiola/audio/output.hpp) separates observing an output from driving it. Only one
+[`Output::Control`](../core/audio/public/wiola/audio/output.hpp) can be held at a time. A second claim is inert, so two
 transport workers cannot independently start and stop the same device.
 
-[`OutputConnection`](output/output_connection.hpp) owns that control for one decoding pipeline.
+[`OutputConnection`](../core/audio/public/wiola/audio/output_connection.hpp) owns that control for one decoding pipeline.
 Its destructor stops the output and waits for an active callback to return. Normal stop and seek
 paths use the same explicit operation.
 

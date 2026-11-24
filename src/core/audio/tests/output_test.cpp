@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/output/output.hpp>
-#include <audio/output/output_connection.hpp>
-#include <audio/output/source.hpp>
+#include <wiola/audio/output.hpp>
+#include <wiola/audio/output_connection.hpp>
+#include <wiola/audio/source.hpp>
 
 #include <fakes/output.hpp>
 
@@ -88,6 +88,33 @@ TEST(OutputConnection, StopWaitsForTheSourceCallbackToReturn)
     stopped.acquire();
 
     EXPECT_EQ(output.num_stops(), 1);
+}
+
+TEST(OutputConnection, DestructionStopsOutputBeforeReturningTheClaim)
+{
+    FakeOutput output;
+    {
+        wiola::audio::OutputConnection connection{output};
+        ASSERT_TRUE(connection.control().start());
+    }
+
+    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output.num_stops(), 1);
+    EXPECT_TRUE(output.control().start());
+}
+
+TEST(OutputConnection, InertConnectionDestructionDoesNotStopTheLiveOutput)
+{
+    FakeOutput output;
+    wiola::audio::OutputConnection active{output};
+    ASSERT_TRUE(active.control().start());
+    {
+        const wiola::audio::OutputConnection inert{output};
+    }
+
+    EXPECT_TRUE(output.running());
+    EXPECT_EQ(output.num_stops(), 0);
+    EXPECT_FALSE(output.control().start());
 }
 
 TEST(OutputControl, SaysWhenTheOutputWouldNotStart)

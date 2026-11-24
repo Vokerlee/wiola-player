@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/foundation/handle.hpp>
 #include <wiola/media/stream_spec.hpp>
 
@@ -88,8 +87,10 @@ public:
         }
     };
 
-    NO_COPY_SEMANTIC(Output);
-    NO_MOVE_SEMANTIC(Output);
+    Output(const Output&) = delete;
+    Output& operator=(const Output&) = delete;
+    Output(Output&&) = delete;
+    Output& operator=(Output&&) = delete;
 
     virtual ~Output() = default;
 

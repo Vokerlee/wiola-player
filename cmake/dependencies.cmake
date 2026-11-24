@@ -26,7 +26,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
 endif()
 
 # Nothing but the tests needs this, and a build without them should not go to the network for it.
-if(WIOLA_BUILD_TESTS AND WIOLA_NEEDS_GTEST)
+if(WIOLA_BUILD_TESTS)
     if(WIOLA_BUILD_GUI)
         find_package(Qt6 REQUIRED COMPONENTS Test)
     endif()

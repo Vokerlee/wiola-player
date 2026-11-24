@@ -9,7 +9,7 @@ wiola_add_library(
     SOURCES workspace/workspace_scan_publisher.cpp
     LIBS wiola_app wiola_desktop_delivery
 )
-target_link_libraries(wiola_workspace_scans PUBLIC Qt6::Core)
+target_link_libraries(wiola_workspace_scans PUBLIC Qt6::Core wiola_app)
 wiola_add_library(
     wiola_media_revisions
     SOURCES metadata/media_revision_publisher.cpp
@@ -44,7 +44,7 @@ wiola_add_library(
         wiola_audio_device
 )
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_player_application PUBLIC Qt6::Core)
+target_link_libraries(wiola_player_application PUBLIC Qt6::Core wiola_app)
 wiola_add_library(
     wiola_queue_migration
     SOURCES library/queue_library_migration.cpp
@@ -57,7 +57,7 @@ wiola_add_library(
     SOURCES metadata/metadata_write_service.cpp
     LIBS wiola_app wiola_desktop_delivery
 )
-target_link_libraries(wiola_metadata_writes PUBLIC Qt6::Core)
+target_link_libraries(wiola_metadata_writes PUBLIC Qt6::Core wiola_app)
 
 wiola_add_library(
     wiola_library_session
@@ -75,7 +75,7 @@ wiola_add_library(
         wiola_qt_platform
 )
 set_target_properties(wiola_library_session PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_library_session PUBLIC Qt6::Core)
+target_link_libraries(wiola_library_session PUBLIC Qt6::Core wiola_app)
 
 wiola_add_library(
     wiola_playback_preferences
@@ -86,7 +86,7 @@ wiola_add_library(
         playback/equalizer_control.cpp
     LIBS wiola_app wiola_qt_settings wiola_session_preferences
 )
-target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core)
+target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core wiola_app)
 
 wiola_add_library(
     wiola_session_preferences
@@ -94,7 +94,7 @@ wiola_add_library(
     LIBS wiola_persistence_qt wiola_library_session wiola_gui_model
 )
 set_target_properties(wiola_session_preferences PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core)
+target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core wiola_app)
 
 wiola_add_library(
     wiola_library_documents
