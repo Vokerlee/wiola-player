@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <processing/biquad.hpp>
+#include "biquad.hpp"
 
 #include <cmath>
 #include <numbers>

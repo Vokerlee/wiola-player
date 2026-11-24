@@ -19,7 +19,7 @@
  */
 
 #include "player_application.hpp"
-#include <audio/device/device.hpp>
+#include <audio/miniaudio/device.hpp>
 #include <codec/provider.hpp>
 #include <stdexcept>
 

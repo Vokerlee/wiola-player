@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/device/device.hpp>
+#include "device.hpp"
 
 #include <miniaudio.h>
 

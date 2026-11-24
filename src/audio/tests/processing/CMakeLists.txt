@@ -15,7 +15,7 @@ endforeach()
 foreach(target IN ITEMS audio_biquad_test audio_equalizer_publication_test)
     target_include_directories(
         ${target}
-        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../private"
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../.."
     )
 endforeach()
 target_link_libraries(audio_equalizer_publication_test PRIVATE Threads::Threads)

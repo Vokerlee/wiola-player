@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <wiola/audio/equalizer_config.hpp>
+#include "equalizer_config.hpp"
 #include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

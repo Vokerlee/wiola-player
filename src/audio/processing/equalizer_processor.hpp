@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <processing/biquad.hpp>
-#include <wiola/audio/equalizer_config.hpp>
+#include "biquad.hpp"
+#include "equalizer_config.hpp"
 #include <wiola/media/stream_spec.hpp>
 
 #include <array>

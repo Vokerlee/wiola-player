@@ -41,7 +41,7 @@ wiola_add_library(
         wiola_library_session
         wiola_playback_preferences
         wiola_codec
-        wiola_audio_device
+        wiola::audio_miniaudio
 )
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_player_application PUBLIC Qt6::Core wiola_app)

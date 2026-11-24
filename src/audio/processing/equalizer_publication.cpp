@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <processing/equalizer_publication.hpp>
+#include "equalizer_publication.hpp"
 
 namespace wiola::audio {
 
