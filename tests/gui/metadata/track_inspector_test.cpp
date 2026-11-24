@@ -36,6 +36,7 @@
 
 #include <cstring>
 #include <fstream>
+#include <utility>
 
 namespace {
 
@@ -76,13 +77,14 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
     std::ofstream{path} << "audio";
 
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of(path)});
+    playlist.set({path});
     const auto id = playlist.tracks()[0].id();
-    playlist.describe(id,
-        wiola::engine::TrackMetadata{.title = "Title",
-            .artist = "Artist",
-            .album = "Album",
-            .duration = wiola::units::Time{65}});
+    wiola::media::TrackMetadata metadata;
+    metadata.title = "Title";
+    metadata.artist = "Artist";
+    metadata.album = "Album";
+    metadata.duration = wiola::units::Time{65};
+    playlist.describe(id, std::move(metadata));
     playlist.illustrate(id, sample_artwork());
 
     wiola::gui::TrackInspector inspector;
@@ -115,7 +117,7 @@ TEST(TrackInspector, MarksMissingFilesAndClearsWhenThereIsNoSelection)
     ASSERT_TRUE(directory.isValid());
 
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of(temporary_path(directory, "missing.flac"))});
+    playlist.set({temporary_path(directory, "missing.flac")});
 
     wiola::gui::TrackInspector inspector;
     wiola::gui::InspectorContext context;

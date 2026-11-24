@@ -40,7 +40,7 @@ namespace {
 
 using wiola::engine::MetadataCoordinator;
 using wiola::engine::Playlist;
-using wiola::engine::Track;
+using wiola::engine::QueueEntry;
 using wiola::testing::Gate;
 
 std::vector<MetadataCoordinator::Reading> wait_for(MetadataCoordinator& coordinator)
@@ -110,10 +110,10 @@ TEST(MetadataCoordinator, LateResultForTheSamePathCannotBindToANewerOccurrence)
     auto* controlled{worker.get()};
     MetadataCoordinator coordinator{std::move(worker)};
     Playlist queue;
-    queue.set({Track::of("same.wav")});
+    queue.set({"same.wav"});
     coordinator.replace(queue.tracks());
     const auto old{controlled->submitted.back()};
-    queue.set({Track::of("same.wav")});
+    queue.set({"same.wav"});
     coordinator.replace(queue.tracks());
     const auto current{controlled->submitted.back()};
     controlled->deliver(old);
@@ -132,7 +132,7 @@ TEST(MetadataCoordinator, WrongRequestIdentityLeavesTheRealRequestPending)
     auto* controlled{worker.get()};
     MetadataCoordinator coordinator{std::move(worker)};
     Playlist queue;
-    queue.set({Track::of("current.wav")});
+    queue.set({"current.wav"});
     coordinator.replace(queue.tracks());
     const auto current{controlled->submitted.back()};
     auto wrong{current};
@@ -157,7 +157,7 @@ TEST(MetadataCoordinator, OutOfOrderCompletionRetainsEachOccurrenceAssociation)
     auto* controlled{worker.get()};
     MetadataCoordinator coordinator{std::move(worker)};
     Playlist queue;
-    queue.set({Track::of("first.wav"), Track::of("second.wav")});
+    queue.set({"first.wav", "second.wav"});
     coordinator.replace(queue.tracks());
     const auto first{controlled->submitted.front()};
     const auto second{controlled->submitted.back()};
@@ -172,7 +172,7 @@ TEST(MetadataCoordinator, OutOfOrderCompletionRetainsEachOccurrenceAssociation)
 TEST(MetadataCoordinator, CoalescesDuplicatePathsWithoutMergingEntryIdentity)
 {
     Playlist playlist;
-    playlist.set({Track::of("same.wav"), Track::of("same.wav")});
+    playlist.set({"same.wav", "same.wav"});
     std::atomic<std::size_t> num_reads{0};
     MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
         ++num_reads;
@@ -192,9 +192,9 @@ TEST(MetadataCoordinator, DropsAnObsoleteGenerationAfterItsPhysicalRead)
 {
     Gate opening;
     Playlist old_queue;
-    old_queue.set({Track::of("old.wav")});
+    old_queue.set({"old.wav"});
     Playlist new_queue;
-    new_queue.set({Track::of("new.wav")});
+    new_queue.set({"new.wav"});
     MetadataCoordinator coordinator{[&opening](const std::filesystem::path& path) {
         if (path == "old.wav")
             opening.wait();
@@ -214,11 +214,11 @@ TEST(MetadataCoordinator, DropsAnObsoleteGenerationAfterItsPhysicalRead)
 
 TEST(MetadataCoordinator, FeedsMoreThanTheWorkerCapacityIncrementally)
 {
-    std::vector<Track> tracks;
+    std::vector<QueueEntry> tracks;
     tracks.reserve(300);
-
     for (std::size_t index{0}; index < 300; ++index)
-        tracks.push_back(Track::of("track-" + std::to_string(index) + ".wav"));
+        tracks.emplace_back(wiola::engine::QueueEntryId{index + 1},
+            "track-" + std::to_string(index) + ".wav");
 
     std::atomic<std::size_t> num_reads{0};
     MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
@@ -241,10 +241,7 @@ TEST(MetadataCoordinator, FeedsMoreThanTheWorkerCapacityIncrementally)
 TEST(MetadataCoordinator, CoalescesAppendedDuplicatesBeforeDeferredSubmission)
 {
     Playlist playlist;
-    playlist.set({Track::of("same.wav")});
-    const Track duplicate{Track::of("same.wav")};
-    const Track other{Track::of("other.wav")};
-    const std::vector additions{duplicate, other};
+    playlist.set({"same.wav"});
     std::atomic<std::size_t> num_reads{0};
     MetadataCoordinator coordinator{[&num_reads](const std::filesystem::path&) {
                                         ++num_reads;
@@ -253,14 +250,15 @@ TEST(MetadataCoordinator, CoalescesAppendedDuplicatesBeforeDeferredSubmission)
         1, 1};
 
     coordinator.replace(playlist.tracks());
-    coordinator.append(additions);
+    playlist.add({"same.wav", "other.wav"});
+    coordinator.append(std::span<const QueueEntry>{playlist.tracks()}.last(2));
 
     const auto readings{wait_for(coordinator)};
 
     ASSERT_EQ(readings.size(), 2U);
     EXPECT_EQ(num_reads, 2U);
     EXPECT_EQ(readings.front().entries,
-        (std::vector{playlist.tracks().front().id(), duplicate.id()}));
+        (std::vector{playlist.tracks().front().id(), playlist.tracks()[1].id()}));
 }
 
 TEST(MetadataCoordinator, CancelsDeferredWorkWhenTheGenerationChanges)
@@ -274,13 +272,14 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWhenTheGenerationChanges)
                                         return wiola::media::Metadata{};
                                     },
         1, 1};
-    const std::vector old_tracks{Track::of("old-0.wav"), Track::of("old-1.wav"),
-        Track::of("old-2.wav")};
-    const std::vector new_tracks{Track::of("new.wav")};
+    Playlist old_queue;
+    old_queue.set({"old-0.wav", "old-1.wav", "old-2.wav"});
+    Playlist new_queue;
+    new_queue.set({"new.wav"});
 
-    coordinator.replace(old_tracks);
+    coordinator.replace(old_queue.tracks());
     reading.wait_until_entered();
-    coordinator.replace(new_tracks);
+    coordinator.replace(new_queue.tracks());
     reading.release();
 
     const auto readings{wait_for(coordinator)};
@@ -300,10 +299,10 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWithoutStartingIt)
                                         return wiola::media::Metadata{};
                                     },
         1, 1};
-    const std::vector tracks{Track::of("first.wav"), Track::of("second.wav"),
-        Track::of("third.wav")};
+    Playlist queue;
+    queue.set({"first.wav", "second.wav", "third.wav"});
 
-    coordinator.replace(tracks);
+    coordinator.replace(queue.tracks());
     reading.wait_until_entered();
     coordinator.cancel();
     reading.release();
@@ -316,7 +315,7 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWithoutStartingIt)
 TEST(MetadataCoordinator, PreservesTypedFailureBesideCoalescedEntryIdentity)
 {
     Playlist playlist;
-    playlist.set({Track::of("same.wav"), Track::of("same.wav")});
+    playlist.set({"same.wav", "same.wav"});
     MetadataCoordinator coordinator{[](const std::filesystem::path&) {
         return wiola::media::unexpected{
             wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,

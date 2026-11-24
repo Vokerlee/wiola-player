@@ -17,3 +17,5 @@ flowchart LR
 [Transport tests](transport/README.md) cover state, playhead, worker failures and player commands without a codec, filesystem or output SDK. A real FFmpeg-to-player integration journey remains in `tests/codec/player_integration_test.cpp`.
 
 [Loading tests](loading/README.md) independently qualify request identity, cooperative cancellation, decoder lifetime, external callbacks outside locks and late completion rejection.
+
+The public QueueEntry contract and installed consumer check owned path/metadata observations and immutable shared artwork without importing private queue storage. Queue rollback tests enumerate allocations until success instead of encoding implementation allocation counts.

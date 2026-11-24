@@ -31,3 +31,5 @@ Receipts distinguish acceptance from completion. Correlate outcomes by operation
 `wiola_playback_metadata` owns [metadata inspection policy and bounded work](private/metadata/README.md), with [tests](tests/metadata/README.md) that substitute controlled delivery without running the physical reader. Decoder loading and queue metadata inspection retain distinct lifetimes.
 
 Configure the currently owned closure with `-DWIOLA_COMPONENTS=playback`, without Qt/FFmpeg/miniaudio. [Contract tests](tests/README.md) also verify the relocated installed API independently of buffering and the current legacy engine.
+
+`QueueEntry` is a public owned observation of one queue occurrence, with identity/location, one canonical media metadata value, immutable artwork and revision. Private Playlist owns input-path conversion, fallback titles and occurrence identity assignment. Value copies retain their own facts. This header exports only the owned observation; ordering and storage remain private.

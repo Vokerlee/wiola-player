@@ -28,6 +28,8 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 namespace {
 
 using wiola::gui::TrackSortDirection;
@@ -44,12 +46,13 @@ class TrackSort : public testing::Test {
 protected:
     void SetUp() override
     {
-        playlist.set({wiola::engine::Track::of("Music/Track.flac")});
-        playlist.describe(playlist.tracks().front().id(),
-            {.title = "  My Title",
-                .artist = "Some Artist",
-                .album = "An Album",
-                .duration = wiola::units::Time{42.5}});
+        playlist.set({"Music/Track.flac"});
+        wiola::media::TrackMetadata metadata;
+        metadata.title = "  My Title";
+        metadata.artist = "Some Artist";
+        metadata.album = "An Album";
+        metadata.duration = wiola::units::Time{42.5};
+        playlist.describe(playlist.tracks().front().id(), std::move(metadata));
 
         record.id = wiola::library::media_id_for("Music/Track.flac");
         record.tags = {
@@ -113,7 +116,7 @@ TEST_F(TrackSort, RejectsMalformedKeysAndRepresentsMissingDuration)
         wiola::gui::track_sort_value(TrackSortKey::for_tag(" "), track(), &repository)
     ));
 
-    wiola::engine::Track unknown = wiola::engine::Track::of("unknown.wav");
+    const wiola::engine::QueueEntry unknown{wiola::engine::QueueEntryId{2}, "unknown.wav"};
     EXPECT_TRUE(std::holds_alternative<std::monostate>(wiola::gui::track_sort_value(
         standard(TrackSortField::duration), wiola::gui::queue_row(unknown), &repository
     )));

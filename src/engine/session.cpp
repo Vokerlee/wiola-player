@@ -74,13 +74,7 @@ OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 {
     open_request_id_ = 0;
 
-    std::vector<Track> queued;
-    queued.reserve(tracks.size());
-
-    for (const std::filesystem::path& track : tracks)
-        queued.push_back(Track::of(track));
-
-    playlist_.set(std::move(queued));
+    playlist_.set(std::move(tracks));
 
     metadata_.replace(playlist_.tracks());
 
@@ -121,15 +115,9 @@ void Session::add(std::vector<std::filesystem::path> tracks)
 {
     const bool was_empty{playlist_.empty()};
     const std::size_t first_new{playlist_.tracks().size()};
-    std::vector<Track> queued;
-    queued.reserve(tracks.size());
+    playlist_.add(std::move(tracks));
 
-    for (const std::filesystem::path& track : tracks)
-        queued.push_back(Track::of(track));
-
-    playlist_.add(std::move(queued));
-
-    metadata_.append(std::span<const Track>{playlist_.tracks()}.subspan(first_new));
+    metadata_.append(std::span<const QueueEntry>{playlist_.tracks()}.subspan(first_new));
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
@@ -202,7 +190,7 @@ bool Session::shuffled() const noexcept
     return playlist_.shuffled();
 }
 
-OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
+OpenResult Session::begin_reading(const QueueEntry& track, LoadIntent intent)
 {
     replacement_.reset();
     // A fresh request supersedes any pending media-replacement position.
@@ -233,7 +221,7 @@ void Session::record_outcome(OperationKind operation, OperationId id,
 
 OpenResult Session::read_current_track(bool playing)
 {
-    const Track* current{playlist_.current()};
+    const QueueEntry* current{playlist_.current()};
 
     if (!current)
         return last_result_;
@@ -258,7 +246,7 @@ void Session::take_up_finished_tags()
 
         media::Metadata tags =
             reading.result ? std::move(reading.result).value() : media::Metadata{};
-        TrackMetadata metadata{
+        media::TrackMetadata metadata{
             .title = tags.track.title.empty() ? reading.path.stem().string() : tags.track.title,
             .artist = tags.track.artist,
             .album = tags.track.album,
@@ -458,7 +446,7 @@ void Session::stop() noexcept
 std::optional<Session::MediaReplacementState>
 Session::release_media(const std::filesystem::path& path)
 {
-    const Track* current = playlist_.current();
+    const QueueEntry* current = playlist_.current();
     if (!current || current->path() != path)
         return {};
     if (replacement_ && replacement_->entry == current->id())
@@ -474,7 +462,7 @@ Session::release_media(const std::filesystem::path& path)
 
 OpenResult Session::restore_media(const MediaReplacementState& state)
 {
-    const Track* current = playlist_.current();
+    const QueueEntry* current = playlist_.current();
     if (!current || current->id() != state.entry)
         return last_result_;
     if (!replacement_ || replacement_->entry != state.entry ||

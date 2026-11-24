@@ -45,6 +45,7 @@
 #include <cctype>
 #include <cstring>
 #include <tuple>
+#include <utility>
 
 namespace {
 
@@ -135,7 +136,7 @@ TEST_F(TrackTableModelTest, ChangesOnlyTheRowWhoseMetadataChanged)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     int changes{0};
@@ -145,12 +146,9 @@ TEST_F(TrackTableModelTest, ChangesOnlyTheRowWhoseMetadataChanged)
             ++changes;
         });
 
-    playlist.describe(id_at(playlist, 1),
-        wiola::engine::TrackMetadata{.title = "new title",
-            .artist = {},
-            .album = {},
-            .duration = {},
-            .genre = {}});
+    wiola::media::TrackMetadata metadata;
+    metadata.title = "new title";
+    playlist.describe(id_at(playlist, 1), std::move(metadata));
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     EXPECT_EQ(changes, 1);
@@ -162,7 +160,7 @@ TEST_F(TrackTableModelTest, AddressesRowsByStableTrackIdentity)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 0));
@@ -182,10 +180,10 @@ TEST_F(TrackTableModelTest, FollowsTheCurrentIdentityAcrossReordering)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist first;
-    first.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    first.set({"first.wav", "second.wav"});
 
-    std::vector<wiola::engine::Track> original{first.tracks()};
-    std::vector<wiola::engine::Track> reordered{original};
+    std::vector<wiola::engine::QueueEntry> original{first.tracks()};
+    std::vector<wiola::engine::QueueEntry> reordered{original};
     reordered[0] = original[1];
     reordered[1] = original[0];
 
@@ -200,7 +198,7 @@ TEST_F(TrackTableModelTest, UpdatesSelectionWithoutDependingOnPlaylistRevisions)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()), id_at(playlist, 0));
 
     int changes{0};
@@ -221,7 +219,7 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("same.wav"), wiola::engine::Track::of("same.wav")});
+    playlist.set({"same.wav", "same.wav"});
     const std::vector entries{id_at(playlist, 0), id_at(playlist, 1)};
 
     playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::blue));
@@ -256,7 +254,7 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
 
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     model.show_library(repository);
     model.show_tag_keys({"Genre", "genre", "Mood"});
@@ -298,7 +296,7 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
     wiola::library::InMemoryRepository repository;
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({wiola::engine::Track::of("first.wav"), wiola::engine::Track::of("second.wav")});
+    playlist.set({"first.wav", "second.wav"});
     playlist.describe(id_at(playlist, 0),
         {.title = "My Song",
             .artist = "The Artist",

@@ -21,8 +21,8 @@
 #pragma once
 
 #include <metadata/metadata_worker.hpp>
-#include <queue/track.hpp>
 #include <wiola/media/provider.hpp>
+#include <wiola/playback/queue_entry.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -34,7 +34,7 @@
 
 namespace wiola::engine {
 
-/// Application-side metadata policy over the bounded tag worker.
+/// Queue metadata applicability policy over the bounded worker.
 class MetadataCoordinator {
 public:
     struct Reading {
@@ -56,10 +56,10 @@ public:
     MetadataCoordinator& operator=(MetadataCoordinator&&) = delete;
 
     /// Replaces the queue generation and cancels all older queued/completed work.
-    void replace(std::span<const Track> tracks);
+    void replace(std::span<const QueueEntry> tracks);
 
     /// Adds entries to the current generation, reading each new path only once.
-    void append(std::span<const Track> tracks);
+    void append(std::span<const QueueEntry> tracks);
     void cancel();
     [[nodiscard]] std::vector<Reading> take();
     [[nodiscard]] bool busy() const noexcept;
@@ -68,7 +68,7 @@ private:
     using Entries = std::vector<QueueEntryId>;
     using Groups = std::map<std::filesystem::path, Entries>;
 
-    Groups group(std::span<const Track> tracks) const;
+    Groups group(std::span<const QueueEntry> tracks) const;
     void start(Groups& groups);
     void submit();
 

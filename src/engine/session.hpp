@@ -176,7 +176,7 @@ public:
 
 private:
     /// Starts an identified load with the requested transport intent.
-    OpenResult begin_reading(const Track& track, LoadIntent intent);
+    OpenResult begin_reading(const QueueEntry& track, LoadIntent intent);
     void record_outcome(OperationKind operation, OperationId id,
         std::optional<OperationError> error = std::nullopt);
 

@@ -33,7 +33,7 @@
 #include <allocation_failure.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
-#include <queue/track.hpp>
+#include <wiola/playback/queue_entry.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
@@ -558,7 +558,7 @@ TEST(Session, TakesUpWhatEveryAddedTrackSays)
     fixture.session.add(both);
 
     EXPECT_TRUE(poll_until(fixture.session, [&fixture] {
-        const std::vector<wiola::engine::Track>& queued{fixture.session.playlist().tracks()};
+        const std::vector<wiola::engine::QueueEntry>& queued{fixture.session.playlist().tracks()};
 
         return queued.size() == 2 && queued.front().metadata().duration.has_value() &&
             queued.back().metadata().duration.has_value();
@@ -635,7 +635,7 @@ TEST(Session, TakesUpWhatQueuedTracksSayAboutThemselves)
         return fixture.session.playlist().tracks().front().metadata().duration.has_value();
     })) << "how long the track runs was never found out";
 
-    const wiola::engine::Track& described{fixture.session.playlist().tracks().front()};
+    const wiola::engine::QueueEntry& described{fixture.session.playlist().tracks().front()};
 
     ASSERT_TRUE(described.metadata().duration.has_value());
     EXPECT_GT(*described.metadata().duration, units::Time{});
@@ -655,7 +655,7 @@ TEST(Session, TakesUpWhatEveryTrackOfAnOpenedListSays)
     ASSERT_EQ(fixture.session.open(both), OpenResult::loading);
 
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] {
-        const std::vector<wiola::engine::Track>& queued{fixture.session.playlist().tracks()};
+        const std::vector<wiola::engine::QueueEntry>& queued{fixture.session.playlist().tracks()};
 
         return queued.size() == 2 && queued.front().metadata().duration.has_value() &&
             queued.back().metadata().duration.has_value();

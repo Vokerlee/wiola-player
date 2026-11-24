@@ -26,7 +26,7 @@
 
 namespace wiola::gui {
 
-TrackRow queue_row(const engine::Track& track)
+TrackRow queue_row(const engine::QueueEntry& track)
 {
     TrackRow row;
     row.id = track.id();
@@ -39,7 +39,7 @@ TrackRow queue_row(const engine::Track& track)
     return row;
 }
 
-std::vector<TrackRow> queue_rows(std::span<const engine::Track> tracks)
+std::vector<TrackRow> queue_rows(std::span<const engine::QueueEntry> tracks)
 {
     std::vector<TrackRow> rows;
     rows.reserve(tracks.size());
@@ -66,7 +66,7 @@ std::optional<engine::QueueEntryId> queue_entry_id(const std::optional<TrackRowI
     return {};
 }
 
-TrackRow QueueRows::present(const engine::Track& track,
+TrackRow QueueRows::present(const engine::QueueEntry& track,
     const library::LibraryRepository* repository) const
 {
     auto row = queue_row(track);

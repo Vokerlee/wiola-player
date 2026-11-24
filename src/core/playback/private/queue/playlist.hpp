@@ -21,10 +21,11 @@
 #pragma once
 
 #include <queue/playback_order.hpp>
-#include <queue/track.hpp>
+#include <wiola/playback/queue_entry.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <map>
 #include <optional>
 #include <span>
@@ -37,9 +38,8 @@ class Playlist {
 public:
     using Repeat = PlaybackOrder::Repeat;
 
-    void set(std::vector<Track> tracks);
-    void add(Track track);
-    void add(std::vector<Track> tracks);
+    void set(std::vector<std::filesystem::path> paths);
+    void add(std::vector<std::filesystem::path> paths);
     bool remove(std::size_t index) noexcept;
     void clear() noexcept;
 
@@ -52,12 +52,12 @@ public:
 
     [[nodiscard]] std::size_t selection_revision() const noexcept { return selection_revision_; }
 
-    [[nodiscard]] const std::vector<Track>& tracks() const noexcept;
-    [[nodiscard]] const Track* current() const noexcept;
+    [[nodiscard]] const std::vector<QueueEntry>& tracks() const noexcept;
+    [[nodiscard]] const QueueEntry* current() const noexcept;
 
-    bool describe(QueueEntryId id, TrackMetadata metadata);
+    bool describe(QueueEntryId id, media::TrackMetadata metadata);
     bool illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork> artwork);
-    void apply_metadata(std::span<const QueueEntryId> entries, const TrackMetadata& metadata,
+    void apply_metadata(std::span<const QueueEntryId> entries, const media::TrackMetadata& metadata,
         std::shared_ptr<const media::Artwork> artwork);
 
     [[nodiscard]] std::optional<std::size_t> position() const noexcept;
@@ -75,7 +75,7 @@ public:
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    std::vector<Track> tracks_;
+    std::vector<QueueEntry> tracks_;
     std::map<QueueEntryId, std::size_t> indices_;
     PlaybackOrder order_;
     std::size_t revision_{0};
