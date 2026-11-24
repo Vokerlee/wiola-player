@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "session.hpp"
 #include "session_impl.hpp"
-#include <wiola/playback/session.hpp>
 
 #include <memory>
 #include <utility>

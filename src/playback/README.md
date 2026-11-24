@@ -38,12 +38,12 @@ Implementation and focused tests have one owner:
 
 | Mechanism | Code and invariant guide | Tests |
 | --- | --- | --- |
-| PCM queue and callback source bridges | [buffering](private/buffering/README.md) | [buffering cases](tests/buffering/README.md) |
-| Transport, state and seek protocol | [transport](private/transport/README.md) | [transport cases](tests/transport/README.md) |
-| Decoder request/cancellation lifecycle | [loading](private/loading/README.md) | [loading cases](tests/loading/README.md) |
-| Queue identity, ordering and metadata | [queue](private/queue/README.md) | [queue cases](tests/queue/README.md) |
-| Metadata applicability and bounded work | [metadata](private/metadata/README.md) | [metadata cases](tests/metadata/README.md) |
-| Per-track bundle and reusable output lifetime | [pipeline](private/pipeline/README.md) | [pipeline cases](tests/pipeline/README.md) |
+| PCM queue and callback source bridges | [buffering](buffering/README.md) | [buffering cases](tests/buffering/README.md) |
+| Transport, state and seek protocol | [transport](transport/README.md) | [transport cases](tests/transport/README.md) |
+| Decoder request/cancellation lifecycle | [loading](loading/README.md) | [loading cases](tests/loading/README.md) |
+| Queue identity, ordering and metadata | [queue](queue/README.md) | [queue cases](tests/queue/README.md) |
+| Metadata applicability and bounded work | [metadata](metadata/README.md) | [metadata cases](tests/metadata/README.md) |
+| Per-track bundle and reusable output lifetime | [pipeline](pipeline/README.md) | [pipeline cases](tests/pipeline/README.md) |
 
 Configure with `-DWIOLA_COMPONENTS=playback` to build this closure without backend/frontend SDK discovery. Session unit tests supply decoded-stream facts through MediaProvider; real encoded-media journeys belong to codec integration. [Tests](tests/README.md) use ordinary CTest and relocated installed consumers.
 

@@ -13,6 +13,6 @@ The static open operation checks context and regular-file access before returnin
 
 Seek captures the current native stream position after clearing any prior EOF state. If movement is rejected, it clears the failure and restores that position before reporting `seek_failed`; the next read therefore sees the original bytes or a usable EOF. If native restoration itself fails, the resource reports `unreadable` and must be abandoned rather than claiming an intact cursor. Offset conversion uses the standard checked integer-range operation.
 
-Real byte-stream integration cases live in [tests](tests/); portable byte-contract cases live in [media tests](../tests/). LocalFileStream has no Qt, device or codec SDK dependency. Its checkout include is `<media/local/file_stream.hpp>`.
+Real byte-stream integration cases live in [tests](tests); portable byte-contract cases live in [media tests](../tests). LocalFileStream has no Qt, device or codec SDK dependency. Its checkout include is `<media/local/file_stream.hpp>`.
 
-`provider.hpp` and `provider.cpp` compose local-file access with the codec registry through MediaProvider/MediaAsset. The separate `wiola_codec_provider` target owns that format-aware composition; the stream target remains independent of it. Provider integration cases live with [codec integration tests](../codecs/tests/).
+`provider.hpp` and `provider.cpp` compose local-file access with the codec registry through MediaProvider/MediaAsset. The separate `wiola_codec_provider` target owns that format-aware composition; the stream target remains independent of it. Provider integration cases live with [codec integration tests](../codecs/tests).

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <queue/playlist.hpp>
+#include "playlist.hpp"
 
 #include <algorithm>
 #include <type_traits>

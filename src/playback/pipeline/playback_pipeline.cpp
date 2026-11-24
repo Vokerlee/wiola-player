@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Frames another thread has already decoded.
+ * @brief Decoder, frame queue, and transport ownership for one loaded track.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,26 +18,25 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <buffering/buffer_source.hpp>
+#include "playback_pipeline.hpp"
 
 #include <utility>
 
-namespace wiola::audio {
+namespace wiola::engine {
 
-BufferSource::BufferSource(pcm::StreamSpec spec, pcm::PcmQueue::Consumer buffer) noexcept
-    : spec_{spec}
-    , buffer_{std::move(buffer)}
+PlaybackPipeline::PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
+    std::unique_ptr<OutputSession::Lease> output, pcm::Frames buffer_frames,
+    TransportConfig transport)
+    : buffer_{source->spec(), buffer_frames}
+    , decoded_{source->spec(), buffer_.consumer()}
+    , output_{std::move(output)}
+    , player_{std::move(source), buffer_.producer(), output_->output(), transport}
 {
 }
 
-std::size_t BufferSource::render(std::span<float> interleaved) noexcept
+void PlaybackPipeline::activate(OutputSession& output) noexcept
 {
-    return buffer_.pop(interleaved);
+    output.activate(*output_, decoded_);
 }
 
-pcm::StreamSpec BufferSource::spec() const noexcept
-{
-    return spec_;
-}
-
-} // namespace wiola::audio
+} // namespace wiola::engine

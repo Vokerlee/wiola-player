@@ -11,7 +11,7 @@ callback and why other work must stay on application or transport threads.
 For the compressed-input side, start with the [codec guide](../../media/codecs/README.md). For sample, frame,
 and channel-layout theory, see the [PCM guide](../../media/README.md).
 
-The [audio owner](../README.md) contains portable contracts and processing; the [playback owner](../../core/playback/README.md) contains the queue/render bridge. This directory owns the concrete miniaudio device adapter and its callback lifecycle. The walkthrough follows its composition with the other audio parts.
+The [audio owner](../README.md) contains portable contracts and processing; the [playback owner](../../playback/README.md) contains the queue/render bridge. This directory owns the concrete miniaudio device adapter and its callback lifecycle. The walkthrough follows its composition with the other audio parts.
 
 ## 1. The complete path
 
@@ -76,7 +76,7 @@ The codec and audio layers share PCM values and a stream specification, but they
 share one interface. The codec's read operation belongs to the blocking transport worker; the
 source's render operation belongs to the real-time output path.
 
-[`PlaybackPipeline`](../../core/playback/private/pipeline/playback_pipeline.cpp) is where those worlds are connected.
+[`PlaybackPipeline`](../../playback/pipeline/playback_pipeline.cpp) is where those worlds are connected.
 It receives a `std::unique_ptr<media::AudioDecoder>`, constructs a `PcmQueue` from the decoder's stream
 specification, gives the queue's producer to the transport player, and exposes the queue's consumer
 as a `BufferSource`.
@@ -214,8 +214,8 @@ flowchart LR
 
 ## 5. Why BufferSource sits between decoding and output
 
-[`BufferSource`](../../core/playback/private/buffering/buffer_source.cpp) is a `Source` adapter over the consumer end of a
-[`PcmQueue`](../../core/playback/private/buffering/pcm_queue.hpp). Its `render` simply pops interleaved samples.
+[`BufferSource`](../../playback/buffering/buffer_source.cpp) is a `Source` adapter over the consumer end of a
+[`PcmQueue`](../../playback/buffering/pcm_queue.hpp). Its `render` simply pops interleaved samples.
 
 The transport worker is the producer; the device callback is the consumer. The queue preserves
 complete frames, so a short read or write cannot rotate stereo or surround channels.
@@ -229,7 +229,7 @@ A `Device` is constructed with a source, but a music player changes sources when
 changes. Recreating the device every time would be unnecessary when the next track has the same
 format.
 
-[`Relay`](../../core/playback/private/buffering/relay.hpp) solves this by holding an atomic pointer to the current `Source`. Its own
+[`Relay`](../../playback/buffering/relay.hpp) solves this by holding an atomic pointer to the current `Source`. Its own
 stream specification remains fixed. The application points it at each track's `BufferSource` in
 turn; the callback follows the pointer it observes.
 
@@ -275,7 +275,7 @@ playback fault visible to the application.
 
 ## 8. ShapedSource inserts DSP without changing the source
 
-[`ShapedSource`](../../core/playback/private/buffering/shaped_source.cpp) wraps another `Source`. It first renders from that source,
+[`ShapedSource`](../../playback/buffering/shaped_source.cpp) wraps another `Source`. It first renders from that source,
 then applies a [`ProcessingChain`](../processing/processing_chain.hpp) to the samples in place.
 
 The wrapped source still determines the stream specification. DSP changes sample values, not the
@@ -386,7 +386,7 @@ staging; severe clamping can still sound distorted.
 
 ## 13. What changes when the next track has another format
 
-[`OutputSession`](../../core/playback/private/pipeline/output_session.cpp) owns the current relay, shaped source, and
+[`OutputSession`](../../playback/pipeline/output_session.cpp) owns the current relay, shaped source, and
 output. When a new decoder is installed, the application first disconnects the relay and destroys
 the old playback pipeline, which stops transport and output callbacks.
 
@@ -446,9 +446,9 @@ reads, and source destruction all have owners outside it.
 
 Follow one PCM block through the implementation:
 
-1. [`buffer_source.cpp`](../../core/playback/private/buffering/buffer_source.cpp) — queue consumption.
-2. [`relay.cpp`](../../core/playback/private/buffering/relay.cpp) — switching the current source.
-3. [`shaped_source.cpp`](../../core/playback/private/buffering/shaped_source.cpp) — inserting the processing chain.
+1. [`buffer_source.cpp`](../../playback/buffering/buffer_source.cpp) — queue consumption.
+2. [`relay.cpp`](../../playback/buffering/relay.cpp) — switching the current source.
+3. [`shaped_source.cpp`](../../playback/buffering/shaped_source.cpp) — inserting the processing chain.
 4. [`processing_chain.cpp`](../processing/processing_chain.cpp) — fixed stage order and final sanitizing.
 5. [`equalizer_parameters.cpp`](../processing/equalizer_parameters.cpp) — control-side bank preparation.
 6. [`equalizer_processor.cpp`](../processing/equalizer_processor.cpp) — real-time filter application.
@@ -457,6 +457,6 @@ Follow one PCM block through the implementation:
 9. [`output_sanitizer.cpp`](../processing/output_sanitizer.cpp) — finite full-scale output.
 10. [`device.cpp`](device.cpp) — Miniaudio configuration, callback, channel mapping, and
     played-frame accounting.
-11. [`output_session.cpp`](../../core/playback/private/pipeline/output_session.cpp) — output reuse and format changes.
+11. [`output_session.cpp`](../../playback/pipeline/output_session.cpp) — output reuse and format changes.
 
 Portable [contract and DSP tests](../tests) and native [device tests](tests) cover their respective owners. Native Windows playback still requires a real Windows audio-device smoke test; a MinGW cross-build alone cannot prove driver behavior.

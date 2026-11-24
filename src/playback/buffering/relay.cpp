@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief A source rendered through a supplied processing stage.
+ * @brief A source that plays whatever it has been pointed at.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,30 +18,40 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <buffering/shaped_source.hpp>
-
-#include <algorithm>
+#include "relay.hpp"
 
 namespace wiola::engine {
 
-ShapedSource::ShapedSource(audio::Source& source, audio::Stage& processing) noexcept
-    : source_{source}
-    , processing_{processing}
+Relay::Relay(pcm::StreamSpec spec) noexcept
+    : spec_{spec}
 {
 }
 
-std::size_t ShapedSource::render(std::span<float> interleaved) noexcept
+void Relay::point_at(audio::Source& source) noexcept
 {
-    const std::size_t num_rendered{std::min(source_.render(interleaved), interleaved.size())};
-
-    processing_.process(interleaved.first(num_rendered));
-
-    return num_rendered;
+    source_.store(&source, std::memory_order_release);
 }
 
-pcm::StreamSpec ShapedSource::spec() const noexcept
+void Relay::point_at_nothing() noexcept
 {
-    return source_.spec();
+    source_.store(nullptr, std::memory_order_release);
+}
+
+bool Relay::pointed() const noexcept
+{
+    return source_.load(std::memory_order_acquire) != nullptr;
+}
+
+std::size_t Relay::render(std::span<float> interleaved) noexcept
+{
+    audio::Source* source{source_.load(std::memory_order_acquire)};
+
+    return source != nullptr ? source->render(interleaved) : 0;
+}
+
+pcm::StreamSpec Relay::spec() const noexcept
+{
+    return spec_;
 }
 
 } // namespace wiola::engine
