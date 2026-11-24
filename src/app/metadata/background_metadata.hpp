@@ -21,7 +21,7 @@
 #pragma once
 
 #include <library/identity.hpp>
-#include <media/provider.hpp>
+#include <wiola/media/provider.hpp>
 
 #include <condition_variable>
 #include <deque>

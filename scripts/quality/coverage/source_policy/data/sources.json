@@ -1751,6 +1751,132 @@
       "workflow": false
     },
     {
+      "path": "src/core/media/CMakeLists.txt",
+      "owner": "source.codec.decode.decoder",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/package.cmake",
+      "owner": "source.codec.decode.decoder",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/private/audio_decoder.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/public/wiola/media/artwork_reference.hpp",
+      "owner": "source.media.artwork_reference",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/audio_decoder.hpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/public/wiola/media/byte_stream.hpp",
+      "owner": "source.media.byte_stream",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/error.hpp",
+      "owner": "source.media.error",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/metadata.hpp",
+      "owner": "source.media.media",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/operation_context.hpp",
+      "owner": "source.media.operation_context",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/provider.hpp",
+      "owner": "source.media.provider",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/result.hpp",
+      "owner": "source.media.result",
+      "language": "cpp",
+      "role": "production",
+      "workflow": true
+    },
+    {
+      "path": "src/core/media/public/wiola/media/stream_spec.hpp",
+      "owner": "source.pcm.stream_spec",
+      "language": "cpp",
+      "role": "production",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/tests/CMakeLists.txt",
+      "owner": "source.codec.decode.decoder",
+      "language": "cmake",
+      "role": "build",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/tests/decoder_contract_test.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/tests/decoder_port_test.cpp",
+      "owner": "source.codec.decode.decoder",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/tests/metadata_writer_test.cpp",
+      "owner": "test.media.metadata_writer_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/tests/stream_spec_test.cpp",
+      "owner": "test.pcm.stream_spec_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "src/core/media/tests/track_metadata_test.cpp",
+      "owner": "test.media.track_metadata_test",
+      "language": "cpp",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "src/desktop/CMakeLists.txt",
       "owner": "build.src.desktop",
       "language": "cmake",
@@ -3620,62 +3746,6 @@
       "workflow": false
     },
     {
-      "path": "src/media/artwork_reference.hpp",
-      "owner": "source.media.artwork_reference",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
-      "path": "src/media/audio_decoder/CMakeLists.txt",
-      "owner": "source.codec.decode.decoder",
-      "language": "cmake",
-      "role": "build",
-      "workflow": false
-    },
-    {
-      "path": "src/media/audio_decoder/audio_decoder.cpp",
-      "owner": "source.codec.decode.decoder",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
-      "path": "src/media/audio_decoder/audio_decoder.hpp",
-      "owner": "source.codec.decode.decoder",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
-      "path": "src/media/audio_decoder/tests/decoder_contract_test.cpp",
-      "owner": "source.codec.decode.decoder",
-      "language": "cpp",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "src/media/audio_decoder/tests/decoder_port_test.cpp",
-      "owner": "source.codec.decode.decoder",
-      "language": "cpp",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "src/media/byte_stream.hpp",
-      "owner": "source.media.byte_stream",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
-      "path": "src/media/error.hpp",
-      "owner": "source.media.error",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
       "path": "src/media/local_file_stream.cpp",
       "owner": "source.media.local_file_stream",
       "language": "cpp",
@@ -3690,43 +3760,8 @@
       "workflow": true
     },
     {
-      "path": "src/media/media.hpp",
-      "owner": "source.media.media",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
-      "path": "src/media/operation_context.hpp",
-      "owner": "source.media.operation_context",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
-      "path": "src/media/provider.hpp",
-      "owner": "source.media.provider",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
-      "path": "src/media/result.hpp",
-      "owner": "source.media.result",
-      "language": "cpp",
-      "role": "production",
-      "workflow": true
-    },
-    {
       "path": "src/pcm/pcm_queue.hpp",
       "owner": "source.pcm.pcm_queue",
-      "language": "cpp",
-      "role": "production",
-      "workflow": false
-    },
-    {
-      "path": "src/pcm/stream_spec.hpp",
-      "owner": "source.pcm.stream_spec",
       "language": "cpp",
       "role": "production",
       "workflow": false
@@ -5020,20 +5055,6 @@
       "workflow": false
     },
     {
-      "path": "tests/media/metadata_writer_test.cpp",
-      "owner": "test.media.metadata_writer_test",
-      "language": "cpp",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tests/media/track_metadata_test.cpp",
-      "owner": "test.media.track_metadata_test",
-      "language": "cpp",
-      "role": "test",
-      "workflow": false
-    },
-    {
       "path": "tests/pcm/CMakeLists.txt",
       "owner": "build.tests.pcm",
       "language": "cmake",
@@ -5043,13 +5064,6 @@
     {
       "path": "tests/pcm/pcm_queue_test.cpp",
       "owner": "test.pcm.pcm_queue_test",
-      "language": "cpp",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tests/pcm/stream_spec_test.cpp",
-      "owner": "test.pcm.stream_spec_test",
       "language": "cpp",
       "role": "test",
       "workflow": false

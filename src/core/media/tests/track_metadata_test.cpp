@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/media.hpp>
+#include <wiola/media/metadata.hpp>
 
 #include <gtest/gtest.h>
 

@@ -106,7 +106,7 @@ target_include_directories(
 # Portable foundation components have owned exports; legacy consumers receive those APIs.
 target_link_libraries(
     wiola_core
-    INTERFACE wiola_borrowed_reference wiola_quantities
+    INTERFACE wiola_borrowed_reference wiola_quantities wiola::media
 )
 
 # Adds a library built the way this project builds them: it can see the public headers, and it is

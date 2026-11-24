@@ -21,7 +21,7 @@
 #pragma once
 
 #include <engine/queue/track.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
+#include <wiola/media/audio_decoder.hpp>
 
 #include <cstdint>
 #include <filesystem>

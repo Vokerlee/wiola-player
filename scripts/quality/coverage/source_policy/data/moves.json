@@ -633,5 +633,85 @@
     "previous": "tests/utils/units_test.cpp",
     "current": "src/foundation/quantities/tests/units_test.cpp",
     "owner": "test.utils.units_test"
+  },
+  {
+    "previous": "src/media/audio_decoder/CMakeLists.txt",
+    "current": "src/core/media/CMakeLists.txt",
+    "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "src/media/audio_decoder/audio_decoder.hpp",
+    "current": "src/core/media/public/wiola/media/audio_decoder.hpp",
+    "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "src/media/audio_decoder/audio_decoder.cpp",
+    "current": "src/core/media/private/audio_decoder.cpp",
+    "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "src/media/audio_decoder/tests/decoder_contract_test.cpp",
+    "current": "src/core/media/tests/decoder_contract_test.cpp",
+    "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "src/media/audio_decoder/tests/decoder_port_test.cpp",
+    "current": "src/core/media/tests/decoder_port_test.cpp",
+    "owner": "source.codec.decode.decoder"
+  },
+  {
+    "previous": "src/pcm/stream_spec.hpp",
+    "current": "src/core/media/public/wiola/media/stream_spec.hpp",
+    "owner": "source.pcm.stream_spec"
+  },
+  {
+    "previous": "tests/pcm/stream_spec_test.cpp",
+    "current": "src/core/media/tests/stream_spec_test.cpp",
+    "owner": "test.pcm.stream_spec_test"
+  },
+  {
+    "previous": "tests/media/metadata_writer_test.cpp",
+    "current": "src/core/media/tests/metadata_writer_test.cpp",
+    "owner": "test.media.metadata_writer_test"
+  },
+  {
+    "previous": "tests/media/track_metadata_test.cpp",
+    "current": "src/core/media/tests/track_metadata_test.cpp",
+    "owner": "test.media.track_metadata_test"
+  },
+  {
+    "previous": "src/media/artwork_reference.hpp",
+    "current": "src/core/media/public/wiola/media/artwork_reference.hpp",
+    "owner": "source.media.artwork_reference"
+  },
+  {
+    "previous": "src/media/byte_stream.hpp",
+    "current": "src/core/media/public/wiola/media/byte_stream.hpp",
+    "owner": "source.media.byte_stream"
+  },
+  {
+    "previous": "src/media/error.hpp",
+    "current": "src/core/media/public/wiola/media/error.hpp",
+    "owner": "source.media.error"
+  },
+  {
+    "previous": "src/media/operation_context.hpp",
+    "current": "src/core/media/public/wiola/media/operation_context.hpp",
+    "owner": "source.media.operation_context"
+  },
+  {
+    "previous": "src/media/provider.hpp",
+    "current": "src/core/media/public/wiola/media/provider.hpp",
+    "owner": "source.media.provider"
+  },
+  {
+    "previous": "src/media/result.hpp",
+    "current": "src/core/media/public/wiola/media/result.hpp",
+    "owner": "source.media.result"
+  },
+  {
+    "previous": "src/media/media.hpp",
+    "current": "src/core/media/public/wiola/media/metadata.hpp",
+    "owner": "source.media.media"
   }
 ]

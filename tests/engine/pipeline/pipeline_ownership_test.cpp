@@ -23,7 +23,7 @@
 #include <engine/pipeline/playback_pipeline.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>

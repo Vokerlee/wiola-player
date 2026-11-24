@@ -21,9 +21,9 @@
 #pragma once
 #include <gui/model/tracks/track_identity.hpp>
 #include <library/records.hpp>
-#include <media/artwork_reference.hpp>
-#include <media/media.hpp>
 #include <memory>
+#include <wiola/media/artwork_reference.hpp>
+#include <wiola/media/metadata.hpp>
 
 namespace wiola::gui {
 

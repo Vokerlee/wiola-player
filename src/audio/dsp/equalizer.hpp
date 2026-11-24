@@ -24,7 +24,7 @@
 #include <audio/dsp/equalizer_processor.hpp>
 #include <audio/dsp/stage.hpp>
 #include <core/macros.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <cstddef>

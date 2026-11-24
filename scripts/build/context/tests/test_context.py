@@ -47,9 +47,7 @@ class ComponentContextTest(unittest.TestCase):
             with self.subTest(selected=selected):
                 directory = self.configure(selected)
                 inventory = CMakeInventory.read(directory)
-                expected = (
-                    {"wiola_media_audio_decoder"} if "media" in selected else set()
-                )
+                expected = {"wiola_media_core"} if "media" in selected else set()
                 actual = {target.name for target in inventory.targets}
                 self.assertEqual(actual, expected)
                 build = CMakeBuild(inventory, jobs=2, timeout=120)

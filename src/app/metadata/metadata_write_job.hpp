@@ -21,10 +21,10 @@
 #pragma once
 #include <library/identity.hpp>
 #include <library/metadata_patch.hpp>
-#include <media/media.hpp>
-#include <media/operation_context.hpp>
 #include <memory>
 #include <stop_token>
+#include <wiola/media/metadata.hpp>
+#include <wiola/media/operation_context.hpp>
 
 namespace wiola::app {
 

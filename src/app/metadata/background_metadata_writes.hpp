@@ -23,9 +23,9 @@
 #include <condition_variable>
 #include <deque>
 #include <functional>
-#include <media/provider.hpp>
 #include <mutex>
 #include <thread>
+#include <wiola/media/provider.hpp>
 
 namespace wiola::app {
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <media/audio_decoder/audio_decoder.hpp>
-#include <media/provider.hpp>
+#include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/provider.hpp>
 
 #include <gtest/gtest.h>
 

@@ -23,8 +23,8 @@
 #include "playhead.hpp"
 #include <audio/device/output.hpp>
 #include <core/macros.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
+#include <wiola/media/audio_decoder.hpp>
 
 #include <vector>
 

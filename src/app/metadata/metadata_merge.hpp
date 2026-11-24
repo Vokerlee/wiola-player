@@ -22,7 +22,7 @@
 
 #include <library/in_memory_repository.hpp>
 
-#include <media/media.hpp>
+#include <wiola/media/metadata.hpp>
 
 namespace wiola::app {
 

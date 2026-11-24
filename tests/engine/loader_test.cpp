@@ -22,7 +22,7 @@
 
 #include <fakes/decoder.hpp>
 
-#include <media/audio_decoder/audio_decoder.hpp>
+#include <wiola/media/audio_decoder.hpp>
 
 #include <gtest/gtest.h>
 

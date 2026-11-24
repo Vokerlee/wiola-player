@@ -24,7 +24,7 @@
 #include "packet_decoder.hpp"
 
 #include <codec/decode/format.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
+#include <wiola/media/audio_decoder.hpp>
 
 #include <cstdint>
 #include <filesystem>

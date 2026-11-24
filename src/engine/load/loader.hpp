@@ -22,8 +22,8 @@
 
 #include <core/macros.hpp>
 #include <engine/load/load_request.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
-#include <media/provider.hpp>
+#include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/provider.hpp>
 
 #include <condition_variable>
 #include <cstddef>

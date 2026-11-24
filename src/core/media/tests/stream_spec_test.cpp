@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>

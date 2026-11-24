@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <media/media.hpp>
-#include <media/operation_context.hpp>
+#include <wiola/media/metadata.hpp>
+#include <wiola/media/operation_context.hpp>
 
 #include <filesystem>
 #include <functional>

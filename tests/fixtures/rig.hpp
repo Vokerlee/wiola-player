@@ -23,8 +23,8 @@
 #include <audio/dsp/buffer_source.hpp>
 #include <engine/transport/player.hpp>
 #include <fakes/output.hpp>
-#include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
+#include <wiola/media/audio_decoder.hpp>
 #include <wiola/units.hpp>
 
 #include <chrono>

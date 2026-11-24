@@ -19,14 +19,14 @@
       "id": "test.media.metadata_writer_test",
       "purpose": "Verifies the current metadata writer contract.",
       "files": [
-        "tests/media/metadata_writer_test.cpp"
+        "src/core/media/tests/metadata_writer_test.cpp"
       ]
     },
     {
       "id": "test.media.track_metadata_test",
       "purpose": "Verifies the current track metadata contract.",
       "files": [
-        "tests/media/track_metadata_test.cpp"
+        "src/core/media/tests/track_metadata_test.cpp"
       ]
     }
   ]

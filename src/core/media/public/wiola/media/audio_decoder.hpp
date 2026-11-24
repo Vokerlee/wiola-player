@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <core/macros.hpp>
-#include <media/result.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/result.hpp>
+#include <wiola/media/stream_spec.hpp>
 
 #include <cstddef>
 #include <memory>
@@ -64,8 +63,10 @@ struct SeekOutcome {
  */
 class AudioDecoder {
 public:
-    NO_COPY_SEMANTIC(AudioDecoder);
-    NO_MOVE_SEMANTIC(AudioDecoder);
+    AudioDecoder(const AudioDecoder&) = delete;
+    AudioDecoder& operator=(const AudioDecoder&) = delete;
+    AudioDecoder(AudioDecoder&&) = delete;
+    AudioDecoder& operator=(AudioDecoder&&) = delete;
 
     virtual ~AudioDecoder() = default;
 

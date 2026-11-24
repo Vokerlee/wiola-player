@@ -1,2 +1,1 @@
 wiola_add_test(pcm_queue_test SOURCES pcm_queue_test.cpp)
-wiola_add_test(pcm_stream_spec_test SOURCES stream_spec_test.cpp)

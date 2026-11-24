@@ -19,7 +19,7 @@
       "id": "source.pcm.stream_spec",
       "purpose": "Owns the current stream spec declaration/implementation in pcm.",
       "files": [
-        "src/pcm/stream_spec.hpp"
+        "src/core/media/public/wiola/media/stream_spec.hpp"
       ]
     }
   ]

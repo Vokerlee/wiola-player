@@ -23,7 +23,7 @@
 #include <audio/dsp/biquad.hpp>
 #include <audio/dsp/equalizer_config.hpp>
 #include <core/macros.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <array>

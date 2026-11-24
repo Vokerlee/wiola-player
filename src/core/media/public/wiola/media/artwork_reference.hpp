@@ -19,8 +19,8 @@
  */
 
 #pragma once
-#include "media.hpp"
 #include <memory>
+#include <wiola/media/metadata.hpp>
 
 namespace wiola::media {
 

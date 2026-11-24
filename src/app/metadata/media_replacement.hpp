@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include <media/media.hpp>
-#include <media/operation_context.hpp>
-#include <media/provider.hpp>
 #include <platform/files/file_replacement.hpp>
+#include <wiola/media/metadata.hpp>
+#include <wiola/media/operation_context.hpp>
+#include <wiola/media/provider.hpp>
 
 #include <filesystem>
 #include <functional>

@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <media/result.hpp>
+#include <wiola/media/result.hpp>
 
 #include <cstdint>
 #include <vector>

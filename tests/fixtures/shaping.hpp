@@ -23,7 +23,7 @@
 #include <audio/dsp/equalizer.hpp>
 #include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/volume.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 
 namespace wiola::testing {
 

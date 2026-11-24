@@ -19,7 +19,7 @@
  */
 
 #include "tag_reader.hpp"
-#include <media/artwork_reference.hpp>
+#include <wiola/media/artwork_reference.hpp>
 
 #include <codec/provider.hpp>
 

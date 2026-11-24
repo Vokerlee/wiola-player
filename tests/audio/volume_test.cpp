@@ -21,7 +21,7 @@
 #include <audio/dsp/volume.hpp>
 
 #include <audio/dsp/volume_policy.hpp>
-#include <pcm/stream_spec.hpp>
+#include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
