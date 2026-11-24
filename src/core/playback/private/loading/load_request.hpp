@@ -22,9 +22,11 @@
 
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
+#include <wiola/units.hpp>
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 
 namespace wiola::engine {
 
@@ -38,6 +40,7 @@ struct LoadRequest {
     QueueEntryId entry;
     std::filesystem::path path;
     LoadIntent intent{LoadIntent::install};
+    std::optional<units::Time> position{};
 
     bool operator==(const LoadRequest&) const = default;
 };

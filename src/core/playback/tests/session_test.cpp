@@ -1083,6 +1083,258 @@ TEST(Session, ReplacementCommandsKeepTheLatestIntentAndStopResetsItsPosition)
     EXPECT_EQ(fixture.session.time_played(), units::Time{});
 }
 
+TEST(Session, HandoffMatchesInstalledMediaAfterAQueueReplacementFails)
+{
+    Fixture fixture;
+    fixture.consuming = false;
+    const auto path{fixture.track()};
+    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    const auto installed{fixture.session.playlist().current()->id()};
+    ASSERT_TRUE(fixture.session.play());
+    fixture.session.seek(units::Time{0.4});
+    ASSERT_EQ(load_and_wait(fixture.session, "missing.media"), OpenResult::unreadable);
+    const auto selected{fixture.session.playlist().current()->id()};
+    ASSERT_NE(installed, selected);
+
+    EXPECT_FALSE(fixture.session.release_media("missing.media"));
+    EXPECT_TRUE(fixture.session.loaded());
+    EXPECT_TRUE(fixture.session.playing());
+    const auto held{fixture.session.release_media(path)};
+    ASSERT_TRUE(held);
+    EXPECT_EQ(held->entry, installed);
+    EXPECT_FALSE(fixture.session.loaded());
+    ASSERT_EQ(fixture.session.restore_media(*held), OpenResult::loading);
+    ASSERT_TRUE(poll_until(fixture.session, [&] { return fixture.session.loaded(); }));
+
+    EXPECT_EQ(fixture.session.track(), path);
+    EXPECT_EQ(fixture.session.playlist().current()->id(), selected);
+    EXPECT_EQ(fixture.session.playlist().current()->path(), "missing.media");
+    EXPECT_TRUE(fixture.session.playing());
+    EXPECT_NEAR(fixture.session.time_played().seconds(), 0.4, 0.001);
+}
+
+TEST(Session, RetainedMediaCanBeRestoredAfterItsQueueEntryIsRemovedOrCleared)
+{
+    enum class Change {
+        remove,
+        clear,
+    };
+    for (const auto change : {Change::remove, Change::clear}) {
+        Fixture fixture;
+        fixture.consuming = false;
+        const auto path{fixture.track()};
+        ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+        ASSERT_TRUE(fixture.session.play());
+        if (change == Change::remove)
+            ASSERT_TRUE(fixture.session.remove(0));
+        else
+            fixture.session.clear();
+        ASSERT_TRUE(fixture.session.playlist().empty());
+        const auto held{fixture.session.release_media(path)};
+        ASSERT_TRUE(held);
+        EXPECT_FALSE(fixture.session.loaded());
+        ASSERT_EQ(fixture.session.restore_media(*held), OpenResult::loading);
+        ASSERT_TRUE(poll_until(fixture.session, [&] { return fixture.session.loaded(); }));
+        EXPECT_TRUE(fixture.session.playlist().empty());
+        EXPECT_EQ(fixture.session.track(), path);
+        EXPECT_EQ(fixture.session.playing(), change == Change::remove);
+    }
+}
+
+TEST(Session, HandoffPreservesAnUnrelatedOpenAndRestoresOnlyAfterItsFailure)
+{
+    enum class Outcome {
+        success,
+        failure,
+        invalid,
+    };
+    enum class Timing {
+        before_completion,
+        after_completion,
+    };
+    for (const auto outcome : {Outcome::success, Outcome::failure, Outcome::invalid}) {
+        for (const auto timing : {Timing::before_completion, Timing::after_completion}) {
+            wiola::testing::Gate opening;
+            std::atomic<bool> cancelled{false};
+            std::atomic<int> active_opens{0};
+            wiola::audio::ProcessingChain processing;
+            Session session{processing, wiola::testing::passive_output,
+                std::make_shared<wiola::testing::FakeMediaProvider>(
+                    [&](const std::filesystem::path& path,
+                        const wiola::media::OperationContext& context)
+                        -> wiola::media::DecoderOpenResult {
+                        if (path == "candidate.media") {
+                            std::stop_callback callback{context.stop, [&] {
+                                                            cancelled = true;
+                                                            opening.release();
+                                                        }};
+                            opening.wait();
+                            if (outcome == Outcome::failure)
+                                return wiola::media::unexpected{
+                                    wiola::media::Error{wiola::media::ErrorCategory::unreadable,
+                                                        "controlled failure"}
+                                };
+                            if (outcome == Outcome::invalid)
+                                return wiola::media::DecoderOpenResult{
+                                    std::make_unique<wiola::testing::FakeDecoder>(
+                                        wiola::media::DecoderStreamInfo{.spec = {},
+                                            .length = std::nullopt,
+                                            .length_accuracy = wiola::media::LengthAccuracy::exact}
+                                    )};
+                        } else {
+                            ++active_opens;
+                        }
+                        return wiola::media::DecoderOpenResult{
+                            std::make_unique<wiola::testing::FakeDecoder>()};
+                    },
+                    [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                )};
+            ASSERT_EQ(load_and_wait(session, "active.media"), OpenResult::opened);
+            ASSERT_TRUE(session.play());
+            session.seek(units::Time{0.01});
+            session.add({"candidate.media"});
+            ASSERT_TRUE(session.next_track());
+            opening.wait_until_entered();
+            const auto selected{session.playlist().current()->id()};
+            const auto held{session.release_media("active.media")};
+            ASSERT_TRUE(held);
+            EXPECT_FALSE(cancelled);
+            if (timing == Timing::before_completion) {
+                EXPECT_EQ(session.restore_media(*held), OpenResult::loading);
+                EXPECT_TRUE(session.reading());
+                EXPECT_EQ(active_opens, 1);
+            }
+            opening.release();
+            if (timing == Timing::after_completion) {
+                ASSERT_TRUE(poll_until(session, [&] { return !session.reading(); }));
+                static_cast<void>(session.restore_media(*held));
+            }
+            ASSERT_TRUE(poll_until(session,
+                [&] { return session.loaded() && !session.reading(); }));
+
+            EXPECT_FALSE(cancelled);
+            EXPECT_EQ(session.playlist().current()->id(), selected);
+            EXPECT_TRUE(session.playing());
+            if (outcome == Outcome::success) {
+                EXPECT_EQ(session.track(), "candidate.media");
+                EXPECT_EQ(active_opens, 1);
+            } else {
+                EXPECT_EQ(session.track(), "active.media");
+                EXPECT_EQ(active_opens, 2);
+                EXPECT_NEAR(session.time_played().seconds(), 0.01, 0.001);
+            }
+            const auto request{session.open_request_id()};
+            static_cast<void>(session.restore_media(*held));
+            EXPECT_EQ(session.open_request_id(), request);
+            EXPECT_FALSE(session.reading());
+        }
+    }
+}
+
+TEST(Session, HandoffCancelsASameResourceOpenButKeepsItsNewOccurrenceIntent)
+{
+    wiola::testing::Gate opening;
+    std::atomic<int> opens{0};
+    std::atomic<bool> cancelled{false};
+    wiola::audio::ProcessingChain processing;
+    Session session{processing, wiola::testing::passive_output,
+        std::make_shared<wiola::testing::FakeMediaProvider>(
+            [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+                if (++opens == 2) {
+                    std::stop_callback callback{context.stop, [&] {
+                                                    cancelled = true;
+                                                    opening.release();
+                                                }};
+                    opening.wait();
+                }
+                return wiola::media::DecoderOpenResult{
+                    std::make_unique<wiola::testing::FakeDecoder>()};
+            },
+            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+        )};
+    ASSERT_EQ(session.open({"same.media", "same.media"}), OpenResult::loading);
+    ASSERT_TRUE(poll_until(session, [&] { return session.loaded(); }));
+    ASSERT_TRUE(session.play());
+    session.seek(units::Time{0.01});
+    ASSERT_TRUE(session.next_track());
+    opening.wait_until_entered();
+    const auto selected{session.playlist().current()->id()};
+
+    const auto held{session.release_media("same.media")};
+    ASSERT_TRUE(held);
+    EXPECT_TRUE(cancelled);
+    EXPECT_EQ(held->entry, selected);
+    EXPECT_TRUE(held->play);
+    EXPECT_EQ(held->position, units::Time{});
+    ASSERT_EQ(session.restore_media(*held), OpenResult::loading);
+    ASSERT_TRUE(poll_until(session, [&] { return session.loaded(); }));
+    EXPECT_EQ(opens, 3);
+    EXPECT_EQ(session.playlist().position(), 1U);
+    EXPECT_TRUE(session.playing());
+    EXPECT_EQ(session.time_played(), units::Time{});
+}
+
+TEST(Session, NewSelectionDuringHandoffKeepsPlayIntentAndRevokesTheOldTicket)
+{
+    Fixture fixture;
+    fixture.consuming = false;
+    const auto first{fixture.track()};
+    const auto next{fixture.track()};
+    ASSERT_EQ(load_and_wait(fixture.session, first), OpenResult::opened);
+    fixture.session.add({next});
+    ASSERT_TRUE(fixture.session.play());
+    const auto held{fixture.session.release_media(first)};
+    ASSERT_TRUE(held);
+    ASSERT_TRUE(fixture.session.play_track(1));
+    const auto request{fixture.session.open_request_id()};
+    static_cast<void>(fixture.session.restore_media(*held));
+    EXPECT_EQ(fixture.session.open_request_id(), request);
+    ASSERT_TRUE(poll_until(fixture.session, [&] { return fixture.session.loaded(); }));
+    EXPECT_EQ(fixture.session.track(), next);
+    EXPECT_TRUE(fixture.session.playing());
+}
+
+TEST(Session, InvalidHandoffSeekTimesCannotPoisonTheRestorationRequest)
+{
+    Fixture fixture;
+    fixture.consuming = false;
+    const auto path{fixture.track()};
+    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    const auto held{fixture.session.release_media(path)};
+    ASSERT_TRUE(held);
+    fixture.session.seek(units::Time{0.4});
+    for (const double invalid : {std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()}) {
+        fixture.session.seek(units::Time{invalid});
+        const auto current{fixture.session.release_media(path)};
+        ASSERT_TRUE(current);
+        EXPECT_EQ(current->position, units::Time{0.4});
+    }
+    fixture.session.seek(units::Time{-0.5});
+    const auto current{fixture.session.release_media(path)};
+    ASSERT_TRUE(current);
+    EXPECT_EQ(current->position, units::Time{});
+    ASSERT_EQ(fixture.session.restore_media(*held), OpenResult::loading);
+    ASSERT_TRUE(poll_until(fixture.session, [&] { return fixture.session.loaded(); }));
+    EXPECT_EQ(fixture.session.time_played(), units::Time{});
+}
+
+TEST(Session, EmptyQueueReplacementRevokesAnUnrestoredHandoff)
+{
+    Fixture fixture;
+    const auto path{fixture.track()};
+    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    const auto held{fixture.session.release_media(path)};
+    ASSERT_TRUE(held);
+    fixture.session.open({});
+    static_cast<void>(fixture.session.restore_media(*held));
+    EXPECT_TRUE(fixture.session.playlist().empty());
+    EXPECT_FALSE(fixture.session.loaded());
+    EXPECT_FALSE(fixture.session.reading());
+    EXPECT_FALSE(fixture.session.play());
+    EXPECT_FALSE(fixture.session.release_media(path));
+}
+
 TEST(Session, ReplacementHandoffQuiescesAndRestoresTheCurrentPlayIntent)
 {
     Fixture fixture;

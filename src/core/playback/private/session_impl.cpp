@@ -29,6 +29,8 @@
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <random>
@@ -70,6 +72,7 @@ OpenResult Session::Impl::open(std::vector<std::filesystem::path> tracks)
     open_request_id_ = 0;
 
     playlist_.set(std::move(tracks));
+    replacement_.reset();
 
     metadata_.replace(playlist_.tracks());
 
@@ -79,12 +82,13 @@ OpenResult Session::Impl::open(std::vector<std::filesystem::path> tracks)
         return last_result_;
     }
 
-    return begin_reading(*playlist_.current(), LoadIntent::install);
+    return begin_reading(playlist_.current()->id(), playlist_.current()->path(),
+        LoadIntent::install);
 }
 
 bool Session::Impl::next_track()
 {
-    const bool was_playing{playing()};
+    const bool was_playing{wants_playback()};
 
     if (!playlist_.next())
         return false;
@@ -96,7 +100,7 @@ bool Session::Impl::next_track()
 
 bool Session::Impl::previous_track()
 {
-    const bool was_playing{playing()};
+    const bool was_playing{wants_playback()};
 
     if (!playlist_.previous())
         return false;
@@ -116,7 +120,8 @@ void Session::Impl::add(std::vector<std::filesystem::path> tracks)
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
-        static_cast<void>(begin_reading(*playlist_.current(), LoadIntent::install));
+        static_cast<void>(begin_reading(playlist_.current()->id(), playlist_.current()->path(),
+            LoadIntent::install));
 }
 
 bool Session::Impl::remove(std::size_t index)
@@ -128,9 +133,8 @@ bool Session::Impl::remove(std::size_t index)
     if (loads_.invalidate_if(entry))
         loader_.cancel();
 
-    if (replacement_ && entry == replacement_->entry) {
+    if (replacement_ && entry == replacement_->intent.entry) {
         replacement_.reset();
-        restore_position_.reset();
     }
     return playlist_.remove(index);
 }
@@ -150,7 +154,7 @@ const QueueView& Session::Impl::playlist() const noexcept
 
 bool Session::Impl::play_track(std::size_t index)
 {
-    const bool was_playing{playing()};
+    const bool was_playing{wants_playback()};
 
     if (!playlist_.go_to(index))
         return false;
@@ -188,18 +192,34 @@ bool Session::Impl::shuffled() const noexcept
     return playlist_.shuffled();
 }
 
-OpenResult Session::Impl::begin_reading(const QueueEntry& track, LoadIntent intent)
+OpenResult Session::Impl::begin_reading(QueueEntryId entry, std::filesystem::path path,
+    LoadIntent intent, std::optional<units::Time> position)
 {
     replacement_.reset();
-    // A fresh request supersedes any pending media-replacement position.
-    restore_position_.reset();
 
-    LoadRequest request{loads_.begin(track.id(), track.path(), intent)};
+    LoadRequest request{loads_.begin(entry, std::move(path), intent, position)};
     open_request_id_ = request.generation;
     loader_.start(std::move(request));
     last_result_ = OpenResult::loading;
 
     return last_result_;
+}
+
+bool Session::Impl::wants_playback() const noexcept
+{
+    return replacement_ ? replacement_->intent.play : playing();
+}
+
+void Session::Impl::restore_when_ready()
+{
+    if (!replacement_ || !replacement_->restore_requested || loads_.pending())
+        return;
+
+    const auto intent{replacement_->intent};
+    // Own the path argument before begin_reading retires the held intent. The installed
+    // occurrence can have left the queue; restoration does not change its selection.
+    static_cast<void>(begin_reading(intent.entry, track_,
+        intent.play ? LoadIntent::play : LoadIntent::install, intent.position));
 }
 
 void Session::Impl::record_outcome(OperationKind operation, OperationId id,
@@ -220,12 +240,15 @@ void Session::Impl::record_outcome(OperationKind operation, OperationId id,
 OpenResult Session::Impl::read_current_track(bool playing)
 {
     // Called only after next/previous/go_to accepted a selection on this control thread.
-    return begin_reading(*playlist_.current(), playing ? LoadIntent::play : LoadIntent::install);
+    const QueueEntry& current{*playlist_.current()};
+    return begin_reading(current.id(), current.path(),
+        playing ? LoadIntent::play : LoadIntent::install);
 }
 
 void Session::Impl::catch_up()
 {
     take_up_finished_read();
+    restore_when_ready();
     take_up_finished_tags();
     advance_if_ended();
 }
@@ -273,22 +296,18 @@ void Session::Impl::take_up_finished_read()
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
         last_result_ = open_failed(opened.error().category);
-        restore_position_.reset();
         return;
     }
 
     const bool should_play{completed->request.intent == LoadIntent::play};
 
     if (!install_track(std::move(*opened), std::move(completed->request.path),
-            completed->request.generation)) {
-        restore_position_.reset();
+            completed->request.entry, completed->request.generation)) {
         return;
     }
 
-    if (restore_position_) {
-        seek(*restore_position_);
-        restore_position_.reset();
-    }
+    if (completed->request.position)
+        seek(*completed->request.position);
 
     if (should_play)
         static_cast<void>(play());
@@ -312,7 +331,7 @@ void Session::Impl::advance_if_ended()
 }
 
 bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
-    std::filesystem::path path, OperationId request)
+    std::filesystem::path path, QueueEntryId entry, OperationId request)
 {
     const auto reject{[this, request](OperationError error) {
         const auto status{open_failed(error)};
@@ -347,6 +366,8 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
         pipeline->activate(out_);
         pipeline_.swap(pipeline);
         track_.swap(path);
+        installed_entry_ = entry;
+        replacement_.reset();
         last_result_ = OpenResult::opened;
         return true;
     } catch (const OutputSession::Unavailable& failure) {
@@ -377,7 +398,7 @@ bool Session::Impl::loaded() const noexcept
 bool Session::Impl::play() noexcept
 {
     if (replacement_) {
-        replacement_->play = true;
+        replacement_->intent.play = true;
         return true;
     }
     return loaded() && pipeline_->player().start();
@@ -386,7 +407,7 @@ bool Session::Impl::play() noexcept
 bool Session::Impl::pause() noexcept
 {
     if (replacement_) {
-        replacement_->play = false;
+        replacement_->intent.play = false;
         return true;
     }
     return loaded() && pipeline_->player().pause();
@@ -395,7 +416,7 @@ bool Session::Impl::pause() noexcept
 bool Session::Impl::resume() noexcept
 {
     if (replacement_) {
-        replacement_->play = true;
+        replacement_->intent.play = true;
         return true;
     }
     return loaded() && pipeline_->player().resume();
@@ -404,8 +425,8 @@ bool Session::Impl::resume() noexcept
 void Session::Impl::stop() noexcept
 {
     if (replacement_) {
-        replacement_->play = false;
-        replacement_->position = units::Time{};
+        replacement_->intent.play = false;
+        replacement_->intent.position = units::Time{};
     }
     loads_.invalidate();
     loader_.cancel();
@@ -422,39 +443,46 @@ void Session::Impl::stop() noexcept
 std::optional<Session::MediaReplacementState>
 Session::Impl::release_media(const std::filesystem::path& path)
 {
-    const QueueEntry* current = playlist_.current();
-    if (!current || current->path() != path)
+    if (path != track_)
         return {};
-    if (replacement_ && replacement_->entry == current->id())
-        return replacement_;
-    const MediaReplacementState state{current->id(), playing(), time_played(),
+    if (replacement_)
+        return replacement_->intent;
+    if (!loaded())
+        return {};
+
+    MediaReplacementState state{installed_entry_, playing(), time_played(),
         ++replacement_generation_};
-    loads_.invalidate();
-    loader_.cancel();
+    if (const auto pending{loads_.invalidate_resource(path)}) {
+        // A newer occurrence of the same physical resource must close its pending open too.
+        // Preserve that occurrence's new-track intent instead of the old decoder's position.
+        state.entry = pending->entry;
+        state.play = pending->intent == LoadIntent::play;
+        state.position = pending->position.value_or(units::Time{});
+        loader_.cancel();
+    }
     pipeline_.reset();
-    replacement_ = state;
+    replacement_ = Handoff{.intent = state};
     return state;
 }
 
 OpenResult Session::Impl::restore_media(const MediaReplacementState& state)
 {
-    const QueueEntry* current = playlist_.current();
-    if (!current || current->id() != state.entry)
+    if (!replacement_ || replacement_->intent.entry != state.entry ||
+        replacement_->intent.generation != state.generation)
         return last_result_;
-    if (!replacement_ || replacement_->entry != state.entry ||
-        replacement_->generation != state.generation)
-        return last_result_;
-    const auto intent = *replacement_;
-    const auto result =
-        begin_reading(*current, intent.play ? LoadIntent::play : LoadIntent::install);
-    restore_position_ = intent.position;
-    return result;
+
+    replacement_->restore_requested = true;
+    restore_when_ready();
+    return last_result_;
 }
 
 void Session::Impl::seek(units::Time position) noexcept
 {
     if (replacement_) {
-        replacement_->position = position;
+        // Match the active player's command admission before storing request identity.
+        // In particular, NaN would not even compare equal to its own copied completion.
+        if (std::isfinite(position.seconds()))
+            replacement_->intent.position = std::max(position, units::Time{});
         return;
     }
     if (loaded())
