@@ -20,7 +20,7 @@
 
 #include <engine/queue/playlist.hpp>
 
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
 

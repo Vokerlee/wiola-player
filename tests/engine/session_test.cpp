@@ -30,7 +30,7 @@
 #include <engine/queue/track.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
 

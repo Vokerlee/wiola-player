@@ -22,7 +22,7 @@
 #include "queue_entry_id.hpp"
 
 #include <media/media.hpp>
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <compare>
 #include <cstdint>

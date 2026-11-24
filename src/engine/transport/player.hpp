@@ -27,7 +27,7 @@
 #include <media/audio_decoder/audio_decoder.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <pcm/stream_spec.hpp>
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <memory>
 #include <optional>

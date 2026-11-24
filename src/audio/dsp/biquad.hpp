@@ -21,7 +21,7 @@
 #pragma once
 
 #include <pcm/stream_spec.hpp>
-#include <utils/units.hpp>
+#include <wiola/units.hpp>
 
 #include <cstddef>
 #include <span>

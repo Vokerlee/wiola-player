@@ -2,17 +2,10 @@
   "schema_version": 1,
   "owners": [
     {
-      "id": "build.tests.utils",
-      "purpose": "Declares the current targets for tests/utils.",
-      "files": [
-        "tests/utils/CMakeLists.txt"
-      ]
-    },
-    {
       "id": "test.utils.units_test",
       "purpose": "Verifies the current units contract.",
       "files": [
-        "tests/utils/units_test.cpp"
+        "src/foundation/quantities/tests/units_test.cpp"
       ]
     }
   ]
