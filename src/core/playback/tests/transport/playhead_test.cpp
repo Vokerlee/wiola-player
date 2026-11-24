@@ -215,6 +215,12 @@ TEST(Playhead, HandsOutOneApplierOnly)
     head.request_seek(Frames{500});
 
     EXPECT_FALSE(second.claim().outstanding) << "a second applier reached the playhead";
+    EXPECT_FALSE(second.seek_outstanding());
+    EXPECT_FALSE(second.drained(Frames{}));
+
+    second.begin_at(Frames{900}, Frames{}, second.claim());
+    EXPECT_TRUE(head.seek_outstanding());
+    EXPECT_EQ(head.position(Frames{}), Frames{500});
 
     second.push(64);
     EXPECT_EQ(second.num_pushed(), 0U);

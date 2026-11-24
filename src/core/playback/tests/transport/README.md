@@ -6,6 +6,8 @@ Player's ordinary source is generated PCM with an explicit stream shape and dura
 
 New worker failure cases use a gate to order stop/seek against a decoder failure. Existing broader player integration-style cases retain progress polling and are not claimed as deterministic scheduler proofs. Native TSan exercises actual threads; state/ownership tests assert outcomes independently of sanitizer diagnostics.
 
+Typed decoder failures are checked separately from thrown exceptions: an ordinary read failure quiesces the running output, and failed seek priming never restarts it. Restart without an explicit wait exercises the worker's joining responsibility. Unseekable input leaves the reported position and decoder untouched. Duplicate playhead appliers cannot acknowledge another owner's seek, submit samples or report a drained epoch.
+
 ```mermaid
 flowchart LR
     Cases[State / playhead / worker / player cases] --> Transport[Private transport]

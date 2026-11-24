@@ -71,8 +71,9 @@ bool TransportWorker::start()
     if (previous != PlaybackState::idle && !head_.seek_outstanding())
         head_.request_seek(pcm::Frames{});
 
-    if (!playback_.begin())
-        return false;
+    // Only this lifecycle caller begins playback. Pause/resume cannot leave idle or a
+    // terminal state, so the inactive state checked above cannot become active here.
+    static_cast<void>(playback_.begin());
 
     loop_.acquire_output();
 

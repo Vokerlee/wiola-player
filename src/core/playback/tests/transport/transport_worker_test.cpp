@@ -28,8 +28,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -98,6 +100,124 @@ private:
     bool held_{false};
     bool failed_{false};
 };
+
+/// Priming succeeds; a normal read or a later seek's priming returns a typed failure.
+class RejectingDecoder final : public wiola::media::AudioDecoder {
+public:
+    explicit RejectingDecoder(bool after_seek, Gate* reading = nullptr)
+        : AudioDecoder{{}, Frames{4096}}
+        , after_seek_{after_seek}
+        , reading_{reading}
+    {
+    }
+
+private:
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
+        Frames frames) override
+    {
+        if (reads_++ == 1 && reading_) {
+            reading_->wait();
+            return wiola::media::DecodeOutcome{.frames = {}, .end_of_stream = true};
+        }
+
+        if (after_seek_ ? sought_ : reads_ > 1)
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::read_failed,
+                                    .detail = "controlled read failure"}
+            };
+
+        std::fill(output.begin(), output.end(), 0.0F);
+        return wiola::media::DecodeOutcome{.frames = frames};
+    }
+
+    wiola::media::Result<wiola::media::SeekOutcome> seek_frame(Frames target) override
+    {
+        sought_ = true;
+        return wiola::media::SeekOutcome{.target = target, .achieved = target};
+    }
+
+    bool after_seek_;
+    Gate* reading_;
+    int reads_{0};
+    bool sought_{false};
+};
+
+TEST(TransportWorker, TypedDecodeFailureQuiescesOutput)
+{
+    wiola::pcm::PcmQueue buffer{{}, Frames{512}};
+    FakeOutput output;
+    TransportWorker worker{std::make_unique<RejectingDecoder>(false), buffer.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(output.num_stops(), 1);
+    EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWorker, TypedSeekPrimingFailureNeverRestartsOutput)
+{
+    Gate reading;
+    wiola::pcm::PcmQueue buffer{{}, Frames{512}};
+    auto consumer{buffer.consumer()};
+    FakeOutput output;
+    TransportWorker worker{std::make_unique<RejectingDecoder>(true, &reading), buffer.producer(),
+        output};
+
+    ASSERT_TRUE(worker.start());
+    reading.wait_until_entered();
+    // The output has consumed its original primed block. The held EOF read submits no
+    // further samples, leaving room for the seek transaction to prime before restarting.
+    std::array<float, 1024> played{};
+    EXPECT_EQ(consumer.pop(played), played.size());
+    output.play(Frames{512});
+    worker.seek(Frames{8});
+    reading.release();
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(output.num_stops(), 1);
+    EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWorker, RestartJoinsThePreviousExecutionWithoutAnExplicitWait)
+{
+    wiola::pcm::PcmQueue buffer{{}, Frames{512}};
+    FakeOutput output;
+    output.refuse_starts();
+    TransportWorker worker{std::make_unique<FakeDecoder>(), buffer.producer(), output};
+
+    ASSERT_TRUE(worker.start());
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+    while (!worker.finished()) {
+        ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+        std::this_thread::yield();
+    }
+
+    ASSERT_TRUE(worker.start());
+    worker.wait();
+
+    EXPECT_EQ(worker.state(), State::faulted);
+    EXPECT_EQ(output.num_starts(), 2);
+    EXPECT_FALSE(output.running());
+}
+
+TEST(TransportWorker, RejectsDecodeSampleOverflowWithoutStartingOutput)
+{
+    wiola::pcm::PcmQueue buffer{{}, Frames{512}};
+    FakeOutput output;
+    wiola::engine::TransportConfig config;
+    config.decode_chunk = Frames{std::numeric_limits<std::size_t>::max()};
+
+    EXPECT_THROW((TransportWorker{std::make_unique<FakeDecoder>(), buffer.producer(), output, {},
+                     config}),
+        std::invalid_argument);
+    EXPECT_EQ(output.num_starts(), 0);
+    EXPECT_TRUE(output.control());
+}
 
 TEST(TransportWorker, PrimingExceptionFaultsWithoutStartingOutput)
 {
