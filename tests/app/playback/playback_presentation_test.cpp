@@ -36,7 +36,7 @@ using wiola::app::PlayerPresentation;
 using wiola::engine::CommandResult;
 using wiola::engine::PlaybackState;
 using Presenter = wiola::app::PlaybackService;
-using Repeat = wiola::engine::Playlist::Repeat;
+using Repeat = wiola::engine::RepeatMode;
 
 class PlaybackPresentation : public testing::Test {
 protected:

@@ -43,7 +43,7 @@ using wiola::engine::Playlist;
 using wiola::engine::QueueEntry;
 using wiola::engine::QueueEntryId;
 using wiola::media::TrackMetadata;
-using Repeat = wiola::engine::Playlist::Repeat;
+using Repeat = wiola::engine::RepeatMode;
 
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
 template<typename Operation>
@@ -443,6 +443,47 @@ TEST(Playlist, MakesNoSelectionExplicit)
     const Playlist playlist;
 
     EXPECT_EQ(playlist.current(), nullptr);
+}
+
+TEST(Playlist, LiveReadPortTracksMutationsWithoutExposingStorage)
+{
+    Playlist playlist;
+    const wiola::engine::QueueView& view{playlist};
+    EXPECT_TRUE(view.empty());
+    EXPECT_EQ(view.current(), nullptr);
+    EXPECT_FALSE(view.position());
+
+    playlist.set({"same.wav", "same.wav"});
+    const auto retained{view.tracks().front()};
+    const auto second{view.tracks().back().id()};
+    const auto structure{view.structural_revision()};
+    EXPECT_EQ(view.index_of(second), 1U);
+    EXPECT_EQ(view.current()->id(), retained.id());
+    ASSERT_TRUE(playlist.go_to(1));
+    EXPECT_EQ(view.position(), 1U);
+    EXPECT_EQ(view.current()->id(), second);
+    EXPECT_EQ(view.structural_revision(), structure);
+
+    TrackMetadata facts;
+    facts.title = "updated";
+    const auto metadata{view.metadata_revision()};
+    ASSERT_TRUE(playlist.describe(retained.id(), facts));
+    EXPECT_EQ(view.metadata_revision(), metadata + 1);
+    EXPECT_EQ(view.tracks().front().metadata().title, "updated");
+    EXPECT_EQ(retained.metadata().title, "same");
+
+    playlist.add({"third.wav"});
+    EXPECT_EQ(view.tracks().size(), 3U);
+    EXPECT_NE(view.structural_revision(), structure);
+    ASSERT_TRUE(playlist.remove(0));
+    EXPECT_FALSE(view.index_of(retained.id()));
+    EXPECT_EQ(view.index_of(second), 0U);
+    EXPECT_EQ(view.current()->id(), second);
+    playlist.clear();
+    EXPECT_TRUE(view.empty());
+    EXPECT_EQ(view.current(), nullptr);
+    EXPECT_FALSE(view.position());
+    EXPECT_FALSE(view.index_of(second));
 }
 
 TEST(Playlist, GivesDuplicatePathsIndependentIdentities)

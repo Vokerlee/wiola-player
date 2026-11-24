@@ -39,7 +39,7 @@
 
 namespace {
 
-using Repeat = wiola::engine::Playlist::Repeat;
+using Repeat = wiola::engine::RepeatMode;
 using Control = wiola::app::QueueSettings;
 using Presenter = wiola::app::PlaybackService;
 

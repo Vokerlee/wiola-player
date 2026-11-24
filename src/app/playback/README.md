@@ -19,3 +19,5 @@ Command acceptance during application shutdown remains owned here. Stop stays av
 PlaybackQueue and PlaylistTransfer translate explicit library selections into queue operations. ActivePlaylist holds the selected saved-playlist identity. Playback presentation produces values for a frontend; no Qt widget or output SDK belongs to this folder. File formats, device callbacks, decoder scheduling and queue storage stay behind their owning contracts.
 
 Equalizer observations, including band centers, stay available as semantic values. Fractional seeking uses the optional duration without allocating a snapshot/path copy. Core seek owns loaded/seekability validation; an unknown duration supplies no basis for a fractional seek.
+
+Queue observations use the public live QueueView port and repeat controls use RepeatMode. Presentation does not require private Playlist or PlaybackOrder types. The queue owner retains occurrence lookup and revision semantics; frontend projections copy only the rows they cache and reacquire borrowed entries on updates.

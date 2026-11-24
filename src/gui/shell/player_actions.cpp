@@ -80,9 +80,9 @@ void PlayerActions::set_playing(bool playing)
     play->setIcon(playing ? pause_icon_ : play_icon_);
 }
 
-void PlayerActions::set_repeat(engine::Playlist::Repeat repeat)
+void PlayerActions::set_repeat(engine::RepeatMode repeat)
 {
-    using Repeat = engine::Playlist::Repeat;
+    using Repeat = engine::RepeatMode;
 
     QString text;
 

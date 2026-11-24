@@ -558,7 +558,7 @@ TEST(Session, TakesUpWhatEveryAddedTrackSays)
     fixture.session.add(both);
 
     EXPECT_TRUE(poll_until(fixture.session, [&fixture] {
-        const std::vector<wiola::engine::QueueEntry>& queued{fixture.session.playlist().tracks()};
+        const auto queued{fixture.session.playlist().tracks()};
 
         return queued.size() == 2 && queued.front().metadata().duration.has_value() &&
             queued.back().metadata().duration.has_value();
@@ -655,7 +655,7 @@ TEST(Session, TakesUpWhatEveryTrackOfAnOpenedListSays)
     ASSERT_EQ(fixture.session.open(both), OpenResult::loading);
 
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] {
-        const std::vector<wiola::engine::QueueEntry>& queued{fixture.session.playlist().tracks()};
+        const auto queued{fixture.session.playlist().tracks()};
 
         return queued.size() == 2 && queued.front().metadata().duration.has_value() &&
             queued.back().metadata().duration.has_value();

@@ -53,12 +53,12 @@ public:
         source_.set_resolver(std::move(resolver));
     }
 
-    bool show_playlist(const engine::Playlist& playlist);
+    bool show_playlist(const engine::QueueView& playlist);
     void show_library(const library::LibraryRepository& repository);
-    bool show_library_changes(const engine::Playlist& playlist,
+    bool show_library_changes(const engine::QueueView& playlist,
         const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch);
     [[nodiscard]] std::vector<std::filesystem::path>
-    displayed_paths(const engine::Playlist& playlist) const;
+    displayed_paths(const engine::QueueView& playlist) const;
     [[nodiscard]] std::vector<engine::QueueEntryId> chosen_tracks() const;
 
 signals:

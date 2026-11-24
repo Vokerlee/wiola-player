@@ -367,7 +367,7 @@ TEST(PlaybackService, ShutdownRejectsNewCommandsWithoutChangingAcceptedQueueOrSe
     const auto seek_position{*service.total_time() * 0.5};
     service.set_volume(0.25F);
     service.set_equalizer_band(0, 3.0F);
-    service.set_repeat(wiola::engine::Playlist::Repeat::all);
+    service.set_repeat(wiola::engine::RepeatMode::all);
     const auto before{service.snapshot()};
 
     service.stop_accepting();
@@ -388,7 +388,7 @@ TEST(PlaybackService, ShutdownRejectsNewCommandsWithoutChangingAcceptedQueueOrSe
     service.set_volume(0.75F);
     service.set_equalizer_enabled(false);
     service.set_equalizer_band(0, -3.0F);
-    service.set_repeat(wiola::engine::Playlist::Repeat::none);
+    service.set_repeat(wiola::engine::RepeatMode::none);
     service.cycle_repeat();
     service.shuffle(true);
     service.stop();
@@ -401,7 +401,7 @@ TEST(PlaybackService, ShutdownRejectsNewCommandsWithoutChangingAcceptedQueueOrSe
     EXPECT_FLOAT_EQ(service.volume(), 0.25F);
     EXPECT_TRUE(service.equalizer_enabled());
     EXPECT_FLOAT_EQ(service.equalizer_band(0), 3.0F);
-    EXPECT_EQ(service.repeat(), wiola::engine::Playlist::Repeat::all);
+    EXPECT_EQ(service.repeat(), wiola::engine::RepeatMode::all);
     EXPECT_FALSE(service.shuffled());
     EXPECT_TRUE(service.playback_extensions().empty());
 }

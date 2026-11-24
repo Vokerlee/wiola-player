@@ -21,7 +21,7 @@
 #pragma once
 
 #include <queue/playback_order.hpp>
-#include <wiola/playback/queue_entry.hpp>
+#include <wiola/playback/queue_view.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -34,41 +34,44 @@
 namespace wiola::engine {
 
 /// Owns queue entries while PlaybackOrder owns permutation, cursor, and repeat decisions.
-class Playlist {
+class Playlist final : public QueueView {
 public:
-    using Repeat = PlaybackOrder::Repeat;
-
     void set(std::vector<std::filesystem::path> paths);
     void add(std::vector<std::filesystem::path> paths);
     bool remove(std::size_t index) noexcept;
     void clear() noexcept;
 
-    [[nodiscard]] bool empty() const noexcept;
     [[nodiscard]] std::size_t revision() const noexcept;
 
-    [[nodiscard]] std::size_t structural_revision() const noexcept { return structural_revision_; }
+    [[nodiscard]] std::size_t structural_revision() const noexcept override
+    {
+        return structural_revision_;
+    }
 
-    [[nodiscard]] std::size_t metadata_revision() const noexcept { return metadata_revision_; }
+    [[nodiscard]] std::size_t metadata_revision() const noexcept override
+    {
+        return metadata_revision_;
+    }
 
     [[nodiscard]] std::size_t selection_revision() const noexcept { return selection_revision_; }
 
-    [[nodiscard]] const std::vector<QueueEntry>& tracks() const noexcept;
-    [[nodiscard]] const QueueEntry* current() const noexcept;
+    [[nodiscard]] std::span<const QueueEntry> tracks() const noexcept override;
+    [[nodiscard]] const QueueEntry* current() const noexcept override;
 
     bool describe(QueueEntryId id, media::TrackMetadata metadata);
     bool illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork> artwork);
     void apply_metadata(std::span<const QueueEntryId> entries, const media::TrackMetadata& metadata,
         std::shared_ptr<const media::Artwork> artwork);
 
-    [[nodiscard]] std::optional<std::size_t> position() const noexcept;
-    [[nodiscard]] std::optional<std::size_t> index_of(QueueEntryId id) const noexcept;
+    [[nodiscard]] std::optional<std::size_t> position() const noexcept override;
+    [[nodiscard]] std::optional<std::size_t> index_of(QueueEntryId id) const noexcept override;
 
     bool go_to(std::size_t index) noexcept;
     bool next() noexcept;
     bool previous() noexcept;
 
-    void set_repeat(Repeat repeat) noexcept;
-    [[nodiscard]] Repeat repeat() const noexcept;
+    void set_repeat(RepeatMode repeat) noexcept;
+    [[nodiscard]] RepeatMode repeat() const noexcept;
 
     void shuffle(std::uint_fast32_t seed);
     void unshuffle() noexcept;

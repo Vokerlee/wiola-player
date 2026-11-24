@@ -117,7 +117,7 @@ void Session::add(std::vector<std::filesystem::path> tracks)
     const std::size_t first_new{playlist_.tracks().size()};
     playlist_.add(std::move(tracks));
 
-    metadata_.append(std::span<const QueueEntry>{playlist_.tracks()}.subspan(first_new));
+    metadata_.append(playlist_.tracks().subspan(first_new));
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
@@ -145,7 +145,7 @@ void Session::clear()
     stop();
 }
 
-const Playlist& Session::playlist() const noexcept
+const QueueView& Session::playlist() const noexcept
 {
     return playlist_;
 }
@@ -162,12 +162,12 @@ bool Session::play_track(std::size_t index)
     return true;
 }
 
-void Session::set_repeat(Playlist::Repeat repeat) noexcept
+void Session::set_repeat(RepeatMode repeat) noexcept
 {
     playlist_.set_repeat(repeat);
 }
 
-Playlist::Repeat Session::repeat() const noexcept
+RepeatMode Session::repeat() const noexcept
 {
     return playlist_.repeat();
 }

@@ -32,7 +32,7 @@ namespace {
 
 using wiola::gui::PlayerAction;
 using Actions = wiola::gui::PlayerActions;
-using Repeat = wiola::engine::Playlist::Repeat;
+using Repeat = wiola::engine::RepeatMode;
 
 class PlayerActions : public testing::Test {
 protected:

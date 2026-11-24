@@ -28,9 +28,103 @@
 #include <gui/tracks/track_table_view.hpp>
 #include <queue/playlist.hpp>
 
+#include <algorithm>
+
 namespace {
 
 using namespace wiola;
+
+class ControlledQueue final : public engine::QueueView {
+public:
+    std::vector<engine::QueueEntry> entries;
+    std::optional<std::size_t> selected;
+    std::size_t structure{}, metadata{};
+
+    std::span<const engine::QueueEntry> tracks() const noexcept override { return entries; }
+
+    const engine::QueueEntry* current() const noexcept override
+    {
+        return selected ? &entries[*selected] : nullptr;
+    }
+
+    std::optional<std::size_t> position() const noexcept override { return selected; }
+
+    std::optional<std::size_t> index_of(engine::QueueEntryId id) const noexcept override
+    {
+        const auto found{std::ranges::find(entries, id, &engine::QueueEntry::id)};
+        return found == entries.end() ? std::nullopt
+                                      : std::optional<std::size_t>{found - entries.begin()};
+    }
+
+    std::size_t structural_revision() const noexcept override { return structure; }
+
+    std::size_t metadata_revision() const noexcept override { return metadata; }
+};
+
+TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
+{
+    ControlledQueue queue;
+    gui::QueueRows projection;
+    EXPECT_TRUE(projection.reconcile(queue, nullptr).structure);
+    EXPECT_TRUE(projection.rows().empty());
+
+    media::TrackMetadata facts;
+    facts.title = "original";
+    queue.entries = {
+        {engine::QueueEntryId{11}, "same.wav", facts},
+        {engine::QueueEntryId{12}, "same.wav", facts}
+    };
+    queue.selected = 1;
+    ++queue.structure;
+    const auto initial{projection.reconcile(queue, nullptr)};
+    EXPECT_TRUE(initial.structure);
+    EXPECT_TRUE(initial.current);
+    ASSERT_EQ(projection.rows().size(), 2U);
+    EXPECT_NE(projection.rows()[0].id, projection.rows()[1].id);
+    EXPECT_EQ(projection.current(), engine::QueueEntryId{12});
+    const auto retained{projection.rows()};
+    EXPECT_FALSE(projection.reconcile(queue, nullptr).changed());
+
+    // Replace backing storage without changing occurrence order. A retained span would dangle.
+    facts.title = "updated";
+    {
+        std::vector<engine::QueueEntry> updated{
+            {engine::QueueEntryId{11}, "same.wav", facts, {}, 1},
+            queue.entries[1]
+        };
+        queue.entries.swap(updated);
+    }
+    queue.selected = 0;
+    ++queue.metadata;
+    const auto changed{projection.reconcile(queue, nullptr)};
+    EXPECT_FALSE(changed.structure);
+    EXPECT_TRUE(changed.current);
+    ASSERT_EQ(changed.rows.size(), 1U);
+    EXPECT_EQ(changed.rows.front().id, retained[0].id);
+    EXPECT_EQ(changed.rows.front().metadata.title, "updated");
+    EXPECT_EQ(retained[0].metadata.title, "original");
+    EXPECT_EQ(projection.rows()[1], retained[1]);
+    EXPECT_EQ(projection.current(), engine::QueueEntryId{11});
+    EXPECT_FALSE(projection.reconcile(queue, nullptr).changed());
+
+    // A different owner can have identical revision numbers and still requires a rebuild.
+    ControlledQueue replacement;
+    replacement.entries.emplace_back(engine::QueueEntryId{13}, "replacement.wav");
+    replacement.selected = 0;
+    replacement.structure = queue.structure;
+    replacement.metadata = queue.metadata;
+    EXPECT_TRUE(projection.reconcile(replacement, nullptr).structure);
+    ASSERT_EQ(projection.rows().size(), 1U);
+    EXPECT_EQ(projection.current(), engine::QueueEntryId{13});
+    EXPECT_EQ(projection.rows().front().location, "replacement.wav");
+
+    replacement.entries.clear();
+    replacement.selected.reset();
+    ++replacement.structure;
+    EXPECT_TRUE(projection.reconcile(replacement, nullptr).structure);
+    EXPECT_TRUE(projection.rows().empty());
+    EXPECT_FALSE(projection.current());
+}
 
 library::TrackRecord record(std::string id, std::string title, std::string mood)
 {

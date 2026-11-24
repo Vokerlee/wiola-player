@@ -115,12 +115,12 @@ void QueueRows::replace(std::size_t position, TrackRow row)
     previous = std::move(row);
 }
 
-QueueRowChanges QueueRows::reconcile(const engine::Playlist& playlist,
+QueueRowChanges QueueRows::reconcile(const engine::QueueView& playlist,
     const library::LibraryRepository* repository)
 {
     QueueRowChanges changes;
-    const auto current =
-        playlist.current() ? std::optional{playlist.current()->id()} : std::nullopt;
+    const auto* selected = playlist.current();
+    const auto current = selected ? std::optional{selected->id()} : std::nullopt;
     changes.current = current_ != current;
     current_ = current;
     if (playlist_ != &playlist || structure_ != playlist.structural_revision()) {
@@ -132,9 +132,10 @@ QueueRowChanges QueueRows::reconcile(const engine::Playlist& playlist,
         entries_.clear();
         media_.clear();
         locations_.clear();
-        rows_.reserve(playlist.tracks().size());
-        revisions_.reserve(playlist.tracks().size());
-        for (const auto& track : playlist.tracks()) {
+        const auto tracks = playlist.tracks();
+        rows_.reserve(tracks.size());
+        revisions_.reserve(tracks.size());
+        for (const auto& track : tracks) {
             auto row = present(track, repository);
             entries_.emplace(track.id(), rows_.size());
             media_[row.media].push_back(track.id());
@@ -147,10 +148,11 @@ QueueRowChanges QueueRows::reconcile(const engine::Playlist& playlist,
     }
     if (metadata_ != playlist.metadata_revision()) {
         metadata_ = playlist.metadata_revision();
+        const auto tracks = playlist.tracks();
         for (std::size_t i = 0; i < rows_.size(); ++i)
-            if (revisions_[i] != playlist.tracks()[i].revision()) {
-                revisions_[i] = playlist.tracks()[i].revision();
-                auto row = present(playlist.tracks()[i], repository);
+            if (revisions_[i] != tracks[i].revision()) {
+                revisions_[i] = tracks[i].revision();
+                auto row = present(tracks[i], repository);
                 if (row != rows_[i]) {
                     replace(i, std::move(row));
                     changes.rows.push_back(rows_[i]);
@@ -160,7 +162,7 @@ QueueRowChanges QueueRows::reconcile(const engine::Playlist& playlist,
     return changes;
 }
 
-QueueRowChanges QueueRows::apply_library(const engine::Playlist& playlist,
+QueueRowChanges QueueRows::apply_library(const engine::QueueView& playlist,
     const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch)
 {
     auto changes = reconcile(playlist, &repository);
@@ -179,7 +181,7 @@ QueueRowChanges QueueRows::apply_library(const engine::Playlist& playlist,
     return changes;
 }
 
-std::vector<TrackRow> QueueRows::update_library(const engine::Playlist& playlist,
+std::vector<TrackRow> QueueRows::update_library(const engine::QueueView& playlist,
     const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch)
 {
     std::set<engine::QueueEntryId> affected;
@@ -200,10 +202,11 @@ std::vector<TrackRow> QueueRows::update_library(const engine::Playlist& playlist
     for (const auto& id : batch.removed_media)
         add_media(id);
     std::vector<TrackRow> changed;
+    const auto tracks = playlist.tracks();
     for (const auto id : affected)
         if (const auto found = entries_.find(id); found != entries_.end()) {
             const auto position = found->second;
-            auto row = present(playlist.tracks()[position], &repository);
+            auto row = present(tracks[position], &repository);
             if (row != rows_[position]) {
                 replace(position, std::move(row));
                 changed.push_back(rows_[position]);

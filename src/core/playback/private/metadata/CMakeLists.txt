@@ -11,7 +11,7 @@ target_include_directories(
 )
 target_link_libraries(
     wiola_playback_metadata
-    PUBLIC wiola::media wiola::playback_api wiola_playback_queue
+    PUBLIC wiola::media wiola::playback_api
     PRIVATE Threads::Threads
 )
 if(COMMAND wiola_apply_build_controls)

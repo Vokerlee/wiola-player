@@ -32,6 +32,8 @@
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
+#include <wiola/playback/queue_view.hpp>
+#include <wiola/playback/repeat_mode.hpp>
 #include <wiola/playback/snapshot.hpp>
 #include <wiola/units.hpp>
 
@@ -107,14 +109,14 @@ public:
     void clear();
 
     /// What is queued, and where in it playback stands. For showing a listener their list.
-    [[nodiscard]] const Playlist& playlist() const noexcept;
+    [[nodiscard]] const QueueView& playlist() const noexcept;
 
     /// Plays the track that was put at `index`, keeping whether something was playing. False
     /// when there is no such track.
     bool play_track(std::size_t index);
 
-    void set_repeat(Playlist::Repeat repeat) noexcept;
-    [[nodiscard]] Playlist::Repeat repeat() const noexcept;
+    void set_repeat(RepeatMode repeat) noexcept;
+    [[nodiscard]] RepeatMode repeat() const noexcept;
 
     /// Plays the list in an order drawn at random, or in the order it was given.
     void shuffle(bool on);

@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <wiola/playback/repeat_mode.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -31,12 +33,6 @@ namespace wiola::engine {
 /// Every nonempty order has one valid selected place; mutations preserve that invariant.
 class PlaybackOrder {
 public:
-    enum class Repeat {
-        none,
-        track,
-        all,
-    };
-
     void reset(std::size_t size);
     void reserve(std::size_t size);
     void add();
@@ -49,9 +45,9 @@ public:
     [[nodiscard]] bool next() noexcept;
     [[nodiscard]] bool previous() noexcept;
 
-    void set_repeat(Repeat repeat) noexcept { repeat_ = repeat; }
+    void set_repeat(RepeatMode repeat) noexcept { repeat_ = repeat; }
 
-    [[nodiscard]] Repeat repeat() const noexcept { return repeat_; }
+    [[nodiscard]] RepeatMode repeat() const noexcept { return repeat_; }
 
     void shuffle(std::uint_fast32_t seed);
     void unshuffle() noexcept;
@@ -63,7 +59,7 @@ private:
 
     std::vector<std::size_t> order_;
     std::optional<std::size_t> place_;
-    Repeat repeat_{Repeat::none};
+    RepeatMode repeat_{RepeatMode::none};
     bool shuffled_{false};
 };
 
