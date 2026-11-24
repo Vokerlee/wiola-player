@@ -220,7 +220,8 @@ OpenResult Session::begin_reading(const Track& track, LoadIntent intent)
     return last_result_;
 }
 
-void Session::record_outcome(OperationKind operation, OperationId id, media::Result<void> result)
+void Session::record_outcome(OperationKind operation, OperationId id,
+    std::optional<OperationError> error)
 {
     constexpr std::size_t max_retained_outcomes{64};
 
@@ -230,7 +231,7 @@ void Session::record_outcome(OperationKind operation, OperationId id, media::Res
     }
 
     outcomes_.push_back(
-        OperationOutcome{.id = id, .operation = operation, .result = std::move(result)}
+        OperationOutcome{.id = id, .operation = operation, .error = std::move(error)}
     );
 }
 
@@ -254,9 +255,10 @@ void Session::catch_up()
 void Session::take_up_finished_tags()
 {
     for (MetadataCoordinator::Reading& reading : metadata_.take()) {
-        record_outcome(OperationKind::metadata, reading.entries.front().value,
-            reading.result ? media::Result<void>{}
-                           : media::Result<void>{media::unexpected{reading.result.error()}});
+        std::optional<OperationError> error;
+        if (!reading.result)
+            error = reading.result.error();
+        record_outcome(OperationKind::metadata, reading.entries.front().value, std::move(error));
 
         media::Metadata tags =
             reading.result ? std::move(reading.result).value() : media::Metadata{};
@@ -288,8 +290,7 @@ void Session::take_up_finished_read()
     media::DecoderOpenResult& opened{completed->opened};
 
     if (!opened) {
-        record_outcome(OperationKind::open, completed->request.generation,
-            media::unexpected{opened.error()});
+        record_outcome(OperationKind::open, completed->request.generation, opened.error());
 
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
@@ -298,7 +299,7 @@ void Session::take_up_finished_read()
         return;
     }
 
-    record_outcome(OperationKind::open, completed->request.generation, media::Result<void>{});
+    record_outcome(OperationKind::open, completed->request.generation);
 
     ready_ = std::move(*opened);
     ready_track_ = completed->request.path;

@@ -35,17 +35,18 @@ int main()
         .operation = engine::OperationKind::open,
         .acceptance = engine::CommandResult::accepted};
     engine::OperationOutcomes completed;
-    completed.values.push_back({.id = receipt.id,
+    completed.values.push_back({
+        .id = receipt.id,
         .operation = receipt.operation,
-        .result =
-            media::unexpected{media::Error{media::ErrorCategory::damaged, "controlled failure"}}});
+        .error = media::Error{media::ErrorCategory::damaged, "controlled failure"}
+    });
     completed.overflowed = true;
-    if (completed.values.front().result || completed.values.front().id != receipt.id ||
+    if (!completed.values.front().error || completed.values.front().id != receipt.id ||
         !completed.overflowed)
         return 1;
     engine::PlaybackSnapshot snapshot;
     snapshot.state = engine::PlaybackState::faulted;
-    snapshot.open_result = engine::open_failed(completed.values.front().result.error().category);
+    snapshot.open_result = engine::open_failed(*completed.values.front().error);
     snapshot.track = "owned resource";
     snapshot.queue_position = 0;
     const auto retained = snapshot;
@@ -53,5 +54,14 @@ int main()
     if (retained.track.empty() || retained.total_time ||
         retained.open_result != engine::OpenResult::damaged)
         return 2;
+    engine::OperationOutcome device_failure{.id = receipt.id,
+        .operation = receipt.operation,
+        .error = engine::OutputSetupError{"controlled device failure"}};
+    if (!device_failure.error ||
+        engine::open_failed(*device_failure.error) != engine::OpenResult::output_unavailable)
+        return 3;
+    engine::OperationOutcome success;
+    if (success.error)
+        return 4;
     return !engine::QueueEntryId{receipt.id}.valid();
 }

@@ -19,6 +19,7 @@
  */
 
 #include <wiola/playback/open_result.hpp>
+#include <wiola/playback/operation_outcome.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 
 #include <gtest/gtest.h>
@@ -57,4 +58,39 @@ TEST(PlaybackContracts, QueueIdentityReservesZeroAndOrdersDistinctOccurrences)
     EXPECT_NE(ids[1], ids[2]);
     EXPECT_LT(ids[1], ids[2]);
     EXPECT_GT(ids[2], ids[1]);
+}
+
+TEST(PlaybackContracts, CompletionSeparatesOutputSetupFromMediaFailure)
+{
+    using namespace wiola;
+    const engine::OperationOutcome success;
+    EXPECT_FALSE(success.error);
+    const engine::OperationOutcome media_failure{
+        .id = 1,
+        .operation = engine::OperationKind::open,
+        .error = media::Error{media::ErrorCategory::damaged, "damaged stream"}
+    };
+    ASSERT_TRUE(media_failure.error);
+    EXPECT_EQ(engine::open_failed(*media_failure.error), engine::OpenResult::damaged);
+    EXPECT_EQ(std::get<media::Error>(*media_failure.error).detail, "damaged stream");
+    const engine::OperationOutcome device_failure{.id = 2,
+        .operation = engine::OperationKind::open,
+        .error = engine::OutputSetupError{"device unavailable"}};
+    ASSERT_TRUE(device_failure.error);
+    EXPECT_EQ(engine::open_failed(*device_failure.error), engine::OpenResult::output_unavailable);
+    EXPECT_EQ(std::get<engine::OutputSetupError>(*device_failure.error).detail,
+        "device unavailable");
+}
+
+TEST(PlaybackContracts, CompletionRetainsItsOwnFailureAfterTheOriginalChanges)
+{
+    using namespace wiola;
+    engine::OperationError failure{engine::OutputSetupError{"owned diagnostic"}};
+    engine::OperationOutcome outcome{.id = 7,
+        .operation = engine::OperationKind::open,
+        .error = failure};
+    std::get<engine::OutputSetupError>(failure).detail.clear();
+    ASSERT_TRUE(outcome.error);
+    EXPECT_EQ(std::get<engine::OutputSetupError>(*outcome.error).detail, "owned diagnostic");
+    EXPECT_EQ(outcome.id, 7U);
 }
