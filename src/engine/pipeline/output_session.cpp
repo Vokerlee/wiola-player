@@ -20,6 +20,9 @@
 
 #include <engine/pipeline/output_session.hpp>
 
+#include <wiola/audio/relay.hpp>
+#include <wiola/audio/shaped_source.hpp>
+
 #include <stdexcept>
 #include <utility>
 
@@ -41,6 +44,7 @@ struct OutputSession::Stream {
     audio::Relay relay;
     audio::ShapedSource shaped;
     std::unique_ptr<audio::Output> output;
+    const Lease* attached{nullptr};
 };
 
 OutputSession::OutputSession(audio::ProcessingChain& chain, OutputFactory make_output) noexcept
@@ -49,40 +53,42 @@ OutputSession::OutputSession(audio::ProcessingChain& chain, OutputFactory make_o
 {
 }
 
-OutputSession::~OutputSession()
+OutputSession::~OutputSession() = default;
+
+OutputSession::Lease::Lease(std::shared_ptr<Stream> stream) noexcept
+    : stream_{std::move(stream)}
 {
-    disconnect();
 }
 
-void OutputSession::open(pcm::StreamSpec spec)
+OutputSession::Lease::~Lease()
 {
-    if (open_for(spec))
-        return;
-
-    disconnect();
-    stream_.reset();
-    stream_ = std::make_unique<Stream>(spec, chain_, make_output_);
-}
-
-void OutputSession::disconnect() noexcept
-{
-    if (stream_)
+    if (stream_->attached == this) {
         stream_->relay.point_at_nothing();
+        stream_->attached = nullptr;
+    }
 }
 
-void OutputSession::connect(audio::Source& source) noexcept
+audio::Output& OutputSession::Lease::output() const noexcept
 {
+    return *stream_->output;
+}
+
+std::unique_ptr<OutputSession::Lease> OutputSession::prepare(pcm::StreamSpec spec)
+{
+    auto stream{open_for(spec) ? stream_ : std::make_shared<Stream>(spec, chain_, make_output_)};
+    return std::unique_ptr<Lease>{new Lease{std::move(stream)}};
+}
+
+void OutputSession::activate(Lease& lease, audio::Source& source) noexcept
+{
+    stream_ = lease.stream_;
+    stream_->attached = &lease;
     stream_->relay.point_at(source);
 }
 
 bool OutputSession::open_for(pcm::StreamSpec spec) const noexcept
 {
     return stream_ && stream_->spec == spec;
-}
-
-audio::Output& OutputSession::output() const noexcept
-{
-    return *stream_->output;
 }
 
 } // namespace wiola::engine

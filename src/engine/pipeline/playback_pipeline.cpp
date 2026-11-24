@@ -25,11 +25,18 @@
 namespace wiola::engine {
 
 PlaybackPipeline::PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
-    audio::Output& output, pcm::Frames buffer_frames, TransportConfig transport)
+    std::unique_ptr<OutputSession::Lease> output, pcm::Frames buffer_frames,
+    TransportConfig transport)
     : buffer_{source->spec(), buffer_frames}
     , decoded_{source->spec(), buffer_.consumer()}
-    , player_{std::move(source), buffer_.producer(), output, transport}
+    , output_{std::move(output)}
+    , player_{std::move(source), buffer_.producer(), output_->output(), transport}
 {
+}
+
+void PlaybackPipeline::activate(OutputSession& output) noexcept
+{
+    output.activate(*output_, decoded_);
 }
 
 } // namespace wiola::engine

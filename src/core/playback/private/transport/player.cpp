@@ -37,11 +37,7 @@ Player::Player(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Produ
 {
 }
 
-Player::~Player()
-{
-    stop();
-    wait();
-}
+Player::~Player() = default;
 
 bool Player::start()
 {

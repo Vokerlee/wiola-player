@@ -20,23 +20,48 @@
 
 #pragma once
 
-#include <core/macros.hpp>
 #include <wiola/audio/output.hpp>
-#include <wiola/audio/processing_chain.hpp>
-#include <wiola/audio/relay.hpp>
-#include <wiola/audio/shaped_source.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <functional>
 #include <memory>
 
+namespace wiola::audio {
+
+class ProcessingChain;
+class Source;
+
+} // namespace wiola::audio
+
 namespace wiola::engine {
 
 using OutputFactory = std::function<std::unique_ptr<audio::Output>(audio::Source&)>;
 
-/// Reuses an output for matching stream specs and explicitly disconnects sources before teardown.
+/// Prepares stream-specific output leases and caches the last committed stream for reuse.
+/// The borrowed processing chain must outlive both this cache and every prepared lease.
 class OutputSession {
+    struct Stream;
+
 public:
+    /// Pins the output and its render bridge. Its stable identity owns one source attachment.
+    /// Quiesce callbacks before destruction; PlaybackPipeline enforces this through member order.
+    class Lease {
+    public:
+        Lease(const Lease&) = delete;
+        Lease& operator=(const Lease&) = delete;
+        Lease(Lease&&) = delete;
+        Lease& operator=(Lease&&) = delete;
+        ~Lease();
+
+        [[nodiscard]] audio::Output& output() const noexcept;
+
+    private:
+        friend class OutputSession;
+        explicit Lease(std::shared_ptr<Stream> stream) noexcept;
+
+        std::shared_ptr<Stream> stream_;
+    };
+
     OutputSession(audio::ProcessingChain& chain, OutputFactory make_output) noexcept;
     ~OutputSession();
 
@@ -45,20 +70,20 @@ public:
     OutputSession(OutputSession&&) = delete;
     OutputSession& operator=(OutputSession&&) = delete;
 
-    /// Opens a new output only when `spec` differs from the one already open.
-    void open(pcm::StreamSpec spec);
-    void disconnect() noexcept;
-    void connect(audio::Source& source) noexcept;
+    /// Construct a stopped output or reuse the committed stream. Failure/discard changes
+    /// neither the cached stream nor its active source. The returned lease is never null.
+    [[nodiscard]] std::unique_ptr<Lease> prepare(pcm::StreamSpec spec);
+
+    /// Control thread, after prior callbacks stop: retain this stream and attach its source.
+    /// The lease and source outlive callbacks; a superseded lease cannot detach its successor.
+    void activate(Lease& lease, audio::Source& source) noexcept;
 
     [[nodiscard]] bool open_for(pcm::StreamSpec spec) const noexcept;
-    [[nodiscard]] audio::Output& output() const noexcept;
 
 private:
-    struct Stream;
-
     audio::ProcessingChain& chain_;
     OutputFactory make_output_;
-    std::unique_ptr<Stream> stream_;
+    std::shared_ptr<Stream> stream_;
 };
 
 } // namespace wiola::engine
