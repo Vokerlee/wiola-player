@@ -1,6 +1,6 @@
 # Borrowed-reference contracts
 
-`borrowed_reference_test.cpp` verifies move-only transfer, source clearing, nullable state and aliasing without Qt or GTest. `consumer.cpp` compiles against only the installed export. `check_export.py` installs the header component into a temporary prefix, relocates it, compiles the public API and requires compilation to reject both a legacy checkout header and this owner's private probe header.
+`borrowed_reference_test.cpp` verifies move-only transfer, source clearing, nullable state and aliasing without Qt or GTest. `consumer.cpp` compiles against only the installed export. `public_package.json` supplies local probe facts to the shared `scripts.testing.public_api` checker, which installs and relocates the package, compiles/links the public consumer, compiles its header independently and precisely rejects legacy/private includes.
 
 ```mermaid
 flowchart LR
@@ -10,4 +10,4 @@ flowchart LR
   Relocate --> Private[Private includes fail]
 ```
 
-Run CTest cases `BorrowedReference.OwnershipTransfer` and `BorrowedReference.InstalledConsumer`. The consumer check uses the configured compiler and target system; it never runs a cross-compiled executable. Temporary directories are isolated and removed on exit.
+Run CTest cases `BorrowedReference.OwnershipTransfer` and `BorrowedReference.InstalledConsumer`. The consumer check uses the configured compiler, target system and optional toolchain. Native consumers run; cross consumers link without running the target executable. Temporary workspaces are isolated outside the checkout and removed on exit; phase logs remain in the configured build evidence directory.

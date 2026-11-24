@@ -5,13 +5,15 @@
       "id": "source.utils.units",
       "purpose": "Defines dimensional values and conversions used by the player.",
       "files": [
-        "src/foundation/quantities/public/wiola/units.hpp",
         "src/foundation/quantities/CMakeLists.txt",
         "src/foundation/quantities/README.md",
         "src/foundation/quantities/public/README.md",
         "src/foundation/quantities/public/wiola/README.md",
+        "src/foundation/quantities/public/wiola/units.hpp",
+        "src/foundation/quantities/tests/CMakeLists.txt",
         "src/foundation/quantities/tests/README.md",
-        "src/foundation/quantities/tests/CMakeLists.txt"
+        "src/foundation/quantities/tests/consumer.cpp",
+        "src/foundation/quantities/tests/public_package.json"
       ]
     }
   ]

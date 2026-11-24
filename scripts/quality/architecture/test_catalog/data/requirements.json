@@ -123,8 +123,19 @@
   ],
   "auxiliary": {
     "BorrowedReference.InstalledConsumer": {
-      "owner": "source.core.borrowed",
-      "script": "src/foundation/borrowed_reference/tests/check_export.py"
+      "owner": "testing.public_api",
+      "script": "scripts/testing/public_api/__main__.py",
+      "module": "scripts.testing.public_api"
+    },
+    "Quantities.InstalledConsumer": {
+      "owner": "testing.public_api",
+      "script": "scripts/testing/public_api/__main__.py",
+      "module": "scripts.testing.public_api"
+    },
+    "Media.InstalledConsumer": {
+      "owner": "testing.public_api",
+      "script": "scripts/testing/public_api/__main__.py",
+      "module": "scripts.testing.public_api"
     }
   }
 }

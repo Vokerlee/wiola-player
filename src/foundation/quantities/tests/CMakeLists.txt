@@ -11,3 +11,8 @@ target_link_libraries(
         wiola_warnings
 )
 gtest_discover_tests(utils_units_test)
+
+wiola_add_public_consumer_test(
+    Quantities.InstalledConsumer
+    "${CMAKE_CURRENT_SOURCE_DIR}/public_package.json"
+)
