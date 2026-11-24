@@ -559,6 +559,44 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
         EXPECT_EQ(track.metadata().title, "read");
 }
 
+TEST(Session, ForwardsCompleteMetadataValuesWithoutReinterpretingTheirFields)
+{
+    wiola::media::Metadata observed;
+    observed.track = {.title = "Observed title",
+        .artist = "Artist",
+        .album = "Album",
+        .duration = wiola::pcm::StreamSpec{}.time_per(wiola::pcm::Frames{64}),
+        .genre = "Genre",
+        .year = 2026,
+        .comment = "Comment",
+        .composer = "Composer",
+        .track_number = 3,
+        .disc_number = 2};
+    observed.artwork.data = {std::byte{1}, std::byte{2}};
+    observed.artwork.mime_type = "image/test";
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
+        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
+        std::make_shared<wiola::testing::FakeMediaProvider>(
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::DecoderOpenResult{
+                    std::make_unique<wiola::testing::FakeDecoder>()};
+            },
+            [&observed](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return observed;
+            }
+        )};
+
+    EXPECT_EQ(session.open({"observed.media"}), OpenResult::loading);
+    ASSERT_TRUE(poll_until(session,
+        [&session] { return session.loaded() && session.playlist().metadata_revision() == 1U; }));
+    const auto& entry{session.playlist().tracks().front()};
+    EXPECT_EQ(entry.metadata(), observed.track);
+    ASSERT_TRUE(entry.artwork());
+    EXPECT_EQ(entry.artwork()->data, observed.artwork.data);
+    EXPECT_EQ(entry.artwork()->mime_type, observed.artwork.mime_type);
+}
+
 TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 {
     wiola::audio::ProcessingChain processing;

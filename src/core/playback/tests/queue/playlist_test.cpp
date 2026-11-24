@@ -655,7 +655,75 @@ TEST(Playlist, ObsoleteMetadataBatchesCannotInvalidateLiveQueueObservations)
     EXPECT_EQ(playlist.current(), nullptr);
 }
 
+TEST(Playlist, MissingMetadataTitleUsesEachOccurrencesOwnFallback)
+{
+    Playlist playlist;
+    playlist.set(three());
+    const std::array entries{playlist.tracks()[0].id(), playlist.tracks()[1].id()};
+    const auto revision{playlist.metadata_revision()};
+    TrackMetadata observed;
+    observed.artist = "Observed artist";
+    playlist.apply_metadata(entries, observed, {});
+
+    EXPECT_EQ(playlist.metadata_revision(), revision + 1);
+    for (std::size_t index{0}; index < entries.size(); ++index) {
+        auto expected{observed};
+        expected.title = playlist.tracks()[index].path().stem().string();
+        EXPECT_EQ(playlist.tracks()[index].metadata(), expected);
+    }
+    EXPECT_EQ(playlist.tracks()[2].metadata().title, "third");
+    EXPECT_TRUE(playlist.tracks()[2].metadata().artist.empty());
+}
+
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(Playlist, MetadataAllocationFailuresPreserveAllOccurrencesAndRevisions)
+{
+    bool observed_failure{false};
+    for (std::size_t after{0};; ++after) {
+        Playlist playlist;
+        playlist.set(three());
+        ASSERT_TRUE(playlist.go_to(1));
+        const std::vector<QueueEntry> accepted{playlist.tracks().begin(), playlist.tracks().end()};
+        const std::array entries{accepted[0].id(), accepted[1].id(), accepted[2].id()};
+        const auto revision{playlist.revision()};
+        const auto metadata_revision{playlist.metadata_revision()};
+        const auto structural_revision{playlist.structural_revision()};
+        const auto selection_revision{playlist.selection_revision()};
+        auto artwork{std::make_shared<const wiola::media::Artwork>()};
+        TrackMetadata observed;
+        observed.artist.assign(256, 'a');
+        observed.comment.assign(256, 'c');
+
+        if (!allocation_fails(after,
+                [&] { playlist.apply_metadata(entries, observed, artwork); })) {
+            EXPECT_TRUE(observed_failure);
+            EXPECT_EQ(playlist.revision(), revision + 1);
+            EXPECT_EQ(playlist.metadata_revision(), metadata_revision + 1);
+            for (std::size_t index{0}; index < accepted.size(); ++index) {
+                auto expected{observed};
+                expected.title = accepted[index].metadata().title;
+                EXPECT_EQ(playlist.tracks()[index].metadata(), expected);
+                EXPECT_EQ(playlist.tracks()[index].artwork(), artwork);
+                EXPECT_EQ(playlist.tracks()[index].revision(), accepted[index].revision() + 1);
+            }
+            break;
+        }
+        observed_failure = true;
+        EXPECT_EQ(playlist.revision(), revision);
+        EXPECT_EQ(playlist.metadata_revision(), metadata_revision);
+        EXPECT_EQ(playlist.structural_revision(), structural_revision);
+        EXPECT_EQ(playlist.selection_revision(), selection_revision);
+        EXPECT_EQ(playlist.position(), 1U);
+        ASSERT_EQ(playlist.tracks().size(), accepted.size());
+        for (std::size_t index{0}; index < accepted.size(); ++index) {
+            EXPECT_EQ(playlist.tracks()[index].id(), accepted[index].id());
+            EXPECT_EQ(playlist.tracks()[index].metadata(), accepted[index].metadata());
+            EXPECT_EQ(playlist.tracks()[index].artwork(), accepted[index].artwork());
+            EXPECT_EQ(playlist.tracks()[index].revision(), accepted[index].revision());
+        }
+    }
+}
+
 TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
 {
     bool observed_failure{false};
