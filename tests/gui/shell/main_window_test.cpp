@@ -22,6 +22,7 @@
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
 #include <desktop/playback/volume_control.hpp>
+#include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
@@ -425,6 +426,25 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     ASSERT_GT(bands.size(), 2);
     EXPECT_FALSE(enabled->isChecked());
     EXPECT_EQ(bands[2]->value(), 60);
+}
+
+TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
+{
+    wiola::engine::Session session{
+        [](wiola::audio::Source&) { return std::unique_ptr<wiola::audio::Output>{}; },
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::app::PlaybackService window_playback{session};
+    wiola::app::PlaybackPreferences window_preferences{window_playback};
+    MainWindow window{window_playback, window_library, window_preferences};
+    window_playback.open({"valid-decoder"});
+    ASSERT_TRUE(pump_until(window, session,
+        [&] { return session.open_result() == wiola::engine::OpenResult::output_unavailable; }));
+    EXPECT_NE(with_text<QLabel>(window, "audio output is unavailable"), nullptr);
+    EXPECT_FALSE(session.loaded());
 }
 
 } // namespace

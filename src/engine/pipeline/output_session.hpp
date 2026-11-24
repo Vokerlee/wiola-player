@@ -25,6 +25,7 @@
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 namespace wiola::audio {
 
@@ -43,6 +44,12 @@ class OutputSession {
     struct Stream;
 
 public:
+    /// Output construction failed. Allocation failure keeps its original exceptional policy.
+    class Unavailable final : public std::runtime_error {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
     /// Pins the output and its render bridge. Its stable identity owns one source attachment.
     /// Quiesce callbacks before destruction; PlaybackPipeline enforces this through member order.
     class Lease {

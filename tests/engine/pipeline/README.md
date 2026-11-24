@@ -19,3 +19,5 @@ sequenceDiagram
 The teardown witness composes the existing controlled device rather than implementing another callback simulator. An unbounded controlled decoder keeps playback active; the test observes actual device startup before destroying the pipeline. Decoder destruction must see a live, stopped output. The output may be released only afterward. Ordinary ASan/TSan exercise worker/callback teardown through the actual bundle.
 
 The shared allocation witness runs only where the C++ allocator replacements are available; normal lifecycle cases remain enabled under TSan. No timing sleeps, device SDK or per-test manifest is needed. Use target `engine_pipeline_ownership_test` through ordinary CTest.
+
+Session tests qualify the composition: null/invalid decoder completions report failure, output construction errors preserve active unseekable playback and authored processing, and every preparation allocation is failed in turn after unrelated metadata has settled. Output start failure is observed as eventual transport fault after installation. A GUI contract checks the unavailable-output status through the actual window.

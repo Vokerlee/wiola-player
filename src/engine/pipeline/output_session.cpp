@@ -23,10 +23,33 @@
 #include <wiola/audio/relay.hpp>
 #include <wiola/audio/shaped_source.hpp>
 
-#include <stdexcept>
+#include <exception>
+#include <new>
 #include <utility>
 
 namespace wiola::engine {
+
+namespace {
+
+std::unique_ptr<audio::Output> construct_output(audio::Source& source,
+    const OutputFactory& make_output)
+{
+    std::unique_ptr<audio::Output> output;
+    try {
+        output = make_output(source);
+    } catch (const std::bad_alloc&) {
+        throw;
+    } catch (const std::exception& failure) {
+        throw OutputSession::Unavailable{failure.what()};
+    } catch (...) {
+        throw OutputSession::Unavailable{"output factory threw an unknown exception"};
+    }
+    if (!output)
+        throw OutputSession::Unavailable{"output factory returned no output"};
+    return output;
+}
+
+} // namespace
 
 struct OutputSession::Stream {
     Stream(pcm::StreamSpec stream_spec, audio::ProcessingChain& chain,
@@ -34,10 +57,8 @@ struct OutputSession::Stream {
         : spec{stream_spec}
         , relay{stream_spec}
         , shaped{relay, chain}
-        , output{make_output(shaped)}
+        , output{construct_output(shaped, make_output)}
     {
-        if (!output)
-            throw std::runtime_error{"output factory returned no output"};
     }
 
     pcm::StreamSpec spec;
