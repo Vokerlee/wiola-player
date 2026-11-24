@@ -235,7 +235,9 @@
         "scripts/quality/coverage/measurement/report.py",
         "scripts/quality/coverage/measurement/tests/README.md",
         "scripts/quality/coverage/measurement/tests/__init__.py",
-        "scripts/quality/coverage/measurement/tests/test_report.py"
+        "scripts/quality/coverage/measurement/tests/_fixtures.py",
+        "scripts/quality/coverage/measurement/tests/test_report.py",
+        "scripts/quality/coverage/measurement/tests/test_scope.py"
       ]
     },
     {

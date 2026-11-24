@@ -1,6 +1,7 @@
 """Normalize raw coverage by source owner without hiding unmeasured code."""
 
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
 
 from scripts.build.cmake import CMakeInventory
@@ -28,9 +29,38 @@ def _sum(records: list[dict], metrics: tuple[str, ...]) -> dict:
 
 
 class CoverageMeasurement:
-    def __init__(self, policy: SourcePolicy, root: Path) -> None:
+    def __init__(
+        self, policy: SourcePolicy, root: Path, *, owners: Iterable[str] | None = None
+    ) -> None:
         self._policy = policy
         self._root = root.resolve()
+        if isinstance(owners, str):
+            raise ValueError("Owner selection must be a collection of identities")
+        selected = None if owners is None else frozenset(owners)
+        if selected is not None:
+            if not selected or any(
+                not isinstance(owner, str) or not owner for owner in selected
+            ):
+                raise ValueError("Owner selection must contain nonempty identities")
+            unknown = selected - {record.owner for record in policy.records.values()}
+            if unknown:
+                raise ValueError(
+                    "Unknown selected source owners: " + ", ".join(sorted(unknown))
+                )
+        self._selected_owners = selected
+        self._records = {
+            path: record
+            for path, record in policy.records.items()
+            if selected is None or record.owner in selected
+        }
+
+    def _describe_scope(self, result: dict, unselected: Iterable[str]) -> dict:
+        if self._selected_owners is not None:
+            result["scope"] = dict(
+                owners=sorted(self._selected_owners),
+                unselected_mapped_files=sorted(unselected),
+            )
+        return result
 
     def _path(self, path: str) -> str | None:
         value = (self._root / path).resolve()
@@ -46,7 +76,7 @@ class CoverageMeasurement:
         configured: set[str] | None = None,
     ) -> dict:
         owners = defaultdict(list)
-        for record in self._policy.records.values():
+        for record in self._records.values():
             if record.language == language and record.role in {"production", "tooling"}:
                 owners[record.owner].append(record.path)
         result = {}
@@ -67,7 +97,7 @@ class CoverageMeasurement:
             raise ValueError("Coverage and configured sources have different roots")
         if len(raw["data"]) != 1:
             raise ValueError("Select exactly one LLVM export dataset")
-        measured, ignored = {}, []
+        measured, ignored, unselected = {}, [], []
         for entry in raw["data"][0]["files"]:
             path = self._path(entry["filename"])
             if path is None:
@@ -79,6 +109,9 @@ class CoverageMeasurement:
                 )
             if record.language != "cpp" or record.role != "production":
                 ignored.append(path)
+                continue
+            if path not in self._records:
+                unselected.append(path)
                 continue
             if path in measured:
                 raise ValueError("Duplicate LLVM source mapping: " + path)
@@ -99,9 +132,9 @@ class CoverageMeasurement:
             path
             for target in inventory.targets
             for path in target.sources
-            if path in self._policy.records
-            and self._policy.records[path].role == "production"
-            and self._policy.records[path].language == "cpp"
+            if path in self._records
+            and self._records[path].role == "production"
+            and self._records[path].language == "cpp"
         }
         absent = {
             path for path in configured if path.endswith(".cpp")
@@ -111,15 +144,18 @@ class CoverageMeasurement:
                 "Configured production sources have no coverage mapping: "
                 + ", ".join(sorted(absent))
             )
-        return dict(
-            totals=_sum(list(measured.values()), CPP_METRICS),
-            files=measured,
-            owners=self._owners("cpp", measured, CPP_METRICS, configured),
-            ignored_nonproduction_mappings=sorted(ignored),
+        return self._describe_scope(
+            dict(
+                totals=_sum(list(measured.values()), CPP_METRICS),
+                files=measured,
+                owners=self._owners("cpp", measured, CPP_METRICS, configured),
+                ignored_nonproduction_mappings=sorted(ignored),
+            ),
+            unselected,
         )
 
     def python(self, raw: dict) -> dict:
-        measured = {}
+        measured, unselected = {}, []
         for filename, entry in raw["files"].items():
             path = self._path(filename)
             if path is None:
@@ -128,6 +164,9 @@ class CoverageMeasurement:
             if record is None:
                 raise ValueError("Measured Python source has no applicability: " + path)
             if record.language != "python" or record.role != "tooling":
+                continue
+            if path not in self._records:
+                unselected.append(path)
                 continue
             if path in measured:
                 raise ValueError("Duplicate Python source mapping: " + path)
@@ -140,7 +179,7 @@ class CoverageMeasurement:
             }
         expected = {
             record.path
-            for record in self._policy.records.values()
+            for record in self._records.values()
             if record.language == "python" and record.role == "tooling"
         }
         absent = expected - measured.keys()
@@ -148,10 +187,13 @@ class CoverageMeasurement:
             raise ValueError(
                 "Python tools have no statement mapping: " + ", ".join(sorted(absent))
             )
-        return dict(
-            totals=_sum(list(measured.values()), ("lines", "branches")),
-            files=measured,
-            owners=self._owners("python", measured, ("lines", "branches")),
+        return self._describe_scope(
+            dict(
+                totals=_sum(list(measured.values()), ("lines", "branches")),
+                files=measured,
+                owners=self._owners("python", measured, ("lines", "branches")),
+            ),
+            unselected,
         )
 
     def unmeasured(self) -> list[dict]:
@@ -162,6 +204,6 @@ class CoverageMeasurement:
                 language=record.language,
                 reason="No statement/branch instrumentation is qualified for this language",
             )
-            for record in self._policy.records.values()
+            for record in self._records.values()
             if record.language not in {"cpp", "python"} and record.role != "test"
         ]
