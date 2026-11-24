@@ -254,7 +254,10 @@
         "scripts/quality/coverage/python_runner/CMakeLists.txt",
         "scripts/quality/coverage/python_runner/README.md",
         "scripts/quality/coverage/python_runner/__init__.py",
-        "scripts/quality/coverage/python_runner/__main__.py"
+        "scripts/quality/coverage/python_runner/__main__.py",
+        "scripts/quality/coverage/python_runner/tests/README.md",
+        "scripts/quality/coverage/python_runner/tests/__init__.py",
+        "scripts/quality/coverage/python_runner/tests/test_profiles.py"
       ]
     },
     {

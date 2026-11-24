@@ -84,6 +84,13 @@ def _execute(
     return commands
 
 
+def _process_profiles(directory: Path) -> dict[str, str]:
+    return {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(directory.glob(".coverage.*"))
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", required=True, type=Path)
@@ -119,6 +126,11 @@ def main() -> int:
     }
     if before != after:
         raise ValueError("Instrumented Python source changed during collection")
+    profiles = _process_profiles(raw)
+    if len(profiles) != len(commands) + 1:
+        raise ValueError(
+            "Expected one Python profile per completed command and collector"
+        )
     subprocess.run(
         [
             sys.executable,
@@ -138,6 +150,7 @@ def main() -> int:
             "-m",
             "coverage",
             "json",
+            "--keep-combined",
             "--data-file",
             str(data_file),
             "-o",
@@ -147,14 +160,13 @@ def main() -> int:
         cwd=root,
         check=True,
     )
+    if _process_profiles(raw) != profiles:
+        raise ValueError("Python process profiles changed during reporting")
     manifest = dict(
         coverage_version=coverage.__version__,
         instrumented_source_sha256=before,
         completed_commands=commands,
-        process_profiles={
-            path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted(raw.glob(".coverage.*"))
-        },
+        process_profiles=profiles,
     )
     args.output.with_name(args.output.stem + "-manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n"
