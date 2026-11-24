@@ -30,11 +30,14 @@ option(ENABLE_COVERAGE "Instrument the project's code for coverage" OFF)
 option(ENABLE_ASAN "Build the project's code with the address sanitizer" OFF)
 option(ENABLE_TSAN "Build the project's code with the thread sanitizer" OFF)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/scripts/build/context/select.cmake")
+
 if(PROJECT_IS_TOP_LEVEL)
     include(CTest)
 endif()
 
 # One answer, read by the dependency list as well as by this file.
+set(WIOLA_BUILD_TESTS OFF)
 if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING AND ENABLE_UNIT_TESTS)
     set(WIOLA_BUILD_TESTS ON)
 endif()
@@ -46,10 +49,12 @@ add_subdirectory(src)
 
 if(ENABLE_COVERAGE)
     include(coverage_inventory)
-    add_subdirectory(scripts/quality/coverage)
+    if(NOT WIOLA_COMPONENT_BUILD)
+        add_subdirectory(scripts/quality/coverage)
+    endif()
 endif()
 
-if(WIOLA_BUILD_TESTS)
+if(WIOLA_BUILD_TESTS AND NOT WIOLA_COMPONENT_BUILD)
     add_subdirectory(tests)
     add_subdirectory(scripts/quality/architecture/test_catalog)
     if(WIOLA_BUILD_GUI AND NOT CMAKE_CROSSCOMPILING)

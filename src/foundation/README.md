@@ -1,10 +1,12 @@
 # Foundation
 
-This grouping contains toolkit-independent primitives with their own restricted exports. The remaining legacy primitives still live under `core`, `utils` and `lockfree`; this folder does not imply that migration is finished.
+This grouping contains toolkit-independent primitives with their own restricted exports. The remaining legacy primitives still live under `core` and `lockfree`; this folder does not imply that migration is finished.
 
 ```mermaid
 flowchart LR
   Consumer[Declared consumer] --> Borrowed[Borrowed reference]
+  Consumer --> Quantities[Time and frequency]
+  Quantities --> Standard[C++ standard library]
   Borrowed --> Standard[C++ standard library]
 ```
 

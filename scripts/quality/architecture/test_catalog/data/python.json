@@ -24,5 +24,6 @@
   "scripts/testing/mutations/tests/test_checks.py": "testing.mutation_checks",
   "scripts/testing/mutations/tests/test_edit.py": "testing.source_mutation",
   "scripts/build/packages/tests/test_profile.py": "build_environment.ubuntu_packages",
-  "scripts/quality/formatting/tests/test_formatting.py": "tool.format_cpp"
+  "scripts/quality/formatting/tests/test_formatting.py": "tool.format_cpp",
+  "scripts/build/context/tests/test_context.py": "scripts.build.context"
 }

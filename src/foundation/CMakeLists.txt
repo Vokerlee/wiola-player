@@ -1,2 +1,5 @@
-add_subdirectory(borrowed_reference)
-add_subdirectory(quantities)
+foreach(component IN LISTS WIOLA_FOUNDATION_COMPONENTS)
+    if(NOT WIOLA_COMPONENT_BUILD OR component IN_LIST WIOLA_SELECTED_COMPONENTS)
+        add_subdirectory(${component})
+    endif()
+endforeach()

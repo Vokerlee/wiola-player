@@ -1,4 +1,8 @@
 add_subdirectory(foundation)
+if(WIOLA_COMPONENT_BUILD)
+    add_subdirectory(media)
+    return()
+endif()
 add_subdirectory(platform)
 add_subdirectory(app)
 add_subdirectory(audio)

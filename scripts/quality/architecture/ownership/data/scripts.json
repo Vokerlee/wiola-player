@@ -91,6 +91,18 @@
         "scripts/quality/README.md",
         "scripts/quality/__init__.py"
       ]
+    },
+    {
+      "id": "scripts.build.context",
+      "purpose": "Owns explicit portable component selection and dependency closure",
+      "files": [
+        "scripts/build/context/__init__.py",
+        "scripts/build/context/select.cmake",
+        "scripts/build/context/README.md",
+        "scripts/build/context/tests/__init__.py",
+        "scripts/build/context/tests/test_context.py",
+        "scripts/build/context/tests/README.md"
+      ]
     }
   ]
 }
