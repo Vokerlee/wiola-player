@@ -9,4 +9,6 @@ flowchart LR
   Invalid[Unknown or missing configured mapping] --> Reject[Measurement fails]
 ```
 
-Run `python3 -m unittest discover -s tools -t . -p 'test_*.py'`. A live project report passing reconciliation does not replace these negative cases.
+Run `python3 -m unittest scripts.quality.coverage.measurement.tests.test_report`. A live project report passing reconciliation does not replace these negative cases.
+
+Independent LLVM summaries distinguish one fully covered source function from two template instantiations with one uncalled. Missing, negative, over-covered or boolean instantiation counts fail; per-file, owner and total counts must preserve the actual template gap.

@@ -29,7 +29,7 @@ def main() -> int:
             raise ValueError("\n".join(problems))
         measurement = CoverageMeasurement(policy, inventory.source_root)
         result = dict(
-            schema_version=1,
+            schema_version=2,
             cpp=measurement.cpp(json.loads(args.cpp_report.read_text()), inventory),
             python=measurement.python(json.loads(args.python_report.read_text())),
             unmeasured=measurement.unmeasured(),

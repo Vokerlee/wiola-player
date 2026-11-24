@@ -1,5 +1,8 @@
 from pathlib import Path
 import tempfile
+import json
+import sys
+from unittest.mock import patch
 import unittest
 
 from scripts.build.cmake import BuildTarget, CMakeInventory
@@ -45,6 +48,7 @@ class CoverageMeasurementTest(unittest.TestCase):
                                     "functions",
                                     "regions",
                                     "branches",
+                                    "instantiations",
                                 )
                             },
                         }
@@ -65,6 +69,44 @@ class CoverageMeasurementTest(unittest.TestCase):
         self.assertEqual(
             result["owners"]["primitive"]["totals"]["branches"]["uncovered"], 3
         )
+
+    def test_uncalled_template_instantiation_remains_visible_with_full_function_coverage(
+        self,
+    ):
+        raw = self.raw(total=1, covered=1)
+        raw["data"][0]["files"][0]["summary"]["instantiations"] = {
+            "count": 2,
+            "covered": 1,
+        }
+        result = self.measurement.cpp(raw, self.inventory)
+        self.assertEqual(
+            result["totals"]["functions"], {"count": 1, "covered": 1, "uncovered": 0}
+        )
+        expected = {"count": 2, "covered": 1, "uncovered": 1}
+        self.assertEqual(result["totals"]["instantiations"], expected)
+        self.assertEqual(
+            result["owners"]["primitive"]["totals"]["instantiations"], expected
+        )
+        self.assertEqual(
+            result["files"]["src/primitive/public/value.hpp"]["instantiations"],
+            expected,
+        )
+
+    def test_missing_or_invalid_instantiation_counts_cannot_be_silently_dropped(self):
+        raw = self.raw()
+        del raw["data"][0]["files"][0]["summary"]["instantiations"]
+        with self.assertRaisesRegex(ValueError, "lacks a required metric"):
+            self.measurement.cpp(raw, self.inventory)
+        for total, covered in ((2, 3), (-1, 0), (1, True)):
+            with self.subTest(total=total, covered=covered), self.assertRaises(
+                ValueError
+            ):
+                raw = self.raw()
+                raw["data"][0]["files"][0]["summary"]["instantiations"] = {
+                    "count": total,
+                    "covered": covered,
+                }
+                self.measurement.cpp(raw, self.inventory)
 
     def test_tests_inside_an_owner_never_inflate_production_coverage(self):
         result = self.measurement.cpp(
@@ -151,3 +193,129 @@ class CoverageMeasurementTest(unittest.TestCase):
         self.assertEqual(result["totals"]["branches"]["uncovered"], 4)
         with self.assertRaisesRegex(ValueError, "no applicability"):
             self.measurement.python({"files": {"unknown.py": {"summary": {}}}})
+
+    def test_external_mappings_do_not_enter_first_party_totals(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory)
+            cpp = self.measurement.cpp(
+                self.raw(str(outside / "value.hpp")), self.inventory
+            )
+            self.assertEqual(
+                cpp["totals"]["instantiations"],
+                {"count": 0, "covered": 0, "uncovered": 0},
+            )
+            self.assertFalse(cpp["owners"]["primitive"]["complete_mapping"])
+            summary = {
+                "num_statements": 2,
+                "covered_lines": 1,
+                "num_branches": 2,
+                "covered_branches": 1,
+            }
+            python = self.measurement.python(
+                {
+                    "files": {
+                        "tools/reader/read.py": {"summary": summary},
+                        str(outside / "external.py"): {"summary": {}},
+                    }
+                }
+            )
+            self.assertEqual(python["totals"]["lines"]["count"], 2)
+            self.assertEqual(set(python["files"]), {"tools/reader/read.py"})
+
+    def test_python_aliases_cannot_double_count_the_same_source(self):
+        actual = self.root / "tools/reader/read.py"
+        actual.parent.mkdir(parents=True)
+        actual.write_text("print('owned source')\n")
+        alias = self.root / "alias.py"
+        alias.symlink_to(actual)
+        summary = {
+            "num_statements": 2,
+            "covered_lines": 1,
+            "num_branches": 2,
+            "covered_branches": 1,
+        }
+        with self.assertRaisesRegex(ValueError, "Duplicate Python"):
+            self.measurement.python(
+                {
+                    "files": {
+                        "tools/reader/read.py": {"summary": summary},
+                        str(alias): {"summary": summary},
+                    }
+                }
+            )
+
+    def test_cli_marks_the_new_metric_schema_and_rejects_incomplete_summaries(self):
+        from scripts.quality.coverage.measurement import __main__ as cli
+        from scripts.quality.architecture.ownership.registry import OwnershipRegistry
+
+        owners = {}
+        for source in self.policy.records.values():
+            owners.setdefault(source.owner, []).append(source.path)
+        registry = OwnershipRegistry(
+            [
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "owners": [
+                            {
+                                "id": owner,
+                                "purpose": "Independent measurement fixture",
+                                "files": files,
+                            }
+                            for owner, files in owners.items()
+                        ],
+                    }
+                )
+            ]
+        )
+        cpp = self.root / "cpp.json"
+        cpp.write_text(json.dumps(self.raw(total=1, covered=1)))
+        python = self.root / "python.json"
+        python.write_text(
+            json.dumps(
+                {
+                    "files": {
+                        "tools/reader/read.py": {
+                            "summary": {
+                                "num_statements": 1,
+                                "covered_lines": 1,
+                                "num_branches": 0,
+                                "covered_branches": 0,
+                            }
+                        }
+                    }
+                }
+            )
+        )
+        output = self.root / "report.json"
+        arguments = [
+            "measure",
+            "--cpp-report",
+            str(cpp),
+            "--python-report",
+            str(python),
+            "--build-dir",
+            str(self.root / "configured"),
+            "--output",
+            str(output),
+        ]
+        with patch.object(sys, "argv", arguments), patch.object(
+            cli, "load_current_registry", return_value=registry
+        ), patch.object(
+            cli, "load_current_policy", return_value=self.policy
+        ), patch.object(
+            cli.CMakeInventory, "read", return_value=self.inventory
+        ):
+            self.assertEqual(cli.main(), 0)
+            result = json.loads(output.read_text())
+            self.assertEqual(result["schema_version"], 2)
+            self.assertEqual(
+                result["cpp"]["totals"]["instantiations"],
+                {"count": 1, "covered": 1, "uncovered": 0},
+            )
+            original = output.read_bytes()
+            incomplete = self.raw()
+            del incomplete["data"][0]["files"][0]["summary"]["instantiations"]
+            cpp.write_text(json.dumps(incomplete))
+            self.assertEqual(cli.main(), 2)
+            self.assertEqual(output.read_bytes(), original)
