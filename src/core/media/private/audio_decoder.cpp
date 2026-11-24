@@ -24,15 +24,15 @@
 
 namespace wiola::media {
 
-Result<void> AudioDecoder::validate_stream_info() const
+Result<void> DecoderStreamInfo::validate() const
 {
-    if (!spec().valid())
+    if (!spec.valid())
         return unexpected{
             Error{.category = ErrorCategory::damaged,
                   .detail = "decoder stream specification is invalid"}
         };
 
-    if (length_accuracy() == LengthAccuracy::exact && !duration_frames())
+    if (length_accuracy == LengthAccuracy::exact && !length)
         return unexpected{
             Error{.category = ErrorCategory::damaged, .detail = "exact decoder length is missing"}
         };
@@ -42,7 +42,7 @@ Result<void> AudioDecoder::validate_stream_info() const
 
 Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
-    const auto valid{validate_stream_info()};
+    const auto valid{stream_info_.validate()};
     if (!valid)
         return unexpected{valid.error()};
 
@@ -105,7 +105,7 @@ Result<std::size_t> AudioDecoder::render(std::span<float> output)
 
 Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
 {
-    const auto valid{validate_stream_info()};
+    const auto valid{stream_info_.validate()};
     if (!valid)
         return unexpected{valid.error()};
 

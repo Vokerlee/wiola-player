@@ -121,11 +121,14 @@ void Session::Impl::add(std::vector<std::filesystem::path> tracks)
 
 bool Session::Impl::remove(std::size_t index)
 {
-    if (index < playlist_.tracks().size() && loads_.invalidate_if(playlist_.tracks()[index].id()))
+    if (index >= playlist_.tracks().size())
+        return false;
+
+    const QueueEntryId entry{playlist_.tracks()[index].id()};
+    if (loads_.invalidate_if(entry))
         loader_.cancel();
 
-    if (index < playlist_.tracks().size() && replacement_ &&
-        playlist_.tracks()[index].id() == replacement_->entry) {
+    if (replacement_ && entry == replacement_->entry) {
         replacement_.reset();
         restore_position_.reset();
     }
@@ -216,12 +219,8 @@ void Session::Impl::record_outcome(OperationKind operation, OperationId id,
 
 OpenResult Session::Impl::read_current_track(bool playing)
 {
-    const QueueEntry* current{playlist_.current()};
-
-    if (!current)
-        return last_result_;
-
-    return begin_reading(*current, playing ? LoadIntent::play : LoadIntent::install);
+    // Called only after next/previous/go_to accepted a selection on this control thread.
+    return begin_reading(*playlist_.current(), playing ? LoadIntent::play : LoadIntent::install);
 }
 
 void Session::Impl::catch_up()
@@ -324,9 +323,12 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
     if (!source)
         return reject(media::Error{media::ErrorCategory::damaged,
             "decoder opener returned no source"});
+    if (const auto valid{source->stream_info().validate()}; !valid)
+        return reject(valid.error());
     const pcm::StreamSpec spec{source->spec()};
     const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(buffering_.duration)};
-    if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames))
+    if (!buffer_frames || *buffer_frames == pcm::Frames{} ||
+        !pcm::PcmQueue::checked_capacity(spec, *buffer_frames))
         return reject(media::Error{media::ErrorCategory::damaged,
             "decoder stream cannot support the configured playback buffer"});
 
@@ -387,7 +389,7 @@ bool Session::Impl::pause() noexcept
         replacement_->play = false;
         return true;
     }
-    return loaded() && state() == PlaybackState::playing && pipeline_->player().pause();
+    return loaded() && pipeline_->player().pause();
 }
 
 bool Session::Impl::resume() noexcept
@@ -396,7 +398,7 @@ bool Session::Impl::resume() noexcept
         replacement_->play = true;
         return true;
     }
-    return loaded() && state() == PlaybackState::paused && pipeline_->player().resume();
+    return loaded() && pipeline_->player().resume();
 }
 
 void Session::Impl::stop() noexcept

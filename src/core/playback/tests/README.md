@@ -13,6 +13,8 @@ flowchart LR
 
 `engine_session_test` qualifies queue/loading coordination, outcomes, cancellation, candidate rollback, play intent, media handoff and active teardown. Its media fixture stores DecoderStreamInfo values under scoped resource keys, synchronizes worker lookups and returns owned values. It creates no encoded files or format guesses and imports no codec data directory. Tests explicitly declare the built-in processing implementation where they supply it as a collaborator.
 
+Admission cases reject invalid decoder capabilities before preparing processing/output and preserve an already playing pipeline. A held open verifies occurrence removal cancels only the pending request and rejects its late result. Handoff commands check the latest play/pause/resume/seek intent and stop's position reset, independently of an older copied restoration ticket. Shuffle/unshuffle assertions preserve visible queue order without requiring a particular random permutation.
+
 [Pipeline cases](pipeline/README.md) exercise complete decoder/queue/player ownership, output cache/lease identity and callback quiescence. [Buffering](buffering/README.md), [transport](transport/README.md), [loading](loading/README.md), [queue](queue/README.md) and [metadata](metadata/README.md) cases own their focused contracts and failure witnesses.
 
 `playback_contract_test` links the public values target only. It checks typed errors, ownership, occurrence identity and safe per-instance policies. Queue allocation cases fail each allocation until success rather than encoding an implementation count. A separate frontend case replaces backing storage and switches equal-revision owners through QueueView, retaining owned row facts.

@@ -41,6 +41,9 @@ struct DecoderStreamInfo {
     std::optional<pcm::Frames> length;
     LengthAccuracy length_accuracy{LengthAccuracy::unknown};
     bool seekable{true};
+
+    /// Checks stream facts without decoding or creating playback resources.
+    [[nodiscard]] Result<void> validate() const;
 };
 
 struct DecodeOutcome {
@@ -129,8 +132,6 @@ protected:
     virtual Result<SeekOutcome> seek_frame(pcm::Frames frame_index) = 0;
 
 private:
-    [[nodiscard]] Result<void> validate_stream_info() const;
-
     const DecoderStreamInfo stream_info_;
     pcm::Frames position_{};
     bool exhausted_{false};
