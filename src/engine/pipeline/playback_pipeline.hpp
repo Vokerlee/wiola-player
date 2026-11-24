@@ -24,9 +24,9 @@
 #include <buffering/pcm_queue.hpp>
 #include <engine/pipeline/output_session.hpp>
 #include <transport/player.hpp>
-#include <transport/transport_config.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
+#include <wiola/playback/transport_config.hpp>
 
 #include <memory>
 

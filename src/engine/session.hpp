@@ -21,20 +21,21 @@
 #pragma once
 
 #include <core/macros.hpp>
-#include <engine/buffering_config.hpp>
 #include <engine/pipeline/output_session.hpp>
 #include <engine/pipeline/playback_pipeline.hpp>
 #include <loading/load_coordinator.hpp>
 #include <loading/loader.hpp>
 #include <metadata/metadata_coordinator.hpp>
 #include <queue/playlist.hpp>
-#include <transport/transport_config.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/playback/buffering_config.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
+#include <wiola/playback/output_factory.hpp>
 #include <wiola/playback/queue_view.hpp>
 #include <wiola/playback/repeat_mode.hpp>
 #include <wiola/playback/snapshot.hpp>
+#include <wiola/playback/transport_config.hpp>
 #include <wiola/units.hpp>
 
 #include <deque>
@@ -66,16 +67,10 @@ namespace wiola::engine {
 class Session {
 public:
     /// The host supplies output creation and one format-neutral provider for loading/metadata.
+    /// Null providers or invalid per-instance policies fail synchronously before work can start.
     Session(audio::Stage& processing, OutputFactory make_output,
-        std::shared_ptr<media::MediaProvider> provider);
-
-    /// Uses the supplied media collaborators, for deterministic engine tests.
-    Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
-        MetadataReader read_metadata);
-
-    /// Uses independently owned transport and buffering policies.
-    Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
-        MetadataReader read_metadata, TransportConfig transport, BufferingConfig buffering);
+        std::shared_ptr<media::MediaProvider> provider, TransportConfig transport = {},
+        BufferingConfig buffering = {});
 
     NO_COPY_SEMANTIC(Session);
     NO_MOVE_SEMANTIC(Session);

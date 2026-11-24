@@ -21,3 +21,5 @@ flowchart LR
 The public QueueEntry contract and installed consumer check owned path/metadata observations and immutable shared artwork without importing private queue storage. Queue rollback tests enumerate allocations until success instead of encoding implementation allocation counts.
 
 The installed consumer supplies its own QueueView implementation from public headers. Queue owner tests exercise live mutation through that read port; frontend projection cases replace backing storage and switch owners with equal revision numbers, checking retained facts and occurrence selection without depending on private ordering.
+
+Public policy contracts reject nonpositive/nonfinite buffering durations, empty decode blocks and nonpositive polling periods. The relocated consumer compiles these configuration headers and OutputFactory independently. Session/application cases inject the same MediaProvider port as production; the C++ fake owns its callbacks instead of requiring public test-only kernel constructors.

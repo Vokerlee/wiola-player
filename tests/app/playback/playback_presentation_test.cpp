@@ -19,6 +19,7 @@
  */
 
 #include <app/playback/playback_service.hpp>
+#include <fakes/provider.hpp>
 
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
@@ -44,14 +45,16 @@ protected:
     {
         presenter = std::make_unique<Presenter>(
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
-            [](const std::filesystem::path&,
-                const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
-                std::unique_ptr<wiola::media::AudioDecoder> decoder{
-                    std::make_unique<wiola::testing::FakeDecoder>()};
+            std::make_shared<wiola::testing::FakeMediaProvider>(
+                [](const std::filesystem::path&,
+                    const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
+                    std::unique_ptr<wiola::media::AudioDecoder> decoder{
+                        std::make_unique<wiola::testing::FakeDecoder>()};
 
-                return decoder;
-            },
-            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+                    return decoder;
+                },
+                [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+            )
         );
     }
 

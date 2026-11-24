@@ -28,9 +28,9 @@
 #include <functional>
 #include <memory>
 #include <thread>
-#include <transport/transport_config.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/playback/transport_config.hpp>
 
 namespace wiola::engine {
 

@@ -24,6 +24,7 @@
 #include <desktop/playback/volume_control.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <fakes/provider.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
 #include <gui/documents/now_playing_document.hpp>
@@ -433,10 +434,13 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
 {
     wiola::app::PlaybackService window_playback{
         [](wiola::audio::Source&) { return std::unique_ptr<wiola::audio::Output>{}; },
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
-            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
-        },
-        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+        std::make_shared<wiola::testing::FakeMediaProvider>(
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::DecoderOpenResult{
+                    std::make_unique<wiola::testing::FakeDecoder>()};
+            },
+            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+        )};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
