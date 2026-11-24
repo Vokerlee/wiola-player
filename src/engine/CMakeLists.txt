@@ -5,12 +5,12 @@ target_link_libraries(
     wiola_engine_session
     PUBLIC
         wiola::playback_api
-        wiola_audio_dsp
         wiola_engine_pipeline
         wiola_playback_transport
         wiola_playback_loading
         wiola_playback_metadata
         wiola_playback_queue
+    PRIVATE wiola_audio_dsp
 )
 
 wiola_add_module(

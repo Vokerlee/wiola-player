@@ -120,15 +120,15 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
 
         window.open({source});
 
-        EXPECT_EQ(player.session().track(), std::filesystem::path{});
-        EXPECT_FALSE(player.session().loaded());
+        EXPECT_EQ(player.playback().track(), std::filesystem::path{});
+        EXPECT_FALSE(player.playback().loaded());
     }
 
-    ASSERT_TRUE(pump_until([&player] { return player.session().loaded(); }));
+    ASSERT_TRUE(pump_until([&player] { return player.playback().loaded(); }));
 
-    EXPECT_EQ(player.session().track(), source);
-    EXPECT_EQ(player.session().open_result(), wiola::engine::OpenResult::opened);
-    EXPECT_FALSE(player.session().playing());
+    EXPECT_EQ(player.playback().track(), source);
+    EXPECT_EQ(player.playback().open_result(), wiola::engine::OpenResult::opened);
+    EXPECT_FALSE(player.playback().playing());
     const auto media = wiola::library::media_id_for(source);
     ASSERT_TRUE(pump_until([&] { return player.library().repository().track(media) != nullptr; }));
     EXPECT_EQ(player.library().search().size(), 1);
@@ -172,7 +172,7 @@ TEST_F(PlayerApplication, RecreatingAWindowDoesNotRestoreOrDuplicateTheQueueAgai
     wiola::app::PlayerApplication player;
     const auto source = track("wiola_runtime_recreate.wav");
     player.playback().add({source, source});
-    ASSERT_TRUE(pump_until([&] { return player.session().loaded(); }));
+    ASSERT_TRUE(pump_until([&] { return player.playback().loaded(); }));
     const auto& before = player.playback().playlist().tracks();
     const auto first = before[0].id();
     const auto second = before[1].id();
@@ -295,7 +295,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
     window.open({path});
     const auto media = wiola::library::media_id_for(path);
     ASSERT_TRUE(pump_until([&] {
-        return player.session().loaded() && player.library().repository().track(media);
+        return player.playback().loaded() && player.library().repository().track(media);
     }));
     ASSERT_EQ(player.playback().play(), wiola::engine::CommandResult::accepted);
     window.refresh();
@@ -319,7 +319,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
     ASSERT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::complete), stages.end())
         << window.findChild<QLabel*>("metadataFileStatus")->text().toStdString();
     ASSERT_TRUE(pump_until([&] {
-        return player.session().loaded() && player.session().playing();
+        return player.playback().loaded() && player.playback().playing();
     }));
     EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::remuxing), stages.end());
     EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::validating), stages.end());
@@ -364,7 +364,7 @@ TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOr
     window.open({source});
     const auto media = wiola::library::media_id_for(source);
     ASSERT_TRUE(pump_until([&] {
-        return player.session().loaded() && player.library().repository().track(media);
+        return player.playback().loaded() && player.library().repository().track(media);
     }));
     window.refresh();
     std::optional<wiola::app::MetadataWriteResult> terminal;

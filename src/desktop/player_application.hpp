@@ -50,8 +50,6 @@ public:
     explicit PlayerApplication(PlayerRuntimeConfig config, QObject* parent = nullptr);
     ~PlayerApplication() override;
 
-    [[nodiscard]] engine::Session& session() noexcept { return session_; }
-
     [[nodiscard]] PlaybackService& playback() noexcept { return playback_; }
 
     [[nodiscard]] LibrarySession& library() noexcept { return library_; }
@@ -67,8 +65,7 @@ signals:
     void refresh_requested();
 
 private:
-    engine::Session session_;
-    PlaybackService playback_{session_};
+    PlaybackService playback_;
     LibrarySession library_;
     PlaybackPreferences preferences_{playback_};
     QTimer pump_timer_;

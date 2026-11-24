@@ -42,7 +42,7 @@ class PlaybackPresentation : public testing::Test {
 protected:
     void SetUp() override
     {
-        session = std::make_unique<wiola::engine::Session>(
+        presenter = std::make_unique<Presenter>(
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
             [](const std::filesystem::path&,
                 const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
@@ -53,7 +53,6 @@ protected:
             },
             [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
         );
-        presenter = std::make_unique<Presenter>(*session);
     }
 
     static bool wait_for_track(Presenter& presenter, const std::filesystem::path& track)
@@ -73,7 +72,6 @@ protected:
         return false;
     }
 
-    std::unique_ptr<wiola::engine::Session> session;
     std::unique_ptr<Presenter> presenter;
 };
 

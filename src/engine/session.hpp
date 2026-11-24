@@ -29,9 +29,6 @@
 #include <metadata/metadata_coordinator.hpp>
 #include <queue/playlist.hpp>
 #include <transport/transport_config.hpp>
-#include <wiola/audio/equalizer.hpp>
-#include <wiola/audio/processing_chain.hpp>
-#include <wiola/audio/volume.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
@@ -44,6 +41,12 @@
 #include <span>
 #include <vector>
 
+namespace wiola::audio {
+
+class Stage;
+
+} // namespace wiola::audio
+
 namespace wiola::engine {
 
 /**
@@ -53,20 +56,24 @@ namespace wiola::engine {
  * on owned workers; completion delivery and installation are observed after a control turn.
  *
  * A buffer and an output are cut for the format of the track that is loaded, so opening another
- * one replaces them. The chain outlives them all: a setting belongs to the listener rather than
- * to what is playing.
+ * one replaces them. The supplied processing stage outlives them all. Built-in control/settings
+ * composition belongs to the application rather than to the playback kernel. The stage serves
+ * this Session's processing role; sharing it requires an implementation that explicitly supports
+ * that concurrency, and configuration requires all of its prior callbacks to be quiescent.
  */
 class Session {
 public:
     /// The host supplies output creation and one format-neutral provider for loading/metadata.
-    Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider);
+    Session(audio::Stage& processing, OutputFactory make_output,
+        std::shared_ptr<media::MediaProvider> provider);
 
     /// Uses the supplied media collaborators, for deterministic engine tests.
-    Session(OutputFactory make_output, DecoderOpener open_decoder, MetadataReader read_metadata);
+    Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
+        MetadataReader read_metadata);
 
     /// Uses independently owned transport and buffering policies.
-    Session(OutputFactory make_output, DecoderOpener open_decoder, MetadataReader read_metadata,
-        TransportConfig transport, BufferingConfig buffering);
+    Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
+        MetadataReader read_metadata, TransportConfig transport, BufferingConfig buffering);
 
     NO_COPY_SEMANTIC(Session);
     NO_MOVE_SEMANTIC(Session);
@@ -167,14 +174,6 @@ public:
     [[nodiscard]] bool seekable() const noexcept;
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
 
-    [[nodiscard]] audio::Volume& volume() noexcept { return volume_; }
-
-    [[nodiscard]] const audio::Volume& volume() const noexcept { return volume_; }
-
-    [[nodiscard]] audio::Equalizer& equalizer() noexcept { return equalizer_; }
-
-    [[nodiscard]] const audio::Equalizer& equalizer() const noexcept { return equalizer_; }
-
 private:
     /// Starts an identified load with the requested transport intent.
     OpenResult begin_reading(const Track& track, LoadIntent intent);
@@ -199,12 +198,8 @@ private:
     /// that went away, is not a cue to play anything.
     void advance_if_ended();
 
-    /// What a track is shaped by. Declared before the chain that runs them, so the chain is let
-    /// go while the steps it points at are still there. Which order they run in is settled where
-    /// they are put into the chain, not here.
-    audio::Equalizer equalizer_{pcm::StreamSpec{}};
-    audio::Volume volume_;
-    audio::ProcessingChain chain_;
+    /// Host-owned processing policy; the complete stage outlives this session and its outputs.
+    audio::Stage& processing_;
     std::shared_ptr<media::MediaProvider> provider_;
     std::unique_ptr<Loader> loader_;
     MetadataCoordinator metadata_;

@@ -53,7 +53,7 @@ PlayerApplication::PlayerApplication(QObject* parent)
 
 PlayerApplication::PlayerApplication(PlayerRuntimeConfig config, QObject* parent)
     : QObject{parent}
-    , session_{config.output, checked_provider(config)}
+    , playback_{config.output, checked_provider(config)}
     , library_{config.library_file.empty() ? default_library_file() : config.library_file,
           config.provider, nullptr, std::move(config.library_output)}
 {

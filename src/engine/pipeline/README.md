@@ -1,6 +1,6 @@
 # Playback resource lifetime
 
-This directory owns the per-track decoder/queue/transport bundle and reusable output streams. Session selects what to load and activates a prepared bundle; output construction stays supplied by the host. The processing Stage is borrowed and must outlive the cache and all leases.
+This directory owns the per-track decoder/queue/transport bundle and reusable output streams. Session selects what to load and activates a prepared bundle; output construction and the complete processing Stage stay supplied by the host. Built-in equalizer/volume composition belongs to the application PlaybackService and its control facade, outside the playback kernel. The processing Stage is borrowed and must outlive the cache and all leases.
 
 ```mermaid
 flowchart LR

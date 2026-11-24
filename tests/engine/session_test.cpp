@@ -18,7 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/shaping.hpp>
 #include <fixtures/wav.hpp>
+#include <wiola/audio/processing_chain.hpp>
 
 #include <wiola/audio/output.hpp>
 
@@ -37,6 +39,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -102,11 +105,12 @@ bool poll_until(Session& session, Predicate settled)
 /// A session that plays nowhere real, and counts the outputs it was asked to build.
 struct Fixture {
     Fixture()
-        : session{[this](wiola::audio::Source& source) {
-                      ++num_outputs;
-                      return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)
-                                       : std::make_unique<wiola::testing::FakeOutput>();
-                  },
+        : session{processing.chain,
+              [this](wiola::audio::Source& source) {
+                  ++num_outputs;
+                  return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)
+                                   : std::make_unique<wiola::testing::FakeOutput>();
+              },
               std::make_shared<wiola::codec::LocalMediaProvider>()}
     {
     }
@@ -115,36 +119,53 @@ struct Fixture {
     bool consuming{true};
 
     std::size_t num_outputs{0};
+    wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
     Session session;
 };
 
-/// An unbounded source cannot be reconstructed by rewinding after failed installation.
-class ContinuousDecoder final : public wiola::media::AudioDecoder {
+/// A supplied processing implementation independent of the built-in equalizer and topology.
+class SuppliedProcessing final : public wiola::audio::Stage {
 public:
-    explicit ContinuousDecoder(wiola::pcm::StreamSpec spec)
-        : AudioDecoder{
-              wiola::media::DecoderStreamInfo{
-                                              .spec = spec, .length = std::nullopt, .seekable = false}
-    }
+    std::unique_ptr<Preparation> prepare(wiola::pcm::StreamSpec spec) noexcept override
     {
+        prepared_for = spec;
+        return nullptr;
     }
 
-private:
-    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float> output,
-        Frames frames) override
+    void process(std::span<float> samples) noexcept override
     {
-        std::fill_n(output.begin(), spec().samples_per(frames), 0.25F);
-        return wiola::media::DecodeOutcome{.frames = frames};
+        for (auto& sample : samples)
+            sample += 0.25F;
     }
 
-    wiola::media::Result<wiola::media::SeekOutcome> seek_frame(Frames) override
-    {
-        return wiola::media::unexpected{
-            wiola::media::Error{wiola::media::ErrorCategory::invalid_seek,
-                                "continuous source cannot rewind"}
-        };
-    }
+    std::optional<wiola::pcm::StreamSpec> prepared_for;
 };
+
+TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
+{
+    SuppliedProcessing processing;
+    wiola::audio::Source* rendered{};
+    wiola::testing::FakeOutput* device{};
+    Session session{processing,
+        [&](wiola::audio::Source& source) {
+            rendered = &source;
+            auto output{std::make_unique<wiola::testing::FakeOutput>()};
+            device = output.get();
+            return output;
+        },
+        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
+        },
+        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+    ASSERT_EQ(load_and_wait(session, "supplied-processing"), OpenResult::opened);
+    ASSERT_TRUE(processing.prepared_for);
+    EXPECT_EQ(*processing.prepared_for, wiola::pcm::StreamSpec{});
+    ASSERT_TRUE(session.play());
+    ASSERT_TRUE(poll_until(session, [&] { return device->running(); }));
+    std::array<float, 2> block{};
+    EXPECT_EQ(rendered->render(block), block.size());
+    EXPECT_EQ(block, (std::array{0.25F, 0.25F}));
+}
 
 TEST(Session, StartsWithNothingLoaded)
 {
@@ -188,10 +209,12 @@ TEST(Session, LoadsATrack)
 TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
 {
     std::size_t num_outputs{0};
-    Session session{[&num_outputs](wiola::audio::Source&) {
-                        ++num_outputs;
-                        return std::make_unique<wiola::testing::FakeOutput>();
-                    },
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
+        [&num_outputs](wiola::audio::Source&) {
+            ++num_outputs;
+            return std::make_unique<wiola::testing::FakeOutput>();
+        },
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             auto decoder{std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
                 wiola::pcm::StreamSpec{.sample_rate = units::Frequency{48000.0},
@@ -213,7 +236,8 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
 TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
 {
     const auto loads_with = [](units::Time duration) {
-        Session session{
+        wiola::audio::ProcessingChain processing;
+        Session session{processing,
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
             [](const std::filesystem::path&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
@@ -402,18 +426,18 @@ TEST(Session, SeeksWhereItIsAsked)
 }
 
 /// A setting belongs to the listener, not to what is playing.
-TEST(Session, KeepsItsSettingsAcrossTracks)
+TEST(Session, PreservesSuppliedProcessingSettingsAcrossTracks)
 {
     Fixture fixture;
     const std::filesystem::path path{wiola::testing::write_wav("wiola_session.wav")};
 
-    fixture.session.volume().set_gain(0.25F);
-    fixture.session.equalizer().set_band_gain(3, 6.0F);
+    fixture.processing.volume.set_gain(0.25F);
+    fixture.processing.equalizer.set_band_gain(3, 6.0F);
 
     ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
 
-    EXPECT_FLOAT_EQ(fixture.session.volume().gain(), 0.25F);
-    EXPECT_FLOAT_EQ(fixture.session.equalizer().band_gain(3), 6.0F);
+    EXPECT_FLOAT_EQ(fixture.processing.volume.gain(), 0.25F);
+    EXPECT_FLOAT_EQ(fixture.processing.equalizer.band_gain(3), 6.0F);
 }
 
 } // namespace
@@ -725,7 +749,8 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
 TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
 {
     std::atomic<std::size_t> num_reads{0};
-    Session session{
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
@@ -753,7 +778,8 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
 
 TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 {
-    Session session{
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
@@ -777,7 +803,8 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
 {
     wiola::testing::Gate opening;
-    Session session{
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
             opening.wait();
@@ -801,7 +828,8 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
 {
     wiola::testing::Gate opening;
     const std::filesystem::path second{"second.wav"};
-    Session session{
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         [&opening, &second](const std::filesystem::path& path,
             const wiola::media::OperationContext&) {
@@ -831,7 +859,8 @@ TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
 {
     wiola::testing::Gate opening;
     std::atomic<bool> cancelled{false};
-    Session session{wiola::testing::passive_output,
+    wiola::audio::ProcessingChain processing;
+    Session session{processing, wiola::testing::passive_output,
         [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] { cancelled = true; }};
             opening.wait();
@@ -851,7 +880,8 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
 {
     wiola::testing::Gate opening;
     std::atomic<bool> cancelled{false};
-    Session session{wiola::testing::passive_output,
+    wiola::audio::ProcessingChain processing;
+    Session session{processing, wiola::testing::passive_output,
         [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] { cancelled = true; }};
             opening.wait();
@@ -955,30 +985,36 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
     for (const auto fault : {Fault::no_output, Fault::exception, Fault::unknown_exception}) {
         wiola::testing::FakeOutput* active_device{};
         bool fail{false};
-        Session session{[&](wiola::audio::Source&) -> std::unique_ptr<wiola::audio::Output> {
-                            if (fail) {
-                                if (fault == Fault::no_output)
-                                    return nullptr;
-                                if (fault == Fault::exception)
-                                    throw std::runtime_error{"controlled device failure"};
-                                throw fault;
-                            }
-                            auto output{std::make_unique<wiola::testing::FakeOutput>()};
-                            active_device = output.get();
-                            return output;
-                        },
+        wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
+        Session session{processing.chain,
+            [&](wiola::audio::Source&) -> std::unique_ptr<wiola::audio::Output> {
+                if (fail) {
+                    if (fault == Fault::no_output)
+                        return nullptr;
+                    if (fault == Fault::exception)
+                        throw std::runtime_error{"controlled device failure"};
+                    throw fault;
+                }
+                auto output{std::make_unique<wiola::testing::FakeOutput>()};
+                active_device = output.get();
+                return output;
+            },
             [&](const std::filesystem::path& path,
                 const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
                 if (path == "current")
                     return wiola::media::DecoderOpenResult{
-                        std::make_unique<ContinuousDecoder>(current_spec)};
+                        std::make_unique<wiola::testing::FakeDecoder>(
+                            wiola::media::DecoderStreamInfo{.spec = current_spec,
+                                .length = std::nullopt,
+                                .seekable = false}
+                        )};
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, next_spec)};
             },
             [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
         ASSERT_EQ(load_and_wait(session, "current"), OpenResult::opened);
-        session.equalizer().set_band_gain(9, 3.0F);
-        session.volume().set_gain(0.25F);
+        processing.equalizer.set_band_gain(9, 3.0F);
+        processing.volume.set_gain(0.25F);
         ASSERT_TRUE(session.play());
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
         active_device->play(Frames{32});
@@ -999,9 +1035,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         EXPECT_FALSE(session.seekable());
         EXPECT_TRUE(active_device->running());
         EXPECT_EQ(session.time_played(), position);
-        EXPECT_EQ(session.equalizer().num_bands(), 10U);
-        EXPECT_FLOAT_EQ(session.equalizer().preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(session.volume().gain(), 0.25F);
+        EXPECT_EQ(processing.equalizer.num_bands(), 10U);
+        EXPECT_FLOAT_EQ(processing.equalizer.preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(processing.volume.gain(), 0.25F);
         const auto outcomes{session.take_outcomes()};
         const auto completion{std::ranges::find_if(outcomes.values, [&](const auto& value) {
             return value.operation == wiola::engine::OperationKind::open && value.id == request;
@@ -1017,17 +1053,19 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         fail = false;
         EXPECT_EQ(load_and_wait(session, "candidate"), OpenResult::opened);
         EXPECT_EQ(session.track(), std::filesystem::path{"candidate"});
-        EXPECT_EQ(session.equalizer().num_bands(), 9U);
+        EXPECT_EQ(processing.equalizer.num_bands(), 9U);
     }
 }
 
 TEST(Session, NullDecoderCompletionReportsFailureWithoutOpeningOutput)
 {
     std::size_t outputs{0};
-    Session session{[&](wiola::audio::Source&) {
-                        ++outputs;
-                        return std::make_unique<wiola::testing::FakeOutput>();
-                    },
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
+        [&](wiola::audio::Source&) {
+            ++outputs;
+            return std::make_unique<wiola::testing::FakeOutput>();
+        },
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::unique_ptr<wiola::media::AudioDecoder>{}};
         },
@@ -1046,7 +1084,8 @@ TEST(Session, NullDecoderCompletionReportsFailureWithoutOpeningOutput)
 
 TEST(Session, InvalidStreamCompletionCannotReportASuccessfulOpen)
 {
-    Session session{wiola::testing::passive_output,
+    wiola::audio::ProcessingChain processing;
+    Session session{processing, wiola::testing::passive_output,
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{
                 std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
@@ -1069,11 +1108,13 @@ TEST(Session, InvalidStreamCompletionCannotReportASuccessfulOpen)
 
 TEST(Session, DeviceStartFailureIsAnEventualTransportFailureAfterInstallation)
 {
-    Session session{[](wiola::audio::Source&) {
-                        auto output{std::make_unique<wiola::testing::FakeOutput>()};
-                        output->refuse_starts();
-                        return output;
-                    },
+    wiola::audio::ProcessingChain processing;
+    Session session{processing,
+        [](wiola::audio::Source&) {
+            auto output{std::make_unique<wiola::testing::FakeOutput>()};
+            output->refuse_starts();
+            return output;
+        },
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
@@ -1106,17 +1147,23 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
     for (std::size_t after{0};; ++after) {
         wiola::testing::Gate opening;
         wiola::testing::FakeOutput* active_device{};
-        Session session{[&](wiola::audio::Source& rendered) {
-                            auto output{std::make_unique<wiola::testing::FakeOutput>()};
-                            if (rendered.spec() == current_spec)
-                                active_device = output.get();
-                            return output;
-                        },
+        wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
+        Session session{processing.chain,
+            [&](wiola::audio::Source& rendered) {
+                auto output{std::make_unique<wiola::testing::FakeOutput>()};
+                if (rendered.spec() == current_spec)
+                    active_device = output.get();
+                return output;
+            },
             [&](const std::filesystem::path& path,
                 const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
                 if (path == "current")
                     return wiola::media::DecoderOpenResult{
-                        std::make_unique<ContinuousDecoder>(current_spec)};
+                        std::make_unique<wiola::testing::FakeDecoder>(
+                            wiola::media::DecoderStreamInfo{.spec = current_spec,
+                                .length = std::nullopt,
+                                .seekable = false}
+                        )};
                 opening.wait();
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, next_spec)};
@@ -1129,8 +1176,8 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         ASSERT_EQ(load_and_wait(session, "current"), OpenResult::opened);
         ASSERT_TRUE(poll_until(session,
             [&] { return session.playlist().tracks().front().metadata().title == "settled"; }));
-        session.equalizer().set_band_gain(9, 3.0F);
-        session.volume().set_gain(0.25F);
+        processing.equalizer.set_band_gain(9, 3.0F);
+        processing.volume.set_gain(0.25F);
         ASSERT_TRUE(session.play());
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
         active_device->play(Frames{32});
@@ -1175,10 +1222,10 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         EXPECT_TRUE(active_device->running());
         EXPECT_FALSE(session.seekable());
         EXPECT_EQ(session.time_played(), position);
-        EXPECT_EQ(session.equalizer().num_bands(), 10U);
-        EXPECT_FLOAT_EQ(session.equalizer().preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(session.equalizer().band_gain(9), 3.0F);
-        EXPECT_FLOAT_EQ(session.volume().gain(), 0.25F);
+        EXPECT_EQ(processing.equalizer.num_bands(), 10U);
+        EXPECT_FLOAT_EQ(processing.equalizer.preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(processing.equalizer.band_gain(9), 3.0F);
+        EXPECT_FLOAT_EQ(processing.volume.gain(), 0.25F);
     }
 }
 #endif

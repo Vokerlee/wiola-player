@@ -22,13 +22,25 @@
 
 #include "playback_presentation.hpp"
 #include <engine/session.hpp>
+#include <wiola/audio/equalizer_config.hpp>
+#include <wiola/audio/volume_policy.hpp>
 #include <wiola/playback/operation_outcome.hpp>
+
+#include <memory>
 
 namespace wiola::app {
 
 class PlaybackService {
 public:
-    explicit PlaybackService(engine::Session& session);
+    PlaybackService(engine::OutputFactory output, std::shared_ptr<media::MediaProvider> provider);
+    PlaybackService(engine::OutputFactory output, engine::DecoderOpener open_decoder,
+        engine::MetadataReader read_metadata);
+    ~PlaybackService();
+
+    PlaybackService(const PlaybackService&) = delete;
+    PlaybackService& operator=(const PlaybackService&) = delete;
+    PlaybackService(PlaybackService&&) = delete;
+    PlaybackService& operator=(PlaybackService&&) = delete;
     void stop_accepting() noexcept;
 
     engine::OperationReceipt open(std::vector<std::filesystem::path> tracks);
@@ -86,8 +98,8 @@ public:
     [[nodiscard]] bool shuffled() const noexcept;
 
 private:
-    engine::Session* session_;
-    bool accepting_{true};
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace wiola::app

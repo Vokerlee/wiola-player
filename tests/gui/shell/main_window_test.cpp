@@ -107,15 +107,14 @@ QList<QSlider*> equalizer_sliders(QWidget& window)
 }
 
 template<typename Predicate>
-bool pump_until(MainWindow& window, wiola::engine::Session& session, Predicate&& predicate)
+bool pump_until(MainWindow& window, wiola::app::PlaybackService& playback, Predicate&& predicate)
 {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
 
     while (!predicate() && std::chrono::steady_clock::now() < deadline) {
-        session.catch_up();
-        window.update_after_pump({.playback = session.snapshot(),
-            .repeat = session.repeat(),
-            .shuffled = session.shuffled()});
+        window.update_after_pump({.playback = playback.pump(),
+            .repeat = playback.repeat(),
+            .shuffled = playback.shuffled()});
         window.refresh();
         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
         QThread::msleep(1);
@@ -126,11 +125,12 @@ bool pump_until(MainWindow& window, wiola::engine::Session& session, Predicate&&
     return predicate();
 }
 
-bool loaded(MainWindow& window, wiola::engine::Session& session, const std::filesystem::path& track)
+bool loaded(MainWindow& window, wiola::app::PlaybackService& playback,
+    const std::filesystem::path& track)
 {
     const QPushButton* play = command(window, "Play");
 
-    return play != nullptr && pump_until(window, session, [&window, &track, play] {
+    return play != nullptr && pump_until(window, playback, [&window, &track, play] {
         return play->isEnabled() &&
             window.windowTitle() == QString::fromStdString(track.filename().string());
     });
@@ -203,10 +203,10 @@ protected:
 
 TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
 {
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService window_playback{session};
+
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
 
@@ -238,10 +238,10 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 {
     const std::filesystem::path first = track("wiola_window_first.wav");
     const std::filesystem::path second = track("wiola_window_second.wav");
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService window_playback{session};
+
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
 
@@ -259,7 +259,7 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 
     window.open({first, second});
 
-    ASSERT_TRUE(loaded(window, session, first));
+    ASSERT_TRUE(loaded(window, window_playback, first));
     EXPECT_TRUE(previous->isEnabled());
     EXPECT_TRUE(play->isEnabled());
     EXPECT_TRUE(next->isEnabled());
@@ -270,14 +270,14 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 
     next->click();
 
-    ASSERT_TRUE(pump_until(window, session, [&window, &second] {
+    ASSERT_TRUE(pump_until(window, window_playback, [&window, &second] {
         return window.windowTitle() == QString::fromStdString(second.filename().string());
     }));
     EXPECT_EQ(play->accessibleName(), "Play");
 
     previous->click();
 
-    ASSERT_TRUE(pump_until(window, session, [&window, &first] {
+    ASSERT_TRUE(pump_until(window, window_playback, [&window, &first] {
         return window.windowTitle() == QString::fromStdString(first.filename().string());
     }));
 
@@ -292,10 +292,10 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 {
     const std::filesystem::path source = track("wiola_window_seek.wav");
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService window_playback{session};
+
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
     SeekBar* position = window.findChild<SeekBar*>();
@@ -304,7 +304,7 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 
     window.open({source});
 
-    ASSERT_TRUE(loaded(window, session, source));
+    ASSERT_TRUE(loaded(window, window_playback, source));
 
     QLabel* elapsed = with_text<QLabel>(window, "0:00");
     const QLabel* total = with_text<QLabel>(window, "0:01");
@@ -318,18 +318,19 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
     constexpr double fraction{4.0 / 5.0};
     drag_to(*position, fraction);
 
-    ASSERT_TRUE(pump_until(window, session, [elapsed] { return elapsed->text() == "0:01"; }));
+    ASSERT_TRUE(pump_until(window, window_playback,
+        [elapsed] { return elapsed->text() == "0:01"; }));
     EXPECT_NEAR(position->fraction(), fraction, 0.01);
 }
 
 TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 {
     {
-        wiola::engine::Session session{wiola::testing::passive_output,
+        wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::LibrarySession window_library{
             std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::PlaybackService window_playback{session};
+
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         MainWindow window{window_playback, window_library, window_preferences};
         QSlider* volume = volume_slider(window);
@@ -353,11 +354,11 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
     EXPECT_EQ(stored("volume").toInt(), 123);
     EXPECT_TRUE(stored("volume/boosted").toBool());
 
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession restored_library{
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService restored_playback{session};
+
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     MainWindow restored{restored_playback, restored_library, restored_preferences};
     const QSlider* volume = volume_slider(restored);
@@ -374,11 +375,11 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
 {
     {
-        wiola::engine::Session session{wiola::testing::passive_output,
+        wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::LibrarySession window_library{
             std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::PlaybackService window_playback{session};
+
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         MainWindow window{window_playback, window_library, window_preferences};
         QPushButton* equalizer = with_text<QPushButton>(window, "EQ");
@@ -405,11 +406,11 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     EXPECT_FALSE(stored("equalizer/enabled").toBool());
     EXPECT_FLOAT_EQ(stored("equalizer/band/2").toFloat(), 6.0F);
 
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession restored_library{
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService restored_playback{session};
+
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     MainWindow restored{restored_playback, restored_library, restored_preferences};
     QPushButton* equalizer = with_text<QPushButton>(restored, "EQ");
@@ -430,21 +431,22 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
 
 TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
 {
-    wiola::engine::Session session{
+    wiola::app::PlaybackService window_playback{
         [](wiola::audio::Source&) { return std::unique_ptr<wiola::audio::Output>{}; },
         [](const std::filesystem::path&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
         [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService window_playback{session};
+
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
     window_playback.open({"valid-decoder"});
-    ASSERT_TRUE(pump_until(window, session,
-        [&] { return session.open_result() == wiola::engine::OpenResult::output_unavailable; }));
+    ASSERT_TRUE(pump_until(window, window_playback, [&] {
+        return window_playback.open_result() == wiola::engine::OpenResult::output_unavailable;
+    }));
     EXPECT_NE(with_text<QLabel>(window, "audio output is unavailable"), nullptr);
-    EXPECT_FALSE(session.loaded());
+    EXPECT_FALSE(window_playback.loaded());
 }
 
 } // namespace

@@ -1,6 +1,6 @@
 # Playback contracts and buffering
 
-This component owns portable playback values, buffering, decoder loading, queue policy and the complete private transport protocol. Session/pipeline services still consume these targets from `src/engine`; their public facade has not completed its export yet.
+This component owns portable playback values, buffering, decoder loading, queue policy and the complete private transport protocol. Session/pipeline services still consume these targets from `src/engine`; their public facade has not completed its export yet. Session borrows the host-supplied Stage and owns no equalizer/volume topology. The application facade owns its built-in processing and Session together.
 
 ```mermaid
 flowchart LR
