@@ -70,6 +70,42 @@ class GitInventory:
             timeout=10,
         )
 
+    def read_previous(self, path: str, reference: str) -> str:
+        """Read trusted bytes, following only Git-proven committed renames if needed."""
+        revision = self.revision(reference)
+        try:
+            return self.read(path, revision)
+        except subprocess.CalledProcessError:
+            names = (
+                subprocess.check_output(
+                    [
+                        "git",
+                        "diff",
+                        "--no-relative",
+                        "--name-status",
+                        "-z",
+                        "--find-renames",
+                        "--diff-filter=R",
+                        revision,
+                        "HEAD",
+                        "--",
+                    ],
+                    cwd=self._repository,
+                    stderr=subprocess.PIPE,
+                    timeout=10,
+                )
+                .decode("utf-8")
+                .split("\0")[:-1]
+            )
+            for _, previous, current in zip(
+                names[::3], names[1::3], names[2::3], strict=True
+            ):
+                if current == path:
+                    return self.read(previous, revision)
+            # A newly added/deleted/unmatched path is not trusted prior policy.
+            # Preserve the original Git error; never substitute current worktree bytes.
+            raise
+
     def deleted_paths(self, reference: str) -> tuple[str, ...]:
         revision = self.revision(reference)
         result = subprocess.check_output(

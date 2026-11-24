@@ -67,6 +67,93 @@ class GitInventoryTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     adapter.read(invalid)
 
+    def test_previous_policy_follows_committed_renames_and_keeps_trusted_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def git(*arguments):
+                return subprocess.check_output(
+                    ["git", *arguments], cwd=root, text=True
+                ).strip()
+
+            def commit():
+                git("add", "-A")
+                git(
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "-m",
+                    "tests: advance trusted fixture",
+                )
+
+            git("init", "--quiet")
+            old = root / "policy 音楽.json"
+            trusted = "\n".join(f"trusted decision {i}" for i in range(30))
+            old.write_text(trusted)
+            commit()
+            before = git("rev-parse", "HEAD")
+            current = root / "nested" / "renamed policy.json"
+            current.parent.mkdir()
+            old.rename(current)
+            current.write_text(trusted + "\nnew weaker decision")
+            commit()
+            adapter = GitInventory(current.parent)
+            self.assertEqual(
+                adapter.read_previous("nested/renamed policy.json", before), trusted
+            )
+            self.assertEqual(
+                adapter.read_previous("nested/renamed policy.json", "HEAD"),
+                current.read_text(),
+            )
+            current.write_text("uncommitted current bytes must never become trusted")
+            index = git("ls-files", "--stage")
+            self.assertEqual(
+                adapter.read_previous("nested/renamed policy.json", before), trusted
+            )
+            self.assertEqual(git("ls-files", "--stage"), index)
+            for invalid in ("../policy.json", "/policy.json", "nested/../policy.json"):
+                with self.assertRaises(ValueError):
+                    adapter.read_previous(invalid, before)
+            with self.assertRaises(subprocess.CalledProcessError):
+                adapter.read_previous("nested/renamed policy.json", "missing-reference")
+
+    def test_new_or_unmatched_policy_cannot_borrow_unrelated_trusted_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def git(*arguments):
+                return subprocess.check_output(
+                    ["git", *arguments], cwd=root, text=True
+                ).strip()
+
+            def commit():
+                git("add", "-A")
+                git(
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "-m",
+                    "tests: advance trusted fixture",
+                )
+
+            git("init", "--quiet")
+            (root / "old.json").write_text("unrelated trusted policy")
+            commit()
+            before = git("rev-parse", "HEAD")
+            (root / "old.json").rename(root / "renamed.json")
+            (root / "new.json").write_text("a genuinely new policy")
+            commit()
+            adapter = GitInventory(root)
+            for name in ("new.json", "missing.json"):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    adapter.read_previous(name, before)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,3 +14,5 @@ sequenceDiagram
 ```
 
 Run `python3 -m unittest tools.architecture.inventory.tests.test_git_inventory`.
+
+Real temporary Git repositories exercise committed rename continuity, nested callers, Unicode/spaced filenames, changed current policy, unchanged index, genuine new files, invalid paths and invalid revisions.
