@@ -22,6 +22,7 @@
 #include <desktop/playback/equalizer_control.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <fakes/provider.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -132,12 +133,14 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
 {
     wiola::app::PlaybackService narrow{wiola::testing::passive_output,
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
-            return wiola::media::DecoderOpenResult{
-                std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{64},
-                    StreamSpec{.sample_rate = 8_kHz, .num_channels = 2})};
-        },
-        [](const std::filesystem::path&) { return wiola::media::Metadata{}; }};
+        std::make_shared<wiola::testing::FakeMediaProvider>(
+            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                return wiola::media::DecoderOpenResult{
+                    std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{64},
+                        StreamSpec{.sample_rate = 8_kHz, .num_channels = 2})};
+            },
+            [](const std::filesystem::path&) { return wiola::media::Metadata{}; }
+        )};
     narrow.open({"narrow-stream"});
     while (narrow.reading())
         std::this_thread::yield();

@@ -25,10 +25,10 @@
 #include "transport_wait.hpp"
 #include <buffering/pcm_queue.hpp>
 #include <transport/playback.hpp>
-#include <transport/transport_config.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/output_connection.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/playback/transport_config.hpp>
 
 #include <memory>
 #include <vector>

@@ -18,15 +18,37 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <wiola/playback/buffering_config.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
 #include <wiola/playback/queue_entry.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
+#include <wiola/playback/transport_config.hpp>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <limits>
 #include <utility>
+
+TEST(PlaybackContracts, PlaybackPoliciesRejectUnsafeDurationsAndDecodeBlocks)
+{
+    using namespace wiola;
+    EXPECT_TRUE(engine::BufferingConfig{}.valid());
+    for (const double seconds : {0.0, -1.0, std::numeric_limits<double>::infinity(),
+             std::numeric_limits<double>::quiet_NaN()})
+        EXPECT_FALSE(engine::BufferingConfig{.duration = units::Time{seconds}}.valid());
+
+    engine::TransportConfig transport;
+    EXPECT_TRUE(transport.valid());
+    transport.decode_chunk = pcm::Frames{};
+    EXPECT_FALSE(transport.valid());
+    transport.decode_chunk = pcm::Frames{1};
+    transport.poll_interval = std::chrono::milliseconds{};
+    EXPECT_FALSE(transport.valid());
+    transport.poll_interval = std::chrono::milliseconds{-1};
+    EXPECT_FALSE(transport.valid());
+}
 
 TEST(PlaybackContracts, OpenStatusPreservesPortableFailureCategories)
 {

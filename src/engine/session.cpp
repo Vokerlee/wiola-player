@@ -38,34 +38,31 @@
 
 namespace wiola::engine {
 
+namespace {
+
+std::shared_ptr<media::MediaProvider> validated(std::shared_ptr<media::MediaProvider> provider,
+    const TransportConfig& transport, const BufferingConfig& buffering)
+{
+    if (!provider)
+        throw std::invalid_argument{"playback requires a media provider"};
+    if (!transport.valid() || !buffering.valid())
+        throw std::invalid_argument{"invalid playback configuration"};
+    return provider;
+}
+
+} // namespace
+
 Session::Session(audio::Stage& processing, OutputFactory make_output,
-    std::shared_ptr<media::MediaProvider> provider)
+    std::shared_ptr<media::MediaProvider> provider, TransportConfig transport,
+    BufferingConfig buffering)
     : processing_{processing}
-    , provider_{provider}
-    , loader_{std::make_unique<Loader>(provider)}
-    , metadata_{std::move(provider)}
-    , out_{processing_, std::move(make_output)}
-{
-}
-
-Session::Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
-    MetadataReader read_metadata)
-    : Session{processing, std::move(make_output), std::move(open_decoder), std::move(read_metadata),
-          {}, {}}
-{
-}
-
-Session::Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
-    MetadataReader read_metadata, TransportConfig transport, BufferingConfig buffering)
-    : processing_{processing}
-    , loader_{std::make_unique<Loader>(std::move(open_decoder))}
-    , metadata_{std::move(read_metadata)}
+    , provider_{validated(std::move(provider), transport, buffering)}
+    , loader_{std::make_unique<Loader>(provider_)}
+    , metadata_{provider_}
     , out_{processing_, std::move(make_output)}
     , transport_{transport}
     , buffering_{buffering}
 {
-    if (!transport_.valid() || !buffering_.valid())
-        throw std::invalid_argument{"invalid engine configuration"};
 }
 
 Session::~Session() = default;
@@ -519,7 +516,7 @@ bool Session::seekable() const noexcept
 
 std::vector<std::string> Session::playback_extensions() const
 {
-    return provider_ ? provider_->playback_extensions() : std::vector<std::string>{};
+    return provider_->playback_extensions();
 }
 
 PlaybackSnapshot Session::snapshot() const

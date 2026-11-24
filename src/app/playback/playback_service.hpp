@@ -34,8 +34,6 @@ namespace wiola::app {
 class PlaybackService {
 public:
     PlaybackService(engine::OutputFactory output, std::shared_ptr<media::MediaProvider> provider);
-    PlaybackService(engine::OutputFactory output, engine::DecoderOpener open_decoder,
-        engine::MetadataReader read_metadata);
     ~PlaybackService();
 
     PlaybackService(const PlaybackService&) = delete;

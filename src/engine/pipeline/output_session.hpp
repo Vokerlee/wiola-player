@@ -23,9 +23,9 @@
 #include <wiola/audio/output.hpp>
 #include <wiola/media/stream_spec.hpp>
 
-#include <functional>
 #include <memory>
 #include <stdexcept>
+#include <wiola/playback/output_factory.hpp>
 
 namespace wiola::audio {
 
@@ -35,8 +35,6 @@ class Source;
 } // namespace wiola::audio
 
 namespace wiola::engine {
-
-using OutputFactory = std::function<std::unique_ptr<audio::Output>(audio::Source&)>;
 
 /// Prepares stream-specific output leases and caches the last committed stream for reuse.
 /// The borrowed processing stage must outlive both this cache and every prepared lease.

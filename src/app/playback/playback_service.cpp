@@ -35,12 +35,6 @@ struct PlaybackService::Impl {
     {
     }
 
-    Impl(engine::OutputFactory output, engine::DecoderOpener open_decoder,
-        engine::MetadataReader read_metadata)
-        : session{processing, std::move(output), std::move(open_decoder), std::move(read_metadata)}
-    {
-    }
-
     // Session/output teardown precedes destruction of the processing objects it borrows.
     audio::Equalizer equalizer{pcm::StreamSpec{}};
     audio::Volume volume;
@@ -54,13 +48,6 @@ struct PlaybackService::Impl {
 PlaybackService::PlaybackService(engine::OutputFactory output,
     std::shared_ptr<media::MediaProvider> provider)
     : impl_{std::make_unique<Impl>(std::move(output), std::move(provider))}
-{
-}
-
-PlaybackService::PlaybackService(engine::OutputFactory output, engine::DecoderOpener open_decoder,
-    engine::MetadataReader read_metadata)
-    : impl_{std::make_unique<Impl>(std::move(output), std::move(open_decoder),
-          std::move(read_metadata))}
 {
 }
 

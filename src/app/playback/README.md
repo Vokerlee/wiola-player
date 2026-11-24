@@ -21,3 +21,5 @@ PlaybackQueue and PlaylistTransfer translate explicit library selections into qu
 Equalizer observations, including band centers, stay available as semantic values. Fractional seeking uses the optional duration without allocating a snapshot/path copy. Core seek owns loaded/seekability validation; an unknown duration supplies no basis for a fractional seek.
 
 Queue observations use the public live QueueView port and repeat controls use RepeatMode. Presentation does not require private Playlist or PlaybackOrder types. The queue owner retains occurrence lookup and revision semantics; frontend projections copy only the rows they cache and reacquire borrowed entries on updates.
+
+The service receives the same MediaProvider port used by production drivers and controlled tests. It has no separate decoder/metadata callback constructor. The kernel retains its own validated transport/buffering policies; worker implementation types do not become application construction requirements.
