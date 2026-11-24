@@ -1,6 +1,4 @@
-#ifdef WIOLA_PRIVATE_HEADER
-#include WIOLA_PRIVATE_HEADER
-#endif
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <wiola/foundation/borrowed.hpp>
 
@@ -12,4 +10,10 @@ static_assert(std::is_nothrow_move_constructible_v<wiola::core::Borrowed<int>>);
 int read(wiola::core::Borrowed<int> value)
 {
     return *value;
+}
+
+int main()
+{
+    int value = 7;
+    return read(wiola::core::Borrowed<int>{value}) == 7 ? 0 : 1;
 }

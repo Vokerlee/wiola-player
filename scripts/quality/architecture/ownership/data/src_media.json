@@ -19,8 +19,10 @@
         "src/core/media/public/wiola/media/audio_decoder.hpp",
         "src/core/media/tests/CMakeLists.txt",
         "src/core/media/tests/README.md",
+        "src/core/media/tests/consumer.cpp",
         "src/core/media/tests/decoder_contract_test.cpp",
-        "src/core/media/tests/decoder_port_test.cpp"
+        "src/core/media/tests/decoder_port_test.cpp",
+        "src/core/media/tests/public_package.json"
       ]
     },
     {

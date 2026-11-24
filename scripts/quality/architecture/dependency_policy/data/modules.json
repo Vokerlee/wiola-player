@@ -472,7 +472,8 @@
     "tool.test_affected": "tooling",
     "scripts.testing": "tooling",
     "scripts.quality": "tooling",
-    "scripts.build.context": "tooling"
+    "scripts.build.context": "tooling",
+    "testing.public_api": "tooling"
   },
   "allowed": {
     "foundation": [],

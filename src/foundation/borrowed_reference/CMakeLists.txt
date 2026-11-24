@@ -49,13 +49,8 @@ if(WIOLA_BUILD_TESTS)
         COMMAND borrowed_reference_test
     )
 
-    find_package(Python3 REQUIRED COMPONENTS Interpreter)
-    add_test(
-        NAME BorrowedReference.InstalledConsumer
-        COMMAND
-            Python3::Interpreter
-            ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_export.py --build-dir
-            ${CMAKE_BINARY_DIR} --cmake ${CMAKE_COMMAND} --compiler
-            ${CMAKE_CXX_COMPILER} --system ${CMAKE_SYSTEM_NAME}
+    wiola_add_public_consumer_test(
+        BorrowedReference.InstalledConsumer
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/public_package.json"
     )
 endif()

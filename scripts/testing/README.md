@@ -13,3 +13,5 @@ flowchart LR
 [GoogleTest](gtest/README.md) owns discovery, execution and exact report evidence without Qt, project identities or build layouts. Import its public API from `scripts.testing.gtest`. [Desktop composition](desktop/README.md) supplies only the project's fixture environment and caller-selected GUI adapter: `python3 -m scripts.testing.desktop --help`.
 
 Environment changes are confined to child processes. Executable paths come from callers or configured build metadata, never guessed output directories. [Mutation qualification](mutations/README.md) owns checked edits, regression recipes and original/mutant/restored evidence in one component. The test-policy catalog retains its existing owner until the quality-family migration.
+
+[Public package checks](public_api/README.md) own the shared install/relocate/compile/link protocol. Component-owned manifests and consumers supply API-specific assertions; a private include qualifies only through its precise missing-header diagnostic.

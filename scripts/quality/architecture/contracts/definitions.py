@@ -4,6 +4,20 @@ from scripts.quality.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "testing.public_api",
+        "scripts/testing/public_api",
+        "Qualifies relocated installed public packages through one bounded protocol",
+        (
+            "Positive compile/link must pass before negative probes",
+            "Unrelated failures never qualify private-header rejection",
+            "Component facts stay with their owning probes",
+        ),
+        (
+            "scripts/testing/public_api/__init__.py",
+            "scripts/testing/public_api/register.cmake",
+        ),
+    ),
+    AbstractionContract(
         "scripts.build.context",
         "scripts/build/context",
         "Owns explicit portable component selection and dependency closure",

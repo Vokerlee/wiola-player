@@ -1,0 +1,15 @@
+{
+  "package": "wiola_borrowed_reference",
+  "target": "wiola::borrowed_reference",
+  "components": [
+    "wiola_borrowed_reference"
+  ],
+  "headers": [
+    "wiola/foundation/borrowed.hpp"
+  ],
+  "private_headers": [
+    "core/handle.hpp",
+    "tests/private_probe.hpp"
+  ],
+  "consumer": "consumer.cpp"
+}

@@ -26,5 +26,6 @@
   "scripts/build/packages/tests/test_profile.py": "build_environment.ubuntu_packages",
   "scripts/quality/formatting/tests/test_formatting.py": "tool.format_cpp",
   "scripts/build/context/tests/test_context.py": "scripts.build.context",
-  "scripts/quality/coverage/python_runner/tests/test_profiles.py": "coverage.python_runner"
+  "scripts/quality/coverage/python_runner/tests/test_profiles.py": "coverage.python_runner",
+  "scripts/testing/public_api/tests/test_check.py": "testing.public_api"
 }

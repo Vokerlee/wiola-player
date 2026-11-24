@@ -19,3 +19,8 @@ wiola_media_add_test(media_audio_decoder_port_test decoder_port_test.cpp)
 wiola_media_add_test(media_track_metadata_test track_metadata_test.cpp)
 wiola_media_add_test(media_metadata_writer_test metadata_writer_test.cpp)
 wiola_media_add_test(pcm_stream_spec_test stream_spec_test.cpp)
+
+wiola_add_public_consumer_test(
+    Media.InstalledConsumer
+    "${CMAKE_CURRENT_SOURCE_DIR}/public_package.json"
+)
