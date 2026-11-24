@@ -18,7 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <codec/provider.hpp>
 #include <desktop/playback/equalizer_control.hpp>
+#include <fakes/output.hpp>
 #include <platform/qt/player_settings.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -39,7 +41,7 @@ using Control = wiola::app::EqualizerControl;
 using wiola::pcm::StreamSpec;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.
-class EqualizerControl : public testing::Test {
+class EqualizerControl : public ::testing::Test {
 protected:
     static void SetUpTestSuite()
     {
@@ -58,7 +60,8 @@ protected:
     }
 
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "equalizer"};
-    wiola::engine::Session engine;
+    wiola::engine::Session engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService equalizer{engine};
 };
 
@@ -79,7 +82,8 @@ TEST_F(EqualizerControl, GivesBackWhatTheLastRunLeft)
 {
     Control{equalizer, settings}.set_band_gain(2, 6.0F);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
@@ -94,7 +98,8 @@ TEST_F(EqualizerControl, KeepsWhetherItRuns)
 
     control.set_enabled(false);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
@@ -113,7 +118,8 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 
     EXPECT_FLOAT_EQ(control.band_gain(0), limit);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
@@ -125,7 +131,8 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 /// A band this format cannot carry still has a setting, so it is there for the track that can.
 TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
 {
-    wiola::engine::Session narrow_engine;
+    wiola::engine::Session narrow_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     narrow_engine.equalizer().configure(StreamSpec{.sample_rate = 8_kHz, .num_channels = 2});
     wiola::app::PlaybackService narrow{narrow_engine};
     Control control{narrow, settings};
@@ -135,7 +142,8 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
 
     control.set_band_gain(beyond, 5.0F);
 
-    wiola::engine::Session wide_engine;
+    wiola::engine::Session wide_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService wide{wide_engine};
     Control later{wide, settings};
 
@@ -164,7 +172,8 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
     for (std::size_t index = 0; index < equalizer.equalizer_config().layout.count; ++index)
         control.set_band_gain(index, static_cast<float>(index) - 5.0F);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 

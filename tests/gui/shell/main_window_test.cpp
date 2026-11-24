@@ -22,6 +22,7 @@
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
 #include <desktop/playback/volume_control.hpp>
+#include <fakes/output.hpp>
 #include <gui/controls/equalizer_panel.hpp>
 #include <gui/controls/seek_bar.hpp>
 #include <gui/documents/now_playing_document.hpp>
@@ -147,7 +148,7 @@ void drag_to(SeekBar& bar, double fraction)
     QCoreApplication::sendEvent(&bar, &release);
 }
 
-class MainWindowTest : public testing::Test {
+class MainWindowTest : public ::testing::Test {
 protected:
     static void SetUpTestSuite()
     {
@@ -201,7 +202,8 @@ protected:
 
 TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
 {
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService window_playback{session};
     wiola::app::PlaybackPreferences window_preferences{window_playback};
@@ -235,7 +237,8 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 {
     const std::filesystem::path first = track("wiola_window_first.wav");
     const std::filesystem::path second = track("wiola_window_second.wav");
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService window_playback{session};
     wiola::app::PlaybackPreferences window_preferences{window_playback};
@@ -288,7 +291,8 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
 TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 {
     const std::filesystem::path source = track("wiola_window_seek.wav");
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService window_playback{session};
     wiola::app::PlaybackPreferences window_preferences{window_playback};
@@ -320,7 +324,8 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 {
     {
-        wiola::engine::Session session;
+        wiola::engine::Session session{wiola::testing::passive_output,
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::LibrarySession window_library{
             std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::PlaybackService window_playback{session};
@@ -347,7 +352,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
     EXPECT_EQ(stored("volume").toInt(), 123);
     EXPECT_TRUE(stored("volume/boosted").toBool());
 
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession restored_library{
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService restored_playback{session};
@@ -367,7 +373,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
 {
     {
-        wiola::engine::Session session;
+        wiola::engine::Session session{wiola::testing::passive_output,
+            std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::LibrarySession window_library{
             std::make_shared<wiola::codec::LocalMediaProvider>()};
         wiola::app::PlaybackService window_playback{session};
@@ -397,7 +404,8 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     EXPECT_FALSE(stored("equalizer/enabled").toBool());
     EXPECT_FLOAT_EQ(stored("equalizer/band/2").toFloat(), 6.0F);
 
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::LibrarySession restored_library{
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService restored_playback{session};
@@ -430,7 +438,7 @@ int main(int argc, char** argv)
     qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
 
-    testing::InitGoogleTest(&argc, argv);
+    ::testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
     wiola::testing::retain_widget_screenshots();
 

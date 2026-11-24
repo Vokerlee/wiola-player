@@ -36,10 +36,24 @@ namespace {
 using wiola::app::PlaybackService;
 using wiola::engine::CommandResult;
 
+wiola::engine::Session idle_session()
+{
+    return wiola::engine::Session{wiola::testing::passive_output,
+        [](const std::filesystem::path&,
+            const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
+            ADD_FAILURE() << "an idle session must not open media";
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable}};
+        },
+        [](const std::filesystem::path&) {
+            ADD_FAILURE() << "an idle session must not read metadata";
+            return wiola::media::Metadata{};
+        }};
+}
+
 TEST(PlaybackService, ReportsUnavailableCommandsWithoutLoadedMedia)
 {
-    wiola::engine::Session service_session{
-        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); }};
+    auto service_session{idle_session()};
     PlaybackService service{service_session};
 
     EXPECT_EQ(service.play(), CommandResult::unavailable);
@@ -77,8 +91,7 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
 
 TEST(PlaybackService, ExposesAudioControlsAsValues)
 {
-    wiola::engine::Session service_session{
-        [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); }};
+    auto service_session{idle_session()};
     PlaybackService service{service_session};
 
     service.set_volume(0.25F);

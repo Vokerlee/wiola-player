@@ -23,6 +23,7 @@
 #include <audio/output/output.hpp>
 
 #include <audio/output/source.hpp>
+#include <codec/provider.hpp>
 #include <engine/session.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -42,6 +43,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 namespace {
@@ -55,6 +57,8 @@ using wiola::engine::Session;
 namespace units = wiola::units;
 
 static_assert(!noexcept(std::declval<const Session&>().snapshot()));
+static_assert(!std::is_default_constructible_v<Session>);
+static_assert(!std::is_constructible_v<Session, wiola::engine::OutputFactory>);
 
 /// Loads and waits for it, the way a window that draws does: asking, then taking the answer up
 /// on a later turn.
@@ -93,10 +97,11 @@ bool poll_until(Session& session, Predicate settled)
 struct Fixture {
     Fixture()
         : session{[this](wiola::audio::Source& source) {
-            ++num_outputs;
-            return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)
-                             : std::make_unique<wiola::testing::FakeOutput>();
-        }}
+                      ++num_outputs;
+                      return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)
+                                       : std::make_unique<wiola::testing::FakeOutput>();
+                  },
+              std::make_shared<wiola::codec::LocalMediaProvider>()}
     {
     }
 

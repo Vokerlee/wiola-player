@@ -29,6 +29,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -172,5 +173,11 @@ private:
 
     std::thread thread_;
 };
+
+/// A nonconsuming output for tests that drive transport intent without a sound card or clock.
+inline std::unique_ptr<audio::Output> passive_output(audio::Source&)
+{
+    return std::make_unique<FakeOutput>();
+}
 
 } // namespace wiola::testing

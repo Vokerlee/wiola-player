@@ -19,7 +19,9 @@
  */
 
 #include <app/playback/volume_scale.hpp>
+#include <codec/provider.hpp>
 #include <desktop/playback/volume_control.hpp>
+#include <fakes/output.hpp>
 #include <platform/qt/player_settings.hpp>
 
 #include <QSettings>
@@ -36,7 +38,7 @@ using Control = wiola::app::VolumeControl;
 constexpr wiola::app::VolumeScale scale;
 
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.
-class VolumeControl : public testing::Test {
+class VolumeControl : public ::testing::Test {
 protected:
     static void SetUpTestSuite()
     {
@@ -57,7 +59,8 @@ protected:
     int restore(Control&& control) { return restore(control); }
 
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "volume"};
-    wiola::engine::Session engine;
+    wiola::engine::Session engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService volume{engine};
 };
 
@@ -108,7 +111,8 @@ TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
 {
     Control{volume, settings}.set_position(70);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 
@@ -121,7 +125,8 @@ TEST_F(VolumeControl, AppliesWhatItRestores)
 {
     Control{volume, settings}.set_position(50);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
 
     EXPECT_FLOAT_EQ(next.volume(), 1.0F);
@@ -219,7 +224,8 @@ TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
     first.set_boosted(true);
     first.set_position(120);
 
-    wiola::engine::Session next_engine;
+    wiola::engine::Session next_engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService next{next_engine};
     Control later{next, settings};
 

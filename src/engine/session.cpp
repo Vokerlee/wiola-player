@@ -24,11 +24,9 @@
 #include <engine/load/tag_reader.hpp>
 #include <engine/transport/player.hpp>
 
-#include <audio/device/device.hpp>
 #include <audio/dsp/buffer_source.hpp>
 #include <audio/dsp/relay.hpp>
 #include <audio/dsp/shaped_source.hpp>
-#include <codec/provider.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
@@ -42,16 +40,6 @@
 #include <utility>
 
 namespace wiola::engine {
-
-Session::Session()
-    : Session{[](audio::Source& source) { return std::make_unique<audio::Device>(source); }}
-{
-}
-
-Session::Session(OutputFactory make_output)
-    : Session{std::move(make_output), std::make_shared<codec::LocalMediaProvider>()}
-{
-}
 
 Session::Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider)
     : chain_{

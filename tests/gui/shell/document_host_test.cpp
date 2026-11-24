@@ -23,6 +23,7 @@
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <codec/provider.hpp>
+#include <fakes/output.hpp>
 #include <gtest/gtest.h>
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/shell/document_host.hpp>
@@ -32,7 +33,7 @@ namespace {
 
 using namespace wiola;
 
-class DocumentHostTest : public testing::Test {
+class DocumentHostTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
@@ -45,7 +46,8 @@ protected:
     }
 
     QTemporaryDir directory;
-    engine::Session engine;
+    engine::Session engine{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     app::PlaybackService playback{engine};
     std::unique_ptr<app::LibrarySession> library;
     std::unique_ptr<app::SessionPreferences> preferences;
@@ -126,7 +128,7 @@ TEST_F(DocumentHostTest, EmptyStateRequestsOpenFolderWithoutCreatingAWorkspace)
 int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "minimal");
-    testing::InitGoogleTest(&argc, argv);
+    ::testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
     return RUN_ALL_TESTS();
 }

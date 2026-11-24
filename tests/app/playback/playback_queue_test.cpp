@@ -19,6 +19,8 @@
  */
 
 #include <app/playback/playback_queue.hpp>
+#include <codec/provider.hpp>
+#include <fakes/output.hpp>
 
 #include <library/in_memory_repository.hpp>
 
@@ -28,7 +30,8 @@ namespace {
 
 TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
 {
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService playback{session};
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord media;
@@ -54,7 +57,8 @@ TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
 
 TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
 {
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService playback{session};
     session.add({"existing.wav"});
 
@@ -83,7 +87,8 @@ TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
 
 TEST(PlaybackQueue, AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue)
 {
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService playback{session};
     session.add({"existing.wav"});
 
@@ -100,7 +105,8 @@ TEST(PlaybackQueue, AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue)
 
 TEST(PlaybackQueue, SelectsTheRequestedDuplicateOccurrenceAndNeverFallsBackForUnknownIds)
 {
-    wiola::engine::Session session;
+    wiola::engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     wiola::app::PlaybackService playback{session};
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord track;

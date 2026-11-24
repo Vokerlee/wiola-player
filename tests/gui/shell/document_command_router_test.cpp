@@ -29,6 +29,7 @@
 #include <QTest>
 #include <codec/provider.hpp>
 #include <desktop/playback/playback_preferences.hpp>
+#include <fakes/output.hpp>
 #include <fixtures/gui_interaction.hpp>
 #include <gtest/gtest.h>
 #include <gui/documents/saved_playlist_document.hpp>
@@ -69,7 +70,8 @@ protected:
     }
 
     QTemporaryDir directory;
-    engine::Session session;
+    engine::Session session{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
     app::PlaybackService playback{session};
     std::unique_ptr<app::LibrarySession> library;
     std::unique_ptr<app::PlaybackPreferences> preferences;
