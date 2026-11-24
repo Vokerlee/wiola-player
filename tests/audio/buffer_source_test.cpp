@@ -19,7 +19,7 @@
  */
 
 #include <audio/dsp/buffer_source.hpp>
-#include <audio/dsp/source.hpp>
+#include <audio/output/source.hpp>
 #include <pcm/pcm_queue.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

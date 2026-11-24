@@ -39,17 +39,19 @@
     },
     {
       "id": "source.audio.device.output",
-      "purpose": "Owns the current output declaration/implementation in audio/device.",
+      "purpose": "Owns backend-neutral output control and its complete component.",
       "files": [
-        "src/audio/device/output.hpp"
+        "src/audio/output/output.hpp",
+        "src/audio/output/CMakeLists.txt",
+        "src/audio/output/README.md"
       ]
     },
     {
       "id": "source.audio.device.output_connection",
       "purpose": "Owns the current output connection declaration/implementation in audio/device.",
       "files": [
-        "src/audio/device/output_connection.cpp",
-        "src/audio/device/output_connection.hpp"
+        "src/audio/output/output_connection.cpp",
+        "src/audio/output/output_connection.hpp"
       ]
     },
     {
@@ -135,7 +137,7 @@
       "id": "source.audio.dsp.source",
       "purpose": "Owns the current source declaration/implementation in audio/dsp.",
       "files": [
-        "src/audio/dsp/source.hpp"
+        "src/audio/output/source.hpp"
       ]
     },
     {

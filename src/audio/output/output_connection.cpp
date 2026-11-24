@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/device/output_connection.hpp>
+#include <audio/output/output_connection.hpp>
 
 namespace wiola::audio {
 

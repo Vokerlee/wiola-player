@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include <audio/device/output.hpp>
 #include <audio/dsp/processing_chain.hpp>
 #include <audio/dsp/relay.hpp>
 #include <audio/dsp/shaped_source.hpp>
+#include <audio/output/output.hpp>
 #include <core/macros.hpp>
 #include <wiola/media/stream_spec.hpp>
 

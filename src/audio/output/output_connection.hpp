@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <audio/device/output.hpp>
+#include <audio/output/output.hpp>
 #include <core/macros.hpp>
 
 namespace wiola::audio {

@@ -713,5 +713,30 @@
     "previous": "src/media/media.hpp",
     "current": "src/core/media/public/wiola/media/metadata.hpp",
     "owner": "source.media.media"
+  },
+  {
+    "previous": "src/audio/device/output.hpp",
+    "current": "src/audio/output/output.hpp",
+    "owner": "source.audio.device.output"
+  },
+  {
+    "previous": "src/audio/device/output_connection.hpp",
+    "current": "src/audio/output/output_connection.hpp",
+    "owner": "source.audio.device.output_connection"
+  },
+  {
+    "previous": "src/audio/device/output_connection.cpp",
+    "current": "src/audio/output/output_connection.cpp",
+    "owner": "source.audio.device.output_connection"
+  },
+  {
+    "previous": "src/audio/dsp/source.hpp",
+    "current": "src/audio/output/source.hpp",
+    "owner": "source.audio.dsp.source"
+  },
+  {
+    "previous": "tests/audio/output_test.cpp",
+    "current": "src/audio/output/tests/output_test.cpp",
+    "owner": "test.audio.output_test"
   }
 ]

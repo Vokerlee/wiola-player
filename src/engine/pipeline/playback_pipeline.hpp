@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <audio/device/output.hpp>
 #include <audio/dsp/buffer_source.hpp>
+#include <audio/output/output.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/player.hpp>
 #include <engine/transport/transport_config.hpp>

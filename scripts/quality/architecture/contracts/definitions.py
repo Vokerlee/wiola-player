@@ -4,6 +4,23 @@ from scripts.quality.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "source.audio.device.output",
+        "src/audio/output",
+        "Owns source pulling, exclusive output control and callback quiescence",
+        (
+            "Device implementations consume this boundary without being dependencies",
+            "The owner outlives control and quiesces callbacks before source destruction",
+            "Callback rendering remains bounded and nonthrowing",
+        ),
+        (
+            "src/audio/output/output.hpp",
+            "src/audio/output/output_connection.hpp",
+            "src/audio/output/source.hpp",
+        ),
+        parts=("source.audio.device.output_connection", "source.audio.dsp.source"),
+        test_parts=("test.audio.output_test",),
+    ),
+    AbstractionContract(
         "testing.public_api",
         "scripts/testing/public_api",
         "Qualifies relocated installed public packages through one bounded protocol",

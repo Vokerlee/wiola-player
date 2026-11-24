@@ -24,7 +24,7 @@
 #include "playback.hpp"
 #include "playhead.hpp"
 #include "transport_wait.hpp"
-#include <audio/device/output.hpp>
+#include <audio/output/output.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/transport_config.hpp>
 #include <functional>

@@ -35,7 +35,7 @@ Nothing in that path should open files, wait for a decoder, allocate memory, or 
 ## 2. What the device does—and does not accept
 
 [`Device`](device/device.hpp) is Wiola's default system audio output, implemented with Miniaudio.
-When it starts, it reads a [`pcm::StreamSpec`](../pcm/stream_spec.hpp) from its source and configures
+When it starts, it reads a [`pcm::StreamSpec`](../core/media/public/wiola/media/stream_spec.hpp) from its source and configures
 a playback stream with:
 
 - 32-bit floating-point samples;
@@ -151,7 +151,7 @@ them when their owner goes away.
 
 ## 3. The real-time source contract
 
-[`Source`](dsp/source.hpp) is the small interface the device understands. It has only two important
+[`Source`](output/source.hpp) is the small interface the device understands. It has only two important
 operations:
 
 - `spec()` describes the PCM format, fixed for the source's lifetime;
@@ -247,11 +247,11 @@ lifetime. That guarantee comes from stopping and quiescing output before source 
 
 ## 7. Output control and callback lifetime
 
-[`Output`](device/output.hpp) separates observing an output from driving it. Only one
-[`Output::Control`](device/output.hpp) can be held at a time. A second claim is inert, so two
+[`Output`](output/output.hpp) separates observing an output from driving it. Only one
+[`Output::Control`](output/output.hpp) can be held at a time. A second claim is inert, so two
 transport workers cannot independently start and stop the same device.
 
-[`OutputConnection`](device/output_connection.hpp) owns that control for one decoding pipeline.
+[`OutputConnection`](output/output_connection.hpp) owns that control for one decoding pipeline.
 Its destructor stops the output and waits for an active callback to return. Normal stop and seek
 paths use the same explicit operation.
 

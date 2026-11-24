@@ -23,8 +23,8 @@
 #include "playhead.hpp"
 #include "seek_operation.hpp"
 #include "transport_wait.hpp"
-#include <audio/device/output.hpp>
-#include <audio/device/output_connection.hpp>
+#include <audio/output/output.hpp>
+#include <audio/output/output_connection.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>

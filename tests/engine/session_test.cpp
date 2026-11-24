@@ -20,9 +20,9 @@
 
 #include <fixtures/wav.hpp>
 
-#include <audio/device/output.hpp>
+#include <audio/output/output.hpp>
 
-#include <audio/dsp/source.hpp>
+#include <audio/output/source.hpp>
 #include <engine/session.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>

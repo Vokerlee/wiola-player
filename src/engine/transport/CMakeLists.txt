@@ -1,4 +1,6 @@
 # Keeps one track fed to one output. Nothing here shapes samples, so the DSP is not among these.
+find_package(Threads REQUIRED)
+
 wiola_add_library(
     wiola_engine_transport
     SOURCES
@@ -11,6 +13,6 @@ wiola_add_library(
         seek_operation.cpp
         transport_worker.cpp
         transport_wait.cpp
-    LIBS wiola_audio_device
+    LIBS wiola_audio_output Threads::Threads
 )
 target_link_libraries(wiola_engine_transport PUBLIC wiola::media)
