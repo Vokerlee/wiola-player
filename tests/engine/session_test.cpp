@@ -503,8 +503,8 @@ TEST(Session, TakesUpWhatEveryAddedTrackSays)
     EXPECT_TRUE(poll_until(fixture.session, [&fixture] {
         const std::vector<wiola::engine::Track>& queued{fixture.session.playlist().tracks()};
 
-        return queued.size() == 2 && queued.front().duration().has_value() &&
-            queued.back().duration().has_value();
+        return queued.size() == 2 && queued.front().metadata().duration.has_value() &&
+            queued.back().metadata().duration.has_value();
     })) << "a track that was added was never read";
 }
 
@@ -575,14 +575,14 @@ TEST(Session, TakesUpWhatQueuedTracksSayAboutThemselves)
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] {
-        return fixture.session.playlist().tracks().front().duration().has_value();
+        return fixture.session.playlist().tracks().front().metadata().duration.has_value();
     })) << "how long the track runs was never found out";
 
     const wiola::engine::Track& described{fixture.session.playlist().tracks().front()};
 
-    ASSERT_TRUE(described.duration().has_value());
-    EXPECT_GT(*described.duration(), units::Time{});
-    EXPECT_FALSE(described.title().empty());
+    ASSERT_TRUE(described.metadata().duration.has_value());
+    EXPECT_GT(*described.metadata().duration, units::Time{});
+    EXPECT_FALSE(described.metadata().title.empty());
 }
 
 /// Every track of a list is read, not only the first: opening several is the one way a listener
@@ -600,8 +600,8 @@ TEST(Session, TakesUpWhatEveryTrackOfAnOpenedListSays)
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] {
         const std::vector<wiola::engine::Track>& queued{fixture.session.playlist().tracks()};
 
-        return queued.size() == 2 && queued.front().duration().has_value() &&
-            queued.back().duration().has_value();
+        return queued.size() == 2 && queued.front().metadata().duration.has_value() &&
+            queued.back().metadata().duration.has_value();
     })) << "a track of the list was never read";
 }
 
@@ -614,7 +614,7 @@ TEST(Session, NamesAQueuedTrackAfterItsFileToBeginWith)
 
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
-    EXPECT_EQ(fixture.session.playlist().tracks().front().title(), track.stem().string());
+    EXPECT_EQ(fixture.session.playlist().tracks().front().metadata().title, track.stem().string());
 }
 
 /// What a listener picking a track out of their queue asks for.
@@ -738,7 +738,7 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 
     EXPECT_EQ(session.open_result(), OpenResult::opened);
     EXPECT_TRUE(session.loaded());
-    EXPECT_EQ(session.playlist().tracks().front().title(), "playable");
+    EXPECT_EQ(session.playlist().tracks().front().metadata().title, "playable");
 }
 
 TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)

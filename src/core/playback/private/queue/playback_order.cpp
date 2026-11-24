@@ -52,7 +52,8 @@ bool PlaybackOrder::remove(std::size_t index) noexcept
     if (index >= order_.size())
         return false;
 
-    const std::optional<std::size_t> standing{position()};
+    // The validated index implies a nonempty order, which always has a selected place.
+    const std::size_t standing{*position()};
     order_.erase(std::ranges::find(order_, index));
 
     for (std::size_t& entry : order_)
@@ -64,17 +65,12 @@ bool PlaybackOrder::remove(std::size_t index) noexcept
         return true;
     }
 
-    if (!standing) {
-        place_ = 0;
-        return true;
-    }
-
-    if (*standing == index) {
+    if (standing == index) {
         place_ = place_of(std::min(index, order_.size() - 1));
         return true;
     }
 
-    place_ = place_of(*standing > index ? *standing - 1 : *standing);
+    place_ = place_of(standing > index ? standing - 1 : standing);
     return true;
 }
 

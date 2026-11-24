@@ -30,8 +30,11 @@
 #include <cstddef>
 #include <filesystem>
 #include <limits>
+#include <memory>
 #include <new>
 #include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -274,9 +277,9 @@ TEST(Playlist, NamesATrackAfterItsFileUntilItIsToldOtherwise)
     playlist.add(Track::of(std::filesystem::path{"/music/first.wav"}));
 
     ASSERT_NE(playlist.current(), nullptr);
-    EXPECT_EQ(playlist.current()->title(), "first") << "a name is not an extension";
-    EXPECT_TRUE(playlist.current()->artist().empty());
-    EXPECT_FALSE(playlist.current()->duration().has_value());
+    EXPECT_EQ(playlist.current()->metadata().title, "first") << "a name is not an extension";
+    EXPECT_TRUE(playlist.current()->metadata().artist.empty());
+    EXPECT_FALSE(playlist.current()->metadata().duration.has_value());
 }
 
 /// What is found out about a track later replaces what was assumed, and moves nothing.
@@ -296,8 +299,8 @@ TEST(Playlist, TakesWhatIsFoundOutAboutATrack)
 
     EXPECT_TRUE(playlist.describe(selected, std::move(told)));
 
-    EXPECT_EQ(playlist.current()->title(), "Together Forever");
-    EXPECT_EQ(playlist.current()->artist(), "Rick Astley");
+    EXPECT_EQ(playlist.current()->metadata().title, "Together Forever");
+    EXPECT_EQ(playlist.current()->metadata().artist, "Rick Astley");
     EXPECT_EQ(playlist.position(), 1U) << "saying what a track is moved the list";
     EXPECT_EQ(playlist.tracks().size(), 3U);
 
@@ -457,7 +460,7 @@ TEST(Playlist, GivesDuplicatePathsIndependentIdentities)
     metadata.title = "Only the remaining entry";
     EXPECT_FALSE(playlist.describe(removed, metadata));
     ASSERT_TRUE(playlist.describe(kept, metadata));
-    EXPECT_EQ(playlist.tracks().front().title(), "Only the remaining entry");
+    EXPECT_EQ(playlist.tracks().front().metadata().title, "Only the remaining entry");
     EXPECT_EQ(playlist.tracks().front().path(), std::filesystem::path{"same.wav"});
 }
 
@@ -488,14 +491,14 @@ TEST(Playlist, AppliesOneMetadataBatchWithoutRepeatedQueueRevisions)
 
     const std::size_t revision{playlist.revision()};
     const std::size_t metadata_revision{playlist.metadata_revision()};
-    playlist.apply_metadata(entries,
-        TrackMetadata{.title = "known", .artist = {}, .album = {}, .duration = {}},
-        std::make_shared<const wiola::media::Artwork>());
+    TrackMetadata described;
+    described.title = "known";
+    playlist.apply_metadata(entries, described, std::make_shared<const wiola::media::Artwork>());
 
     EXPECT_EQ(playlist.revision(), revision + 1);
     EXPECT_EQ(playlist.metadata_revision(), metadata_revision + 1);
     for (const Track& track : playlist.tracks())
-        EXPECT_EQ(track.title(), "known");
+        EXPECT_EQ(track.metadata().title, "known");
 }
 
 TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
@@ -506,12 +509,110 @@ TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
     const QueueEntryId surviving{playlist.tracks()[1].id()};
 
     ASSERT_TRUE(playlist.remove(0));
-    playlist.apply_metadata(std::array{removed, surviving},
-        TrackMetadata{.title = "updated", .artist = {}, .album = {}, .duration = {}}, {});
+    TrackMetadata described;
+    described.title = "updated";
+    playlist.apply_metadata(std::array{removed, surviving}, described, {});
 
     ASSERT_EQ(playlist.tracks().size(), 1U);
     EXPECT_EQ(playlist.tracks()[0].id(), surviving);
-    EXPECT_EQ(playlist.tracks()[0].title(), "updated");
+    EXPECT_EQ(playlist.tracks()[0].metadata().title, "updated");
+}
+
+TEST(Playlist, RemovingTheSelectedOccurrenceInvalidatesSelectionEvenAtTheSameRow)
+{
+    Playlist playlist;
+    playlist.set(three());
+    ASSERT_TRUE(playlist.go_to(1));
+    const auto selected{playlist.current()->id()};
+    const auto revision{playlist.selection_revision()};
+    ASSERT_TRUE(playlist.remove(1));
+    EXPECT_EQ(playlist.position(), 1U);
+    EXPECT_NE(playlist.current()->id(), selected);
+    EXPECT_EQ(playlist.selection_revision(), revision + 1);
+}
+
+TEST(Playlist, RemovingALaterOccurrencePreservesSelectionIdentityAndRevision)
+{
+    Playlist playlist;
+    playlist.set(three());
+    const auto selected{playlist.current()->id()};
+    const auto revision{playlist.selection_revision()};
+    ASSERT_TRUE(playlist.remove(2));
+    EXPECT_EQ(playlist.current()->id(), selected);
+    EXPECT_EQ(playlist.selection_revision(), revision);
+}
+
+TEST(Playlist, EmptyReplacementPreservesRepeatChoiceWithoutInventingASelection)
+{
+    Playlist playlist;
+    playlist.set(three());
+    playlist.set_repeat(Repeat::all);
+    playlist.set({});
+    EXPECT_TRUE(playlist.empty());
+    EXPECT_FALSE(playlist.position());
+    EXPECT_EQ(playlist.repeat(), Repeat::all);
+    playlist.add(Track::of("new.wav"));
+    EXPECT_EQ(playlist.position(), 0U);
+    EXPECT_TRUE(playlist.previous());
+    EXPECT_EQ(playlist.position(), 0U);
+}
+
+TEST(Playlist, EmptyAppendLeavesTheAcceptedQueueAndRevisionsUntouched)
+{
+    Playlist playlist;
+    playlist.set(three());
+    ASSERT_TRUE(playlist.go_to(1));
+    const auto revision{playlist.revision()};
+    const auto structure{playlist.structural_revision()};
+    const auto metadata{playlist.metadata_revision()};
+    const auto selection{playlist.selection_revision()};
+    const auto id{playlist.current()->id()};
+    playlist.add(std::vector<Track>{});
+    EXPECT_EQ(playlist.current()->id(), id);
+    EXPECT_EQ(playlist.revision(), revision);
+    EXPECT_EQ(playlist.structural_revision(), structure);
+    EXPECT_EQ(playlist.metadata_revision(), metadata);
+    EXPECT_EQ(playlist.selection_revision(), selection);
+}
+
+TEST(Playlist, ArtworkReplacementInvalidatesMetadataWithoutMovingTheSelectedOccurrence)
+{
+    Playlist playlist;
+    playlist.set(three());
+    const auto id{playlist.current()->id()};
+    const auto revision{playlist.current()->revision()};
+    const auto metadata{playlist.metadata_revision()};
+    const auto structure{playlist.structural_revision()};
+    const auto selection{playlist.selection_revision()};
+    auto artwork{std::make_shared<const wiola::media::Artwork>()};
+    ASSERT_TRUE(playlist.illustrate(id, artwork));
+    EXPECT_EQ(playlist.current()->id(), id);
+    EXPECT_EQ(playlist.current()->artwork(), artwork);
+    EXPECT_EQ(playlist.current()->revision(), revision + 1);
+    EXPECT_EQ(playlist.metadata_revision(), metadata + 1);
+    EXPECT_EQ(playlist.structural_revision(), structure);
+    EXPECT_EQ(playlist.selection_revision(), selection);
+    const auto accepted{playlist.revision()};
+    EXPECT_FALSE(playlist.illustrate(QueueEntryId{}, {}));
+    EXPECT_EQ(playlist.revision(), accepted);
+    EXPECT_EQ(playlist.current()->artwork(), artwork);
+}
+
+TEST(Playlist, ObsoleteMetadataBatchesCannotInvalidateLiveQueueObservations)
+{
+    Playlist playlist;
+    playlist.set(three());
+    const auto revision{playlist.revision()};
+    const auto metadata{playlist.metadata_revision()};
+    playlist.apply_metadata(std::array{QueueEntryId{}}, {}, {});
+    EXPECT_EQ(playlist.revision(), revision);
+    EXPECT_EQ(playlist.metadata_revision(), metadata);
+    EXPECT_EQ(playlist.current()->metadata().title, "first");
+    playlist.clear();
+    const auto selection{playlist.selection_revision()};
+    playlist.clear();
+    EXPECT_EQ(playlist.selection_revision(), selection);
+    EXPECT_EQ(playlist.current(), nullptr);
 }
 
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT

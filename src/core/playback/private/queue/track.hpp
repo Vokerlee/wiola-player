@@ -22,13 +22,10 @@
 #include <wiola/playback/queue_entry_id.hpp>
 
 #include <wiola/media/metadata.hpp>
-#include <wiola/units.hpp>
 
-#include <compare>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
-#include <string>
 
 namespace wiola::engine {
 
@@ -45,39 +42,8 @@ public:
 
     [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
 
+    /// Borrowed immutable facts; a metadata update or queue mutation can invalidate the view.
     [[nodiscard]] const TrackMetadata& metadata() const noexcept { return metadata_; }
-
-    [[nodiscard]] const std::string& title() const noexcept { return metadata_.title; }
-
-    [[nodiscard]] const std::string& artist() const noexcept { return metadata_.artist; }
-
-    [[nodiscard]] const std::string& album() const noexcept { return metadata_.album; }
-
-    [[nodiscard]] const std::string& genre() const noexcept { return metadata_.genre; }
-
-    [[nodiscard]] const std::string& comment() const noexcept { return metadata_.comment; }
-
-    [[nodiscard]] const std::string& composer() const noexcept { return metadata_.composer; }
-
-    [[nodiscard]] constexpr std::optional<std::uint32_t> year() const noexcept
-    {
-        return metadata_.year;
-    }
-
-    [[nodiscard]] constexpr std::optional<std::uint32_t> track_number() const noexcept
-    {
-        return metadata_.track_number;
-    }
-
-    [[nodiscard]] constexpr std::optional<std::uint32_t> disc_number() const noexcept
-    {
-        return metadata_.disc_number;
-    }
-
-    [[nodiscard]] constexpr std::optional<units::Time> duration() const noexcept
-    {
-        return metadata_.duration;
-    }
 
     [[nodiscard]] const std::shared_ptr<const media::Artwork>& artwork() const noexcept
     {

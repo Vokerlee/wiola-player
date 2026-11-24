@@ -87,6 +87,7 @@ bool Playlist::remove(std::size_t index) noexcept
         return false;
 
     const auto previous_position{position()};
+    const QueueEntryId previous_id{current()->id()};
     indices_.erase(tracks_[index].id());
     tracks_.erase(tracks_.begin() + static_cast<std::ptrdiff_t>(index));
     static_cast<void>(order_.remove(index));
@@ -98,7 +99,9 @@ bool Playlist::remove(std::size_t index) noexcept
 
     ++revision_;
     ++structural_revision_;
-    if (previous_position != position())
+    const Track* selected{current()};
+    const QueueEntryId selected_id{selected ? selected->id() : QueueEntryId{}};
+    if (previous_position != position() || previous_id != selected_id)
         ++selection_revision_;
 
     return true;

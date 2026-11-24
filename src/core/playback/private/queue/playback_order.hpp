@@ -28,6 +28,7 @@
 namespace wiola::engine {
 
 /// Owns playback-order decisions over stable entry indices without owning the entries themselves.
+/// Every nonempty order has one valid selected place; mutations preserve that invariant.
 class PlaybackOrder {
 public:
     enum class Repeat {

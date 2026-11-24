@@ -1,4 +1,4 @@
-add_executable(engine_playlist_test playlist_test.cpp)
+add_executable(engine_playlist_test playlist_test.cpp playback_order_test.cpp)
 target_link_libraries(
     engine_playlist_test
     PRIVATE wiola_playback_queue GTest::gtest_main
