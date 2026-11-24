@@ -10,13 +10,6 @@
       ]
     },
     {
-      "id": "tool.check_gui_mutations",
-      "purpose": "Implements the current check gui mutations development command.",
-      "files": [
-        "scripts/check-gui-mutations.py"
-      ]
-    },
-    {
       "id": "tool.coverage",
       "purpose": "Implements the current coverage development command.",
       "files": [

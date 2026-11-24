@@ -13,8 +13,12 @@ from tools.architecture.inventory.git_inventory import GitInventory
 from tools.architecture.ownership.registry import load_current_registry
 from scripts.testing.gtest import GoogleTestRunner
 
-from .catalog import MutationCatalog
-from .verifier import MutationVerifier
+from ._catalog import MutationCatalog
+from ._verifier import MutationVerifier
+
+
+def _interrupted(signum, frame):
+    raise KeyboardInterrupt("Mutation qualification interrupted")
 
 
 def main(argv=None) -> int:
@@ -31,9 +35,6 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     args.artifacts = args.artifacts or args.build_dir / "Testing" / "Mutations"
     previous_signal = signal.getsignal(signal.SIGTERM)
-
-    def interrupted(signum, frame):
-        raise KeyboardInterrupt("Mutation qualification interrupted")
 
     try:
         if args.test_timeout <= 0:
@@ -60,7 +61,7 @@ def main(argv=None) -> int:
             os.environ,
             timeout=args.test_timeout,
         )
-        signal.signal(signal.SIGTERM, interrupted)
+        signal.signal(signal.SIGTERM, _interrupted)
         reports = []
         for case in cases:
             reports.append(verifier.verify(case))

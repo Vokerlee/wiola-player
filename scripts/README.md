@@ -19,7 +19,7 @@ Current other commands:
 
 - `format-cpp.sh`, `format-cmake.sh` and `install-hooks.sh` are described in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - `python3 -m scripts.testing.desktop` runs the [desktop composition](testing/desktop/README.md) through the toolkit-independent [GoogleTest protocol](testing/gtest/README.md).
-- `check-gui-mutations.py` uses [owned mutation qualification](../tools/testing/mutation_checks/README.md); CMake provides its actual build directory through `wiola_check_mutations`.
+- `python3 -m scripts.testing.mutations` runs [mutation qualification](testing/mutations/README.md); CMake supplies its actual build directory through `wiola_check_mutations`.
 - `coverage.sh` runs the coverage collector; [coverage qualification](../tools/coverage/README.md) explains source scope and retained evidence.
 - `test-affected.py` builds and runs explicitly selected test targets.
 

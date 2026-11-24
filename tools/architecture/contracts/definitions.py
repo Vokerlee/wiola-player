@@ -347,24 +347,13 @@ CONTRACTS = (
         parts=("architecture.cmake_inventory",),
     ),
     AbstractionContract(
-        "testing.source_mutation",
-        "tools/testing/source_mutation",
-        "Applies one atomic source edit and restores exact bytes without overwriting concurrent edits",
-        ("Complete implementation and tests belong to this owner",),
-        ("tools/testing/source_mutation/mutation.py",),
-        grouping=False,
-    ),
-    AbstractionContract(
         "testing.mutation_checks",
-        "tools/testing/mutation_checks",
+        "scripts/testing/mutations",
         "Qualifies declared regressions through owned source, build and GoogleTest protocols",
         ("Complete implementation and tests belong to this owner",),
-        (
-            "tools/testing/mutation_checks/__main__.py",
-            "tools/testing/mutation_checks/verifier.py",
-            "tools/testing/mutation_checks/catalog.py",
-        ),
+        ("scripts/testing/mutations/__init__.py",),
         grouping=False,
+        parts=("testing.source_mutation",),
     ),
     AbstractionContract(
         "coverage.llvm_reporting",
