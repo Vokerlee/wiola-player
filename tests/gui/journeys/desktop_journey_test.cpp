@@ -144,7 +144,7 @@ TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLa
         window.resize(1100, 750);
         window.show();
         window.activateWindow();
-        ASSERT_TRUE(wiola::testing::await_gui([&] { return player.session().loaded(); }));
+        ASSERT_TRUE(wiola::testing::await_gui([&] { return player.playback().loaded(); }));
         auto* title = window.findChild<QLineEdit*>("searchTitle");
         ASSERT_NE(title, nullptr);
         title->setFocus();

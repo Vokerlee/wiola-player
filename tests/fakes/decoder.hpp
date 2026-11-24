@@ -73,6 +73,12 @@ public:
     {
     }
 
+    /// Uses the actual media capability value, including unknown lengths and unseekable input.
+    explicit FakeDecoder(media::DecoderStreamInfo stream_info) noexcept
+        : media::AudioDecoder{stream_info}
+    {
+    }
+
     void block_reads_on(Gate& gate) noexcept { read_gate_ = &gate; }
 
     void block_seeks_on(Gate& gate) noexcept { seek_gate_ = &gate; }

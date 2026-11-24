@@ -20,13 +20,12 @@
 
 #include <engine/session.hpp>
 
+#include <wiola/audio/stage.hpp>
+
 #include <loading/loader.hpp>
 #include <transport/player.hpp>
 
-#include <buffering/buffer_source.hpp>
 #include <buffering/pcm_queue.hpp>
-#include <wiola/audio/relay.hpp>
-#include <wiola/audio/shaped_source.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 
@@ -34,35 +33,36 @@
 #include <optional>
 #include <random>
 #include <stdexcept>
-#include <vector>
-
 #include <utility>
+#include <vector>
 
 namespace wiola::engine {
 
-Session::Session(OutputFactory make_output, std::shared_ptr<media::MediaProvider> provider)
-    : chain_{
-          {equalizer_, volume_}
-},
-    provider_{provider}, loader_{std::make_unique<Loader>(provider)},
-    metadata_{std::move(provider)}, out_{chain_, std::move(make_output)}
+Session::Session(audio::Stage& processing, OutputFactory make_output,
+    std::shared_ptr<media::MediaProvider> provider)
+    : processing_{processing}
+    , provider_{provider}
+    , loader_{std::make_unique<Loader>(provider)}
+    , metadata_{std::move(provider)}
+    , out_{processing_, std::move(make_output)}
 {
 }
 
-Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
+Session::Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
     MetadataReader read_metadata)
-    : Session{std::move(make_output), std::move(open_decoder), std::move(read_metadata), {}, {}}
+    : Session{processing, std::move(make_output), std::move(open_decoder), std::move(read_metadata),
+          {}, {}}
 {
 }
 
-Session::Session(OutputFactory make_output, DecoderOpener open_decoder,
+Session::Session(audio::Stage& processing, OutputFactory make_output, DecoderOpener open_decoder,
     MetadataReader read_metadata, TransportConfig transport, BufferingConfig buffering)
-    // In the order they are declared, which is the order they are built in whatever this says.
-    : chain_{
-          {equalizer_, volume_}
-},
-    loader_{std::make_unique<Loader>(std::move(open_decoder))}, metadata_{std::move(read_metadata)},
-    out_{chain_, std::move(make_output)}, transport_{transport}, buffering_{buffering}
+    : processing_{processing}
+    , loader_{std::make_unique<Loader>(std::move(open_decoder))}
+    , metadata_{std::move(read_metadata)}
+    , out_{processing_, std::move(make_output)}
+    , transport_{transport}
+    , buffering_{buffering}
 {
     if (!transport_.valid() || !buffering_.valid())
         throw std::invalid_argument{"invalid engine configuration"};
@@ -348,7 +348,7 @@ bool Session::install_track(std::unique_ptr<media::AudioDecoder> source, std::fi
             "decoder stream cannot support the configured playback buffer"});
 
     try {
-        auto processing{chain_.prepare(spec)};
+        auto processing{processing_.prepare(spec)};
         auto output{out_.prepare(spec)};
         auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
             *buffer_frames, transport_)};

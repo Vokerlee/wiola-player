@@ -46,9 +46,9 @@ protected:
     }
 
     QTemporaryDir directory;
-    engine::Session engine{wiola::testing::passive_output,
+    app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    app::PlaybackService playback{engine};
+
     std::unique_ptr<app::LibrarySession> library;
     std::unique_ptr<app::SessionPreferences> preferences;
 };

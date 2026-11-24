@@ -25,12 +25,11 @@
 #include <platform/qt/player_settings.hpp>
 
 #include <QSettings>
-#include <QString>
+#include <QTemporaryDir>
 
 #include <gtest/gtest.h>
 
 #include <cmath>
-#include <filesystem>
 
 namespace {
 
@@ -40,13 +39,11 @@ constexpr wiola::app::VolumeScale scale;
 /// A settings file of its own, so a test neither reads nor leaves anything of the user's.
 class VolumeControl : public ::testing::Test {
 protected:
-    static void SetUpTestSuite()
+    void SetUp() override
     {
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
-            QString::fromStdString(std::filesystem::temp_directory_path().string()));
+        ASSERT_TRUE(directory.isValid());
+        settings.clear();
     }
-
-    void SetUp() override { settings.clear(); }
 
     int restore(Control& control)
     {
@@ -58,10 +55,10 @@ protected:
 
     int restore(Control&& control) { return restore(control); }
 
-    QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "volume"};
-    wiola::engine::Session engine{wiola::testing::passive_output,
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    wiola::app::PlaybackService volume{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService volume{engine};
 };
 
 TEST_F(VolumeControl, StartsAtFullVolume)
@@ -111,9 +108,9 @@ TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
 {
     Control{volume, settings}.set_position(70);
 
-    wiola::engine::Session next_engine{wiola::testing::passive_output,
+    wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService next{next_engine};
+
     Control later{next, settings};
 
     EXPECT_EQ(restore(later), 70);
@@ -125,9 +122,8 @@ TEST_F(VolumeControl, AppliesWhatItRestores)
 {
     Control{volume, settings}.set_position(50);
 
-    wiola::engine::Session next_engine{wiola::testing::passive_output,
+    wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService next{next_engine};
 
     EXPECT_FLOAT_EQ(next.volume(), 1.0F);
 
@@ -224,9 +220,9 @@ TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
     first.set_boosted(true);
     first.set_position(120);
 
-    wiola::engine::Session next_engine{wiola::testing::passive_output,
+    wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService next{next_engine};
+
     Control later{next, settings};
 
     EXPECT_EQ(restore(later), 120);

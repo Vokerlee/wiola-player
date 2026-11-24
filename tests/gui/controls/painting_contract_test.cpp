@@ -138,18 +138,18 @@ TEST_F(GuiInteraction, FocusIsVisibleAndMouseCommitDiffersFromCancelledOrDisplay
 
 TEST_F(GuiInteraction, LargeFontEqualizerRemainsScrollableAndKeyboardAdjustsTheLiveBand)
 {
-    wiola::engine::Session engine{wiola::testing::passive_output,
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
     const auto generated = wiola::testing::write_wav("wiola-equalizer-access.wav");
     const auto path = wiola::platform::qt::QtPathAdapter::from_qt(data_.filePath("equalizer.wav"));
     std::filesystem::copy_file(generated, path);
     std::filesystem::remove(generated);
-    static_cast<void>(engine.open({path}));
+    static_cast<void>(playback.open({path}));
     ASSERT_TRUE(wiola::testing::await_gui([&] {
-        engine.catch_up();
-        return engine.loaded();
+        static_cast<void>(playback.pump());
+        return playback.loaded();
     }));
-    wiola::app::PlaybackService playback{engine};
+
     QSettings settings{data_.filePath("equalizer.ini"), QSettings::IniFormat};
     wiola::app::EqualizerControl control{playback, settings};
     wiola::gui::EqualizerPanel panel{control, nullptr};

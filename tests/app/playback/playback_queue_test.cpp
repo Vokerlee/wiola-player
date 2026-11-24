@@ -30,9 +30,9 @@ namespace {
 
 TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
 {
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService playback{session};
+
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord media;
     media.id = wiola::library::MediaId{"media-1"};
@@ -50,17 +50,17 @@ TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
     EXPECT_TRUE(result.requested);
     EXPECT_EQ(result.queued, 2);
     EXPECT_EQ(result.unavailable, 0);
-    ASSERT_EQ(session.playlist().tracks().size(), 2);
-    EXPECT_EQ(session.playlist().tracks()[0].path(), std::filesystem::path{"first.wav"});
-    EXPECT_EQ(session.playlist().tracks()[1].path(), std::filesystem::path{"first.wav"});
+    ASSERT_EQ(playback.playlist().tracks().size(), 2);
+    EXPECT_EQ(playback.playlist().tracks()[0].path(), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(playback.playlist().tracks()[1].path(), std::filesystem::path{"first.wav"});
 }
 
 TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
 {
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService playback{session};
-    session.add({"existing.wav"});
+
+    playback.add({"existing.wav"});
 
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord unavailable;
@@ -81,33 +81,33 @@ TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
     EXPECT_EQ(unavailable_result.unavailable, 1);
     EXPECT_EQ(unavailable_result.queued, 0);
     EXPECT_FALSE(missing_result.requested);
-    ASSERT_EQ(session.playlist().tracks().size(), 1);
-    EXPECT_EQ(session.playlist().tracks()[0].path(), std::filesystem::path{"existing.wav"});
+    ASSERT_EQ(playback.playlist().tracks().size(), 1);
+    EXPECT_EQ(playback.playlist().tracks()[0].path(), std::filesystem::path{"existing.wav"});
 }
 
 TEST(PlaybackQueue, AppendsWorkspaceSelectionsWithoutReplacingTheCurrentQueue)
 {
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService playback{session};
-    session.add({"existing.wav"});
+
+    playback.add({"existing.wav"});
 
     wiola::app::PlaybackQueue queue;
     const auto result = queue.append_paths(playback, {"one.wav", "two.wav"});
 
     EXPECT_TRUE(result.requested);
     EXPECT_EQ(result.queued, 2);
-    ASSERT_EQ(session.playlist().tracks().size(), 3);
-    EXPECT_EQ(session.playlist().tracks()[0].path(), std::filesystem::path{"existing.wav"});
-    EXPECT_EQ(session.playlist().tracks()[1].path(), std::filesystem::path{"one.wav"});
-    EXPECT_EQ(session.playlist().tracks()[2].path(), std::filesystem::path{"two.wav"});
+    ASSERT_EQ(playback.playlist().tracks().size(), 3);
+    EXPECT_EQ(playback.playlist().tracks()[0].path(), std::filesystem::path{"existing.wav"});
+    EXPECT_EQ(playback.playlist().tracks()[1].path(), std::filesystem::path{"one.wav"});
+    EXPECT_EQ(playback.playlist().tracks()[2].path(), std::filesystem::path{"two.wav"});
 }
 
 TEST(PlaybackQueue, SelectsTheRequestedDuplicateOccurrenceAndNeverFallsBackForUnknownIds)
 {
-    wiola::engine::Session session{wiola::testing::passive_output,
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::PlaybackService playback{session};
+
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord track;
     track.id = {"same"};

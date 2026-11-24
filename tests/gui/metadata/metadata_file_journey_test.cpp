@@ -74,7 +74,7 @@ TEST_P(MetadataFileJourney, FileButtonWritesTheSelectedDuplicateAndPreservesDeco
         player.library().request_metadata(media, path);
         ASSERT_TRUE(wiola::testing::await_gui([&] {
             const auto record = player.library().snapshot(media);
-            return player.session().loaded() && record && record->metadata_revision > 0;
+            return player.playback().loaded() && record && record->metadata_revision > 0;
         }));
         static_cast<void>(player.playback().play());
         ASSERT_TRUE(player.playback().playing());
@@ -135,7 +135,7 @@ TEST_P(MetadataFileJourney, FileButtonWritesTheSelectedDuplicateAndPreservesDeco
             EXPECT_NE(metadata->track.title, "GUI embedded title");
         EXPECT_EQ(decoded_samples(path), before);
         ASSERT_TRUE(wiola::testing::await_gui([&] {
-            return player.session().loaded() && player.playback().playing();
+            return player.playback().loaded() && player.playback().playing();
         }));
         window.close();
     }
