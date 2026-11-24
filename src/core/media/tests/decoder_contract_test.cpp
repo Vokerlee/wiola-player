@@ -24,6 +24,7 @@
 
 #include <array>
 #include <functional>
+#include <span>
 #include <utility>
 
 namespace {
@@ -170,6 +171,62 @@ TEST(AudioDecoder, RejectsAnOutputSpanThatEndsInsideAFrame)
 
     ASSERT_FALSE(read);
     EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::read_failed);
+    EXPECT_FALSE(called);
+}
+
+TEST(AudioDecoder, EmptyOutputDoesNotExhaustAStreamWithFramesRemaining)
+{
+    using wiola::media::LengthAccuracy;
+    for (const auto accuracy :
+        std::array{LengthAccuracy::exact, LengthAccuracy::estimated, LengthAccuracy::unknown}) {
+        SCOPED_TRACE(static_cast<int>(accuracy));
+        auto info{exact_stream(wiola::pcm::Frames{2})};
+        info.length_accuracy = accuracy;
+        if (accuracy == LengthAccuracy::unknown)
+            info.length.reset();
+        int calls{0};
+        CallbackDecoder decoder{info, [&calls](wiola::pcm::Frames wanted) {
+                                    ++calls;
+                                    return wiola::media::DecodeOutcome{.frames = wanted};
+                                }};
+
+        auto empty{decoder.read(std::span<float>{})};
+        ASSERT_TRUE(empty);
+        EXPECT_EQ(empty->frames, wiola::pcm::Frames{});
+        EXPECT_FALSE(empty->end_of_stream);
+        EXPECT_FALSE(decoder.exhausted());
+        EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{});
+        auto rendered{decoder.render(std::span<float>{})};
+        ASSERT_TRUE(rendered);
+        EXPECT_EQ(*rendered, 0);
+        EXPECT_FALSE(decoder.exhausted());
+        EXPECT_EQ(calls, 0);
+
+        std::array<float, 4> output{};
+        auto next{decoder.read(output)};
+        ASSERT_TRUE(next);
+        EXPECT_EQ(next->frames, wiola::pcm::Frames{2});
+        EXPECT_EQ(next->end_of_stream, accuracy == LengthAccuracy::exact);
+        EXPECT_EQ(calls, 1);
+    }
+}
+
+TEST(AudioDecoder, EmptyOutputReportsAnAlreadyEmptyExactStream)
+{
+    bool called{false};
+    CallbackDecoder decoder{exact_stream(wiola::pcm::Frames{}), [&called](wiola::pcm::Frames) {
+                                called = true;
+                                return wiola::media::DecodeOutcome{};
+                            }};
+    auto empty{decoder.read(std::span<float>{})};
+    ASSERT_TRUE(empty);
+    EXPECT_EQ(empty->frames, wiola::pcm::Frames{});
+    EXPECT_TRUE(empty->end_of_stream);
+    EXPECT_TRUE(decoder.exhausted());
+    EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{});
+    auto repeated{decoder.render(std::span<float>{})};
+    ASSERT_TRUE(repeated);
+    EXPECT_EQ(*repeated, 0);
     EXPECT_FALSE(called);
 }
 

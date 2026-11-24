@@ -43,7 +43,8 @@ Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
         wanted = std::min(wanted, num_frames_left());
 
     if (wanted == pcm::Frames{}) {
-        exhausted_ = length_accuracy() == LengthAccuracy::exact;
+        exhausted_ =
+            length_accuracy() == LengthAccuracy::exact && num_frames_left() == pcm::Frames{};
 
         return DecodeOutcome{.frames = {}, .end_of_stream = exhausted_};
     }
