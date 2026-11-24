@@ -1,6 +1,6 @@
 # Audio processing implementation
 
-The equalizer facade owns one implementation containing `EqualizerParameters` and `EqualizerProcessor`. Control-thread parameters own validated gains; `EqualizerPublication` owns the three fixed publication banks and their handoff. The processing-thread processor owns filter history and applies one complete bank at a block boundary. Biquads, coefficient calculation and prepared-bank layout remain private here.
+The equalizer facade owns one stable authored configuration and a replaceable processing state containing `EqualizerParameters` and `EqualizerProcessor`. Parameters borrow that immutable configuration from their enclosing owner. Control-thread parameters own validated gains; `EqualizerPublication` owns the three fixed publication banks and their handoff. The processing-thread processor owns filter history and applies one complete bank at a block boundary. Biquads, coefficient calculation and prepared-bank layout remain private here.
 
 ```mermaid
 flowchart LR
@@ -10,7 +10,7 @@ flowchart LR
     Processor --> Samples[In-place PCM]
 ```
 
-Construct and configure outside playback callbacks. Parameter updates prepare a bank without heap allocation; processing adopts a complete bank without reclaiming dynamic objects. Stop output before reconfiguring stream shape or destroying stages. The implementation pointer remains stable because the equalizer is noncopyable and nonmovable.
+Construct and configure outside playback callbacks. Parameter updates prepare a bank without heap allocation; processing adopts a complete bank without reclaiming dynamic objects. Stop output before reconfiguring stream shape or destroying stages. The implementation/configuration remain stable because the equalizer is noncopyable and nonmovable. Stream configuration first allocates and builds an independent state, copies all accepted gains/enabled state and then swaps ownership without throwing. A failed allocation destroys only the candidate; active banks, filter history, settings and configuration references survive unchanged. Successful configuration starts fresh filter history for the new stream. The retired state is destroyed on the control thread after output is stopped.
 
 ProcessingChain keeps a fixed sequence of borrowed stages and a final sanitizer. Volume publishes bounded gain atomically. Relay publishes a borrowed source pointer; callback quiescence establishes when a former source can be released. These mechanisms share the component but retain their distinct lifetime rules.
 

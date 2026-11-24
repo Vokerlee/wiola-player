@@ -38,15 +38,26 @@ EqualizerConfig config_for(BandLayout layout) noexcept
 } // namespace
 
 struct Equalizer::Impl {
-    Impl(pcm::StreamSpec spec, EqualizerConfig config)
-        : parameters{spec, config}
-        , processor{parameters}
+    struct Processing {
+        Processing(pcm::StreamSpec spec, const EqualizerConfig& config)
+            : parameters{spec, config}
+            , processor{parameters}
+        {
+            processor.configure(spec);
+        }
+
+        EqualizerParameters parameters;
+        EqualizerProcessor processor;
+    };
+
+    Impl(pcm::StreamSpec spec, EqualizerConfig authored_config)
+        : config{authored_config}
+        , processing{std::make_unique<Processing>(spec, config)}
     {
-        processor.configure(spec);
     }
 
-    EqualizerParameters parameters;
-    EqualizerProcessor processor;
+    const EqualizerConfig config;
+    std::unique_ptr<Processing> processing;
 };
 
 Equalizer::Equalizer(pcm::StreamSpec spec, BandLayout layout)
@@ -63,58 +74,59 @@ Equalizer::~Equalizer() = default;
 
 const EqualizerConfig& Equalizer::config() const noexcept
 {
-    return impl_->parameters.config();
+    return impl_->config;
 }
 
 const BandLayout& Equalizer::layout() const noexcept
 {
-    return impl_->parameters.layout();
+    return impl_->config.layout;
 }
 
 std::size_t Equalizer::num_bands() const noexcept
 {
-    return impl_->parameters.num_bands();
+    return impl_->processing->parameters.num_bands();
 }
 
 float Equalizer::preamp() const noexcept
 {
-    return impl_->parameters.preamp();
+    return impl_->processing->parameters.preamp();
 }
 
 bool Equalizer::enabled() const noexcept
 {
-    return impl_->parameters.enabled();
+    return impl_->processing->parameters.enabled();
 }
 
 void Equalizer::configure(pcm::StreamSpec spec)
 {
-    impl_->parameters.configure(spec);
-    impl_->processor.configure(spec);
+    auto prepared{std::make_unique<Impl::Processing>(spec, impl_->config)};
+    prepared->parameters.adopt_settings(impl_->processing->parameters);
+    impl_->processing.swap(prepared);
 }
 
 units::Frequency Equalizer::band_center(std::size_t index) const noexcept
 {
-    return impl_->parameters.band_center(index);
+    return impl_->processing->parameters.band_center(index);
 }
 
 void Equalizer::set_band_gain(std::size_t index, float db) noexcept
 {
-    impl_->parameters.set_band_gain(index, db);
+    impl_->processing->parameters.set_band_gain(index, db);
 }
 
 float Equalizer::band_gain(std::size_t index) const noexcept
 {
-    return impl_->parameters.band_gain(index);
+    return impl_->processing->parameters.band_gain(index);
 }
 
 void Equalizer::set_enabled(bool enabled) noexcept
 {
-    impl_->parameters.set_enabled(enabled);
+    impl_->processing->parameters.set_enabled(enabled);
 }
 
 void Equalizer::process(std::span<float> samples) noexcept
 {
-    impl_->processor.process(samples);
+    impl_->processing->processor.process(samples);
 }
 
 } // namespace wiola::audio

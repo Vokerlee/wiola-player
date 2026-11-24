@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Unit tests for what is to be played and where in it playback has reached.
+ * @brief Scoped allocation failure for portable C++ rollback tests.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

@@ -47,6 +47,7 @@ include(dependencies)
 
 if(WIOLA_BUILD_TESTS)
     include(TestPublicPackage)
+    add_subdirectory(tests/support)
 endif()
 
 add_subdirectory(src)

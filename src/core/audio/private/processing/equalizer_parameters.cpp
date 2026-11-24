@@ -36,13 +36,20 @@ float amplitude(float db) noexcept
 
 } // namespace
 
-EqualizerParameters::EqualizerParameters(pcm::StreamSpec spec, EqualizerConfig config)
+EqualizerParameters::EqualizerParameters(pcm::StreamSpec spec, const EqualizerConfig& config)
     : config_{config}
 {
     if (!config_.valid())
         throw std::invalid_argument{"invalid equalizer configuration"};
 
     configure(spec);
+}
+
+void EqualizerParameters::adopt_settings(const EqualizerParameters& active) noexcept
+{
+    gains_ = active.gains_;
+    enabled_ = active.enabled_;
+    publish();
 }
 
 void EqualizerParameters::configure(pcm::StreamSpec spec) noexcept

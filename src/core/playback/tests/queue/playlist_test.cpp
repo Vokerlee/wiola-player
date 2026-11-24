@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "allocation_failure.hpp"
+#include <allocation_failure.hpp>
 #include <queue/playlist.hpp>
 
 #include <wiola/units.hpp>

@@ -36,19 +36,17 @@ namespace wiola::audio {
  */
 class EqualizerParameters {
 public:
-    EqualizerParameters(pcm::StreamSpec spec, EqualizerConfig config = {});
+    /// Borrows immutable configuration, which must outlive these parameters.
+    EqualizerParameters(pcm::StreamSpec spec, const EqualizerConfig& config);
 
     EqualizerParameters(const EqualizerParameters&) = delete;
     EqualizerParameters& operator=(const EqualizerParameters&) = delete;
     EqualizerParameters(EqualizerParameters&&) = delete;
     EqualizerParameters& operator=(EqualizerParameters&&) = delete;
 
-    /// Rebuilds prepared banks for `spec`. The output must be stopped while configuring.
-    void configure(pcm::StreamSpec spec) noexcept;
-
-    [[nodiscard]] const EqualizerConfig& config() const noexcept { return config_; }
-
-    [[nodiscard]] const BandLayout& layout() const noexcept { return config_.layout; }
+    /// Copies accepted control settings into a newly prepared stream, without copying
+    /// publication ownership or processing history. Both objects share the authored config.
+    void adopt_settings(const EqualizerParameters& active) noexcept;
 
     [[nodiscard]] std::size_t num_bands() const noexcept { return num_bands_; }
 
@@ -64,10 +62,11 @@ public:
     [[nodiscard]] bool enabled() const noexcept { return enabled_; }
 
 private:
+    void configure(pcm::StreamSpec spec) noexcept;
     void publish() noexcept;
     [[nodiscard]] const EqualizerPublication::Bank& acquire_for_processing() noexcept;
 
-    EqualizerConfig config_;
+    const EqualizerConfig& config_;
     pcm::StreamSpec spec_{};
     std::size_t num_bands_{0};
     std::array<float, BandLayout::max_count> gains_{};

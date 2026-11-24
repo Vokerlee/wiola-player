@@ -44,7 +44,8 @@ public:
 
     ~Equalizer() override;
 
-    /// The output must be stopped while configuring for another stream.
+    /// The output must be stopped while configuring for another stream. On failure,
+    /// active processing/history/settings and configuration references remain unchanged.
     void configure(pcm::StreamSpec spec) override;
 
     [[nodiscard]] const EqualizerConfig& config() const noexcept;
