@@ -12,11 +12,12 @@ import coverage
 
 from scripts.build.cmake import CMakeInventory
 from scripts.quality.architecture.ownership.registry import load_current_registry
+from scripts.quality.architecture.test_catalog.catalog import load_current_catalog
 from scripts.quality.coverage.source_policy.policy import load_current_policy
 
 
 def _execute(
-    root: Path, build_directory: Path, policy, data_file: Path, source_roots: list[str]
+    root: Path, build_directory: Path, data_file: Path, source_roots: list[str]
 ) -> list[list[str]]:
     commands = []
     # Test discovery entrypoints are separate from instrumented production source_roots.
@@ -61,17 +62,9 @@ def _execute(
             text=True,
         )
     )
-    runners = []
-    for test in discovery["tests"]:
-        command = test.get("command", [])
-        if len(command) < 2:
-            continue
-        script = Path(command[1]).resolve()
-        if not script.is_relative_to(root):
-            continue
-        record = policy.records.get(script.relative_to(root).as_posix())
-        if record and record.language == "python" and record.role == "tooling":
-            runners.append(command[1:])
+    runners = load_current_catalog().python_runners(
+        discovery, root, load_current_registry()
+    )
     for arguments in [*tests, *checks, *runners]:
         command = [
             sys.executable,
@@ -117,7 +110,7 @@ def main() -> int:
     )
     collector.start()
     try:
-        commands = _execute(root, args.build_dir, policy, data_file, roots)
+        commands = _execute(root, args.build_dir, data_file, roots)
     finally:
         collector.stop()
         collector.save()

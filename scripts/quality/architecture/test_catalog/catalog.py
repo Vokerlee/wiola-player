@@ -110,22 +110,9 @@ class TestCatalog:
             for path in target.artifacts
         }
         cases: dict[str, set[str]] = {}
-        seen_auxiliary = set()
         for test in discovery["tests"]:
             name = test["name"]
             if name in self._auxiliary:
-                seen_auxiliary.add(name)
-                runner = self._auxiliary[name]
-                script = runner["script"]
-                expected_script = str((inventory.source_root / script).resolve())
-                try:
-                    owned = registry.owner_of(script).identity == runner["owner"]
-                except KeyError:
-                    owned = False
-                if not owned or expected_script not in test.get("command", []):
-                    problems.append(
-                        f"Auxiliary test {name} has no matching owned runner"
-                    )
                 continue
             commands = {
                 binaries.get(str(Path(str(arg)).resolve()))
@@ -174,9 +161,62 @@ class TestCatalog:
                 problems.append(
                     f"Missing semantic requirement {case.identity}: {case.name}"
                 )
-        for name in self._auxiliary.keys() - seen_auxiliary:
-            problems.append(f"Required auxiliary case is missing: {name}")
+        try:
+            self.python_runners(discovery, inventory.source_root, registry)
+        except ValueError as error:
+            problems.append(str(error))
         return tuple(problems)
+
+    def python_runners(
+        self, discovery: dict, source_root: Path, registry: OwnershipRegistry
+    ) -> tuple[tuple[str, ...], ...]:
+        """Resolve only declared owned auxiliary Python commands, preserving their arguments."""
+        seen = set()
+        commands = []
+        for test in discovery["tests"]:
+            name = test["name"]
+            if name not in self._auxiliary:
+                continue
+            if name in seen:
+                raise ValueError("Duplicate auxiliary case: " + name)
+            seen.add(name)
+            commands.append(self._python_arguments(test, source_root, registry))
+        missing = self._auxiliary.keys() - seen
+        if missing:
+            raise ValueError(
+                "Required auxiliary case is missing: " + ", ".join(sorted(missing))
+            )
+        return tuple(commands)
+
+    def _python_arguments(self, test, source_root, registry):
+        runner = self._auxiliary[test["name"]]
+        script = runner["script"]
+        expected = (source_root / script).resolve()
+        arguments = test.get("command", [])[1:]
+        module = runner.get("module")
+        if module is None:
+            matches = arguments[:1] == [str(expected)]
+        else:
+            parts = module.split(".")
+            matches = (
+                all(part.isidentifier() for part in parts)
+                and script == "/".join(parts) + "/__main__.py"
+                and arguments[:2] == ["-m", module]
+            )
+        try:
+            owned = registry.owner_of(script).identity == runner["owner"]
+        except KeyError:
+            owned = False
+        if (
+            not owned
+            or not script.endswith(".py")
+            or not expected.is_relative_to(source_root.resolve())
+            or not matches
+        ):
+            raise ValueError(
+                f"Auxiliary test {test['name']} has no matching owned runner"
+            )
+        return tuple(arguments)
 
     def audit_sources(self, registry: OwnershipRegistry) -> tuple[str, ...]:
         observed = {
