@@ -21,6 +21,7 @@
 #include <media/local_file_stream.hpp>
 
 #include <limits>
+#include <utility>
 
 namespace wiola::media {
 
@@ -69,18 +70,26 @@ Result<std::size_t> LocalFileStream::read_impl(std::span<std::byte> out, const O
 Result<void> LocalFileStream::seek_impl(std::int64_t offset, SeekOrigin origin,
     const OperationContext&)
 {
-    if (offset < std::numeric_limits<std::streamoff>::min() ||
-        offset > std::numeric_limits<std::streamoff>::max())
+    if (!std::in_range<std::streamoff>(offset))
         return unexpected{failure(ErrorCategory::seek_failed, "seek offset exceeds stream range")};
 
     file_.clear();
+    const auto original{file_.tellg()};
+    if (original < 0)
+        return unexpected{failure(ErrorCategory::seek_failed, "local file cursor is unavailable")};
     const std::ios::seekdir direction{origin == SeekOrigin::start ? std::ios::beg
             : origin == SeekOrigin::current                       ? std::ios::cur
                                                                   : std::ios::end};
     file_.seekg(static_cast<std::streamoff>(offset), direction);
 
-    if (!file_)
+    if (!file_) {
+        file_.clear();
+        file_.seekg(original);
+        if (!file_)
+            return unexpected{
+                failure(ErrorCategory::unreadable, "local file cursor restoration failed")};
         return unexpected{failure(ErrorCategory::seek_failed, "local file seek failed")};
+    }
 
     return {};
 }
