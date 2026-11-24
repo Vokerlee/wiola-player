@@ -21,11 +21,20 @@
 #include <queue/playlist.hpp>
 
 #include <algorithm>
+#include <type_traits>
 #include <utility>
 
 namespace wiola::engine {
 
 namespace {
+
+media::TrackMetadata with_fallback_title(const std::filesystem::path& path,
+    media::TrackMetadata metadata)
+{
+    if (metadata.title.empty())
+        metadata.title = path.stem().string();
+    return metadata;
+}
 
 std::pair<std::vector<QueueEntry>, QueueEntryId>
 make_entries(std::vector<std::filesystem::path> paths, QueueEntryId next)
@@ -33,8 +42,7 @@ make_entries(std::vector<std::filesystem::path> paths, QueueEntryId next)
     std::vector<QueueEntry> entries;
     entries.reserve(paths.size());
     for (auto& path : paths) {
-        media::TrackMetadata metadata;
-        metadata.title = path.stem().string();
+        auto metadata{with_fallback_title(path, {})};
         entries.emplace_back(next, std::move(path), std::move(metadata));
         ++next.value;
     }
@@ -174,24 +182,27 @@ bool Playlist::illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork>
 void Playlist::apply_metadata(std::span<const QueueEntryId> entries,
     const media::TrackMetadata& metadata, std::shared_ptr<const media::Artwork> artwork)
 {
-    bool changed{false};
-
+    std::vector<std::pair<std::size_t, media::TrackMetadata>> descriptions;
     for (const QueueEntryId id : entries) {
         const auto index{index_of(id)};
-
         if (!index)
             continue;
 
-        ++tracks_[*index].revision_;
-        tracks_[*index].metadata_ = metadata;
-        tracks_[*index].artwork_ = artwork;
-        changed = true;
+        descriptions.emplace_back(*index, with_fallback_title(tracks_[*index].path_, metadata));
     }
 
-    if (changed) {
-        ++revision_;
-        ++metadata_revision_;
+    // All allocation completes before changing any occurrence or revision.
+    static_assert(std::is_nothrow_move_assignable_v<media::TrackMetadata>,
+        "Prepared queue metadata must commit without allocation");
+    for (auto& [index, description] : descriptions) {
+        ++tracks_[index].revision_;
+        tracks_[index].metadata_ = std::move(description);
+        tracks_[index].artwork_ = artwork;
     }
+    if (descriptions.empty())
+        return;
+    ++revision_;
+    ++metadata_revision_;
 }
 
 std::optional<std::size_t> Playlist::position() const noexcept

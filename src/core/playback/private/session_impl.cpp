@@ -263,21 +263,8 @@ void Session::Impl::take_up_finished_tags()
 
         media::Metadata tags =
             reading.result ? std::move(reading.result).value() : media::Metadata{};
-        media::TrackMetadata metadata{
-            .title = tags.track.title.empty() ? reading.path.stem().string() : tags.track.title,
-            .artist = tags.track.artist,
-            .album = tags.track.album,
-            .duration = tags.track.duration,
-            .genre = tags.track.genre,
-            .year = tags.track.year,
-            .comment = tags.track.comment,
-            .composer = tags.track.composer,
-            .track_number = tags.track.track_number,
-            .disc_number = tags.track.disc_number,
-        };
-
         auto artwork{std::make_shared<const media::Artwork>(std::move(tags.artwork))};
-        playlist_.apply_metadata(reading.entries, metadata, std::move(artwork));
+        playlist_.apply_metadata(reading.entries, tags.track, std::move(artwork));
     }
 }
 
