@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <core/handle.hpp>
 #include <core/macros.hpp>
+#include <wiola/foundation/handle.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <utility>

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <core/handle.hpp>
+#include <wiola/foundation/handle.hpp>
 
 #include <gtest/gtest.h>
 
@@ -229,6 +229,21 @@ TEST(Handle, LettingOneGoGivesTheEndBack)
     const Returning::Ticket again{returning.ticket()};
 
     EXPECT_TRUE(static_cast<bool>(again)) << "the next taker was refused";
+}
+
+TEST(Handle, DestroyingAnInertHandlePreservesTheLiveClaim)
+{
+    Returning owner;
+    const Returning::Ticket active{owner.ticket()};
+    ASSERT_TRUE(static_cast<bool>(active));
+
+    {
+        const Returning::Ticket inert{owner.ticket()};
+        EXPECT_FALSE(static_cast<bool>(inert));
+    }
+
+    EXPECT_TRUE(owner.claimed());
+    EXPECT_FALSE(static_cast<bool>(owner.ticket()));
 }
 
 /// Being given another end to hold gives the first one back.
