@@ -13,12 +13,12 @@ flowchart LR
 
 [Qt tooling](qt/README.md) is complete under `qt/`: one source provider, the x64 Windows recipe and the native instrumented Core recipe. Use their canonical commands directly; no Qt launcher or implementation lives elsewhere in this tree.
 
-[Configured builds](build/README.md) expose one public CMake inventory/build API used by SDK, quality and test callers.
+[Configured builds](build/README.md) expose one public CMake inventory/build API used by the Qt SDK recipes and coverage reporting.
 
 Current other commands:
 
 - `python3 -m scripts.formatting` owns [formatting and hooks](formatting/README.md), as described in [CONTRIBUTING.md](../CONTRIBUTING.md).
-- `python3 -m scripts.testing.desktop` runs the [desktop composition](testing/desktop/README.md) through the toolkit-independent [GoogleTest protocol](testing/gtest/README.md).
+- C++ tests run through CTest. Native Windows CI consumes the `wiola_desktop_tests` CMake install component and executes its GoogleTest binaries directly; fixtures and reports stay in that package.
 - `python3 -m scripts.coverage --build-dir BUILD --source src --exclude '/tests/'` collects LLVM reports from an already-built instrumented configuration. CI owns thresholds; there is no source-owner registry or checked-in coverage baseline.
 - `test-affected.py` builds and runs explicitly selected test targets.
 

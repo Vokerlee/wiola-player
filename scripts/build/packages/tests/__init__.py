@@ -1,1 +1,0 @@
-"""Ubuntu package transaction tests."""

@@ -227,6 +227,10 @@ wiola_add_test(
     DATA "${CMAKE_SOURCE_DIR}/tests/codec/data"
 )
 qt_finalize_target(gui_desktop_journey_test)
+target_compile_definitions(
+    gui_desktop_journey_test
+    PRIVATE WIOLA_TEST_PLAYER_PATH="$<TARGET_FILE:wiola-player>"
+)
 
 wiola_add_test(
     gui_interaction_fixture_test
@@ -263,3 +267,15 @@ if(ENABLE_COVERAGE)
 endif()
 
 add_dependencies(gui_desktop_journey_test wiola-player)
+
+# The native CI runner consumes this install layout, not the build-tree layout.
+install(
+    TARGETS wiola-player gui_desktop_journey_test gui_metadata_file_journey_test
+    RUNTIME DESTINATION bin COMPONENT wiola_desktop_tests EXCLUDE_FROM_ALL
+)
+install(
+    DIRECTORY "${PROJECT_SOURCE_DIR}/tests/codec/data/"
+    DESTINATION media
+    COMPONENT wiola_desktop_tests
+    EXCLUDE_FROM_ALL
+)

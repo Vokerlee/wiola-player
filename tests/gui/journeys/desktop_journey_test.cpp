@@ -196,13 +196,9 @@ TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLa
 
 TEST(DesktopJourney, PackagedPlayerCliExercisesTheActualEntryPoint)
 {
-    const auto player = QDir{QCoreApplication::applicationDirPath()}.filePath(
-#ifdef _WIN32
-        "../../bin/wiola-player.exe"
-#else
-        "../../bin/wiola-player"
-#endif
-    );
+    const auto configured_player = qEnvironmentVariable("WIOLA_TEST_PLAYER");
+    const auto player =
+        configured_player.isEmpty() ? QString::fromUtf8(WIOLA_TEST_PLAYER_PATH) : configured_player;
     ASSERT_TRUE(QFileInfo::exists(player));
     QByteArray output;
     EXPECT_EQ(run_child({"--help"}, player, &output), 0);

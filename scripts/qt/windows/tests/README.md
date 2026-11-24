@@ -10,7 +10,7 @@ flowchart LR
   Failure[Build or download failure] --> Rejected[No completed SDK]
 ```
 
-Run `python3 -m unittest discover -s tools -t . -p 'test_*.py'`. No real Qt source download or SDK compilation is needed for these rejection paths. The CI Windows job supplies the real compiler/Qt integration qualification.
+Run `python3 -m unittest discover -s scripts -t . -p 'test_*.py'`. No real Qt source download or SDK compilation is needed for these rejection paths. The CI Windows job supplies the real compiler/Qt integration qualification.
 
 The shell/CMake recipe uses a controlled public source-provider process. Archive integrity,
 transfer failure and safe extraction are independently tested by [the source owner](../../source/tests/README.md).

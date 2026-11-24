@@ -18,4 +18,4 @@ Construct `CMakeBuild(snapshot, jobs=..., timeout=...)`. Its directory comes fro
 
 `build(name, log)` builds one configured target, retains stdout/stderr and propagates failure/timeout. Parallelism comes from an explicit value, `CMAKE_BUILD_PARALLEL_LEVEL` or available CPU affinity/count. `executable(name)` requires a unique built executable artifact from the same configuration. It never searches test/output folders or appends an OS suffix. No source mutation, configure step, test execution, SDK choice, Git inspection or GUI assumption occurs implicitly.
 
-The complete reader, builder, [tests](tests/README.md) and public facade live here. Historical inventory IDs remain explicit parts of this one reviewed component, preserving measurement lineage without separate abstraction folders or guides. Architecture, SDK, mutation and coverage callers consume the same public API.
+The complete reader, builder, [tests](tests/README.md) and public facade live here. The Qt SDK recipes and coverage reporter consume the same CMake metadata.

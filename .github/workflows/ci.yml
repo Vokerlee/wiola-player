@@ -178,45 +178,55 @@ jobs:
       - run: cmake --build --preset windows-release --parallel 4 --target wiola-player gui_desktop_journey_test gui_metadata_file_journey_test
         env:
           QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
+      - name: Install the native test package
+        run: cmake --install build-win-release --component wiola_desktop_tests --prefix windows-test-package
       - name: Check static Windows imports
         run: |
-          imports="$(llvm-objdump -p build-win-release/bin/wiola-player.exe)"
+          imports="$(llvm-objdump -p windows-test-package/bin/wiola-player.exe)"
           if grep -Eiq 'Qt6.*\.dll|libgcc.*\.dll|libstdc\+\+.*\.dll|libwinpthread.*\.dll|libav.*\.dll|libswresample.*\.dll' <<< "$imports"; then
             echo "Unexpected non-system runtime import" >&2
             exit 1
           fi
 
-      - name: Package qualified media fixtures
-        run: |
-          mkdir -p build-win-release/tests/codec/data
-          cp tests/codec/data/{tone.mp3,tone.flac,tone-vorbis.ogg,tone.wav} build-win-release/tests/codec/data/
       - uses: actions/upload-artifact@v4
         with:
           name: windows-desktop-journeys
-          path: |
-            build-win-release/bin/wiola-player.exe
-            build-win-release/tests/gui/gui_desktop_journey_test.exe
-            build-win-release/tests/gui/gui_metadata_file_journey_test.exe
-            build-win-release/tests/codec/data
+          path: windows-test-package/
 
   windows-native:
     needs: windows
     runs-on: windows-2022
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: windows-desktop-journeys
           path: native-journey
-      - name: Run the packaged static binary on native Windows
-        run: python -m scripts.testing.desktop --binary native-journey/tests/gui/gui_desktop_journey_test.exe --artifacts native-journey/results/state --minimum-tests 8 --media-dir native-journey/tests/codec/data --revision "${{ github.sha }}"
+      - name: Run the packaged C++ tests
+        timeout-minutes: 5
+        shell: pwsh
         env:
           QT_QPA_PLATFORM: windows
-      - name: Edit qualified files during playback on native Windows
-        run: python -m scripts.testing.desktop --binary native-journey/tests/gui/gui_metadata_file_journey_test.exe --artifacts native-journey/results/metadata --media-dir native-journey/tests/codec/data --filter "QualifiedFormats/*" --minimum-tests 4 --revision "${{ github.sha }}"
-        env:
-          QT_QPA_PLATFORM: windows
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = (Resolve-Path native-journey).Path
+          $env:WIOLA_JOURNEY_MEDIA_DIR = Join-Path $package 'media'
+          $env:WIOLA_TEST_PLAYER = Join-Path $package 'bin/wiola-player.exe'
+          function Run-Contracts($binary, $filter, $name) {
+            $directory = Join-Path $package "results/$name"
+            New-Item -ItemType Directory -Force $directory | Out-Null
+            $env:WIOLA_GUI_FAILURE_ARTIFACTS = $directory
+            $xml = Join-Path $directory 'tests.xml'
+            & (Join-Path $package "bin/$binary.exe") "--gtest_filter=$filter" "--gtest_output=xml:$xml"
+            if ($LASTEXITCODE -ne 0) { throw "$binary failed: $LASTEXITCODE" }
+            [xml]$report = Get-Content -Raw $xml
+            if ($report.SelectNodes('//testcase').Count -eq 0 -or
+                $report.SelectNodes('//skipped | //failure | //error | //testcase[@status="notrun"]').Count -ne 0) {
+              throw "$binary produced empty, skipped or failing test results"
+            }
+          }
+          Run-Contracts 'gui_desktop_journey_test' 'DesktopJourney.*' 'state'
+          Run-Contracts 'gui_metadata_file_journey_test' 'QualifiedFormats/*' 'metadata'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
