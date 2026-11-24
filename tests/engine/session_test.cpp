@@ -52,7 +52,7 @@ using namespace std::chrono_literals;
 using namespace wiola::units::literals;
 using wiola::engine::OpenResult;
 using wiola::pcm::Frames;
-using State = wiola::engine::Playback::State;
+using State = wiola::engine::PlaybackState;
 using wiola::engine::Session;
 namespace units = wiola::units;
 

@@ -198,9 +198,9 @@ units::Frequency PlaybackService::equalizer_band_center(std::size_t index) const
 engine::CommandResult PlaybackService::toggle_playback() noexcept
 {
     switch (state()) {
-    case engine::Playback::State::playing:
+    case engine::PlaybackState::playing:
         return pause();
-    case engine::Playback::State::paused:
+    case engine::PlaybackState::paused:
         return resume();
     default:
         return play();
@@ -273,7 +273,7 @@ engine::OpenResult PlaybackService::open_result() const noexcept
     return session_->open_result();
 }
 
-engine::Playback::State PlaybackService::state() const noexcept
+engine::PlaybackState PlaybackService::state() const noexcept
 {
     return session_->state();
 }

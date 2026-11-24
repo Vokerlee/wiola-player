@@ -1,6 +1,11 @@
 # Canonical portable component names and their currently required closure.
 set(WIOLA_FOUNDATION_COMPONENTS borrowed_reference quantities)
-set(WIOLA_PORTABLE_COMPONENTS ${WIOLA_FOUNDATION_COMPONENTS} media audio)
+set(WIOLA_PORTABLE_COMPONENTS
+    ${WIOLA_FOUNDATION_COMPONENTS}
+    media
+    audio
+    playback
+)
 set(WIOLA_COMPONENTS
     ""
     CACHE STRING
@@ -19,6 +24,9 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
             message(FATAL_ERROR "Unknown portable component: ${component}")
         endif()
     endforeach()
+    if(playback IN_LIST WIOLA_SELECTED_COMPONENTS)
+        list(APPEND WIOLA_SELECTED_COMPONENTS audio)
+    endif()
     if(audio IN_LIST WIOLA_SELECTED_COMPONENTS)
         list(APPEND WIOLA_SELECTED_COMPONENTS borrowed_reference media)
     endif()

@@ -16,3 +16,5 @@ target_link_libraries(
     wiola_model_boundary
     PRIVATE wiola_gui_model wiola_sanitizer wiola_coverage
 )
+
+target_link_libraries(wiola_gui_model PUBLIC wiola::playback_api)

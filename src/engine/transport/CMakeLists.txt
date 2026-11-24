@@ -17,5 +17,9 @@ wiola_add_library(
 )
 target_link_libraries(
     wiola_engine_transport
-    PUBLIC wiola::media wiola::audio_output wiola_playback_buffer
+    PUBLIC
+        wiola::media
+        wiola::audio_output
+        wiola_playback_buffer
+        wiola::playback_api
 )

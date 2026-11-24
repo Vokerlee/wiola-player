@@ -19,7 +19,7 @@
  */
 
 #pragma once
-#include "queue_entry_id.hpp"
+#include <wiola/playback/queue_entry_id.hpp>
 
 #include <wiola/media/metadata.hpp>
 #include <wiola/units.hpp>

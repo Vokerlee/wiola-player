@@ -5,4 +5,4 @@ wiola_add_library(
     SOURCES loader.cpp metadata_coordinator.cpp tag_reader.cpp
     LIBS Threads::Threads
 )
-target_link_libraries(wiola_engine_load PUBLIC wiola::media)
+target_link_libraries(wiola_engine_load PUBLIC wiola::media wiola::playback_api)

@@ -28,7 +28,7 @@
 
 namespace {
 
-using State = wiola::engine::Playback::State;
+using State = wiola::engine::PlaybackState;
 using TerminalReason = wiola::engine::Playback::TerminalReason;
 using wiola::engine::Playback;
 

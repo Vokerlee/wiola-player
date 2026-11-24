@@ -4,3 +4,5 @@ wiola_add_library(
     SOURCES playback_order.cpp playlist.cpp track.cpp
 )
 target_link_libraries(wiola_engine_queue PUBLIC wiola::media)
+
+target_link_libraries(wiola_engine_queue PUBLIC wiola::playback_api)

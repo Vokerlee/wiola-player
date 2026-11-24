@@ -34,7 +34,7 @@ namespace {
 
 using wiola::app::PlayerPresentation;
 using wiola::engine::CommandResult;
-using wiola::engine::Playback;
+using wiola::engine::PlaybackState;
 using Presenter = wiola::app::PlaybackService;
 using Repeat = wiola::engine::Playlist::Repeat;
 
@@ -84,7 +84,7 @@ TEST_F(PlaybackPresentation, ReportsUnavailablePlaybackWithoutMedia)
     EXPECT_FALSE(state.playback.loaded);
     EXPECT_FALSE(state.playback.playing);
     EXPECT_FALSE(state.playback.seekable);
-    EXPECT_EQ(state.playback.state, Playback::State::idle);
+    EXPECT_EQ(state.playback.state, PlaybackState::idle);
     EXPECT_EQ(state.repeat, Repeat::none);
     EXPECT_FALSE(state.shuffled);
 
@@ -93,7 +93,7 @@ TEST_F(PlaybackPresentation, ReportsUnavailablePlaybackWithoutMedia)
     presenter->stop();
     presenter->seek_to(0.5);
 
-    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::idle);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, PlaybackState::idle);
 }
 
 TEST_F(PlaybackPresentation, PumpsALoadIntoOneCoherentPresentation)
@@ -121,18 +121,18 @@ TEST_F(PlaybackPresentation, TogglesBetweenPlayingPausedAndStopped)
     ASSERT_TRUE(wait_for_track(*presenter, "track.wav"));
 
     EXPECT_EQ(presenter->toggle_playback(), CommandResult::accepted);
-    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::playing);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, PlaybackState::playing);
 
     EXPECT_EQ(presenter->toggle_playback(), CommandResult::accepted);
-    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::paused);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, PlaybackState::paused);
 
     EXPECT_EQ(presenter->toggle_playback(), CommandResult::accepted);
-    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, Playback::State::playing);
+    EXPECT_EQ(wiola::app::present_playback(*presenter).playback.state, PlaybackState::playing);
 
     presenter->stop();
 
     const PlayerPresentation stopped{wiola::app::present_playback(*presenter)};
-    EXPECT_EQ(stopped.playback.state, Playback::State::stopped);
+    EXPECT_EQ(stopped.playback.state, PlaybackState::stopped);
     EXPECT_FALSE(stopped.playback.playing);
     EXPECT_EQ(stopped.playback.time_played, wiola::units::Time{});
 }

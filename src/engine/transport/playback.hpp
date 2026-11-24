@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <wiola/playback/state.hpp>
+
 #include <atomic>
 
 namespace wiola::engine {
@@ -42,28 +44,6 @@ namespace wiola::engine {
  */
 class Playback {
 public:
-    /**
-     * What playback is doing.
-     *
-     * This is decided here rather than read back from the device. The device can stop on its
-     * own - an output can be lost, or an audio server can give up on a stream - and that is a
-     * fault to be noticed, not a change of what the listener asked for.
-     *
-     * The last three are final and differ in why. A source that ran out is the cue to play the
-     * next thing; a listener who pressed stop is not; and a device that went away is neither -
-     * it is a fault, and the only one of the three worth telling a listener about.
-     */
-    enum class State {
-        idle,
-        playing,
-        paused,
-        ended,
-        stopped,
-
-        /// The device stopped answering, or would not start again.
-        faulted,
-    };
-
     /// Why playback became terminal, separate from the nonterminal states a command can request.
     enum class TerminalReason {
         ended,
@@ -83,7 +63,7 @@ public:
      * Calls from other states return false where applicable and otherwise change nothing. Loading
      * and queue selection belong to Session, not to this active-transport state.
      */
-    [[nodiscard]] State state() const noexcept;
+    [[nodiscard]] PlaybackState state() const noexcept;
 
     /// Whether a track is playing. Says nothing about whether a device agrees.
     [[nodiscard]] bool playing() const noexcept;
@@ -108,7 +88,7 @@ public:
     void finish(TerminalReason reason) noexcept;
 
 private:
-    std::atomic<State> state_{State::idle};
+    std::atomic<PlaybackState> state_{PlaybackState::idle};
 };
 
 } // namespace wiola::engine

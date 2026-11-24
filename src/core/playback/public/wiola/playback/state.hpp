@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Coherent application-facing playback state independent of GUI event types.
+ * @brief Portable playback state observed independently of an output device.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,29 +20,17 @@
 
 #pragma once
 
-#include <engine/open_result.hpp>
-#include <engine/transport/playback.hpp>
-#include <wiola/units.hpp>
-
-#include <cstddef>
-#include <filesystem>
-#include <optional>
-
 namespace wiola::engine {
 
-struct PlaybackSnapshot {
-    Playback::State state{Playback::State::idle};
-    OpenResult open_result{OpenResult::opened};
-    std::filesystem::path track;
-    std::optional<std::size_t> queue_position;
-    std::size_t structural_revision{0};
-    std::size_t metadata_revision{0};
-    std::size_t selection_revision{0};
-    units::Time time_played{};
-    std::optional<units::Time> total_time;
-    bool loaded{false};
-    bool playing{false};
-    bool seekable{false};
+/// Transport intent and terminal outcome, rather than the state reported by an output device.
+/// Ended advances the queue; stopped preserves listener intent; faulted reports output failure.
+enum class PlaybackState {
+    idle,
+    playing,
+    paused,
+    ended,
+    stopped,
+    faulted,
 };
 
 } // namespace wiola::engine

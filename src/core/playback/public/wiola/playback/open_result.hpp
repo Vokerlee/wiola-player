@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Application-level open status, including asynchronous loading.
+ * @brief Playback open status, including asynchronous loading.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

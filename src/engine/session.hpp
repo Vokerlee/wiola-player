@@ -28,15 +28,15 @@
 #include <engine/load/load_coordinator.hpp>
 #include <engine/load/loader.hpp>
 #include <engine/load/metadata_coordinator.hpp>
-#include <engine/open_result.hpp>
-#include <engine/operations/operation_outcome.hpp>
 #include <engine/pipeline/output_session.hpp>
 #include <engine/pipeline/playback_pipeline.hpp>
-#include <engine/playback_snapshot/playback_snapshot.hpp>
 #include <engine/queue/playlist.hpp>
 #include <engine/transport/playback.hpp>
 #include <engine/transport/transport_config.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/playback/open_result.hpp>
+#include <wiola/playback/operation_outcome.hpp>
+#include <wiola/playback/snapshot.hpp>
 #include <wiola/units.hpp>
 
 #include <deque>
@@ -158,7 +158,7 @@ public:
     /// Moves playback to `position`, measured from the start of the track.
     void seek(units::Time position) noexcept;
 
-    [[nodiscard]] Playback::State state() const noexcept;
+    [[nodiscard]] PlaybackState state() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
     [[nodiscard]] units::Time time_played() const noexcept;
     [[nodiscard]] std::optional<units::Time> total_time() const noexcept;

@@ -23,10 +23,4 @@ wiola_add_library(
         workspace/workspace_scanner.cpp
     LIBS wiola_engine wiola_library wiola_file_replacement
 )
-target_link_libraries(
-    wiola_app
-    PUBLIC
-        wiola::engine_operations
-        wiola::engine_playback_snapshot
-        wiola_engine_session
-)
+target_link_libraries(wiola_app PUBLIC wiola::playback_api wiola_engine_session)

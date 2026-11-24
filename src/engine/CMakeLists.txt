@@ -1,7 +1,5 @@
 add_subdirectory(load)
-add_subdirectory(operations)
 add_subdirectory(pipeline)
-add_subdirectory(playback_snapshot)
 add_subdirectory(queue)
 add_subdirectory(transport)
 
@@ -12,11 +10,7 @@ wiola_add_library(
 )
 target_link_libraries(
     wiola_engine_session
-    PUBLIC
-        wiola::engine_operations
-        wiola::engine_playback_snapshot
-        wiola_audio_dsp
-        wiola_engine_pipeline
+    PUBLIC wiola::playback_api wiola_audio_dsp wiola_engine_pipeline
 )
 
 wiola_add_module(

@@ -27,21 +27,21 @@ namespace wiola::engine {
 namespace {
 
 /// The states nothing but `begin` moves out of.
-bool settled(Playback::State state) noexcept
+bool settled(PlaybackState state) noexcept
 {
-    return state == Playback::State::ended || state == Playback::State::stopped ||
-        state == Playback::State::faulted;
+    return state == PlaybackState::ended || state == PlaybackState::stopped ||
+        state == PlaybackState::faulted;
 }
 
-Playback::State state_for(Playback::TerminalReason reason) noexcept
+PlaybackState state_for(Playback::TerminalReason reason) noexcept
 {
     switch (reason) {
     case Playback::TerminalReason::ended:
-        return Playback::State::ended;
+        return PlaybackState::ended;
     case Playback::TerminalReason::stopped:
-        return Playback::State::stopped;
+        return PlaybackState::stopped;
     case Playback::TerminalReason::faulted:
-        return Playback::State::faulted;
+        return PlaybackState::faulted;
     }
 
     std::unreachable();
@@ -49,14 +49,14 @@ Playback::State state_for(Playback::TerminalReason reason) noexcept
 
 } // namespace
 
-Playback::State Playback::state() const noexcept
+PlaybackState Playback::state() const noexcept
 {
     return state_.load(std::memory_order_acquire);
 }
 
 bool Playback::playing() const noexcept
 {
-    return state() == State::playing;
+    return state() == PlaybackState::playing;
 }
 
 bool Playback::finished() const noexcept
@@ -66,10 +66,10 @@ bool Playback::finished() const noexcept
 
 bool Playback::begin() noexcept
 {
-    State current{state_.load(std::memory_order_relaxed)};
+    PlaybackState current{state_.load(std::memory_order_relaxed)};
 
-    while (current != State::playing && current != State::paused)
-        if (state_.compare_exchange_weak(current, State::playing, std::memory_order_acq_rel,
+    while (current != PlaybackState::playing && current != PlaybackState::paused)
+        if (state_.compare_exchange_weak(current, PlaybackState::playing, std::memory_order_acq_rel,
                 std::memory_order_relaxed))
             return true;
 
@@ -80,24 +80,24 @@ bool Playback::pause() noexcept
 {
     // Claimed rather than stored: a stop or the end of the track may have taken playback out
     // of playing in the meantime, and a final state is not undone.
-    State playing{State::playing};
+    PlaybackState playing{PlaybackState::playing};
 
-    return state_.compare_exchange_strong(playing, State::paused, std::memory_order_acq_rel,
+    return state_.compare_exchange_strong(playing, PlaybackState::paused, std::memory_order_acq_rel,
         std::memory_order_relaxed);
 }
 
 bool Playback::resume() noexcept
 {
-    State paused{State::paused};
+    PlaybackState paused{PlaybackState::paused};
 
-    return state_.compare_exchange_strong(paused, State::playing, std::memory_order_acq_rel,
+    return state_.compare_exchange_strong(paused, PlaybackState::playing, std::memory_order_acq_rel,
         std::memory_order_relaxed);
 }
 
 void Playback::finish(TerminalReason reason) noexcept
 {
-    const State terminal{state_for(reason)};
-    State current{state_.load(std::memory_order_relaxed)};
+    const PlaybackState terminal{state_for(reason)};
+    PlaybackState current{state_.load(std::memory_order_relaxed)};
 
     while (!settled(current) &&
         !state_.compare_exchange_weak(current, terminal, std::memory_order_acq_rel,

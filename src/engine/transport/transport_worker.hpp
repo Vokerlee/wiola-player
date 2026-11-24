@@ -65,7 +65,7 @@ public:
 
     void wait();
 
-    [[nodiscard]] Playback::State state() const noexcept;
+    [[nodiscard]] PlaybackState state() const noexcept;
     [[nodiscard]] bool playing() const noexcept;
     [[nodiscard]] bool finished() const noexcept;
     [[nodiscard]] pcm::Frames position(pcm::Frames frames_played) const noexcept;
