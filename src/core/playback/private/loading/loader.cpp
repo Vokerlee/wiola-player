@@ -21,28 +21,16 @@
 #include "loader.hpp"
 
 #include <new>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::engine {
 
 Loader::Loader(std::shared_ptr<media::MediaProvider> provider)
-    : open_{[provider = std::move(provider)](const std::filesystem::path& path,
-                const media::OperationContext& context) {
-        auto asset{provider->open(path, context)};
-        if (!asset)
-            return media::DecoderOpenResult{media::unexpected{asset.error()}};
-        if (!*asset)
-            return media::DecoderOpenResult{
-                media::unexpected{media::Error{.category = media::ErrorCategory::damaged,
-                    .detail = "media provider returned no asset"}}};
-        return (*asset)->create_decoder(context);
-    }}
+    : provider_{std::move(provider)}
 {
-}
-
-Loader::Loader(DecoderOpener open)
-    : open_{std::move(open)}
-{
+    if (!provider_)
+        throw std::invalid_argument{"loader provider must not be null"};
 }
 
 Loader::~Loader()
@@ -127,7 +115,15 @@ void Loader::work(const std::stop_token& stop)
 
         auto opened{[&]() -> media::DecoderOpenResult {
             try {
-                return open_(request.path, context);
+                auto asset{provider_->open(request.path, context)};
+                if (!asset)
+                    return media::unexpected{asset.error()};
+                if (!*asset)
+                    return media::unexpected{
+                        media::Error{.category = media::ErrorCategory::damaged,
+                                     .detail = "media provider returned no asset"}
+                    };
+                return (*asset)->create_decoder(context);
             } catch (const std::bad_alloc&) {
                 throw;
             } catch (...) {

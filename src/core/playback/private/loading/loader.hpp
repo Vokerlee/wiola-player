@@ -26,27 +26,20 @@
 
 #include <condition_variable>
 #include <cstddef>
-#include <filesystem>
-#include <functional>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <thread>
 
 namespace wiola::engine {
 
-/// Opening receives the active cancellation/deadline context. Implementations honor it before
-/// expensive work and during blocking operations; stale completions are not installed.
-using DecoderOpener = std::function<media::DecoderOpenResult(const std::filesystem::path&,
-    const media::OperationContext&)>;
-
 /// Latest-request-wins decoder opening with request identity retained in every completion.
 /// Start/cancel/take and destruction have one lifecycle caller; the worker owns blocking opens.
 /// Cancellation callbacks and decoder destruction run outside the state mutex.
 class Loader {
 public:
-    /// The provider or opener is selected by the host, never by the worker.
+    /// The host supplies a non-null provider; the worker owns scheduling, not driver selection.
     explicit Loader(std::shared_ptr<media::MediaProvider> provider);
-    explicit Loader(DecoderOpener open);
 
     Loader(const Loader&) = delete;
     Loader& operator=(const Loader&) = delete;
@@ -66,7 +59,7 @@ public:
 private:
     void work(const std::stop_token& stop);
 
-    DecoderOpener open_;
+    std::shared_ptr<media::MediaProvider> provider_;
     std::stop_source active_stop_{std::nostopstate};
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
