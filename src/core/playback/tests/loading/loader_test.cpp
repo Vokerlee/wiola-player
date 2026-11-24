@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/load/loader.hpp>
+#include <loading/loader.hpp>
 
 #include <fakes/decoder.hpp>
 
@@ -30,11 +30,14 @@
 #include <exception>
 #include <new>
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <stop_token>
 #include <thread>
@@ -73,6 +76,30 @@ std::optional<LoadCompletion> wait_for(Loader& loader)
 
     return loader.take();
 }
+
+class ObservedDecoder final : public wiola::media::AudioDecoder {
+public:
+    explicit ObservedDecoder(std::function<void()> destroyed)
+        : AudioDecoder{{}, Frames{1}}
+        , destroyed_{std::move(destroyed)}
+    {
+    }
+
+    ~ObservedDecoder() override { destroyed_(); }
+
+private:
+    wiola::media::Result<wiola::media::DecodeOutcome> decode(std::span<float>, Frames) override
+    {
+        return wiola::media::DecodeOutcome{.frames = {}, .end_of_stream = true};
+    }
+
+    wiola::media::Result<wiola::media::SeekOutcome> seek_frame(Frames target) override
+    {
+        return wiola::media::SeekOutcome{.target = target, .achieved = target};
+    }
+
+    std::function<void()> destroyed_;
+};
 
 } // namespace
 
@@ -284,12 +311,143 @@ TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
     EXPECT_TRUE(recovered->opened.has_value());
 }
 
+TEST(Loader, CancellationCallbacksCanObserveLoaderStateWithoutDeadlocking)
+{
+    Gate opening;
+    std::atomic<bool> observed{false};
+    Loader* current{};
+    Loader loader{
+        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
+            if (path == "old.wav") {
+                std::stop_callback callback{context.stop, [&] { observed = current->busy(); }};
+                opening.wait();
+            }
+            return success();
+        }};
+    current = &loader;
+    loader.start(request("old.wav"));
+    opening.wait_until_entered();
+    loader.start(request("new.wav", 2));
+    EXPECT_TRUE(observed);
+    opening.release();
+    const auto completed{wait_for(loader)};
+    ASSERT_TRUE(completed);
+    EXPECT_EQ(completed->request.generation, 2U);
+}
+
+TEST(Loader, ReplacedCompletionDestroysItsDecoderOutsideTheStateMutex)
+{
+    std::atomic<bool> destroyed{false};
+    Loader* current{};
+    Loader loader{[&](const std::filesystem::path& path,
+                      const wiola::media::OperationContext&) -> DecoderOpenResult {
+        if (path == "old.wav")
+            return DecoderOpenResult{std::make_unique<ObservedDecoder>([&] {
+                static_cast<void>(current->busy());
+                destroyed = true;
+            })};
+        return success();
+    }};
+    current = &loader;
+    loader.start(request("old.wav"));
+    while (loader.busy())
+        std::this_thread::yield();
+    loader.start(request("new.wav", 2));
+    EXPECT_TRUE(destroyed);
+    ASSERT_TRUE(wait_for(loader));
+}
+
+TEST(Loader, CancelRetiresAnUnclaimedDecoderOutsideTheStateMutex)
+{
+    std::atomic<bool> destroyed{false};
+    Loader* current{};
+    Loader loader{[&](const std::filesystem::path&,
+                      const wiola::media::OperationContext&) -> DecoderOpenResult {
+        return DecoderOpenResult{std::make_unique<ObservedDecoder>([&] {
+            static_cast<void>(current->busy());
+            destroyed = true;
+        })};
+    }};
+    current = &loader;
+    loader.start(request("old.wav"));
+    while (loader.busy())
+        std::this_thread::yield();
+    loader.cancel();
+    EXPECT_TRUE(destroyed);
+    EXPECT_FALSE(loader.busy());
+    EXPECT_FALSE(loader.take());
+}
+
+TEST(Loader, CancelDropsQueuedAndLateCompletionsAndAllowsReopening)
+{
+    Gate opening;
+    std::atomic<int> calls{0};
+    Loader loader{[&](const std::filesystem::path& path, const wiola::media::OperationContext&) {
+        ++calls;
+        if (path == "old.wav")
+            opening.wait();
+        return success();
+    }};
+    loader.start(request("old.wav"));
+    opening.wait_until_entered();
+    loader.start(request("queued.wav", 2));
+    loader.cancel();
+    opening.release();
+    EXPECT_FALSE(wait_for(loader));
+    EXPECT_EQ(calls, 1);
+    loader.start(request("current.wav", 3));
+    const auto completed{wait_for(loader)};
+    ASSERT_TRUE(completed);
+    EXPECT_EQ(completed->request.generation, 3U);
+    EXPECT_EQ(calls, 2);
+}
+
+TEST(Loader, CancelCooperativelyStopsTheActiveOpener)
+{
+    Gate opening;
+    std::atomic<bool> cancelled{false};
+    Loader loader{[&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+        std::stop_callback callback{context.stop, [&] {
+                                        cancelled = true;
+                                        opening.release();
+                                    }};
+        opening.wait();
+        return success();
+    }};
+    loader.start(request("old.wav"));
+    opening.wait_until_entered();
+    loader.cancel();
+    EXPECT_FALSE(wait_for(loader));
+    EXPECT_TRUE(cancelled);
+}
+
+TEST(Loader, CompletedDecoderContextSurvivesLoaderDestruction)
+{
+    std::stop_token completed_stop;
+    std::optional<LoadCompletion> installed;
+    {
+        Loader loader{
+            [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+                completed_stop = context.stop;
+                return success();
+            }};
+        loader.start(request("installed.wav"));
+        installed = wait_for(loader);
+        ASSERT_TRUE(installed);
+    }
+    EXPECT_FALSE(completed_stop.stop_requested());
+    ASSERT_TRUE(installed->opened);
+    std::array<float, 2> samples{};
+    EXPECT_TRUE((*installed->opened)->read(samples));
+}
+
 #if GTEST_HAS_DEATH_TEST
 TEST(Loader, AllocationFailureRemainsFatalRatherThanAnUnreadableFile)
 {
     EXPECT_EXIT(
         {
-            std::set_terminate([] { std::exit(EXIT_FAILURE); });
+            // A fatal allocation path must not invoke arbitrary atexit handlers.
+            std::set_terminate([] { std::_Exit(EXIT_FAILURE); });
             Loader loader{[](
                               const std::filesystem::path&, const wiola::media::OperationContext&
                           ) -> wiola::media::DecoderOpenResult { throw std::bad_alloc{}; }};

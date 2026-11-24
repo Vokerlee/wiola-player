@@ -1,5 +1,6 @@
 add_subdirectory(buffering)
 add_subdirectory(transport)
+add_subdirectory(loading)
 
 add_executable(playback_contract_test contract_test.cpp)
 target_link_libraries(

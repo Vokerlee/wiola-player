@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include <core/macros.hpp>
-#include <engine/load/load_request.hpp>
+#include <loading/load_request.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/provider.hpp>
 
@@ -41,20 +40,26 @@ using DecoderOpener = std::function<media::DecoderOpenResult(const std::filesyst
     const media::OperationContext&)>;
 
 /// Latest-request-wins decoder opening with request identity retained in every completion.
+/// Start/cancel/take and destruction have one lifecycle caller; the worker owns blocking opens.
+/// Cancellation callbacks and decoder destruction run outside the state mutex.
 class Loader {
 public:
     /// The provider or opener is selected by the host, never by the worker.
     explicit Loader(std::shared_ptr<media::MediaProvider> provider);
     explicit Loader(DecoderOpener open);
 
-    NO_COPY_SEMANTIC(Loader);
-    NO_MOVE_SEMANTIC(Loader);
+    Loader(const Loader&) = delete;
+    Loader& operator=(const Loader&) = delete;
+    Loader(Loader&&) = delete;
+    Loader& operator=(Loader&&) = delete;
 
     ~Loader();
 
     /// Replaces any queued request and cooperatively cancels only an active open. A completed
     /// decoder keeps its operation context alive after a later request starts.
     void start(LoadRequest request);
+    /// Cancels active I/O and discards queued/unclaimed completions; installed decoders survive.
+    void cancel() noexcept;
     [[nodiscard]] bool busy() const noexcept;
     [[nodiscard]] std::optional<LoadCompletion> take();
 
@@ -62,7 +67,7 @@ private:
     void work(const std::stop_token& stop);
 
     DecoderOpener open_;
-    std::stop_source active_stop_;
+    std::stop_source active_stop_{std::nostopstate};
     mutable std::mutex mutex_;
     std::condition_variable_any waiting_;
     std::optional<LoadRequest> asked_;

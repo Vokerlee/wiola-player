@@ -42,8 +42,8 @@ Loader::Loader(DecoderOpener open)
 
 Loader::~Loader()
 {
+    cancel();
     if (thread_.joinable()) {
-        active_stop_.request_stop();
         thread_.request_stop();
         waiting_.notify_all();
         thread_.join();
@@ -52,22 +52,39 @@ Loader::~Loader()
 
 void Loader::start(LoadRequest request)
 {
-    {
-        const std::lock_guard asked{mutex_};
-
-        if (opening_)
-            active_stop_.request_stop();
-
-        active_stop_ = std::stop_source{};
-        asked_ = std::move(request);
-        done_.reset();
-        ++num_asked_;
-    }
-
+    // Launch before publishing state: a failed launch cannot leave a permanently busy request.
     if (!thread_.joinable())
         thread_ = std::jthread{[this](const std::stop_token& stop) { work(stop); }};
 
+    std::stop_source obsolete{std::nostopstate};
+    std::optional<LoadCompletion> retired;
+    {
+        const std::lock_guard asked{mutex_};
+        if (opening_)
+            obsolete = active_stop_;
+        asked_ = std::move(request);
+        retired = std::exchange(done_, std::nullopt);
+        ++num_asked_;
+    }
+
+    // request_stop invokes arbitrary collaborator callbacks synchronously.
+    obsolete.request_stop();
     waiting_.notify_one();
+}
+
+void Loader::cancel() noexcept
+{
+    std::stop_source obsolete{std::nostopstate};
+    std::optional<LoadCompletion> retired;
+    {
+        const std::lock_guard asked{mutex_};
+        if (opening_)
+            obsolete = active_stop_;
+        asked_.reset();
+        retired = std::exchange(done_, std::nullopt);
+        ++num_asked_;
+    }
+    obsolete.request_stop();
 }
 
 bool Loader::busy() const noexcept
@@ -97,6 +114,7 @@ void Loader::work(const std::stop_token& stop)
                 return;
 
             request = *std::exchange(asked_, std::nullopt);
+            active_stop_ = std::stop_source{};
             context.stop = active_stop_.get_token();
             asked_when = num_asked_;
             opening_ = true;

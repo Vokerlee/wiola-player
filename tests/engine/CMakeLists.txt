@@ -8,19 +8,14 @@ wiola_add_test(
     LIBS wiola::media
 )
 wiola_add_test(
-    engine_loader_test
-    SOURCES loader_test.cpp
-    LIBS wiola_engine_load
-)
-wiola_add_test(
     engine_tag_reader_test
     SOURCES tag_reader_test.cpp
-    LIBS wiola_engine_load
+    LIBS wiola_engine_metadata
 )
 wiola_add_test(
     engine_metadata_coordinator_test
     SOURCES metadata_coordinator_test.cpp
-    LIBS wiola_engine_load wiola_engine_queue
+    LIBS wiola_engine_metadata wiola_engine_queue
 )
 wiola_add_test(
     engine_session_test

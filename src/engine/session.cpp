@@ -20,8 +20,8 @@
 
 #include <engine/session.hpp>
 
-#include <engine/load/loader.hpp>
 #include <engine/load/tag_reader.hpp>
+#include <loading/loader.hpp>
 #include <transport/player.hpp>
 
 #include <buffering/buffer_source.hpp>
@@ -85,8 +85,13 @@ OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 
     metadata_.replace(playlist_.tracks());
 
-    if (playlist_.empty())
+    if (playlist_.empty()) {
+        loads_.invalidate();
+        loader_->cancel();
+        ready_.reset();
+        ready_track_.clear();
         return last_result_;
+    }
 
     return begin_reading(*playlist_.current(), LoadIntent::install);
 }
@@ -136,8 +141,8 @@ void Session::add(std::vector<std::filesystem::path> tracks)
 
 bool Session::remove(std::size_t index)
 {
-    if (index < playlist_.tracks().size())
-        loads_.invalidate_if(playlist_.tracks()[index].id());
+    if (index < playlist_.tracks().size() && loads_.invalidate_if(playlist_.tracks()[index].id()))
+        loader_->cancel();
 
     if (index < playlist_.tracks().size() && replacement_ &&
         playlist_.tracks()[index].id() == replacement_->entry) {
@@ -447,6 +452,7 @@ void Session::stop() noexcept
         replacement_->position = units::Time{};
     }
     loads_.invalidate();
+    loader_->cancel();
     ready_.reset();
     ready_track_.clear();
 
@@ -470,6 +476,7 @@ Session::release_media(const std::filesystem::path& path)
     const MediaReplacementState state{current->id(), playing(), time_played(),
         ++replacement_generation_};
     loads_.invalidate();
+    loader_->cancel();
     ready_.reset();
     ready_track_.clear();
     if (loaded()) {
