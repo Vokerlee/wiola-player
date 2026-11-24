@@ -41,16 +41,14 @@ class ComponentContextTest(unittest.TestCase):
         for selected in (
             "borrowed_reference",
             "quantities",
-            "audio_decoder",
-            "quantities;audio_decoder",
+            "media",
+            "quantities;media",
         ):
             with self.subTest(selected=selected):
                 directory = self.configure(selected)
                 inventory = CMakeInventory.read(directory)
                 expected = (
-                    {"wiola_media_audio_decoder"}
-                    if "audio_decoder" in selected
-                    else set()
+                    {"wiola_media_audio_decoder"} if "media" in selected else set()
                 )
                 actual = {target.name for target in inventory.targets}
                 self.assertEqual(actual, expected)

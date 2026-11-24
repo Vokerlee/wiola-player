@@ -33,11 +33,11 @@ so configure from the repository root as above.
 Configure only an existing foundation/media component when working without player SDKs:
 
 ```bash
-cmake -S . -B build-components -DWIOLA_COMPONENTS=audio_decoder -DBUILD_TESTING=OFF
+cmake -S . -B build-components -DWIOLA_COMPONENTS=media -DBUILD_TESTING=OFF
 cmake --build build-components
 ```
 
-Supported selections are borrowed_reference, quantities and audio_decoder; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, only quantities/decoder need the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [Build context](scripts/build/context/README.md) describes scope; the decoder public install boundary is still being extracted.
+Supported selections are borrowed_reference, quantities and media; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, only quantities/decoder need the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [Build context](scripts/build/context/README.md) describes scope; the decoder public install boundary is still being extracted.
 
 ### Windows
 

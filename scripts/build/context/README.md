@@ -10,7 +10,7 @@ flowchart LR
   Context --> Tests[Only selected test dependencies]
 ```
 
-Empty WIOLA_COMPONENTS preserves the existing full desktop/headless compositions. Select borrowed_reference, quantities, audio_decoder or a semicolon-separated combination. The decoder currently needs both foundation APIs through its legacy core link; this closure remains explicit until the public media package removes that umbrella. GUI preparation is inactive for a component selection without modifying the user's cached full-build GUI preference.
+Empty WIOLA_COMPONENTS preserves the existing full desktop/headless compositions. Select borrowed_reference, quantities, media or a semicolon-separated combination. The decoder currently needs both foundation APIs through its legacy core link; this closure remains explicit until the public media package removes that umbrella. GUI preparation is inactive for a component selection without modifying the user's cached full-build GUI preference.
 
 Component configurations prepare no Qt, FFmpeg or miniaudio. Tests off require no fetched packages. Borrowed tests use only standard C++; quantities/decoder tests fetch the existing single pinned GoogleTest declaration when requested. Global player test-catalog and workflow-coverage orchestration remain full-build tools; focused component CTest and raw instrumentation work independently. General component coverage qualification is separate work.
 
