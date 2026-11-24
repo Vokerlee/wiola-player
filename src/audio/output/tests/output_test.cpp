@@ -18,14 +18,15 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/device/output.hpp>
-#include <audio/device/output_connection.hpp>
-#include <audio/dsp/source.hpp>
+#include <audio/output/output.hpp>
+#include <audio/output/output_connection.hpp>
+#include <audio/output/source.hpp>
 
 #include <fakes/output.hpp>
 
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <semaphore>
 #include <thread>
 #include <utility>
@@ -150,6 +151,47 @@ TEST(OutputControl, LeavesNothingBehindWhenItIsMoveAssigned)
     EXPECT_TRUE(target.start());
     EXPECT_EQ(output.num_starts(), 1);
     EXPECT_EQ(other.num_starts(), 0);
+}
+
+TEST(OutputControl, SelfMovePreservesTheExclusiveClaim)
+{
+    FakeOutput output;
+    Output::Control control{output.control()};
+    auto& same{control};
+
+    control = std::move(same);
+
+    EXPECT_TRUE(control.start());
+    EXPECT_FALSE(output.control().start());
+    EXPECT_EQ(output.num_starts(), 1);
+}
+
+TEST(Source, DestructionThroughThePortReleasesDerivedResources)
+{
+    class OwnedSource final : public wiola::audio::Source {
+    public:
+        explicit OwnedSource(bool& destroyed)
+            : destroyed_{destroyed}
+        {
+        }
+
+        ~OwnedSource() override { destroyed_ = true; }
+
+        std::size_t render(std::span<float>) noexcept override { return 0; }
+
+        wiola::pcm::StreamSpec spec() const noexcept override { return {}; }
+
+    private:
+        bool& destroyed_;
+    };
+
+    bool destroyed{false};
+    std::unique_ptr<wiola::audio::Source> source{std::make_unique<OwnedSource>(destroyed)};
+    EXPECT_FALSE(destroyed);
+
+    source.reset();
+
+    EXPECT_TRUE(destroyed);
 }
 
 /// A device outlives the tracks played through it, so what drove it for one track gives it back

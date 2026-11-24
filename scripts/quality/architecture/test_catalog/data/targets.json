@@ -294,7 +294,7 @@
     "owner": "test.audio.output_test",
     "role": "domain",
     "sources": [
-      "tests/audio/output_test.cpp"
+      "src/audio/output/tests/output_test.cpp"
     ],
     "qt": "none",
     "coupling": ""

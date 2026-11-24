@@ -21,7 +21,7 @@
 #pragma once
 
 #include "transport_worker.hpp"
-#include <audio/device/output.hpp>
+#include <audio/output/output.hpp>
 #include <core/macros.hpp>
 #include <engine/transport/playback.hpp>
 #include <pcm/pcm_queue.hpp>

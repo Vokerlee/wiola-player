@@ -47,7 +47,9 @@
       "id": "test.audio.output_test",
       "purpose": "Verifies the current output contract.",
       "files": [
-        "tests/audio/output_test.cpp"
+        "src/audio/output/tests/output_test.cpp",
+        "src/audio/output/tests/CMakeLists.txt",
+        "src/audio/output/tests/README.md"
       ]
     },
     {

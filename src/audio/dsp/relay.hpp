@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <audio/dsp/source.hpp>
+#include <audio/output/source.hpp>
 #include <core/macros.hpp>
 #include <wiola/media/stream_spec.hpp>
 

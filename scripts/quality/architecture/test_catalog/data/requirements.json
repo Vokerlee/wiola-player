@@ -139,6 +139,16 @@
       "identity": "decoder.consistent-seek-outcome",
       "target": "media_audio_decoder_contract_test",
       "name": "AudioDecoder.RejectsInconsistentBackendSeekOutcomesWithoutChangingState"
+    },
+    {
+      "identity": "output.exclusive-control-self-move",
+      "target": "audio_output_test",
+      "name": "OutputControl.SelfMovePreservesTheExclusiveClaim"
+    },
+    {
+      "identity": "output.source-polymorphic-destruction",
+      "target": "audio_output_test",
+      "name": "Source.DestructionThroughThePortReleasesDerivedResources"
     }
   ],
   "auxiliary": {

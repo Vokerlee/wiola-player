@@ -1,4 +1,4 @@
-# Shaping needs no audio stack, and links nothing.
+# Shaping consumes the source protocol without linking a device backend.
 wiola_add_library(
     wiola_audio_dsp
     SOURCES
@@ -13,3 +13,4 @@ wiola_add_library(
         shaped_source.cpp
         volume.cpp
 )
+target_link_libraries(wiola_audio_dsp PUBLIC wiola_audio_output)
