@@ -24,6 +24,7 @@
 
 #include <array>
 #include <functional>
+#include <limits>
 #include <span>
 #include <utility>
 
@@ -152,6 +153,75 @@ private:
     Decode decode_;
     Seek seek_;
 };
+
+TEST(AudioDecoder, RejectsInvalidStreamSpecificationsBeforeBackendCalls)
+{
+    using wiola::pcm::StreamSpec;
+    using wiola::units::Frequency;
+    const std::array invalid_specs{
+        StreamSpec{.sample_rate = Frequency{}},
+        StreamSpec{.sample_rate = Frequency{-1}},
+        StreamSpec{.sample_rate = Frequency{std::numeric_limits<double>::infinity()}},
+        StreamSpec{.sample_rate = Frequency{std::numeric_limits<double>::quiet_NaN()}},
+        StreamSpec{.num_channels = 0},
+    };
+    for (const auto& spec : invalid_specs) {
+        auto info{exact_stream(wiola::pcm::Frames{4})};
+        info.spec = spec;
+        int calls{0};
+        CallbackDecoder decoder{info,
+            [&calls](wiola::pcm::Frames wanted) {
+                ++calls;
+                return wiola::media::DecodeOutcome{.frames = wanted};
+            },
+            [&calls](wiola::pcm::Frames target) {
+                ++calls;
+                return wiola::media::SeekOutcome{.target = target, .achieved = target};
+            }};
+        std::array<float, 4> output{1, 2, 3, 4};
+        const auto before{output};
+        const auto read{decoder.read(output)};
+        ASSERT_FALSE(read);
+        EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
+        EXPECT_FALSE(read.error().detail.empty());
+        const auto rendered{decoder.render(std::span<float>{})};
+        ASSERT_FALSE(rendered);
+        EXPECT_EQ(rendered.error().category, wiola::media::ErrorCategory::damaged);
+        const auto seek{decoder.seek(wiola::pcm::Frames{})};
+        ASSERT_FALSE(seek);
+        EXPECT_EQ(seek.error().category, wiola::media::ErrorCategory::damaged);
+        EXPECT_EQ(output, before);
+        EXPECT_EQ(calls, 0);
+        EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{});
+        EXPECT_FALSE(decoder.exhausted());
+    }
+}
+
+TEST(AudioDecoder, RejectsAnExactLengthWithoutAValue)
+{
+    auto info{exact_stream(wiola::pcm::Frames{4})};
+    info.length.reset();
+    int calls{0};
+    CallbackDecoder decoder{info,
+        [&calls](wiola::pcm::Frames wanted) {
+            ++calls;
+            return wiola::media::DecodeOutcome{.frames = wanted};
+        },
+        [&calls](wiola::pcm::Frames target) {
+            ++calls;
+            return wiola::media::SeekOutcome{.target = target, .achieved = target};
+        }};
+    std::array<float, 4> output{};
+    const auto read{decoder.read(output)};
+    ASSERT_FALSE(read);
+    EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
+    const auto seek{decoder.seek(wiola::pcm::Frames{})};
+    ASSERT_FALSE(seek);
+    EXPECT_EQ(seek.error().category, wiola::media::ErrorCategory::damaged);
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{});
+    EXPECT_FALSE(decoder.exhausted());
+}
 
 TEST(AudioDecoder, RejectsAnOutputSpanThatEndsInsideAFrame)
 {
