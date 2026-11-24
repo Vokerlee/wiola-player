@@ -20,14 +20,6 @@
 
 #pragma once
 
-#include <core/macros.hpp>
-#include <engine/pipeline/output_session.hpp>
-#include <engine/pipeline/playback_pipeline.hpp>
-#include <loading/load_coordinator.hpp>
-#include <loading/loader.hpp>
-#include <metadata/metadata_coordinator.hpp>
-#include <queue/playlist.hpp>
-#include <wiola/media/audio_decoder.hpp>
 #include <wiola/playback/buffering_config.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
@@ -38,11 +30,19 @@
 #include <wiola/playback/transport_config.hpp>
 #include <wiola/units.hpp>
 
-#include <deque>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
-#include <span>
+#include <optional>
+#include <string>
 #include <vector>
+
+namespace wiola::media {
+
+class MediaProvider;
+
+} // namespace wiola::media
 
 namespace wiola::audio {
 
@@ -72,8 +72,10 @@ public:
         std::shared_ptr<media::MediaProvider> provider, TransportConfig transport = {},
         BufferingConfig buffering = {});
 
-    NO_COPY_SEMANTIC(Session);
-    NO_MOVE_SEMANTIC(Session);
+    Session(const Session&) = delete;
+    Session& operator=(const Session&) = delete;
+    Session(Session&&) = delete;
+    Session& operator=(Session&&) = delete;
 
     ~Session();
 
@@ -168,51 +170,8 @@ public:
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
 
 private:
-    /// Starts an identified load with the requested transport intent.
-    OpenResult begin_reading(const QueueEntry& track, LoadIntent intent);
-    void record_outcome(OperationKind operation, OperationId id,
-        std::optional<OperationError> error = std::nullopt);
-
-    /// Puts on whatever has finished being read, and plays it if that is what it was read for.
-    void take_up_finished_read();
-
-    /// Puts what has been read about queued tracks into the queue.
-    void take_up_finished_tags();
-
-    /// Reads whatever the list now stands at, playing it if something was playing.
-    OpenResult read_current_track(bool playing);
-
-    /// Prepares a complete candidate before retiring current playback. Failure preserves the
-    /// active pipeline; installation and its owned path are committed without allocation.
-    bool install_track(std::unique_ptr<media::AudioDecoder> source, std::filesystem::path path,
-        OperationId request);
-
-    /// Takes up the next track when one has run out. A listener who pressed stop, or a device
-    /// that went away, is not a cue to play anything.
-    void advance_if_ended();
-
-    /// Host-owned processing policy; the complete stage outlives this session and its outputs.
-    audio::Stage& processing_;
-    std::shared_ptr<media::MediaProvider> provider_;
-    std::unique_ptr<Loader> loader_;
-    MetadataCoordinator metadata_;
-    Playlist playlist_;
-
-    LoadCoordinator loads_;
-    OperationId open_request_id_{0};
-    std::deque<OperationOutcome> outcomes_;
-    bool outcomes_overflowed_{false};
-    std::filesystem::path track_;
-
-    std::optional<units::Time> restore_position_;
-    std::optional<MediaReplacementState> replacement_;
-    std::uint64_t replacement_generation_{};
-    OpenResult last_result_{OpenResult::opened};
-    /// The cache retains reusable streams; each pipeline pins its own output independently.
-    OutputSession out_;
-    TransportConfig transport_;
-    BufferingConfig buffering_;
-    std::unique_ptr<PlaybackPipeline> pipeline_;
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace wiola::engine

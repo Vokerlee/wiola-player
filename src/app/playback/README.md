@@ -25,3 +25,5 @@ Queue observations use the public live QueueView port and repeat controls use Re
 The service receives the same MediaProvider port used by production drivers and controlled tests. It has no separate decoder/metadata callback constructor. The kernel retains its own validated transport/buffering policies; worker implementation types do not become application construction requirements.
 
 Toggle behavior is application policy over the kernel's explicit play/pause/resume commands. Replacement callers retain the release/restore handoff, so no parallel kernel toggle or reload command needs to be maintained.
+
+Session's public header hides worker, queue and pipeline storage. Application callers see public values/ports and the facade; its concrete processing composition still belongs to this application implementation. Private kernel helpers can change without entering the application/frontend header graph.
