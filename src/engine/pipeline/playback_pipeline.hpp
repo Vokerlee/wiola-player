@@ -22,10 +22,9 @@
 
 #include <buffering/buffer_source.hpp>
 #include <buffering/pcm_queue.hpp>
-#include <core/macros.hpp>
+#include <engine/pipeline/output_session.hpp>
 #include <transport/player.hpp>
 #include <transport/transport_config.hpp>
-#include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 
@@ -36,21 +35,26 @@ namespace wiola::engine {
 /// Owns one decoder-to-output pipeline. Destruction joins transport before releasing its source.
 class PlaybackPipeline {
 public:
-    PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source, audio::Output& output,
-        pcm::Frames buffer_frames, TransportConfig transport = {});
+    PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
+        std::unique_ptr<OutputSession::Lease> output, pcm::Frames buffer_frames,
+        TransportConfig transport = {});
 
     PlaybackPipeline(const PlaybackPipeline&) = delete;
     PlaybackPipeline& operator=(const PlaybackPipeline&) = delete;
     PlaybackPipeline(PlaybackPipeline&&) = delete;
     PlaybackPipeline& operator=(PlaybackPipeline&&) = delete;
 
-    [[nodiscard]] audio::BufferSource& decoded() noexcept { return decoded_; }
+    /// After prior playback quiesces, connect this candidate and retain its output for reuse.
+    void activate(OutputSession& output) noexcept;
 
     [[nodiscard]] Player& player() noexcept { return player_; }
 
 private:
     pcm::PcmQueue buffer_;
     audio::BufferSource decoded_;
+    // Reverse destruction joins transport, detaches this source and releases its output pin,
+    // then destroys the source and queue. The cache may have gone away or changed format.
+    std::unique_ptr<OutputSession::Lease> output_;
     Player player_;
 };
 

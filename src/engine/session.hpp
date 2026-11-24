@@ -221,7 +221,7 @@ private:
     std::optional<MediaReplacementState> replacement_;
     std::uint64_t replacement_generation_{};
     OpenResult last_result_{OpenResult::opened};
-    /// The output outlives its pipeline so transport is joined before the output is disconnected.
+    /// The cache retains reusable streams; each pipeline pins its own output independently.
     OutputSession out_;
     TransportConfig transport_;
     BufferingConfig buffering_;

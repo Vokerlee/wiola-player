@@ -357,18 +357,15 @@ bool Session::install_read_track()
         return false;
     }
 
-    // Disconnect first. Resetting the pipeline then stops its player and waits for its output
-    // connection to quiesce before the old buffer source or decoder can be destroyed.
-    out_.disconnect();
+    // The bundle joins transport before its lease detaches the borrowed source.
     pipeline_.reset();
 
     chain_.configure(spec);
-    out_.open(spec);
-
-    auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), out_.output(),
+    auto output{out_.prepare(spec)};
+    auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
         *buffer_frames, transport_)};
+    pipeline->activate(out_);
     pipeline_ = std::move(pipeline);
-    out_.connect(pipeline_->decoded());
 
     track_ = ready_track_;
     ready_track_.clear();
@@ -478,11 +475,6 @@ Session::release_media(const std::filesystem::path& path)
     loader_->cancel();
     ready_.reset();
     ready_track_.clear();
-    if (loaded()) {
-        pipeline_->player().stop();
-        pipeline_->player().wait();
-    }
-    out_.disconnect();
     pipeline_.reset();
     replacement_ = state;
     return state;
