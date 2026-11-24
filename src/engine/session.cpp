@@ -18,50 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "session_impl.hpp"
 #include <engine/session.hpp>
 
-#include <wiola/audio/stage.hpp>
-
-#include <loading/loader.hpp>
-#include <transport/player.hpp>
-
-#include <buffering/pcm_queue.hpp>
-#include <wiola/media/audio_decoder.hpp>
-#include <wiola/media/stream_spec.hpp>
-
 #include <memory>
-#include <optional>
-#include <random>
-#include <stdexcept>
 #include <utility>
-#include <vector>
 
 namespace wiola::engine {
-
-namespace {
-
-std::shared_ptr<media::MediaProvider> validated(std::shared_ptr<media::MediaProvider> provider,
-    const TransportConfig& transport, const BufferingConfig& buffering)
-{
-    if (!provider)
-        throw std::invalid_argument{"playback requires a media provider"};
-    if (!transport.valid() || !buffering.valid())
-        throw std::invalid_argument{"invalid playback configuration"};
-    return provider;
-}
-
-} // namespace
 
 Session::Session(audio::Stage& processing, OutputFactory make_output,
     std::shared_ptr<media::MediaProvider> provider, TransportConfig transport,
     BufferingConfig buffering)
-    : processing_{processing}
-    , provider_{validated(std::move(provider), transport, buffering)}
-    , loader_{std::make_unique<Loader>(provider_)}
-    , metadata_{provider_}
-    , out_{processing_, std::move(make_output)}
-    , transport_{transport}
-    , buffering_{buffering}
+    : impl_{std::make_unique<Impl>(processing, std::move(make_output), std::move(provider),
+          transport, buffering)}
 {
 }
 
@@ -69,461 +38,168 @@ Session::~Session() = default;
 
 OpenResult Session::open(std::vector<std::filesystem::path> tracks)
 {
-    open_request_id_ = 0;
-
-    playlist_.set(std::move(tracks));
-
-    metadata_.replace(playlist_.tracks());
-
-    if (playlist_.empty()) {
-        loads_.invalidate();
-        loader_->cancel();
-        return last_result_;
-    }
-
-    return begin_reading(*playlist_.current(), LoadIntent::install);
+    return impl_->open(std::move(tracks));
 }
 
 bool Session::next_track()
 {
-    const bool was_playing{playing()};
-
-    if (!playlist_.next())
-        return false;
-
-    static_cast<void>(read_current_track(was_playing));
-
-    return true;
+    return impl_->next_track();
 }
 
 bool Session::previous_track()
 {
-    const bool was_playing{playing()};
-
-    if (!playlist_.previous())
-        return false;
-
-    static_cast<void>(read_current_track(was_playing));
-
-    return true;
+    return impl_->previous_track();
 }
 
 void Session::add(std::vector<std::filesystem::path> tracks)
 {
-    const bool was_empty{playlist_.empty()};
-    const std::size_t first_new{playlist_.tracks().size()};
-    playlist_.add(std::move(tracks));
-
-    metadata_.append(playlist_.tracks().subspan(first_new));
-
-    // Adding to an empty queue is the first thing a listener does, and they mean to play it.
-    if (was_empty && !playlist_.empty() && !loaded())
-        static_cast<void>(begin_reading(*playlist_.current(), LoadIntent::install));
+    impl_->add(std::move(tracks));
 }
 
 bool Session::remove(std::size_t index)
 {
-    if (index < playlist_.tracks().size() && loads_.invalidate_if(playlist_.tracks()[index].id()))
-        loader_->cancel();
-
-    if (index < playlist_.tracks().size() && replacement_ &&
-        playlist_.tracks()[index].id() == replacement_->entry) {
-        replacement_.reset();
-        restore_position_.reset();
-    }
-    return playlist_.remove(index);
+    return impl_->remove(index);
 }
 
 void Session::clear()
 {
-    metadata_.cancel();
-    playlist_.clear();
-    replacement_.reset();
-    stop();
+    impl_->clear();
 }
 
 const QueueView& Session::playlist() const noexcept
 {
-    return playlist_;
+    return impl_->playlist();
 }
 
 bool Session::play_track(std::size_t index)
 {
-    const bool was_playing{playing()};
-
-    if (!playlist_.go_to(index))
-        return false;
-
-    static_cast<void>(read_current_track(was_playing));
-
-    return true;
+    return impl_->play_track(index);
 }
 
 void Session::set_repeat(RepeatMode repeat) noexcept
 {
-    playlist_.set_repeat(repeat);
+    impl_->set_repeat(repeat);
 }
 
 RepeatMode Session::repeat() const noexcept
 {
-    return playlist_.repeat();
+    return impl_->repeat();
 }
 
 void Session::shuffle(bool on)
 {
-    if (!on) {
-        playlist_.unshuffle();
-
-        return;
-    }
-
-    std::random_device seeds;
-
-    playlist_.shuffle(seeds());
+    impl_->shuffle(on);
 }
 
 bool Session::shuffled() const noexcept
 {
-    return playlist_.shuffled();
-}
-
-OpenResult Session::begin_reading(const QueueEntry& track, LoadIntent intent)
-{
-    replacement_.reset();
-    // A fresh request supersedes any pending media-replacement position.
-    restore_position_.reset();
-
-    LoadRequest request{loads_.begin(track.id(), track.path(), intent)};
-    open_request_id_ = request.generation;
-    loader_->start(std::move(request));
-    last_result_ = OpenResult::loading;
-
-    return last_result_;
-}
-
-void Session::record_outcome(OperationKind operation, OperationId id,
-    std::optional<OperationError> error)
-{
-    constexpr std::size_t max_retained_outcomes{64};
-
-    // Appending can allocate; retain the accepted history if it fails.
-    outcomes_.push_back(
-        OperationOutcome{.id = id, .operation = operation, .error = std::move(error)}
-    );
-    if (outcomes_.size() > max_retained_outcomes) {
-        outcomes_.pop_front();
-        outcomes_overflowed_ = true;
-    }
-}
-
-OpenResult Session::read_current_track(bool playing)
-{
-    const QueueEntry* current{playlist_.current()};
-
-    if (!current)
-        return last_result_;
-
-    return begin_reading(*current, playing ? LoadIntent::play : LoadIntent::install);
+    return impl_->shuffled();
 }
 
 void Session::catch_up()
 {
-    take_up_finished_read();
-    take_up_finished_tags();
-    advance_if_ended();
-}
-
-void Session::take_up_finished_tags()
-{
-    for (MetadataCoordinator::Reading& reading : metadata_.take()) {
-        std::optional<OperationError> error;
-        if (!reading.result)
-            error = reading.result.error();
-        record_outcome(OperationKind::metadata, reading.entries.front().value, std::move(error));
-
-        media::Metadata tags =
-            reading.result ? std::move(reading.result).value() : media::Metadata{};
-        media::TrackMetadata metadata{
-            .title = tags.track.title.empty() ? reading.path.stem().string() : tags.track.title,
-            .artist = tags.track.artist,
-            .album = tags.track.album,
-            .duration = tags.track.duration,
-            .genre = tags.track.genre,
-            .year = tags.track.year,
-            .comment = tags.track.comment,
-            .composer = tags.track.composer,
-            .track_number = tags.track.track_number,
-            .disc_number = tags.track.disc_number,
-        };
-
-        auto artwork{std::make_shared<const media::Artwork>(std::move(tags.artwork))};
-        playlist_.apply_metadata(reading.entries, metadata, std::move(artwork));
-    }
-}
-
-void Session::take_up_finished_read()
-{
-    std::optional<LoadCompletion> completed{loader_->take()};
-
-    if (!completed || !loads_.accept(*completed))
-        return;
-
-    media::DecoderOpenResult& opened{completed->opened};
-
-    if (!opened) {
-        record_outcome(OperationKind::open, completed->request.generation, opened.error());
-
-        // Nothing is torn down: a file that would not open is no reason to silence the one that
-        // did.
-        last_result_ = open_failed(opened.error().category);
-        restore_position_.reset();
-        return;
-    }
-
-    const bool should_play{completed->request.intent == LoadIntent::play};
-
-    if (!install_track(std::move(*opened), std::move(completed->request.path),
-            completed->request.generation)) {
-        restore_position_.reset();
-        return;
-    }
-
-    if (restore_position_) {
-        seek(*restore_position_);
-        restore_position_.reset();
-    }
-
-    if (should_play)
-        static_cast<void>(play());
-}
-
-void Session::advance_if_ended()
-{
-    // A track that ran out is the cue to play the next. A listener who pressed stop is not, and
-    // neither is a device that went away.
-    if (state() != PlaybackState::ended)
-        return;
-
-    // One already on its way is the same cue, answered.
-    if (reading())
-        return;
-
-    if (!playlist_.next())
-        return;
-
-    static_cast<void>(read_current_track(true));
-}
-
-bool Session::install_track(std::unique_ptr<media::AudioDecoder> source, std::filesystem::path path,
-    OperationId request)
-{
-    const auto reject{[this, request](OperationError error) {
-        const auto status{open_failed(error)};
-        record_outcome(OperationKind::open, request, std::move(error));
-        last_result_ = status;
-        return false;
-    }};
-    if (!source)
-        return reject(media::Error{media::ErrorCategory::damaged,
-            "decoder opener returned no source"});
-    const pcm::StreamSpec spec{source->spec()};
-    const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(buffering_.duration)};
-    if (!buffer_frames || !pcm::PcmQueue::checked_capacity(spec, *buffer_frames))
-        return reject(media::Error{media::ErrorCategory::damaged,
-            "decoder stream cannot support the configured playback buffer"});
-
-    try {
-        auto processing{processing_.prepare(spec)};
-        auto output{out_.prepare(spec)};
-        auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
-            *buffer_frames, transport_)};
-
-        // This is the last fallible operation. One lifecycle caller observes the completion
-        // after this function returns; the following commit cannot fail or allocate.
-        record_outcome(OperationKind::open, request);
-        pipeline_.reset();
-        if (processing)
-            processing->commit();
-        pipeline->activate(out_);
-        pipeline_.swap(pipeline);
-        track_.swap(path);
-        last_result_ = OpenResult::opened;
-        return true;
-    } catch (const OutputSession::Unavailable& failure) {
-        return reject(OutputSetupError{failure.what()});
-    }
+    impl_->catch_up();
 }
 
 bool Session::reading() const noexcept
 {
-    return loader_->busy();
+    return impl_->reading();
 }
 
 OpenResult Session::open_result() const noexcept
 {
-    return last_result_;
+    return impl_->open_result();
 }
 
 const std::filesystem::path& Session::track() const noexcept
 {
-    return track_;
+    return impl_->track();
 }
 
 bool Session::loaded() const noexcept
 {
-    return pipeline_ != nullptr;
+    return impl_->loaded();
 }
 
 bool Session::play() noexcept
 {
-    if (replacement_) {
-        replacement_->play = true;
-        return true;
-    }
-    return loaded() && pipeline_->player().start();
+    return impl_->play();
 }
 
 bool Session::pause() noexcept
 {
-    if (replacement_) {
-        replacement_->play = false;
-        return true;
-    }
-    return loaded() && state() == PlaybackState::playing && pipeline_->player().pause();
+    return impl_->pause();
 }
 
 bool Session::resume() noexcept
 {
-    if (replacement_) {
-        replacement_->play = true;
-        return true;
-    }
-    return loaded() && state() == PlaybackState::paused && pipeline_->player().resume();
+    return impl_->resume();
 }
 
 void Session::stop() noexcept
 {
-    if (replacement_) {
-        replacement_->play = false;
-        replacement_->position = units::Time{};
-    }
-    loads_.invalidate();
-    loader_->cancel();
-
-    if (!loaded())
-        return;
-
-    pipeline_->player().stop();
-
-    // Stopping is not pausing: the next play begins at the start of the track.
-    pipeline_->player().seek(units::Time{});
+    impl_->stop();
 }
 
 std::optional<Session::MediaReplacementState>
 Session::release_media(const std::filesystem::path& path)
 {
-    const QueueEntry* current = playlist_.current();
-    if (!current || current->path() != path)
-        return {};
-    if (replacement_ && replacement_->entry == current->id())
-        return replacement_;
-    const MediaReplacementState state{current->id(), playing(), time_played(),
-        ++replacement_generation_};
-    loads_.invalidate();
-    loader_->cancel();
-    pipeline_.reset();
-    replacement_ = state;
-    return state;
+    return impl_->release_media(path);
 }
 
 OpenResult Session::restore_media(const MediaReplacementState& state)
 {
-    const QueueEntry* current = playlist_.current();
-    if (!current || current->id() != state.entry)
-        return last_result_;
-    if (!replacement_ || replacement_->entry != state.entry ||
-        replacement_->generation != state.generation)
-        return last_result_;
-    const auto intent = *replacement_;
-    const auto result =
-        begin_reading(*current, intent.play ? LoadIntent::play : LoadIntent::install);
-    restore_position_ = intent.position;
-    return result;
+    return impl_->restore_media(state);
 }
 
 void Session::seek(units::Time position) noexcept
 {
-    if (replacement_) {
-        replacement_->position = position;
-        return;
-    }
-    if (loaded())
-        pipeline_->player().seek(position);
+    impl_->seek(position);
 }
 
 PlaybackState Session::state() const noexcept
 {
-    return loaded() ? pipeline_->player().state() : PlaybackState::idle;
+    return impl_->state();
 }
 
 bool Session::playing() const noexcept
 {
-    return loaded() && pipeline_->player().playing();
+    return impl_->playing();
 }
 
 units::Time Session::time_played() const noexcept
 {
-    return loaded() ? pipeline_->player().time_played() : units::Time{};
+    return impl_->time_played();
 }
 
 std::optional<units::Time> Session::total_time() const noexcept
 {
-    return loaded() ? pipeline_->player().total_time() : std::nullopt;
+    return impl_->total_time();
 }
 
 bool Session::seekable() const noexcept
 {
-    return loaded() && pipeline_->player().seekable();
+    return impl_->seekable();
 }
 
 std::vector<std::string> Session::playback_extensions() const
 {
-    return provider_->playback_extensions();
+    return impl_->playback_extensions();
 }
 
 PlaybackSnapshot Session::snapshot() const
 {
-    return {.state = state(),
-        .open_result = open_result(),
-        .track = track(),
-        .queue_position = playlist_.position(),
-        .structural_revision = playlist_.structural_revision(),
-        .metadata_revision = playlist_.metadata_revision(),
-        .selection_revision = playlist_.selection_revision(),
-        .time_played = time_played(),
-        .total_time = total_time(),
-        .loaded = loaded(),
-        .playing = playing(),
-        .seekable = seekable()};
+    return impl_->snapshot();
 }
 
 OperationId Session::open_request_id() const noexcept
 {
-    return open_request_id_;
+    return impl_->open_request_id();
 }
 
 OperationOutcomes Session::take_outcomes()
 {
-    OperationOutcomes taken;
-    taken.values.reserve(outcomes_.size());
-
-    for (OperationOutcome& outcome : outcomes_)
-        taken.values.push_back(std::move(outcome));
-
-    outcomes_.clear();
-    taken.overflowed = std::exchange(outcomes_overflowed_, false);
-
-    return taken;
+    return impl_->take_outcomes();
 }
 
 } // namespace wiola::engine
