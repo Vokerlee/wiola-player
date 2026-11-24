@@ -24,6 +24,10 @@ One control thread issues commands, collects completions and installs prepared r
 
 Opening distinguishes acceptance, successful installation and eventual device-start failure. The kernel prepares processing, output lease, queue/player and owned path before retiring active playback. Its last fallible step retains the completion; activation/swaps then cannot fail or allocate. A failed candidate preserves the prior pipeline without rewinding its source. OperationError keeps media failure separate from output setup failure, including diagnostics. Outcome batches own their values and report retention overflow.
 
+Admission validates the decoder's own stream/capability contract before preparing processing or output. A valid shape alone does not make a missing exact duration valid. Queue removal cancels only a load for that occurrence; existing playback can remain active after its queue changes. Pause/resume arbitration belongs to the transport state owner rather than a second Session state check.
+
+The selected buffer duration must represent at least one complete frame and a representable PCM capacity for that stream. Positive finite policy values can still round to zero frames or overflow the frame/sample conversion; these report damaged admission before processing, output or queue allocation.
+
 The kernel exposes play/pause/resume, queue operations and occurrence/generation-checked release/restore handoffs. Application toggle policy composes those commands. Changes to intent or position during a handoff remain owned by Session; stale restoration cannot replace a newer occurrence.
 
 Implementation and focused tests have one owner:

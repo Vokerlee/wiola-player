@@ -58,6 +58,13 @@ public:
 
 int main()
 {
+    const media::DecoderStreamInfo missing_exact_length{.spec = {},
+        .length = std::nullopt,
+        .length_accuracy = media::LengthAccuracy::exact};
+    const auto rejected{missing_exact_length.validate()};
+    if (rejected || rejected.error().category != media::ErrorCategory::damaged)
+        return 4;
+
     Provider provider;
     auto asset = provider.open("controlled", {});
     if (!asset)
@@ -66,6 +73,8 @@ int main()
     if (!opened)
         return 2;
     auto decoder = std::move(*opened);
+    if (!decoder->stream_info().validate())
+        return 5;
     (*asset).reset();
     std::array<float, 2> out{};
     auto read = decoder->read(out);
