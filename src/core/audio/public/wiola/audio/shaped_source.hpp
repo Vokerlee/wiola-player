@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Another source with the chain applied.
+ * @brief A source rendered through a supplied processing stage.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/source.hpp>
+#include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <cstddef>
@@ -29,10 +29,11 @@
 
 namespace wiola::audio {
 
-/// What another source gives, shaped on its way out. Both outlive it.
+/// What another source gives, shaped by the supplied stage. Both outlive it.
+/// The host supplies its complete processing policy, commonly a ProcessingChain.
 class ShapedSource final : public Source {
 public:
-    ShapedSource(Source& source, ProcessingChain& chain) noexcept;
+    ShapedSource(Source& source, Stage& processing) noexcept;
 
     std::size_t render(std::span<float> interleaved) noexcept override;
 
@@ -40,7 +41,7 @@ public:
 
 private:
     Source& source_;
-    ProcessingChain& chain_;
+    Stage& processing_;
 };
 
 } // namespace wiola::audio

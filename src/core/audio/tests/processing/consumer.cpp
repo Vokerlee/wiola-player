@@ -24,13 +24,27 @@
 
 #include <wiola/audio/equalizer.hpp>
 #include <wiola/audio/processing_chain.hpp>
+#include <wiola/audio/shaped_source.hpp>
 #include <wiola/audio/volume.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
 
 namespace {
+
+class ConstantSource final : public wiola::audio::Source {
+public:
+    wiola::pcm::StreamSpec spec() const noexcept override { return {}; }
+
+    std::size_t render(std::span<float> samples) noexcept override
+    {
+        const auto count{samples.size() >= spec().num_channels ? spec().num_channels : 0};
+        std::fill_n(samples.begin(), count, 0.25F);
+        return count;
+    }
+};
 
 // A downstream stage implements only the public preparation/processing contract.
 class StreamObserver final : public wiola::audio::Stage {
@@ -88,6 +102,11 @@ int main()
     chain.process(samples);
     if (samples[0] != 0.25F || samples[1] != -0.25F)
         return 1;
+    ConstantSource source;
+    wiola::audio::ShapedSource shaped{source, observer};
+    std::array block{1.0F, 1.0F, 1.0F, 1.0F};
+    if (shaped.render(block) != 2 || block[0] != 0.25F || block[2] != 1.0F)
+        return 4;
     equalizer.set_band_gain(0, 3.0F);
     chain.process(samples);
     return !std::isfinite(samples[0]) || !equalizer.enabled();

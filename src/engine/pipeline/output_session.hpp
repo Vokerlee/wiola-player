@@ -29,7 +29,7 @@
 
 namespace wiola::audio {
 
-class ProcessingChain;
+class Stage;
 class Source;
 
 } // namespace wiola::audio
@@ -39,7 +39,7 @@ namespace wiola::engine {
 using OutputFactory = std::function<std::unique_ptr<audio::Output>(audio::Source&)>;
 
 /// Prepares stream-specific output leases and caches the last committed stream for reuse.
-/// The borrowed processing chain must outlive both this cache and every prepared lease.
+/// The borrowed processing stage must outlive both this cache and every prepared lease.
 class OutputSession {
     struct Stream;
 
@@ -69,7 +69,7 @@ public:
         std::shared_ptr<Stream> stream_;
     };
 
-    OutputSession(audio::ProcessingChain& chain, OutputFactory make_output) noexcept;
+    OutputSession(audio::Stage& processing, OutputFactory make_output) noexcept;
     ~OutputSession();
 
     OutputSession(const OutputSession&) = delete;
@@ -88,7 +88,7 @@ public:
     [[nodiscard]] bool open_for(pcm::StreamSpec spec) const noexcept;
 
 private:
-    audio::ProcessingChain& chain_;
+    audio::Stage& processing_;
     OutputFactory make_output_;
     std::shared_ptr<Stream> stream_;
 };

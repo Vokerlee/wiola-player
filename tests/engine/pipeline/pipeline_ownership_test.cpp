@@ -23,6 +23,7 @@
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <wiola/audio/processing_chain.hpp>
+#include <wiola/audio/volume.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
@@ -153,6 +154,23 @@ private:
 
     Lifetime& lifetime_;
 };
+
+TEST(OutputSession, RenderBridgeAcceptsAStageWithoutRequiringAChain)
+{
+    wiola::audio::Volume processing;
+    processing.set_gain(0.5F);
+    ConstantSource source;
+    Lifetime lifetime;
+    OutputSession output{processing, [&](wiola::audio::Source& rendered) {
+                             return std::make_unique<ObservedOutput>(rendered, lifetime);
+                         }};
+    auto lease{output.prepare(stereo)};
+    output.activate(*lease, source);
+    std::array<float, 2> samples{};
+
+    EXPECT_EQ(lifetime.bridge->render(samples), samples.size());
+    EXPECT_EQ(samples, (std::array{0.125F, 0.125F}));
+}
 
 TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
 {
