@@ -1,6 +1,6 @@
 # GoogleTest execution protocol
 
-`GoogleTestRunner` discovers and executes an explicit selection against a caller-supplied executable. `GoogleTestReport` interprets case identities and assertion evidence; `GoogleTestResult` distinguishes a passing contract from an assertion-detected mutation. Together they own the GoogleTest protocol, without knowledge of Qt, Wiola case names, build-tree layouts or CI providers.
+Import the public protocol from `scripts.testing.gtest`; `_runner.py` and `_report.py` are private implementation. `GoogleTestRunner` discovers and executes an explicit selection against a caller-supplied executable. `GoogleTestReport` interprets case identities and assertion evidence; `GoogleTestResult` distinguishes a passing contract from an assertion-detected mutation. Together they own the GoogleTest protocol, without knowledge of Qt, Wiola case names, build-tree layouts or CI providers.
 
 ```mermaid
 flowchart LR

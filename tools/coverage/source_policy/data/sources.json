@@ -302,17 +302,87 @@
       "workflow": false
     },
     {
-      "path": "scripts/run-desktop-journeys.py",
-      "owner": "tool.run_desktop_journeys",
+      "path": "scripts/test-affected.py",
+      "owner": "tool.test_affected",
       "language": "python",
       "role": "tooling",
       "workflow": false
     },
     {
-      "path": "scripts/test-affected.py",
-      "owner": "tool.test_affected",
+      "path": "scripts/testing/__init__.py",
+      "owner": "scripts.testing",
       "language": "python",
       "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/desktop/__init__.py",
+      "owner": "testing.desktop_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/desktop/__main__.py",
+      "owner": "testing.desktop_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/desktop/environment.py",
+      "owner": "testing.desktop_checks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/desktop/tests/__init__.py",
+      "owner": "testing.desktop_checks",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/desktop/tests/test_environment.py",
+      "owner": "testing.desktop_checks",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/gtest/__init__.py",
+      "owner": "testing.gtest",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/gtest/_report.py",
+      "owner": "testing.gtest",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/gtest/_runner.py",
+      "owner": "testing.gtest",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/gtest/tests/__init__.py",
+      "owner": "testing.gtest",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/testing/gtest/tests/test_protocol.py",
+      "owner": "testing.gtest",
+      "language": "python",
+      "role": "test",
       "workflow": false
     },
     {
@@ -4896,76 +4966,6 @@
     {
       "path": "tools/testing/catalog/tests/test_catalog.py",
       "owner": "testing.catalog",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/desktop_checks/__init__.py",
-      "owner": "testing.desktop_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/desktop_checks/__main__.py",
-      "owner": "testing.desktop_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/desktop_checks/environment.py",
-      "owner": "testing.desktop_checks",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/desktop_checks/tests/__init__.py",
-      "owner": "testing.desktop_checks",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/desktop_checks/tests/test_environment.py",
-      "owner": "testing.desktop_checks",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/gtest/__init__.py",
-      "owner": "testing.gtest",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/gtest/report.py",
-      "owner": "testing.gtest",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/gtest/runner.py",
-      "owner": "testing.gtest",
-      "language": "python",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/gtest/tests/__init__.py",
-      "owner": "testing.gtest",
-      "language": "python",
-      "role": "test",
-      "workflow": false
-    },
-    {
-      "path": "tools/testing/gtest/tests/test_protocol.py",
-      "owner": "testing.gtest",
       "language": "python",
       "role": "test",
       "workflow": false

@@ -5,8 +5,8 @@ import sys
 import tempfile
 import unittest
 
-from tools.testing.gtest.report import GoogleTestReport, discovered_cases
-from tools.testing.gtest.runner import (
+from scripts.testing.gtest import GoogleTestReport, discovered_cases
+from scripts.testing.gtest import (
     GoogleTestResult,
     GoogleTestRunner,
     TestExecutionError,

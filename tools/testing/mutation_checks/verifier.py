@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Mapping, Protocol
 
 from tools.architecture.ownership.registry import OwnershipRegistry
-from tools.testing.gtest.runner import GoogleTestRunner
+from scripts.testing.gtest import GoogleTestRunner
 from tools.testing.source_mutation.mutation import SourceConflict, SourceMutation
 
 from .catalog import MutationCase

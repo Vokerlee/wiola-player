@@ -9,7 +9,7 @@ import subprocess
 from typing import Mapping
 import xml.etree.ElementTree as ET
 
-from .report import GoogleTestReport, discovered_cases
+from ._report import GoogleTestReport, discovered_cases
 
 
 class TestExecutionError(RuntimeError):

@@ -168,5 +168,55 @@
     "previous": "tools/architecture/cmake_inventory/tests/test_inventory.py",
     "current": "scripts/build/cmake/tests/test_inventory.py",
     "owner": "architecture.cmake_inventory"
+  },
+  {
+    "previous": "tools/testing/desktop_checks/__init__.py",
+    "current": "scripts/testing/desktop/__init__.py",
+    "owner": "testing.desktop_checks"
+  },
+  {
+    "previous": "tools/testing/desktop_checks/__main__.py",
+    "current": "scripts/testing/desktop/__main__.py",
+    "owner": "testing.desktop_checks"
+  },
+  {
+    "previous": "tools/testing/desktop_checks/environment.py",
+    "current": "scripts/testing/desktop/environment.py",
+    "owner": "testing.desktop_checks"
+  },
+  {
+    "previous": "tools/testing/desktop_checks/tests/__init__.py",
+    "current": "scripts/testing/desktop/tests/__init__.py",
+    "owner": "testing.desktop_checks"
+  },
+  {
+    "previous": "tools/testing/desktop_checks/tests/test_environment.py",
+    "current": "scripts/testing/desktop/tests/test_environment.py",
+    "owner": "testing.desktop_checks"
+  },
+  {
+    "previous": "tools/testing/gtest/__init__.py",
+    "current": "scripts/testing/gtest/__init__.py",
+    "owner": "testing.gtest"
+  },
+  {
+    "previous": "tools/testing/gtest/report.py",
+    "current": "scripts/testing/gtest/_report.py",
+    "owner": "testing.gtest"
+  },
+  {
+    "previous": "tools/testing/gtest/runner.py",
+    "current": "scripts/testing/gtest/_runner.py",
+    "owner": "testing.gtest"
+  },
+  {
+    "previous": "tools/testing/gtest/tests/__init__.py",
+    "current": "scripts/testing/gtest/tests/__init__.py",
+    "owner": "testing.gtest"
+  },
+  {
+    "previous": "tools/testing/gtest/tests/test_protocol.py",
+    "current": "scripts/testing/gtest/tests/test_protocol.py",
+    "owner": "testing.gtest"
   }
 ]

@@ -66,13 +66,6 @@
       ]
     },
     {
-      "id": "tool.run_desktop_journeys",
-      "purpose": "Implements the current run desktop journeys development command.",
-      "files": [
-        "scripts/run-desktop-journeys.py"
-      ]
-    },
-    {
       "id": "tool.test_affected",
       "purpose": "Implements the current test affected development command.",
       "files": [
@@ -85,6 +78,14 @@
       "files": [
         "scripts/build/README.md",
         "scripts/build/__init__.py"
+      ]
+    },
+    {
+      "id": "scripts.testing",
+      "purpose": "Groups independent test protocol and project test compositions",
+      "files": [
+        "scripts/testing/README.md",
+        "scripts/testing/__init__.py"
       ]
     }
   ]

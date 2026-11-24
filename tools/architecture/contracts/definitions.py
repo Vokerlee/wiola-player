@@ -4,6 +4,13 @@ from tools.architecture.contracts.catalog import AbstractionContract
 
 CONTRACTS = (
     AbstractionContract(
+        "scripts.testing",
+        "scripts/testing",
+        "Groups independent test protocol and project test compositions",
+        ("Children own complete implementations and contracts",),
+        grouping=True,
+    ),
+    AbstractionContract(
         "scripts.build",
         "scripts/build",
         "Groups configured-build and environment developer commands",
@@ -313,20 +320,20 @@ CONTRACTS = (
     ),
     AbstractionContract(
         "testing.gtest",
-        "tools/testing/gtest",
+        "scripts/testing/gtest",
         "Executes the GoogleTest discovery and report protocol with complete case evidence",
         ("Complete implementation and tests belong to this owner",),
-        ("tools/testing/gtest/runner.py", "tools/testing/gtest/report.py"),
+        ("scripts/testing/gtest/__init__.py",),
         grouping=False,
     ),
     AbstractionContract(
         "testing.desktop_checks",
-        "tools/testing/desktop_checks",
+        "scripts/testing/desktop",
         "Composes desktop fixture environment and packaged test execution",
         ("Complete implementation and tests belong to this owner",),
         (
-            "tools/testing/desktop_checks/__main__.py",
-            "tools/testing/desktop_checks/environment.py",
+            "scripts/testing/desktop/__main__.py",
+            "scripts/testing/desktop/environment.py",
         ),
         grouping=False,
     ),
