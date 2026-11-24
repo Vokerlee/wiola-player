@@ -1,5 +1,4 @@
 include(GoogleTest)
-find_package(Threads REQUIRED)
 
 add_executable(pcm_queue_test pcm_queue_test.cpp)
 add_executable(spsc_ring_buffer_test spsc_ring_buffer_test.cpp)

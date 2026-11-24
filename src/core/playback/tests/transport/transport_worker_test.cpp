@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/transport/transport_worker.hpp>
+#include <transport/transport_worker.hpp>
 
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>

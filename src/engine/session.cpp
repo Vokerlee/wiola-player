@@ -22,7 +22,7 @@
 
 #include <engine/load/loader.hpp>
 #include <engine/load/tag_reader.hpp>
-#include <engine/transport/player.hpp>
+#include <transport/player.hpp>
 
 #include <buffering/buffer_source.hpp>
 #include <buffering/pcm_queue.hpp>

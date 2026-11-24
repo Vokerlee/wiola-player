@@ -18,16 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <engine/transport/player.hpp>
-#include <engine/transport/seek_operation.hpp>
+#include <transport/player.hpp>
+#include <transport/seek_operation.hpp>
 
-#include <fixtures/rig.hpp>
-#include <fixtures/wav.hpp>
+#include "rig.hpp"
 
 #include <buffering/buffer_source.hpp>
 #include <buffering/pcm_queue.hpp>
 #include <wiola/audio/output.hpp>
-#include <wiola/audio/processing_chain.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 
@@ -57,12 +55,19 @@ namespace {
 
 using namespace std::chrono_literals;
 using namespace wiola::units::literals;
-using wiola::audio::ProcessingChain;
 using wiola::engine::Player;
 using wiola::pcm::StreamSpec;
 using wiola::testing::Rig;
 using State = wiola::engine::PlaybackState;
 namespace units = wiola::units;
+
+// Longer than the rig's priming buffer, with no filesystem or codec involved.
+std::unique_ptr<wiola::testing::FakeDecoder> pcm_source()
+{
+    constexpr StreamSpec spec{.sample_rate = 44100_Hz, .num_channels = 2};
+    constexpr units::Time duration{1.5};
+    return std::make_unique<wiola::testing::FakeDecoder>(*spec.checked_frames_at(duration), spec);
+}
 
 /// Waits for `predicate`, so a test never depends on how fast a device happens to run.
 template<typename Predicate>
@@ -203,9 +208,9 @@ private:
 
 } // namespace
 
-TEST(Player, PlaysToTheEndOnItsOwn)
+TEST(Player, PlaysControlledPcmToTheEndOnItsOwn)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const wiola::media::AudioDecoder* played{source.get()};
@@ -216,6 +221,7 @@ TEST(Player, PlaysToTheEndOnItsOwn)
 
     EXPECT_TRUE(player.playing());
 
+    rig.play_out();
     player.wait();
 
     EXPECT_TRUE(player.finished());
@@ -276,6 +282,7 @@ TEST(Player, UnknownDurationPlaysToActualExhaustion)
     EXPECT_EQ(player.total_time(), std::nullopt);
     EXPECT_TRUE(player.seekable());
     ASSERT_TRUE(player.start());
+    rig.play_out();
     player.wait();
 
     EXPECT_EQ(player.state(), State::ended);
@@ -305,7 +312,7 @@ TEST(Player, UnknownDurationKeepsTransportAndAbsoluteSeekAvailable)
 
 TEST(Player, StartReturnsBeforePlaybackEnds)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -316,31 +323,27 @@ TEST(Player, StartReturnsBeforePlaybackEnds)
     EXPECT_FALSE(player.finished());
 }
 
-TEST(Player, StopEndsPlaybackAtOnce)
+TEST(Player, StopEndsPlaybackWithoutDrainingTheSource)
 {
-    auto source = wiola::testing::open_fixture();
-    ASSERT_NE(source, nullptr);
-
+    auto source = pcm_source();
+    const auto* decoder{source.get()};
     Rig rig{std::move(source)};
     Player& player{rig.player};
 
     ASSERT_TRUE(player.start());
-
-    const auto before = std::chrono::steady_clock::now();
-
     player.stop();
     player.wait();
 
-    // Stopping does not play out what is buffered, so it returns in poll intervals rather than
-    // in the fraction of a second the ring holds.
-    EXPECT_LT(std::chrono::steady_clock::now() - before, 100ms);
+    EXPECT_EQ(player.state(), State::stopped);
     EXPECT_TRUE(player.finished());
     EXPECT_FALSE(player.playing());
+    EXPECT_FALSE(rig.output.running());
+    EXPECT_FALSE(decoder->exhausted());
 }
 
 TEST(Player, StopIsHarmlessAfterPlaybackHasEnded)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -348,6 +351,7 @@ TEST(Player, StopIsHarmlessAfterPlaybackHasEnded)
 
     ASSERT_TRUE(player.start());
 
+    rig.play_out();
     player.wait();
     player.stop();
     player.stop();
@@ -357,7 +361,7 @@ TEST(Player, StopIsHarmlessAfterPlaybackHasEnded)
 
 TEST(Player, PauseSilencesAndResumeContinues)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -378,34 +382,32 @@ TEST(Player, PauseSilencesAndResumeContinues)
     ASSERT_TRUE(player.resume());
     EXPECT_TRUE(player.playing());
 
+    rig.play_out();
     EXPECT_TRUE(eventually([&player] { return player.finished(); }));
 }
 
-/// The fixture is a quarter second, so seeking past halfway leaves very little to play.
 TEST(Player, SeekMovesTheSource)
 {
-    auto source = wiola::testing::open_fixture();
-    ASSERT_NE(source, nullptr);
-
+    auto source = pcm_source();
+    const auto* decoder{source.get()};
+    const auto target{*source->spec().checked_frames_at(1300_ms)};
+    const auto remaining{source->num_frames() - target};
     Rig rig{std::move(source)};
     Player& player{rig.player};
 
     ASSERT_TRUE(player.start());
-
     ASSERT_TRUE(player.pause());
     player.seek(1300_ms);
-
-    // Seeking does not start a paused player.
     EXPECT_FALSE(player.playing());
 
-    const auto began = std::chrono::steady_clock::now();
-
     ASSERT_TRUE(player.resume());
+    ASSERT_TRUE(eventually([&] { return decoder->last_seek() == target && rig.output.running(); }));
+    rig.play_out();
     player.wait();
 
-    // Only a source that moved runs out this soon: from where it was, the rest would take the
-    // length of the track.
-    EXPECT_LT(std::chrono::steady_clock::now() - began, player.total_time()->chrono() / 2);
+    EXPECT_EQ(decoder->last_seek(), target);
+    EXPECT_EQ(rig.output.frames_played(), remaining);
+    EXPECT_EQ(player.state(), State::ended);
 }
 
 TEST(Player, SeekBeyondTheEndIsIgnored)
@@ -574,7 +576,7 @@ TEST(Player, NewerSeekSurvivesFailureOfAnOlderOne)
 
 TEST(Player, TimePlayedStartsAtTheBeginning)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -585,25 +587,25 @@ TEST(Player, TimePlayedStartsAtTheBeginning)
 
 TEST(Player, TimePlayedReachesTheEndOfTheSource)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
-    const double length{static_cast<double>(source->num_frames().count()) /
-        source->spec().sample_rate.get<wiola::units::Hz>()};
+    const auto duration{source->spec().time_per(source->num_frames())};
     Rig rig{std::move(source)};
     Player& player{rig.player};
 
     ASSERT_TRUE(player.start());
 
+    rig.play_out();
     player.wait();
 
-    EXPECT_NEAR(player.time_played().get<wiola::units::Sec>(), length, 0.02);
+    EXPECT_EQ(player.time_played(), duration);
 }
 
 /// Position follows the device, so a seek moves it even though nothing has been played since.
 TEST(Player, TimePlayedFollowsASeek)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -622,7 +624,7 @@ TEST(Player, TimePlayedFollowsASeek)
 
 TEST(Player, ResumeRefusesBeforeStart)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -637,7 +639,7 @@ TEST(Player, ResumeRefusesBeforeStart)
 /// tell them apart: one is the cue to play the next thing, the other is not.
 TEST(Player, DistinguishesEndingFromBeingStopped)
 {
-    auto ended = wiola::testing::open_fixture();
+    auto ended = pcm_source();
     ASSERT_NE(ended, nullptr);
 
     Rig first_rig{std::move(ended)};
@@ -645,11 +647,12 @@ TEST(Player, DistinguishesEndingFromBeingStopped)
 
     ASSERT_TRUE(first.start());
 
+    first_rig.play_out();
     first.wait();
     EXPECT_EQ(first.state(), State::ended);
     EXPECT_TRUE(first.finished());
 
-    auto stopped = wiola::testing::open_fixture();
+    auto stopped = pcm_source();
     Rig second_rig{std::move(stopped)};
     Player& second{second_rig.player};
 
@@ -663,7 +666,7 @@ TEST(Player, DistinguishesEndingFromBeingStopped)
 
 TEST(Player, TimePlayedReportsASeekThatHasNotBeenAppliedYet)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -677,7 +680,7 @@ TEST(Player, TimePlayedReportsASeekThatHasNotBeenAppliedYet)
 
 TEST(Player, StartsWhereASeekAskedForBeforeIt)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const wiola::pcm::Frames total{source->num_frames()};
@@ -701,7 +704,7 @@ TEST(Player, StartsWhereASeekAskedForBeforeIt)
 
 TEST(Player, KeepsASeekAskedForAfterStopping)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -837,7 +840,7 @@ TEST(Player, TimePlayedNeverFallsBackWhileASeekIsCarriedOut)
 
 TEST(Player, PlaysAgainAfterEnding)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -845,21 +848,24 @@ TEST(Player, PlaysAgainAfterEnding)
 
     ASSERT_TRUE(player.start());
 
+    rig.play_out();
     player.wait();
     ASSERT_EQ(player.state(), State::ended);
 
     // Starting a finished player winds it back rather than refusing.
+    rig.hold_output();
     ASSERT_TRUE(player.start());
     EXPECT_EQ(player.state(), State::playing);
     EXPECT_LT(player.time_played().get<wiola::units::Sec>(), 0.5);
 
+    rig.play_out();
     player.wait();
     EXPECT_EQ(player.state(), State::ended);
 }
 
 TEST(Player, RefusesToStartWhilePlaying)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -879,7 +885,7 @@ TEST(Player, RefusesToStartWhilePlaying)
 /// runs the same on a machine that has none.
 TEST(Player, RunsOnAnyOutput)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -902,7 +908,7 @@ TEST(Player, RunsOnAnyOutput)
 /// What has been heard is the output's count, not what has been decoded.
 TEST(Player, FollowsTheOutputRatherThanTheDecoder)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -930,7 +936,7 @@ TEST(Player, FollowsTheOutputRatherThanTheDecoder)
 /// is what reads the result.
 TEST(Player, SurvivesATransportHammering)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -957,7 +963,7 @@ TEST(Player, SurvivesATransportHammering)
 /// nothing else. Checked here rather than left to a sanitizer, so it holds on any build.
 TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -993,7 +999,7 @@ TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
 /// same to a window that can only read the state, and only one of them is worth saying.
 TEST(Player, ReportsAFaultWhenTheOutputWillNotStartAgain)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -1024,7 +1030,7 @@ TEST(Player, ReportsAFaultWhenTheOutputWillNotStartAgain)
 /// playback that carries on with nothing coming out.
 TEST(Player, ReportsAFaultWhenTheDeviceStopsOnItsOwn)
 {
-    auto source = wiola::testing::open_fixture();
+    auto source = pcm_source();
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};

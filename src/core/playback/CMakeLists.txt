@@ -56,6 +56,9 @@ if(COMMAND wiola_apply_build_controls)
     wiola_apply_build_controls(wiola_playback_buffer)
 endif()
 
+find_package(Threads REQUIRED)
+add_subdirectory(private/transport)
+
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
 endif()

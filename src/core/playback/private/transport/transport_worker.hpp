@@ -25,11 +25,10 @@
 #include "playhead.hpp"
 #include "transport_wait.hpp"
 #include <buffering/pcm_queue.hpp>
-#include <core/macros.hpp>
-#include <engine/transport/transport_config.hpp>
 #include <functional>
 #include <memory>
 #include <thread>
+#include <transport/transport_config.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
@@ -50,8 +49,10 @@ public:
     TransportWorker(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
         audio::Output& output, ThreadFactory launch = {}, TransportConfig config = {});
 
-    NO_COPY_SEMANTIC(TransportWorker);
-    NO_MOVE_SEMANTIC(TransportWorker);
+    TransportWorker(const TransportWorker&) = delete;
+    TransportWorker& operator=(const TransportWorker&) = delete;
+    TransportWorker(TransportWorker&&) = delete;
+    TransportWorker& operator=(TransportWorker&&) = delete;
 
     ~TransportWorker();
 
