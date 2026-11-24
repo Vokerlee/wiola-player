@@ -6,7 +6,7 @@ from pathlib import Path
 from scripts.build.cmake import CMakeInventory
 from scripts.quality.coverage.source_policy.policy import SourcePolicy
 
-CPP_METRICS = ("lines", "functions", "regions", "branches")
+CPP_METRICS = ("lines", "functions", "regions", "branches", "instantiations")
 
 
 def _counts(total: int, covered: int) -> dict:
@@ -82,13 +82,19 @@ class CoverageMeasurement:
                 continue
             if path in measured:
                 raise ValueError("Duplicate LLVM source mapping: " + path)
-            measured[path] = {
-                metric: _counts(
-                    entry["summary"][metric]["count"],
-                    entry["summary"][metric]["covered"],
-                )
-                for metric in CPP_METRICS
-            }
+            try:
+                measured[path] = {
+                    metric: _counts(
+                        entry["summary"][metric]["count"],
+                        entry["summary"][metric]["covered"],
+                    )
+                    for metric in CPP_METRICS
+                }
+            except KeyError as error:
+                raise ValueError(
+                    "LLVM source summary lacks a required metric: " + path
+                ) from error
+
         configured = {
             path
             for target in inventory.targets
