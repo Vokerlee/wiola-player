@@ -45,7 +45,10 @@ float Volume::gain() const noexcept
     return gain_.load(std::memory_order_relaxed);
 }
 
-void Volume::configure(pcm::StreamSpec /*spec*/) noexcept { }
+std::unique_ptr<Stage::Preparation> Volume::prepare(pcm::StreamSpec /*spec*/) noexcept
+{
+    return nullptr;
+}
 
 void Volume::process(std::span<float> samples) noexcept
 {

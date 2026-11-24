@@ -30,7 +30,7 @@ namespace wiola::audio {
 /// Replaces NaN and infinity with silence and clamps finite samples to full scale.
 class OutputSanitizer final : public Stage {
 public:
-    void configure(pcm::StreamSpec spec) noexcept override;
+    [[nodiscard]] std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) noexcept override;
     void process(std::span<float> samples) noexcept override;
 };
 

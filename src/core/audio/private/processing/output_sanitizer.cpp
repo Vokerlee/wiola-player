@@ -25,7 +25,10 @@
 
 namespace wiola::audio {
 
-void OutputSanitizer::configure(pcm::StreamSpec /*spec*/) noexcept { }
+std::unique_ptr<Stage::Preparation> OutputSanitizer::prepare(pcm::StreamSpec /*spec*/) noexcept
+{
+    return nullptr;
+}
 
 void OutputSanitizer::process(std::span<float> samples) noexcept
 {

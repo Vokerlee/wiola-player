@@ -50,6 +50,24 @@ struct Equalizer::Impl {
         EqualizerProcessor processor;
     };
 
+    struct Prepared final : Stage::Preparation {
+        Prepared(Impl& owner, pcm::StreamSpec spec)
+            : owner_{owner}
+            , processing_{std::make_unique<Processing>(spec, owner.config)}
+        {
+        }
+
+    private:
+        void activate() noexcept override
+        {
+            processing_->parameters.adopt_settings(owner_.processing->parameters);
+            owner_.processing.swap(processing_);
+        }
+
+        Impl& owner_;
+        std::unique_ptr<Processing> processing_;
+    };
+
     Impl(pcm::StreamSpec spec, EqualizerConfig authored_config)
         : config{authored_config}
         , processing{std::make_unique<Processing>(spec, config)}
@@ -97,11 +115,9 @@ bool Equalizer::enabled() const noexcept
     return impl_->processing->parameters.enabled();
 }
 
-void Equalizer::configure(pcm::StreamSpec spec)
+std::unique_ptr<Stage::Preparation> Equalizer::prepare(pcm::StreamSpec spec)
 {
-    auto prepared{std::make_unique<Impl::Processing>(spec, impl_->config)};
-    prepared->parameters.adopt_settings(impl_->processing->parameters);
-    impl_->processing.swap(prepared);
+    return std::make_unique<Impl::Prepared>(*impl_, spec);
 }
 
 units::Frequency Equalizer::band_center(std::size_t index) const noexcept

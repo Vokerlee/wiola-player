@@ -35,7 +35,7 @@ namespace wiola::audio {
  * A fixed sequence of borrowed stages followed by an explicit output sanitizer.
  * The caller owns every stage and stops output before destruction or stream reconfiguration.
  */
-class ProcessingChain {
+class ProcessingChain final : public Stage {
 public:
     ProcessingChain(std::initializer_list<std::reference_wrapper<Stage>> stages = {});
 
@@ -44,11 +44,11 @@ public:
     ProcessingChain(ProcessingChain&&) = delete;
     ProcessingChain& operator=(ProcessingChain&&) = delete;
 
-    /// Retunes the fixed stages between tracks, never during a callback.
-    void configure(pcm::StreamSpec spec);
+    /// Prepares every stage before any is changed. A later failure discards all candidates.
+    [[nodiscard]] std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) override;
 
     /// Runs the fixed topology and sanitizer without allocating, locking, or blocking.
-    void process(std::span<float> samples) noexcept;
+    void process(std::span<float> samples) noexcept override;
 
 private:
     std::vector<Stage*> stages_;
