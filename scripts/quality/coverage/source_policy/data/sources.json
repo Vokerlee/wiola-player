@@ -722,7 +722,21 @@
       "workflow": false
     },
     {
+      "path": "scripts/quality/coverage/measurement/tests/_fixtures.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
       "path": "scripts/quality/coverage/measurement/tests/test_report.py",
+      "owner": "coverage.measurement",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/coverage/measurement/tests/test_scope.py",
       "owner": "coverage.measurement",
       "language": "python",
       "role": "test",
