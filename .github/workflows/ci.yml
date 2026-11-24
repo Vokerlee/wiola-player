@@ -29,8 +29,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: ./scripts/format-cpp.sh --check
-      - run: ./scripts/format-cmake.sh --check
+      - run: python3 -m scripts.quality.formatting format cpp --check
+      - run: python3 -m scripts.quality.formatting format cmake --check
       - run: python3 -m unittest discover -s tests/scripts -v
       - run: python3 -m unittest discover -s scripts -t . -p 'test_*.py'
       - run: python3 -m scripts.quality.architecture.commands.check_ownership

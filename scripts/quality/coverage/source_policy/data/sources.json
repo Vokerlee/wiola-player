@@ -162,27 +162,6 @@
       "workflow": false
     },
     {
-      "path": "scripts/format-cmake.sh",
-      "owner": "tool.format_cmake",
-      "language": "shell",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "scripts/format-cpp.sh",
-      "owner": "tool.format_cpp",
-      "language": "shell",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
-      "path": "scripts/install-hooks.sh",
-      "owner": "tool.install_hooks",
-      "language": "shell",
-      "role": "tooling",
-      "workflow": false
-    },
-    {
       "path": "scripts/qt/__init__.py",
       "owner": "sdk.package",
       "language": "python",
@@ -808,6 +787,62 @@
     {
       "path": "scripts/quality/coverage/workflow/tests/test_inventory.py",
       "owner": "test.scripts.test_coverage_inventory",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/__init__.py",
+      "owner": "tool.format_cpp",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/__main__.py",
+      "owner": "tool.format_cpp",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/_format.py",
+      "owner": "tool.format_cpp",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/_hooks.py",
+      "owner": "tool.install_hooks",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/_rules.py",
+      "owner": "tool.format_cmake",
+      "language": "python",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/pre_commit.sh",
+      "owner": "tool.hooks.pre_commit",
+      "language": "shell",
+      "role": "tooling",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/tests/__init__.py",
+      "owner": "tool.format_cpp",
+      "language": "python",
+      "role": "test",
+      "workflow": false
+    },
+    {
+      "path": "scripts/quality/formatting/tests/test_formatting.py",
+      "owner": "tool.format_cpp",
       "language": "python",
       "role": "test",
       "workflow": false
