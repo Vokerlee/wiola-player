@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <wiola/foundation/borrowed.hpp>
+#include "borrowed.hpp"
 
 namespace wiola::core {
 

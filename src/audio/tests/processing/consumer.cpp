@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if __has_include(<processing/equalizer_parameters.hpp>) || __has_include(<core/macros.hpp>)
+#if __has_include(<processing/equalizer_parameters.hpp>) || __has_include(<audio/miniaudio/device.hpp>)
 #error "The installed processing target must not expose private implementation or the source root"
 #endif
 

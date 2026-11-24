@@ -1,4 +1,5 @@
 include(GNUInstallDirs)
+include("${CMAKE_CURRENT_LIST_DIR}/../../../cmake/headers.cmake")
 
 add_library(wiola_borrowed_reference INTERFACE)
 add_library(wiola::borrowed_reference ALIAS wiola_borrowed_reference)
@@ -7,24 +8,17 @@ set_target_properties(
     PROPERTIES EXPORT_NAME borrowed_reference
 )
 target_compile_features(wiola_borrowed_reference INTERFACE cxx_std_23)
-target_include_directories(
+wiola_export_headers(
     wiola_borrowed_reference
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    wiola/foundation
+    wiola_borrowed_reference
+    HEADERS borrowed.hpp handle.hpp
 )
 
 install(
     TARGETS wiola_borrowed_reference
     EXPORT wiola_borrowed_reference_targets
     COMPONENT wiola_borrowed_reference
-)
-install(
-    DIRECTORY public/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    COMPONENT wiola_borrowed_reference
-    FILES_MATCHING
-    PATTERN "*.hpp"
 )
 install(
     EXPORT wiola_borrowed_reference_targets

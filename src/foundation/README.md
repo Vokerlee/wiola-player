@@ -1,6 +1,6 @@
 # Foundation
 
-This grouping contains toolkit-independent primitives with their own restricted exports. The remaining legacy primitives still live under `core` and `lockfree`; this folder does not imply that migration is finished.
+This grouping contains standard C++ primitives with independent header-only targets. Each owner contains its complete headers, tests and export definition. Borrowed capabilities and dimensional quantities are separate contracts; neither depends on player policy, a toolkit or a backend. Source headers sit directly in their owning directory. CMake preserves namespaced SDK includes without repeating that namespace as source directories.
 
 ```mermaid
 flowchart LR
