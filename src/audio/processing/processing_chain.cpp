@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/processing_chain.hpp>
+#include "processing_chain.hpp"
 
 #include <utility>
 

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/output_sanitizer.hpp>
+#include "output_sanitizer.hpp"
 
 #include <algorithm>
 #include <cmath>

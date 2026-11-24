@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <processing/equalizer_parameters.hpp>
-#include <processing/equalizer_processor.hpp>
-#include <wiola/audio/equalizer.hpp>
+#include "equalizer.hpp"
+#include "equalizer_parameters.hpp"
+#include "equalizer_processor.hpp"
 
 #include <memory>
 

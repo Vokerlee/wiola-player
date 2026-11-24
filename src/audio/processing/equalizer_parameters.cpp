@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <processing/biquad.hpp>
-#include <processing/equalizer_parameters.hpp>
+#include "equalizer_parameters.hpp"
+#include "biquad.hpp"
 
 #include <algorithm>
 #include <cmath>

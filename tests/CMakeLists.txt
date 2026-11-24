@@ -33,7 +33,6 @@ function(wiola_add_test name)
 endfunction()
 
 add_subdirectory(app)
-add_subdirectory(audio)
 add_subdirectory(codec)
 add_subdirectory(fakes)
 add_subdirectory(gui)

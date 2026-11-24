@@ -20,8 +20,8 @@
 
 #pragma once
 
+#include "volume_policy.hpp"
 #include <wiola/audio/stage.hpp>
-#include <wiola/audio/volume_policy.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <atomic>
