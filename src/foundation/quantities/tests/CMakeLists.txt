@@ -14,5 +14,8 @@ gtest_discover_tests(utils_units_test)
 
 wiola_add_public_consumer_test(
     Quantities.InstalledConsumer
-    "${CMAKE_CURRENT_SOURCE_DIR}/public_package.json"
+    PACKAGE wiola_quantities
+    TARGET wiola::quantities
+    CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/consumer.cpp"
+    COMPONENTS wiola_quantities
 )

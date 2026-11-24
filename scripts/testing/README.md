@@ -13,4 +13,4 @@ flowchart LR
 
 Environment changes are confined to child processes. Executable paths come from callers or configured build metadata, never guessed output directories. 
 
-[Public package checks](public_api/README.md) own the shared install/relocate/compile/link protocol. Component-owned manifests and consumers supply API-specific assertions; a private include qualifies only through its precise missing-header diagnostic.
+Installed public-package checks use CMake/CTest directly through `cmake/TestPublicPackage.cmake`; each component supplies its own C++ consumer. No Python package or JSON manifest is needed.
