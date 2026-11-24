@@ -47,7 +47,12 @@ class LLVMReporterTest(unittest.TestCase):
             "    print('warning: unknown input', file=sys.stderr)\n"
             "else:\n"
             "    sys.stderr.write(detailed if 'report' in sys.argv else summary)\n"
-            "if 'report' in sys.argv: assert '-dump' in sys.argv\n"
+            "if 'report' in sys.argv:\n"
+            "    assert '-dump' in sys.argv\n"
+            "    assert '-num-threads=1' in sys.argv\n"
+            "else:\n"
+            "    assert '-dump' not in sys.argv\n"
+            "    assert '-num-threads=1' not in sys.argv\n"
         )
         self.reporter = LLVMReporter(
             (sys.executable, str(self.tool)), self.root / "evidence"
