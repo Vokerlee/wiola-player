@@ -40,6 +40,19 @@ public:
     using MetadataRead = std::function<media::Result<media::Metadata>(const std::filesystem::path&,
         const media::OperationContext&)>;
 
+    /// A decoder-only driver leaves metadata explicitly unsupported.
+    [[nodiscard]] static std::shared_ptr<FakeMediaProvider> decoder_only(DecoderFactory decoder)
+    {
+        return std::make_shared<FakeMediaProvider>(std::move(decoder),
+            [](const std::filesystem::path&,
+                const media::OperationContext&) -> media::Result<media::Metadata> {
+                return media::unexpected{
+                    media::Error{.category = media::ErrorCategory::unsupported,
+                                 .detail = "metadata is not supplied by this test"}
+                };
+            });
+    }
+
     /// A metadata-only driver still uses the complete public asset contract.
     [[nodiscard]] static std::shared_ptr<FakeMediaProvider> metadata_only(MetadataRead metadata)
     {
