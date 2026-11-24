@@ -35,6 +35,7 @@ add_library(
     private/processing/equalizer.cpp
     private/processing/equalizer_parameters.cpp
     private/processing/equalizer_processor.cpp
+    private/processing/equalizer_publication.cpp
     private/processing/output_sanitizer.cpp
     private/processing/processing_chain.cpp
     private/processing/relay.cpp

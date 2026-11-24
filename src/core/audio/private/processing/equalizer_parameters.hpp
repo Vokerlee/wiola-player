@@ -20,13 +20,12 @@
 
 #pragma once
 
-#include <processing/biquad.hpp>
+#include <processing/equalizer_publication.hpp>
 #include <wiola/audio/equalizer_config.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <array>
-#include <atomic>
 #include <cstddef>
 
 namespace wiola::audio {
@@ -65,16 +64,8 @@ public:
     [[nodiscard]] bool enabled() const noexcept { return enabled_; }
 
 private:
-    struct Bank {
-        std::array<BiquadCoefficients, BandLayout::max_count> coefficients{};
-        float preamp{1.0F};
-        std::size_t num_bands{0};
-        bool shaping{false};
-        bool enabled{true};
-    };
-
     void publish() noexcept;
-    [[nodiscard]] const Bank& acquire_for_processing() noexcept;
+    [[nodiscard]] const EqualizerPublication::Bank& acquire_for_processing() noexcept;
 
     EqualizerConfig config_;
     pcm::StreamSpec spec_{};
@@ -83,11 +74,7 @@ private:
     float preamp_db_{0.0F};
     bool enabled_{true};
 
-    // Three fixed banks leave one active, one published, and one being prepared. No replaced
-    // bank owns heap storage or needs reclamation on the processing thread.
-    std::array<Bank, 3> banks_{};
-    std::atomic<std::size_t> state_{0};
-    static_assert(std::atomic<std::size_t>::is_always_lock_free);
+    EqualizerPublication publication_;
 
     friend class EqualizerProcessor;
 };
