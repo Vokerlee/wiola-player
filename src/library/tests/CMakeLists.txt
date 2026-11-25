@@ -22,8 +22,8 @@ wiola_add_test(
     LIBS wiola_library
 )
 wiola_add_test(
-    library_fingerprint_test
-    SOURCES fingerprint_test.cpp
+    library_relocation_test
+    SOURCES relocation_test.cpp
     LIBS wiola_library
 )
 

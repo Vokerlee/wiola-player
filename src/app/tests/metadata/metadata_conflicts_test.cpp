@@ -20,8 +20,8 @@
 
 #include <app/metadata/metadata_conflicts.hpp>
 
-#include <library/fingerprint.hpp>
 #include <library/in_memory_repository.hpp>
+#include <media/local/fingerprint.hpp>
 
 #include <gtest/gtest.h>
 
@@ -38,7 +38,7 @@ protected:
         ASSERT_TRUE(std::filesystem::create_directories(directory));
         location = directory / "track.wav";
         std::ofstream{location} << "audio";
-        expected.fingerprint = *wiola::library::fingerprint_media(location);
+        expected.fingerprint = *wiola::media::fingerprint_media(location);
         expected.metadata_revision = 4;
         expected.content_revision = 2;
 

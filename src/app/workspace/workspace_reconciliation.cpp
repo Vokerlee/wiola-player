@@ -20,8 +20,8 @@
 
 #include "workspace_reconciliation.hpp"
 
-#include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <library/relocation.hpp>
 #include <library/repository_transaction.hpp>
 
 #include <algorithm>

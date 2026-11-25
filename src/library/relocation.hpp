@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Content fingerprints and relocation reconciliation for media records.
+ * @brief Catalog relocation policy over observed content facts.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,13 +19,13 @@
  */
 
 #pragma once
-#include <stop_token>
 
 #include <library/records.hpp>
 
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace wiola::library {
 
@@ -41,20 +41,11 @@ struct Relocation {
     RelocationKind kind{RelocationKind::unchanged};
 };
 
-/// Streams the file; the fingerprint is for identity matching, not cryptographic authentication.
-[[nodiscard]] std::optional<std::string>
-fingerprint_media_cancellable(const std::filesystem::path& file, std::stop_token stop);
-[[nodiscard]] std::optional<std::string> fingerprint_media(const std::filesystem::path& file);
-
-/// Returns an identity only when exactly one stored fingerprint matches the candidate.
+/// Returns an identity only when exactly one stored record matches a nonempty observed digest.
 [[nodiscard]] std::optional<MediaId> match_relocation(std::span<const TrackRecord> tracks,
-    const std::filesystem::path& candidate);
+    std::string_view fingerprint);
 
-/// Reconciles a known track with a readable location while preserving all user-owned metadata.
-[[nodiscard]] std::optional<Relocation> reconcile_location(TrackRecord& track,
-    const std::filesystem::path& location);
-
-/// Applies facts already read by a worker; this overload performs no file I/O.
+/// Applies observed facts without opening a file; user metadata and media identity are preserved.
 [[nodiscard]] std::optional<Relocation> reconcile_location(TrackRecord& track,
     const std::filesystem::path& location, std::string fingerprint);
 

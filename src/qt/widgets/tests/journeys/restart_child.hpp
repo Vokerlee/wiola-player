@@ -9,7 +9,7 @@
 #include <app/metadata/media_replacement.hpp>
 #include <cstdlib>
 #include <iostream>
-#include <library/fingerprint.hpp>
+#include <media/local/fingerprint.hpp>
 #include <media/local/resource.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
 #include <qt/widgets/layout/classic_layout.hpp>
@@ -218,7 +218,7 @@ inline app::PreparedMediaReplacement stage_process_replacement(const QString& di
 inline int crash_child(const QString& directory, int boundary)
 {
     const auto prepared = stage_process_replacement(directory);
-    auto port = media::native_file_replacement(library::fingerprint_media, [boundary](auto step) {
+    auto port = media::native_file_replacement(media::fingerprint_media, [boundary](auto step) {
         if (static_cast<int>(step) == boundary) {
             std::cerr << "abrupt stop after replacement stage " << boundary << std::endl;
 #ifdef WIOLA_TEST_COVERAGE

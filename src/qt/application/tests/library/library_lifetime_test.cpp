@@ -4,8 +4,8 @@
 #include <QTest>
 #include <fixtures/gated_media_provider.hpp>
 #include <gtest/gtest.h>
-#include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
@@ -67,7 +67,7 @@ TEST_F(LibraryLifetime, CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbedded
         library::TrackRecord record;
         record.id = media;
         record.locations = {path};
-        const auto fingerprint = library::fingerprint_media(path);
+        const auto fingerprint = media::fingerprint_media(path);
         ASSERT_TRUE(fingerprint);
         record.fingerprint = *fingerprint;
         ASSERT_TRUE(session.repository().put_track(record));

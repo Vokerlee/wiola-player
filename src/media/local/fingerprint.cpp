@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Content fingerprints and relocation reconciliation for media records.
+ * @brief Cancellable native content fingerprint reading.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,15 +20,13 @@
 
 #include "fingerprint.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-#include <utility>
 
-namespace wiola::library {
+namespace wiola::media {
 
 std::optional<std::string> fingerprint_media_cancellable(const std::filesystem::path& file,
     std::stop_token stop)
@@ -73,64 +71,4 @@ std::optional<std::string> fingerprint_media(const std::filesystem::path& file)
     return fingerprint_media_cancellable(file, {});
 }
 
-std::optional<MediaId> match_relocation(std::span<const TrackRecord> tracks,
-    const std::filesystem::path& candidate)
-{
-    const auto fingerprint{fingerprint_media(candidate)};
-
-    if (!fingerprint)
-        return std::nullopt;
-
-    const TrackRecord* match{nullptr};
-
-    for (const TrackRecord& track : tracks) {
-        if (track.fingerprint != *fingerprint)
-            continue;
-
-        if (match != nullptr)
-            return std::nullopt;
-
-        match = &track;
-    }
-
-    return match ? std::optional{match->id} : std::nullopt;
-}
-
-std::optional<Relocation> reconcile_location(TrackRecord& track,
-    const std::filesystem::path& location)
-{
-    if (!track.id.valid())
-        return std::nullopt;
-
-    auto fingerprint{fingerprint_media(location)};
-
-    if (!fingerprint)
-        return std::nullopt;
-
-    return reconcile_location(track, location, std::move(*fingerprint));
-}
-
-std::optional<Relocation> reconcile_location(TrackRecord& track,
-    const std::filesystem::path& location, std::string fingerprint)
-{
-    if (!track.id.valid() || fingerprint.empty())
-        return std::nullopt;
-    RelocationKind kind{RelocationKind::unchanged};
-
-    if (track.fingerprint.empty()) {
-        kind = RelocationKind::learned;
-    } else if (track.fingerprint != fingerprint) {
-        kind = RelocationKind::edited;
-        ++track.content_revision;
-    }
-
-    track.fingerprint = std::move(fingerprint);
-    track.missing = false;
-
-    if (std::ranges::find(track.locations, location) == track.locations.end())
-        track.locations.push_back(location);
-
-    return Relocation{.media = track.id, .location = location, .kind = kind};
-}
-
-} // namespace wiola::library
+} // namespace wiola::media

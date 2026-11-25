@@ -20,8 +20,8 @@
 
 #include <app/workspace/workspace_reconciliation.hpp>
 
-#include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/fingerprint.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>
@@ -93,7 +93,7 @@ TEST_F(WorkspaceReconciliation, RelocatesByFingerprintWithoutChangingTagsOrPlayl
     wiola::library::TrackRecord track;
     track.id = wiola::library::media_id_for(old_path);
     track.locations = {old_path};
-    track.fingerprint = *wiola::library::fingerprint_media(old_path);
+    track.fingerprint = *wiola::media::fingerprint_media(old_path);
     track.overrides.title = "User title";
     ASSERT_TRUE(repository.put_track(track));
 
@@ -125,7 +125,7 @@ TEST_F(WorkspaceReconciliation, HandlesEditedMissingRestoredAndNewFiles)
     wiola::library::TrackRecord track;
     track.id = wiola::library::media_id_for(path);
     track.locations = {path};
-    track.fingerprint = *wiola::library::fingerprint_media(path);
+    track.fingerprint = *wiola::media::fingerprint_media(path);
     track.overrides.title = "Keep me";
     ASSERT_TRUE(repository.put_track(track));
 
@@ -197,7 +197,7 @@ TEST_F(WorkspaceReconciliation, FailedPersistenceRollsBackLearnedRowsAndMissingF
     wiola::library::TrackRecord old;
     old.id = wiola::library::media_id_for(old_path);
     old.locations = {old_path};
-    old.fingerprint = *wiola::library::fingerprint_media(old_path);
+    old.fingerprint = *wiola::media::fingerprint_media(old_path);
     ASSERT_TRUE(repository.put_track(old));
     const auto before = repository.tracks();
     const std::vector<std::filesystem::path> paths{new_path};
@@ -218,7 +218,7 @@ TEST_F(WorkspaceReconciliation, StaleDiscoveryCannotOverwriteNewerContentState)
     wiola::library::TrackRecord record;
     record.id = wiola::library::media_id_for(path);
     record.locations = {path};
-    record.fingerprint = *wiola::library::fingerprint_media(path);
+    record.fingerprint = *wiola::media::fingerprint_media(path);
     ASSERT_TRUE(repository.put_track(record));
     const auto known = repository.tracks();
     const std::vector<std::filesystem::path> paths{path};
@@ -259,7 +259,7 @@ TEST_F(WorkspaceReconciliation, AmbiguousFingerprintsDoNotMergeDistinctMediaIden
     wiola::library::TrackRecord first, second;
     first.id = {"first"};
     first.locations = {root / "first.flac"};
-    first.fingerprint = *wiola::library::fingerprint_media(path);
+    first.fingerprint = *wiola::media::fingerprint_media(path);
     second = first;
     second.id = {"second"};
     second.locations = {root / "second.flac"};

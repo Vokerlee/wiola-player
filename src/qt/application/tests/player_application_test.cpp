@@ -28,8 +28,8 @@
 #include <QPushButton>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
-#include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <qt/paths.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
@@ -280,7 +280,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
         directory.filePath(QString::fromUtf8("музыка.mp3"))
     );
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
-    const auto original_fingerprint = wiola::library::fingerprint_media(path);
+    const auto original_fingerprint = wiola::media::fingerprint_media(path);
     ASSERT_TRUE(original_fingerprint);
     wiola::app::PlayerRuntimeConfig config;
     config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
@@ -337,7 +337,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
     EXPECT_EQ(record->embedded.title, "Written through the GUI");
     EXPECT_EQ(record->overrides.title, "Written through the GUI");
     EXPECT_EQ(record->content_revision, 1);
-    EXPECT_EQ(record->fingerprint, wiola::library::fingerprint_media(path));
+    EXPECT_EQ(record->fingerprint, wiola::media::fingerprint_media(path));
     EXPECT_TRUE(std::filesystem::exists(std::filesystem::path{
         path.string() + ".wiola-backup." + original_fingerprint->substr(8, 16) + ".1"}));
     EXPECT_EQ(window.findChild<QLabel*>("metadataFileStatus")->text(),
@@ -349,7 +349,7 @@ TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOr
 {
     QTemporaryDir directory;
     const auto source = track("wiola-readonly-format.wav");
-    const auto before = wiola::library::fingerprint_media(source);
+    const auto before = wiola::media::fingerprint_media(source);
     ASSERT_TRUE(before);
     wiola::app::PlayerRuntimeConfig config;
     config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
@@ -381,7 +381,7 @@ TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOr
     ASSERT_TRUE(pump_until([&] { return terminal.has_value(); }));
     EXPECT_EQ(terminal->outcome.error, wiola::media::MetadataWriteError::unsupported);
     EXPECT_FALSE(terminal->outcome.source_modified);
-    EXPECT_EQ(wiola::library::fingerprint_media(source), before);
+    EXPECT_EQ(wiola::media::fingerprint_media(source), before);
     EXPECT_EQ(player.library().repository().track(media)->overrides.title, "Application value");
     EXPECT_TRUE(window.findChild<QLabel*>("metadataFileStatus")
             ->text()

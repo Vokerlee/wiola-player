@@ -20,8 +20,8 @@
 
 #include "workspace_discovery.hpp"
 #include <algorithm>
-#include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/fingerprint.hpp>
 
 namespace wiola::app {
 
@@ -74,7 +74,7 @@ WorkspaceScanEntry WorkspaceDiscovery::resolve(const std::filesystem::path& loca
     WorkspaceScanEntry result;
     result.location = location;
     result.media = library::media_id_for(location);
-    result.fingerprint = library::fingerprint_media_cancellable(location, stop_);
+    result.fingerprint = media::fingerprint_media_cancellable(location, stop_);
     result.unreadable = !result.fingerprint;
     if (const auto known = locations_.find(result.media.value); known != locations_.end()) {
         result.media = known->second;

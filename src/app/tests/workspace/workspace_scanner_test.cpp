@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <condition_variable>
 #include <fstream>
-#include <library/fingerprint.hpp>
+#include <media/local/fingerprint.hpp>
 #include <mutex>
 
 namespace {
@@ -217,7 +217,7 @@ TEST(WorkspaceScanner, ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows)
     wiola::library::TrackRecord record;
     record.id = {"canonical-media"};
     record.locations = {old_path};
-    record.fingerprint = *wiola::library::fingerprint_media(old_path);
+    record.fingerprint = *wiola::media::fingerprint_media(old_path);
     std::filesystem::rename(old_path, new_path);
     wiola::app::WorkspaceScanner scanner;
     ScanCapture capture;
@@ -308,7 +308,7 @@ TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
     wiola::library::TrackRecord known;
     known.id = {"canonical"};
     known.locations = {root / "existing.wav"};
-    known.fingerprint = *wiola::library::fingerprint_media(known.locations.front());
+    known.fingerprint = *wiola::media::fingerprint_media(known.locations.front());
     ScanCapture capture;
     wiola::app::WorkspaceScanner scanner;
     scanner.start({.id = {"copies"}, .root = root}, {".wav"},
