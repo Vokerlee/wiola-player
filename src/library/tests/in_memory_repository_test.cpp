@@ -191,6 +191,23 @@ TEST_F(InMemoryRepository, RejectsInvalidOrNormalizedDuplicateRestoredTags)
     EXPECT_TRUE(repository.put_track(restored));
 }
 
+TEST_F(InMemoryRepository, RejectsDuplicateTagIdentitiesWithoutReplacingExistingState)
+{
+    TrackRecord restored;
+    restored.id = {"media-duplicate-tag-id"};
+    restored.embedded.title = "Retained";
+    ASSERT_TRUE(repository.put_track(restored));
+    restored.embedded.title = "Rejected";
+    restored.tags = {
+        {.id = {"tag-same"}, .key = "genre", .value = "Jazz"  },
+        {.id = {"tag-same"}, .key = "genre", .value = "Fusion"}
+    };
+    EXPECT_FALSE(repository.put_track(restored));
+    ASSERT_NE(repository.track(restored.id), nullptr);
+    EXPECT_EQ(repository.track(restored.id)->embedded.title, "Retained");
+    EXPECT_TRUE(repository.track(restored.id)->tags.empty());
+}
+
 TEST_F(InMemoryRepository, BoundsTagsAndAvoidsARestoredTagIdentity)
 {
     TrackRecord restored;

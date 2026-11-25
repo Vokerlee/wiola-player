@@ -35,6 +35,7 @@ bool InMemoryRepository::put_track(TrackRecord track)
         return false;
 
     std::set<std::pair<std::string, std::string>> values;
+    std::set<TagId> identities;
 
     for (const TagRecord& tag : track.tags) {
         const auto candidate = make_tag_value(tag.key, tag.value);
@@ -42,7 +43,8 @@ bool InMemoryRepository::put_track(TrackRecord track)
             std::pair{normalized_tag_text(tag.key), normalized_tag_text(tag.value)};
 
         if (!tag.id.valid() || !candidate || candidate->key != tag.key ||
-            candidate->value != tag.value || !values.insert(normalized).second)
+            candidate->value != tag.value || !identities.insert(tag.id).second ||
+            !values.insert(normalized).second)
             return false;
     }
 
@@ -278,14 +280,7 @@ TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::st
     if (found == nullptr || !candidate || found->tags.size() >= max_tags_per_track)
         return {};
 
-    const std::string normalized_key = normalized_tag_text(candidate->key);
-    const std::string normalized_value = normalized_tag_text(candidate->value);
-    const auto duplicate = std::ranges::find_if(found->tags, [&](const TagRecord& tag) {
-        return normalized_tag_text(tag.key) == normalized_key &&
-            normalized_tag_text(tag.value) == normalized_value;
-    });
-
-    if (duplicate != found->tags.end())
+    if (contains_tag_value(found->tags, *candidate))
         return {};
 
     const TagId id{next_tag_id()};

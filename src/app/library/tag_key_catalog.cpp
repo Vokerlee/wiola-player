@@ -44,8 +44,8 @@ void TagKeyCatalog::upsert(const library::TrackRecord& track)
         return;
     std::map<std::string, std::string> incoming;
     for (const auto& tag : track.tags)
-        if (auto valid = library::make_tag_value(tag.key, "value"))
-            incoming.try_emplace(library::normalized_tag_text(valid->key), valid->key);
+        if (auto key = library::make_tag_key(tag.key))
+            incoming.try_emplace(library::normalized_tag_text(*key), *key);
     std::set<std::string> desired;
     for (const auto& [key, label] : incoming)
         desired.insert(key);
