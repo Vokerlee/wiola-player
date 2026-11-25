@@ -44,11 +44,16 @@ class CMakeBuild:
 
     def executable(self, name: str) -> Path:
         target = self._target(name)
-        if target.kind != "EXECUTABLE" or len(target.artifacts) != 1:
+        artifacts = tuple(
+            path
+            for path in target.artifacts
+            if target.name_on_disk is None or path.name == target.name_on_disk
+        )
+        if target.kind != "EXECUTABLE" or len(artifacts) != 1:
             raise ValueError(
                 "Target has no unique configured executable artifact: " + name
             )
-        path = target.artifacts[0]
+        path = artifacts[0]
         if not path.is_file():
             raise ValueError("Configured executable has not been built: " + str(path))
         return path

@@ -20,6 +20,7 @@ class BuildTarget:
     dependencies: tuple[str, ...]
     artifacts: tuple[Path, ...]
     compile_definitions: tuple[str, ...] = ()
+    name_on_disk: str | None = None
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,13 @@ class CMakeInventory:
                     (build / artifact["path"]).resolve()
                     for artifact in target.get("artifacts", [])
                 )
+                name_on_disk = target.get("nameOnDisk")
+                if name_on_disk is not None and (
+                    not isinstance(name_on_disk, str) or not name_on_disk
+                ):
+                    raise BuildInventoryError(
+                        "Invalid primary artifact name in CMake target"
+                    )
                 targets.append(
                     BuildTarget(
                         entry["name"],
@@ -127,6 +135,7 @@ class CMakeInventory:
                                 }
                             )
                         ),
+                        name_on_disk,
                     )
                 )
             return cls(

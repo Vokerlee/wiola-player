@@ -54,6 +54,7 @@ class CMakeInventoryTest(unittest.TestCase):
             "player.json",
             {
                 "type": "EXECUTABLE",
+                "nameOnDisk": "player",
                 "sources": [{"path": "src/main.cpp"}],
                 "dependencies": [{"id": "core-id"}],
                 "artifacts": [{"path": "bin/player"}],
@@ -74,7 +75,21 @@ class CMakeInventoryTest(unittest.TestCase):
             self.assertEqual(core.sources, ("src/core.cpp",))
             self.assertEqual(core.generated_sources, ("generated/moc.cpp",))
             self.assertEqual(player.dependencies, ("core",))
+            self.assertEqual(player.name_on_disk, "player")
             self.assertEqual(player.artifacts, (directory / "bin/player",))
+
+    def test_malformed_primary_artifact_name_is_rejected(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            self.model(directory)
+            for value in ("", 17):
+                self.write(
+                    directory,
+                    "player.json",
+                    {"type": "EXECUTABLE", "nameOnDisk": value},
+                )
+                with self.assertRaisesRegex(BuildInventoryError, "primary artifact name"):
+                    CMakeInventory.read(directory)
 
     def test_missing_reply_and_invalid_reference_fail_explicitly(self):
         with tempfile.TemporaryDirectory() as name:
