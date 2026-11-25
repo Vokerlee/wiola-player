@@ -20,6 +20,8 @@
 
 #include <media/local/provider.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -62,7 +64,9 @@ TEST(AdtsQualification, AacLcUsesActualRateAndChannelsWithEstimatedLength)
              std::tuple{"tone-lc.aac",      44100, 2U, 12288U},
              std::tuple{"tone-lc-mono.aac", 22050, 1U, 7168U },
     }) {
-        auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        auto asset{provider.open(
+            wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
+        )};
         ASSERT_TRUE(asset) << name;
         auto decoder{(*asset)->create_decoder()};
         ASSERT_TRUE(decoder) << name;

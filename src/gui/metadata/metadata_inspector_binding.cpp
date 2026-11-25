@@ -19,10 +19,12 @@
  */
 
 #include "metadata_inspector_binding.hpp"
+
 #include "inspector_context.hpp"
 #include "metadata_edit_presentation.hpp"
 #include <algorithm>
 #include <gui/model/documents/queue_rows.hpp>
+#include <media/local/resource.hpp>
 
 namespace wiola::gui {
 
@@ -145,7 +147,8 @@ void MetadataInspectorBinding::refresh()
     if (active && active->is_queue())
         if (const auto* current = playback_.playlist().current()) {
             playing = queue_row(*current);
-            playing->media = library_->media_at(current->path());
+            if (auto path = media::local_path(current->resource()))
+                playing->media = library_->media_at(*path);
         }
     inspector_->show_context(inspector_context(*library_, host_->registry().selection(),
         std::move(playing)));

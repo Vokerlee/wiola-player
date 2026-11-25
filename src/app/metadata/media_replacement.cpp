@@ -20,6 +20,8 @@
 
 #include "media_replacement.hpp"
 
+#include <media/local/resource.hpp>
+
 #include <library/fingerprint.hpp>
 
 #include <algorithm>
@@ -44,8 +46,8 @@ std::optional<media::MetadataWriteOutcome> compare(media::MediaProvider& provide
     const std::filesystem::path& source, const std::filesystem::path& temporary,
     const media::OperationContext& context)
 {
-    auto original_asset = provider.open(source, context);
-    auto output_asset = provider.open(temporary, context);
+    auto original_asset = provider.open(wiola::media::local_resource(source), context);
+    auto output_asset = provider.open(wiola::media::local_resource(temporary), context);
 
     if (!original_asset || !output_asset)
         return failure(media::MetadataWriteError::invalid_output,

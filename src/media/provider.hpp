@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Format-neutral access to an identified local media resource.
+ * @brief Format-neutral access to an identified media resource.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -23,8 +23,8 @@
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/metadata.hpp>
 #include <wiola/media/operation_context.hpp>
+#include <wiola/media/resource.hpp>
 
-#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -75,7 +75,7 @@ public:
     virtual ~MediaProvider() = default;
 
     /// Identifies a resource without decoding it or creating playback/output state.
-    virtual Result<std::unique_ptr<MediaAsset>> open(const std::filesystem::path& path,
+    virtual Result<std::unique_ptr<MediaAsset>> open(const ResourceReference& resource,
         const OperationContext& context = {}) = 0;
 
     [[nodiscard]] virtual std::vector<std::string> playback_extensions() const = 0;

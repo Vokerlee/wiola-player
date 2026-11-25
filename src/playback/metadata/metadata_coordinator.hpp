@@ -22,11 +22,11 @@
 
 #include <metadata/metadata_worker.hpp>
 #include <wiola/media/provider.hpp>
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/queue_entry.hpp>
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <map>
 #include <memory>
 #include <span>
@@ -39,7 +39,7 @@ class MetadataCoordinator {
 public:
     struct Reading {
         std::vector<QueueEntryId> entries;
-        std::filesystem::path path;
+        media::ResourceReference resource;
         media::Result<media::Metadata> result;
     };
 
@@ -63,7 +63,7 @@ public:
 
 private:
     using Entries = std::vector<QueueEntryId>;
-    using Groups = std::map<std::filesystem::path, Entries>;
+    using Groups = std::map<media::ResourceReference, Entries>;
 
     Groups group(std::span<const QueueEntry> tracks) const;
     void start(Groups& groups);

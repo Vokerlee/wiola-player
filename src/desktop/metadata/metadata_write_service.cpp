@@ -19,9 +19,11 @@
  */
 
 #include "metadata_write_service.hpp"
+
 #include <QThread>
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
+#include <media/local/resource.hpp>
 
 namespace wiola::app {
 
@@ -144,7 +146,8 @@ void MetadataWriteService::staged(MetadataWriteResult result)
                     ? MetadataWriteStage::cancelled
                     : MetadataWriteStage::failed;
             } else {
-                auto asset = provider_->open(value.output->path(), value.job.context());
+                auto asset = provider_->open(wiola::media::local_resource(value.output->path()),
+                    value.job.context());
                 if (asset) {
                     auto metadata = (*asset)->read_metadata(value.job.context());
                     if (metadata)

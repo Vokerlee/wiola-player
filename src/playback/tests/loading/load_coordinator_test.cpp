@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/resource.hpp>
 #include <loading/load_coordinator.hpp>
 
 #include <fakes/decoder.hpp>
@@ -42,7 +43,8 @@ LoadCompletion completion(LoadRequest request)
 TEST(LoadCoordinator, RequiresTheExactActiveRequestAndAcceptsItOnlyOnce)
 {
     LoadCoordinator coordinator;
-    const auto active{coordinator.begin(QueueEntryId{1}, "current.wav", LoadIntent::play)};
+    const auto active{coordinator.begin(QueueEntryId{1},
+        wiola::testing::resource("current.wav", "current"), LoadIntent::play)};
     auto wrong{active};
     ++wrong.generation;
     EXPECT_FALSE(coordinator.accept(completion(wrong)));
@@ -50,7 +52,7 @@ TEST(LoadCoordinator, RequiresTheExactActiveRequestAndAcceptsItOnlyOnce)
     wrong.entry = QueueEntryId{2};
     EXPECT_FALSE(coordinator.accept(completion(wrong)));
     wrong = active;
-    wrong.path = "different.wav";
+    wrong.resource = wiola::testing::resource("different.wav", "different");
     EXPECT_FALSE(coordinator.accept(completion(wrong)));
     wrong = active;
     wrong.intent = LoadIntent::install;
@@ -65,8 +67,10 @@ TEST(LoadCoordinator, RequiresTheExactActiveRequestAndAcceptsItOnlyOnce)
 TEST(LoadCoordinator, NewIntentRejectsAnOlderCompletionForTheSameResource)
 {
     LoadCoordinator coordinator;
-    const auto old{coordinator.begin(QueueEntryId{1}, "same.wav", LoadIntent::play)};
-    const auto current{coordinator.begin(QueueEntryId{1}, "same.wav", LoadIntent::play)};
+    const auto old{coordinator.begin(QueueEntryId{1}, wiola::testing::resource("same.wav", "same"),
+        LoadIntent::play)};
+    const auto current{coordinator.begin(QueueEntryId{1},
+        wiola::testing::resource("same.wav", "same"), LoadIntent::play)};
     EXPECT_NE(old.generation, current.generation);
     EXPECT_FALSE(coordinator.accept(completion(old)));
     EXPECT_TRUE(coordinator.accept(completion(current)));
@@ -75,7 +79,8 @@ TEST(LoadCoordinator, NewIntentRejectsAnOlderCompletionForTheSameResource)
 TEST(LoadCoordinator, RemovingAnotherOccurrencePreservesTheActiveRequest)
 {
     LoadCoordinator coordinator;
-    const auto active{coordinator.begin(QueueEntryId{1}, "same.wav", LoadIntent::play)};
+    const auto active{coordinator.begin(QueueEntryId{1},
+        wiola::testing::resource("same.wav", "same"), LoadIntent::play)};
     EXPECT_FALSE(coordinator.invalidate_if(QueueEntryId{2}));
     EXPECT_TRUE(coordinator.accept(completion(active)));
     EXPECT_FALSE(coordinator.invalidate_if(QueueEntryId{1}));
@@ -84,10 +89,12 @@ TEST(LoadCoordinator, RemovingAnotherOccurrencePreservesTheActiveRequest)
 TEST(LoadCoordinator, RemovingTheActiveOccurrenceRejectsItsLateCompletion)
 {
     LoadCoordinator coordinator;
-    const auto old{coordinator.begin(QueueEntryId{1}, "same.wav", LoadIntent::play)};
+    const auto old{coordinator.begin(QueueEntryId{1}, wiola::testing::resource("same.wav", "same"),
+        LoadIntent::play)};
     EXPECT_TRUE(coordinator.invalidate_if(QueueEntryId{1}));
     EXPECT_FALSE(coordinator.accept(completion(old)));
-    const auto current{coordinator.begin(QueueEntryId{1}, "same.wav", LoadIntent::play)};
+    const auto current{coordinator.begin(QueueEntryId{1},
+        wiola::testing::resource("same.wav", "same"), LoadIntent::play)};
     EXPECT_NE(old.generation, current.generation);
     EXPECT_TRUE(coordinator.accept(completion(current)));
 }
@@ -95,10 +102,12 @@ TEST(LoadCoordinator, RemovingTheActiveOccurrenceRejectsItsLateCompletion)
 TEST(LoadCoordinator, InvalidateDropsIntentAndPermitsANewRequest)
 {
     LoadCoordinator coordinator;
-    const auto old{coordinator.begin(QueueEntryId{1}, "old.wav", LoadIntent::install)};
+    const auto old{coordinator.begin(QueueEntryId{1}, wiola::testing::resource("old.wav", "old"),
+        LoadIntent::install)};
     coordinator.invalidate();
     EXPECT_FALSE(coordinator.accept(completion(old)));
-    const auto current{coordinator.begin(QueueEntryId{2}, "new.wav", LoadIntent::install)};
+    const auto current{coordinator.begin(QueueEntryId{2},
+        wiola::testing::resource("new.wav", "new"), LoadIntent::install)};
     EXPECT_TRUE(coordinator.accept(completion(current)));
 }
 
@@ -106,19 +115,21 @@ TEST(LoadCoordinator, ResourceInvalidationReturnsOnlyItsExactOwnedIntent)
 {
     LoadCoordinator coordinator;
     EXPECT_FALSE(coordinator.pending());
-    EXPECT_FALSE(coordinator.invalidate_resource("same.media"));
-    const auto active{coordinator.begin(QueueEntryId{7}, "same.media", LoadIntent::play,
-        wiola::units::Time{0.5})};
+    EXPECT_FALSE(coordinator.invalidate_resource(wiola::testing::resource("same.media", "same")));
+    const auto active{coordinator.begin(QueueEntryId{7},
+        wiola::testing::resource("same.media", "same"), LoadIntent::play, wiola::units::Time{0.5})};
     EXPECT_TRUE(coordinator.pending());
-    EXPECT_FALSE(coordinator.invalidate_resource("unrelated.media"));
+    EXPECT_FALSE(coordinator.invalidate_resource(wiola::testing::resource("unrelated.media",
+        "unrelated")));
     EXPECT_TRUE(coordinator.pending());
-    const auto retired{coordinator.invalidate_resource("same.media")};
+    const auto retired{
+        coordinator.invalidate_resource(wiola::testing::resource("same.media", "same"))};
     ASSERT_TRUE(retired);
     EXPECT_EQ(*retired, active);
     EXPECT_FALSE(coordinator.pending());
     EXPECT_FALSE(coordinator.accept(completion(active)));
     const auto resumed{
-        coordinator.begin(retired->entry, retired->path, retired->intent, retired->position)};
+        coordinator.begin(retired->entry, retired->resource, retired->intent, retired->position)};
     EXPECT_NE(resumed.generation, active.generation);
     auto wrong{resumed};
     wrong.position.reset();

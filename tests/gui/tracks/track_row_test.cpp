@@ -20,6 +20,8 @@
 
 #include <fixtures/track_view.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <QAction>
 #include <QApplication>
 #include <gtest/gtest.h>
@@ -71,8 +73,8 @@ TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
     media::TrackMetadata facts;
     facts.title = "original";
     queue.entries = {
-        {engine::QueueEntryId{11}, "same.wav", facts},
-        {engine::QueueEntryId{12}, "same.wav", facts}
+        {engine::QueueEntryId{11}, wiola::media::local_resource("same.wav"), facts},
+        {engine::QueueEntryId{12}, wiola::media::local_resource("same.wav"), facts}
     };
     queue.selected = 1;
     ++queue.structure;
@@ -89,7 +91,7 @@ TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
     facts.title = "updated";
     {
         std::vector<engine::QueueEntry> updated{
-            {engine::QueueEntryId{11}, "same.wav", facts, {}, 1},
+            {engine::QueueEntryId{11}, wiola::media::local_resource("same.wav"), facts, {}, 1},
             queue.entries[1]
         };
         queue.entries.swap(updated);
@@ -109,7 +111,8 @@ TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
 
     // A different owner can have identical revision numbers and still requires a rebuild.
     ControlledQueue replacement;
-    replacement.entries.emplace_back(engine::QueueEntryId{13}, "replacement.wav");
+    replacement.entries.emplace_back(engine::QueueEntryId{13},
+        wiola::media::local_resource("replacement.wav"));
     replacement.selected = 0;
     replacement.structure = queue.structure;
     replacement.metadata = queue.metadata;
@@ -209,7 +212,7 @@ TEST(TrackRows, SelectionAndActivationRetainDistinctSavedOccurrenceIdentities)
 TEST(TrackRows, QueueAdapterKeepsDuplicateOccurrencesAndMediaIdentitySeparate)
 {
     engine::Playlist queue;
-    queue.set({"same.wav", "same.wav"});
+    queue.set({wiola::media::local_resource("same.wav"), wiola::media::local_resource("same.wav")});
     const auto rows = gui::queue_rows(queue.tracks());
     ASSERT_EQ(rows.size(), 2);
     EXPECT_NE(rows[0].id, rows[1].id);

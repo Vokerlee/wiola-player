@@ -1,8 +1,10 @@
 #include "restart_child.hpp"
+
 #include "session_journey.hpp"
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QTest>
+#include <media/local/resource.hpp>
 #ifndef _WIN32
 #include <fcntl.h>
 #include <signal.h>
@@ -241,7 +243,7 @@ TEST(DesktopJourney, EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFi
         if (std::filesystem::exists(recovered.backup))
             EXPECT_EQ(library::fingerprint_media(recovered.backup), original);
         codec::LocalMediaProvider provider;
-        auto asset = provider.open(source);
+        auto asset = provider.open(wiola::media::local_resource(source));
         ASSERT_TRUE(asset);
         auto metadata = (*asset)->read_metadata();
         ASSERT_TRUE(metadata);

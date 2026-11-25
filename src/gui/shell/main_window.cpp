@@ -19,6 +19,7 @@
  */
 
 #include "main_window.hpp"
+
 #include "document_host.hpp"
 #include "library_navigation.hpp"
 #include "player_actions.hpp"
@@ -42,6 +43,7 @@
 #include <gui/layout/view_registry.hpp>
 #include <gui/metadata/track_inspector.hpp>
 #include <library/metadata_patch.hpp>
+#include <media/local/resource.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/metadata/metadata_edit_service.hpp>
@@ -753,12 +755,17 @@ void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
 
     // The title follows what is playing, so a list moving on to the next track renames the
     // window without anyone asking it to.
-    if (playback.track != named_ || playback_.playlist().position() != named_place_) {
+    if (playback.track != named_ || playback.track.label() != named_.label() ||
+        playback_.playlist().position() != named_place_) {
         named_ = playback.track;
         named_place_ = playback_.playlist().position();
 
-        const QString name{named_.empty() ? QString{"no track"}
-                                          : platform::qt::QtPathAdapter::to_qt(named_.filename())};
+        QString name{"no track"};
+        if (!named_.empty()) {
+            const auto path = media::local_path(named_);
+            name = path ? platform::qt::QtPathAdapter::to_qt(path->filename())
+                        : QString::fromStdString(named_.label());
+        }
 
         setWindowTitle(named_.empty() ? QString{"Wiola Player"} : name);
         said_fault_ = false;

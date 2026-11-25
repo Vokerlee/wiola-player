@@ -20,12 +20,12 @@
 
 #pragma once
 
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/state.hpp>
 #include <wiola/units.hpp>
 
 #include <cstddef>
-#include <filesystem>
 #include <optional>
 
 namespace wiola::engine {
@@ -33,7 +33,7 @@ namespace wiola::engine {
 struct PlaybackSnapshot {
     PlaybackState state{PlaybackState::idle};
     OpenResult open_result{OpenResult::opened};
-    std::filesystem::path track;
+    media::ResourceReference track;
     std::optional<std::size_t> queue_position;
     std::size_t structural_revision{0};
     std::size_t metadata_revision{0};

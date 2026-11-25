@@ -19,7 +19,9 @@
  */
 
 #include "playback_queue.hpp"
+
 #include <library/location.hpp>
+#include <media/local/resource.hpp>
 
 namespace wiola::app {
 
@@ -31,7 +33,7 @@ PlaybackQueueResult PlaybackQueue::replace_with_paths(PlaybackService& session,
 
     PlaybackQueueResult result;
     result.queued = tracks.size();
-    static_cast<void>(session.open(std::move(tracks)));
+    static_cast<void>(session.open(wiola::media::local_resources(tracks)));
     result.open_result = session.open_result();
     result.requested = true;
 
@@ -47,7 +49,7 @@ PlaybackQueueResult PlaybackQueue::append_paths(PlaybackService& session,
     PlaybackQueueResult result;
     result.queued = tracks.size();
     result.open_result = session.open_result();
-    session.add(std::move(tracks));
+    session.add(wiola::media::local_resources(tracks));
     result.requested = true;
 
     return result;

@@ -20,6 +20,8 @@
 
 #include <desktop/playback/queue_settings.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <app/playback/playback_service.hpp>
 
 #include <fakes/output.hpp>
@@ -102,7 +104,7 @@ TEST_F(QueueSettings, PutsBackTheQueueTheLastRunLeft)
 
         Control control{presenter, settings};
 
-        presenter.add({first, next});
+        presenter.add({wiola::media::local_resource(first), wiola::media::local_resource(next)});
         settle(presenter);
         control.save();
     }
@@ -115,8 +117,8 @@ TEST_F(QueueSettings, PutsBackTheQueueTheLastRunLeft)
     EXPECT_EQ(control.restore(), 0U);
 
     ASSERT_EQ(restored.playlist().tracks().size(), 2U);
-    EXPECT_EQ(restored.playlist().tracks().front().path(), first);
-    EXPECT_EQ(restored.playlist().tracks().back().path(), next);
+    EXPECT_EQ(restored.playlist().tracks().front().resource(), wiola::media::local_resource(first));
+    EXPECT_EQ(restored.playlist().tracks().back().resource(), wiola::media::local_resource(next));
 }
 
 /// It stands where it stood, without playing: putting a queue back is not pressing play.
@@ -131,7 +133,7 @@ TEST_F(QueueSettings, StandsWhereTheLastRunStood)
 
         Control control{presenter, settings};
 
-        presenter.add({first, next});
+        presenter.add({wiola::media::local_resource(first), wiola::media::local_resource(next)});
         settle(presenter);
         ASSERT_TRUE(presenter.play_track(1));
         settle(presenter);
@@ -147,7 +149,8 @@ TEST_F(QueueSettings, StandsWhereTheLastRunStood)
     settle(restored);
 
     EXPECT_EQ(restored.playlist().position(), 1U);
-    EXPECT_EQ(wiola::app::present_playback(restored).playback.track, next);
+    EXPECT_EQ(wiola::app::present_playback(restored).playback.track,
+        wiola::media::local_resource(next));
     EXPECT_FALSE(wiola::app::present_playback(restored).playback.playing);
 }
 
@@ -159,7 +162,7 @@ TEST_F(QueueSettings, PutsBackHowItWasBeingPlayedThrough)
 
         Control control{presenter, settings};
 
-        presenter.add({wiola::testing::write_wav("wiola_queue.wav")});
+        presenter.add({wiola::media::local_resource(wiola::testing::write_wav("wiola_queue.wav"))});
         settle(presenter);
         presenter.set_repeat(Repeat::track);
         presenter.shuffle(true);
@@ -189,7 +192,7 @@ TEST_F(QueueSettings, DropsTracksThatHaveGoneSince)
 
         Control control{presenter, settings};
 
-        presenter.add({kept, gone});
+        presenter.add({wiola::media::local_resource(kept), wiola::media::local_resource(gone)});
         settle(presenter);
         control.save();
     }
@@ -204,7 +207,7 @@ TEST_F(QueueSettings, DropsTracksThatHaveGoneSince)
     EXPECT_EQ(control.restore(), 1U) << "the track that had gone was not counted";
 
     ASSERT_EQ(restored.playlist().tracks().size(), 1U);
-    EXPECT_EQ(restored.playlist().tracks().front().path(), kept);
+    EXPECT_EQ(restored.playlist().tracks().front().resource(), wiola::media::local_resource(kept));
 }
 
 TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
@@ -218,7 +221,8 @@ TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
 
         Control control{session, settings};
 
-        session.add({repeated, other, repeated});
+        session.add({wiola::media::local_resource(repeated), wiola::media::local_resource(other),
+            wiola::media::local_resource(repeated)});
         settle(session);
 
         ASSERT_TRUE(session.play_track(2));
@@ -239,14 +243,15 @@ TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
     const auto& tracks{restored.playlist().tracks()};
 
     ASSERT_EQ(tracks.size(), 3U);
-    EXPECT_EQ(tracks[0].path(), repeated);
-    EXPECT_EQ(tracks[1].path(), other);
-    EXPECT_EQ(tracks[2].path(), repeated);
+    EXPECT_EQ(tracks[0].resource(), wiola::media::local_resource(repeated));
+    EXPECT_EQ(tracks[1].resource(), wiola::media::local_resource(other));
+    EXPECT_EQ(tracks[2].resource(), wiola::media::local_resource(repeated));
     EXPECT_NE(tracks[0].id(), tracks[2].id());
 
     EXPECT_EQ(restored.playlist().position(), 2U);
     EXPECT_EQ(control.restore_mapping().size(), 3);
-    EXPECT_EQ(wiola::app::present_playback(restored).playback.track, repeated);
+    EXPECT_EQ(wiola::app::present_playback(restored).playback.track,
+        wiola::media::local_resource(repeated));
     EXPECT_FALSE(wiola::app::present_playback(restored).playback.playing);
 }
 
@@ -298,7 +303,8 @@ TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone
 
         Control control{session, settings};
 
-        session.add({first, selected, last});
+        session.add({wiola::media::local_resource(first), wiola::media::local_resource(selected),
+            wiola::media::local_resource(last)});
         settle(session);
 
         ASSERT_TRUE(session.play_track(1));
@@ -317,11 +323,12 @@ TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone
     settle(restored);
 
     ASSERT_EQ(restored.playlist().tracks().size(), 2U);
-    EXPECT_EQ(restored.playlist().tracks()[0].path(), first);
-    EXPECT_EQ(restored.playlist().tracks()[1].path(), last);
+    EXPECT_EQ(restored.playlist().tracks()[0].resource(), wiola::media::local_resource(first));
+    EXPECT_EQ(restored.playlist().tracks()[1].resource(), wiola::media::local_resource(last));
 
     EXPECT_EQ(restored.playlist().position(), 0U);
-    EXPECT_EQ(wiola::app::present_playback(restored).playback.track, first);
+    EXPECT_EQ(wiola::app::present_playback(restored).playback.track,
+        wiola::media::local_resource(first));
     EXPECT_FALSE(wiola::app::present_playback(restored).playback.playing);
 }
 
@@ -337,7 +344,8 @@ TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
 
         Control control{session, settings};
 
-        session.add({first, selected, last});
+        session.add({wiola::media::local_resource(first), wiola::media::local_resource(selected),
+            wiola::media::local_resource(last)});
         settle(session);
 
         ASSERT_TRUE(session.play_track(1));
@@ -359,7 +367,8 @@ TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
     EXPECT_EQ(wiola::app::present_playback(restored).repeat, Repeat::all);
     EXPECT_TRUE(wiola::app::present_playback(restored).shuffled);
     EXPECT_EQ(restored.playlist().position(), 1U);
-    EXPECT_EQ(wiola::app::present_playback(restored).playback.track, selected);
+    EXPECT_EQ(wiola::app::present_playback(restored).playback.track,
+        wiola::media::local_resource(selected));
     EXPECT_FALSE(wiola::app::present_playback(restored).playback.playing);
 }
 
@@ -379,7 +388,7 @@ TEST_F(QueueSettings, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
 
         Control control{session, settings};
 
-        session.add({wiola::testing::write_wav("wiola_queue.wav")});
+        session.add({wiola::media::local_resource(wiola::testing::write_wav("wiola_queue.wav"))});
         settle(session);
         control.save();
     }

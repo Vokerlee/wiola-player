@@ -58,8 +58,8 @@ void MetadataCoordinator::append(std::span<const QueueEntry> tracks)
 {
     Groups additions{group(tracks)};
 
-    for (auto& [path, entries] : additions) {
-        const auto existing{entries_.find(path)};
+    for (auto& [resource, entries] : additions) {
+        const auto existing{entries_.find(resource)};
         if (existing != entries_.end()) {
             existing->second.insert(existing->second.end(), entries.begin(), entries.end());
             entries.clear();
@@ -68,9 +68,9 @@ void MetadataCoordinator::append(std::span<const QueueEntry> tracks)
 
     start(additions);
 
-    for (auto& [path, entries] : additions) {
+    for (auto& [resource, entries] : additions) {
         if (!entries.empty())
-            entries_.insert_or_assign(std::move(path), std::move(entries));
+            entries_.insert_or_assign(std::move(resource), std::move(entries));
     }
 }
 
@@ -91,13 +91,13 @@ std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
     for (MetadataWorker::Reading& read : reader_->take()) {
         if (read.generation != generation_)
             continue;
-        const auto entries{entries_.find(read.path)};
+        const auto entries{entries_.find(read.resource)};
 
         if (entries == entries_.end() || entries->second.front() != read.id)
             continue;
 
         readings.push_back(Reading{.entries = std::move(entries->second),
-            .path = std::move(read.path),
+            .resource = std::move(read.resource),
             .result = std::move(read.result)});
         entries_.erase(entries);
     }
@@ -117,7 +117,7 @@ MetadataCoordinator::Groups MetadataCoordinator::group(std::span<const QueueEntr
     Groups groups;
 
     for (const QueueEntry& track : tracks)
-        groups[track.path()].push_back(track.id());
+        groups[track.resource()].push_back(track.id());
 
     return groups;
 }
@@ -126,11 +126,11 @@ void MetadataCoordinator::start(Groups& groups)
 {
     deferred_.reserve(deferred_.size() + groups.size());
 
-    for (const auto& [path, entries] : groups) {
+    for (const auto& [resource, entries] : groups) {
         if (!entries.empty())
             deferred_.push_back(MetadataWorker::Request{.generation = generation_,
                 .id = entries.front(),
-                .path = path});
+                .resource = resource});
     }
 
     submit();

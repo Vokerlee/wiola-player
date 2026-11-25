@@ -148,7 +148,7 @@ void TagReader::work(const std::stop_token& stop)
         media::Result<media::Metadata> result{media::Metadata{}};
 
         try {
-            auto asset{provider_->open(request.path, context)};
+            auto asset{provider_->open(request.resource, context)};
             if (!asset)
                 result = media::unexpected{asset.error()};
             else if (!*asset)
@@ -198,7 +198,7 @@ void TagReader::work(const std::stop_token& stop)
             completed_artwork_bytes_ += artwork_bytes;
             read_.push_back(Reading{.generation = request.generation,
                 .id = request.id,
-                .path = std::move(request.path),
+                .resource = std::move(request.resource),
                 .result = std::move(result)});
             active_generation_.reset();
         }

@@ -21,11 +21,11 @@
 #pragma once
 
 #include <queue/playback_order.hpp>
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/queue_view.hpp>
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <map>
 #include <optional>
 #include <span>
@@ -36,8 +36,8 @@ namespace wiola::engine {
 /// Owns queue entries while PlaybackOrder owns permutation, cursor, and repeat decisions.
 class Playlist final : public QueueView {
 public:
-    void set(std::vector<std::filesystem::path> paths);
-    void add(std::vector<std::filesystem::path> paths);
+    void set(std::vector<media::ResourceReference> resources);
+    void add(std::vector<media::ResourceReference> resources);
     bool remove(std::size_t index) noexcept;
     void clear() noexcept;
 

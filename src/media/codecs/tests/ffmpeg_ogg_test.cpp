@@ -20,6 +20,8 @@
 
 #include <media/local/provider.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -64,7 +66,9 @@ TEST(OggQualification, VorbisAndOpusDecodeThroughOneProviderWithCorrectRates)
              std::tuple{"tone-vorbis.ogg", 44100, 10897},
              std::tuple{"tone.opus",       48000, 12000},
     }) {
-        auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        auto asset{provider.open(
+            wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
+        )};
         ASSERT_TRUE(asset) << name;
         auto decoder{(*asset)->create_decoder()};
         ASSERT_TRUE(decoder) << name;

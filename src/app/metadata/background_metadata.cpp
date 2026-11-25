@@ -19,6 +19,8 @@
  */
 
 #include "background_metadata.hpp"
+
+#include <media/local/resource.hpp>
 #include <wiola/media/artwork_reference.hpp>
 
 #include <stdexcept>
@@ -99,7 +101,7 @@ void BackgroundMetadata::run()
             if (context.stop_reason() != media::StopReason::none)
                 result.error = context.error();
             else {
-                auto asset = provider_->open(job.path, context);
+                auto asset = provider_->open(wiola::media::local_resource(job.path), context);
                 if (!asset)
                     result.error = asset.error();
                 else {

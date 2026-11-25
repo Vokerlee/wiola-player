@@ -19,6 +19,7 @@
  */
 
 #include "transport_view.hpp"
+
 #include "clock.hpp"
 #include "seek_bar.hpp"
 #include <QHBoxLayout>
@@ -27,6 +28,7 @@
 #include <gui/appearance/presentation_tokens.hpp>
 #include <gui/layout/view_registry.hpp>
 #include <gui/shell/action_button_binding.hpp>
+#include <media/local/resource.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 #include <stdexcept>
 
@@ -103,7 +105,8 @@ void TransportView::register_views(ViewRegistry& registry)
 void TransportView::present(const app::PlayerPresentation& state)
 {
     const bool changed = state.playback.selection_revision != state_.playback.selection_revision ||
-        state.playback.track != state_.playback.track;
+        state.playback.track != state_.playback.track ||
+        state.playback.track.label() != state_.playback.track.label();
     state_ = state;
     if (changed)
         seek_->set_fraction(0);
@@ -116,8 +119,13 @@ void TransportView::present(const app::PlayerPresentation& state)
         actions_.set_available(action, playback.loaded);
     seek_->setEnabled(playback.loaded && playback.seekable && playback.total_time &&
         *playback.total_time > units::Time{});
-    title_->setText(playback.loaded ? platform::qt::QtPathAdapter::to_qt(playback.track.filename())
-                                    : QString{"no track"});
+    QString title{"no track"};
+    if (playback.loaded) {
+        const auto path = media::local_path(playback.track);
+        title = path ? platform::qt::QtPathAdapter::to_qt(path->filename())
+                     : QString::fromStdString(playback.track.label());
+    }
+    title_->setText(title);
     show_time();
 }
 

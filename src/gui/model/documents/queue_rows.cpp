@@ -22,6 +22,7 @@
 #include <gui/model/documents/queue_rows.hpp>
 #include <library/location.hpp>
 #include <map>
+#include <media/local/resource.hpp>
 #include <set>
 
 namespace wiola::gui {
@@ -30,9 +31,11 @@ TrackRow queue_row(const engine::QueueEntry& track)
 {
     TrackRow row;
     row.id = track.id();
-    row.media = library::media_id_for(track.path());
-    row.location = track.path();
-    row.location_key = row.media.value;
+    if (auto path = media::local_path(track.resource())) {
+        row.media = library::media_id_for(*path);
+        row.location = std::move(*path);
+        row.location_key = row.media.value;
+    }
     row.metadata = track.metadata();
     row.artwork = track.artwork();
     row.metadata_revision = track.revision();

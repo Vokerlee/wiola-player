@@ -90,10 +90,10 @@ public:
     {
     }
 
-    media::Result<std::unique_ptr<media::MediaAsset>> open(const std::filesystem::path& path,
+    media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference& resource,
         const media::OperationContext& context) override
     {
-        auto opened = delegate_->open(path, context);
+        auto opened = delegate_->open(resource, context);
         if (!opened)
             return media::unexpected{opened.error()};
         return std::unique_ptr<media::MediaAsset>{

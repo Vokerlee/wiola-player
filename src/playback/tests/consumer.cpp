@@ -84,10 +84,10 @@ int main()
     engine::PlaybackSnapshot snapshot;
     snapshot.state = engine::PlaybackState::faulted;
     snapshot.open_result = engine::open_failed(*completed.values.front().error);
-    snapshot.track = "owned resource";
+    snapshot.track = media::ResourceReference{"consumer", "owned resource", "Owned resource"};
     snapshot.queue_position = 0;
     const auto retained = snapshot;
-    snapshot.track.clear();
+    snapshot.track = {};
     if (retained.track.empty() || retained.total_time ||
         retained.open_result != engine::OpenResult::damaged)
         return 2;
@@ -102,9 +102,13 @@ int main()
         return 4;
     media::TrackMetadata facts;
     facts.title = "owned title";
-    const engine::QueueEntry entry{engine::QueueEntryId{receipt.id}, "resource", facts};
+    const engine::QueueEntry entry{
+        engine::QueueEntryId{receipt.id},
+        media::ResourceReference{"consumer", "resource", "Resource"},
+        facts
+    };
     facts.title.clear();
-    if (entry.id() != engine::QueueEntryId{receipt.id} || entry.path() != "resource" ||
+    if (entry.id() != engine::QueueEntryId{receipt.id} || entry.resource().key() != "resource" ||
         entry.metadata().title != "owned title" || entry.artwork() || entry.revision() != 0)
         return 5;
     ConsumerQueue queue;
@@ -115,7 +119,8 @@ int main()
     queue.selected = 0;
     ++queue.structure;
     const auto owned_entry{view.tracks().front()};
-    queue.entries.emplace_back(engine::QueueEntryId{receipt.id + 1}, "resource");
+    queue.entries.emplace_back(engine::QueueEntryId{receipt.id + 1},
+        media::ResourceReference{"consumer", "resource", "Resource"});
     ++queue.structure;
     if (view.tracks().size() != 2 || view.current()->id() != entry.id() || view.position() != 0 ||
         view.index_of(engine::QueueEntryId{receipt.id + 1}) != 1 ||

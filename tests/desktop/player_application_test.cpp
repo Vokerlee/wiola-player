@@ -19,7 +19,9 @@
  */
 
 #include <desktop/player_application.hpp>
+
 #include <gui/shell/main_window.hpp>
+#include <media/local/resource.hpp>
 
 #include <QFile>
 #include <QLineEdit>
@@ -120,13 +122,13 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
 
         window.open({source});
 
-        EXPECT_EQ(player.playback().track(), std::filesystem::path{});
+        EXPECT_EQ(player.playback().track(), wiola::media::ResourceReference{});
         EXPECT_FALSE(player.playback().loaded());
     }
 
     ASSERT_TRUE(pump_until([&player] { return player.playback().loaded(); }));
 
-    EXPECT_EQ(player.playback().track(), source);
+    EXPECT_EQ(player.playback().track(), wiola::media::local_resource(source));
     EXPECT_EQ(player.playback().open_result(), wiola::engine::OpenResult::opened);
     EXPECT_FALSE(player.playback().playing());
     const auto media = wiola::library::media_id_for(source);
@@ -171,7 +173,8 @@ TEST_F(PlayerApplication, RecreatingAWindowDoesNotRestoreOrDuplicateTheQueueAgai
 {
     wiola::app::PlayerApplication player;
     const auto source = track("wiola_runtime_recreate.wav");
-    player.playback().add({source, source});
+    player.playback().add({wiola::media::local_resource(source),
+        wiola::media::local_resource(source)});
     ASSERT_TRUE(pump_until([&] { return player.playback().loaded(); }));
     const auto& before = player.playback().playlist().tracks();
     const auto first = before[0].id();
@@ -197,7 +200,7 @@ TEST_F(PlayerApplication, ObserverLifetimeAndShutdownDoNotLeaveLiveCallbacksOrCo
     EXPECT_TRUE(player.shutdown());
     QCoreApplication::processEvents();
     EXPECT_EQ(calls, last);
-    EXPECT_EQ(player.playback().open({"after-quit.wav"}).acceptance,
+    EXPECT_EQ(player.playback().open({wiola::media::local_resource("after-quit.wav")}).acceptance,
         wiola::engine::CommandResult::unavailable);
     EXPECT_FALSE(player.library().playlists().create("After quit").valid());
     EXPECT_TRUE(player.shutdown());
@@ -324,7 +327,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
     EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::remuxing), stages.end());
     EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::validating), stages.end());
     EXPECT_NE(std::ranges::find(stages, wiola::app::MetadataWriteStage::reloading), stages.end());
-    auto asset = config.provider->open(path);
+    auto asset = config.provider->open(wiola::media::local_resource(path));
     ASSERT_TRUE(asset);
     auto metadata = (*asset)->read_metadata();
     ASSERT_TRUE(metadata);

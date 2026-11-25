@@ -20,6 +20,8 @@
 
 #include <gui/model/documents/queue_rows.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <fixtures/track_view.hpp>
 #include <gui/tracks/track_table_view.hpp>
 
@@ -102,7 +104,8 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.setCurrentIndex(view.model()->index(1, 0));
 
@@ -154,7 +157,8 @@ TEST(TrackTableView, RestoresSelectionAndKeyboardPositionByTrackIdentity)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav", "third.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav"), wiola::media::local_resource("third.wav")});
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     view.selectionModel()->select(view.model()->index(0, 0),
@@ -183,7 +187,8 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.selectionModel()->select(view.model()->index(0, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
@@ -285,7 +290,7 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({"b.wav", "a.wav"});
+    playlist.set({wiola::media::local_resource("b.wav"), wiola::media::local_resource("a.wav")});
     playlist.describe(id_at(playlist, 0),
         {.title = "Zulu", .artist = {}, .album = {}, .duration = {}});
     playlist.describe(id_at(playlist, 1),
@@ -297,7 +302,7 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
     emit view.horizontalHeader()->sectionClicked(1);
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 1), id_at(playlist, 0)}));
-    EXPECT_EQ(playlist.tracks()[0].path(), "b.wav");
+    EXPECT_EQ(playlist.tracks()[0].resource(), wiola::media::local_resource("b.wav"));
 
     emit view.horizontalHeader()->sectionClicked(1);
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
@@ -310,14 +315,15 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
         [&requests] { ++requests; });
     apply->trigger();
     EXPECT_EQ(requests, 1);
-    EXPECT_EQ(playlist.tracks()[0].path(), "b.wav");
+    EXPECT_EQ(playlist.tracks()[0].resource(), wiola::media::local_resource("b.wav"));
 }
 
 TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQueue)
 {
     wiola::gui::TrackTableView view;
     wiola::engine::Playlist playlist;
-    playlist.set({"same.wav", "same.wav", "other.wav"});
+    playlist.set({wiola::media::local_resource("same.wav"),
+        wiola::media::local_resource("same.wav"), wiola::media::local_resource("other.wav")});
     playlist.describe(id_at(playlist, 0),
         {.title = "Same", .artist = "Zulu", .album = {}, .duration = {}});
     playlist.describe(id_at(playlist, 1),
@@ -362,7 +368,7 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
         (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.chosen_rows()), std::vector{id_at(playlist, 1)});
     EXPECT_EQ(playlist.tracks()[0].id(), id_at(playlist, 0));
-    EXPECT_EQ(playlist.tracks()[1].path(), "same.wav");
+    EXPECT_EQ(playlist.tracks()[1].resource(), wiola::media::local_resource("same.wav"));
 }
 
 } // namespace

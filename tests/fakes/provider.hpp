@@ -21,8 +21,8 @@
 #pragma once
 
 #include <wiola/media/provider.hpp>
+#include <wiola/media/resource.hpp>
 
-#include <filesystem>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -33,18 +33,19 @@ namespace wiola::testing {
 class FakeMediaProvider final : public media::MediaProvider {
 public:
     using AssetFactory = std::function<media::Result<std::unique_ptr<media::MediaAsset>>(
-        const std::filesystem::path&, const media::OperationContext&
+        const media::ResourceReference&, const media::OperationContext&
     )>;
-    using DecoderFactory = std::function<media::DecoderOpenResult(const std::filesystem::path&,
+    using DecoderFactory = std::function<media::DecoderOpenResult(const media::ResourceReference&,
         const media::OperationContext&)>;
-    using MetadataRead = std::function<media::Result<media::Metadata>(const std::filesystem::path&,
-        const media::OperationContext&)>;
+    using MetadataRead =
+        std::function<media::Result<media::Metadata>(const media::ResourceReference&,
+            const media::OperationContext&)>;
 
     /// A decoder-only driver leaves metadata explicitly unsupported.
     [[nodiscard]] static std::shared_ptr<FakeMediaProvider> decoder_only(DecoderFactory decoder)
     {
         return std::make_shared<FakeMediaProvider>(std::move(decoder),
-            [](const std::filesystem::path&,
+            [](const media::ResourceReference&,
                 const media::OperationContext&) -> media::Result<media::Metadata> {
                 return media::unexpected{
                     media::Error{.category = media::ErrorCategory::unsupported,
@@ -57,7 +58,7 @@ public:
     [[nodiscard]] static std::shared_ptr<FakeMediaProvider> metadata_only(MetadataRead metadata)
     {
         return std::make_shared<FakeMediaProvider>(
-            [](const std::filesystem::path&,
+            [](const media::ResourceReference&,
                 const media::OperationContext&) -> media::DecoderOpenResult {
                 return media::unexpected{
                     media::Error{.category = media::ErrorCategory::unsupported,
@@ -71,9 +72,10 @@ public:
     FakeMediaProvider(DecoderFactory decoder, MetadataRead metadata)
         : FakeMediaProvider{[callbacks = std::make_shared<const Callbacks>(std::move(decoder),
                                  std::move(metadata))](
-                                const std::filesystem::path& path, const media::OperationContext&
+                                const media::ResourceReference& resource,
+                                const media::OperationContext&
                             ) -> media::Result<std::unique_ptr<media::MediaAsset>> {
-            return std::unique_ptr<media::MediaAsset>{std::make_unique<Asset>(callbacks, path)};
+            return std::unique_ptr<media::MediaAsset>{std::make_unique<Asset>(callbacks, resource)};
         }}
     {
     }
@@ -84,12 +86,12 @@ public:
     {
     }
 
-    media::Result<std::unique_ptr<media::MediaAsset>> open(const std::filesystem::path& path,
+    media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference& resource,
         const media::OperationContext& context) override
     {
         if (context.stop_reason() != media::StopReason::none)
             return media::unexpected{context.error()};
-        return open_(path, context);
+        return open_(resource, context);
     }
 
     std::vector<std::string> playback_extensions() const override { return {}; }
@@ -102,9 +104,9 @@ private:
 
     class Asset final : public media::MediaAsset {
     public:
-        Asset(std::shared_ptr<const Callbacks> callbacks, std::filesystem::path path)
+        Asset(std::shared_ptr<const Callbacks> callbacks, media::ResourceReference resource)
             : callbacks_{std::move(callbacks)}
-            , path_{std::move(path)}
+            , resource_{std::move(resource)}
         {
         }
 
@@ -121,17 +123,17 @@ private:
         {
             if (context.stop_reason() != media::StopReason::none)
                 return media::unexpected{context.error()};
-            return callbacks_->metadata(path_, context);
+            return callbacks_->metadata(resource_, context);
         }
 
         media::DecoderOpenResult create_decoder(const media::OperationContext& context) override
         {
-            return callbacks_->decoder(path_, context);
+            return callbacks_->decoder(resource_, context);
         }
 
     private:
         std::shared_ptr<const Callbacks> callbacks_;
-        std::filesystem::path path_;
+        media::ResourceReference resource_;
     };
 
     AssetFactory open_;

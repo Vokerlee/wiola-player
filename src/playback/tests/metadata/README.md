@@ -1,6 +1,6 @@
 # Metadata policy and worker tests
 
-Controlled MetadataWorker delivery tests isolate acceptance policy from scheduling: old results for the same path, wrong occurrence/resource, duplicates and reverse completion order must not update another occurrence. Existing concrete-worker cases retain coalescing, bounded/deferred submission and typed failures.
+Controlled MetadataWorker delivery tests isolate acceptance policy from scheduling: old results for the same resource, wrong occurrence/resource, duplicates and reverse completion order must not update another occurrence. Existing concrete-worker cases retain coalescing, bounded/deferred submission and typed failures.
 
 ```mermaid
 flowchart LR

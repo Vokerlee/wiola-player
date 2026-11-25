@@ -42,8 +42,8 @@ public:
     PlaybackService& operator=(PlaybackService&&) = delete;
     void stop_accepting() noexcept;
 
-    engine::OperationReceipt open(std::vector<std::filesystem::path> tracks);
-    void add(std::vector<std::filesystem::path> tracks);
+    engine::OperationReceipt open(std::vector<media::ResourceReference> tracks);
+    void add(std::vector<media::ResourceReference> tracks);
     bool remove(std::size_t index);
     void clear();
     bool play_track(std::size_t index);
@@ -54,7 +54,7 @@ public:
     engine::CommandResult pause() noexcept;
     engine::CommandResult resume() noexcept;
     [[nodiscard]] std::optional<engine::Session::MediaReplacementState>
-    release_media(const std::filesystem::path& path);
+    release_media(const media::ResourceReference& resource);
     void restore_media(const engine::Session::MediaReplacementState& state);
     void stop() noexcept;
     void seek(units::Time position) noexcept;
@@ -89,7 +89,7 @@ public:
     [[nodiscard]] bool seekable() const noexcept;
     [[nodiscard]] std::vector<std::string> playback_extensions() const;
     [[nodiscard]] const engine::QueueView& playlist() const noexcept;
-    [[nodiscard]] const std::filesystem::path& track() const noexcept;
+    [[nodiscard]] const media::ResourceReference& track() const noexcept;
 
     void set_repeat(engine::RepeatMode repeat) noexcept;
     [[nodiscard]] engine::RepeatMode repeat() const noexcept;

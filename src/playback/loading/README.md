@@ -11,7 +11,7 @@ flowchart LR
     Completion --> Intent
 ```
 
-Loader has at most one active open, one queued replacement and one unclaimed completion. Start/cancel/take and destruction belong to one lifecycle caller. The worker alone opens assets and asks them for decoders. A generation maintained by the worker rejects obsolete physical completions, while LoadCoordinator accepts an exact active logical request at most once; duplicate resource paths or queue occurrences do not identify the same intent.
+Loader has at most one active open, one queued replacement and one unclaimed completion. Start/cancel/take and destruction belong to one lifecycle caller. The worker alone opens assets and asks them for decoders. A generation maintained by the worker rejects obsolete physical completions, while LoadCoordinator accepts an exact active logical request at most once; duplicate resource identitys or queue occurrences do not identify the same intent.
 
 A LoadRequest carries optional restoration position together with occurrence, resource, generation and play intent. Completion matching includes it. The coordinator can retire an intent for one exact resource and return its owned payload; unrelated pending intent remains accepted. Session uses this when handing off a resource whose new occurrence is already opening. Logical pending state remains distinct from the worker's physical busy state.
 

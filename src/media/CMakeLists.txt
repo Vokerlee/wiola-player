@@ -20,6 +20,7 @@ wiola_export_headers(
         metadata.hpp
         operation_context.hpp
         provider.hpp
+        resource.hpp
         result.hpp
         stream_spec.hpp
 )

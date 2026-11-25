@@ -19,6 +19,7 @@
  */
 
 #include <allocation_failure.hpp>
+#include <fakes/resource.hpp>
 #include <queue/playlist.hpp>
 
 #include <wiola/units.hpp>
@@ -28,7 +29,6 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
-#include <filesystem>
 #include <limits>
 #include <memory>
 #include <new>
@@ -63,17 +63,32 @@ bool allocation_fails(std::size_t after, Operation operation)
 #endif
 
 /// Three tracks, named so that a test can say which one it is standing at.
-std::vector<std::filesystem::path> three()
+std::vector<wiola::media::ResourceReference> three()
 {
-    return {std::filesystem::path{"first.wav"}, std::filesystem::path{"second.wav"},
-        std::filesystem::path{"third.wav"}};
+    return {wiola::testing::resource("first.wav", "first"),
+        wiola::testing::resource("second.wav", "second"),
+        wiola::testing::resource("third.wav", "third")};
 }
 
 /// The file a track is, which is what a test says it stands at.
-const std::filesystem::path& path_of(const Playlist& playlist)
+const wiola::media::ResourceReference& resource_of(const Playlist& playlist)
 {
-    static const std::filesystem::path none;
-    return playlist.current() != nullptr ? playlist.current()->path() : none;
+    static const wiola::media::ResourceReference none;
+    return playlist.current() != nullptr ? playlist.current()->resource() : none;
+}
+
+TEST(Playlist, CoalescedResourceMetadataRetainsEachOccurrencesOwnFallbackLabel)
+{
+    const wiola::media::ResourceReference first{"memory", "same key", "First title"};
+    const wiola::media::ResourceReference second{"memory", "same key", "Second title"};
+    Playlist queue;
+    queue.set({first, second});
+    const std::array entries{queue.tracks()[0].id(), queue.tracks()[1].id()};
+    queue.apply_metadata(entries, {}, {});
+    EXPECT_EQ(queue.tracks()[0].metadata().title, "First title");
+    EXPECT_EQ(queue.tracks()[1].metadata().title, "Second title");
+    EXPECT_NE(entries[0], entries[1]);
+    EXPECT_EQ(queue.tracks()[0].resource(), queue.tracks()[1].resource());
 }
 
 } // namespace
@@ -84,7 +99,7 @@ TEST(Playlist, StandsNowhereWhileItIsEmpty)
 
     EXPECT_TRUE(playlist.empty());
     EXPECT_EQ(playlist.tracks().size(), 0U);
-    EXPECT_TRUE(path_of(playlist).empty());
+    EXPECT_TRUE(resource_of(playlist).empty());
     EXPECT_FALSE(playlist.position().has_value());
 }
 
@@ -104,7 +119,7 @@ TEST(Playlist, StandsAtTheFirstOfWhatItIsGiven)
     playlist.set(three());
 
     EXPECT_EQ(playlist.tracks().size(), 3U);
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("first.wav", "first"));
     EXPECT_EQ(playlist.position(), 0U);
 }
 
@@ -112,11 +127,11 @@ TEST(Playlist, StandsAtTheFirstTrackAdded)
 {
     Playlist playlist;
 
-    playlist.add({std::filesystem::path{"only.wav"}});
-    playlist.add({std::filesystem::path{"after.wav"}});
+    playlist.add({wiola::testing::resource("only.wav", "only")});
+    playlist.add({wiola::testing::resource("after.wav", "after")});
 
     EXPECT_EQ(playlist.tracks().size(), 2U);
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"only.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("only.wav", "only"));
 }
 
 TEST(Playlist, WalksForwardsAndBack)
@@ -125,13 +140,13 @@ TEST(Playlist, WalksForwardsAndBack)
     playlist.set(three());
 
     ASSERT_TRUE(playlist.next());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
 
     ASSERT_TRUE(playlist.next());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
 
     ASSERT_TRUE(playlist.previous());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
 }
 
 /// The end of the list is the end of playback, and it stays where it stopped.
@@ -143,12 +158,12 @@ TEST(Playlist, GoesNoFurtherThanTheEnd)
     ASSERT_TRUE(playlist.go_to(2));
 
     EXPECT_FALSE(playlist.next());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
 
     ASSERT_TRUE(playlist.go_to(0));
 
     EXPECT_FALSE(playlist.previous());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("first.wav", "first"));
 }
 
 TEST(Playlist, ComesRoundWhenEverythingRepeats)
@@ -160,10 +175,10 @@ TEST(Playlist, ComesRoundWhenEverythingRepeats)
     ASSERT_TRUE(playlist.go_to(2));
 
     EXPECT_TRUE(playlist.next());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("first.wav", "first"));
 
     EXPECT_TRUE(playlist.previous());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
 }
 
 TEST(Playlist, StaysWhereItIsWhenOneTrackRepeats)
@@ -175,10 +190,10 @@ TEST(Playlist, StaysWhereItIsWhenOneTrackRepeats)
     ASSERT_TRUE(playlist.go_to(1));
 
     EXPECT_TRUE(playlist.next());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
 
     EXPECT_TRUE(playlist.previous());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
 }
 
 TEST(Playlist, StandsWhereItIsSent)
@@ -187,11 +202,11 @@ TEST(Playlist, StandsWhereItIsSent)
     playlist.set(three());
 
     EXPECT_TRUE(playlist.go_to(2));
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
     EXPECT_EQ(playlist.position(), 2U);
 
     EXPECT_FALSE(playlist.go_to(3));
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
 }
 
 /// Shuffling changes what comes next, not what is playing now.
@@ -205,7 +220,7 @@ TEST(Playlist, KeepsTheTrackItStandsAtWhenShuffled)
     playlist.shuffle(1234);
 
     EXPECT_TRUE(playlist.shuffled());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
     EXPECT_EQ(playlist.position(), 1U);
 }
 
@@ -220,10 +235,10 @@ TEST(Playlist, ShufflingIsAnOrderOverEveryTrack)
     // Back to the start of the order: shuffling means the first track is not first any more.
     while (playlist.previous()) { }
 
-    std::set<std::filesystem::path> seen{path_of(playlist)};
+    std::set<wiola::media::ResourceReference> seen{resource_of(playlist)};
 
     while (playlist.next())
-        seen.insert(path_of(playlist));
+        seen.insert(resource_of(playlist));
 
     EXPECT_EQ(seen.size(), 3U);
 }
@@ -236,10 +251,10 @@ TEST(Playlist, ShufflesTheSameWayForTheSameSeed)
         playlist.set(three());
         playlist.shuffle(seed);
 
-        std::vector<std::filesystem::path> order;
+        std::vector<wiola::media::ResourceReference> order;
 
         do
-            order.push_back(path_of(playlist));
+            order.push_back(resource_of(playlist));
         while (playlist.next());
 
         return order;
@@ -259,13 +274,13 @@ TEST(Playlist, PutsThemBackInOrder)
     playlist.unshuffle();
 
     EXPECT_FALSE(playlist.shuffled());
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
     EXPECT_EQ(playlist.position(), 2U);
 
     ASSERT_TRUE(playlist.go_to(0));
     ASSERT_TRUE(playlist.next());
 
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
 }
 
 /// A track nothing is known about is a track with a name: the file's own.
@@ -273,7 +288,7 @@ TEST(Playlist, NamesATrackAfterItsFileUntilItIsToldOtherwise)
 {
     Playlist playlist;
 
-    playlist.add({std::filesystem::path{"/music/first.wav"}});
+    playlist.add({wiola::testing::resource("/music/first.wav", "first")});
 
     ASSERT_NE(playlist.current(), nullptr);
     EXPECT_EQ(playlist.current()->metadata().title, "first") << "a name is not an extension";
@@ -318,7 +333,7 @@ TEST(Playlist, CountsEveryChangeToWhatIsQueued)
     const std::size_t filled{playlist.revision()};
     EXPECT_NE(filled, empty);
 
-    playlist.add({std::filesystem::path{"fourth.wav"}});
+    playlist.add({wiola::testing::resource("fourth.wav", "fourth")});
     const std::size_t added{playlist.revision()};
     EXPECT_NE(added, filled);
 
@@ -346,8 +361,8 @@ TEST(Playlist, TakesATrackOut)
     EXPECT_TRUE(playlist.remove(1));
 
     ASSERT_EQ(playlist.tracks().size(), 2U);
-    EXPECT_EQ(playlist.tracks().front().path(), std::filesystem::path{"first.wav"});
-    EXPECT_EQ(playlist.tracks().back().path(), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(playlist.tracks().front().resource(), wiola::testing::resource("first.wav", "first"));
+    EXPECT_EQ(playlist.tracks().back().resource(), wiola::testing::resource("third.wav", "third"));
 
     EXPECT_FALSE(playlist.remove(2));
 }
@@ -361,7 +376,7 @@ TEST(Playlist, KeepsWhatItStandsAtWhenSomethingBeforeItGoes)
     ASSERT_TRUE(playlist.go_to(2));
     ASSERT_TRUE(playlist.remove(0));
 
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
     EXPECT_EQ(playlist.position(), 1U);
 }
 
@@ -374,7 +389,7 @@ TEST(Playlist, StandsAtWhatFollowedTheTrackTakenOut)
     ASSERT_TRUE(playlist.go_to(1));
     ASSERT_TRUE(playlist.remove(1));
 
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"third.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("third.wav", "third"));
     EXPECT_EQ(playlist.position(), 1U);
 }
 
@@ -387,7 +402,7 @@ TEST(Playlist, StandsAtTheEndWhenTheLastTrackGoes)
     ASSERT_TRUE(playlist.go_to(2));
     ASSERT_TRUE(playlist.remove(2));
 
-    EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+    EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
     EXPECT_EQ(playlist.position(), 1U);
 }
 
@@ -395,7 +410,7 @@ TEST(Playlist, StandsNowhereOnceTheLastTrackIsTakenOut)
 {
     Playlist playlist;
 
-    playlist.add({std::filesystem::path{"only.wav"}});
+    playlist.add({wiola::testing::resource("only.wav", "only")});
     ASSERT_TRUE(playlist.remove(0));
 
     EXPECT_TRUE(playlist.empty());
@@ -417,13 +432,13 @@ TEST(Playlist, KeepsAShuffledOrderWholeWhenATrackGoes)
     // Back to the start of the order, which after shuffling is not the start of the list.
     while (playlist.previous()) { }
 
-    std::set<std::filesystem::path> seen{path_of(playlist)};
+    std::set<wiola::media::ResourceReference> seen{resource_of(playlist)};
 
     while (playlist.next())
-        seen.insert(path_of(playlist));
+        seen.insert(resource_of(playlist));
 
     EXPECT_EQ(seen.size(), 2U);
-    EXPECT_EQ(seen.count(std::filesystem::path{"second.wav"}), 0U);
+    EXPECT_EQ(seen.count(wiola::testing::resource("second.wav", "second")), 0U);
 }
 
 TEST(Playlist, StandsNowhereOnceCleared)
@@ -435,7 +450,7 @@ TEST(Playlist, StandsNowhereOnceCleared)
 
     EXPECT_TRUE(playlist.empty());
     EXPECT_FALSE(playlist.position().has_value());
-    EXPECT_TRUE(path_of(playlist).empty());
+    EXPECT_TRUE(resource_of(playlist).empty());
 }
 
 TEST(Playlist, MakesNoSelectionExplicit)
@@ -453,7 +468,8 @@ TEST(Playlist, LiveReadPortTracksMutationsWithoutExposingStorage)
     EXPECT_EQ(view.current(), nullptr);
     EXPECT_FALSE(view.position());
 
-    playlist.set({"same.wav", "same.wav"});
+    playlist.set({wiola::testing::resource("same.wav", "same"),
+        wiola::testing::resource("same.wav", "same")});
     const auto retained{view.tracks().front()};
     const auto second{view.tracks().back().id()};
     const auto structure{view.structural_revision()};
@@ -472,7 +488,7 @@ TEST(Playlist, LiveReadPortTracksMutationsWithoutExposingStorage)
     EXPECT_EQ(view.tracks().front().metadata().title, "updated");
     EXPECT_EQ(retained.metadata().title, "same");
 
-    playlist.add({"third.wav"});
+    playlist.add({wiola::testing::resource("third.wav", "third")});
     EXPECT_EQ(view.tracks().size(), 3U);
     EXPECT_NE(view.structural_revision(), structure);
     ASSERT_TRUE(playlist.remove(0));
@@ -489,7 +505,8 @@ TEST(Playlist, LiveReadPortTracksMutationsWithoutExposingStorage)
 TEST(Playlist, GivesDuplicatePathsIndependentIdentities)
 {
     Playlist playlist;
-    playlist.set({"same.wav", "same.wav"});
+    playlist.set({wiola::testing::resource("same.wav", "same"),
+        wiola::testing::resource("same.wav", "same")});
     const wiola::engine::QueueEntryId removed{playlist.tracks()[0].id()};
     const wiola::engine::QueueEntryId kept{playlist.tracks()[1].id()};
 
@@ -501,17 +518,17 @@ TEST(Playlist, GivesDuplicatePathsIndependentIdentities)
     EXPECT_FALSE(playlist.describe(removed, metadata));
     ASSERT_TRUE(playlist.describe(kept, metadata));
     EXPECT_EQ(playlist.tracks().front().metadata().title, "Only the remaining entry");
-    EXPECT_EQ(playlist.tracks().front().path(), std::filesystem::path{"same.wav"});
+    EXPECT_EQ(playlist.tracks().front().resource(), wiola::testing::resource("same.wav", "same"));
 }
 
 TEST(Playlist, DoesNotReuseIdentitiesAfterClear)
 {
     Playlist playlist;
-    playlist.add({"before.wav"});
+    playlist.add({wiola::testing::resource("before.wav", "before")});
     const wiola::engine::QueueEntryId before{playlist.tracks().front().id()};
 
     playlist.clear();
-    playlist.add({"after.wav"});
+    playlist.add({wiola::testing::resource("after.wav", "after")});
 
     EXPECT_NE(playlist.tracks().front().id(), before);
     EXPECT_FALSE(playlist.describe(before, {}));
@@ -520,9 +537,10 @@ TEST(Playlist, DoesNotReuseIdentitiesAfterClear)
 TEST(Playlist, AppliesOneMetadataBatchWithoutRepeatedQueueRevisions)
 {
     Playlist playlist;
-    std::vector<std::filesystem::path> tracks;
+    std::vector<wiola::media::ResourceReference> tracks;
     for (std::size_t index = 0; index < 1000; ++index)
-        tracks.push_back("track" + std::to_string(index) + ".wav");
+        tracks.push_back(wiola::testing::resource("track" + std::to_string(index) + ".wav",
+            "Track"));
     playlist.set(std::move(tracks));
 
     std::vector<QueueEntryId> entries;
@@ -544,7 +562,8 @@ TEST(Playlist, AppliesOneMetadataBatchWithoutRepeatedQueueRevisions)
 TEST(Playlist, IgnoresRemovedIdentitiesInALaterMetadataBatch)
 {
     Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::testing::resource("first.wav", "first"),
+        wiola::testing::resource("second.wav", "second")});
     const QueueEntryId removed{playlist.tracks()[0].id()};
     const QueueEntryId surviving{playlist.tracks()[1].id()};
 
@@ -591,7 +610,7 @@ TEST(Playlist, EmptyReplacementPreservesRepeatChoiceWithoutInventingASelection)
     EXPECT_TRUE(playlist.empty());
     EXPECT_FALSE(playlist.position());
     EXPECT_EQ(playlist.repeat(), Repeat::all);
-    playlist.add({"new.wav"});
+    playlist.add({wiola::testing::resource("new.wav", "new")});
     EXPECT_EQ(playlist.position(), 0U);
     EXPECT_TRUE(playlist.previous());
     EXPECT_EQ(playlist.position(), 0U);
@@ -607,7 +626,7 @@ TEST(Playlist, EmptyAppendLeavesTheAcceptedQueueAndRevisionsUntouched)
     const auto metadata{playlist.metadata_revision()};
     const auto selection{playlist.selection_revision()};
     const auto id{playlist.current()->id()};
-    playlist.add(std::vector<std::filesystem::path>{});
+    playlist.add(std::vector<wiola::media::ResourceReference>{});
     EXPECT_EQ(playlist.current()->id(), id);
     EXPECT_EQ(playlist.revision(), revision);
     EXPECT_EQ(playlist.structural_revision(), structure);
@@ -668,7 +687,7 @@ TEST(Playlist, MissingMetadataTitleUsesEachOccurrencesOwnFallback)
     EXPECT_EQ(playlist.metadata_revision(), revision + 1);
     for (std::size_t index{0}; index < entries.size(); ++index) {
         auto expected{observed};
-        expected.title = playlist.tracks()[index].path().stem().string();
+        expected.title = playlist.tracks()[index].resource().label();
         EXPECT_EQ(playlist.tracks()[index].metadata(), expected);
     }
     EXPECT_EQ(playlist.tracks()[2].metadata().title, "third");
@@ -735,7 +754,9 @@ TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
             playlist.tracks()[2].id()};
         const std::size_t revision{playlist.revision()};
         const std::size_t structural_revision{playlist.structural_revision()};
-        std::vector<std::filesystem::path> replacement{"new-first.wav", "new-second.wav"};
+        std::vector<wiola::media::ResourceReference> replacement{
+            wiola::testing::resource("new-first.wav", "new-first"),
+            wiola::testing::resource("new-second.wav", "new-second")};
 
         if (!allocation_fails(after, [&] { playlist.set(std::move(replacement)); })) {
             EXPECT_TRUE(observed_failure);
@@ -749,14 +770,14 @@ TEST(Playlist, ReplacementAllocationFailuresLeaveTheAcceptedQueueUntouched)
         ASSERT_EQ(playlist.tracks().size(), 3U);
         EXPECT_EQ(playlist.revision(), revision);
         EXPECT_EQ(playlist.structural_revision(), structural_revision);
-        EXPECT_EQ(path_of(playlist), std::filesystem::path{"second.wav"});
+        EXPECT_EQ(resource_of(playlist), wiola::testing::resource("second.wav", "second"));
 
         for (std::size_t index{0}; index < ids.size(); ++index) {
             EXPECT_EQ(playlist.tracks()[index].id(), ids[index]);
             EXPECT_EQ(playlist.index_of(ids[index]), index);
         }
 
-        playlist.add({"accepted.wav"});
+        playlist.add({wiola::testing::resource("accepted.wav", "accepted")});
         EXPECT_EQ(playlist.tracks().back().id(), QueueEntryId{4});
     }
 }
@@ -771,7 +792,9 @@ TEST(Playlist, AppendAllocationFailuresLeaveTheAcceptedQueueUntouched)
             playlist.tracks()[2].id()};
         const std::size_t revision{playlist.revision()};
         const std::size_t structural_revision{playlist.structural_revision()};
-        std::vector<std::filesystem::path> additions{"fourth.wav", "fifth.wav"};
+        std::vector<wiola::media::ResourceReference> additions{
+            wiola::testing::resource("fourth.wav", "fourth"),
+            wiola::testing::resource("fifth.wav", "fifth")};
 
         if (!allocation_fails(after, [&] { playlist.add(std::move(additions)); })) {
             EXPECT_TRUE(observed_failure);
@@ -791,7 +814,8 @@ TEST(Playlist, AppendAllocationFailuresLeaveTheAcceptedQueueUntouched)
             EXPECT_EQ(playlist.index_of(ids[index]), index);
         }
 
-        playlist.add({"fourth.wav", "fifth.wav"});
+        playlist.add({wiola::testing::resource("fourth.wav", "fourth"),
+            wiola::testing::resource("fifth.wav", "fifth")});
         EXPECT_EQ(playlist.tracks()[3].id(), QueueEntryId{4});
         EXPECT_EQ(playlist.tracks()[4].id(), QueueEntryId{5});
         EXPECT_EQ(playlist.index_of(playlist.tracks()[4].id()), 4U);

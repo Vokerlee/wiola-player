@@ -21,6 +21,8 @@
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/local/provider.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <fixtures/temporary_directory.hpp>
 
 #include <gtest/gtest.h>
@@ -222,7 +224,7 @@ std::vector<std::vector<unsigned char>> packet_payloads(const std::filesystem::p
 std::vector<float> decoded_samples(const std::filesystem::path& path)
 {
     wiola::codec::LocalMediaProvider provider;
-    auto asset = provider.open(path);
+    auto asset = provider.open(wiola::media::local_resource(path));
     EXPECT_TRUE(asset);
     if (!asset)
         return {};
@@ -309,7 +311,7 @@ TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
     EXPECT_EQ(metadata->track.disc_number, 2);
 
     wiola::codec::LocalMediaProvider provider;
-    auto asset{provider.open(track)};
+    auto asset{provider.open(wiola::media::local_resource(track))};
     ASSERT_TRUE(asset);
     EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 }
@@ -361,7 +363,7 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
     const auto original_samples = decoded_samples(track);
 
     wiola::codec::LocalMediaProvider provider;
-    auto asset = provider.open(track);
+    auto asset = provider.open(wiola::media::local_resource(track));
     ASSERT_TRUE(asset);
     EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
@@ -394,7 +396,7 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
     const auto original_samples = decoded_samples(track);
     wiola::codec::LocalMediaProvider provider;
 
-    auto asset = provider.open(track);
+    auto asset = provider.open(wiola::media::local_resource(track));
     ASSERT_TRUE(asset);
     EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
@@ -406,7 +408,7 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
 
     const std::filesystem::path commented = outcome.staged_output;
 
-    asset = provider.open(commented);
+    asset = provider.open(wiola::media::local_resource(commented));
     ASSERT_TRUE(asset);
     wiola::media::MetadataWriteRequest second;
     second.overrides.title = "Updated FLAC";
@@ -438,7 +440,7 @@ TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
         const auto original_samples = decoded_samples(track);
 
         wiola::codec::LocalMediaProvider provider;
-        auto asset = provider.open(track);
+        auto asset = provider.open(wiola::media::local_resource(track));
         ASSERT_TRUE(asset) << name;
         EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
@@ -473,7 +475,7 @@ TEST(FfmpegMetadata, QualifiedOggAndOpusWritingPreservesPacketsAndChainedPcm)
         const auto original_packets = packet_payloads(track);
 
         wiola::codec::LocalMediaProvider provider;
-        auto asset = provider.open(track);
+        auto asset = provider.open(wiola::media::local_resource(track));
         ASSERT_TRUE(asset) << name;
         EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
@@ -519,7 +521,7 @@ TEST(FfmpegMetadata, ReadsBoundedUnicodeFieldsDurationAndAttachedArtwork)
 TEST(FfmpegMetadata, ReadingMetadataDoesNotPreventPlayback)
 {
     wiola::codec::LocalMediaProvider provider;
-    auto asset{provider.open(fixtures() / "tone.wav")};
+    auto asset{provider.open(wiola::media::local_resource(fixtures() / "tone.wav"))};
     ASSERT_TRUE(asset);
 
     auto metadata{(*asset)->read_metadata()};

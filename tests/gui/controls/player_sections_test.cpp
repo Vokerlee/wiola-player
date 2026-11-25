@@ -19,6 +19,7 @@
  */
 
 #include <QApplication>
+
 #include <QLabel>
 #include <QPushButton>
 #include <QSlider>
@@ -30,6 +31,7 @@
 #include <gui/layout/layout_tree.hpp>
 #include <gui/layout/player_layout.hpp>
 #include <gui/layout/view_registry.hpp>
+#include <media/local/resource.hpp>
 
 namespace {
 
@@ -83,7 +85,7 @@ TEST(PlayerSections, TransportProjectsUnknownDurationAndKeepsBindingsWhenReparen
     state.playback.loaded = true;
     state.playback.playing = true;
     state.playback.seekable = true;
-    state.playback.track = "<not-rich-text>.wav";
+    state.playback.track = wiola::media::local_resource("<not-rich-text>.wav");
     state.playback.time_played = wiola::units::Time{30};
     transport.present(state);
     EXPECT_FALSE(seek->isEnabled());

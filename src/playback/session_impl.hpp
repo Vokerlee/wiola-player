@@ -40,10 +40,10 @@ struct Session::Impl {
         std::shared_ptr<media::MediaProvider> provider, TransportConfig transport,
         BufferingConfig buffering);
     ~Impl() = default;
-    OpenResult open(std::vector<std::filesystem::path> tracks);
+    OpenResult open(std::vector<media::ResourceReference> tracks);
     bool next_track();
     bool previous_track();
-    void add(std::vector<std::filesystem::path> tracks);
+    void add(std::vector<media::ResourceReference> tracks);
     bool remove(std::size_t index);
     void clear();
     [[nodiscard]] const QueueView& playlist() const noexcept;
@@ -59,13 +59,13 @@ struct Session::Impl {
     [[nodiscard]] bool reading() const noexcept;
     [[nodiscard]] OpenResult open_result() const noexcept;
     [[nodiscard]] bool loaded() const noexcept;
-    [[nodiscard]] const std::filesystem::path& track() const noexcept;
+    [[nodiscard]] const media::ResourceReference& track() const noexcept;
     bool play() noexcept;
     bool pause() noexcept;
     bool resume() noexcept;
     void stop() noexcept;
     [[nodiscard]] std::optional<MediaReplacementState>
-    release_media(const std::filesystem::path& path);
+    release_media(const media::ResourceReference& resource);
     OpenResult restore_media(const MediaReplacementState& state);
     void seek(units::Time position) noexcept;
     [[nodiscard]] PlaybackState state() const noexcept;
@@ -77,8 +77,8 @@ struct Session::Impl {
 
 private:
     /// Starts an identified load with the requested transport intent.
-    OpenResult begin_reading(QueueEntryId entry, std::filesystem::path path, LoadIntent intent,
-        std::optional<units::Time> position = {});
+    OpenResult begin_reading(QueueEntryId entry, media::ResourceReference resource,
+        LoadIntent intent, std::optional<units::Time> position = {});
     [[nodiscard]] bool wants_playback() const noexcept;
     void restore_when_ready();
     void record_outcome(OperationKind operation, OperationId id,
@@ -95,8 +95,8 @@ private:
 
     /// Prepares a complete candidate before retiring current playback. Failure preserves the
     /// active pipeline; installation and its owned path are committed without allocation.
-    bool install_track(std::unique_ptr<media::AudioDecoder> source, std::filesystem::path path,
-        QueueEntryId entry, OperationId request);
+    bool install_track(std::unique_ptr<media::AudioDecoder> source,
+        media::ResourceReference resource, QueueEntryId entry, OperationId request);
 
     /// Takes up the next track when one has run out. A listener who pressed stop, or a device
     /// that went away, is not a cue to play anything.
@@ -113,7 +113,7 @@ private:
     OperationId open_request_id_{0};
     std::deque<OperationOutcome> outcomes_;
     bool outcomes_overflowed_{false};
-    std::filesystem::path track_;
+    media::ResourceReference track_;
     QueueEntryId installed_entry_;
 
     struct Handoff {

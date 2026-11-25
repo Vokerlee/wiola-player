@@ -24,6 +24,7 @@
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
 #include <gtest/gtest.h>
 #include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/stage.hpp>
@@ -33,7 +34,6 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
-#include <filesystem>
 #include <limits>
 #include <memory>
 #include <new>
@@ -87,15 +87,17 @@ TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
             return output;
         },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    ASSERT_EQ(load_and_wait(session, "supplied-processing"), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(session,
+                  wiola::testing::resource("supplied-processing", "supplied-processing")),
+        OpenResult::opened);
     ASSERT_TRUE(processing.prepared_for);
     EXPECT_EQ(*processing.prepared_for, wiola::pcm::StreamSpec{});
     ASSERT_TRUE(session.play());
@@ -115,18 +117,19 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
             return std::make_unique<wiola::testing::FakeOutput>();
         },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 auto decoder{std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
                     wiola::pcm::StreamSpec{.sample_rate = units::Frequency{48000.0},
                         .num_channels = 0})};
                 return wiola::media::DecoderOpenResult{std::move(decoder)};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
 
-    EXPECT_EQ(session.open({"invalid.wav"}), OpenResult::loading);
+    EXPECT_EQ(session.open({wiola::testing::resource("invalid.wav", "invalid")}),
+        OpenResult::loading);
     while (session.reading())
         std::this_thread::yield();
     session.catch_up();
@@ -143,17 +146,17 @@ TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
         Session session{processing,
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
             std::make_shared<wiola::testing::FakeMediaProvider>(
-                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>()};
                 },
-                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                     return wiola::media::Metadata{};
                 }
             ),
             wiola::engine::TransportConfig{}, wiola::engine::BufferingConfig{.duration = duration}};
 
-        session.open({"track.wav"});
+        session.open({wiola::testing::resource("track.wav", "track")});
         while (session.reading())
             std::this_thread::yield();
         session.catch_up();
@@ -172,11 +175,11 @@ TEST(Session, RejectsInvalidConstructionBeforeStartingAnyCollaborator)
     std::atomic<unsigned> media_calls{};
     unsigned output_calls{};
     const auto provider{std::make_shared<wiola::testing::FakeMediaProvider>(
-        [&](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [&](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             ++media_calls;
             return wiola::media::DecoderOpenResult{std::make_unique<wiola::testing::FakeDecoder>()};
         },
-        [&](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [&](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             ++media_calls;
             return wiola::media::Metadata{};
         }
@@ -211,10 +214,10 @@ TEST(Session, RejectsInvalidConstructionBeforeStartingAnyCollaborator)
 TEST(Session, KeepsTheDeviceAcrossTracksOfTheSameFormat)
 {
     SessionFixture fixture;
-    const std::filesystem::path path{fixture.track()};
+    const wiola::media::ResourceReference resource{fixture.track()};
 
-    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
-    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
 
     EXPECT_EQ(fixture.num_outputs, 1U);
 }
@@ -240,12 +243,12 @@ TEST(Session, OpensAnotherDeviceWhenTheFormatChanges)
 TEST(Session, PreservesSuppliedProcessingSettingsAcrossTracks)
 {
     SessionFixture fixture;
-    const std::filesystem::path path{fixture.track()};
+    const wiola::media::ResourceReference resource{fixture.track()};
 
     fixture.processing.volume.set_gain(0.25F);
     fixture.processing.equalizer.set_band_gain(3, 6.0F);
 
-    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
 
     EXPECT_FLOAT_EQ(fixture.processing.volume.gain(), 0.25F);
     EXPECT_FLOAT_EQ(fixture.processing.equalizer.band_gain(3), 6.0F);
@@ -280,9 +283,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
                 return output;
             },
             std::make_shared<wiola::testing::FakeMediaProvider>(
-                [&](const std::filesystem::path& path,
+                [&](const wiola::media::ResourceReference& resource,
                     const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
-                    if (path == "current")
+                    if (resource == wiola::testing::resource("current", "current"))
                         return wiola::media::DecoderOpenResult{
                             std::make_unique<wiola::testing::FakeDecoder>(
                                 wiola::media::DecoderStreamInfo{.spec = current_spec,
@@ -292,11 +295,12 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, next_spec)};
                 },
-                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                     return wiola::media::Metadata{};
                 }
             )};
-        ASSERT_EQ(load_and_wait(session, "current"), OpenResult::opened);
+        ASSERT_EQ(load_and_wait(session, wiola::testing::resource("current", "current")),
+            OpenResult::opened);
         processing.equalizer.set_band_gain(9, 3.0F);
         processing.volume.set_gain(0.25F);
         ASSERT_TRUE(session.play());
@@ -305,7 +309,8 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         const auto position{session.time_played()};
         static_cast<void>(session.take_outcomes());
         fail = true;
-        ASSERT_EQ(session.open({"candidate"}), OpenResult::loading);
+        ASSERT_EQ(session.open({wiola::testing::resource("candidate", "candidate")}),
+            OpenResult::loading);
         const auto request{session.open_request_id()};
         while (session.reading())
             std::this_thread::yield();
@@ -314,7 +319,7 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
 
         ASSERT_TRUE(session.loaded());
         EXPECT_EQ(session.open_result(), OpenResult::output_unavailable);
-        EXPECT_EQ(session.track(), std::filesystem::path{"current"});
+        EXPECT_EQ(session.track(), wiola::testing::resource("current", "current"));
         EXPECT_TRUE(session.playing());
         EXPECT_FALSE(session.seekable());
         EXPECT_TRUE(active_device->running());
@@ -335,8 +340,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
             EXPECT_EQ(error->detail, "controlled device failure");
         }
         fail = false;
-        EXPECT_EQ(load_and_wait(session, "candidate"), OpenResult::opened);
-        EXPECT_EQ(session.track(), std::filesystem::path{"candidate"});
+        EXPECT_EQ(load_and_wait(session, wiola::testing::resource("candidate", "candidate")),
+            OpenResult::opened);
+        EXPECT_EQ(session.track(), wiola::testing::resource("candidate", "candidate"));
         EXPECT_EQ(processing.equalizer.num_bands(), 9U);
     }
 }
@@ -351,15 +357,16 @@ TEST(Session, NullDecoderCompletionReportsFailureWithoutOpeningOutput)
             return std::make_unique<wiola::testing::FakeOutput>();
         },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::unique_ptr<wiola::media::AudioDecoder>{}};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    EXPECT_EQ(load_and_wait(session, "empty-decoder"), OpenResult::damaged);
+    EXPECT_EQ(load_and_wait(session, wiola::testing::resource("empty-decoder", "empty-decoder")),
+        OpenResult::damaged);
     EXPECT_FALSE(session.loaded());
     EXPECT_EQ(outputs, 0U);
     const auto outcomes{session.take_outcomes()};
@@ -376,17 +383,18 @@ TEST(Session, InvalidStreamCompletionCannotReportASuccessfulOpen)
     wiola::audio::ProcessingChain processing;
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
                         wiola::pcm::StreamSpec{.sample_rate = units::Frequency{},
                             .num_channels = 2})};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    ASSERT_EQ(load_and_wait(session, "invalid-stream"), OpenResult::damaged);
+    ASSERT_EQ(load_and_wait(session, wiola::testing::resource("invalid-stream", "invalid-stream")),
+        OpenResult::damaged);
     const auto outcomes{session.take_outcomes()};
     std::size_t open_completions{0};
     for (const auto& completion : outcomes.values) {
@@ -410,8 +418,9 @@ TEST(Session, InvalidDecoderCapabilitiesCannotRetireTheActivePipeline)
             return std::make_unique<wiola::testing::FakeOutput>();
         },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path& path, const wiola::media::OperationContext&) {
-                if (path == "invalid.media")
+            [](const wiola::media::ResourceReference& resource,
+                const wiola::media::OperationContext&) {
+                if (resource == wiola::testing::resource("invalid.media", "invalid"))
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>(
                             wiola::media::DecoderStreamInfo{
@@ -424,22 +433,24 @@ TEST(Session, InvalidDecoderCapabilitiesCannotRetireTheActivePipeline)
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    ASSERT_EQ(load_and_wait(session, "active.media"), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(session, wiola::testing::resource("active.media", "active")),
+        OpenResult::opened);
     ASSERT_TRUE(session.play());
     const auto prepared{processing.prepared_for};
     static_cast<void>(session.take_outcomes());
 
-    EXPECT_EQ(load_and_wait(session, "invalid.media"), OpenResult::damaged);
+    EXPECT_EQ(load_and_wait(session, wiola::testing::resource("invalid.media", "invalid")),
+        OpenResult::damaged);
 
     EXPECT_EQ(outputs, 1U);
     EXPECT_EQ(processing.prepared_for, prepared);
     EXPECT_TRUE(session.loaded());
     EXPECT_TRUE(session.playing());
-    EXPECT_EQ(session.track(), "active.media");
+    EXPECT_EQ(session.track(), wiola::testing::resource("active.media", "active"));
     const auto outcomes{session.take_outcomes()};
     const auto opened{std::ranges::find_if(outcomes.values,
         [](const auto& value) { return value.operation == wiola::engine::OperationKind::open; })};
@@ -467,17 +478,19 @@ TEST(Session, UnrepresentableBufferPoliciesFailBeforePreparingResources)
                 return std::make_unique<wiola::testing::FakeOutput>();
             },
             std::make_shared<wiola::testing::FakeMediaProvider>(
-                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>()};
                 },
-                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                     return wiola::media::Metadata{};
                 }
             ),
             {}, {.duration = duration}};
 
-        EXPECT_EQ(load_and_wait(session, "controlled.media"), OpenResult::damaged);
+        EXPECT_EQ(load_and_wait(session,
+                      wiola::testing::resource("controlled.media", "controlled")),
+            OpenResult::damaged);
         EXPECT_FALSE(session.loaded());
         EXPECT_FALSE(processing.prepared_for);
         EXPECT_EQ(outputs, 0U);
@@ -504,19 +517,20 @@ TEST(Session, DeviceStartFailureIsAnEventualTransportFailureAfterInstallation)
             return output;
         },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    ASSERT_EQ(load_and_wait(session, "installed"), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(session, wiola::testing::resource("installed", "installed")),
+        OpenResult::opened);
     ASSERT_TRUE(session.play());
     ASSERT_TRUE(poll_until(session, [&] { return session.state() == State::faulted; }));
     EXPECT_TRUE(session.loaded());
-    EXPECT_EQ(session.track(), std::filesystem::path{"installed"});
+    EXPECT_EQ(session.track(), wiola::testing::resource("installed", "installed"));
     EXPECT_EQ(session.open_result(), OpenResult::opened);
     const auto outcomes{session.take_outcomes()};
     std::size_t opened{0};
@@ -549,9 +563,9 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
                 return output;
             },
             std::make_shared<wiola::testing::FakeMediaProvider>(
-                [&](const std::filesystem::path& path,
+                [&](const wiola::media::ResourceReference& resource,
                     const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
-                    if (path == "current")
+                    if (resource == wiola::testing::resource("current", "current"))
                         return wiola::media::DecoderOpenResult{
                             std::make_unique<wiola::testing::FakeDecoder>(
                                 wiola::media::DecoderStreamInfo{.spec = current_spec,
@@ -562,13 +576,14 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
                     return wiola::media::DecoderOpenResult{
                         std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, next_spec)};
                 },
-                [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                     wiola::media::Metadata tags;
                     tags.track.title = "settled";
                     return tags;
                 }
             )};
-        ASSERT_EQ(load_and_wait(session, "current"), OpenResult::opened);
+        ASSERT_EQ(load_and_wait(session, wiola::testing::resource("current", "current")),
+            OpenResult::opened);
         ASSERT_TRUE(poll_until(session,
             [&] { return session.playlist().tracks().front().metadata().title == "settled"; }));
         processing.equalizer.set_band_gain(9, 3.0F);
@@ -577,7 +592,8 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
         active_device->play(Frames{32});
         const auto position{session.time_played()};
-        ASSERT_EQ(session.open({"candidate"}), OpenResult::loading);
+        ASSERT_EQ(session.open({wiola::testing::resource("candidate", "candidate")}),
+            OpenResult::loading);
         opening.wait_until_entered();
         // Settle unrelated metadata before injecting failures into the installation turn.
         const bool metadata_settled{poll_until(session,
@@ -603,7 +619,7 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         })};
         if (!failed) {
             EXPECT_TRUE(observed_failure);
-            EXPECT_EQ(session.track(), std::filesystem::path{"candidate"});
+            EXPECT_EQ(session.track(), wiola::testing::resource("candidate", "candidate"));
             EXPECT_EQ(session.open_result(), OpenResult::opened);
             ASSERT_NE(opened, outcomes.values.end());
             EXPECT_FALSE(opened->error);
@@ -612,7 +628,7 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         observed_failure = true;
         EXPECT_EQ(opened, outcomes.values.end());
         ASSERT_TRUE(session.loaded());
-        EXPECT_EQ(session.track(), std::filesystem::path{"current"});
+        EXPECT_EQ(session.track(), wiola::testing::resource("current", "current"));
         EXPECT_EQ(session.state(), State::playing);
         EXPECT_TRUE(active_device->running());
         EXPECT_FALSE(session.seekable());

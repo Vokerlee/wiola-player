@@ -35,6 +35,7 @@
 #include <optional>
 #include <random>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -67,7 +68,7 @@ Session::Impl::Impl(audio::Stage& processing, OutputFactory make_output,
 {
 }
 
-OpenResult Session::Impl::open(std::vector<std::filesystem::path> tracks)
+OpenResult Session::Impl::open(std::vector<media::ResourceReference> tracks)
 {
     open_request_id_ = 0;
 
@@ -82,7 +83,7 @@ OpenResult Session::Impl::open(std::vector<std::filesystem::path> tracks)
         return last_result_;
     }
 
-    return begin_reading(playlist_.current()->id(), playlist_.current()->path(),
+    return begin_reading(playlist_.current()->id(), playlist_.current()->resource(),
         LoadIntent::install);
 }
 
@@ -110,7 +111,7 @@ bool Session::Impl::previous_track()
     return true;
 }
 
-void Session::Impl::add(std::vector<std::filesystem::path> tracks)
+void Session::Impl::add(std::vector<media::ResourceReference> tracks)
 {
     const bool was_empty{playlist_.empty()};
     const std::size_t first_new{playlist_.tracks().size()};
@@ -120,7 +121,7 @@ void Session::Impl::add(std::vector<std::filesystem::path> tracks)
 
     // Adding to an empty queue is the first thing a listener does, and they mean to play it.
     if (was_empty && !playlist_.empty() && !loaded())
-        static_cast<void>(begin_reading(playlist_.current()->id(), playlist_.current()->path(),
+        static_cast<void>(begin_reading(playlist_.current()->id(), playlist_.current()->resource(),
             LoadIntent::install));
 }
 
@@ -192,12 +193,12 @@ bool Session::Impl::shuffled() const noexcept
     return playlist_.shuffled();
 }
 
-OpenResult Session::Impl::begin_reading(QueueEntryId entry, std::filesystem::path path,
+OpenResult Session::Impl::begin_reading(QueueEntryId entry, media::ResourceReference resource,
     LoadIntent intent, std::optional<units::Time> position)
 {
     replacement_.reset();
 
-    LoadRequest request{loads_.begin(entry, std::move(path), intent, position)};
+    LoadRequest request{loads_.begin(entry, std::move(resource), intent, position)};
     open_request_id_ = request.generation;
     loader_.start(std::move(request));
     last_result_ = OpenResult::loading;
@@ -241,7 +242,7 @@ OpenResult Session::Impl::read_current_track(bool playing)
 {
     // Called only after next/previous/go_to accepted a selection on this control thread.
     const QueueEntry& current{*playlist_.current()};
-    return begin_reading(current.id(), current.path(),
+    return begin_reading(current.id(), current.resource(),
         playing ? LoadIntent::play : LoadIntent::install);
 }
 
@@ -288,7 +289,7 @@ void Session::Impl::take_up_finished_read()
 
     const bool should_play{completed->request.intent == LoadIntent::play};
 
-    if (!install_track(std::move(*opened), std::move(completed->request.path),
+    if (!install_track(std::move(*opened), std::move(completed->request.resource),
             completed->request.entry, completed->request.generation)) {
         return;
     }
@@ -318,7 +319,7 @@ void Session::Impl::advance_if_ended()
 }
 
 bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
-    std::filesystem::path path, QueueEntryId entry, OperationId request)
+    media::ResourceReference resource, QueueEntryId entry, OperationId request)
 {
     const auto reject{[this, request](OperationError error) {
         const auto status{open_failed(error)};
@@ -352,7 +353,8 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
             processing->commit();
         pipeline->activate(out_);
         pipeline_.swap(pipeline);
-        track_.swap(path);
+        static_assert(std::is_nothrow_move_assignable_v<media::ResourceReference>);
+        track_ = std::move(resource);
         installed_entry_ = entry;
         replacement_.reset();
         last_result_ = OpenResult::opened;
@@ -372,7 +374,7 @@ OpenResult Session::Impl::open_result() const noexcept
     return last_result_;
 }
 
-const std::filesystem::path& Session::Impl::track() const noexcept
+const media::ResourceReference& Session::Impl::track() const noexcept
 {
     return track_;
 }
@@ -428,9 +430,9 @@ void Session::Impl::stop() noexcept
 }
 
 std::optional<Session::MediaReplacementState>
-Session::Impl::release_media(const std::filesystem::path& path)
+Session::Impl::release_media(const media::ResourceReference& resource)
 {
-    if (path != track_)
+    if (resource != track_)
         return {};
     if (replacement_)
         return replacement_->intent;
@@ -439,7 +441,7 @@ Session::Impl::release_media(const std::filesystem::path& path)
 
     MediaReplacementState state{installed_entry_, playing(), time_played(),
         ++replacement_generation_};
-    if (const auto pending{loads_.invalidate_resource(path)}) {
+    if (const auto pending{loads_.invalidate_resource(resource)}) {
         // A newer occurrence of the same physical resource must close its pending open too.
         // Preserve that occurrence's new-track intent instead of the old decoder's position.
         state.entry = pending->entry;

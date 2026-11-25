@@ -20,6 +20,8 @@
 
 #include <media/local/provider.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -59,7 +61,9 @@ TEST(Mp4Qualification, AacLcAndAlacDecodeTheirCompleteAudibleTimelines)
 {
     wiola::codec::LocalMediaProvider provider;
     for (const char* name : {"multi-audio.m4a", "attached-art.m4a", "tone-alac.mp4"}) {
-        auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        auto asset{provider.open(
+            wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
+        )};
         ASSERT_TRUE(asset) << name;
         auto decoder{(*asset)->create_decoder()};
         ASSERT_TRUE(decoder) << name;
@@ -102,7 +106,9 @@ TEST(Mp4Qualification, AacLcAndAlacSeeksMatchSequentialSamples)
 TEST(Mp4Qualification, AttachedArtworkAndUnicodeMetadataRemainAvailable)
 {
     wiola::codec::LocalMediaProvider provider;
-    auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "attached-art.m4a")};
+    auto asset{
+        provider.open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
+            "attached-art.m4a"))};
     ASSERT_TRUE(asset);
 
     auto metadata{(*asset)->read_metadata()};

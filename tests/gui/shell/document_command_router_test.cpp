@@ -19,6 +19,7 @@
  */
 
 #include <QApplication>
+
 #include <QFile>
 #include <QLineEdit>
 #include <QMenu>
@@ -39,6 +40,7 @@
 #include <gui/shell/main_window.hpp>
 #include <gui/tracks/track_browser.hpp>
 #include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 
 namespace {
 
@@ -243,7 +245,8 @@ TEST_F(DocumentCommandRouterTest, SavedPlaylistKeyboardActivationRoutesTheExactD
     QTest::keyClick(&document->browser().table(), Qt::Key_Return);
     ASSERT_EQ(playback.playlist().tracks().size(), 2);
     EXPECT_EQ(playback.playlist().position(), 1);
-    EXPECT_EQ(playback.playlist().tracks()[1].path(), std::filesystem::path{"one.wav"});
+    EXPECT_EQ(playback.playlist().tracks()[1].resource(),
+        wiola::media::local_resource(std::filesystem::path{"one.wav"}));
 }
 
 TEST_F(DocumentCommandRouterTest, DisabledCapabilitiesAndCancelledPromptsNeverMutateDocuments)

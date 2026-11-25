@@ -20,6 +20,8 @@
 
 #include <fixtures/track_view.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gui/model/documents/queue_rows.hpp>
 
 #include <gui/tracks/track_table_model.hpp>
@@ -136,7 +138,8 @@ TEST_F(TrackTableModelTest, ChangesOnlyTheRowWhoseMetadataChanged)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     int changes{0};
@@ -160,7 +163,8 @@ TEST_F(TrackTableModelTest, AddressesRowsByStableTrackIdentity)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     EXPECT_EQ(wiola::gui::queue_entry_id(model.row_id(model.index(0, 0))), id_at(playlist, 0));
@@ -180,7 +184,8 @@ TEST_F(TrackTableModelTest, FollowsTheCurrentIdentityAcrossReordering)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist first;
-    first.set({"first.wav", "second.wav"});
+    first.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
 
     std::vector<wiola::engine::QueueEntry> original{first.tracks().begin(), first.tracks().end()};
     std::vector<wiola::engine::QueueEntry> reordered{original};
@@ -198,7 +203,8 @@ TEST_F(TrackTableModelTest, UpdatesSelectionWithoutDependingOnPlaylistRevisions)
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()), id_at(playlist, 0));
 
     int changes{0};
@@ -219,7 +225,8 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
 {
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({"same.wav", "same.wav"});
+    playlist.set({wiola::media::local_resource("same.wav"),
+        wiola::media::local_resource("same.wav")});
     const std::vector entries{id_at(playlist, 0), id_at(playlist, 1)};
 
     playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::blue));
@@ -254,7 +261,8 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
 
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     model.show_library(repository);
     model.show_tag_keys({"Genre", "genre", "Mood"});
@@ -296,7 +304,8 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
     wiola::library::InMemoryRepository repository;
     wiola::gui::TrackTableModel model{styled};
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     playlist.describe(id_at(playlist, 0),
         {.title = "My Song",
             .artist = "The Artist",

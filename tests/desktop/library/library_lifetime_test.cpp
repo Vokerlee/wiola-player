@@ -1,4 +1,5 @@
 #include <QCoreApplication>
+
 #include <QTemporaryDir>
 #include <QTest>
 #include <desktop/library/library_session.hpp>
@@ -7,6 +8,7 @@
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
 #include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace {
@@ -30,7 +32,7 @@ protected:
         std::filesystem::path staged;
         {
             codec::LocalMediaProvider provider;
-            auto asset = provider.open(path);
+            auto asset = provider.open(wiola::media::local_resource(path));
             ASSERT_TRUE(asset);
             media::MetadataWriteRequest request;
             request.overrides.title = "Original physical metadata";

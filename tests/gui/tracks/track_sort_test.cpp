@@ -20,6 +20,8 @@
 
 #include <gui/model/documents/queue_rows.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gui/model/tracks/track_sort.hpp>
 
 #include <library/in_memory_repository.hpp>
@@ -46,7 +48,7 @@ class TrackSort : public testing::Test {
 protected:
     void SetUp() override
     {
-        playlist.set({"Music/Track.flac"});
+        playlist.set({wiola::media::local_resource("Music/Track.flac")});
         wiola::media::TrackMetadata metadata;
         metadata.title = "  My Title";
         metadata.artist = "Some Artist";
@@ -116,7 +118,8 @@ TEST_F(TrackSort, RejectsMalformedKeysAndRepresentsMissingDuration)
         wiola::gui::track_sort_value(TrackSortKey::for_tag(" "), track(), &repository)
     ));
 
-    const wiola::engine::QueueEntry unknown{wiola::engine::QueueEntryId{2}, "unknown.wav"};
+    const wiola::engine::QueueEntry unknown{wiola::engine::QueueEntryId{2},
+        wiola::media::local_resource("unknown.wav")};
     EXPECT_TRUE(std::holds_alternative<std::monostate>(wiola::gui::track_sort_value(
         standard(TrackSortField::duration), wiola::gui::queue_row(unknown), &repository
     )));

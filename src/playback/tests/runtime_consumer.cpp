@@ -94,7 +94,7 @@ public:
 
 class Provider final : public media::MediaProvider {
 public:
-    media::Result<std::unique_ptr<media::MediaAsset>> open(const std::filesystem::path&,
+    media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference&,
         const media::OperationContext& context) override
     {
         if (context.stop_reason() != media::StopReason::none)
@@ -198,14 +198,16 @@ int main()
             return output;
         },
         std::make_shared<Provider>()};
-    session.open({"controlled resource"});
+    const media::ResourceReference supplied{"memory", "opaque?track=17", "Controlled resource"};
+    session.open({supplied});
     const auto request{session.open_request_id()};
     if (!await(session,
             [&] { return session.loaded() && session.playlist().metadata_revision() != 0; }))
         return fail("decoder/metadata did not settle through the supplied provider");
     const auto snapshot{session.snapshot()};
     const auto* current{session.playlist().current()};
-    if (!current || snapshot.open_result != engine::OpenResult::opened ||
+    if (!current || snapshot.track != supplied || snapshot.track.label() != supplied.label() ||
+        current->resource() != supplied || snapshot.open_result != engine::OpenResult::opened ||
         snapshot.total_time != duration || snapshot.queue_position != 0 ||
         processing.configured != stream || current->metadata().title != "controlled title")
         return fail("installed decoder facts or processing configuration were lost");

@@ -19,8 +19,10 @@
  */
 
 #include "background_metadata_writes.hpp"
+
 #include <algorithm>
 #include <library/fingerprint.hpp>
+#include <media/local/resource.hpp>
 
 namespace wiola::app {
 
@@ -137,7 +139,8 @@ void BackgroundMetadataWrites::run()
                         .output = {},
                         .source_fingerprint = *fingerprint});
                 auto patch = library::file_metadata_patch(job.patch);
-                auto asset = provider_->open(job.source, job.context());
+                auto asset =
+                    provider_->open(wiola::media::local_resource(job.source), job.context());
                 if (!patch) {
                     result.outcome.error = media::MetadataWriteError::invalid_edit;
                     result.outcome.detail = patch.error().detail;

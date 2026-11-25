@@ -31,13 +31,13 @@ namespace wiola::engine {
 /// Single-caller load intent. Physical I/O cancellation remains the worker's separate concern.
 class LoadCoordinator {
 public:
-    [[nodiscard]] LoadRequest begin(QueueEntryId entry, std::filesystem::path path,
+    [[nodiscard]] LoadRequest begin(QueueEntryId entry, media::ResourceReference resource,
         LoadIntent intent, std::optional<units::Time> position = {})
     {
         ++generation_;
         active_ = LoadRequest{.generation = generation_,
             .entry = entry,
-            .path = std::move(path),
+            .resource = std::move(resource),
             .intent = intent,
             .position = position};
         return *active_;
@@ -59,9 +59,9 @@ public:
 
     /// Retires only an intent for this resource, returning its owned restoration intent.
     [[nodiscard]] std::optional<LoadRequest>
-    invalidate_resource(const std::filesystem::path& path) noexcept
+    invalidate_resource(const media::ResourceReference& resource) noexcept
     {
-        if (!active_ || active_->path != path)
+        if (!active_ || active_->resource != resource)
             return {};
         auto retired{std::move(active_)};
         invalidate();

@@ -1,5 +1,6 @@
-wiola_add_library(wiola_local_file_stream SOURCES file_stream.cpp)
-target_link_libraries(wiola_local_file_stream PUBLIC wiola::media)
+wiola_add_library(wiola_local_media SOURCES file_stream.cpp resource.cpp)
+add_library(wiola::local_media ALIAS wiola_local_media)
+target_link_libraries(wiola_local_media PUBLIC wiola::media)
 
 wiola_add_library(
     wiola_codec_provider
