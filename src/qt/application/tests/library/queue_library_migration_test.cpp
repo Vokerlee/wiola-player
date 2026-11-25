@@ -108,12 +108,12 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     const std::filesystem::path existing = track("wiola_migrate.wav");
     const std::filesystem::path missing{library_file().parent_path() / "missing.wav"};
 
-    wiola::platform::qt::PlaylistSettings queue;
+    wiola::app::QueueSnapshot queue;
     queue.tracks = {existing, existing, missing};
     queue.selected = existing;
-    queue.repeat = 2;
+    queue.repeat = wiola::engine::RepeatMode::all;
     queue.shuffled = true;
-    wiola::platform::qt::QtSettingsAdapter{settings}.write_playlist(queue);
+    wiola::platform::qt::QtSettingsAdapter{settings}.write_queue(queue);
 
     const Migration migration{settings};
     ASSERT_EQ(migration.migrate(settings), LibraryStoreResult{});
@@ -139,7 +139,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
             EXPECT_TRUE(track.missing);
     }
 
-    const auto unchanged = wiola::platform::qt::QtSettingsAdapter{settings}.read_playlist();
+    const auto unchanged = wiola::platform::qt::QtSettingsAdapter{settings}.read_queue();
     EXPECT_EQ(unchanged.tracks, queue.tracks);
     EXPECT_EQ(unchanged.selected, queue.selected);
     EXPECT_EQ(unchanged.repeat, queue.repeat);
@@ -157,9 +157,9 @@ TEST_F(QueueLibraryMigration, DoesNotOverwriteAnExistingValidLibrary)
     LibraryStore storage{library_file()};
     ASSERT_EQ(storage.save(existing), LibraryStoreResult{});
 
-    wiola::platform::qt::PlaylistSettings queue;
+    wiola::app::QueueSnapshot queue;
     queue.tracks = {this->track("wiola_migrate_existing.wav")};
-    wiola::platform::qt::QtSettingsAdapter{settings}.write_playlist(queue);
+    wiola::platform::qt::QtSettingsAdapter{settings}.write_queue(queue);
 
     const Migration migration{settings};
     ASSERT_EQ(migration.migrate(settings), LibraryStoreResult{});

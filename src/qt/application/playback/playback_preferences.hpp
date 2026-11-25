@@ -19,8 +19,8 @@
  */
 
 #pragma once
-#include "queue_settings.hpp"
 #include <app/playback/equalizer_control.hpp>
+#include <app/playback/queue_settings.hpp>
 #include <app/playback/volume_control.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/settings.hpp>

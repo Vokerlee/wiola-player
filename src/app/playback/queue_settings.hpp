@@ -22,7 +22,8 @@
 
 #include <app/playback/playback_service.hpp>
 
-#include <QSettings>
+#include "queue_settings_store.hpp"
+#include <functional>
 
 #include <cstddef>
 #include <map>
@@ -38,7 +39,10 @@ namespace wiola::app {
  */
 class QueueSettings {
 public:
-    QueueSettings(app::PlaybackService& playback, QSettings& settings) noexcept;
+    using Available = std::function<bool(const std::filesystem::path&)>;
+
+    QueueSettings(app::PlaybackService& playback, QueueSettingsStore& settings,
+        Available available);
 
     /// Puts back what the last run left. Tracks that have gone since are dropped rather than
     /// queued to fail, and how many were dropped is what this answers.
@@ -55,7 +59,8 @@ public:
 
 private:
     app::PlaybackService& playback_;
-    QSettings& settings_;
+    QueueSettingsStore& settings_;
+    Available available_;
     std::map<engine::QueueEntryId, engine::QueueEntryId> restored_;
 };
 

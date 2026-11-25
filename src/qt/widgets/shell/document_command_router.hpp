@@ -22,10 +22,10 @@
 #include "document_command_context.hpp"
 #include "player_dialogs.hpp"
 #include <QObject>
+#include <app/playback/queue_settings.hpp>
 #include <functional>
 #include <qt/application/library/library_documents.hpp>
 #include <qt/application/library/library_session.hpp>
-#include <qt/application/playback/queue_settings.hpp>
 
 namespace wiola::gui {
 

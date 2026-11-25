@@ -18,7 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <qt/application/playback/queue_settings.hpp>
+#include <app/playback/queue_settings.hpp>
+#include <qt/settings.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -76,8 +77,15 @@ protected:
         static_cast<void>(presenter.pump());
     }
 
+    static bool available(const std::filesystem::path& path)
+    {
+        std::error_code error;
+        return std::filesystem::exists(path, error) && !error;
+    }
+
     inline static std::unique_ptr<QTemporaryDir> settings_directory;
     QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-test", "queue"};
+    wiola::platform::qt::QtSettingsAdapter store{settings};
 };
 
 } // namespace
@@ -87,7 +95,7 @@ TEST_F(QueueSettings, RestoresNothingFromAnEmptySettingsFile)
     Presenter presenter{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{presenter, settings};
+    Control control{presenter, store, available};
 
     EXPECT_EQ(control.restore(), 0U);
     EXPECT_TRUE(presenter.playlist().empty());
@@ -102,7 +110,7 @@ TEST_F(QueueSettings, PutsBackTheQueueTheLastRunLeft)
         Presenter presenter{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{presenter, settings};
+        Control control{presenter, store, available};
 
         presenter.add({wiola::media::local_resource(first), wiola::media::local_resource(next)});
         settle(presenter);
@@ -112,7 +120,7 @@ TEST_F(QueueSettings, PutsBackTheQueueTheLastRunLeft)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     EXPECT_EQ(control.restore(), 0U);
 
@@ -131,7 +139,7 @@ TEST_F(QueueSettings, StandsWhereTheLastRunStood)
         Presenter presenter{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{presenter, settings};
+        Control control{presenter, store, available};
 
         presenter.add({wiola::media::local_resource(first), wiola::media::local_resource(next)});
         settle(presenter);
@@ -143,7 +151,7 @@ TEST_F(QueueSettings, StandsWhereTheLastRunStood)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
     settle(restored);
@@ -160,7 +168,7 @@ TEST_F(QueueSettings, PutsBackHowItWasBeingPlayedThrough)
         Presenter presenter{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{presenter, settings};
+        Control control{presenter, store, available};
 
         presenter.add({wiola::media::local_resource(wiola::testing::write_wav("wiola_queue.wav"))});
         settle(presenter);
@@ -172,7 +180,7 @@ TEST_F(QueueSettings, PutsBackHowItWasBeingPlayedThrough)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
 
@@ -190,7 +198,7 @@ TEST_F(QueueSettings, DropsTracksThatHaveGoneSince)
         Presenter presenter{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{presenter, settings};
+        Control control{presenter, store, available};
 
         presenter.add({wiola::media::local_resource(kept), wiola::media::local_resource(gone)});
         settle(presenter);
@@ -202,7 +210,7 @@ TEST_F(QueueSettings, DropsTracksThatHaveGoneSince)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     EXPECT_EQ(control.restore(), 1U) << "the track that had gone was not counted";
 
@@ -219,7 +227,7 @@ TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
         Presenter session{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{session, settings};
+        Control control{session, store, available};
 
         session.add({wiola::media::local_resource(repeated), wiola::media::local_resource(other),
             wiola::media::local_resource(repeated)});
@@ -235,7 +243,7 @@ TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
     settle(restored);
@@ -266,7 +274,7 @@ TEST_F(QueueSettings, LegacyPathOnlySelectionMigratesWithoutInventingAnOccurrenc
     Presenter playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{playback, settings};
+    Control control{playback, store, available};
     ASSERT_EQ(control.restore(), 0);
     EXPECT_EQ(playback.playlist().position(), 1);
     EXPECT_TRUE(control.restore_mapping().empty());
@@ -285,7 +293,7 @@ TEST_F(QueueSettings, InvalidOccurrenceMetadataNeverSelectsADuplicateByFilename)
     Presenter playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{playback, settings};
+    Control control{playback, store, available};
     ASSERT_EQ(control.restore(), 0);
     EXPECT_TRUE(control.restore_mapping().empty());
     EXPECT_EQ(playback.playlist().position(), 0);
@@ -301,7 +309,7 @@ TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone
         Presenter session{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{session, settings};
+        Control control{session, store, available};
 
         session.add({wiola::media::local_resource(first), wiola::media::local_resource(selected),
             wiola::media::local_resource(last)});
@@ -317,7 +325,7 @@ TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     EXPECT_EQ(control.restore(), 1U);
     settle(restored);
@@ -342,7 +350,7 @@ TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
         Presenter session{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{session, settings};
+        Control control{session, store, available};
 
         session.add({wiola::media::local_resource(first), wiola::media::local_resource(selected),
             wiola::media::local_resource(last)});
@@ -359,7 +367,7 @@ TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
     settle(restored);
@@ -386,7 +394,7 @@ TEST_F(QueueSettings, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
         Presenter session{wiola::testing::passive_output,
             std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-        Control control{session, settings};
+        Control control{session, store, available};
 
         session.add({wiola::media::local_resource(wiola::testing::write_wav("wiola_queue.wav"))});
         settle(session);
@@ -396,7 +404,7 @@ TEST_F(QueueSettings, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
     Presenter restored{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control control{restored, settings};
+    Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
 
@@ -408,4 +416,24 @@ TEST_F(QueueSettings, LeavesUnrelatedSettingsAndAnotherApplicationsFileAlone)
 
     other.clear();
     other.sync();
+}
+
+TEST_F(QueueSettings, LegacySelectionIsRestoredAmongTheAppendedOccurrences)
+{
+    const auto existing = wiola::testing::write_wav("existing.wav");
+    const auto first = wiola::testing::write_wav("first.wav");
+    const auto selected = wiola::testing::write_wav("selected.wav");
+    wiola::app::QueueSnapshot saved;
+    saved.tracks = {first, selected};
+    saved.selected = selected;
+    wiola::platform::qt::QtSettingsAdapter{settings}.write_queue(saved);
+    Presenter presenter{wiola::testing::passive_output,
+        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    presenter.add({wiola::media::local_resource(existing)});
+    Control control{presenter, store, available};
+
+    EXPECT_EQ(control.restore(), 0U);
+    EXPECT_EQ(presenter.playlist().position(), 2U);
+    ASSERT_NE(presenter.playlist().current(), nullptr);
+    EXPECT_EQ(presenter.playlist().current()->resource(), wiola::media::local_resource(selected));
 }
