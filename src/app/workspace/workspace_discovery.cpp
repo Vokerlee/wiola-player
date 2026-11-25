@@ -20,7 +20,7 @@
 
 #include "workspace_discovery.hpp"
 #include <algorithm>
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <media/local/fingerprint.hpp>
 
 namespace wiola::app {
@@ -43,7 +43,7 @@ WorkspaceDiscovery::WorkspaceDiscovery(const std::filesystem::path& root,
 {
     present_.emplace();
     for (const auto& path : current)
-        present_->insert(library::media_id_for(path).value);
+        present_->insert(app::media_id_for(path).value);
     index(root, known);
 }
 
@@ -61,7 +61,7 @@ void WorkspaceDiscovery::index(const std::filesystem::path& root,
         bool within = false;
         revisions_.emplace(record.id, record.content_revision);
         for (const auto& location : record.locations) {
-            locations_.try_emplace(library::media_id_for(location).value, record.id);
+            locations_.try_emplace(app::media_id_for(location).value, record.id);
             within = within || workspace_contains(root, location);
         }
         if (within && !record.fingerprint.empty())
@@ -73,7 +73,7 @@ WorkspaceScanEntry WorkspaceDiscovery::resolve(const std::filesystem::path& loca
 {
     WorkspaceScanEntry result;
     result.location = location;
-    result.media = library::media_id_for(location);
+    result.media = app::media_id_for(location);
     result.fingerprint = media::fingerprint_media_cancellable(location, stop_);
     result.unreadable = !result.fingerprint;
     if (const auto known = locations_.find(result.media.value); known != locations_.end()) {
@@ -90,7 +90,7 @@ WorkspaceScanEntry WorkspaceDiscovery::resolve(const std::filesystem::path& loca
                 bool present = false;
                 for (const auto& path : candidate.locations) {
                     if (present_)
-                        present = present || present_->contains(library::media_id_for(path).value);
+                        present = present || present_->contains(app::media_id_for(path).value);
                     else {
                         std::error_code error;
                         const bool exists = std::filesystem::exists(path, error);

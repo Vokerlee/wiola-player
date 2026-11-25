@@ -19,7 +19,7 @@
  */
 
 #include "inspector_context.hpp"
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <set>
 
@@ -54,7 +54,7 @@ InspectorContext inspector_context(const app::LibrarySession& library,
         }
         if (!item.location.empty())
             row.location = item.location;
-        row.location_key = library::media_id_for(row.location).value;
+        row.location_key = app::media_id_for(row.location).value;
         // Never display artwork belonging to a different playing track.
         if (playing && playing->media == row.media) {
             if (!registered)

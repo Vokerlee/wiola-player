@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <library/records.hpp>
 #include <qt/application/player_application.hpp>
 
 #include <media/local/resource.hpp>
@@ -26,9 +27,9 @@
 #include <QFile>
 #include <QLineEdit>
 #include <QPushButton>
+#include <app/library/local_identity.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
-#include <library/location.hpp>
 #include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <qt/paths.hpp>
@@ -131,7 +132,7 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
     EXPECT_EQ(player.playback().track(), wiola::media::local_resource(source));
     EXPECT_EQ(player.playback().open_result(), wiola::engine::OpenResult::opened);
     EXPECT_FALSE(player.playback().playing());
-    const auto media = wiola::library::media_id_for(source);
+    const auto media = wiola::app::media_id_for(source);
     ASSERT_TRUE(pump_until([&] { return player.library().repository().track(media) != nullptr; }));
     EXPECT_EQ(player.library().search().size(), 1);
     wiola::gui::MainWindow replacement{player.playback(), player.library(), player.preferences()};
@@ -296,7 +297,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
         [&] { window.refresh(); }
     );
     window.open({path});
-    const auto media = wiola::library::media_id_for(path);
+    const auto media = wiola::app::media_id_for(path);
     ASSERT_TRUE(pump_until([&] {
         return player.playback().loaded() && player.library().repository().track(media);
     }));
@@ -365,7 +366,7 @@ TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOr
         [&] { window.refresh(); }
     );
     window.open({source});
-    const auto media = wiola::library::media_id_for(source);
+    const auto media = wiola::app::media_id_for(source);
     ASSERT_TRUE(pump_until([&] {
         return player.playback().loaded() && player.library().repository().track(media);
     }));

@@ -20,7 +20,7 @@
 
 #include "workspace_reconciliation.hpp"
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <library/relocation.hpp>
 #include <library/repository_transaction.hpp>
 
@@ -39,7 +39,7 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
     const auto root = definition->root;
     const auto in_scope = [root, recursive = definition->recursive](const auto& path) {
         return workspace_contains(root, path) &&
-            (recursive || library::media_id_for(path.parent_path()) == library::media_id_for(root));
+            (recursive || app::media_id_for(path.parent_path()) == app::media_id_for(root));
     };
     library::RepositoryTransaction transaction{repository, persist_};
     WorkspaceReconciliationResult result;

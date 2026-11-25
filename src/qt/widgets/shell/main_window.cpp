@@ -73,8 +73,8 @@
 #include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/layout/layout_builder.hpp>
 
-#include <library/location.hpp>
 #include <library/metadata.hpp>
+#include <library/records.hpp>
 
 #include <QActionGroup>
 #include <QCloseEvent>

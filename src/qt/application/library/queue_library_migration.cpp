@@ -20,7 +20,7 @@
 
 #include "queue_library_migration.hpp"
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <qt/paths.hpp>
 #include <qt/settings.hpp>
 #include <qt/storage/library_store.hpp>
@@ -60,7 +60,7 @@ persistence::qt::LibraryStoreResult QueueLibraryMigration::migrate(QSettings& se
     std::map<library::MediaId, std::size_t> known;
 
     for (const std::filesystem::path& path : queue.tracks) {
-        const library::MediaId media{library::media_id_for(path)};
+        const library::MediaId media{app::media_id_for(path)};
 
         if (!media.valid())
             continue;

@@ -23,7 +23,8 @@
 #include <QFileInfo>
 #include <QThread>
 #include <algorithm>
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
+#include <library/records.hpp>
 #include <qt/paths.hpp>
 
 namespace wiola::app {
@@ -244,7 +245,7 @@ void LibrarySession::cancel_workspace_scan(const library::WorkspaceId& id)
 library::MediaId LibrarySession::media_at(const std::filesystem::path& location) const
 {
     check_owner();
-    return locations_.find(location).value_or(library::media_id_for(location));
+    return locations_.find(location).value_or(app::media_id_for(location));
 }
 
 void LibrarySession::publish_scan(WorkspaceScanBatch batch)

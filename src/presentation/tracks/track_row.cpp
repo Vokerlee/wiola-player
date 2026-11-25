@@ -19,8 +19,9 @@
  */
 
 #include "track_row.hpp"
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <library/metadata.hpp>
+#include <library/records.hpp>
 
 namespace wiola::gui {
 
@@ -31,7 +32,7 @@ TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& recor
     row.id = std::move(occurrence);
     row.media = record.id;
     row.location = library::preferred_location(record);
-    row.location_key = library::media_id_for(row.location).value;
+    row.location_key = app::media_id_for(row.location).value;
     row.metadata = {.title = std::move(values.title),
         .artist = std::move(values.artist),
         .album = std::move(values.album),

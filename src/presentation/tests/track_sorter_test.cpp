@@ -24,8 +24,8 @@
 
 #include <presentation/tracks/track_sorter.hpp>
 
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 #include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
@@ -93,7 +93,7 @@ TEST(TrackSorter, KeepsMissingDurationsLastAndUsesTagKeys)
     EXPECT_EQ(descending.front().location, "long.wav");
 
     wiola::library::TrackRecord record;
-    record.id = wiola::library::media_id_for("unknown.wav");
+    record.id = wiola::app::media_id_for("unknown.wav");
     record.tags = {
         {.id = wiola::library::TagId{"tag"}, .key = "Mood", .value = "Calm"}
     };

@@ -1,4 +1,11 @@
 wiola_add_library(
+    wiola_local_identity
+    SOURCES library/local_identity.cpp
+    LIBS wiola_library
+)
+add_library(wiola::local_identity ALIAS wiola_local_identity)
+
+wiola_add_library(
     wiola_app
     SOURCES
         library/search_index.cpp
@@ -23,6 +30,7 @@ wiola_add_library(
         workspace/workspace_scanner.cpp
     LIBS
         wiola_library
+        wiola::local_identity
         wiola::file_replacement
         wiola::file_fingerprint
         wiola::local_media

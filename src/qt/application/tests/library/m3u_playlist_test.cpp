@@ -20,7 +20,7 @@
 
 #include <qt/application/library/m3u_playlist.hpp>
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <qt/paths.hpp>
 
 #include <QCoreApplication>
@@ -44,14 +44,14 @@ TEST_F(M3uPlaylist, RoundTripsUtf8RelativePathsAndDuplicateOccurrences)
 {
     wiola::library::InMemoryRepository original;
     wiola::library::TrackRecord first;
-    first.id = wiola::library::media_id_for(path("music/first.flac"));
+    first.id = wiola::app::media_id_for(path("music/first.flac"));
     first.embedded.title = "First";
     first.embedded.artist = "Artist";
     first.embedded.duration = wiola::units::Time{12.5};
     first.locations = {path("music/first.flac")};
 
     wiola::library::TrackRecord second;
-    second.id = wiola::library::media_id_for(path("music/é.flac"));
+    second.id = wiola::app::media_id_for(path("music/é.flac"));
     second.locations = {path("music/é.flac")};
     ASSERT_TRUE(original.put_track(first));
     ASSERT_TRUE(original.put_track(second));

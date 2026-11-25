@@ -21,7 +21,7 @@
 #include "library_persistence.hpp"
 #include <QThread>
 #include <algorithm>
-#include <library/location.hpp>
+#include <library/records.hpp>
 #include <stdexcept>
 
 namespace wiola::app {

@@ -22,7 +22,7 @@
 
 #include <qt/paths.hpp>
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 
 #include <QLocale>
 #include <QStringDecoder>
@@ -169,7 +169,7 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
         if (!location.is_absolute())
             location = directory / location;
 
-        const library::MediaId media = library::media_id_for(location);
+        const library::MediaId media = app::media_id_for(location);
         if (!media.valid())
             return M3uError::invalid_record;
 

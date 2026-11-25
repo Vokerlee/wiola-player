@@ -34,7 +34,7 @@
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <qt/paths.hpp>
 #include <qt/storage/library_store.hpp>
 #include <qt/widgets/appearance/theme_editor.hpp>
@@ -710,7 +710,7 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
     const auto path = platform::qt::QtPathAdapter::from_qt(media_directory.filePath("shared.mp3"));
     library::InMemoryRepository records;
     library::TrackRecord record;
-    record.id = library::media_id_for(path);
+    record.id = app::media_id_for(path);
     record.locations = {path};
     record.embedded.title = "Shared track";
     ASSERT_TRUE(records.put_track(record));

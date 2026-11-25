@@ -1,9 +1,9 @@
 #include <QSignalSpy>
 
 #include <QToolButton>
+#include <app/library/local_identity.hpp>
 #include <array>
 #include <fakes/output.hpp>
-#include <library/location.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/player_application.hpp>
@@ -72,7 +72,7 @@ TEST_P(MetadataFileJourney, FileButtonWritesTheSelectedDuplicateAndPreservesDeco
             [&] { window.refresh(); }
         );
         window.open({path, path});
-        const auto media = library::media_id_for(path);
+        const auto media = app::media_id_for(path);
         player.library().request_metadata(media, path);
         ASSERT_TRUE(wiola::testing::await_gui([&] {
             const auto record = player.library().snapshot(media);

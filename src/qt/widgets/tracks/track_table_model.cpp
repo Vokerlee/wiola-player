@@ -27,7 +27,7 @@
 #include <qt/paths.hpp>
 #include <qt/widgets/controls/clock.hpp>
 
-#include <library/location.hpp>
+#include <library/records.hpp>
 #include <library/repository.hpp>
 #include <library/tags.hpp>
 

@@ -21,7 +21,7 @@
 #include "metadata_write_service.hpp"
 
 #include <QThread>
-#include <library/location.hpp>
+#include <library/records.hpp>
 #include <media/local/resource.hpp>
 
 namespace wiola::app {

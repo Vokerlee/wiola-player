@@ -25,8 +25,8 @@
 #include <fixtures/track_view.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 #include <queue/playlist.hpp>
 
 #include <QAction>
@@ -195,7 +195,7 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
 
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
-    record.id = wiola::library::media_id_for("first.wav");
+    record.id = wiola::app::media_id_for("first.wav");
     record.tags = {
         {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"}
     };
@@ -332,7 +332,7 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
         {.title = "Last", .artist = "Beta", .album = {}, .duration = {}});
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
-    record.id = wiola::library::media_id_for("same.wav");
+    record.id = wiola::app::media_id_for("same.wav");
     record.tags = {
         {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"}
     };

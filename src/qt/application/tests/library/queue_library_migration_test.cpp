@@ -20,7 +20,7 @@
 
 #include <qt/application/library/queue_library_migration.hpp>
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <qt/paths.hpp>
 #include <qt/settings.hpp>
 #include <qt/storage/library_store.hpp>
@@ -133,7 +133,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     EXPECT_NE(entries[1].media, entries[2].media);
 
     for (const wiola::library::TrackRecord& track : restored.tracks) {
-        if (track.id == wiola::library::media_id_for(existing))
+        if (track.id == wiola::app::media_id_for(existing))
             EXPECT_FALSE(track.missing);
         else
             EXPECT_TRUE(track.missing);

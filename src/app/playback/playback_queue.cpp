@@ -20,7 +20,7 @@
 
 #include "playback_queue.hpp"
 
-#include <library/location.hpp>
+#include <library/records.hpp>
 #include <media/local/resource.hpp>
 
 namespace wiola::app {
