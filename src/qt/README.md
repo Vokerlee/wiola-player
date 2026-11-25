@@ -18,3 +18,5 @@ flowchart LR
 The [focused tests](tests) stay with these adapters. Portable code can be configured and tested with the Qt frontend disabled; the Qt-specific types do not belong to the public playback/media SDKs.
 
 [Storage](storage/README.md) contains independently linkable atomic file operations and library snapshot/schema storage. Keep generic file-mechanism clients independent of the catalog serializer.
+
+[Application adapters](application/README.md), [QtCore projection](projection/README.md) and the [Widgets frontend](widgets/README.md) keep their complete implementations and tests together. Shared `queued_delivery.hpp/cpp` owns weak producer endpoints and receiver-thread delivery through `wiola::qt_delivery`. The module configures its targets in dependency order, owns the executable entry point and registers Qt tests after the production targets exist. Compatibility fixtures and shared Qt-only test support live under `tests`; portable fixtures remain outside this owner.
