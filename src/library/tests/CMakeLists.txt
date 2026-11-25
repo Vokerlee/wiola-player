@@ -65,6 +65,11 @@ wiola_library_add_test(
     SOURCES commit_receipt_test.cpp
 )
 
+wiola_library_add_test(
+    library_repository_restore_test
+    SOURCES repository_restore_test.cpp
+)
+
 wiola_add_public_consumer_test(
     Library.InstalledConsumer
     PACKAGE wiola_library
