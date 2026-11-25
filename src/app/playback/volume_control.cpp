@@ -25,15 +25,8 @@
 
 namespace wiola::app {
 
-namespace {
-
-/// Under which name the position is kept.
-constexpr auto position_key{"volume"};
-constexpr auto boosted_key{"volume/boosted"};
-
-} // namespace
-
-VolumeControl::VolumeControl(app::PlaybackService& volume, QSettings& settings) noexcept
+VolumeControl::VolumeControl(app::PlaybackService& volume,
+    PlaybackSettingsWriter& settings) noexcept
     : volume_{volume}
     , settings_{settings}
     , position_{scale_.full_position}
@@ -50,7 +43,7 @@ void VolumeControl::set_position(int percent)
 {
     apply_position(percent);
 
-    settings_.setValue(position_key, position_);
+    settings_.write_volume_position(position_);
 }
 
 void VolumeControl::apply_position(int percent)
@@ -63,7 +56,7 @@ void VolumeControl::apply_position(int percent)
 void VolumeControl::set_boosted(bool boosted)
 {
     boosted_ = boosted;
-    settings_.setValue(boosted_key, boosted_);
+    settings_.write_boosted(boosted_);
 
     // What was asked for past full is not what a slider that stops at full may ask.
     set_position(position_);

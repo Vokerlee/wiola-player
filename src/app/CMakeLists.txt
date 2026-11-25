@@ -168,6 +168,8 @@ if(NOT WIOLA_COMPONENT_BUILD)
             playback/active_playlist.cpp
             playback/playback_queue.cpp
             playback/playback_service.cpp
+            playback/volume_control.cpp
+            playback/equalizer_control.cpp
             playback/playlist_transfer.cpp
             workspace/native_workspace_files.cpp
             workspace/workspace_scanner.cpp

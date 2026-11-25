@@ -7,14 +7,15 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QSlider>
+#include <app/playback/equalizer_control.hpp>
 #include <app/playback/playback_service.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <limits>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
-#include <qt/application/playback/equalizer_control.hpp>
 #include <qt/paths.hpp>
+#include <qt/settings.hpp>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
 #include <qt/widgets/controls/seek_bar.hpp>
@@ -153,7 +154,8 @@ TEST_F(GuiInteraction, LargeFontEqualizerRemainsScrollableAndKeyboardAdjustsTheL
     }));
 
     QSettings settings{data_.filePath("equalizer.ini"), QSettings::IniFormat};
-    wiola::app::EqualizerControl control{playback, settings};
+    wiola::platform::qt::QtSettingsAdapter writer{settings};
+    wiola::app::EqualizerControl control{playback, writer};
     wiola::gui::EqualizerPanel panel{control, nullptr};
     watch(panel);
     panel.setUpdatesEnabled(false);

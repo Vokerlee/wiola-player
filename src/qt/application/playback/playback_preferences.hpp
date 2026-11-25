@@ -19,10 +19,11 @@
  */
 
 #pragma once
-#include "equalizer_control.hpp"
 #include "queue_settings.hpp"
-#include "volume_control.hpp"
+#include <app/playback/equalizer_control.hpp>
+#include <app/playback/volume_control.hpp>
 #include <qt/application/session/session_preferences.hpp>
+#include <qt/settings.hpp>
 
 namespace wiola::app {
 
@@ -44,6 +45,7 @@ public:
 
 private:
     QSettings settings_;
+    platform::qt::QtSettingsAdapter settings_adapter_;
     SessionPreferences ui_session_;
     QueueSettings queue_;
     VolumeControl volume_;

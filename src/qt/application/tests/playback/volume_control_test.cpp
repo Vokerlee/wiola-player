@@ -18,10 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <app/playback/volume_control.hpp>
 #include <app/playback/volume_scale.hpp>
 #include <fakes/output.hpp>
 #include <media/local/provider.hpp>
-#include <qt/application/playback/volume_control.hpp>
 #include <qt/settings.hpp>
 
 #include <QSettings>
@@ -47,7 +47,7 @@ protected:
 
     int restore(Control& control)
     {
-        const wiola::platform::qt::PlayerSettings restored{
+        const wiola::app::PlayerSettings restored{
             wiola::platform::qt::QtSettingsAdapter{settings}.read(control.scale(), {})};
         control.apply_restored(restored.volume_position, restored.boosted);
         return control.position();
@@ -57,13 +57,14 @@ protected:
 
     QTemporaryDir directory;
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    wiola::platform::qt::QtSettingsAdapter writer{settings};
     wiola::app::PlaybackService volume{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 };
 
 TEST_F(VolumeControl, StartsAtFullVolume)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     EXPECT_EQ(restore(control), scale.full_position);
     EXPECT_EQ(control.position(), scale.full_position);
@@ -73,7 +74,7 @@ TEST_F(VolumeControl, StartsAtFullVolume)
 /// The curve is the point of the control: half the travel is a quarter of the gain, not half.
 TEST_F(VolumeControl, AppliesTheCurveToAPosition)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     control.set_position(50);
 
@@ -83,7 +84,7 @@ TEST_F(VolumeControl, AppliesTheCurveToAPosition)
 
 TEST_F(VolumeControl, IsSilentAtTheBottomOfTheTravel)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     control.set_position(0);
 
@@ -92,7 +93,7 @@ TEST_F(VolumeControl, IsSilentAtTheBottomOfTheTravel)
 
 TEST_F(VolumeControl, ClampsAPositionOffTheTravel)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     control.set_position(-5);
     EXPECT_EQ(control.position(), 0);
@@ -106,12 +107,12 @@ TEST_F(VolumeControl, ClampsAPositionOffTheTravel)
 /// What the control is for: a run leaves its position for the next one.
 TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
 {
-    Control{volume, settings}.set_position(70);
+    Control{volume, writer}.set_position(70);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{next, settings};
+    Control later{next, writer};
 
     EXPECT_EQ(restore(later), 70);
     EXPECT_FLOAT_EQ(next.volume(), 0.49F);
@@ -120,14 +121,14 @@ TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
 /// Restoring is applying, not only reading: the volume it was built on is set by it.
 TEST_F(VolumeControl, AppliesWhatItRestores)
 {
-    Control{volume, settings}.set_position(50);
+    Control{volume, writer}.set_position(50);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
     EXPECT_FLOAT_EQ(next.volume(), 1.0F);
 
-    Control control{next, settings};
+    Control control{next, writer};
     restore(control);
 
     EXPECT_FLOAT_EQ(next.volume(), 0.25F);
@@ -138,7 +139,7 @@ TEST_F(VolumeControl, IgnoresAStoredValueThatIsNotAPosition)
 {
     settings.setValue("volume", "loud");
 
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     EXPECT_EQ(restore(control), scale.full_position);
 }
@@ -147,17 +148,17 @@ TEST_F(VolumeControl, BringsAStoredPositionBackIntoRange)
 {
     settings.setValue("volume", 9999);
 
-    EXPECT_EQ(restore(Control(volume, settings)), scale.full_position);
+    EXPECT_EQ(restore(Control(volume, writer)), scale.full_position);
 
     settings.setValue("volume", -20);
 
-    EXPECT_EQ(restore(Control(volume, settings)), 0);
+    EXPECT_EQ(restore(Control(volume, writer)), 0);
 }
 
 /// Full volume is where the slider stops until the listener asks for more.
 TEST_F(VolumeControl, StopsAtFullUntilBoosted)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     EXPECT_FALSE(control.boosted());
     EXPECT_EQ(control.max_position(), scale.full_position);
@@ -171,7 +172,7 @@ TEST_F(VolumeControl, StopsAtFullUntilBoosted)
 /// Past full the slider says what it means: a hundred and forty is what arrived and forty more.
 TEST_F(VolumeControl, LiftsPastWhatArrivedWhenBoosted)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     control.set_boosted(true);
 
@@ -188,7 +189,7 @@ TEST_F(VolumeControl, LiftsPastWhatArrivedWhenBoosted)
 /// The curve is below full only, so full is full either way.
 TEST_F(VolumeControl, LeavesTheTravelBelowFullAlone)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     control.set_boosted(true);
     control.set_position(50);
@@ -203,7 +204,7 @@ TEST_F(VolumeControl, LeavesTheTravelBelowFullAlone)
 /// Turning it off is not a way to keep a position the slider can no longer reach.
 TEST_F(VolumeControl, BringsAPositionBackWhenBoostIsTurnedOff)
 {
-    Control control{volume, settings};
+    Control control{volume, writer};
 
     control.set_boosted(true);
     control.set_position(130);
@@ -215,7 +216,7 @@ TEST_F(VolumeControl, BringsAPositionBackWhenBoostIsTurnedOff)
 
 TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
 {
-    Control first{volume, settings};
+    Control first{volume, writer};
 
     first.set_boosted(true);
     first.set_position(120);
@@ -223,7 +224,7 @@ TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{next, settings};
+    Control later{next, writer};
 
     EXPECT_EQ(restore(later), 120);
     EXPECT_TRUE(later.boosted());
