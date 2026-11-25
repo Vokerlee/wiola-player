@@ -18,7 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <qt/application/library/saved_playlist_commands.hpp>
+#include <limits>
+#include <wiola/app/library/playlist_name.hpp>
+#include <wiola/app/library/saved_playlist_commands.hpp>
 
 #include <qt/storage/library_store.hpp>
 
@@ -29,6 +31,45 @@
 #include <gtest/gtest.h>
 
 namespace {
+
+void expect_compatible_name(const std::string& text)
+{
+    const auto expected = QString::fromStdString(text).trimmed();
+    const bool valid = !expected.isEmpty() &&
+        expected.size() <= static_cast<qsizetype>(wiola::app::PlaylistName::max_utf16_units);
+    const auto actual = wiola::app::PlaylistName::parse(text);
+    ASSERT_EQ(actual.has_value(), valid) << "input=" << text;
+    if (actual)
+        EXPECT_EQ(actual->value(), expected.toStdString()) << "input=" << text;
+}
+
+TEST(PlaylistNameCompatibility, MatchesQtForEveryTwoByteInput)
+{
+    constexpr auto maximum = std::numeric_limits<unsigned char>::max();
+    for (unsigned first = 0; first <= maximum; ++first)
+        for (unsigned second = 0; second <= maximum; ++second)
+            expect_compatible_name(std::string{static_cast<char>(first),
+                static_cast<char>(second)});
+}
+
+TEST(PlaylistNameCompatibility, MatchesQtForScalarBoundsMalformedSequencesAndTrimmedLength)
+{
+    for (const std::string& text : {std::string{"\xef\xbb\xbf"
+                                                "  Music  "},
+             std::string{"\xef\xbb\xbf\xef\xbb\xbf"}, std::string{"\xe0\xa0\x80"},
+             std::string{"\xed\x9f\xbf"}, std::string{"\xed\xa0\x80"}, std::string{"\xee\x80\x80"},
+             std::string{"\xf0\x90\x80\x80"}, std::string{"\xf4\x8f\xbf\xbf"},
+             std::string{"\xf4\x90\x80\x80"}, std::string{"\xe2\xff\x80"},
+             std::string{"\xf0\x9f\x92"},
+             std::string{"\xf0\x90\x80"
+                         "A"},
+             std::string{"\xc2\xa0\xe3\x80\x80"
+                         "Music"
+                         "\xe2\x80\xaf"},
+             std::string(wiola::app::PlaylistName::max_utf16_units, 'x') + "  ",
+             std::string(wiola::app::PlaylistName::max_utf16_units + 1, 'x')})
+        expect_compatible_name(text);
+}
 
 class SavedPlaylistCommands : public testing::Test {
 protected:
@@ -54,7 +95,7 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
     track.id = media;
     ASSERT_TRUE(repository.put_track(track));
 
-    const auto original = commands.create("  Road trip  ");
+    const auto original = commands.create("  Road trip  ").id;
     ASSERT_TRUE(original.valid());
     ASSERT_EQ(repository.playlist(original)->name, "Road trip");
     ASSERT_TRUE(repository.append_track(original, media));
@@ -63,7 +104,7 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
         wiola::persistence::qt::LibraryStoreResult{});
 
     ASSERT_TRUE(commands.rename(original, "Evening"));
-    const auto copy = commands.duplicate(original);
+    const auto copy = commands.duplicate(original).id;
     ASSERT_TRUE(copy.valid());
     EXPECT_NE(copy, original);
 
@@ -98,13 +139,15 @@ TEST_F(SavedPlaylistCommands, RejectsBlankNamesAndMissingPlaylists)
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
 
-    EXPECT_FALSE(commands.create("   ").valid());
-    EXPECT_FALSE(commands.create(std::string(257, 'x')).valid());
+    EXPECT_FALSE(commands.create("   ").id.valid());
+    EXPECT_FALSE(
+        commands.create(std::string(wiola::app::PlaylistName::max_utf16_units + 1, 'x')).id.valid()
+    );
     EXPECT_TRUE(repository.playlists().empty());
     EXPECT_FALSE(commands.rename(wiola::library::PlaylistId{"missing"}, "Name"));
-    EXPECT_FALSE(commands.duplicate(wiola::library::PlaylistId{"missing"}).valid());
+    EXPECT_FALSE(commands.duplicate(wiola::library::PlaylistId{"missing"}).id.valid());
 
-    const auto id = commands.create("Valid");
+    const auto id = commands.create("Valid").id;
     ASSERT_TRUE(id.valid());
     EXPECT_FALSE(commands.rename(id, "  "));
     EXPECT_EQ(repository.playlist(id)->name, "Valid");
@@ -121,7 +164,7 @@ TEST_F(SavedPlaylistCommands, RollsBackRepositoryChangesWhenPersistenceFails)
     };
     wiola::app::SavedPlaylistCommands commands{repository, persist};
 
-    EXPECT_FALSE(commands.create("Cannot save").valid());
+    EXPECT_FALSE(commands.create("Cannot save").id.valid());
     EXPECT_TRUE(repository.playlists().empty());
 
     const auto retained = repository.create_playlist("Retained");

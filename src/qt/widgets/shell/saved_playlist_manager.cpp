@@ -20,6 +20,8 @@
 
 #include "saved_playlist_manager.hpp"
 #include <QPointer>
+#include <wiola/app/library/playlist_name.hpp>
+#include <wiola/app/library/saved_playlist_commands.hpp>
 
 #include <QGridLayout>
 #include <QInputDialog>
@@ -98,13 +100,13 @@ SavedPlaylistManager::SavedPlaylistManager(const library::LibraryRepository& rep
 
 bool SavedPlaylistManager::create(const std::string& name)
 {
-    if (QString::fromStdString(name).trimmed().isEmpty()) {
+    if (!app::PlaylistName::parse(name)) {
         save_state_->setText("Enter a playlist name");
         return false;
     }
 
-    const library::PlaylistId id = commands_.create(name);
-    return finish(id.valid(), id);
+    const auto created = commands_.create(name);
+    return finish(created.commit, created.id);
 }
 
 bool SavedPlaylistManager::rename_selected(const std::string& name)
@@ -115,7 +117,7 @@ bool SavedPlaylistManager::rename_selected(const std::string& name)
         return false;
     }
 
-    if (QString::fromStdString(name).trimmed().isEmpty()) {
+    if (!app::PlaylistName::parse(name)) {
         save_state_->setText("Enter a playlist name");
         return false;
     }
@@ -131,8 +133,8 @@ bool SavedPlaylistManager::duplicate_selected()
         return false;
     }
 
-    const library::PlaylistId duplicate = commands_.duplicate(*id);
-    return finish(duplicate.valid(), duplicate);
+    const auto duplicate = commands_.duplicate(*id);
+    return finish(duplicate.commit, duplicate.id);
 }
 
 bool SavedPlaylistManager::remove_selected()
@@ -151,9 +153,9 @@ std::optional<library::PlaylistId> SavedPlaylistManager::selected() const
     return navigation_.selected_playlist();
 }
 
-bool SavedPlaylistManager::finish(bool succeeded, const library::PlaylistId& id)
+bool SavedPlaylistManager::finish(library::CommitResult committed, const library::PlaylistId& id)
 {
-    if (!succeeded) {
+    if (!committed) {
         show_save_failed();
         return false;
     }
@@ -163,17 +165,18 @@ bool SavedPlaylistManager::finish(bool succeeded, const library::PlaylistId& id)
     if (id.valid())
         navigation_.select_playlist(id);
 
-    const auto committed = commands_.last_commit();
-    displayed_revision_ = committed.revision;
-    save_state_->setText(committed.durable() ? "All changes saved"
-                                             : "Changes accepted; saving library");
-    if (committed.receipt)
-        committed.receipt->observe([owner = QPointer<SavedPlaylistManager>{this}](auto event) {
-            if (owner && owner->displayed_revision_ == event.revision)
-                owner->save_state_->setText(event.durable
-                        ? "All changes saved"
-                        : "Changes remain in memory; retry saving library");
-        });
+    if (committed.revision != 0) {
+        displayed_revision_ = committed.revision;
+        save_state_->setText(committed.durable() ? "All changes saved"
+                                                 : "Changes accepted; saving library");
+        if (committed.receipt)
+            committed.receipt->observe([owner = QPointer<SavedPlaylistManager>{this}](auto event) {
+                if (owner && owner->displayed_revision_ == event.revision)
+                    owner->save_state_->setText(event.durable
+                            ? "All changes saved"
+                            : "Changes remain in memory; retry saving library");
+            });
+    }
 
     if (changed_observer_)
         changed_observer_();

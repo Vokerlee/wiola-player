@@ -39,3 +39,19 @@ A pending delta retains its byte capacity until all of its records and removals 
 Each completed write has a private attempt identity. Queued notifications and synchronous flush/stop share that identity, so fallback delivery cannot duplicate acknowledgments or let an older result replace a newer one. Receipt and waiter outcomes follow the known durable revision prefix, including earlier saved records when the latest attempt fails. Rejected or throwing posts leave the write outcome available for explicit flush/stop. A drain or observer exception is rethrown after eligible completion delivery has been attempted; preparation failure leaves delivery retryable.
 
 Stopping ends worker activity; it does not prevent a later flush from retrying acknowledgment preparation. Allocation failure before notification leaves the attempt pending for owner-thread recovery, including after stop. Cancellation closes admission before releasing observer captures, so their cleanup may safely attempt edits or durability observation without reopening the workflow.
+
+```mermaid
+flowchart LR
+    Caller[Frontend / application caller] --> Commands[SavedPlaylistCommands]
+    Commands --> Name[PlaylistName: UTF-8 / trimming / length]
+    Commands --> Transaction[RepositoryTransaction]
+    Transaction --> Repository[In-memory catalog]
+    Transaction --> Persist[Supplied persistence callback]
+    Commands --> Result[Owned ID / commit / receipt]
+```
+
+`WIOLA_COMPONENTS=playlist_commands` configures saved-playlist commands with catalog/media values and quantities only. Link `wiola::playlist_commands` and include `<wiola/app/library/saved_playlist_commands.hpp>`. `PlaylistName` owns the existing Unicode whitespace, malformed-byte repair, initial-BOM and UTF-16 length rules; command handlers and Qt bindings use that same policy.
+
+Create/duplicate return an owned `PlaylistCreation` containing the ID and commit result. Rename/remove return the commit result directly. There is no mutable last-result cache: later or nested commands cannot replace an earlier caller's receipt. IDs move into successful results without an allocating copy after commit. The persistence callable retains its identity across operations and remains alive until the transaction finishes; its repository must outlive that transaction.
+
+A zero-revision successful result represents no catalog change, not a new save acknowledgment. Frontends keep the existing pending-save observation for that case. Portable command tests use in-memory state and a supplied callback; Qt integration tests retain actual storage and compare name normalization with the existing QString behavior.

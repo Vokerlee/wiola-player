@@ -20,7 +20,6 @@
 
 #pragma once
 #ifndef Q_MOC_RUN
-#include "saved_playlist_commands.hpp"
 #include <app/library/artwork_store.hpp>
 #include <app/library/location_index.hpp>
 #include <app/library/search_index.hpp>
@@ -37,6 +36,7 @@
 #include <qt/queued_delivery.hpp>
 #include <qt/storage/library_store.hpp>
 #include <qt/storage/snapshot_writer.hpp>
+#include <wiola/app/library/saved_playlist_commands.hpp>
 #endif
 #include <QObject>
 #include <QSettings>

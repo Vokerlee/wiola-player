@@ -53,8 +53,8 @@ inline void restore_session_journey()
         app::PlayerApplication player{config()};
         {
             gui::MainWindow window{player.playback(), player.library(), player.preferences()};
-            destination = player.library().playlists().create("Destination");
-            saved = player.library().playlists().create("Visible saved list");
+            destination = player.library().playlists().create("Destination").id;
+            saved = player.library().playlists().create("Visible saved list").id;
             ASSERT_TRUE(saved.valid());
             library::RepositoryTransaction transaction{player.library().repository(),
                 player.library().persistence()};

@@ -20,6 +20,7 @@
 
 #include <qt/storage/library_store.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
+#include <wiola/app/library/saved_playlist_commands.hpp>
 
 #include <QApplication>
 #include <QDir>
@@ -119,9 +120,12 @@ TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlde
     gui::LibraryNavigation navigation;
     auto manager = std::make_unique<gui::SavedPlaylistManager>(repository, commands, navigation);
     ASSERT_TRUE(manager->create("First"));
-    ASSERT_TRUE(manager->rename_selected("Second"));
     auto* status = manager->findChild<QLabel*>("playlistSaveState");
     ASSERT_NE(status, nullptr);
+    ASSERT_TRUE(manager->rename_selected("First"));
+    EXPECT_EQ(receipts.size(), 1U);
+    EXPECT_EQ(status->text(), "Changes accepted; saving library");
+    ASSERT_TRUE(manager->rename_selected("Second"));
     EXPECT_EQ(status->text(), "Changes accepted; saving library");
     ASSERT_EQ(receipts.size(), 2);
     receipts[0]->notify(true);

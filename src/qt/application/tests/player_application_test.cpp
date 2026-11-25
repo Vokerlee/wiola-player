@@ -143,7 +143,7 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
 {
     wiola::app::PlayerApplication player;
     auto& library = player.library();
-    const auto playlist = library.playlists().create("Retained");
+    const auto playlist = library.playlists().create("Retained").id;
     ASSERT_TRUE(playlist.valid());
     ASSERT_TRUE(library.active_playlist().set(playlist));
     wiola::library::TrackRecord record;
@@ -203,7 +203,7 @@ TEST_F(PlayerApplication, ObserverLifetimeAndShutdownDoNotLeaveLiveCallbacksOrCo
     EXPECT_EQ(calls, last);
     EXPECT_EQ(player.playback().open({wiola::media::local_resource("after-quit.wav")}).acceptance,
         wiola::engine::CommandResult::unavailable);
-    EXPECT_FALSE(player.library().playlists().create("After quit").valid());
+    EXPECT_FALSE(player.library().playlists().create("After quit").id.valid());
     EXPECT_TRUE(player.shutdown());
 }
 
@@ -256,7 +256,7 @@ TEST_F(PlayerApplication, WorkspaceRelocationPreservesSavedReferencesAndCanonica
     ASSERT_TRUE(pump_until([&] { return completed == first; }));
     ASSERT_EQ(library.repository().tracks().size(), 1);
     const auto media = library.repository().tracks().front().id;
-    const auto playlist = library.playlists().create("Saved");
+    const auto playlist = library.playlists().create("Saved").id;
     {
         wiola::library::RepositoryTransaction edit{library.repository(), library.persistence()};
         ASSERT_TRUE(library.repository().append_track(playlist, media));

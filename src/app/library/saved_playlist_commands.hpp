@@ -23,27 +23,34 @@
 #include <wiola/library/repository_transaction.hpp>
 
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace wiola::app {
 
+struct PlaylistCreation {
+    library::PlaylistId id;
+    library::CommitResult commit;
+};
+
+/// Owner-thread commands. Each return value owns the outcome of that operation.
 class SavedPlaylistCommands final {
 public:
     using Persist = library::RepositoryTransaction::Persist;
 
     SavedPlaylistCommands(library::InMemoryRepository& repository, Persist persist);
 
-    [[nodiscard]] library::PlaylistId create(const std::string& name);
-    [[nodiscard]] bool rename(const library::PlaylistId& id, const std::string& name);
-    [[nodiscard]] library::PlaylistId duplicate(const library::PlaylistId& id);
-    [[nodiscard]] bool remove(const library::PlaylistId& id);
-
-    [[nodiscard]] const library::CommitResult& last_commit() const { return last_commit_; }
+    [[nodiscard]] PlaylistCreation create(const std::string& name);
+    [[nodiscard]] library::CommitResult rename(const library::PlaylistId& id,
+        const std::string& name);
+    [[nodiscard]] PlaylistCreation duplicate(const library::PlaylistId& id);
+    [[nodiscard]] library::CommitResult remove(const library::PlaylistId& id);
 
 private:
+    [[nodiscard]] Persist persistence() const;
+
     library::InMemoryRepository& repository_;
-    Persist persist_;
-    library::CommitResult last_commit_;
+    std::shared_ptr<Persist> persist_;
 };
 
 } // namespace wiola::app
