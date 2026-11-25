@@ -21,7 +21,7 @@
 #include "track_inspector.hpp"
 
 #include <gui/controls/clock.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <library/location.hpp>
 

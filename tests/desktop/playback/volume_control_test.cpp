@@ -22,7 +22,7 @@
 #include <desktop/playback/volume_control.hpp>
 #include <fakes/output.hpp>
 #include <media/local/provider.hpp>
-#include <platform/qt/player_settings.hpp>
+#include <qt/settings.hpp>
 
 #include <QSettings>
 #include <QTemporaryDir>

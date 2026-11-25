@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <gtest/gtest.h>
 

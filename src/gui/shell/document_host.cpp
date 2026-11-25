@@ -31,7 +31,7 @@
 #include <gui/tracks/track_browser.hpp>
 #include <library/location.hpp>
 #include <media/local/resource.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace wiola::gui {
 

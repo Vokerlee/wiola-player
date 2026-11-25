@@ -24,7 +24,7 @@
 #include <QThread>
 #include <algorithm>
 #include <library/location.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace wiola::app {
 

@@ -19,7 +19,7 @@
  */
 
 #include "playback_preferences.hpp"
-#include <platform/qt/player_settings.hpp>
+#include <qt/settings.hpp>
 
 namespace wiola::app {
 

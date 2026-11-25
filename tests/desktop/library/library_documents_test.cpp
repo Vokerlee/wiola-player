@@ -23,7 +23,7 @@
 #include <QTemporaryDir>
 #include <desktop/library/library_documents.hpp>
 #include <gtest/gtest.h>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace {
 

@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <gui/layout/layout_document.hpp>
 #include <gui/layout/layout_session.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace {
 

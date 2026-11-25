@@ -24,7 +24,7 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <limits>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 #include <stdexcept>
 #include <utility>
 

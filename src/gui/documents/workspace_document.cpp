@@ -21,7 +21,7 @@
 #include "workspace_document.hpp"
 
 #include <gui/tracks/track_browser.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <library/location.hpp>
 

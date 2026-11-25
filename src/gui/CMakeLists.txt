@@ -62,7 +62,7 @@ wiola_add_library(
         wiola_library_session
         wiola_persistence_qt
         wiola_qt_settings
-        wiola_qt_platform
+        wiola::qt_paths
         wiola_app
         wiola_codec
         wiola_library

@@ -21,7 +21,7 @@
 #include "library_documents.hpp"
 #include <QFileInfo>
 #include <persistence/qt/atomic_file_store.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace wiola::app {
 

@@ -24,7 +24,7 @@
 #include <QScopedValueRollback>
 #include <QThread>
 #include <desktop/library/library_session.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 #include <stdexcept>
 
 namespace wiola::app {

@@ -20,7 +20,7 @@
 
 #include "library_json.hpp"
 
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <library/tags.hpp>
 
