@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Owner-thread repository transactions with complete rollback.
+ * @brief Owner-thread durability acknowledgments and command acceptance results.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -44,6 +44,8 @@ public:
     }
 
     void observe(Observer observer);
+    /// Deliver to every eligible observer, then rethrow the first callback exception.
+    /// Success is terminal; failed attempts retain observers for a later retry.
     void notify(bool durable);
     void cancel();
 

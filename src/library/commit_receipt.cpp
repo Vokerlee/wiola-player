@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Owner-thread repository transactions with complete rollback.
+ * @brief Owner-thread durability acknowledgments with isolated observer failures.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,6 +19,7 @@
  */
 
 #include "commit_receipt.hpp"
+#include <exception>
 #include <stdexcept>
 
 namespace wiola::library {
@@ -47,11 +48,19 @@ void CommitReceipt::notify(bool durable)
     durable_ = durable;
     failed_ = !durable;
     auto observers = durable ? std::move(observers_) : observers_;
+    std::exception_ptr failure;
     for (const auto& observer : observers) {
         if (cancelled_ || (!durable && durable_))
             break;
-        observer({revision_, durable});
+        try {
+            observer({revision_, durable});
+        } catch (...) {
+            if (!failure)
+                failure = std::current_exception();
+        }
     }
+    if (failure)
+        std::rethrow_exception(failure);
 }
 
 void CommitReceipt::cancel()
