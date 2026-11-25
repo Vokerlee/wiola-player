@@ -18,8 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <allocation_failure.hpp>
 #include <gtest/gtest.h>
 #include <library/repository_transaction.hpp>
+#include <library/snapshot.hpp>
+#include <new>
 #include <stdexcept>
 
 namespace {
@@ -255,5 +258,173 @@ TEST(RepositoryTransaction,
     receipt->notify(true);
     EXPECT_EQ(notifications, (std::vector<bool>{false, true}));
 }
+
+TEST(RepositoryTransaction, RestoringTheOriginalSnapshotBeforeCommitIsANoop)
+{
+    InMemoryRepository repository;
+    ASSERT_TRUE(repository.put_track(track()));
+    const auto playlist = repository.create_playlist("Original");
+    ASSERT_TRUE(repository.append_track(playlist, MediaId{"media"}));
+    const auto workspace = repository.create_workspace("music");
+    const auto original = snapshot_of(repository);
+    int writes = 0;
+    int notifications = 0;
+    auto subscription = repository.observe([&](const auto&) { ++notifications; });
+    RepositoryTransaction transaction{repository, [&](const auto&) {
+                                          ++writes;
+                                          return true;
+                                      }};
+    ASSERT_TRUE(repository.put_track(track()));
+    ASSERT_TRUE(repository.rename_playlist(playlist, "Temporary"));
+    ASSERT_TRUE(repository.put_workspace(*repository.workspace(workspace)));
+    auto transient = track();
+    transient.id = {"temporary-media"};
+    ASSERT_TRUE(repository.put_track(transient));
+    repository.create_playlist("Temporary");
+    repository.create_workspace("temporary");
+    ASSERT_TRUE(repository.replace_all(original.tracks, original.playlists, original.workspaces));
+    ASSERT_TRUE(transaction.commit());
+    EXPECT_EQ(repository.tracks(), original.tracks);
+    EXPECT_EQ(repository.playlists(), original.playlists);
+    EXPECT_EQ(repository.workspaces(), original.workspaces);
+    EXPECT_EQ(repository.change_revision(), 0U);
+    EXPECT_FALSE(repository.staged_delta());
+    EXPECT_EQ(writes, 0);
+    EXPECT_EQ(notifications, 0);
+}
+
+TEST(RepositoryTransaction, ContentNotificationsDistinguishDigestAndRevisionChanges)
+{
+    InMemoryRepository repository;
+    ASSERT_TRUE(repository.put_track(track()));
+    std::vector<MediaChange> changes;
+    auto subscription = repository.observe([&](const auto& batch) {
+        changes.insert(changes.end(), batch.media.begin(), batch.media.end());
+    });
+    auto updated = *repository.track(MediaId{"media"});
+    {
+        RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+        updated.fingerprint = "observed-new-content";
+        ASSERT_TRUE(repository.put_track(updated));
+        ASSERT_TRUE(transaction.commit());
+    }
+    ASSERT_EQ(changes.size(), 1U);
+    EXPECT_EQ(changes.back().fields, MediaChangeFields::content);
+    EXPECT_EQ(changes.back().content_revision, 0U);
+    {
+        RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+        ++updated.content_revision;
+        ASSERT_TRUE(repository.put_track(updated));
+        ASSERT_TRUE(transaction.commit());
+    }
+    ASSERT_EQ(changes.size(), 2U);
+    EXPECT_EQ(changes.back().fields, MediaChangeFields::content);
+    EXPECT_EQ(changes.back().content_revision, 1U);
+    EXPECT_EQ(changes.back().metadata_revision, updated.metadata_revision);
+    EXPECT_EQ(repository.change_revision(), 2U);
+}
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(RepositoryTransaction, EveryTouchAllocationFailurePreservesTheOriginalRecord)
+{
+    bool observed_failure = false;
+    for (std::size_t after = 0;; ++after) {
+        InMemoryRepository repository;
+        auto original = track();
+        original.embedded.title.assign(256, 'o');
+        original.embedded.artist.assign(256, 'a');
+        original.fingerprint.assign(256, 'f');
+        original.tags = {
+            {.id = {"tag-original"}, .key = "Mood", .value = "Calm"}
+        };
+        ASSERT_TRUE(repository.put_track(original));
+        auto updated = original;
+        updated.embedded.title.assign(512, 'u');
+        ++updated.metadata_revision;
+        updated.locations.push_back("another/observed-location.wav");
+        bool failed = false;
+        bool accepted = false;
+        {
+            RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+            {
+                const wiola::testing::AllocationFailure failure{after};
+                try {
+                    accepted = repository.put_track(updated);
+                } catch (const std::bad_alloc&) {
+                    failed = true;
+                }
+            }
+            ASSERT_NE(repository.track(original.id), nullptr);
+            EXPECT_EQ(*repository.track(original.id), failed ? original : updated);
+            EXPECT_FALSE(repository.staged_delta());
+            EXPECT_EQ(repository.change_revision(), 0U);
+        }
+        ASSERT_NE(repository.track(original.id), nullptr);
+        EXPECT_EQ(*repository.track(original.id), original);
+        if (!failed) {
+            EXPECT_TRUE(accepted);
+            EXPECT_TRUE(observed_failure);
+            break;
+        }
+        observed_failure = true;
+    }
+}
+
+TEST(RepositoryTransaction, AllocationFailuresRespectThePersistenceAcceptanceBoundary)
+{
+    bool observed_failure = false;
+    for (std::size_t after = 0;; ++after) {
+        InMemoryRepository repository;
+        ASSERT_TRUE(repository.put_track(track()));
+        const auto playlist = repository.create_playlist("Original");
+        ASSERT_TRUE(repository.append_track(playlist, MediaId{"media"}));
+        const auto workspace = repository.create_workspace("music");
+        const auto original = snapshot_of(repository);
+        bool persisted = false;
+        std::size_t notifications = 0;
+        auto subscription = repository.observe([&](const auto&) { ++notifications; });
+        RepositoryTransaction transaction{repository, [&](const auto&) {
+                                              persisted = true;
+                                              return true;
+                                          }};
+        auto updated = *repository.track(MediaId{"media"});
+        updated.embedded.title.assign(256, 'u');
+        ++updated.metadata_revision;
+        ASSERT_TRUE(repository.put_track(updated));
+        ASSERT_TRUE(repository.rename_playlist(playlist, "Updated"));
+        auto next_workspace = *repository.workspace(workspace);
+        next_workspace.recursive = false;
+        ASSERT_TRUE(repository.put_workspace(next_workspace));
+        const auto candidate = snapshot_of(repository);
+        bool failed = false;
+        CommitResult result;
+        {
+            const wiola::testing::AllocationFailure failure{after};
+            try {
+                result = transaction.commit();
+            } catch (const std::bad_alloc&) {
+                failed = true;
+            }
+        }
+        const auto& expected = persisted ? candidate : original;
+        EXPECT_EQ(repository.tracks(), expected.tracks);
+        EXPECT_EQ(repository.playlists(), expected.playlists);
+        EXPECT_EQ(repository.workspaces(), expected.workspaces);
+        EXPECT_FALSE(repository.staged_delta());
+        EXPECT_EQ(repository.change_revision(), persisted ? 1U : 0U);
+        // Publication failure cannot undo a durable commit. Both outcomes release the writer.
+        RepositoryTransaction next{repository, [](const auto&) { return true; }};
+        ASSERT_TRUE(next.commit());
+        if (!failed) {
+            EXPECT_TRUE(result);
+            EXPECT_TRUE(persisted);
+            EXPECT_EQ(notifications, 1U);
+            EXPECT_TRUE(observed_failure);
+            break;
+        }
+        observed_failure = true;
+    }
+}
+#endif
 
 } // namespace
