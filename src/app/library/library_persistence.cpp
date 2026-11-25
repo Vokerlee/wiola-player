@@ -540,10 +540,8 @@ LibraryPersistence::Result LibraryPersistence::flush()
         {
             std::unique_lock lock{state->mutex_};
             target = state->latest_;
-            if (state->stopping_)
-                return state->last_attempt_.result;
-            const auto before = state->last_attempt_.number;
-            if (!(state->has_durable_ && state->durable_ >= target)) {
+            if (!state->stopping_ && !(state->has_durable_ && state->durable_ >= target)) {
+                const auto before = state->last_attempt_.number;
                 if (!state->active_ && state->pending_.empty())
                     state->retry_ = true;
                 state->changed_.notify_all();
