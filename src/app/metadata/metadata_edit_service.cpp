@@ -122,7 +122,6 @@ MetadataEditOutcome MetadataEditService::apply(const std::vector<library::MediaI
         }
         return outcome;
     }
-    transaction.rollback();
     outcome.state = MetadataEditState::failed;
     outcome.error = StandardMetadataError::persistence_failed;
     outcome.changed = 0;

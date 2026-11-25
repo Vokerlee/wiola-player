@@ -93,15 +93,78 @@ TEST(RepositoryTransaction, ExceptionDuringPersistenceRollsBack)
     EXPECT_EQ(repository.create_playlist("Next").value, "playlist-1");
 }
 
-TEST(RepositoryTransaction, SuccessfulCommitCannotBeUndoneOrCommittedTwice)
+TEST(RepositoryTransaction, SuccessfulCommitOutlivesItsOwnerAndCannotBeCommittedTwice)
 {
     InMemoryRepository repository;
-    RepositoryTransaction transaction{repository, [](const LibraryRepository&) { return true; }};
-    const auto id = repository.create_playlist("Retained");
-    ASSERT_TRUE(transaction.commit());
-    transaction.rollback();
+    PlaylistId id;
+    {
+        RepositoryTransaction transaction{repository,
+            [](const LibraryRepository&) { return true; }};
+        id = repository.create_playlist("Retained");
+        ASSERT_TRUE(transaction.commit());
+        EXPECT_THROW(static_cast<void>(transaction.commit()), std::logic_error);
+    }
     EXPECT_NE(repository.playlist(id), nullptr);
-    EXPECT_THROW(static_cast<void>(transaction.commit()), std::logic_error);
+}
+
+TEST(RepositoryTransaction, CaughtPersistenceExceptionImmediatelyReleasesTheCandidate)
+{
+    InMemoryRepository repository;
+    ASSERT_TRUE(repository.put_track(track()));
+    RepositoryTransaction failed{repository,
+        [](const auto&) -> bool { throw std::runtime_error{"disk failure"}; }};
+    const auto discarded = repository.create_playlist("Discarded");
+    EXPECT_THROW(static_cast<void>(failed.commit()), std::runtime_error);
+    EXPECT_TRUE(repository.playlists().empty());
+    EXPECT_FALSE(repository.staged_delta());
+    EXPECT_EQ(repository.change_revision(), 0U);
+
+    RepositoryTransaction next{repository, [](const auto&) { return true; }};
+    EXPECT_EQ(repository.create_playlist("Retained"), discarded);
+    ASSERT_TRUE(next.commit());
+    EXPECT_THROW(static_cast<void>(failed.commit()), std::logic_error);
+    EXPECT_NE(repository.playlist(discarded), nullptr);
+}
+
+TEST(RepositoryTransaction, PersistenceCannotMutateItsFrozenCandidateOrReenterCommit)
+{
+    InMemoryRepository repository;
+    ASSERT_TRUE(repository.put_track(track()));
+    const auto playlist = repository.create_playlist("Original");
+    const auto entry = repository.append_track(playlist, MediaId{"media"});
+    ASSERT_TRUE(entry);
+    const auto workspace = repository.create_workspace("music");
+    const auto tag = repository.add_tag(MediaId{"media"}, "Mood", "Calm");
+    RepositoryTransaction* active = nullptr;
+    RepositoryTransaction transaction{repository,
+        [&](const auto& candidate) {
+            EXPECT_EQ(candidate.playlist(playlist)->name, "Candidate");
+            EXPECT_THROW(repository.put_track(track()), std::logic_error);
+            EXPECT_THROW(repository.replace_all({}, {}, {}), std::logic_error);
+            EXPECT_THROW(repository.create_playlist("Unexpected"), std::logic_error);
+            EXPECT_THROW(repository.put_playlist(*candidate.playlist(playlist)), std::logic_error);
+            EXPECT_THROW(repository.rename_playlist(playlist, "Unexpected"), std::logic_error);
+            EXPECT_THROW(repository.delete_playlist(playlist), std::logic_error);
+            EXPECT_THROW(repository.append_track(playlist, MediaId{"media"}), std::logic_error);
+            EXPECT_THROW(repository.remove_entry(playlist, *entry), std::logic_error);
+            EXPECT_THROW(repository.create_workspace("unexpected"), std::logic_error);
+            EXPECT_THROW(repository.put_workspace(*candidate.workspace(workspace)),
+                std::logic_error);
+            EXPECT_THROW(repository.delete_workspace(workspace), std::logic_error);
+            EXPECT_THROW(repository.add_tag(MediaId{"media"}, "Mood", "Loud"), std::logic_error);
+            EXPECT_THROW(repository.remove_tag(MediaId{"media"}, tag), std::logic_error);
+            EXPECT_THROW(static_cast<void>(active->commit()), std::logic_error);
+            return true;
+        }};
+    active = &transaction;
+    ASSERT_TRUE(repository.rename_playlist(playlist, "Candidate"));
+    ASSERT_TRUE(transaction.commit());
+    ASSERT_EQ(repository.playlists().size(), 1U);
+    EXPECT_EQ(repository.playlist(playlist)->name, "Candidate");
+    EXPECT_EQ(repository.track(MediaId{"media"})->tags.size(), 1U);
+    EXPECT_NE(repository.workspace(workspace), nullptr);
+    EXPECT_FALSE(repository.staged_delta());
+    EXPECT_EQ(repository.change_revision(), 1U);
 }
 
 TEST(RepositoryTransaction, RejectsAnImplicitPersistencePolicy)

@@ -39,9 +39,15 @@ public:
     RepositoryTransaction(RepositoryTransaction&&) = delete;
     RepositoryTransaction& operator=(RepositoryTransaction&&) = delete;
     [[nodiscard]] CommitResult commit();
-    void rollback() noexcept;
 
 private:
+    enum class Phase {
+        editing,
+        committing,
+        finished,
+    };
+    void check_mutation() const;
+    void restore() noexcept;
     InMemoryRepository& repository_;
     friend class InMemoryRepository;
     void touch_track(const MediaId& id);
@@ -56,7 +62,7 @@ private:
     std::array<std::size_t, 4> allocators_;
     Persist persist_;
     CommitPriority priority_;
-    bool finished_{false};
+    Phase phase_{Phase::editing};
 };
 
 } // namespace wiola::library

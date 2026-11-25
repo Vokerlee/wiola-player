@@ -85,6 +85,7 @@ public:
 
 private:
     friend class RepositoryTransaction;
+    void check_mutation() const;
     PlaylistId next_playlist_id();
     PlaylistEntryId next_entry_id();
     WorkspaceId next_workspace_id();
