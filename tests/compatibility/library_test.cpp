@@ -2,7 +2,7 @@
 
 #include <persistence/qt/library_json.hpp>
 #include <persistence/qt/library_store.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <QTemporaryDir>
 #include <gtest/gtest.h>

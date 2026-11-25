@@ -60,7 +60,7 @@ wiola_add_test(
 wiola_add_test(
     desktop_metadata_write_service_test
     SOURCES metadata/metadata_write_service_test.cpp
-    LIBS wiola_metadata_writes wiola_codec wiola_qt_platform
+    LIBS wiola_metadata_writes wiola_codec wiola::qt_paths
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 

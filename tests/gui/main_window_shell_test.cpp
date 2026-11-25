@@ -41,7 +41,7 @@
 #include <gui/tracks/track_table_view.hpp>
 #include <library/location.hpp>
 #include <persistence/qt/library_store.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <QApplication>
 #include <QDir>

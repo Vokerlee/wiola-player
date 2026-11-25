@@ -24,7 +24,7 @@
 #include <fakes/provider.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
-#include <platform/qt/player_settings.hpp>
+#include <qt/settings.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 

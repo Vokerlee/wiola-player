@@ -16,7 +16,7 @@
 #include <library/location.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace wiola::testing {
 

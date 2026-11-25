@@ -22,7 +22,7 @@
 
 #include <media/local/resource.hpp>
 
-#include <platform/qt/player_settings.hpp>
+#include <qt/settings.hpp>
 
 #include <algorithm>
 #include <utility>

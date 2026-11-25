@@ -70,8 +70,8 @@
 #include <gui/layout/editor/layout_editor_dialog.hpp>
 #include <gui/layout/focused_layout.hpp>
 #include <gui/layout/layout_builder.hpp>
-#include <platform/qt/player_settings.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
+#include <qt/settings.hpp>
 
 #include <library/location.hpp>
 #include <library/metadata.hpp>

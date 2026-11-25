@@ -22,8 +22,8 @@
 
 #include <library/location.hpp>
 #include <persistence/qt/library_store.hpp>
-#include <platform/qt/player_settings.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
+#include <qt/settings.hpp>
 
 #include <QFile>
 #include <QFileInfo>

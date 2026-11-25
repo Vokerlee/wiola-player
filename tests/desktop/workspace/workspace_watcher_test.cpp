@@ -28,7 +28,7 @@
 
 #include <QTemporaryDir>
 #include <fstream>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 #include <set>
 
 namespace {

@@ -29,7 +29,7 @@
 #include <gui/layout/view_registry.hpp>
 #include <gui/shell/action_button_binding.hpp>
 #include <media/local/resource.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 #include <stdexcept>
 
 namespace wiola::gui {

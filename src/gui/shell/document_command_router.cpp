@@ -23,7 +23,7 @@
 #include <app/playback/playback_queue.hpp>
 #include <app/playback/playlist_transfer.hpp>
 #include <library/location.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace wiola::gui {
 

@@ -32,7 +32,7 @@
 #include <library/fingerprint.hpp>
 #include <library/location.hpp>
 #include <media/local/provider.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 #include <QApplication>
 #include <QCoreApplication>

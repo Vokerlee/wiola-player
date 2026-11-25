@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <app/workspace/workspace_discovery.hpp>
 #include <library/location.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 #include <stdexcept>
 
 namespace wiola::app {

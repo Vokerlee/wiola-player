@@ -26,7 +26,7 @@
 #include <fixtures/atomic_output.hpp>
 #include <gtest/gtest.h>
 #include <media/local/provider.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 
 namespace {
 

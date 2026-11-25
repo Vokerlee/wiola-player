@@ -28,7 +28,7 @@
 #include <QThread>
 #include <cmath>
 #include <optional>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
 #include <stdexcept>
 
 namespace wiola::gui {

@@ -3,8 +3,8 @@
 #include <desktop/session/session_preferences.hpp>
 #include <gtest/gtest.h>
 #include <limits>
-#include <platform/qt/player_settings.hpp>
-#include <platform/qt/qt_path_adapter.hpp>
+#include <qt/paths.hpp>
+#include <qt/settings.hpp>
 
 namespace {
 

@@ -18,10 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "player_settings.hpp"
+#include "settings.hpp"
 #include <set>
 
-#include "qt_path_adapter.hpp"
+#include "paths.hpp"
 
 #include <QString>
 #include <QStringList>

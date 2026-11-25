@@ -19,13 +19,13 @@ target_link_libraries(wiola_media_revisions PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_workspace_watcher
     SOURCES workspace/workspace_watcher.cpp
-    LIBS wiola_app wiola_library wiola_qt_platform
+    LIBS wiola_app wiola_library wiola::qt_paths
 )
 target_link_libraries(wiola_workspace_watcher PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_m3u
     SOURCES library/m3u_playlist.cpp
-    LIBS wiola_library wiola_qt_platform
+    LIBS wiola_library wiola::qt_paths
 )
 target_link_libraries(wiola_m3u PUBLIC Qt6::Core)
 wiola_add_library(
@@ -49,7 +49,7 @@ target_link_libraries(wiola_player_application PUBLIC Qt6::Core wiola_app)
 wiola_add_library(
     wiola_queue_migration
     SOURCES library/queue_library_migration.cpp
-    LIBS wiola_persistence_qt wiola_library wiola_qt_platform wiola_qt_settings
+    LIBS wiola_persistence_qt wiola_library wiola::qt_paths wiola_qt_settings
 )
 target_link_libraries(wiola_queue_migration PUBLIC Qt6::Core)
 
@@ -73,7 +73,7 @@ wiola_add_library(
         wiola_workspace_scans
         wiola_workspace_watcher
         wiola_codec
-        wiola_qt_platform
+        wiola::qt_paths
 )
 set_target_properties(wiola_library_session PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_library_session PUBLIC Qt6::Core wiola_app)
@@ -104,7 +104,7 @@ target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core wiola_app)
 wiola_add_library(
     wiola_library_documents
     SOURCES library/library_documents.cpp
-    LIBS wiola_library wiola_m3u wiola_persistence_qt wiola_qt_platform
+    LIBS wiola_library wiola_m3u wiola_persistence_qt wiola::qt_paths
 )
 target_link_libraries(wiola_library_documents PUBLIC Qt6::Core)
 
