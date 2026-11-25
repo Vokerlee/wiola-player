@@ -19,9 +19,12 @@
  */
 
 #include <app/metadata/background_metadata_writes.hpp>
+#include <exception>
 #include <fstream>
+#include <future>
 #include <iterator>
 #include <media/local/provider.hpp>
+#include <stdexcept>
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
@@ -30,6 +33,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -282,6 +286,57 @@ TEST(BackgroundMetadataWrites, CancellationHasAnIdentifiedTerminalResult)
     EXPECT_EQ(result->stage, wiola::app::MetadataWriteStage::cancelled);
     EXPECT_FALSE(result->output);
     EXPECT_TRUE(state->writes.empty());
+}
+
+class ThrowOnceProvider final : public wiola::media::MediaProvider {
+public:
+    explicit ThrowOnceProvider(std::exception_ptr failure)
+        : failure_{std::move(failure)}
+    {
+    }
+
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
+    open(const wiola::media::ResourceReference&, const wiola::media::OperationContext&) override
+    {
+        if (auto failure = std::exchange(failure_, {}))
+            std::rethrow_exception(failure);
+        auto state = std::make_shared<WriteState>();
+        state->release_first = true;
+        return std::unique_ptr<wiola::media::MediaAsset>{std::make_unique<FakeAsset>(state)};
+    }
+
+    std::vector<std::string> playback_extensions() const override { return {}; }
+
+private:
+    std::exception_ptr failure_;
+};
+
+TEST(BackgroundMetadataWrites, DriverExceptionsProduceTerminalOutcomesAndTheWorkerRemainsUsable)
+{
+    struct DriverFailure { };
+
+    for (const auto& failure : {std::make_exception_ptr(std::logic_error{"driver rejected write"}),
+             std::make_exception_ptr(std::bad_alloc{}), std::make_exception_ptr(DriverFailure{})}) {
+        wiola::app::BackgroundMetadataWrites writes{std::make_shared<ThrowOnceProvider>(failure)};
+        std::promise<wiola::app::MetadataWriteResult> failed;
+        auto first = failed.get_future();
+        ASSERT_TRUE(writes.enqueue(edit("first"),
+            [&](auto result) { failed.set_value(std::move(result)); }));
+        ASSERT_EQ(first.wait_for(5s), std::future_status::ready);
+        const auto outcome = first.get();
+        EXPECT_EQ(outcome.stage, wiola::app::MetadataWriteStage::failed);
+        EXPECT_EQ(outcome.outcome.error, wiola::media::MetadataWriteError::io);
+        EXPECT_FALSE(outcome.outcome.source_modified);
+        EXPECT_FALSE(outcome.output);
+
+        std::promise<wiola::app::MetadataWriteResult> recovered;
+        auto second = recovered.get_future();
+        ASSERT_TRUE(writes.enqueue(edit("second"),
+            [&](auto result) { recovered.set_value(std::move(result)); }));
+        ASSERT_EQ(second.wait_for(5s), std::future_status::ready);
+        EXPECT_EQ(second.get().stage, wiola::app::MetadataWriteStage::ready);
+        writes.stop();
+    }
 }
 
 } // namespace

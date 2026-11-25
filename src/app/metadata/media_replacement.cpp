@@ -156,17 +156,20 @@ MediaReplacementValidation prepare_media_replacement(const std::filesystem::path
 
 media::MetadataWriteOutcome commit_media_replacement(const std::filesystem::path& source,
     const std::filesystem::path& temporary, media::MediaProvider& provider,
-    std::string_view expected, const media::OperationContext& context, MediaReplacementHooks hooks)
+    media::FileReplacement& replacement, std::string_view expected,
+    const media::OperationContext& context, MediaReplacementHooks hooks)
 {
     auto validation = prepare_media_replacement(source, temporary, provider, expected, context);
     if (!validation.prepared)
         return validation.failure;
-    return commit_prepared_media_replacement(*validation.prepared, context, std::move(hooks));
+    return commit_prepared_media_replacement(*validation.prepared, replacement, context,
+        std::move(hooks));
 }
 
-media::MetadataWriteOutcome
-commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
-    const media::OperationContext& context, MediaReplacementHooks hooks)
+media::MetadataWriteOutcome commit_prepared_media_replacement(
+    const PreparedMediaReplacement& prepared, media::FileReplacement& replacement,
+    const media::OperationContext& context, MediaReplacementHooks hooks
+)
 {
     const auto& source = prepared.source;
     const auto& temporary = prepared.temporary;
@@ -183,11 +186,10 @@ commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
     backup += ".wiola-backup";
     if (!hooks.backup_suffix.empty())
         backup += "." + hooks.backup_suffix;
-    auto native = media::native_file_replacement(media::fingerprint_media);
-    auto& port = hooks.replacement ? *hooks.replacement : *native;
-    const auto outcome = port.replace({source, temporary, backup, prepared.source_fingerprint,
-                                          prepared.output_fingerprint},
-        [&] { return context.stop_reason() == media::StopReason::none; });
+    const auto outcome =
+        replacement.replace({source, temporary, backup, prepared.source_fingerprint,
+                                prepared.output_fingerprint},
+            [&] { return context.stop_reason() == media::StopReason::none; });
     if (outcome.error != media::FileReplacementError::none) {
         auto result = failure(outcome.error == media::FileReplacementError::conflict
                 ? media::MetadataWriteError::conflicted

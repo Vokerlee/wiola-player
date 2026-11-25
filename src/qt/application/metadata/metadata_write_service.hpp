@@ -28,6 +28,7 @@
 namespace wiola::app {
 
 /// Owner-thread orchestration. Workers use only captured jobs/provider; never the live repository.
+/// The supplied replacement driver outlives stop() and is called only by the commit worker.
 class MetadataWriteService final {
 public:
     using Observer = std::function<void(const MetadataWriteResult&)>;
@@ -35,8 +36,8 @@ public:
     using Handoff = std::function<Restore(const std::filesystem::path&)>;
     using DurabilityGate = std::function<void(std::uint64_t, std::function<void(bool)>)>;
     MetadataWriteService(QObject& owner, std::shared_ptr<media::MediaProvider> provider,
-        library::InMemoryRepository& repository, library::RepositoryTransaction::Persist persist,
-        Observer observer);
+        library::InMemoryRepository& repository, media::FileReplacement& replacement,
+        library::RepositoryTransaction::Persist persist, Observer observer);
     ~MetadataWriteService();
 
     void set_handoff(Handoff handoff) { handoff_ = std::move(handoff); }
@@ -77,6 +78,7 @@ private:
     std::shared_ptr<Lifetime> lifetime_;
     std::shared_ptr<media::MediaProvider> provider_;
     library::InMemoryRepository& repository_;
+    media::FileReplacement& replacement_;
     library::RepositoryTransaction::Persist persist_;
     Observer observer_;
     Handoff handoff_;

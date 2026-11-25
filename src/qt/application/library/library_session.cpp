@@ -62,7 +62,8 @@ LibrarySession::LibrarySession(std::filesystem::path file,
           [this](const MetadataEditOutcome& outcome) { emit metadata_outcome(outcome); },
           media::fingerprint_media}
     , scans_{*this, [this](WorkspaceScanBatch batch) { publish_scan(std::move(batch)); }}
-    , writes_{*this, provider, repository_, persist_,
+    , replacement_{media::native_file_replacement(media::fingerprint_media)}
+    , writes_{*this, provider, repository_, *replacement_, persist_,
           [this](const MetadataWriteResult& result) { emit file_write_outcome(result); }}
     , metadata_{*this, provider,
           [this](BackgroundMetadataResult result) { publish_metadata(std::move(result)); }}

@@ -229,9 +229,7 @@ inline int crash_child(const QString& directory, int boundary)
         }
         return true;
     });
-    app::MediaReplacementHooks hooks;
-    hooks.replacement = std::move(port);
-    static_cast<void>(app::commit_prepared_media_replacement(prepared, {}, std::move(hooks)));
+    static_cast<void>(app::commit_prepared_media_replacement(prepared, *port));
     return 3; // Reaching this means the requested protocol boundary did not run.
 }
 

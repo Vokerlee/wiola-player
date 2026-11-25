@@ -21,3 +21,7 @@ The edit service belongs to its creating thread and has one lifetime identity. I
 Captured-session application owns the inputs it needs before invoking supplied code. Normal application checks the captured revisions and fingerprint; explicit overwrite chooses the same edit path without those expectations. Reset removes application overrides, while merging learned fields preserves overrides and custom catalog tags.
 
 Focused conflict tests use an in-memory reader and record the requested location. Pure merge tests are separate from the background-reader integration. The repository must outlive an active edit transaction, including when a callback disposes the service facade. Observer failure cannot roll back an already accepted edit.
+
+File replacement policy requires a supplied `media::FileReplacement` reference. It validates the captured source/output, constructs an owned request and preserves the driver outcome; it never constructs a native fallback. `LibrarySession` selects and owns the native driver before the write service, so the driver outlives its worker. The restart journey supplies its own fault-controlled driver through the same port.
+
+`BackgroundMetadataWrites::run` coordinates the bounded queue and cancellation; `stage` executes one captured job. Provider/asset exceptions produce a failed I/O outcome for that job. The Qt write service applies the same exception boundary during output validation and final replacement, closes the failed operation and admits later work. This does not change on-disk metadata or recovery formats.

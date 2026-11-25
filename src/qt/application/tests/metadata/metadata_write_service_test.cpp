@@ -24,10 +24,14 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <chrono>
+#include <exception>
 #include <gtest/gtest.h>
+#include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <qt/paths.hpp>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 
@@ -51,8 +55,9 @@ TEST(MetadataWriteService, EnqueueRejectionIsIdentifiedAndDeliveredLaterOnOwnerT
     patch.title = "Draft";
     edit.set_draft(patch);
     std::vector<wiola::app::MetadataWriteResult> outcomes;
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MetadataWriteService service{context,
-        std::make_shared<wiola::codec::LocalMediaProvider>(), repository,
+        std::make_shared<wiola::codec::LocalMediaProvider>(), repository, *replacement,
         [](const auto&) { return true; },
         [&](const auto& result) {
             EXPECT_EQ(QThread::currentThread(), context.thread());
@@ -91,8 +96,9 @@ TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSu
     wiola::app::MetadataWriteService* pointer = nullptr;
     bool submitted = false;
     std::vector<wiola::app::MetadataWriteResult> terminal;
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MetadataWriteService service{*QCoreApplication::instance(),
-        std::make_shared<wiola::codec::LocalMediaProvider>(), repository,
+        std::make_shared<wiola::codec::LocalMediaProvider>(), repository, *replacement,
         [](const auto&) { return true; },
         [&](const auto& result) {
             if (result.stage == wiola::app::MetadataWriteStage::queued && !submitted) {
@@ -148,8 +154,9 @@ void qualify_durable_file_write(bool save_result)
     std::deque<Pending> pending;
     std::vector<app::MetadataWriteResult> terminal;
     int handoffs = 0;
+    auto replacement = media::native_file_replacement(media::fingerprint_media);
     app::MetadataWriteService service{*QCoreApplication::instance(),
-        std::make_shared<codec::LocalMediaProvider>(), repository,
+        std::make_shared<codec::LocalMediaProvider>(), repository, *replacement,
         [&](const auto&) {
             const auto revision = repository.staged_delta()->changes.revision;
             return library::CommitResult::accepted(revision,
@@ -219,6 +226,78 @@ TEST(MetadataWriteService,
     FailedLibraryAcknowledgmentAfterReplacementKeepsLearnedStateAndReportsSourceModified)
 {
     qualify_durable_file_write(false);
+}
+
+class ThrowOnceReplacement final : public wiola::media::FileReplacement {
+public:
+    explicit ThrowOnceReplacement(std::exception_ptr failure)
+        : failure_{std::move(failure)}
+        , native_{wiola::media::native_file_replacement(wiola::media::fingerprint_media)}
+    {
+    }
+
+    wiola::media::FileReplacementResult replace(wiola::media::FileReplacementRequest request,
+        const std::function<bool()>& guard) override
+    {
+        if (auto failure = std::exchange(failure_, {}))
+            std::rethrow_exception(failure);
+        return native_->replace(std::move(request), guard);
+    }
+
+    wiola::media::FileReplacementResult recover(const std::filesystem::path& source) override
+    {
+        return native_->recover(source);
+    }
+
+private:
+    std::exception_ptr failure_;
+    std::unique_ptr<wiola::media::FileReplacement> native_;
+};
+
+TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPermitTheNext)
+{
+    using namespace wiola;
+
+    struct DriverFailure { };
+
+    for (const auto& failure : {std::make_exception_ptr(std::logic_error{"replacement failed"}),
+             std::make_exception_ptr(DriverFailure{})}) {
+        QTemporaryDir directory;
+        const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("source.mp3"));
+        std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+        library::InMemoryRepository repository;
+        library::TrackRecord record;
+        record.id = {"media"};
+        record.locations = {path};
+        ASSERT_TRUE(repository.put_track(record));
+        auto edit = app::MetadataEditSession::capture({repository.track(record.id)});
+        library::StandardMetadataPatch patch;
+        patch.title = "After driver failure";
+        edit.set_draft(patch);
+        ThrowOnceReplacement replacement{failure};
+        std::vector<app::MetadataWriteResult> terminal;
+        app::MetadataWriteService service{*QCoreApplication::instance(),
+            std::make_shared<codec::LocalMediaProvider>(), repository, replacement,
+            [](const auto&) { return true; },
+            [&](const auto& result) {
+                if (result.stage == app::MetadataWriteStage::failed ||
+                    result.stage == app::MetadataWriteStage::complete)
+                    terminal.push_back(result);
+            }};
+        ASSERT_EQ(service.submit(edit).size(), 1U);
+        ASSERT_TRUE(pump([&] { return terminal.size() == 1; }));
+        EXPECT_EQ(terminal.front().stage, app::MetadataWriteStage::failed);
+        EXPECT_EQ(terminal.front().outcome.error, media::MetadataWriteError::io);
+        EXPECT_FALSE(terminal.front().outcome.source_modified);
+        EXPECT_FALSE(terminal.front().output);
+        EXPECT_EQ(repository.track(record.id)->content_revision, record.content_revision);
+
+        ASSERT_EQ(service.submit(edit).size(), 1U);
+        ASSERT_TRUE(pump([&] { return terminal.size() == 2; }));
+        EXPECT_EQ(terminal.back().stage, app::MetadataWriteStage::complete);
+        EXPECT_EQ(repository.track(record.id)->embedded.title, "After driver failure");
+        service.stop();
+    }
 }
 
 } // namespace

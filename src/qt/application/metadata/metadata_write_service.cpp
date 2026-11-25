@@ -21,6 +21,7 @@
 #include "metadata_write_service.hpp"
 
 #include <QThread>
+#include <exception>
 #include <media/local/resource.hpp>
 #include <wiola/library/records.hpp>
 
@@ -28,11 +29,13 @@ namespace wiola::app {
 
 MetadataWriteService::MetadataWriteService(QObject& owner,
     std::shared_ptr<media::MediaProvider> provider, library::InMemoryRepository& repository,
-    library::RepositoryTransaction::Persist persist, Observer observer)
+    media::FileReplacement& replacement, library::RepositoryTransaction::Persist persist,
+    Observer observer)
     : delivery_{owner}
     , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
     , provider_{std::move(provider)}
     , repository_{repository}
+    , replacement_{replacement}
     , persist_{std::move(persist)}
     , observer_{std::move(observer)}
     , staging_{provider_}
@@ -159,10 +162,14 @@ void MetadataWriteService::staged(MetadataWriteResult result)
                 }
             }
         }
-    } catch (const std::runtime_error& error) {
+    } catch (const std::exception& error) {
         value.stage = MetadataWriteStage::failed;
         value.outcome.error = media::MetadataWriteError::io;
         value.outcome.detail = error.what();
+    } catch (...) {
+        value.stage = MetadataWriteStage::failed;
+        value.outcome.error = media::MetadataWriteError::io;
+        value.outcome.detail = "driver failure";
     }
     const std::weak_ptr<Lifetime> weak = lifetime_;
     static_cast<void>(delivery_.post([weak, prepared] {
@@ -271,17 +278,21 @@ void MetadataWriteService::run()
         }
         auto& result = prepared->result;
         try {
-            result.outcome =
-                commit_prepared_media_replacement(*prepared->replacement, result.job.context(),
-                    {.before_commit = {},
-                        .replacement = {},
-                        .backup_suffix = prepared->replacement->source_fingerprint.substr(8, 16) +
-                            "." + std::to_string(result.job.operation.value)});
-        } catch (const std::runtime_error& error) {
+            result.outcome = commit_prepared_media_replacement(*prepared->replacement, replacement_,
+                result.job.context(),
+                {.before_commit = {},
+                    .backup_suffix = prepared->replacement->source_fingerprint.substr(8, 16) + "." +
+                        std::to_string(result.job.operation.value)});
+        } catch (const std::exception& error) {
             result.outcome = {.state = media::MetadataWriteState::failed,
                 .error = media::MetadataWriteError::io,
                 .source_modified = false,
                 .detail = error.what()};
+        } catch (...) {
+            result.outcome = {.state = media::MetadataWriteState::failed,
+                .error = media::MetadataWriteError::io,
+                .source_modified = false,
+                .detail = "driver failure"};
         }
         const std::weak_ptr<Lifetime> weak = lifetime_;
         static_cast<void>(delivery_.post([weak, prepared] {
