@@ -31,13 +31,22 @@
 
 namespace wiola::app {
 
+/// Queue capacities, including one revision/receipt slot reserved for physical file results.
+struct LibraryPersistenceLimits {
+    std::size_t pending_revisions{64};
+    std::size_t pending_payload_bytes{32 * 1024 * 1024};
+    std::size_t file_result_extra_bytes{16 * 1024 * 1024};
+    std::size_t outstanding_receipts{4096};
+};
+
 /// One bounded writer; only owned immutable deltas cross the GUI/worker boundary.
 class LibraryPersistence final {
 public:
     using Result = persistence::qt::LibraryStoreResult;
     using Observer = std::function<void(std::uint64_t, Result)>;
     LibraryPersistence(QObject& owner, persistence::qt::LibraryStore& store,
-        library::LibrarySnapshot initial, Observer observer = {});
+        library::LibrarySnapshot initial, Observer observer = {},
+        LibraryPersistenceLimits limits = {});
     ~LibraryPersistence();
     [[nodiscard]] library::CommitResult accept(std::shared_ptr<const library::RevisionDelta> delta);
     void when_durable(std::uint64_t revision, std::function<void(bool)> observer);
@@ -59,11 +68,12 @@ private:
 
     void run(library::LibrarySnapshot initial);
     void completed(std::uint64_t revision, Result result);
-    static std::size_t retained_bytes(const library::RevisionDelta& delta);
+    static std::size_t retained_bytes(const library::RevisionDelta& delta) noexcept;
     QueuedDelivery delivery_;
     std::shared_ptr<Lifetime> lifetime_;
     persistence::qt::LibraryStore& store_;
     Observer observer_;
+    const LibraryPersistenceLimits limits_;
     std::map<std::uint64_t, std::shared_ptr<library::CommitReceipt>> receipts_;
     std::vector<Awaiter> awaiters_;
     mutable std::mutex mutex_;
