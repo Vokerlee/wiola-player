@@ -27,8 +27,8 @@
 #include <QWidget>
 
 #include <functional>
-#include <library/identity.hpp>
 #include <vector>
+#include <wiola/library/identity.hpp>
 
 namespace wiola::library {
 

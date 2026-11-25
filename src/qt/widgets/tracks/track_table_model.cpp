@@ -27,9 +27,9 @@
 #include <qt/paths.hpp>
 #include <qt/widgets/controls/clock.hpp>
 
-#include <library/records.hpp>
-#include <library/repository.hpp>
-#include <library/tags.hpp>
+#include <wiola/library/records.hpp>
+#include <wiola/library/repository.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <QColor>
 #include <QFont>

@@ -23,9 +23,9 @@
 // moc only needs the Qt declaration; the collaborators include C++23 concepts it cannot parse.
 #ifndef Q_MOC_RUN
 #include "player_actions.hpp"
-#include <library/library_changes.hpp>
 #include <qt/widgets/layout/layout_session.hpp>
 #include <qt/widgets/layout/view_registry.hpp>
+#include <wiola/library/library_changes.hpp>
 #include <wiola/media/resource.hpp>
 #include <wiola/playback/open_result.hpp>
 #endif

@@ -20,12 +20,12 @@
 
 #pragma once
 #include <functional>
-#include <library/library_changes.hpp>
-#include <library/repository.hpp>
 #include <map>
 #include <presentation/tracks/track_row.hpp>
 #include <span>
 #include <unordered_map>
+#include <wiola/library/library_changes.hpp>
+#include <wiola/library/repository.hpp>
 #include <wiola/playback/queue_entry.hpp>
 #include <wiola/playback/queue_view.hpp>
 

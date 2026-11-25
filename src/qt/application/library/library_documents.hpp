@@ -19,8 +19,8 @@
  */
 
 #pragma once
-#include <library/repository_transaction.hpp>
 #include <qt/application/library/m3u_playlist.hpp>
+#include <wiola/library/repository_transaction.hpp>
 
 namespace wiola::app {
 

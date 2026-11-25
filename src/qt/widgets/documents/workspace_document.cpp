@@ -23,7 +23,7 @@
 #include <qt/paths.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 
-#include <library/records.hpp>
+#include <wiola/library/records.hpp>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>

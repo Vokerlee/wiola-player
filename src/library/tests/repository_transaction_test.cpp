@@ -20,10 +20,10 @@
 
 #include <allocation_failure.hpp>
 #include <gtest/gtest.h>
-#include <library/repository_transaction.hpp>
-#include <library/snapshot.hpp>
 #include <new>
 #include <stdexcept>
+#include <wiola/library/repository_transaction.hpp>
+#include <wiola/library/snapshot.hpp>
 
 namespace {
 

@@ -23,7 +23,7 @@
 #include <qt/widgets/documents/workspace_document.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <QApplication>
 #include <QEventLoop>

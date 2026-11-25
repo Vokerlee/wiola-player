@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <wiola/media/metadata.hpp>
 

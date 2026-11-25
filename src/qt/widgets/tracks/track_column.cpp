@@ -19,8 +19,8 @@
  */
 
 #include "track_column.hpp"
-#include <library/tags.hpp>
 #include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <wiola/library/tags.hpp>
 
 namespace wiola::gui {
 

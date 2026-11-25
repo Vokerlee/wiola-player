@@ -20,8 +20,8 @@
 
 #include "track_sort.hpp"
 
-#include <library/records.hpp>
-#include <library/tags.hpp>
+#include <wiola/library/records.hpp>
+#include <wiola/library/tags.hpp>
 
 namespace wiola::gui {
 

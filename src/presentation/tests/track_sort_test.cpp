@@ -25,8 +25,8 @@
 #include <presentation/tracks/track_sort.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <library/in_memory_repository.hpp>
 #include <queue/playlist.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
 

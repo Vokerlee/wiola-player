@@ -19,8 +19,8 @@
  */
 
 #include "tag_key_catalog.hpp"
-#include <library/tags.hpp>
 #include <utility>
+#include <wiola/library/tags.hpp>
 
 namespace wiola::app {
 

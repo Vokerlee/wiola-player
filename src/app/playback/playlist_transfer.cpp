@@ -22,7 +22,7 @@
 
 #include <utility>
 
-#include <library/repository_transaction.hpp>
+#include <wiola/library/repository_transaction.hpp>
 
 namespace wiola::app {
 

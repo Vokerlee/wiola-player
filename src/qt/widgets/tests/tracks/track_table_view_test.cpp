@@ -26,8 +26,8 @@
 #include <qt/widgets/tracks/track_table_view.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <library/in_memory_repository.hpp>
 #include <queue/playlist.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <QAction>
 #include <QApplication>

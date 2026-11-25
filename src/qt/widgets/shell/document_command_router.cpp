@@ -22,8 +22,8 @@
 #include <algorithm>
 #include <app/playback/playback_queue.hpp>
 #include <app/playback/playlist_transfer.hpp>
-#include <library/records.hpp>
 #include <qt/paths.hpp>
+#include <wiola/library/records.hpp>
 
 namespace wiola::gui {
 

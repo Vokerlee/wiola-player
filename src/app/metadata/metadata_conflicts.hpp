@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <library/repository.hpp>
+#include <wiola/library/repository.hpp>
 
 #include <cstdint>
 

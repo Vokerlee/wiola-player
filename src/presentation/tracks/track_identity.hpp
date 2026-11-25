@@ -20,8 +20,8 @@
 
 #pragma once
 #include <filesystem>
-#include <library/identity.hpp>
 #include <variant>
+#include <wiola/library/identity.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 
 namespace wiola::gui {

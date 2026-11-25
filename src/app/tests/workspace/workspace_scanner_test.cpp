@@ -20,7 +20,7 @@
 
 #include <app/workspace/workspace_reconciliation.hpp>
 #include <app/workspace/workspace_scanner.hpp>
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>

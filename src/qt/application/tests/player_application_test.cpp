@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <library/records.hpp>
 #include <qt/application/player_application.hpp>
+#include <wiola/library/records.hpp>
 
 #include <media/local/resource.hpp>
 #include <qt/widgets/shell/main_window.hpp>

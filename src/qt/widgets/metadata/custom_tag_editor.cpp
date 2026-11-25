@@ -19,7 +19,7 @@
  */
 
 #include "custom_tag_editor.hpp"
-#include <library/tags.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <QHBoxLayout>
 #include <QSignalBlocker>

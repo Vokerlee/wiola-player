@@ -21,9 +21,9 @@
 #include <QCoreApplication>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
-#include <library/repository_transaction.hpp>
 #include <qt/application/library/library_persistence.hpp>
 #include <qt/tests/support/gated_atomic_output.hpp>
+#include <wiola/library/repository_transaction.hpp>
 
 namespace {
 

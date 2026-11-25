@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <library/repository.hpp>
 #include <presentation/documents/saved_playlist_rows.hpp>
+#include <wiola/library/repository.hpp>
 
 #include <QLabel>
 #include <QPushButton>

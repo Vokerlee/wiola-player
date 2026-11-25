@@ -24,8 +24,8 @@
 #include <presentation/tracks/track_view_state.hpp>
 #include <qt/widgets/appearance/artwork_presentation.hpp>
 
-#include <library/search.hpp>
 #include <presentation/tracks/track_row.hpp>
+#include <wiola/library/search.hpp>
 
 #include <QAbstractTableModel>
 #include <QTimer>

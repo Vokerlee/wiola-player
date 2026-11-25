@@ -19,9 +19,9 @@
  */
 
 #include <gtest/gtest.h>
-#include <library/repository_transaction.hpp>
 #include <stdexcept>
 #include <utility>
+#include <wiola/library/repository_transaction.hpp>
 
 namespace {
 

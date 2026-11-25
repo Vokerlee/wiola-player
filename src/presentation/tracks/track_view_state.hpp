@@ -19,8 +19,8 @@
  */
 
 #pragma once
-#include <library/search.hpp>
 #include <presentation/tracks/track_sort.hpp>
+#include <wiola/library/search.hpp>
 
 namespace wiola::gui {
 

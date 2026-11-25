@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <library/relocation.hpp>
+#include <wiola/library/relocation.hpp>
 
 #include <gtest/gtest.h>
 

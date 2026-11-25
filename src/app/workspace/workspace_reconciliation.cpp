@@ -21,8 +21,8 @@
 #include "workspace_reconciliation.hpp"
 
 #include <app/library/local_identity.hpp>
-#include <library/relocation.hpp>
-#include <library/repository_transaction.hpp>
+#include <wiola/library/relocation.hpp>
+#include <wiola/library/repository_transaction.hpp>
 
 #include <algorithm>
 #include <set>

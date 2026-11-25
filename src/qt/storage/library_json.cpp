@@ -22,7 +22,7 @@
 
 #include <qt/paths.hpp>
 
-#include <library/tags.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <QJsonArray>
 #include <QJsonDocument>
