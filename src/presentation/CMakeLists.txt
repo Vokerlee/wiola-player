@@ -1,5 +1,5 @@
 wiola_add_library(
-    wiola_gui_model
+    wiola_presentation
     SOURCES
         tracks/track_row.cpp
         tracks/track_sort.cpp
@@ -11,10 +11,15 @@ wiola_add_library(
         documents/workspace_rows.cpp
     LIBS wiola_app wiola_library wiola::local_media
 )
+add_library(wiola::presentation ALIAS wiola_presentation)
 add_executable(wiola_model_boundary EXCLUDE_FROM_ALL boundary.cpp)
 target_link_libraries(
     wiola_model_boundary
-    PRIVATE wiola_gui_model wiola_sanitizer wiola_coverage
+    PRIVATE wiola::presentation wiola_sanitizer wiola_coverage
 )
 
-target_link_libraries(wiola_gui_model PUBLIC wiola::playback_api)
+target_link_libraries(wiola_presentation PUBLIC wiola::playback_api)
+
+if(WIOLA_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

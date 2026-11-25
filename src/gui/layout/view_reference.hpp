@@ -21,8 +21,8 @@
 #pragma once
 #include "component_descriptor.hpp"
 #include <QJsonObject>
-#include <gui/model/documents/document_id.hpp>
 #include <gui/shell/action_descriptor.hpp>
+#include <presentation/documents/document_id.hpp>
 #include <string>
 #include <variant>
 

@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief One presentation pipeline for filtering and sorting track rows.
+ * @brief Stable multi-column track ordering with deterministic fallbacks.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,26 +20,19 @@
 
 #pragma once
 
-#include <gui/model/tracks/track_sorter.hpp>
+#include <presentation/tracks/track_sort.hpp>
 
-#include <library/search.hpp>
-#include <map>
 #include <stop_token>
-
-namespace wiola::app {
-
-class SearchIndex;
-
-}
+#include <vector>
 
 namespace wiola::gui {
 
-[[nodiscard]] bool track_query_active(const library::SearchQuery& query);
+struct TrackSortStatistics {
+    std::size_t prepared_values{}, comparisons{};
+};
 
-[[nodiscard]] std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
-    const library::LibraryRepository* repository, const library::SearchQuery& query,
-    const std::vector<TrackSortKey>& sort_keys, const app::SearchIndex* search = nullptr,
-    const std::map<library::MediaId, library::SearchFields>* fields = nullptr,
-    std::stop_token stop = {});
+[[nodiscard]] std::vector<TrackRow> sorted_rows(const std::vector<TrackRow>& tracks,
+    const library::LibraryRepository* repository, const std::vector<TrackSortKey>& keys,
+    TrackSortStatistics* statistics = nullptr, std::stop_token stop = {});
 
 } // namespace wiola::gui

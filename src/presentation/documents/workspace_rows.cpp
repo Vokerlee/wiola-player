@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "workspace_rows.hpp"
 #include <algorithm>
-#include <gui/model/documents/workspace_rows.hpp>
 #include <library/location.hpp>
 
 namespace wiola::gui {

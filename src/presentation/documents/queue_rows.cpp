@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "queue_rows.hpp"
 #include <algorithm>
-#include <gui/model/documents/queue_rows.hpp>
 #include <library/location.hpp>
 #include <map>
 #include <media/local/resource.hpp>

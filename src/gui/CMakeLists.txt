@@ -56,7 +56,7 @@ wiola_add_library(
         metadata/standard_metadata_editor.cpp
         documents/workspace_document.cpp
     LIBS
-        wiola_gui_model
+        wiola::presentation
         wiola_gui_projection
         wiola_playback_preferences
         wiola_library_session

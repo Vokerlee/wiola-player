@@ -22,8 +22,8 @@
 
 #include <desktop/workspace/workspace_scan_publisher.hpp>
 
-#include <gui/model/documents/workspace_rows.hpp>
 #include <library/repository.hpp>
+#include <presentation/documents/workspace_rows.hpp>
 
 #include <QCheckBox>
 #include <QLabel>

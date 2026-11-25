@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/model/tracks/track_sort.hpp>
+#include "track_sort.hpp"
 
 #include <library/location.hpp>
 #include <library/tags.hpp>

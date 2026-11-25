@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <gui/model/documents/saved_playlist_rows.hpp>
 #include <library/repository.hpp>
+#include <presentation/documents/saved_playlist_rows.hpp>
 
 #include <QLabel>
 #include <QPushButton>

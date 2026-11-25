@@ -25,9 +25,9 @@
 #include <QAction>
 #include <QApplication>
 #include <gtest/gtest.h>
-#include <gui/model/documents/queue_rows.hpp>
 #include <gui/tracks/track_table_model.hpp>
 #include <gui/tracks/track_table_view.hpp>
+#include <presentation/documents/queue_rows.hpp>
 #include <queue/playlist.hpp>
 
 #include <algorithm>

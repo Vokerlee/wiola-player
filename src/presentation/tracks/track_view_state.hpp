@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Transport-independent track presentation values and explicit library resolution.
+ * @brief One normalized search, filter, and sort state for each track browser.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,28 +19,17 @@
  */
 
 #pragma once
-#include <gui/model/tracks/track_identity.hpp>
-#include <library/records.hpp>
-#include <memory>
-#include <wiola/media/artwork_reference.hpp>
-#include <wiola/media/metadata.hpp>
+#include <library/search.hpp>
+#include <presentation/tracks/track_sort.hpp>
 
 namespace wiola::gui {
 
-struct TrackRow {
-    TrackRowId id;
-    library::MediaId media;
-    std::filesystem::path location;
-    std::string location_key;
-    media::TrackMetadata metadata;
-    std::vector<library::TagRecord> tags;
-    bool missing{false};
-    std::uint64_t metadata_revision{0};
-    std::uint64_t content_revision{0};
-    media::ArtworkReference artwork;
-    bool operator==(const TrackRow&) const = default;
+struct TrackViewState {
+    library::SearchQuery query;
+    std::vector<TrackSortKey> sort_keys;
+    bool operator==(const TrackViewState&) const = default;
 };
 
-[[nodiscard]] TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& record);
+[[nodiscard]] TrackViewState normalized_track_view_state(TrackViewState state);
 
 } // namespace wiola::gui
