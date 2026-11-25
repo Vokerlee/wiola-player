@@ -13,7 +13,3 @@ wiola_add_library(
 )
 add_library(wiola::qt_library_store ALIAS wiola_qt_library_store)
 target_link_libraries(wiola_qt_library_store PUBLIC Qt6::Core wiola::qt_files)
-
-if(WIOLA_BUILD_TESTS)
-    add_subdirectory(tests)
-endif()
