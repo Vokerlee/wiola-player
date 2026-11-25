@@ -452,6 +452,222 @@ TEST_F(LibraryPersistenceCore,
     EXPECT_EQ(saved, 1);
 }
 
+TEST_F(LibraryPersistenceCore, DrainAndFallbackFailuresPreserveTheFirstException)
+{
+    auto callbacks = delivery.callbacks();
+    callbacks.post = [](auto) {
+        return false;
+    };
+    callbacks.drain = [] {
+        throw std::runtime_error{"drain failed"};
+    };
+    int saved = 0;
+    writer = std::make_unique<app::LibraryPersistence>(store, std::move(callbacks),
+        library::LibrarySnapshot{}, [&](auto, auto) {
+            ++saved;
+            throw std::logic_error{"save observer"};
+        });
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+
+    try {
+        static_cast<void>(writer->flush());
+        FAIL() << "drain failure was discarded";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "drain failed");
+    }
+    EXPECT_TRUE(accepted.receipt->durable());
+    EXPECT_EQ(saved, 1);
+    EXPECT_THROW(writer->stop(), std::runtime_error);
+    EXPECT_EQ(saved, 1);
+}
+
+TEST_F(LibraryPersistenceCore, FallbackCompletesAllObserversAndPreservesTheirFirstFailure)
+{
+    auto callbacks = delivery.callbacks();
+    callbacks.post = [](auto) {
+        return false;
+    };
+    int receipts = 0, waiters = 0, saves = 0;
+    store.block();
+    writer = std::make_unique<app::LibraryPersistence>(store, std::move(callbacks),
+        library::LibrarySnapshot{}, [&](auto, auto) {
+            ++saves;
+            throw std::logic_error{"save observer"};
+        });
+    const auto first = writer->accept(revision(1, "first"));
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(store.wait_entered());
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    first.receipt->observe([&](auto) {
+        ++receipts;
+        throw std::logic_error{"first receipt"};
+    });
+    first.receipt->observe([&](auto) {
+        ++receipts;
+        throw std::runtime_error{"later observer"};
+    });
+    second.receipt->observe([&](auto) {
+        ++receipts;
+        throw std::logic_error{"second receipt"};
+    });
+    writer->when_durable(2, [&](bool) {
+        ++waiters;
+        throw std::logic_error{"waiter"};
+    });
+    store.release();
+
+    try {
+        static_cast<void>(writer->flush());
+        FAIL() << "first observer failure was discarded";
+    } catch (const std::logic_error& error) {
+        EXPECT_STREQ(error.what(), "first receipt");
+    }
+    EXPECT_TRUE(first.receipt->durable());
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(receipts, 3);
+    EXPECT_EQ(waiters, 1);
+    EXPECT_EQ(saves, 1);
+    EXPECT_TRUE(writer->flush().succeeded());
+    writer->stop();
+    EXPECT_EQ(receipts, 3);
+    EXPECT_EQ(waiters, 1);
+    EXPECT_EQ(saves, 1);
+}
+
+TEST_F(LibraryPersistenceCore, FallbackWaiterFailurePreservesTheAcknowledgment)
+{
+    auto callbacks = delivery.callbacks();
+    callbacks.post = [](auto) {
+        return false;
+    };
+    store.block();
+    writer = std::make_unique<app::LibraryPersistence>(store, std::move(callbacks),
+        library::LibrarySnapshot{});
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+    ASSERT_TRUE(store.wait_entered());
+    int calls = 0;
+    writer->when_durable(1, [&](bool saved) {
+        EXPECT_TRUE(saved);
+        ++calls;
+        throw std::logic_error{"waiter"};
+    });
+    store.release();
+
+    EXPECT_THROW(writer->flush(), std::logic_error);
+
+    EXPECT_TRUE(accepted.receipt->durable());
+    EXPECT_EQ(calls, 1);
+    EXPECT_NO_THROW(writer->stop());
+    EXPECT_EQ(calls, 1);
+}
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST_F(LibraryPersistenceCore, EveryCompletionAllocationFailureRemainsRetryableAfterFlushOrStop)
+{
+    for (const bool closing : {false, true}) {
+        bool observed_failure = false;
+        for (std::size_t after = 0;; ++after) {
+            int saved = 0, receipt_calls = 0;
+            start({}, [&](auto, auto) { ++saved; });
+            const auto accepted = writer->accept(revision(1));
+            ASSERT_TRUE(accepted);
+            accepted.receipt->observe([&](auto) { ++receipt_calls; });
+            ASSERT_TRUE(delivery.wait_pending(1));
+            bool failed = false;
+            {
+                const wiola::testing::AllocationFailure failure{after};
+                try {
+                    if (closing)
+                        writer->stop();
+                    else
+                        static_cast<void>(writer->flush());
+                } catch (const std::bad_alloc&) {
+                    failed = true;
+                }
+            }
+            EXPECT_EQ(writer->durable_revision(), accepted.revision);
+            if (failed) {
+                observed_failure = true;
+                EXPECT_FALSE(accepted.receipt->durable());
+                EXPECT_EQ(saved, 0);
+                EXPECT_EQ(receipt_calls, 0);
+            }
+            EXPECT_TRUE(writer->flush().succeeded());
+            EXPECT_TRUE(accepted.receipt->durable());
+            EXPECT_EQ(saved, 1);
+            EXPECT_EQ(receipt_calls, 1);
+            writer->stop();
+            EXPECT_EQ(saved, 1);
+            EXPECT_EQ(receipt_calls, 1);
+            writer.reset();
+            if (!failed) {
+                EXPECT_TRUE(observed_failure);
+                break;
+            }
+        }
+    }
+}
+#endif
+
+TEST_F(LibraryPersistenceCore, CleanupDuringDisposalRejectsReentrantAdmissionAndDurabilityWaiters)
+{
+    start();
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+    bool destroyed = false, admitted = true;
+    int calls = 0;
+
+    struct Cleanup {
+        app::LibraryPersistence* writer;
+        std::shared_ptr<const library::RevisionDelta> delta;
+        bool& destroyed;
+        bool& admitted;
+        int& calls;
+
+        ~Cleanup()
+        {
+            destroyed = true;
+            admitted = static_cast<bool>(writer->accept(delta));
+            writer->when_durable(0, [&notifications = calls](bool) { ++notifications; });
+        }
+    };
+
+    auto cleanup = std::make_shared<Cleanup>(writer.get(), revision(2), destroyed, admitted, calls);
+    accepted.receipt->observe([cleanup](auto) { });
+    cleanup.reset();
+
+    writer.reset();
+    delivery.drain();
+
+    EXPECT_TRUE(destroyed);
+    EXPECT_FALSE(admitted);
+    EXPECT_EQ(calls, 0);
+}
+
+TEST_F(LibraryPersistenceCore, RetryAfterStopPreservesTheFinalWriteWithoutAnotherNotification)
+{
+    int saved = 0;
+    start({}, [&](auto, auto) { ++saved; });
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+    ASSERT_TRUE(writer->flush().succeeded());
+    const auto snapshot = store.last_snapshot();
+    writer->stop();
+
+    writer->retry();
+
+    EXPECT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(accepted.receipt->durable());
+    EXPECT_EQ(saved, 1);
+    const auto saved_snapshot = store.last_snapshot();
+    EXPECT_EQ(saved_snapshot.tracks, snapshot.tracks);
+    EXPECT_EQ(saved_snapshot.playlists, snapshot.playlists);
+    EXPECT_EQ(saved_snapshot.workspaces, snapshot.workspaces);
+}
+
 TEST_F(LibraryPersistenceCore, EveryDriverExceptionLeavesTheRevisionRetryable)
 {
     struct DriverFailure { };
