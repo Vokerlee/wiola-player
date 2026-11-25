@@ -27,11 +27,15 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
+#include <vector>
 #include <wiola/app/library/library_persistence.hpp>
 
 namespace {
 
 using namespace wiola;
+static_assert(!std::is_copy_constructible_v<app::LibraryPersistence>);
+static_assert(!std::is_move_constructible_v<app::LibraryPersistence>);
 
 class ManualDelivery final {
 public:
@@ -528,6 +532,160 @@ TEST_F(LibraryPersistenceCore, ReorderedOldFailureCannotRegressASuccessfullyAckn
     EXPECT_TRUE(second.receipt->durable());
     EXPECT_EQ(writer->durable_revision(), 2U);
     EXPECT_EQ(store.last_snapshot().tracks.size(), 2U);
+}
+
+TEST_F(LibraryPersistenceCore, ReceiptCallbackCanDisposeTheWorkflowAndCancelRemainingDelivery)
+{
+    start();
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+    int remaining = 0;
+    accepted.receipt->observe([&](auto) { writer.reset(); });
+    accepted.receipt->observe([&](auto) { ++remaining; });
+    const auto result = writer->flush();
+    EXPECT_TRUE(result.succeeded());
+    EXPECT_FALSE(writer);
+    EXPECT_EQ(remaining, 0);
+}
+
+TEST_F(LibraryPersistenceCore, DurabilityWaiterCanDisposeTheWorkflowAndCancelRemainingDelivery)
+{
+    store.block();
+    start();
+    ASSERT_TRUE(writer->accept(revision(1)));
+    ASSERT_TRUE(store.wait_entered());
+    int remaining = 0;
+    writer->when_durable(1, [&](bool) { writer.reset(); });
+    writer->when_durable(1, [&](bool) { ++remaining; });
+    store.release();
+    const auto result = writer->flush();
+    EXPECT_TRUE(result.succeeded());
+    EXPECT_FALSE(writer);
+    EXPECT_EQ(remaining, 0);
+}
+
+TEST_F(LibraryPersistenceCore, SaveObserverCanDisposeTheWorkflowDuringFlush)
+{
+    start({}, [&](auto, auto) { writer.reset(); });
+    ASSERT_TRUE(writer->accept(revision(1)));
+    const auto result = writer->flush();
+    EXPECT_TRUE(result.succeeded());
+    EXPECT_FALSE(writer);
+}
+
+TEST_F(LibraryPersistenceCore, MutableSaveObserverStatePersistsAcrossAttempts)
+{
+    std::vector<int> calls;
+    start({}, [count = 0, &calls](auto, auto) mutable { calls.push_back(++count); });
+    ASSERT_TRUE(writer->accept(revision(1)));
+    ASSERT_TRUE(writer->flush().succeeded());
+    ASSERT_TRUE(writer->accept(revision(2)));
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_EQ(calls, (std::vector{1, 2}));
+}
+
+TEST_F(LibraryPersistenceCore, ObserverFailureDoesNotStrandTheOtherAcknowledgmentsInTheBatch)
+{
+    store.block();
+    int saved = 0, receipt_calls = 0, waiter_calls = 0;
+    start({}, [&](auto, auto result) {
+        EXPECT_TRUE(result.succeeded());
+        ++saved;
+    });
+    const auto first = writer->accept(revision(1, "first"));
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(store.wait_entered());
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    first.receipt->observe([](auto) { throw std::runtime_error{"first receipt"}; });
+    second.receipt->observe([&](auto) { ++receipt_calls; });
+    writer->when_durable(2, [](bool) { throw std::logic_error{"first waiter"}; });
+    writer->when_durable(2, [&](bool) { ++waiter_calls; });
+    store.release();
+    ASSERT_TRUE(delivery.wait_pending(2));
+    delivery.reverse_pending(); // Exercise the coalesced prefix before its older wakeup.
+    EXPECT_THROW(static_cast<void>(writer->flush()), std::runtime_error);
+    EXPECT_TRUE(first.receipt->durable());
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(receipt_calls, 1);
+    EXPECT_EQ(waiter_calls, 1);
+    EXPECT_EQ(saved, 1);
+}
+
+TEST_F(LibraryPersistenceCore, IgnoresEmptyDurabilityCallbacks)
+{
+    store.block();
+    start();
+    ASSERT_TRUE(writer->accept(revision(1)));
+    ASSERT_TRUE(store.wait_entered());
+    writer->when_durable(1, {});
+    store.release();
+    EXPECT_NO_THROW(static_cast<void>(writer->flush()));
+    EXPECT_NO_THROW(writer->when_durable(1, {}));
+    EXPECT_NO_THROW(writer->when_durable(2, {}));
+}
+
+TEST_F(LibraryPersistenceCore, AcknowledgmentReleasesReceiptCapacityForAReentrantEdit)
+{
+    app::LibraryPersistenceLimits limits;
+    limits.outstanding_receipts = 2;
+    start({}, {}, limits);
+    const auto first = writer->accept(revision(1));
+    ASSERT_TRUE(first);
+    library::CommitResult second;
+    first.receipt->observe([&](auto event) {
+        if (event.durable)
+            second = writer->accept(revision(2));
+    });
+    ASSERT_TRUE(writer->flush().succeeded());
+    ASSERT_TRUE(second);
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(writer->durable_revision(), 2U);
+}
+
+TEST_F(LibraryPersistenceCore, DisposalReturnsTheFinalWriteOutcomeAfterACallbackAdmitsAnotherEdit)
+{
+    start();
+    const auto first = writer->accept(revision(1));
+    ASSERT_TRUE(first);
+    library::CommitResult second;
+    first.receipt->observe([&](auto event) {
+        if (!event.durable)
+            return;
+        store.release({app::SnapshotWriteError::io});
+        second = writer->accept(revision(2));
+        writer.reset();
+    });
+    const auto result = writer->flush();
+    EXPECT_EQ(result.error, app::SnapshotWriteError::io);
+    EXPECT_FALSE(writer);
+    ASSERT_TRUE(second);
+    EXPECT_TRUE(first.receipt->durable());
+    EXPECT_FALSE(second.receipt->durable());
+    int late = 0;
+    second.receipt->observe([&](auto) { ++late; });
+    EXPECT_EQ(late, 0);
+}
+
+TEST_F(LibraryPersistenceCore, EarlierAcknowledgmentRetainsTheWaiterForALaterRevision)
+{
+    store.block();
+    start();
+    ASSERT_TRUE(writer->accept(revision(1)));
+    ASSERT_TRUE(store.wait_entered());
+    ASSERT_TRUE(writer->accept(revision(2)));
+    std::vector<std::uint64_t> received;
+    writer->when_durable(1, [&](bool saved) {
+        EXPECT_TRUE(saved);
+        received.push_back(1);
+    });
+    writer->when_durable(2, [&](bool saved) {
+        EXPECT_TRUE(saved);
+        received.push_back(2);
+    });
+    store.release();
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_EQ(received, (std::vector<std::uint64_t>{1, 2}));
 }
 
 } // namespace

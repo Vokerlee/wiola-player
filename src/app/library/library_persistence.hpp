@@ -19,12 +19,10 @@
  */
 
 #pragma once
-#include <condition_variable>
-#include <deque>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
-#include <map>
-#include <mutex>
-#include <thread>
+#include <memory>
 #include <wiola/app/library/snapshot_writer.hpp>
 #include <wiola/library/commit_receipt.hpp>
 #include <wiola/library/revision_delta.hpp>
@@ -45,7 +43,7 @@ public:
     using Result = SnapshotWriteResult;
 
     /// post is producer-safe and queues a task for the accepting thread; drain runs queued
-    /// tasks on that thread. Both callbacks and the supplied writer outlive this workflow.
+    /// tasks there. The supplied writer and delivery receiver outlive this workflow.
     struct Delivery {
         std::function<bool(std::function<void()>)> post;
         std::function<void()> drain;
@@ -55,6 +53,10 @@ public:
     LibraryPersistence(SnapshotWriter& store, Delivery delivery, library::LibrarySnapshot initial,
         Observer observer = {}, LibraryPersistenceLimits limits = {});
     ~LibraryPersistence();
+    LibraryPersistence(const LibraryPersistence&) = delete;
+    LibraryPersistence& operator=(const LibraryPersistence&) = delete;
+    LibraryPersistence(LibraryPersistence&&) = delete;
+    LibraryPersistence& operator=(LibraryPersistence&&) = delete;
     [[nodiscard]] library::CommitResult accept(std::shared_ptr<const library::RevisionDelta> delta);
     void when_durable(std::uint64_t revision, std::function<void(bool)> observer);
     void retry();
@@ -64,35 +66,8 @@ public:
     [[nodiscard]] std::uint64_t durable_revision() const;
 
 private:
-    struct Lifetime {
-        LibraryPersistence* owner;
-    };
-
-    struct Awaiter {
-        std::uint64_t revision;
-        std::function<void(bool)> observer;
-    };
-
-    void run(library::LibrarySnapshot initial);
-    void completed(std::uint64_t revision, Result result);
-    static std::size_t retained_bytes(const library::RevisionDelta& delta) noexcept;
-    void check_owner() const;
-    const std::thread::id owner_{std::this_thread::get_id()};
-    const Delivery delivery_;
-    std::shared_ptr<Lifetime> lifetime_;
-    SnapshotWriter& store_;
-    Observer observer_;
-    const LibraryPersistenceLimits limits_;
-    std::map<std::uint64_t, std::shared_ptr<library::CommitReceipt>> receipts_;
-    std::vector<Awaiter> awaiters_;
-    mutable std::mutex mutex_;
-    std::condition_variable changed_;
-    std::deque<std::shared_ptr<const library::RevisionDelta>> pending_;
-    std::size_t pending_bytes_{};
-    std::uint64_t latest_{}, durable_{}, attempted_{}, attempt_{};
-    Result last_result_;
-    bool active_{}, retry_{}, stopping_{}, has_durable_{};
-    std::jthread worker_;
+    struct State;
+    const std::shared_ptr<State> state_;
 };
 
 } // namespace wiola::app

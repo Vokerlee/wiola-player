@@ -20,8 +20,17 @@
 
 #include "library_persistence.hpp"
 #include <algorithm>
+#include <condition_variable>
+#include <cstdint>
+#include <deque>
+#include <exception>
 #include <limits>
+#include <map>
+#include <mutex>
 #include <stdexcept>
+#include <thread>
+#include <utility>
+#include <vector>
 #include <wiola/library/records.hpp>
 
 namespace wiola::app {
@@ -97,30 +106,7 @@ auto values(const Map& map)
     return result;
 }
 
-} // namespace
-
-LibraryPersistence::LibraryPersistence(SnapshotWriter& store, Delivery delivery,
-    library::LibrarySnapshot initial, Observer observer, LibraryPersistenceLimits limits)
-    : delivery_{checked_delivery(std::move(delivery))}
-    , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
-    , store_{store}
-    , observer_{std::move(observer)}
-    , limits_{checked_limits(limits)}
-    , worker_{[this, initial = std::move(initial)]() mutable { run(std::move(initial)); }}
-{
-}
-
-LibraryPersistence::~LibraryPersistence()
-{
-    lifetime_->owner = nullptr;
-    for (const auto& [revision, receipt] : receipts_)
-        receipt->cancel();
-    receipts_.clear();
-    awaiters_.clear();
-    stop();
-}
-
-std::size_t LibraryPersistence::retained_bytes(const library::RevisionDelta& delta) noexcept
+std::size_t retained_bytes(const library::RevisionDelta& delta) noexcept
 {
     PayloadSize size;
     size.add(sizeof(delta));
@@ -181,77 +167,167 @@ std::size_t LibraryPersistence::retained_bytes(const library::RevisionDelta& del
     return size.value();
 }
 
+} // namespace
+
+struct LibraryPersistence::State : std::enable_shared_from_this<State> {
+    struct Awaiter {
+        std::uint64_t revision;
+        std::function<void(bool)> observer;
+    };
+
+    State(SnapshotWriter& store, Delivery delivery, Observer observer,
+        LibraryPersistenceLimits limits)
+        : delivery_{checked_delivery(std::move(delivery))}
+        , store_{store}
+        , observer_{std::move(observer)}
+        , limits_{checked_limits(limits)}
+    {
+    }
+
+    void check_owner() const
+    {
+        if (std::this_thread::get_id() != owner_)
+            throw std::logic_error{"library persistence accessed outside owner thread"};
+    }
+
+    void stop_worker()
+    {
+        {
+            std::lock_guard lock{mutex_};
+            stopping_ = true;
+        }
+        changed_.notify_all();
+        if (worker_.joinable())
+            worker_.join();
+    }
+
+    void run(library::LibrarySnapshot initial);
+    void completed(std::uint64_t revision, Result result);
+    const std::thread::id owner_{std::this_thread::get_id()};
+    const Delivery delivery_;
+    SnapshotWriter& store_;
+    Observer observer_;
+    const LibraryPersistenceLimits limits_;
+    // These observations belong exclusively to the accepting thread.
+    std::map<std::uint64_t, std::shared_ptr<library::CommitReceipt>> receipts_;
+    std::vector<Awaiter> awaiters_;
+    // Receipt capacity is released on acknowledgment, while active notifications remain
+    // owned by receipts_ so destruction can cancel them even during reentrant callbacks.
+    std::uint64_t acknowledged_{};
+    bool callbacks_enabled_{true};
+    // Writer publication and admitted work are synchronized by mutex_.
+    std::mutex mutex_;
+    std::condition_variable changed_;
+    std::deque<std::shared_ptr<const library::RevisionDelta>> pending_;
+    std::size_t pending_bytes_{};
+    std::uint64_t latest_{}, durable_{}, attempted_{}, attempt_{};
+    Result last_result_;
+    bool active_{}, retry_{}, stopping_{}, has_durable_{};
+    std::jthread worker_;
+};
+
+LibraryPersistence::LibraryPersistence(SnapshotWriter& store, Delivery delivery,
+    library::LibrarySnapshot initial, Observer observer, LibraryPersistenceLimits limits)
+    : state_{std::make_shared<State>(store, std::move(delivery), std::move(observer), limits)}
+{
+    // The worker retains its state until stop joins it. Scheduled owner callbacks retain
+    // only weak state, and cannot keep a disposed workflow alive.
+    state_->worker_ = std::jthread{[state = state_, initial = std::move(initial)]() mutable {
+        state->run(std::move(initial));
+    }};
+}
+
+LibraryPersistence::~LibraryPersistence()
+{
+    const auto state = state_;
+    state->check_owner();
+    state->callbacks_enabled_ = false;
+    state->stop_worker();
+    for (const auto& [revision, receipt] : state->receipts_)
+        receipt->cancel();
+    state->receipts_.clear();
+    state->awaiters_.clear();
+}
+
 library::CommitResult
 LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
 {
-    check_owner();
-    if (!delta)
+    const auto state = state_;
+    state->check_owner();
+    if (!delta || !state->callbacks_enabled_)
         return false;
     const auto bytes = retained_bytes(*delta), revision = delta->changes.revision;
     const bool critical = delta->priority == library::CommitPriority::file_result;
-    const auto byte_limit =
-        limits_.pending_payload_bytes + (critical ? limits_.file_result_extra_bytes : 0);
+    const auto byte_limit = state->limits_.pending_payload_bytes +
+        (critical ? state->limits_.file_result_extra_bytes : 0);
     auto receipt = std::make_shared<library::CommitReceipt>(revision);
     {
-        std::lock_guard lock{mutex_};
-        if (stopping_ || revision != latest_ + 1 ||
-            pending_.size() >= limits_.pending_revisions - (critical ? 0 : 1) ||
-            receipts_.size() >= limits_.outstanding_receipts - (critical ? 0 : 1) ||
-            bytes > byte_limit || pending_bytes_ > byte_limit - bytes)
+        std::lock_guard lock{state->mutex_};
+        if (state->stopping_ || revision != state->latest_ + 1 ||
+            state->pending_.size() >= state->limits_.pending_revisions - (critical ? 0 : 1) ||
+            state->latest_ - state->acknowledged_ >=
+                state->limits_.outstanding_receipts - (critical ? 0 : 1) ||
+            bytes > byte_limit || state->pending_bytes_ > byte_limit - bytes)
             return false;
-        pending_.push_back(std::move(delta));
+        state->pending_.push_back(std::move(delta));
         try {
-            receipts_.emplace(revision, receipt);
+            state->receipts_.emplace(revision, receipt);
         } catch (...) {
-            pending_.pop_back();
+            state->pending_.pop_back();
             throw;
         }
-        pending_bytes_ += bytes;
-        latest_ = revision;
+        state->pending_bytes_ += bytes;
+        state->latest_ = revision;
     }
-    changed_.notify_all();
+    state->changed_.notify_all();
     return library::CommitResult::accepted(revision, std::move(receipt));
 }
 
 std::uint64_t LibraryPersistence::pending_revision() const
 {
-    std::lock_guard lock{mutex_};
-    return latest_;
+    const auto state = state_;
+    std::lock_guard lock{state->mutex_};
+    return state->latest_;
 }
 
 std::uint64_t LibraryPersistence::durable_revision() const
 {
-    std::lock_guard lock{mutex_};
-    return durable_;
+    const auto state = state_;
+    std::lock_guard lock{state->mutex_};
+    return state->durable_;
 }
 
 void LibraryPersistence::retry()
 {
-    std::lock_guard lock{mutex_};
-    if (!stopping_ && (!has_durable_ || durable_ < latest_)) {
-        retry_ = true;
-        changed_.notify_all();
+    const auto state = state_;
+    std::lock_guard lock{state->mutex_};
+    if (!state->stopping_ && (!state->has_durable_ || state->durable_ < state->latest_)) {
+        state->retry_ = true;
+        state->changed_.notify_all();
     }
 }
 
 void LibraryPersistence::when_durable(std::uint64_t revision, std::function<void(bool)> observer)
 {
-    check_owner();
+    const auto state = state_;
+    state->check_owner();
+    if (!observer || !state->callbacks_enabled_)
+        return;
     bool saved = false, unavailable = false;
     {
-        std::lock_guard lock{mutex_};
-        saved = has_durable_ && durable_ >= revision;
-        unavailable = stopping_ || revision > latest_;
+        std::lock_guard lock{state->mutex_};
+        saved = state->has_durable_ && state->durable_ >= revision;
+        unavailable = state->stopping_ || revision > state->latest_;
     }
     if (saved || unavailable) {
         observer(saved);
         return;
     }
-    awaiters_.push_back({revision, std::move(observer)});
+    state->awaiters_.push_back({revision, std::move(observer)});
     retry();
 }
 
-void LibraryPersistence::run(library::LibrarySnapshot initial)
+void LibraryPersistence::State::run(library::LibrarySnapshot initial)
 {
     std::map<library::MediaId, library::TrackRecord> tracks;
     std::map<library::PlaylistId, library::PlaylistRecord> playlists;
@@ -260,7 +336,7 @@ void LibraryPersistence::run(library::LibrarySnapshot initial)
     upsert(playlists, initial.playlists);
     upsert(workspaces, initial.workspaces);
     initial = {};
-    const std::weak_ptr<Lifetime> weak = lifetime_;
+    const auto weak = weak_from_this();
     for (;;) {
         std::deque<std::shared_ptr<const library::RevisionDelta>> pending;
         std::uint64_t revision;
@@ -299,97 +375,110 @@ void LibraryPersistence::run(library::LibrarySnapshot initial)
                 durable_ = revision;
                 has_durable_ = true;
             }
-            // Publish acknowledgment before waking flush: draining must include this attempt.
+            // Publish acknowledgment before waking flush: draining includes this attempt.
             static_cast<void>(delivery_.post([weak, revision, result] {
-                if (const auto state = weak.lock(); state && state->owner)
-                    state->owner->completed(revision, result);
+                if (const auto state = weak.lock())
+                    state->completed(revision, result);
             }));
         }
         changed_.notify_all();
     }
 }
 
-void LibraryPersistence::completed(std::uint64_t revision, Result result)
+void LibraryPersistence::State::completed(std::uint64_t revision, Result result)
 {
     check_owner();
+    if (!callbacks_enabled_)
+        return;
     std::vector<std::shared_ptr<library::CommitReceipt>> receipts;
-    for (auto it = receipts_.begin(); it != receipts_.end() && it->first <= revision;) {
+    const auto last = receipts_.upper_bound(revision);
+    receipts.reserve(static_cast<std::size_t>(std::distance(receipts_.begin(), last)));
+    for (auto it = receipts_.begin(); it != last; ++it)
         receipts.push_back(it->second);
-        if (result.succeeded())
-            it = receipts_.erase(it);
-        else
-            ++it;
-    }
     std::vector<Awaiter> ready;
-    for (auto it = awaiters_.begin(); it != awaiters_.end();) {
+    ready.reserve(awaiters_.size());
+    auto retained = awaiters_.begin();
+    for (auto it = awaiters_.begin(); it != awaiters_.end(); ++it) {
         if (it->revision <= revision) {
             ready.push_back(std::move(*it));
-            it = awaiters_.erase(it);
-        } else
-            ++it;
+        } else {
+            if (retained != it)
+                *retained = std::move(*it);
+            ++retained;
+        }
     }
-    const std::weak_ptr<Lifetime> weak = lifetime_;
+    awaiters_.erase(retained, awaiters_.end());
+    if (result.succeeded())
+        acknowledged_ = std::max(acknowledged_, revision);
+
+    std::exception_ptr failure;
+    const auto invoke = [&](auto&& callback) {
+        try {
+            callback();
+        } catch (...) {
+            if (!failure)
+                failure = std::current_exception();
+        }
+    };
     for (const auto& receipt : receipts) {
-        receipt->notify(result.succeeded());
-        if (const auto state = weak.lock(); !state || !state->owner)
-            return;
+        invoke([&] { receipt->notify(result.succeeded()); });
+        if (!callbacks_enabled_)
+            break;
     }
-    for (const auto& awaiter : ready) {
-        awaiter.observer(result.succeeded());
-        if (const auto state = weak.lock(); !state || !state->owner)
-            return;
+    if (callbacks_enabled_ && result.succeeded())
+        receipts_.erase(receipts_.begin(), receipts_.upper_bound(revision));
+    if (callbacks_enabled_) {
+        for (const auto& awaiter : ready) {
+            invoke([&] { awaiter.observer(result.succeeded()); });
+            if (!callbacks_enabled_)
+                break;
+        }
     }
-    const auto observer = observer_;
-    if (observer)
-        observer(revision, result);
+    if (callbacks_enabled_ && observer_)
+        invoke([&] { observer_(revision, result); });
+    if (failure)
+        std::rethrow_exception(failure);
 }
 
 LibraryPersistence::Result LibraryPersistence::flush()
 {
-    check_owner();
+    const auto state = state_;
+    state->check_owner();
     for (;;) {
         Result result;
         std::uint64_t target;
         {
-            std::unique_lock lock{mutex_};
-            target = latest_;
-            if (stopping_)
-                return last_result_;
-            const auto before = attempt_;
-            if (!(has_durable_ && durable_ >= target)) {
-                if (!active_ && pending_.empty())
-                    retry_ = true;
-                changed_.notify_all();
-                changed_.wait(lock, [&] {
-                    return (has_durable_ && durable_ >= target) ||
-                        (attempt_ > before && attempted_ >= target);
+            std::unique_lock lock{state->mutex_};
+            target = state->latest_;
+            if (state->stopping_)
+                return state->last_result_;
+            const auto before = state->attempt_;
+            if (!(state->has_durable_ && state->durable_ >= target)) {
+                if (!state->active_ && state->pending_.empty())
+                    state->retry_ = true;
+                state->changed_.notify_all();
+                state->changed_.wait(lock, [&] {
+                    return (state->has_durable_ && state->durable_ >= target) ||
+                        (state->attempt_ > before && state->attempted_ >= target);
                 });
             }
-            result = last_result_;
+            result = state->last_result_;
         }
-        delivery_.drain();
-        if (!result.succeeded() || pending_revision() == target)
+        state->delivery_.drain();
+        std::lock_guard lock{state->mutex_};
+        if (!state->callbacks_enabled_)
+            return state->last_result_; // Disposal joined the final admitted write.
+        if (!result.succeeded() || state->latest_ == target)
             return result;
     }
 }
 
 void LibraryPersistence::stop()
 {
-    check_owner();
-    {
-        std::lock_guard lock{mutex_};
-        stopping_ = true;
-    }
-    changed_.notify_all();
-    if (worker_.joinable())
-        worker_.join();
-    delivery_.drain();
-}
-
-void LibraryPersistence::check_owner() const
-{
-    if (std::this_thread::get_id() != owner_)
-        throw std::logic_error{"library persistence accessed outside owner thread"};
+    const auto state = state_;
+    state->check_owner();
+    state->stop_worker();
+    state->delivery_.drain();
 }
 
 } // namespace wiola::app
