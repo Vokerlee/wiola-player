@@ -1,6 +1,6 @@
 # Source owners
 
-The tree groups code by responsibility. Kernel, driver, presentation and Qt owners keep their contracts, implementations, build definition and focused tests together. Application/library suites currently also live under the repository test root. SDK headers retain their namespaced includes through CMake exports; the source tree keeps declarations beside the code that implements them.
+The tree groups code by responsibility. Kernel, driver, presentation and Qt owners keep their contracts, implementations, build definition and focused tests together. Shared portable fixtures and test-support utilities live under the repository test root. SDK headers retain their namespaced includes through CMake exports; the source tree keeps declarations beside the code that implements them.
 
 | Owner | Responsibility |
 | --- | --- |

@@ -13,4 +13,4 @@ flowchart LR
 
 InMemoryRepository implements the declared mutations and observations. Borrowed record pointers observe repository state; callers should not retain them across repository changes. Value snapshots and projected rows own the facts they retain. Metadata patches distinguish inherit, set and clear; saved duplicates keep separate occurrence identities.
 
-Location/fingerprint helpers currently include native file observation and reconciliation, called explicitly by their consumers. Qt JSON/storage is implemented by the [Qt storage adapter](../qt/storage/README.md). Focused catalog cases currently live in [the library test owner](../../tests/library), with workflow cases under application tests. No Qt types are used by this source owner.
+Location/fingerprint helpers currently include native file observation and reconciliation, called explicitly by their consumers. Qt JSON/storage is implemented by the [Qt storage adapter](../qt/storage/README.md). Focused catalog cases live in [tests](tests/README.md), with workflow cases under [application tests](../app/tests/README.md). No Qt types are used by this source owner.
