@@ -21,8 +21,10 @@
 #include <QCoreApplication>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
+#include <limits>
 #include <qt/application/library/library_persistence.hpp>
 #include <qt/tests/support/gated_atomic_output.hpp>
+#include <stdexcept>
 #include <wiola/library/repository_transaction.hpp>
 
 namespace {
@@ -106,7 +108,9 @@ TEST(LibraryPersistence,
             return std::make_unique<wiola::testing::GatedAtomicOutput>(file, path, gate);
         }};
     QObject owner;
-    app::LibraryPersistence writer{owner, store, {}};
+    app::LibraryPersistenceLimits limits;
+    limits.pending_revisions = 3;
+    app::LibraryPersistence writer{owner, store, {}, {}, limits};
     ReleaseGate release{gate};
     library::InMemoryRepository repository;
     const library::RepositoryTransaction::Persist persist = [&](const auto&) {
@@ -119,11 +123,11 @@ TEST(LibraryPersistence,
     };
     ASSERT_TRUE(create());
     ASSERT_TRUE(gate.wait_entered());
-    for (int i = 0; i < 63; ++i)
+    for (std::size_t i = 0; i < limits.pending_revisions - 1; ++i)
         ASSERT_TRUE(create());
     EXPECT_FALSE(create());
-    EXPECT_EQ(repository.playlists().size(), 64);
-    EXPECT_EQ(repository.change_revision(), 64);
+    EXPECT_EQ(repository.playlists().size(), limits.pending_revisions);
+    EXPECT_EQ(repository.change_revision(), limits.pending_revisions);
     {
         library::RepositoryTransaction physical_result{repository, persist,
             library::CommitPriority::file_result};
@@ -131,15 +135,74 @@ TEST(LibraryPersistence,
         ASSERT_TRUE(physical_result.commit());
     }
     EXPECT_FALSE(create());
-    EXPECT_EQ(repository.playlists().size(), 65);
-    EXPECT_EQ(repository.change_revision(), 65);
+    EXPECT_EQ(repository.playlists().size(), limits.pending_revisions + 1);
+    EXPECT_EQ(repository.change_revision(), limits.pending_revisions + 1);
     gate.release();
     ASSERT_TRUE(writer.flush().succeeded());
     EXPECT_EQ(gate.primary_writes, 2);
     library::LibrarySnapshot restored;
     ASSERT_TRUE(store.load(restored).succeeded());
-    EXPECT_EQ(restored.playlists.size(), 65);
+    EXPECT_EQ(restored.playlists.size(), limits.pending_revisions + 1);
     writer.stop();
+}
+
+TEST(LibraryPersistence, RetainedCapacityCannotBypassThePayloadBudget)
+{
+    QTemporaryDir directory;
+    const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    persistence::qt::LibraryStore store{path};
+    QObject owner;
+    app::LibraryPersistenceLimits limits;
+    limits.pending_payload_bytes =
+        sizeof(library::RevisionDelta) + 8 * sizeof(library::TrackRecord);
+    for (const bool nested_text : {false, true}) {
+        app::LibraryPersistence writer{owner, store, {}, {}, limits};
+        auto delta = std::make_shared<library::RevisionDelta>();
+        delta->changes.revision = 1;
+        library::TrackRecord track;
+        track.id = {"media"};
+        delta->tracks.push_back(track);
+        if (nested_text)
+            delta->tracks.front().embedded.comment.reserve(limits.pending_payload_bytes + 1);
+        else
+            delta->tracks.reserve(limits.pending_payload_bytes / sizeof(library::TrackRecord) + 1);
+        EXPECT_FALSE(writer.accept(delta));
+        EXPECT_EQ(writer.pending_revision(), 0U);
+        auto small = std::make_shared<library::RevisionDelta>();
+        small->changes.revision = 1;
+        small->tracks.push_back(track);
+        const auto accepted = writer.accept(small);
+        ASSERT_TRUE(accepted);
+        EXPECT_EQ(accepted.state, library::CommitState::accepted);
+        EXPECT_EQ(writer.pending_revision(), 1U);
+        ASSERT_TRUE(writer.flush().succeeded());
+        EXPECT_TRUE(accepted.receipt->durable());
+    }
+}
+
+TEST(LibraryPersistence, RejectsInvalidCapacitiesBeforeStartingTheWriter)
+{
+    QTemporaryDir directory;
+    const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    persistence::qt::LibraryStore store{path};
+    QObject owner;
+    const auto rejected = [&](app::LibraryPersistenceLimits limits) {
+        EXPECT_THROW((app::LibraryPersistence{owner, store, {}, {}, limits}),
+            std::invalid_argument);
+    };
+    app::LibraryPersistenceLimits limits;
+    limits.pending_revisions = 0;
+    rejected(limits);
+    limits = {};
+    limits.outstanding_receipts = 0;
+    rejected(limits);
+    limits = {};
+    limits.pending_payload_bytes = 0;
+    rejected(limits);
+    limits = {};
+    limits.pending_payload_bytes = std::numeric_limits<std::size_t>::max();
+    limits.file_result_extra_bytes = 1;
+    rejected(limits);
 }
 
 } // namespace

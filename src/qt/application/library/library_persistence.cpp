@@ -21,13 +21,51 @@
 #include "library_persistence.hpp"
 #include <QThread>
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 #include <wiola/library/records.hpp>
 
 namespace wiola::app {
 namespace {
 
-constexpr std::size_t max_pending_revisions = 64, max_pending_bytes = 32 * 1024 * 1024;
+LibraryPersistenceLimits checked_limits(LibraryPersistenceLimits limits)
+{
+    if (limits.pending_revisions == 0 || limits.outstanding_receipts == 0 ||
+        limits.pending_payload_bytes == 0 ||
+        limits.file_result_extra_bytes >
+            std::numeric_limits<std::size_t>::max() - limits.pending_payload_bytes)
+        throw std::invalid_argument{"invalid library persistence capacities"};
+    return limits;
+}
+
+// A conservative retained-payload budget, not allocator overhead or whole-process RSS.
+// Inline string storage may be counted twice; unused owned capacity must never be omitted.
+class PayloadSize final {
+public:
+    void add(std::size_t count, std::size_t width = 1) noexcept
+    {
+        const auto maximum = std::numeric_limits<std::size_t>::max();
+        value_ = count > (maximum - value_) / width ? maximum : value_ + count * width;
+    }
+
+    template<class Values>
+    void storage(const Values& values) noexcept
+    {
+        add(values.capacity(), sizeof(typename Values::value_type));
+    }
+
+    template<class Text>
+    void text(const Text& text) noexcept
+    {
+        storage(text);
+        add(1, sizeof(typename Text::value_type)); // The terminating code unit.
+    }
+
+    [[nodiscard]] std::size_t value() const noexcept { return value_; }
+
+private:
+    std::size_t value_{};
+};
 
 template<class Map, class Records>
 void upsert(Map& map, const Records& records)
@@ -56,11 +94,12 @@ auto values(const Map& map)
 } // namespace
 
 LibraryPersistence::LibraryPersistence(QObject& owner, persistence::qt::LibraryStore& store,
-    library::LibrarySnapshot initial, Observer observer)
+    library::LibrarySnapshot initial, Observer observer, LibraryPersistenceLimits limits)
     : delivery_{owner}
     , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
     , store_{store}
     , observer_{std::move(observer)}
+    , limits_{checked_limits(limits)}
     , worker_{[this, initial = std::move(initial)]() mutable { run(std::move(initial)); }}
 {
 }
@@ -76,66 +115,65 @@ LibraryPersistence::~LibraryPersistence()
     delivery_.discard();
 }
 
-std::size_t LibraryPersistence::retained_bytes(const library::RevisionDelta& delta)
+std::size_t LibraryPersistence::retained_bytes(const library::RevisionDelta& delta) noexcept
 {
-    std::size_t result = sizeof(delta) +
-        512 * (delta.tracks.size() + delta.playlists.size() + delta.workspaces.size());
-    const auto text = [&](const auto& value) {
-        result += value.size();
-    };
+    PayloadSize size;
+    size.add(sizeof(delta));
+    size.storage(delta.tracks);
+    size.storage(delta.playlists);
+    size.storage(delta.workspaces);
     for (const auto& track : delta.tracks) {
-        text(track.id.value);
-        text(track.fingerprint);
+        size.text(track.id.value);
+        size.text(track.fingerprint);
+        size.storage(track.locations);
         for (const auto& location : track.locations)
-            result += location.native().size() * sizeof(std::filesystem::path::value_type);
+            size.text(location.native());
+        size.storage(track.tags);
         for (const auto& tag : track.tags) {
-            text(tag.id.value);
-            text(tag.key);
-            text(tag.value);
-            result += sizeof(tag);
+            size.text(tag.id.value);
+            size.text(tag.key);
+            size.text(tag.value);
         }
         for (const auto* value :
             {&track.embedded.title, &track.embedded.artist, &track.embedded.album,
                 &track.embedded.genre, &track.embedded.comment, &track.embedded.composer})
-            text(*value);
+            size.text(*value);
         for (const auto* value :
             {&track.overrides.title, &track.overrides.artist, &track.overrides.album,
                 &track.overrides.genre, &track.overrides.comment, &track.overrides.composer})
             if (*value)
-                text(**value);
+                size.text(**value);
     }
     for (const auto& playlist : delta.playlists) {
-        text(playlist.id.value);
-        text(playlist.name);
+        size.text(playlist.id.value);
+        size.text(playlist.name);
+        size.storage(playlist.entries);
         for (const auto& entry : playlist.entries) {
-            text(entry.id.value);
-            text(entry.media.value);
-            result += sizeof(entry);
+            size.text(entry.id.value);
+            size.text(entry.media.value);
         }
     }
     for (const auto& workspace : delta.workspaces) {
-        text(workspace.id.value);
-        result += workspace.root.native().size() * sizeof(std::filesystem::path::value_type);
+        size.text(workspace.id.value);
+        size.text(workspace.root.native());
     }
-    for (const auto& change : delta.changes.media) {
-        text(change.media.value);
-        result += sizeof(change);
+    size.storage(delta.changes.media);
+    for (const auto& change : delta.changes.media)
+        size.text(change.media.value);
+    for (const auto* ids : {&delta.changes.playlists, &delta.changes.removed_playlists}) {
+        size.storage(*ids);
+        for (const auto& id : *ids)
+            size.text(id.value);
     }
-    for (const auto* ids : {&delta.changes.playlists, &delta.changes.removed_playlists})
-        for (const auto& id : *ids) {
-            text(id.value);
-            result += sizeof(id);
-        }
-    for (const auto* ids : {&delta.changes.workspaces, &delta.changes.removed_workspaces})
-        for (const auto& id : *ids) {
-            text(id.value);
-            result += sizeof(id);
-        }
-    for (const auto& id : delta.changes.removed_media) {
-        text(id.value);
-        result += sizeof(id);
+    for (const auto* ids : {&delta.changes.workspaces, &delta.changes.removed_workspaces}) {
+        size.storage(*ids);
+        for (const auto& id : *ids)
+            size.text(id.value);
     }
-    return result;
+    size.storage(delta.changes.removed_media);
+    for (const auto& id : delta.changes.removed_media)
+        size.text(id.value);
+    return size.value();
 }
 
 library::CommitResult
@@ -146,14 +184,15 @@ LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
         return false;
     const auto bytes = retained_bytes(*delta), revision = delta->changes.revision;
     const bool critical = delta->priority == library::CommitPriority::file_result;
-    const auto byte_limit = max_pending_bytes + (critical ? 16 * 1024 * 1024 : 0);
+    const auto byte_limit =
+        limits_.pending_payload_bytes + (critical ? limits_.file_result_extra_bytes : 0);
     auto receipt = std::make_shared<library::CommitReceipt>(revision);
     {
         std::lock_guard lock{mutex_};
         if (stopping_ || revision != latest_ + 1 ||
-            pending_.size() >= max_pending_revisions - (critical ? 0 : 1) ||
-            receipts_.size() >= 4096 - (critical ? 0 : 1) || bytes > byte_limit ||
-            pending_bytes_ > byte_limit - bytes)
+            pending_.size() >= limits_.pending_revisions - (critical ? 0 : 1) ||
+            receipts_.size() >= limits_.outstanding_receipts - (critical ? 0 : 1) ||
+            bytes > byte_limit || pending_bytes_ > byte_limit - bytes)
             return false;
         pending_.push_back(std::move(delta));
         try {
