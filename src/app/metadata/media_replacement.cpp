@@ -183,15 +183,15 @@ commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
     backup += ".wiola-backup";
     if (!hooks.backup_suffix.empty())
         backup += "." + hooks.backup_suffix;
-    auto native = platform::native_file_replacement(library::fingerprint_media);
+    auto native = media::native_file_replacement(library::fingerprint_media);
     auto& port = hooks.replacement ? *hooks.replacement : *native;
     const auto outcome = port.replace({source, temporary, backup, prepared.source_fingerprint,
                                           prepared.output_fingerprint},
         [&] { return context.stop_reason() == media::StopReason::none; });
-    if (outcome.error != platform::FileReplacementError::none) {
-        auto result = failure(outcome.error == platform::FileReplacementError::conflict
+    if (outcome.error != media::FileReplacementError::none) {
+        auto result = failure(outcome.error == media::FileReplacementError::conflict
                 ? media::MetadataWriteError::conflicted
-                : outcome.error == platform::FileReplacementError::cancelled &&
+                : outcome.error == media::FileReplacementError::cancelled &&
                     context.stop_reason() != media::StopReason::none
                 ? media::MetadataWriteError::cancelled
                 : media::MetadataWriteError::io,
