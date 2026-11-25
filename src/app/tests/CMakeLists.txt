@@ -1,3 +1,33 @@
+include(GoogleTest)
+add_executable(
+    app_library_persistence_test
+    library/library_persistence_test.cpp
+)
+target_link_libraries(
+    app_library_persistence_test
+    PRIVATE
+        wiola::library_persistence
+        GTest::gtest_main
+        wiola_sanitizer
+        wiola_coverage
+        wiola_warnings
+)
+gtest_discover_tests(app_library_persistence_test)
+wiola_add_public_consumer_test(
+    LibraryPersistence.InstalledConsumer
+    PACKAGE wiola_library_persistence
+    TARGET wiola::library_persistence
+    CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/library/persistence_consumer.cpp"
+    COMPONENTS
+        wiola_quantities
+        wiola_media
+        wiola_library
+        wiola_library_persistence
+)
+if(WIOLA_COMPONENT_BUILD)
+    return()
+endif()
+
 wiola_add_test(
     app_metadata_batch_edit_test
     SOURCES metadata/metadata_batch_edit_test.cpp

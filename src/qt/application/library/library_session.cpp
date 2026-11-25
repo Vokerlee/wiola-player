@@ -19,7 +19,7 @@
  */
 
 #include "library_session.hpp"
-#include "library_persistence.hpp"
+#include "library_persistence_delivery.hpp"
 #include <QFileInfo>
 #include <QThread>
 #include <algorithm>
@@ -68,8 +68,9 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     restore_result_ = persistence::qt::restore_repository(store_, repository_);
     if (!restore_result_.succeeded())
         restore_error_ = "Could not restore the saved library";
-    persistence_worker_ = std::make_unique<LibraryPersistence>(*this, store_,
-        library::snapshot_of(repository_), [this](std::uint64_t revision, auto result) {
+    persistence_worker_ = std::make_unique<LibraryPersistence>(snapshot_writer_,
+        library_persistence_delivery(persistence_delivery_), library::snapshot_of(repository_),
+        [this](std::uint64_t revision, auto result) {
             if (!result.succeeded() && persistence_worker_->durable_revision() < revision) {
                 save_failed_ = true;
                 emit status_changed(
@@ -125,7 +126,7 @@ LibrarySession::~LibrarySession()
     static_cast<void>(shutdown());
 }
 
-persistence::qt::LibraryStoreResult LibrarySession::shutdown()
+SnapshotWriteResult LibrarySession::shutdown()
 {
     check_owner();
     if (!accepting_ && shutdown_result_.succeeded())
@@ -137,13 +138,13 @@ persistence::qt::LibraryStoreResult LibrarySession::shutdown()
     pending_scans_.clear();
     metadata_.stop();
     shutdown_result_ = !restore_result_.succeeded() && repository_.change_revision() == 0
-        ? restore_result_
+        ? persistence::qt::snapshot_write_result(restore_result_)
         : persistence_worker_->flush();
     if (shutdown_result_.succeeded())
         persistence_worker_->stop();
     settings_.sync();
     if (shutdown_result_.succeeded() && settings_.status() != QSettings::NoError)
-        shutdown_result_.io = persistence::qt::FileStoreError::io;
+        shutdown_result_.error = SnapshotWriteError::io;
     return shutdown_result_;
 }
 
@@ -153,7 +154,7 @@ void LibrarySession::retry_save()
     persistence_worker_->retry();
 }
 
-persistence::qt::LibraryStoreResult LibrarySession::flush()
+SnapshotWriteResult LibrarySession::flush()
 {
     check_owner();
     return persistence_worker_->flush();

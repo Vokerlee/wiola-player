@@ -59,7 +59,6 @@ wiola_add_library(
         wiola::presentation
         wiola::qt_projection
         wiola_playback_preferences
-        wiola_library_session
         wiola::qt_files
         wiola_qt_settings
         wiola::qt_paths
@@ -78,6 +77,6 @@ add_library(wiola::qt_widgets ALIAS wiola_qt_widgets)
 set_target_properties(wiola_qt_widgets PROPERTIES AUTOMOC ON)
 target_link_libraries(
     wiola_qt_widgets
-    PUBLIC Qt6::Widgets wiola_app wiola::library
+    PUBLIC Qt6::Widgets wiola_app wiola::library wiola_library_session
     PRIVATE wiola::local_media
 )

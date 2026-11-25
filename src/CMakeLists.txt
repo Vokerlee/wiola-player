@@ -11,9 +11,14 @@ endif()
 if(NOT WIOLA_COMPONENT_BUILD OR library IN_LIST WIOLA_SELECTED_COMPONENTS)
     add_subdirectory(library)
 endif()
+if(
+    NOT WIOLA_COMPONENT_BUILD
+    OR library_persistence IN_LIST WIOLA_SELECTED_COMPONENTS
+)
+    add_subdirectory(app)
+endif()
 if(WIOLA_COMPONENT_BUILD)
     return()
 endif()
-add_subdirectory(app)
 add_subdirectory(presentation)
 add_subdirectory(qt)

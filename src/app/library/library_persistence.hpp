@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Synchronized payload delivery to the desktop event loop.
+ * @brief Portable bounded snapshot persistence and owner-thread acknowledgments.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -21,11 +21,11 @@
 #pragma once
 #include <condition_variable>
 #include <deque>
+#include <functional>
 #include <map>
 #include <mutex>
-#include <qt/queued_delivery.hpp>
-#include <qt/storage/library_store.hpp>
 #include <thread>
+#include <wiola/app/library/snapshot_writer.hpp>
 #include <wiola/library/commit_receipt.hpp>
 #include <wiola/library/revision_delta.hpp>
 
@@ -42,11 +42,18 @@ struct LibraryPersistenceLimits {
 /// One bounded writer; only owned immutable deltas cross the GUI/worker boundary.
 class LibraryPersistence final {
 public:
-    using Result = persistence::qt::LibraryStoreResult;
+    using Result = SnapshotWriteResult;
+
+    /// post is producer-safe and queues a task for the accepting thread; drain runs queued
+    /// tasks on that thread. Both callbacks and the supplied writer outlive this workflow.
+    struct Delivery {
+        std::function<bool(std::function<void()>)> post;
+        std::function<void()> drain;
+    };
+
     using Observer = std::function<void(std::uint64_t, Result)>;
-    LibraryPersistence(QObject& owner, persistence::qt::LibraryStore& store,
-        library::LibrarySnapshot initial, Observer observer = {},
-        LibraryPersistenceLimits limits = {});
+    LibraryPersistence(SnapshotWriter& store, Delivery delivery, library::LibrarySnapshot initial,
+        Observer observer = {}, LibraryPersistenceLimits limits = {});
     ~LibraryPersistence();
     [[nodiscard]] library::CommitResult accept(std::shared_ptr<const library::RevisionDelta> delta);
     void when_durable(std::uint64_t revision, std::function<void(bool)> observer);
@@ -69,9 +76,11 @@ private:
     void run(library::LibrarySnapshot initial);
     void completed(std::uint64_t revision, Result result);
     static std::size_t retained_bytes(const library::RevisionDelta& delta) noexcept;
-    QueuedDelivery delivery_;
+    void check_owner() const;
+    const std::thread::id owner_{std::this_thread::get_id()};
+    const Delivery delivery_;
     std::shared_ptr<Lifetime> lifetime_;
-    persistence::qt::LibraryStore& store_;
+    SnapshotWriter& store_;
     Observer observer_;
     const LibraryPersistenceLimits limits_;
     std::map<std::uint64_t, std::shared_ptr<library::CommitReceipt>> receipts_;

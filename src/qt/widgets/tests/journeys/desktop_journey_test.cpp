@@ -191,8 +191,7 @@ TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLa
     }
     if (!player.shutdown()) {
         const auto saved = player.library().flush();
-        FAIL() << "library save io=" << static_cast<int>(saved.io)
-               << " schema=" << static_cast<int>(saved.schema)
+        FAIL() << "library save error=" << static_cast<int>(saved.error)
                << " preferences saved=" << player.preferences().flush();
     }
 }
