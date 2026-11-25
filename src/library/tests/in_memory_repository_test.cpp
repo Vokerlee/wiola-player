@@ -212,20 +212,21 @@ TEST_F(InMemoryRepository, BoundsTagsAndAvoidsARestoredTagIdentity)
     EXPECT_FALSE(repository.add_tag(id, "overflow", "no").valid());
 }
 
-TEST_F(InMemoryRepository, StoresNormalizedWorkspaceRootsAndPersistentIdentities)
+TEST_F(InMemoryRepository, StoresObservedWorkspaceRootsAndPersistentIdentities)
 {
-    const WorkspaceId first = repository.create_workspace("music", false);
+    const WorkspaceId first = repository.create_workspace("music/album/..", false);
     ASSERT_TRUE(first.valid());
     ASSERT_NE(repository.workspace(first), nullptr);
 
     EXPECT_EQ(repository.workspace(first)->root,
-        std::filesystem::absolute("music").lexically_normal());
+        std::filesystem::path{"music/album/.."}.lexically_normal());
     EXPECT_FALSE(repository.workspace(first)->recursive);
 
     WorkspaceRecord restored{.id = WorkspaceId{"workspace-restored"},
         .root = "other",
         .recursive = true};
     ASSERT_TRUE(repository.put_workspace(restored));
+    EXPECT_EQ(repository.workspace(restored.id)->root, restored.root);
     EXPECT_EQ(repository.create_workspace("next").value, "workspace-2");
 
     EXPECT_FALSE(repository.create_workspace({}).valid());

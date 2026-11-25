@@ -101,6 +101,14 @@ LibraryStoreResult restore_repository(const LibraryStore& storage,
     const auto result = storage.load(snapshot);
     if (!result.succeeded())
         return result;
+    // Legacy snapshots may contain relative roots. Resolve them at the native restore boundary,
+    // before any catalog mutation, rather than making the domain consult the process directory.
+    for (auto& workspace : snapshot.workspaces) {
+        std::error_code error;
+        workspace.root = std::filesystem::absolute(workspace.root, error);
+        if (error)
+            return {.schema = LibraryJsonError::invalid_record};
+    }
     return repository.replace_all(snapshot.tracks, snapshot.playlists, snapshot.workspaces)
         ? LibraryStoreResult{}
         : LibraryStoreResult{.schema = LibraryJsonError::invalid_record};

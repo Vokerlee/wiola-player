@@ -47,6 +47,7 @@ public:
         const MediaId& media) = 0;
     virtual bool remove_entry(const PlaylistId& playlist, const PlaylistEntryId& entry) = 0;
 
+    /// Stores observed roots with lexical normalization only; native resolution is caller-owned.
     virtual WorkspaceId create_workspace(std::filesystem::path root, bool recursive = true) = 0;
     virtual bool put_workspace(WorkspaceRecord workspace) = 0;
     [[nodiscard]] virtual const WorkspaceRecord* workspace(const WorkspaceId& id) const = 0;

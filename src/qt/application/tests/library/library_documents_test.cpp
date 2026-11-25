@@ -58,6 +58,25 @@ TEST(LibraryDocuments, FailedPersistenceRollsBackWorkspaceAndPlaylistImports)
     EXPECT_EQ(repository.playlist(imported.id)->entries.size(), 1);
 }
 
+TEST(LibraryDocuments, ResolvesRelativeFolderBeforeMutatingTheCatalog)
+{
+    library::InMemoryRepository repository;
+    int saves = 0;
+    app::LibraryDocuments documents{repository, [&](const auto&) {
+                                        ++saves;
+                                        return true;
+                                    }};
+    const std::filesystem::path relative{"music/album/.."};
+    const auto opened = documents.open_folder(relative);
+    ASSERT_EQ(opened.error, app::LibraryDocumentError::none);
+    ASSERT_NE(repository.workspace(opened.id), nullptr);
+    EXPECT_EQ(repository.workspace(opened.id)->root,
+        std::filesystem::absolute(relative).lexically_normal());
+    EXPECT_EQ(saves, 1);
+    EXPECT_EQ(documents.open_folder({}).error, app::LibraryDocumentError::invalid);
+    EXPECT_EQ(saves, 1);
+}
+
 TEST(LibraryDocuments, OversizedSparseImportIsRejectedWithoutAllocatingOrCreatingRecords)
 {
     QTemporaryDir directory;

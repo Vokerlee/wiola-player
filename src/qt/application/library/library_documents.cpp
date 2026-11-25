@@ -36,8 +36,12 @@ WorkspaceCreation LibraryDocuments::open_folder(const std::filesystem::path& roo
 {
     if (root.empty())
         return {LibraryDocumentError::invalid, {}};
+    std::error_code error;
+    const auto absolute = std::filesystem::absolute(root, error);
+    if (error)
+        return {LibraryDocumentError::invalid, {}};
     library::RepositoryTransaction transaction{repository_, persist_};
-    const auto id = repository_.create_workspace(root);
+    const auto id = repository_.create_workspace(absolute);
     if (!id.valid())
         return {LibraryDocumentError::invalid, {}};
     if (!transaction.commit())

@@ -226,9 +226,7 @@ WorkspaceId InMemoryRepository::create_workspace(std::filesystem::path root, boo
     if (transaction_)
         transaction_->touch_workspace(id);
     data_.workspaces_.emplace(id,
-        WorkspaceRecord{.id = id,
-            .root = std::filesystem::absolute(root).lexically_normal(),
-            .recursive = recursive});
+        WorkspaceRecord{.id = id, .root = root.lexically_normal(), .recursive = recursive});
 
     return id;
 }
@@ -238,7 +236,7 @@ bool InMemoryRepository::put_workspace(WorkspaceRecord workspace)
     if (!workspace.id.valid() || workspace.root.empty())
         return false;
 
-    workspace.root = std::filesystem::absolute(workspace.root).lexically_normal();
+    workspace.root = workspace.root.lexically_normal();
     if (transaction_)
         transaction_->touch_workspace(workspace.id);
     data_.workspaces_.insert_or_assign(workspace.id, std::move(workspace));
