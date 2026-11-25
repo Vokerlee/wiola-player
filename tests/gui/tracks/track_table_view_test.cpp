@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gui/model/documents/queue_rows.hpp>
+#include <presentation/documents/queue_rows.hpp>
 
 #include <media/local/resource.hpp>
 

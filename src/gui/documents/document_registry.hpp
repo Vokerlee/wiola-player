@@ -23,11 +23,11 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-#include <gui/model/documents/document_id.hpp>
-#include <gui/model/tracks/track_commands.hpp>
-#include <gui/model/tracks/track_identity.hpp>
 #include <map>
 #include <optional>
+#include <presentation/documents/document_id.hpp>
+#include <presentation/tracks/track_commands.hpp>
+#include <presentation/tracks/track_identity.hpp>
 #include <vector>
 
 namespace wiola::gui {

@@ -20,10 +20,10 @@
 
 #pragma once
 #include <functional>
-#include <gui/model/tracks/track_row.hpp>
 #include <library/library_changes.hpp>
 #include <library/repository.hpp>
 #include <map>
+#include <presentation/tracks/track_row.hpp>
 #include <span>
 #include <unordered_map>
 #include <wiola/playback/queue_entry.hpp>

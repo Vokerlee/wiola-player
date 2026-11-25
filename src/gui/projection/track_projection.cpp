@@ -19,8 +19,8 @@
  */
 
 #include <QThread>
-#include <gui/model/tracks/track_view_pipeline.hpp>
 #include <gui/projection/track_projection.hpp>
+#include <presentation/tracks/track_view_pipeline.hpp>
 
 namespace wiola::gui {
 

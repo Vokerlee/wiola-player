@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <gui/model/tracks/track_row.hpp>
 #include <library/repository.hpp>
+#include <presentation/tracks/track_row.hpp>
 #include <wiola/units.hpp>
 
 #include <string>

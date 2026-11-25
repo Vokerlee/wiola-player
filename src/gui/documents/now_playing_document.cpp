@@ -20,8 +20,8 @@
 
 #include "now_playing_document.hpp"
 
-#include <gui/model/documents/queue_rows.hpp>
 #include <media/local/resource.hpp>
+#include <presentation/documents/queue_rows.hpp>
 
 #include <gui/tracks/track_browser.hpp>
 

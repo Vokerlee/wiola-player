@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "track_view_pipeline.hpp"
 #include <app/library/search_index.hpp>
-#include <gui/model/tracks/track_view_pipeline.hpp>
 #include <set>
 
 #include <library/location.hpp>

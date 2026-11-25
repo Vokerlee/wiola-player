@@ -22,7 +22,7 @@
 
 #include <media/local/resource.hpp>
 
-#include <gui/model/documents/queue_rows.hpp>
+#include <presentation/documents/queue_rows.hpp>
 
 #include <gui/tracks/track_table_model.hpp>
 

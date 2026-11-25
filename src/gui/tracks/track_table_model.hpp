@@ -22,10 +22,10 @@
 
 #include "track_column.hpp"
 #include <gui/appearance/artwork_presentation.hpp>
-#include <gui/model/tracks/track_view_state.hpp>
+#include <presentation/tracks/track_view_state.hpp>
 
-#include <gui/model/tracks/track_row.hpp>
 #include <library/search.hpp>
+#include <presentation/tracks/track_row.hpp>
 
 #include <QAbstractTableModel>
 #include <QTimer>

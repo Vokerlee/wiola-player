@@ -1,9 +1,9 @@
 wiola_add_library(
     wiola_gui_projection
     SOURCES track_projection.cpp
-    LIBS wiola_gui_model wiola_desktop_delivery
+    LIBS wiola::presentation wiola_desktop_delivery
 )
-target_link_libraries(wiola_gui_projection PUBLIC Qt6::Core wiola_gui_model)
+target_link_libraries(wiola_gui_projection PUBLIC Qt6::Core wiola::presentation)
 add_executable(wiola_core_adapter_boundary EXCLUDE_FROM_ALL boundary.cpp)
 target_link_libraries(
     wiola_core_adapter_boundary

@@ -24,8 +24,8 @@
 #include <gui/projection/track_projection.hpp>
 
 #include <gui/controls/clock.hpp>
-#include <gui/model/tracks/track_view_pipeline.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
+#include <presentation/tracks/track_view_pipeline.hpp>
 
 #include <library/location.hpp>
 #include <library/repository.hpp>

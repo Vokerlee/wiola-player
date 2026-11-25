@@ -21,8 +21,8 @@
 #pragma once
 #include <QHeaderView>
 #include <array>
-#include <gui/model/tracks/track_column_identity.hpp>
-#include <gui/model/tracks/track_sort.hpp>
+#include <presentation/tracks/track_column_identity.hpp>
+#include <presentation/tracks/track_sort.hpp>
 #include <variant>
 
 namespace wiola::gui {

@@ -1,14 +1,4 @@
 wiola_add_test(
-    gui_track_sort_test
-    SOURCES tracks/track_sort_test.cpp
-    LIBS wiola_gui wiola_playback_queue
-)
-wiola_add_test(
-    gui_track_sorter_test
-    SOURCES tracks/track_sorter_test.cpp
-    LIBS wiola_gui wiola_playback_queue
-)
-wiola_add_test(
     gui_track_search_panel_test
     SOURCES tracks/track_search_panel_test.cpp
     LIBS wiola_gui Qt6::Test

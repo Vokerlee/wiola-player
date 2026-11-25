@@ -20,9 +20,9 @@
 
 #pragma once
 #include <app/workspace/workspace_scanner.hpp>
-#include <gui/model/tracks/track_row.hpp>
 #include <library/repository.hpp>
 #include <map>
+#include <presentation/tracks/track_row.hpp>
 #include <unordered_map>
 #include <unordered_set>
 

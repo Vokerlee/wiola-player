@@ -21,10 +21,10 @@
 #pragma once
 #include <condition_variable>
 #include <desktop/queued_delivery.hpp>
-#include <gui/model/tracks/track_view_state.hpp>
 #include <map>
 #include <mutex>
 #include <optional>
+#include <presentation/tracks/track_view_state.hpp>
 #include <stop_token>
 #include <thread>
 
