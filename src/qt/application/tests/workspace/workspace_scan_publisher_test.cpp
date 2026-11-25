@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/temporary_directory.hpp>
 #include <qt/application/workspace/workspace_scan_publisher.hpp>
 
 #include <QCoreApplication>
@@ -55,9 +56,12 @@ bool pump_until(std::function<bool()> predicate)
 
 TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path() / "wiola-publish";
-    std::filesystem::remove_all(root);
-    for (int index = 0; index < 70; ++index)
+    const wiola::testing::TemporaryDirectory directory;
+    const auto& root = directory.path();
+    wiola::app::WorkspaceScanScheduling policy;
+    policy.scan.batch_size = 3;
+    const auto track_count = 2 * policy.scan.batch_size + 1;
+    for (std::size_t index = 0; index < track_count; ++index)
         file(root / (std::to_string(index) + ".wav"));
 
     std::vector<wiola::app::WorkspaceScanBatch> batches;
@@ -68,7 +72,8 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
             for (const auto& entry : batch.entries)
                 tracks.push_back(entry.location);
             batches.push_back(std::move(batch));
-        }};
+        },
+        policy};
     const auto generation = publisher.start(
         {.id = wiola::library::WorkspaceId{"workspace"}, .root = root, .recursive = true}, {".wav"}
     );
@@ -78,22 +83,20 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
             batches.back().status != wiola::app::WorkspaceScanStatus::running;
     }));
     EXPECT_EQ(batches.back().status, wiola::app::WorkspaceScanStatus::complete);
-    EXPECT_EQ(tracks.size(), 70);
-    EXPECT_EQ(std::set<std::filesystem::path>(tracks.begin(), tracks.end()).size(), 70);
+    EXPECT_EQ(tracks.size(), track_count);
+    EXPECT_EQ(std::set<std::filesystem::path>(tracks.begin(), tracks.end()).size(), track_count);
     EXPECT_EQ(batches.back().generation, generation);
 
     for (const auto& batch : batches)
-        EXPECT_LE(batch.entries.size(), 64);
-
-    std::filesystem::remove_all(root);
+        EXPECT_LE(batch.entries.size(), policy.scan.batch_size);
 }
 
 TEST(WorkspaceScanPublisher, SupersedingOneWorkspaceDropsOnlyItsOlderQueuedGeneration)
 {
-    const std::filesystem::path base = std::filesystem::temp_directory_path() / "wiola-generations";
+    const wiola::testing::TemporaryDirectory directory;
+    const auto& base = directory.path();
     const std::filesystem::path old_root = base / "old";
     const std::filesystem::path new_root = base / "new";
-    std::filesystem::remove_all(base);
     file(old_root / "old.wav");
     file(new_root / "new.wav");
 
@@ -120,15 +123,12 @@ TEST(WorkspaceScanPublisher, SupersedingOneWorkspaceDropsOnlyItsOlderQueuedGener
         EXPECT_EQ(batch.workspace, wiola::library::WorkspaceId{"workspace"});
         EXPECT_EQ(batch.generation, current);
     }
-
-    std::filesystem::remove_all(base);
 }
 
 TEST(WorkspaceScanPublisher, CancellationInvalidatesAlreadyQueuedBatches)
 {
-    const std::filesystem::path root =
-        std::filesystem::temp_directory_path() / "wiola-cancel-queue";
-    std::filesystem::remove_all(root);
+    const wiola::testing::TemporaryDirectory directory;
+    const auto& root = directory.path();
     file(root / "track.wav");
 
     std::vector<wiola::app::WorkspaceScanBatch> batches;
@@ -142,7 +142,6 @@ TEST(WorkspaceScanPublisher, CancellationInvalidatesAlreadyQueuedBatches)
     QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
 
     EXPECT_TRUE(batches.empty());
-    std::filesystem::remove_all(root);
 }
 
 struct ScanGate {
@@ -168,8 +167,8 @@ struct ScanGate {
 
 TEST(WorkspaceScanPublisher, CancellingOneWorkspaceLeavesAnotherConcurrentScanIntact)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-independent-scans";
-    std::filesystem::remove_all(root);
+    const wiola::testing::TemporaryDirectory directory;
+    const auto& root = directory.path();
     file(root / "first" / "one.wav");
     file(root / "second" / "two.wav");
     ScanGate gate;
@@ -199,13 +198,12 @@ TEST(WorkspaceScanPublisher, CancellingOneWorkspaceLeavesAnotherConcurrentScanIn
         return batch.generation == second &&
             batch.status == wiola::app::WorkspaceScanStatus::complete && batch.entries.size() == 1;
     }));
-    std::filesystem::remove_all(root);
 }
 
 TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverflow)
 {
-    const auto root = std::filesystem::temp_directory_path() / "wiola-bounded-scans";
-    std::filesystem::remove_all(root);
+    const wiola::testing::TemporaryDirectory directory;
+    const auto& root = directory.path();
     for (const auto* name : {"first", "second", "third"})
         file(root / name / "track.wav");
     ScanGate gate;
@@ -237,7 +235,6 @@ TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverf
         });
     }));
     publisher.stop();
-    std::filesystem::remove_all(root);
 }
 
 } // namespace
