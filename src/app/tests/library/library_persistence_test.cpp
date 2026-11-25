@@ -94,6 +94,7 @@ public:
     {
         std::unique_lock lock{mutex_};
         snapshots_.push_back(snapshot);
+        entered_ = true;
         changed_.notify_all();
         changed_.wait(lock, [this] { return !blocked_; });
         if (throws_)
@@ -105,6 +106,7 @@ public:
     {
         std::lock_guard lock{mutex_};
         blocked_ = true;
+        entered_ = false;
     }
 
     void release(app::SnapshotWriteResult result = {}, bool throws = false)
@@ -119,8 +121,7 @@ public:
     bool wait_entered()
     {
         std::unique_lock lock{mutex_};
-        return changed_.wait_for(lock, std::chrono::seconds{5},
-            [this] { return !snapshots_.empty(); });
+        return changed_.wait_for(lock, std::chrono::seconds{5}, [this] { return entered_; });
     }
 
     library::LibrarySnapshot last_snapshot() const
@@ -134,7 +135,7 @@ private:
     std::condition_variable changed_;
     std::vector<library::LibrarySnapshot> snapshots_;
     app::SnapshotWriteResult result_;
-    bool blocked_{}, throws_{};
+    bool blocked_{}, throws_{}, entered_{};
 };
 
 std::shared_ptr<library::RevisionDelta> revision(std::uint64_t number, const char* id = "media")
@@ -387,6 +388,59 @@ TEST_F(LibraryPersistenceCore, ExactHeaderCapacityAdmitsAnEmptyRevision)
     EXPECT_TRUE(writer->flush().succeeded());
     EXPECT_TRUE(accepted.receipt->durable());
 }
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST_F(LibraryPersistenceCore, EveryAdmissionAllocationFailurePreservesThePendingBoundary)
+{
+    bool observed_failure = false;
+    for (std::size_t after = 0;; ++after) {
+        const app::LibraryPersistenceLimits limits{
+            .pending_revisions = 2,
+            .outstanding_receipts = 3,
+        };
+        store.block();
+        start({}, {}, limits);
+        const auto first = writer->accept(revision(1, "first"));
+        ASSERT_TRUE(first);
+        ASSERT_TRUE(store.wait_entered());
+        const auto delta = revision(2, "second");
+        library::CommitResult accepted;
+        bool failed = false;
+        {
+            const wiola::testing::AllocationFailure failure{after};
+            try {
+                accepted = writer->accept(delta);
+            } catch (const std::bad_alloc&) {
+                failed = true;
+            }
+        }
+        EXPECT_EQ(writer->pending_revision(), failed ? 1U : 2U);
+        EXPECT_EQ(writer->durable_revision(), 0U);
+        if (failed) {
+            observed_failure = true;
+            EXPECT_FALSE(accepted);
+            accepted = writer->accept(delta);
+        }
+        ASSERT_TRUE(accepted);
+        EXPECT_EQ(accepted.revision, delta->changes.revision);
+        EXPECT_FALSE(writer->accept(revision(3, "capacity-reserved")));
+
+        store.release();
+        ASSERT_TRUE(writer->flush().succeeded());
+        EXPECT_TRUE(first.receipt->durable());
+        EXPECT_TRUE(accepted.receipt->durable());
+        EXPECT_EQ(writer->durable_revision(), delta->changes.revision);
+        const auto snapshot = store.last_snapshot();
+        ASSERT_EQ(snapshot.tracks.size(), 2U);
+        EXPECT_EQ(snapshot.tracks.front().id.value, "first");
+        EXPECT_EQ(snapshot.tracks.back(), delta->tracks.front());
+        if (!failed) {
+            EXPECT_TRUE(observed_failure);
+            break;
+        }
+    }
+}
+#endif
 
 TEST_F(LibraryPersistenceCore, PhysicalResultMayUseTheLastByteOfItsReservedCapacity)
 {
