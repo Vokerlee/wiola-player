@@ -30,15 +30,13 @@ target_link_libraries(wiola_saved_playlists PUBLIC Qt6::Core wiola::library)
 wiola_add_library(
     wiola_player_application
     SOURCES player_application.cpp
-    LIBS
-        wiola_library_session
-        wiola_playback_preferences
-        wiola_codec
-        wiola::audio_miniaudio
-        wiola::local_media
+    LIBS wiola_codec wiola::audio_miniaudio wiola::local_media
 )
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_player_application PUBLIC Qt6::Core wiola_app)
+target_link_libraries(
+    wiola_player_application
+    PUBLIC Qt6::Core wiola_app wiola_library_session wiola_playback_preferences
+)
 wiola_add_library(
     wiola_queue_migration
     SOURCES library/queue_library_migration.cpp
@@ -63,7 +61,6 @@ wiola_add_library(
     LIBS
         wiola_library_persistence
         wiola_saved_playlists
-        wiola::qt_library_store
         wiola_media_revisions
         wiola_metadata_writes
         wiola_workspace_scans
@@ -72,7 +69,10 @@ wiola_add_library(
         wiola::qt_paths
 )
 set_target_properties(wiola_library_session PROPERTIES AUTOMOC ON)
-target_link_libraries(wiola_library_session PUBLIC Qt6::Core wiola_app)
+target_link_libraries(
+    wiola_library_session
+    PUBLIC Qt6::Core wiola_app wiola::qt_library_store wiola::qt_delivery
+)
 
 wiola_add_library(
     wiola_playback_preferences
@@ -99,10 +99,3 @@ wiola_add_library(
     LIBS wiola_m3u wiola::qt_files wiola::qt_paths
 )
 target_link_libraries(wiola_library_documents PUBLIC Qt6::Core wiola::library)
-
-wiola_add_library(
-    wiola_library_persistence
-    SOURCES library/library_persistence.cpp
-    LIBS wiola::qt_library_store wiola::qt_delivery
-)
-target_link_libraries(wiola_library_persistence PUBLIC Qt6::Core wiola::library)

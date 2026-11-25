@@ -6,6 +6,7 @@ set(WIOLA_PORTABLE_COMPONENTS
     audio
     playback
     library
+    library_persistence
 )
 set(WIOLA_COMPONENTS
     ""
@@ -30,6 +31,9 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
     endif()
     if(audio IN_LIST WIOLA_SELECTED_COMPONENTS)
         list(APPEND WIOLA_SELECTED_COMPONENTS borrowed_reference media)
+    endif()
+    if(library_persistence IN_LIST WIOLA_SELECTED_COMPONENTS)
+        list(APPEND WIOLA_SELECTED_COMPONENTS library)
     endif()
     if(library IN_LIST WIOLA_SELECTED_COMPONENTS)
         list(APPEND WIOLA_SELECTED_COMPONENTS media)

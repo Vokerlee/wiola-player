@@ -34,7 +34,9 @@
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <qt/application/workspace/workspace_scan_publisher.hpp>
 #include <qt/application/workspace/workspace_watcher.hpp>
+#include <qt/queued_delivery.hpp>
 #include <qt/storage/library_store.hpp>
+#include <qt/storage/snapshot_writer.hpp>
 #endif
 #include <QObject>
 #include <QSettings>
@@ -53,9 +55,9 @@ public:
     LibrarySession(std::filesystem::path file, std::shared_ptr<media::MediaProvider> provider,
         QObject* parent = nullptr, persistence::qt::AtomicFileStore::OutputFactory output = {});
     ~LibrarySession() override;
-    [[nodiscard]] persistence::qt::LibraryStoreResult shutdown();
+    [[nodiscard]] SnapshotWriteResult shutdown();
     void retry_save();
-    [[nodiscard]] persistence::qt::LibraryStoreResult flush();
+    [[nodiscard]] SnapshotWriteResult flush();
 
     [[nodiscard]] library::InMemoryRepository& repository();
     [[nodiscard]] const library::InMemoryRepository& repository() const;
@@ -118,9 +120,11 @@ private:
     void index_changes(const library::LibraryChangeBatch& batch);
 
     bool accepting_{true};
-    persistence::qt::LibraryStoreResult shutdown_result_;
+    SnapshotWriteResult shutdown_result_;
     QSettings settings_;
     persistence::qt::LibraryStore store_;
+    persistence::qt::SnapshotWriter snapshot_writer_{store_};
+    QueuedDelivery persistence_delivery_{*this};
     library::InMemoryRepository repository_;
     std::unique_ptr<LibraryPersistence> persistence_worker_;
     bool save_failed_{};

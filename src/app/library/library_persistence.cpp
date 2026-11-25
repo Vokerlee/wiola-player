@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Synchronized payload delivery to the desktop event loop.
+ * @brief Portable bounded snapshot persistence and owner-thread acknowledgments.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,7 +19,6 @@
  */
 
 #include "library_persistence.hpp"
-#include <QThread>
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -27,6 +26,13 @@
 
 namespace wiola::app {
 namespace {
+
+LibraryPersistence::Delivery checked_delivery(LibraryPersistence::Delivery delivery)
+{
+    if (!delivery.post || !delivery.drain)
+        throw std::invalid_argument{"library persistence requires owner delivery callbacks"};
+    return delivery;
+}
 
 LibraryPersistenceLimits checked_limits(LibraryPersistenceLimits limits)
 {
@@ -93,9 +99,9 @@ auto values(const Map& map)
 
 } // namespace
 
-LibraryPersistence::LibraryPersistence(QObject& owner, persistence::qt::LibraryStore& store,
+LibraryPersistence::LibraryPersistence(SnapshotWriter& store, Delivery delivery,
     library::LibrarySnapshot initial, Observer observer, LibraryPersistenceLimits limits)
-    : delivery_{owner}
+    : delivery_{checked_delivery(std::move(delivery))}
     , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
     , store_{store}
     , observer_{std::move(observer)}
@@ -112,7 +118,6 @@ LibraryPersistence::~LibraryPersistence()
     receipts_.clear();
     awaiters_.clear();
     stop();
-    delivery_.discard();
 }
 
 std::size_t LibraryPersistence::retained_bytes(const library::RevisionDelta& delta) noexcept
@@ -179,7 +184,7 @@ std::size_t LibraryPersistence::retained_bytes(const library::RevisionDelta& del
 library::CommitResult
 LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
 {
-    Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    check_owner();
     if (!delta)
         return false;
     const auto bytes = retained_bytes(*delta), revision = delta->changes.revision;
@@ -231,7 +236,7 @@ void LibraryPersistence::retry()
 
 void LibraryPersistence::when_durable(std::uint64_t revision, std::function<void(bool)> observer)
 {
-    Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    check_owner();
     bool saved = false, unavailable = false;
     {
         std::lock_guard lock{mutex_};
@@ -255,7 +260,6 @@ void LibraryPersistence::run(library::LibrarySnapshot initial)
     upsert(playlists, initial.playlists);
     upsert(workspaces, initial.workspaces);
     initial = {};
-    const auto endpoint = delivery_.endpoint();
     const std::weak_ptr<Lifetime> weak = lifetime_;
     for (;;) {
         std::deque<std::shared_ptr<const library::RevisionDelta>> pending;
@@ -281,9 +285,9 @@ void LibraryPersistence::run(library::LibrarySnapshot initial)
         }
         Result result;
         try {
-            result = store_.save({values(tracks), values(playlists), values(workspaces)});
+            result = store_.write({values(tracks), values(playlists), values(workspaces)});
         } catch (const std::runtime_error&) {
-            result.io = persistence::qt::FileStoreError::io;
+            result.error = SnapshotWriteError::io;
         }
         {
             std::lock_guard lock{mutex_};
@@ -296,7 +300,7 @@ void LibraryPersistence::run(library::LibrarySnapshot initial)
                 has_durable_ = true;
             }
             // Publish acknowledgment before waking flush: draining must include this attempt.
-            static_cast<void>(endpoint.post([weak, revision, result] {
+            static_cast<void>(delivery_.post([weak, revision, result] {
                 if (const auto state = weak.lock(); state && state->owner)
                     state->owner->completed(revision, result);
             }));
@@ -307,7 +311,7 @@ void LibraryPersistence::run(library::LibrarySnapshot initial)
 
 void LibraryPersistence::completed(std::uint64_t revision, Result result)
 {
-    Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    check_owner();
     std::vector<std::shared_ptr<library::CommitReceipt>> receipts;
     for (auto it = receipts_.begin(); it != receipts_.end() && it->first <= revision;) {
         receipts.push_back(it->second);
@@ -342,7 +346,7 @@ void LibraryPersistence::completed(std::uint64_t revision, Result result)
 
 LibraryPersistence::Result LibraryPersistence::flush()
 {
-    Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    check_owner();
     for (;;) {
         Result result;
         std::uint64_t target;
@@ -371,7 +375,7 @@ LibraryPersistence::Result LibraryPersistence::flush()
 
 void LibraryPersistence::stop()
 {
-    Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    check_owner();
     {
         std::lock_guard lock{mutex_};
         stopping_ = true;
@@ -380,6 +384,12 @@ void LibraryPersistence::stop()
     if (worker_.joinable())
         worker_.join();
     delivery_.drain();
+}
+
+void LibraryPersistence::check_owner() const
+{
+    if (std::this_thread::get_id() != owner_)
+        throw std::logic_error{"library persistence accessed outside owner thread"};
 }
 
 } // namespace wiola::app

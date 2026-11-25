@@ -61,7 +61,7 @@ wiola_add_test(
 wiola_add_test(
     desktop_session_preferences_test
     SOURCES session/session_preferences_test.cpp
-    LIBS wiola_session_preferences wiola_codec
+    LIBS wiola_session_preferences wiola_library_session wiola_codec
 )
 
 wiola_add_test(
@@ -73,7 +73,7 @@ wiola_add_test(
 wiola_add_test(
     desktop_library_persistence_test
     SOURCES library/library_persistence_test.cpp
-    LIBS wiola_library_persistence
+    LIBS wiola::library_persistence wiola::qt_library_store wiola::qt_delivery
 )
 
 wiola_add_test(
