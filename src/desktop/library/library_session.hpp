@@ -34,7 +34,7 @@
 #include <desktop/metadata/metadata_write_service.hpp>
 #include <desktop/workspace/workspace_scan_publisher.hpp>
 #include <desktop/workspace/workspace_watcher.hpp>
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 #endif
 #include <QObject>
 #include <QSettings>

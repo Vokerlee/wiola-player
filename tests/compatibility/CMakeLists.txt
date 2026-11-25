@@ -9,7 +9,7 @@ wiola_add_test(
         settings_test.cpp
     DATA "${CMAKE_CURRENT_SOURCE_DIR}/data"
     LIBS
-        wiola_persistence_qt
+        wiola::qt_library_store
         wiola_session_preferences
         wiola_gui
         wiola_qt_settings

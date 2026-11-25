@@ -19,7 +19,7 @@
  */
 
 #include <library/metadata_patch.hpp>
-#include <persistence/qt/library_json.hpp>
+#include <qt/storage/library_json.hpp>
 
 #include <QByteArray>
 

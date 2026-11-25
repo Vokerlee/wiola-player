@@ -20,8 +20,8 @@
 
 #pragma once
 #include <QSaveFile>
-#include <persistence/qt/atomic_file_store.hpp>
 #include <qt/paths.hpp>
+#include <qt/storage/atomic_file_store.hpp>
 
 namespace wiola::testing {
 

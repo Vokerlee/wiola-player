@@ -24,7 +24,7 @@
 #include <QPointer>
 #include <QSettings>
 #include <functional>
-#include <persistence/qt/atomic_file_store.hpp>
+#include <qt/storage/atomic_file_store.hpp>
 #endif
 #include <QObject>
 #include <QTimer>

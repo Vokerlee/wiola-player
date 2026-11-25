@@ -21,9 +21,9 @@
 #include <desktop/library/queue_library_migration.hpp>
 
 #include <library/location.hpp>
-#include <persistence/qt/library_store.hpp>
 #include <qt/paths.hpp>
 #include <qt/settings.hpp>
+#include <qt/storage/library_store.hpp>
 
 #include <fixtures/wav.hpp>
 

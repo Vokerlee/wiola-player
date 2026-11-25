@@ -1,6 +1,6 @@
 #include <desktop/session/session_preferences.hpp>
 #include <gui/projection/track_projection.hpp>
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 #if defined(QT_GUI_LIB) || defined(QT_WIDGETS_LIB)
 #error Core adapters must not depend on Qt Gui or Widgets.
 #endif

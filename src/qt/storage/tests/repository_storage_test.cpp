@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 
 #include <QCoreApplication>
 #include <QFile>

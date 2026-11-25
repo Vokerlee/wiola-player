@@ -26,7 +26,7 @@
 #include <library/revision_delta.hpp>
 #include <map>
 #include <mutex>
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 #include <thread>
 
 namespace wiola::app {

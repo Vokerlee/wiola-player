@@ -21,6 +21,7 @@
 #include <desktop/library/m3u_playlist.hpp>
 
 #include <library/location.hpp>
+#include <qt/paths.hpp>
 
 #include <QCoreApplication>
 #include <QTemporaryDir>
@@ -33,7 +34,7 @@ class M3uPlaylist : public testing::Test {
 protected:
     std::filesystem::path path(const char* name) const
     {
-        return std::filesystem::path{directory.filePath(name).toStdString()};
+        return wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath(name));
     }
 
     QTemporaryDir directory;
@@ -66,7 +67,7 @@ TEST_F(M3uPlaylist, RoundTripsUtf8RelativePathsAndDuplicateOccurrences)
     EXPECT_TRUE(encoded.startsWith("#EXTM3U\n"));
     EXPECT_TRUE(encoded.contains("#EXTINF:12.500,Artist - First\n"));
     EXPECT_TRUE(encoded.contains("music/first.flac"));
-    EXPECT_FALSE(encoded.contains(path("").c_str()));
+    EXPECT_FALSE(encoded.contains(wiola::platform::qt::QtPathAdapter::to_qt(path("")).toUtf8()));
 
     wiola::library::InMemoryRepository imported;
     wiola::library::PlaylistId restored;

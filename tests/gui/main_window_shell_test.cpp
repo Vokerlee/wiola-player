@@ -40,8 +40,8 @@
 #include <gui/tracks/tag_filter_panel.hpp>
 #include <gui/tracks/track_table_view.hpp>
 #include <library/location.hpp>
-#include <persistence/qt/library_store.hpp>
 #include <qt/paths.hpp>
+#include <qt/storage/library_store.hpp>
 
 #include <QApplication>
 #include <QDir>

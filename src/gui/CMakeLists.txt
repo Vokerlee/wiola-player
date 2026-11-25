@@ -60,7 +60,7 @@ wiola_add_library(
         wiola_gui_projection
         wiola_playback_preferences
         wiola_library_session
-        wiola_persistence_qt
+        wiola::qt_files
         wiola_qt_settings
         wiola::qt_paths
         wiola_app

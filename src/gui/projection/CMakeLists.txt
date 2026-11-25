@@ -10,7 +10,7 @@ target_link_libraries(
     PRIVATE
         wiola_gui_projection
         wiola_session_preferences
-        wiola_persistence_qt
+        wiola::qt_library_store
         wiola_sanitizer
         wiola_coverage
 )

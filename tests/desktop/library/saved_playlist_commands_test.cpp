@@ -20,7 +20,7 @@
 
 #include <desktop/library/saved_playlist_commands.hpp>
 
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 
 #include <QCoreApplication>
 #include <QDir>

@@ -21,7 +21,7 @@
 #pragma once
 #include "layout_document.hpp"
 #include "prepared_layout.hpp"
-#include <persistence/qt/atomic_file_store.hpp>
+#include <qt/storage/atomic_file_store.hpp>
 
 namespace wiola::gui {
 
