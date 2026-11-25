@@ -28,19 +28,22 @@
 namespace {
 
 thread_local std::size_t allocations_before_failure{std::numeric_limits<std::size_t>::max()};
+thread_local auto failure_mode{wiola::testing::AllocationFailure::Mode::persistent};
 
-}
+} // namespace
 
 namespace wiola::testing {
 
-AllocationFailure::AllocationFailure(std::size_t after) noexcept
+AllocationFailure::AllocationFailure(std::size_t after, Mode mode) noexcept
     : previous_{std::exchange(allocations_before_failure, after)}
+    , previous_mode_{std::exchange(failure_mode, mode)}
 {
 }
 
 AllocationFailure::~AllocationFailure()
 {
     allocations_before_failure = previous_;
+    failure_mode = previous_mode_;
 }
 
 } // namespace wiola::testing
@@ -49,8 +52,11 @@ AllocationFailure::~AllocationFailure()
 // independent of platform-specific mangled symbols or linker wrapping support.
 void* operator new(std::size_t size)
 {
-    if (allocations_before_failure == 0)
+    if (allocations_before_failure == 0) {
+        if (failure_mode == wiola::testing::AllocationFailure::Mode::once)
+            allocations_before_failure = std::numeric_limits<std::size_t>::max();
         throw std::bad_alloc{};
+    }
     if (allocations_before_failure != std::numeric_limits<std::size_t>::max())
         --allocations_before_failure;
 

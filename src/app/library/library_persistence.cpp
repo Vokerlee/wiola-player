@@ -187,6 +187,11 @@ std::optional<std::size_t> retained_bytes(const library::RevisionDelta& delta,
 } // namespace
 
 struct LibraryPersistence::State : std::enable_shared_from_this<State> {
+    struct Pending {
+        std::shared_ptr<const library::RevisionDelta> delta;
+        std::size_t bytes;
+    };
+
     struct Awaiter {
         std::uint64_t revision;
         std::function<void(bool)> observer;
@@ -235,7 +240,7 @@ struct LibraryPersistence::State : std::enable_shared_from_this<State> {
     // Writer publication and admitted work are synchronized by mutex_.
     std::mutex mutex_;
     std::condition_variable changed_;
-    std::deque<std::shared_ptr<const library::RevisionDelta>> pending_;
+    std::deque<Pending> pending_;
     std::size_t pending_bytes_{};
     std::uint64_t latest_{}, durable_{}, attempted_{}, attempt_{};
     Result last_result_;
@@ -289,7 +294,7 @@ LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
                 state->limits_.outstanding_receipts - (critical ? 0 : 1) ||
             state->pending_bytes_ > byte_limit - *bytes)
             return false;
-        state->pending_.push_back(std::move(delta));
+        state->pending_.push_back({std::move(delta), *bytes});
         try {
             state->receipts_.emplace(revision, receipt);
         } catch (...) {
@@ -352,38 +357,54 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
     std::map<library::MediaId, library::TrackRecord> tracks;
     std::map<library::PlaylistId, library::PlaylistRecord> playlists;
     std::map<library::WorkspaceId, library::WorkspaceRecord> workspaces;
-    upsert(tracks, initial.tracks);
-    upsert(playlists, initial.playlists);
-    upsert(workspaces, initial.workspaces);
-    initial = {};
+    bool initialized = false;
     const auto weak = weak_from_this();
     for (;;) {
-        std::deque<std::shared_ptr<const library::RevisionDelta>> pending;
         std::uint64_t revision;
+        std::size_t pending_count;
         {
             std::unique_lock lock{mutex_};
-            changed_.wait(lock, [this] { return stopping_ || retry_ || !pending_.empty(); });
-            if (stopping_ && pending_.empty() && !retry_)
+            changed_.wait(lock, [this] { return stopping_ || retry_ || latest_ > attempted_; });
+            if (stopping_ && latest_ <= attempted_ && !retry_)
                 return;
-            pending.swap(pending_);
-            pending_bytes_ = 0;
             retry_ = false;
             active_ = true;
             revision = latest_;
-        }
-        for (const auto& delta : pending) {
-            upsert(tracks, delta->tracks);
-            upsert(playlists, delta->playlists);
-            upsert(workspaces, delta->workspaces);
-            remove(tracks, delta->changes.removed_media);
-            remove(playlists, delta->changes.removed_playlists);
-            remove(workspaces, delta->changes.removed_workspaces);
+            pending_count = pending_.size();
         }
         Result result;
         try {
+            if (!initialized) {
+                upsert(tracks, initial.tracks);
+                upsert(playlists, initial.playlists);
+                upsert(workspaces, initial.workspaces);
+                initial = {};
+                initialized = true;
+            }
+            // Only this worker removes entries. Later admissions append beyond this prefix.
+            for (std::size_t remaining = pending_count; remaining != 0; --remaining) {
+                std::shared_ptr<const library::RevisionDelta> delta;
+                {
+                    std::lock_guard lock{mutex_};
+                    delta = pending_.front().delta;
+                }
+                upsert(tracks, delta->tracks);
+                upsert(playlists, delta->playlists);
+                upsert(workspaces, delta->workspaces);
+                remove(tracks, delta->changes.removed_media);
+                remove(playlists, delta->changes.removed_playlists);
+                remove(workspaces, delta->changes.removed_workspaces);
+                {
+                    // Retain a failed immutable delta and its capacity until every record
+                    // has been applied. A retry replays it before any newer revision.
+                    std::lock_guard lock{mutex_};
+                    pending_bytes_ -= pending_.front().bytes;
+                    pending_.pop_front();
+                }
+            }
             result = store_.write({values(tracks), values(playlists), values(workspaces)});
         } catch (...) {
-            // A supplied writer must not unwind out of the worker or lose accepted edits.
+            // Preparation and driver failures retain enough state to retry accepted edits.
             result.error = SnapshotWriteError::io;
         }
         {
