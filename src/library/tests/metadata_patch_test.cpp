@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 #include <library/metadata.hpp>
 #include <library/metadata_patch.hpp>
-#include <library/tags.hpp>
 
 namespace {
 
@@ -76,7 +75,7 @@ TEST(MetadataPatch, InvalidTextRejectsTheWholePatchBeforeChangingAnyField)
     const auto previous = stored;
     StandardMetadataPatch patch;
     patch.title = "Must not apply";
-    patch.comment = std::string(max_tag_value_bytes + 1, 'x');
+    patch.comment = std::string(max_metadata_text_bytes + 1, 'x');
     EXPECT_FALSE(valid_metadata_patch(patch));
     EXPECT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::invalid);
     EXPECT_EQ(stored, previous);
@@ -84,6 +83,32 @@ TEST(MetadataPatch, InvalidTextRejectsTheWholePatchBeforeChangingAnyField)
     EXPECT_FALSE(valid_metadata_patch(patch));
     EXPECT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::invalid);
     EXPECT_EQ(stored, previous);
+    EXPECT_FALSE(file_metadata_patch(patch));
+}
+
+TEST(MetadataPatch, StandardTextBudgetCountsEncodedBytesAndPreservesBoundaryContent)
+{
+    StandardMetadataPatch patch;
+    const std::string glyph{"\xe9\x9f\xb3"};
+    std::string text;
+    for (std::size_t index = 0; index < max_metadata_text_bytes / glyph.size(); ++index)
+        text += glyph;
+    text.append(max_metadata_text_bytes % glyph.size(), 'a');
+    ASSERT_EQ(text.size(), max_metadata_text_bytes);
+    patch.comment = text;
+    EXPECT_TRUE(valid_metadata_patch(patch));
+    StandardFieldOverrides stored;
+    ASSERT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::changed);
+    ASSERT_TRUE(stored.comment);
+    EXPECT_EQ(*stored.comment, text);
+    const auto file = file_metadata_patch(patch);
+    ASSERT_TRUE(file);
+    EXPECT_EQ(file->comment, text);
+
+    patch.comment = text + "x";
+    EXPECT_FALSE(valid_metadata_patch(patch));
+    EXPECT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::invalid);
+    EXPECT_EQ(*stored.comment, text);
     EXPECT_FALSE(file_metadata_patch(patch));
 }
 

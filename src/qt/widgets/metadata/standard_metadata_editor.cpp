@@ -65,7 +65,8 @@ QLineEdit* field(QWidget* parent, const char* name, const QString& placeholder)
     input->setObjectName(name);
     input->setAccessibleName(placeholder);
     input->setPlaceholderText(placeholder);
-    input->setMaxLength(1024);
+    // A UTF-16 input capacity is only an upper bound; catalog admission checks encoded bytes.
+    input->setMaxLength(static_cast<int>(library::max_metadata_text_bytes));
     return input;
 }
 

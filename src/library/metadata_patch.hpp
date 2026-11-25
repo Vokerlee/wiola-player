@@ -19,10 +19,14 @@
  */
 
 #pragma once
+#include <cstddef>
 #include <library/records.hpp>
 #include <utility>
 
 namespace wiola::library {
+
+/// Per standard text field, measured in encoded bytes; empty text is a valid explicit value.
+inline constexpr std::size_t max_metadata_text_bytes{1024};
 
 enum class FieldEditOperation {
     unchanged,
