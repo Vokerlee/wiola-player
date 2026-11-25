@@ -30,7 +30,7 @@
 namespace wiola::library {
 
 struct LibraryChanges::State {
-    std::map<std::uint64_t, Observer> observers;
+    std::map<std::uint64_t, std::shared_ptr<Observer>> observers;
     std::deque<LibraryChangeBatch> pending;
     std::uint64_t next{1};
     bool publishing{false};
@@ -96,7 +96,7 @@ LibraryChanges::Subscription LibraryChanges::observe(Observer observer)
     if (!observer)
         throw std::invalid_argument{"a library observer must be callable"};
     const auto id = state_->next++;
-    state_->observers.emplace(id, std::move(observer));
+    state_->observers.emplace(id, std::make_shared<Observer>(std::move(observer)));
     return Subscription{state_, id};
 }
 
@@ -119,20 +119,20 @@ void LibraryChanges::publish(LibraryChangeBatch batch)
     while (!state->pending.empty()) {
         auto next = std::move(state->pending.front());
         state->pending.pop_front();
-        std::vector<std::uint64_t> receivers;
-        for (const auto& [id, observer] : state->observers)
-            receivers.push_back(id);
-        for (const auto id : receivers) {
-            const auto found = state->observers.find(id);
-            if (found == state->observers.end())
-                continue;
-            auto observer = found->second;
+        // Subscribers added by a callback start with the next batch. Retain the active
+        // callable independently of its subscription, including when it disconnects itself.
+        const auto next_subscription = state->next;
+        for (auto found = state->observers.begin();
+            found != state->observers.end() && found->first < next_subscription;) {
+            const auto id = found->first;
+            const auto observer = found->second;
             try {
-                observer(next);
+                (*observer)(next);
             } catch (...) {
                 if (!failure)
                     failure = std::current_exception();
             }
+            found = state->observers.upper_bound(id);
         }
     }
     if (failure)
