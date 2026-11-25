@@ -20,6 +20,7 @@
 
 #include "location_index.hpp"
 #include <app/library/local_identity.hpp>
+#include <utility>
 
 namespace wiola::app {
 
@@ -41,13 +42,39 @@ void LocationIndex::upsert(const library::TrackRecord& record)
 {
     if (!record.id.valid())
         return;
-    remove(record.id);
-    auto& keys = media_[record.id];
+    std::set<library::MediaId> desired;
     for (const auto& path : record.locations)
         if (!path.empty())
-            keys.insert(app::media_id_for(path));
-    for (const auto& key : keys)
-        locations_[key].insert(record.id);
+            desired.insert(app::media_id_for(path));
+    const auto previous = media_.find(record.id);
+    if (previous != media_.end() && previous->second == desired)
+        return;
+
+    // Allocate new membership and reverse-ownership nodes before changing live bindings.
+    decltype(media_) prepared_media;
+    prepared_media.emplace(record.id, std::move(desired));
+    const auto& wanted = prepared_media.begin()->second;
+    decltype(locations_) additions;
+    for (const auto& key : wanted)
+        if (previous == media_.end() || !previous->second.contains(key))
+            additions[key].insert(record.id);
+
+    // Remove old membership and adopt prepared nodes without copying shared owner buckets.
+    if (previous != media_.end())
+        for (const auto& key : previous->second) {
+            if (wanted.contains(key))
+                continue;
+            const auto found = locations_.find(key);
+            found->second.erase(record.id);
+            if (found->second.empty())
+                locations_.erase(found);
+        }
+    for (auto& [key, members] : additions)
+        if (const auto found = locations_.find(key); found != locations_.end())
+            found->second.merge(members);
+    locations_.merge(additions);
+    media_.erase(record.id);
+    media_.merge(prepared_media);
 }
 
 std::optional<library::MediaId> LocationIndex::find(const std::filesystem::path& path) const

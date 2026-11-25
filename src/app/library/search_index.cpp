@@ -19,6 +19,7 @@
  */
 
 #include "search_index.hpp"
+#include <utility>
 
 namespace wiola::app {
 
@@ -64,6 +65,7 @@ SearchIndex::query_normalized(const library::SearchQuery& query) const
 {
     if (cached_query_ && *cached_query_ == query)
         return cached_matches_;
+    cached_query_.reset();
     cached_matches_.clear();
     for (const auto& [id, fields] : entries_)
         if (library::matches_search_fields(query, fields))
