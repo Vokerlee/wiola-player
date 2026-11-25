@@ -24,3 +24,7 @@ wiola_add_library(
     LIBS wiola_library wiola::file_replacement wiola::local_media
 )
 target_link_libraries(wiola_app PUBLIC wiola::playback wiola::audio_dsp)
+
+if(WIOLA_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

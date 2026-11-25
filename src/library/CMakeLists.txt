@@ -14,3 +14,7 @@ wiola_add_library(
 )
 
 target_link_libraries(wiola_library PRIVATE Threads::Threads)
+
+if(WIOLA_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
