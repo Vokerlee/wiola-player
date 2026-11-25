@@ -32,10 +32,18 @@ const T& resolve(const std::optional<T>& override, const T& embedded)
 
 } // namespace
 
+std::string resolve_title(const TrackRecord& track)
+{
+    const auto& title = track.display_title();
+    if (!track.overrides.title && title.empty() && !track.locations.empty())
+        return track.locations.front().stem().string();
+    return title;
+}
+
 ResolvedMetadata resolve_metadata(const TrackRecord& track)
 {
-    ResolvedMetadata resolved{
-        .title = track.display_title(),
+    return {
+        .title = resolve_title(track),
         .artist = track.display_artist(),
         .album = track.display_album(),
         .duration = track.embedded.duration,
@@ -48,11 +56,6 @@ ResolvedMetadata resolve_metadata(const TrackRecord& track)
         .tags = track.tags,
         .missing = track.missing,
     };
-
-    if (!track.overrides.title && resolved.title.empty() && !track.locations.empty())
-        resolved.title = track.locations.front().stem().string();
-
-    return resolved;
 }
 
 } // namespace wiola::library

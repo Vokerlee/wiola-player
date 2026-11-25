@@ -58,11 +58,11 @@ bool matches_search(const SearchQuery& query, const TrackRecord& track)
 
 SearchFields search_fields_of(const TrackRecord& track)
 {
-    const auto resolved = resolve_metadata(track);
-    SearchFields result{.title = normalized_tag_text(resolved.title),
-        .artist = normalized_tag_text(resolved.artist),
-        .album = normalized_tag_text(resolved.album),
+    SearchFields result{.title = normalized_tag_text(resolve_title(track)),
+        .artist = normalized_tag_text(track.display_artist()),
+        .album = normalized_tag_text(track.display_album()),
         .tags = {}};
+    result.tags.reserve(track.tags.size());
     for (const auto& tag : track.tags)
         result.tags.push_back({normalized_tag_text(tag.key), normalized_tag_text(tag.value)});
     return result;

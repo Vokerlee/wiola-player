@@ -18,7 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <allocation_failure.hpp>
 #include <library/search.hpp>
+#include <new>
 
 #include <gtest/gtest.h>
 
@@ -110,5 +112,51 @@ TEST_F(Search, AppliesIncludeAndExcludeFiltersWithNormalizedValues)
     };
     EXPECT_TRUE(wiola::library::matches_search(query, track));
 }
+
+TEST(SearchFields, TitleFallbackAndExplicitEmptyLayersKeepTheirSearchMeaning)
+{
+    wiola::library::TrackRecord track;
+    track.locations = {"missing/file-title.flac"};
+    track.embedded.artist = "Embedded Artist";
+    track.embedded.album = "Embedded Album";
+    auto fields = wiola::library::search_fields_of(track);
+    EXPECT_EQ(fields.title, "file-title");
+    EXPECT_EQ(fields.artist, "embedded artist");
+    EXPECT_EQ(fields.album, "embedded album");
+    EXPECT_TRUE(wiola::library::matches_search({.title = "file-title"}, track));
+    track.overrides.title = "";
+    track.overrides.artist = "";
+    track.overrides.album = "";
+    fields = wiola::library::search_fields_of(track);
+    EXPECT_TRUE(fields.title.empty());
+    EXPECT_TRUE(fields.artist.empty());
+    EXPECT_TRUE(fields.album.empty());
+    EXPECT_FALSE(wiola::library::matches_search({.title = "file-title"}, track));
+}
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(SearchFields, UnsearchedPayloadDoesNotAllocateSearchState)
+{
+    wiola::library::TrackRecord track;
+    track.embedded.comment.assign(4096, 'c');
+    track.embedded.composer.assign(4096, 'a');
+    track.embedded.genre.assign(4096, 'g');
+    wiola::library::SearchFields fields;
+    bool failed = false;
+    {
+        const wiola::testing::AllocationFailure failure{0};
+        try {
+            fields = wiola::library::search_fields_of(track);
+        } catch (const std::bad_alloc&) {
+            failed = true;
+        }
+    }
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(fields.title.empty());
+    EXPECT_TRUE(fields.artist.empty());
+    EXPECT_TRUE(fields.album.empty());
+    EXPECT_TRUE(fields.tags.empty());
+}
+#endif
 
 } // namespace
