@@ -28,9 +28,11 @@
 #include <limits>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
+#include <utility>
 #include <vector>
 #include <wiola/app/library/library_persistence.hpp>
 
@@ -88,6 +90,24 @@ private:
     std::condition_variable changed_;
     std::deque<std::function<void()>> pending_;
 };
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+app::LibraryPersistence::Delivery fail_after_first_delivery(ManualDelivery& delivery)
+{
+    auto callbacks = delivery.callbacks();
+    callbacks.post = [post = std::move(callbacks.post), first = true](auto task) mutable {
+        const bool accepted = post(std::move(task));
+        if (std::exchange(first, false)) {
+            // Arm on the worker after the seed write and its completion have been published.
+            // One failure permits reporting the error and retrying on this same worker.
+            static thread_local std::optional<wiola::testing::AllocationFailure> failure;
+            failure.emplace(0, wiola::testing::AllocationFailure::Mode::once);
+        }
+        return accepted;
+    };
+    return callbacks;
+}
+#endif
 
 class ControlledWriter final : public app::SnapshotWriter {
 public:
@@ -263,6 +283,70 @@ TEST_F(LibraryPersistenceCore, RuntimeFailureAtTheDriverBoundaryLeavesTheRevisio
     ASSERT_TRUE(writer->flush().succeeded());
     EXPECT_TRUE(accepted.receipt->durable());
 }
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST_F(LibraryPersistenceCore, PartialPreparationFailureRetainsTheEntireAcceptedDelta)
+{
+    store.block();
+    writer = std::make_unique<app::LibraryPersistence>(store, fail_after_first_delivery(delivery),
+        library::LibrarySnapshot{});
+    auto seed = revision(1, "first");
+    seed->tracks.push_back(revision(1, "obsolete")->tracks.front());
+    const auto first = writer->accept(seed);
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(store.wait_entered());
+    auto delta = revision(2, "first");
+    delta->tracks.front().embedded.title = "Updated";
+    ++delta->tracks.front().metadata_revision;
+    delta->tracks.push_back(revision(2, "second")->tracks.front());
+    delta->changes.removed_media = {{"obsolete"}};
+    const auto second = writer->accept(delta);
+    ASSERT_TRUE(second);
+    store.release();
+
+    EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
+    EXPECT_TRUE(first.receipt->durable());
+    EXPECT_FALSE(second.receipt->durable());
+    EXPECT_EQ(writer->pending_revision(), delta->changes.revision);
+    EXPECT_EQ(writer->durable_revision(), seed->changes.revision);
+    EXPECT_EQ(store.last_snapshot().tracks, seed->tracks);
+
+    writer->retry();
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(store.last_snapshot().tracks, delta->tracks);
+}
+
+TEST_F(LibraryPersistenceCore, FailedPreparationKeepsCapacityUntilANewerPhysicalResultRecoversIt)
+{
+    const app::LibraryPersistenceLimits limits{.pending_revisions = 2};
+    store.block();
+    writer = std::make_unique<app::LibraryPersistence>(store, fail_after_first_delivery(delivery),
+        library::LibrarySnapshot{}, app::LibraryPersistence::Observer{}, limits);
+    ASSERT_TRUE(writer->accept(revision(1, "first")));
+    ASSERT_TRUE(store.wait_entered());
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    store.release();
+    EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
+    EXPECT_FALSE(second.receipt->durable());
+    EXPECT_FALSE(writer->accept(revision(3, "ordinary")));
+
+    auto physical = revision(3, "physical");
+    physical->priority = library::CommitPriority::file_result;
+    const auto third = writer->accept(physical);
+    ASSERT_TRUE(third);
+    ASSERT_TRUE(writer->flush().succeeded());
+
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_TRUE(third.receipt->durable());
+    const auto snapshot = store.last_snapshot();
+    ASSERT_EQ(snapshot.tracks.size(), 3U);
+    EXPECT_EQ(snapshot.tracks.front().id.value, "first");
+    EXPECT_EQ(snapshot.tracks[1], physical->tracks.front());
+    EXPECT_EQ(snapshot.tracks.back().id.value, "second");
+}
+#endif
 
 TEST_F(LibraryPersistenceCore, EveryDriverExceptionLeavesTheRevisionRetryable)
 {

@@ -27,7 +27,12 @@ namespace wiola::testing {
 /// Fail an allocation on this thread, then restore the previous limit when the scope ends.
 class AllocationFailure {
 public:
-    explicit AllocationFailure(std::size_t after) noexcept;
+    enum class Mode {
+        persistent,
+        once,
+    };
+
+    explicit AllocationFailure(std::size_t after, Mode mode = Mode::persistent) noexcept;
     ~AllocationFailure();
     AllocationFailure(const AllocationFailure&) = delete;
     AllocationFailure& operator=(const AllocationFailure&) = delete;
@@ -36,6 +41,7 @@ public:
 
 private:
     std::size_t previous_;
+    Mode previous_mode_;
 };
 
 } // namespace wiola::testing
