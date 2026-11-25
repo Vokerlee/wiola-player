@@ -21,6 +21,7 @@
 #pragma once
 
 #include <library/records.hpp>
+#include <string>
 
 namespace wiola::library {
 
@@ -40,6 +41,9 @@ struct ResolvedMetadata {
 
     bool operator==(const ResolvedMetadata&) const = default;
 };
+
+/// Resolves title layers and filename fallback without copying unrelated metadata.
+[[nodiscard]] std::string resolve_title(const TrackRecord& track);
 
 [[nodiscard]] ResolvedMetadata resolve_metadata(const TrackRecord& track);
 

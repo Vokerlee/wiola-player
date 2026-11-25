@@ -18,3 +18,5 @@ InMemoryRepository implements the declared mutations and observations. Borrowed 
 Workspace mutations store supplied roots with lexical normalization only; they do not consult the process current directory. Native folder-opening and restore adapters resolve relative roots before committing catalog changes, including historical stored roots.
 
 Transactions have an editing phase, a frozen commit phase and a finished phase. The persistence callback can observe the candidate but cannot mutate it or recursively commit it. A failed or throwing commit restores records, identity allocators and staged-delta state immediately. Uncommitted scope exit performs the same nonthrowing cleanup; successful commits remain published even when an observer throws. Explicit rollback after commit failure is unnecessary; the public lifecycle is construction, edits and commit.
+
+`resolve_title` owns title-layer and filename-fallback policy. Complete metadata resolution and normalized search extraction share it; search does not clone unrelated comments/composer fields or stored tag identities.
