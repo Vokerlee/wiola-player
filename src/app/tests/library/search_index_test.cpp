@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Incremental normalized search index tests and throughput benchmark.
+ * @brief SearchIndex behavior and allocation-failure tests.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,40 +18,28 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
-#include <app/library/location_index.hpp>
-#include <app/library/search_index.hpp>
-#include <app/library/tag_key_catalog.hpp>
-#include <library/records.hpp>
+#include "index_record.hpp"
 
+#include <allocation_failure.hpp>
+#include <app/library/search_index.hpp>
 #include <gtest/gtest.h>
 
+#include <new>
+#include <string>
+#include <vector>
+
+#include <algorithm>
 #include <chrono>
 
 namespace {
 
-wiola::library::TrackRecord record(std::string id, std::string title, std::string artist,
-    std::string genre)
-{
-    wiola::library::TrackRecord track;
-    track.id = wiola::library::MediaId{std::move(id)};
-    track.embedded.title = std::move(title);
-    track.embedded.artist = std::move(artist);
-    track.embedded.album = "Album";
-    track.tags = {
-        {.id = wiola::library::TagId{"tag-" + track.id.value},
-         .key = "Genre",
-         .value = std::move(genre)}
-    };
-
-    return track;
-}
+using wiola::testing::index_record;
 
 TEST(SearchIndex, UpdatesIncrementallyWithoutDuplicatesAndMatchesStructuredQueries)
 {
     wiola::app::SearchIndex index;
-    const auto first = record("first", "Alpha", "Shared Artist", "Jazz");
-    const auto second = record("second", "Beta", "Other Artist", "Rock");
+    const auto first = index_record("first", "Alpha", "Shared Artist", "Jazz");
+    const auto second = index_record("second", "Beta", "Other Artist", "Rock");
     ASSERT_TRUE(index.upsert(first));
     ASSERT_TRUE(index.upsert(second));
     EXPECT_EQ(index.size(), 2);
@@ -85,31 +73,12 @@ TEST(SearchIndex, UpdatesIncrementallyWithoutDuplicatesAndMatchesStructuredQueri
     EXPECT_FALSE(index.upsert(wiola::library::TrackRecord{}));
 }
 
-TEST(TagKeyCatalog, CountsMediaAndRetainsLabelsAcrossValueAndCaseChanges)
-{
-    wiola::app::TagKeyCatalog catalog;
-    auto first = record("one", "Song", "Artist", "Jazz");
-    first.tags.push_back(first.tags.front());
-    catalog.upsert(first);
-    auto second = record("two", "Song", "Artist", "Rock");
-    second.tags.front().key = "genre";
-    catalog.upsert(second);
-    EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Genre"});
-    catalog.remove(first.id);
-    EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Genre"});
-    second.tags.front().key = "Mood";
-    catalog.upsert(second);
-    EXPECT_EQ(catalog.keys(), std::vector<std::string>{"Mood"});
-    catalog.remove(second.id);
-    EXPECT_TRUE(catalog.keys().empty());
-}
-
 TEST(SearchIndex, MatchesDirectEvaluationOnFixedDataAndInvalidatesOnlySearchableChanges)
 {
     wiola::app::SearchIndex index;
     std::vector<wiola::library::TrackRecord> records;
     for (int i = 0; i < 1000; ++i) {
-        auto track = record("id-" + std::to_string(i), "Song " + std::to_string(i),
+        auto track = index_record("id-" + std::to_string(i), "Song " + std::to_string(i),
             i % 2 ? "Odd" : "Even", i % 3 ? "Rock" : "Jazz");
         if (i % 5 == 0)
             track.overrides.title = "Renamed";
@@ -158,21 +127,6 @@ TEST(SearchIndex, MatchesDirectEvaluationOnFixedDataAndInvalidatesOnlySearchable
     EXPECT_EQ(index.query(query), std::vector<wiola::library::MediaId>{edited.id});
 }
 
-TEST(LocationIndex, ResolvesAliasesWithoutFileReadsAndRemovesOldLocations)
-{
-    wiola::app::LocationIndex index;
-    auto track = record("opaque", "Song", "Artist", "Jazz");
-    track.locations = {"missing/../alias.wav", "second.wav"};
-    index.upsert(track);
-    EXPECT_EQ(index.find("alias.wav"), track.id);
-    track.locations = {"moved.wav"};
-    index.upsert(track);
-    EXPECT_FALSE(index.find("alias.wav"));
-    EXPECT_EQ(index.find("moved.wav"), track.id);
-    index.remove(track.id);
-    EXPECT_FALSE(index.find("moved.wav"));
-}
-
 TEST(SearchIndexBenchmark, ReusesNormalizedFieldsAcrossManyQueries)
 {
     wiola::app::SearchIndex index;
@@ -180,7 +134,7 @@ TEST(SearchIndexBenchmark, ReusesNormalizedFieldsAcrossManyQueries)
     constexpr int queries = 60;
 
     for (int value = 0; value < tracks; ++value) {
-        index.upsert(record("media-" + std::to_string(value), "Song " + std::to_string(value),
+        index.upsert(index_record("media-" + std::to_string(value), "Song " + std::to_string(value),
             value % 2 == 0 ? "Even Artist" : "Odd Artist", value % 3 == 0 ? "Jazz" : "Rock"));
     }
 
@@ -206,34 +160,10 @@ TEST(SearchIndexBenchmark, ReusesNormalizedFieldsAcrossManyQueries)
     EXPECT_GT(rate, 0);
 }
 
-TEST(TagKeyCatalog, RevisionChangesForGlobalKeysAndNotForValueOrOccurrenceChanges)
-{
-    using namespace wiola;
-    app::TagKeyCatalog catalog;
-    auto first = record("one", "Title", "Artist", "Genre");
-    first.tags = {
-        {{"tag"}, "Mood", "Calm"}
-    };
-    catalog.upsert(first);
-    const auto revision = catalog.revision();
-    first.tags[0].value = "Loud";
-    catalog.upsert(first);
-    EXPECT_EQ(catalog.revision(), revision);
-    auto second = first;
-    second.id = {"two"};
-    catalog.upsert(second);
-    EXPECT_EQ(catalog.revision(), revision);
-    catalog.remove(first.id);
-    EXPECT_EQ(catalog.revision(), revision);
-    catalog.remove(second.id);
-    EXPECT_GT(catalog.revision(), revision);
-    EXPECT_TRUE(catalog.keys().empty());
-}
-
 TEST(SearchIndex, RevisionChangesOnlyWhenSearchableFactsChange)
 {
     wiola::app::SearchIndex index;
-    auto track = record("one", "Title", "Artist", "Genre");
+    auto track = index_record("one", "Title", "Artist", "Genre");
     ASSERT_TRUE(index.upsert(track));
     const auto revision = index.revision();
     track.metadata_revision = 88;
@@ -251,5 +181,68 @@ TEST(SearchIndex, RevisionChangesOnlyWhenSearchableFactsChange)
     index.clear();
     EXPECT_EQ(index.revision(), empty);
 }
+
+TEST(SearchIndex, RepeatedNormalizedQueriesStayCorrectAcrossSearchableUpdates)
+{
+    wiola::app::SearchIndex index;
+    auto track = index_record("media", "Song", "Artist", "Jazz");
+    ASSERT_TRUE(index.upsert(track));
+    const auto query = wiola::library::normalized_search_query({.title = " SONG "});
+    const std::vector expected{track.id};
+    EXPECT_EQ(index.query_normalized(query), expected);
+    EXPECT_EQ(index.query_normalized(query), expected);
+    track.overrides.title = "Different";
+    ASSERT_TRUE(index.upsert(track));
+    EXPECT_TRUE(index.query_normalized(query).empty());
+    EXPECT_TRUE(index.query_normalized(query).empty());
+}
+
+TEST(SearchIndex, BorrowedFieldsSurviveUnrelatedUpdatesAndDisappearWithTheirEntry)
+{
+    wiola::app::SearchIndex index;
+    const auto first = index_record("first", "Alpha", "Artist", "Jazz");
+    auto second = index_record("second", "Beta", "Artist", "Rock");
+    ASSERT_TRUE(index.upsert(first));
+    ASSERT_TRUE(index.upsert(second));
+    ASSERT_TRUE(index.contains(first.id));
+    const auto* fields = index.fields(first.id);
+    ASSERT_NE(fields, nullptr);
+    EXPECT_EQ(fields->title, "alpha");
+    second.overrides.title = "Changed";
+    ASSERT_TRUE(index.upsert(second));
+    EXPECT_EQ(fields->title, "alpha");
+    EXPECT_EQ(index.fields(first.id), fields);
+    ASSERT_TRUE(index.remove(first.id));
+    EXPECT_FALSE(index.contains(first.id));
+    EXPECT_EQ(index.fields(first.id), nullptr);
+    index.clear();
+    EXPECT_EQ(index.fields(second.id), nullptr);
+}
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(SearchIndex, InterruptedRebuildCannotReuseAnOldQueryLabel)
+{
+    wiola::app::SearchIndex index;
+    const std::string prefix(256, 'i');
+    const auto needle = index_record(prefix + "needle", "Needle", "Artist", "Jazz");
+    const auto other = index_record(prefix + "other", "Other", "Artist", "Rock");
+    ASSERT_TRUE(index.upsert(needle));
+    ASSERT_TRUE(index.upsert(other));
+    const wiola::library::SearchQuery query{.title = "needle"};
+    const std::vector expected{needle.id};
+    ASSERT_EQ(index.query(query), expected);
+    bool failed = false;
+    {
+        const wiola::testing::AllocationFailure failure{0};
+        try {
+            static_cast<void>(index.query_normalized({}));
+        } catch (const std::bad_alloc&) {
+            failed = true;
+        }
+    }
+    ASSERT_TRUE(failed);
+    EXPECT_EQ(index.query(query), expected);
+}
+#endif
 
 } // namespace

@@ -21,6 +21,7 @@
 #pragma once
 #include <library/records.hpp>
 #include <map>
+#include <optional>
 #include <set>
 
 namespace wiola::app {

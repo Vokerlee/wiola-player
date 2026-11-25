@@ -20,6 +20,7 @@
 
 #include "tag_key_catalog.hpp"
 #include <library/tags.hpp>
+#include <utility>
 
 namespace wiola::app {
 
@@ -49,26 +50,46 @@ void TagKeyCatalog::upsert(const library::TrackRecord& track)
     std::set<std::string> desired;
     for (const auto& [key, label] : incoming)
         desired.insert(key);
-    auto& previous = media_[track.id];
-    for (const auto& key : previous) {
-        if (desired.contains(key))
-            continue;
-        const auto item = keys_.find(key);
-        if (--item->second.count == 0) {
-            keys_.erase(item);
-            ++revision_;
+    const auto previous = media_.find(track.id);
+    if (previous != media_.end() && previous->second == desired)
+        return;
+
+    decltype(media_) prepared_media;
+    prepared_media.emplace(track.id, std::move(desired));
+    const auto& wanted = prepared_media.begin()->second;
+    decltype(keys_) prepared_keys;
+    std::uint64_t changes = 0;
+    const auto prepare = [&](const std::string& key) -> Key& {
+        auto& result = prepared_keys[key];
+        if (const auto found = keys_.find(key); found != keys_.end())
+            result = found->second;
+        return result;
+    };
+    if (previous != media_.end())
+        for (const auto& key : previous->second) {
+            if (wanted.contains(key))
+                continue;
+            if (--prepare(key).count == 0)
+                ++changes;
         }
-    }
-    for (const auto& [key, label] : incoming) {
-        if (previous.contains(key))
+    for (const auto& key : wanted) {
+        if (previous != media_.end() && previous->second.contains(key))
             continue;
-        auto& item = keys_[key];
+        auto& item = prepare(key);
         if (item.count++ == 0) {
-            item.label = label;
-            ++revision_;
+            item.label = incoming.at(key);
+            ++changes;
         }
     }
-    previous = std::move(desired);
+
+    // All owned nodes and labels exist before committing counters and reverse ownership.
+    for (const auto& [key, item] : prepared_keys)
+        keys_.erase(key);
+    std::erase_if(prepared_keys, [](const auto& item) { return item.second.count == 0; });
+    keys_.merge(prepared_keys);
+    media_.erase(track.id);
+    media_.merge(prepared_media);
+    revision_ += changes;
 }
 
 std::vector<std::string> TagKeyCatalog::keys() const

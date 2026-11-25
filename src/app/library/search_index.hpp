@@ -40,10 +40,11 @@ public:
     }
 
     [[nodiscard]] std::vector<library::MediaId> query(const library::SearchQuery& query) const;
-    /// Caller normalized the query at its input boundary. Cached until searchable facts change.
+    /// Caller normalizes the query. The borrowed result lasts until the next query or mutation.
     [[nodiscard]] const std::vector<library::MediaId>&
     query_normalized(const library::SearchQuery& query) const;
 
+    /// Borrowed fields last until this entry is updated/removed, or the index is cleared.
     [[nodiscard]] const library::SearchFields* fields(const library::MediaId& id) const
     {
         const auto found = entries_.find(id);

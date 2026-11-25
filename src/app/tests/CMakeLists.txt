@@ -73,7 +73,19 @@ wiola_add_test(
 wiola_add_test(
     app_search_index_test
     SOURCES library/search_index_test.cpp
-    LIBS wiola_app
+    LIBS wiola_app wiola_test_allocation_failure
+)
+
+wiola_add_test(
+    app_location_index_test
+    SOURCES library/location_index_test.cpp
+    LIBS wiola_app wiola_test_allocation_failure
+)
+
+wiola_add_test(
+    app_tag_key_catalog_test
+    SOURCES library/tag_key_catalog_test.cpp
+    LIBS wiola_app wiola_test_allocation_failure
 )
 
 wiola_add_test(
