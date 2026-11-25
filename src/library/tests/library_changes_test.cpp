@@ -227,4 +227,134 @@ TEST(LibraryChanges, RejectsNestedMutationBeforeAnOuterCommit)
     EXPECT_NE(repository.playlist(id), nullptr);
 }
 
+TEST(LibraryChanges, RegisteredMutableCallbackStatePersistsAcrossRevisions)
+{
+    InMemoryRepository repository;
+    const auto playlist = repository.create_playlist("Original");
+    std::vector<int> counts;
+    auto subscription = repository.observe([count = 0, &counts](const auto&) mutable {
+        counts.push_back(++count);
+    });
+    rename(repository, playlist, "First");
+    rename(repository, playlist, "Second");
+    EXPECT_EQ(counts, (std::vector{1, 2}));
+}
+
+struct CopySensitiveObserver {
+    bool& reject_copy;
+    int& calls;
+
+    CopySensitiveObserver(bool& reject, int& count)
+        : reject_copy{reject}
+        , calls{count}
+    {
+    }
+
+    CopySensitiveObserver(const CopySensitiveObserver& other)
+        : reject_copy{other.reject_copy}
+        , calls{other.calls}
+    {
+        if (reject_copy)
+            throw std::runtime_error{"observer copied during publication"};
+    }
+
+    CopySensitiveObserver(CopySensitiveObserver&&) = default;
+
+    void operator()(const LibraryChangeBatch&) const { ++calls; }
+};
+
+TEST(LibraryChanges, PublicationDoesNotCopyRegisteredCallbackState)
+{
+    InMemoryRepository repository;
+    const auto playlist = repository.create_playlist("Original");
+    bool reject_copy = false;
+    int sensitive_calls = 0, healthy_calls = 0;
+    auto sensitive = repository.observe(CopySensitiveObserver{reject_copy, sensitive_calls});
+    auto healthy = repository.observe([&](const auto&) { ++healthy_calls; });
+    reject_copy = true;
+    EXPECT_NO_THROW(rename(repository, playlist, "Committed"));
+    EXPECT_EQ(sensitive_calls, 1);
+    EXPECT_EQ(healthy_calls, 1);
+    EXPECT_EQ(repository.playlist(playlist)->name, "Committed");
+}
+
+TEST(LibraryChanges, NewSubscriptionsStartWithTheNextBatchIncludingNestedCommits)
+{
+    InMemoryRepository repository;
+    const auto playlist = repository.create_playlist("Original");
+    std::vector<std::uint64_t> received;
+    LibraryChanges::Subscription added;
+    auto first = repository.observe([&](const auto& batch) {
+        if (batch.revision == 1) {
+            added =
+                repository.observe([&](const auto& next) { received.push_back(next.revision); });
+            rename(repository, playlist, "Nested");
+        }
+    });
+    rename(repository, playlist, "Outer");
+    EXPECT_EQ(received, std::vector<std::uint64_t>{2});
+}
+
+TEST(LibraryChanges, SelfDisconnectRetainsTheActiveCallbackUntilItReturns)
+{
+    InMemoryRepository repository;
+    const auto playlist = repository.create_playlist("Original");
+    auto retained = std::make_shared<int>(7);
+    const std::weak_ptr<int> weak = retained;
+    LibraryChanges::Subscription subscription;
+    subscription = repository.observe([retained, &subscription, &weak](const auto&) {
+        subscription.reset();
+        EXPECT_FALSE(weak.expired());
+        EXPECT_EQ(*retained, 7);
+    });
+    retained.reset();
+    rename(repository, playlist, "Committed");
+    EXPECT_TRUE(weak.expired());
+}
+
+TEST(LibraryChanges, SubscriptionSelfMovePreservesItsConnection)
+{
+    InMemoryRepository repository;
+    const auto playlist = repository.create_playlist("Original");
+    int calls = 0;
+    auto subscription = repository.observe([&](const auto&) { ++calls; });
+    auto& alias = subscription;
+    subscription = std::move(alias);
+    rename(repository, playlist, "Committed");
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(LibraryChanges, RejectsEmptyObserversAndRethrowsTheFirstOfSeveralFailures)
+{
+    InMemoryRepository repository;
+    EXPECT_THROW(static_cast<void>(repository.observe({})), std::invalid_argument);
+    const auto playlist = repository.create_playlist("Original");
+    int calls = 0;
+    auto first = repository.observe([](const auto&) { throw std::runtime_error{"first"}; });
+    auto second = repository.observe([](const auto&) { throw std::logic_error{"second"}; });
+    auto healthy = repository.observe([&](const auto&) { ++calls; });
+    try {
+        rename(repository, playlist, "Committed");
+        FAIL() << "observer failure must reach the publisher";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "first");
+    }
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(LibraryChanges, EveryChangedOrRemovedCollectionMakesTheBatchNonempty)
+{
+    EXPECT_TRUE(LibraryChangeBatch{}.empty());
+    const std::vector<LibraryChangeBatch> batches{
+        {.media = {MediaChange{}}},
+        {.removed_media = {MediaId{"media"}}},
+        {.playlists = {PlaylistId{"playlist"}}},
+        {.removed_playlists = {PlaylistId{"removed"}}},
+        {.workspaces = {WorkspaceId{"workspace"}}},
+        {.removed_workspaces = {WorkspaceId{"removed"}}},
+    };
+    for (const auto& batch : batches)
+        EXPECT_FALSE(batch.empty());
+}
+
 } // namespace
