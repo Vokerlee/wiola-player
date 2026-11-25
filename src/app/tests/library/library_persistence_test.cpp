@@ -19,12 +19,14 @@
  */
 
 #include <algorithm>
+#include <allocation_failure.hpp>
 #include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <gtest/gtest.h>
 #include <limits>
 #include <mutex>
+#include <new>
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
@@ -146,7 +148,7 @@ std::shared_ptr<library::RevisionDelta> revision(std::uint64_t number, const cha
     return delta;
 }
 
-class LibraryPersistenceCore : public testing::Test {
+class LibraryPersistenceCore : public ::testing::Test {
 protected:
     ~LibraryPersistenceCore() override
     {
@@ -348,13 +350,61 @@ TEST_F(LibraryPersistenceCore, RetainedCapacityCannotBypassThePayloadBudget)
             delta->tracks.front().embedded.comment.reserve(limits.pending_payload_bytes + 1);
         else
             delta->tracks.reserve(limits.pending_payload_bytes / sizeof(library::TrackRecord) + 1);
-        EXPECT_FALSE(writer->accept(delta));
+        bool accepted = false;
+        bool allocation_failed = false;
+        {
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+            const wiola::testing::AllocationFailure failure{0};
+#endif
+            try {
+                accepted = static_cast<bool>(writer->accept(delta));
+            } catch (const std::bad_alloc&) {
+                allocation_failed = true;
+            }
+        }
+        EXPECT_FALSE(accepted);
+        EXPECT_FALSE(allocation_failed);
         EXPECT_EQ(writer->pending_revision(), 0U);
-        const auto accepted = writer->accept(revision(1));
-        ASSERT_TRUE(accepted);
+        const auto recovery = writer->accept(revision(1));
+        ASSERT_TRUE(recovery);
         ASSERT_TRUE(writer->flush().succeeded());
-        EXPECT_TRUE(accepted.receipt->durable());
+        EXPECT_TRUE(recovery.receipt->durable());
     }
+}
+
+TEST_F(LibraryPersistenceCore, ExactHeaderCapacityAdmitsAnEmptyRevision)
+{
+    auto delta = std::make_shared<library::RevisionDelta>();
+    delta->changes.revision = 1;
+    app::LibraryPersistenceLimits limits;
+    limits.pending_payload_bytes = sizeof(*delta);
+    limits.file_result_extra_bytes = 0;
+    start({}, {}, limits);
+
+    const auto accepted = writer->accept(delta);
+
+    ASSERT_TRUE(accepted);
+    EXPECT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(accepted.receipt->durable());
+}
+
+TEST_F(LibraryPersistenceCore, PhysicalResultMayUseTheLastByteOfItsReservedCapacity)
+{
+    auto delta = std::make_shared<library::RevisionDelta>();
+    delta->changes.revision = 1;
+    app::LibraryPersistenceLimits limits;
+    limits.pending_payload_bytes = sizeof(*delta) - 1;
+    limits.file_result_extra_bytes = 1;
+    start({}, {}, limits);
+    EXPECT_FALSE(writer->accept(delta));
+    EXPECT_EQ(writer->pending_revision(), 0U);
+
+    delta->priority = library::CommitPriority::file_result;
+    const auto accepted = writer->accept(delta);
+
+    ASSERT_TRUE(accepted);
+    EXPECT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(accepted.receipt->durable());
 }
 
 TEST_F(LibraryPersistenceCore, InvalidCapacitiesAreRejectedBeforeStartingTheWorker)

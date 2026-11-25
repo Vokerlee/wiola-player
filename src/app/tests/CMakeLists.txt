@@ -9,6 +9,7 @@ target_link_libraries(
     app_library_persistence_test
     PRIVATE
         wiola::library_persistence
+        wiola_test_allocation_failure
         GTest::gtest_main
         wiola_sanitizer
         wiola_coverage

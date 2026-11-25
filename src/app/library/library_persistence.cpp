@@ -27,6 +27,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -57,10 +58,18 @@ LibraryPersistenceLimits checked_limits(LibraryPersistenceLimits limits)
 // Inline string storage may be counted twice; unused owned capacity must never be omitted.
 class PayloadSize final {
 public:
+    explicit PayloadSize(std::size_t limit) noexcept
+        : limit_{limit}
+    {
+    }
+
     void add(std::size_t count, std::size_t width = 1) noexcept
     {
-        const auto maximum = std::numeric_limits<std::size_t>::max();
-        value_ = count > (maximum - value_) / width ? maximum : value_ + count * width;
+        if (exceeded_ || count > (limit_ - value_) / width) {
+            exceeded_ = true;
+            return;
+        }
+        value_ += count * width;
     }
 
     template<class Values>
@@ -76,10 +85,17 @@ public:
         add(1, sizeof(typename Text::value_type)); // The terminating code unit.
     }
 
-    [[nodiscard]] std::size_t value() const noexcept { return value_; }
+    [[nodiscard]] std::optional<std::size_t> value() const noexcept
+    {
+        if (exceeded_)
+            return std::nullopt;
+        return value_;
+    }
 
 private:
+    const std::size_t limit_;
     std::size_t value_{};
+    bool exceeded_{};
 };
 
 template<class Map, class Records>
@@ -106,9 +122,10 @@ auto values(const Map& map)
     return result;
 }
 
-std::size_t retained_bytes(const library::RevisionDelta& delta) noexcept
+std::optional<std::size_t> retained_bytes(const library::RevisionDelta& delta,
+    std::size_t limit) noexcept
 {
-    PayloadSize size;
+    PayloadSize size{limit};
     size.add(sizeof(delta));
     size.storage(delta.tracks);
     size.storage(delta.playlists);
@@ -256,10 +273,13 @@ LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
     state->check_owner();
     if (!delta || !state->callbacks_enabled_)
         return false;
-    const auto bytes = retained_bytes(*delta), revision = delta->changes.revision;
     const bool critical = delta->priority == library::CommitPriority::file_result;
     const auto byte_limit = state->limits_.pending_payload_bytes +
         (critical ? state->limits_.file_result_extra_bytes : 0);
+    const auto bytes = retained_bytes(*delta, byte_limit);
+    if (!bytes)
+        return false;
+    const auto revision = delta->changes.revision;
     auto receipt = std::make_shared<library::CommitReceipt>(revision);
     {
         std::lock_guard lock{state->mutex_};
@@ -267,7 +287,7 @@ LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
             state->pending_.size() >= state->limits_.pending_revisions - (critical ? 0 : 1) ||
             state->latest_ - state->acknowledged_ >=
                 state->limits_.outstanding_receipts - (critical ? 0 : 1) ||
-            bytes > byte_limit || state->pending_bytes_ > byte_limit - bytes)
+            state->pending_bytes_ > byte_limit - *bytes)
             return false;
         state->pending_.push_back(std::move(delta));
         try {
@@ -276,7 +296,7 @@ LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
             state->pending_.pop_back();
             throw;
         }
-        state->pending_bytes_ += bytes;
+        state->pending_bytes_ += *bytes;
         state->latest_ = revision;
     }
     state->changed_.notify_all();
