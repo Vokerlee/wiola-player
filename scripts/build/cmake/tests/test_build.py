@@ -1,3 +1,4 @@
+from dataclasses import replace
 import json
 import os
 from pathlib import Path
@@ -63,6 +64,27 @@ class CMakeBuildTest(unittest.TestCase):
                 ),
                 jobs=1,
             )
+
+    def test_declared_primary_name_selects_executable_among_auxiliary_outputs(self):
+        auxiliary = self.root / "unbuilt debug output"
+        target = replace(
+            self.target,
+            artifacts=(auxiliary, self.binary),
+            name_on_disk=self.binary.name,
+        )
+        inventory = replace(self.inventory, targets=(target,))
+        self.assertEqual(CMakeBuild(inventory).executable("contract"), self.binary)
+
+    def test_missing_or_ambiguous_primary_artifact_is_never_guessed(self):
+        for name, artifacts in (
+            ("missing primary", (self.binary,)),
+            (self.binary.name, (self.binary, self.root / "other" / self.binary.name)),
+        ):
+            target = replace(self.target, artifacts=artifacts, name_on_disk=name)
+            with self.assertRaisesRegex(ValueError, "no unique configured executable"):
+                CMakeBuild(replace(self.inventory, targets=(target,))).executable(
+                    "contract"
+                )
 
     def test_parallelism_uses_explicit_input_then_environment_then_available_cpus(self):
         with patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "3"}):
