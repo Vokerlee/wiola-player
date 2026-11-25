@@ -29,18 +29,6 @@ namespace wiola::app {
 
 namespace {
 
-bool duplicate(const library::TrackRecord& track, const library::TagValue& candidate,
-    const library::TagId& except = {})
-{
-    const std::string key = library::normalized_tag_text(candidate.key);
-    const std::string value = library::normalized_tag_text(candidate.value);
-
-    return std::ranges::any_of(track.tags, [&](const library::TagRecord& tag) {
-        return tag.id != except && library::normalized_tag_text(tag.key) == key &&
-            library::normalized_tag_text(tag.value) == value;
-    });
-}
-
 CustomTagResult failure(CustomTagError error, library::TagId tag = {})
 {
     return {.error = error, .tag = std::move(tag), .changed = false};
@@ -65,7 +53,7 @@ CustomTagResult CustomTagCommands::add(const library::MediaId& media, std::strin
     if (!candidate)
         return failure(CustomTagError::invalid_value);
 
-    if (duplicate(*track, *candidate))
+    if (library::contains_tag_value(track->tags, *candidate))
         return failure(CustomTagError::duplicate_value);
 
     if (track->tags.size() >= library::max_tags_per_track)
@@ -96,7 +84,7 @@ CustomTagResult CustomTagCommands::edit(const library::MediaId& media, const lib
     if (!candidate)
         return failure(CustomTagError::invalid_value, tag);
 
-    if (duplicate(*track, *candidate, tag))
+    if (library::contains_tag_value(track->tags, *candidate, tag))
         return failure(CustomTagError::duplicate_value, tag);
 
     if (existing->key == candidate->key && existing->value == candidate->value)
