@@ -50,8 +50,7 @@ persistence::qt::LibraryStoreResult QueueLibraryMigration::migrate(QSettings& se
         return storage.load(existing);
     }
 
-    const platform::qt::PlaylistSettings queue{
-        platform::qt::QtSettingsAdapter{settings}.read_playlist()};
+    const app::QueueSnapshot queue{platform::qt::QtSettingsAdapter{settings}.read_queue()};
     library::LibrarySnapshot library;
     library::PlaylistRecord migrated;
     migrated.id = {.value = "playlist-migrated-queue"};

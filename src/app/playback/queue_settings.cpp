@@ -22,7 +22,7 @@
 
 #include <media/local/resource.hpp>
 
-#include <qt/settings.hpp>
+#include <stdexcept>
 
 #include <algorithm>
 #include <utility>
@@ -30,55 +30,41 @@
 
 namespace wiola::app {
 
-namespace {
-
-engine::RepeatMode repeat_of(int stored) noexcept
-{
-    using Repeat = engine::RepeatMode;
-
-    switch (stored) {
-    case static_cast<int>(Repeat::track):
-        return Repeat::track;
-    case static_cast<int>(Repeat::all):
-        return Repeat::all;
-    default:
-        return Repeat::none;
-    }
-}
-
-} // namespace
-
-QueueSettings::QueueSettings(app::PlaybackService& playback, QSettings& settings) noexcept
+QueueSettings::QueueSettings(app::PlaybackService& playback, QueueSettingsStore& settings,
+    Available available)
     : playback_{playback}
     , settings_{settings}
+    , available_{std::move(available)}
 {
+    if (!available_)
+        throw std::invalid_argument{"queue restoration requires a track availability check"};
 }
 
 std::size_t QueueSettings::restore()
 {
-    platform::qt::PlaylistSettings stored{
-        platform::qt::QtSettingsAdapter{settings_}.read_playlist()};
+    const auto stored = settings_.read_queue();
     std::vector<std::filesystem::path> tracks;
     std::size_t gone{0};
 
     restored_.clear();
     std::vector<std::size_t> available;
     for (std::size_t i = 0; i < stored.tracks.size(); ++i) {
-        std::error_code error;
-        if (std::filesystem::exists(stored.tracks[i], error) && !error) {
+        if (available_(stored.tracks[i])) {
             tracks.push_back(stored.tracks[i]);
             available.push_back(i);
         } else
             ++gone;
     }
 
-    playback_.set_repeat(repeat_of(stored.repeat));
+    playback_.set_repeat(stored.repeat);
 
     if (tracks.empty())
         return gone;
 
     const auto first_new = playback_.playlist().tracks().size();
     playback_.add(wiola::media::local_resources(tracks));
+    if (playback_.playlist().tracks().size() != first_new + tracks.size())
+        return gone + tracks.size();
     if (stored.occurrence_ids.size() == stored.tracks.size())
         for (std::size_t i = 0; i < available.size(); ++i)
             restored_.emplace(engine::QueueEntryId{stored.occurrence_ids[available[i]]},
@@ -91,9 +77,8 @@ std::size_t QueueSettings::restore()
     } else if (!stored.has_occurrence_ids && stored.selected) {
         const auto selected{std::ranges::find(tracks, *stored.selected)};
         if (selected != tracks.end())
-            static_cast<void>(playback_.play_track(
-                static_cast<std::size_t>(std::distance(tracks.begin(), selected))
-            ));
+            static_cast<void>(playback_.play_track(first_new +
+                static_cast<std::size_t>(std::distance(tracks.begin(), selected))));
     }
 
     if (stored.shuffled)
@@ -105,8 +90,8 @@ std::size_t QueueSettings::restore()
 void QueueSettings::save()
 {
     const app::PlayerPresentation presentation{app::present_playback(playback_)};
-    platform::qt::PlaylistSettings settings;
-    settings.repeat = static_cast<int>(presentation.repeat);
+    QueueSnapshot settings;
+    settings.repeat = presentation.repeat;
     settings.shuffled = presentation.shuffled;
 
     for (const engine::QueueEntry& track : playback_.playlist().tracks()) {
@@ -124,7 +109,7 @@ void QueueSettings::save()
         }
     }
 
-    platform::qt::QtSettingsAdapter{settings_}.write_playlist(settings);
+    settings_.write_queue(settings);
 }
 
 } // namespace wiola::app

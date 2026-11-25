@@ -37,6 +37,20 @@ constexpr auto position_key{"volume"};
 constexpr auto boosted_key{"volume/boosted"};
 constexpr auto enabled_key{"equalizer/enabled"};
 
+engine::RepeatMode repeat_of(int stored) noexcept
+{
+    using Repeat = engine::RepeatMode;
+
+    switch (stored) {
+    case static_cast<int>(Repeat::track):
+        return Repeat::track;
+    case static_cast<int>(Repeat::all):
+        return Repeat::all;
+    default:
+        return Repeat::none;
+    }
+}
+
 QString band_key(std::size_t index)
 {
     return QString{"equalizer/band/%1"}.arg(index);
@@ -95,9 +109,9 @@ void QtSettingsAdapter::write_band_gain(std::size_t index, float db)
     settings_.setValue(band_key(index), db);
 }
 
-PlaylistSettings QtSettingsAdapter::read_playlist() const
+app::QueueSnapshot QtSettingsAdapter::read_queue() const
 {
-    PlaylistSettings settings;
+    app::QueueSnapshot settings;
     const QStringList tracks{settings_.value("queue").toStringList()};
     settings.tracks.reserve(static_cast<std::size_t>(tracks.size()));
     for (const QString& track : tracks)
@@ -106,7 +120,7 @@ PlaylistSettings QtSettingsAdapter::read_playlist() const
     const QString selected{settings_.value("queue/path").toString()};
     if (!selected.isEmpty())
         settings.selected = platform::qt::QtPathAdapter::from_qt(selected);
-    settings.repeat = settings_.value("queue/repeat", 0).toInt();
+    settings.repeat = repeat_of(settings_.value("queue/repeat", 0).toInt());
     settings.shuffled = settings_.value("queue/shuffled", false).toBool();
     settings.has_occurrence_ids = settings_.contains("queue/entry_ids");
     const auto ids = settings_.value("queue/entry_ids").toStringList();
@@ -130,7 +144,7 @@ PlaylistSettings QtSettingsAdapter::read_playlist() const
     return settings;
 }
 
-void QtSettingsAdapter::write_playlist(const PlaylistSettings& settings)
+void QtSettingsAdapter::write_queue(const app::QueueSnapshot& settings)
 {
     QStringList tracks;
     for (const std::filesystem::path& track : settings.tracks)
@@ -139,7 +153,7 @@ void QtSettingsAdapter::write_playlist(const PlaylistSettings& settings)
     settings_.setValue("queue", tracks);
     settings_.setValue("queue/path",
         settings.selected ? platform::qt::QtPathAdapter::to_qt(*settings.selected) : QString{});
-    settings_.setValue("queue/repeat", settings.repeat);
+    settings_.setValue("queue/repeat", static_cast<int>(settings.repeat));
     settings_.setValue("queue/shuffled", settings.shuffled);
     if (settings.has_occurrence_ids || !settings.occurrence_ids.empty()) {
         QStringList ids;

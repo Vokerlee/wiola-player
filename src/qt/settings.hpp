@@ -21,6 +21,7 @@
 #pragma once
 
 #include <app/playback/playback_settings.hpp>
+#include <app/playback/queue_settings_store.hpp>
 #include <app/playback/volume_scale.hpp>
 #include <wiola/audio/equalizer_config.hpp>
 
@@ -33,26 +34,17 @@
 
 namespace wiola::platform::qt {
 
-struct PlaylistSettings {
-    std::vector<std::filesystem::path> tracks;
-    std::optional<std::filesystem::path> selected;
-    int repeat{0};
-    bool shuffled{false};
-    std::vector<std::uint64_t> occurrence_ids;
-    std::optional<std::uint64_t> selected_occurrence;
-    bool has_occurrence_ids{false};
-};
-
 /// Converts Qt's string-keyed storage into typed values, with defaults for invalid old data.
-class QtSettingsAdapter final : public app::PlaybackSettingsWriter {
+class QtSettingsAdapter final : public app::PlaybackSettingsWriter,
+                                public app::QueueSettingsStore {
 public:
     explicit QtSettingsAdapter(QSettings& settings) noexcept;
 
     /// Reads slider positions, switches, and per-band decibel gains for the supplied policies.
     [[nodiscard]] app::PlayerSettings read(const app::VolumeScale& volume,
         const audio::EqualizerConfig& equalizer) const;
-    [[nodiscard]] PlaylistSettings read_playlist() const;
-    void write_playlist(const PlaylistSettings& settings);
+    [[nodiscard]] app::QueueSnapshot read_queue() const override;
+    void write_queue(const app::QueueSnapshot& settings) override;
     void write_volume_position(int position) override;
     void write_boosted(bool boosted) override;
     void write_equalizer_enabled(bool enabled) override;

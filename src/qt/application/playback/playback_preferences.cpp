@@ -27,7 +27,11 @@ PlaybackPreferences::PlaybackPreferences(PlaybackService& playback)
     : settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
     , settings_adapter_{settings_}
     , ui_session_{settings_}
-    , queue_{playback, settings_}
+    , queue_{playback, settings_adapter_,
+          [](const auto& path) {
+              std::error_code error;
+              return std::filesystem::exists(path, error) && !error;
+          }}
     , volume_{playback, settings_adapter_}
     , equalizer_{playback, settings_adapter_}
 {

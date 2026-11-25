@@ -26,11 +26,11 @@
 #include "saved_playlist_manager.hpp"
 #include <QApplication>
 #include <app/playback/playback_service.hpp>
+#include <app/playback/queue_settings.hpp>
 #include <app/playback/volume_control.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
-#include <qt/application/playback/queue_settings.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
 #include <qt/widgets/controls/status_view.hpp>

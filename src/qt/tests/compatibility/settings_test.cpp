@@ -25,12 +25,12 @@ TEST(CompatibilitySettings, ReadsLegacyDefaultsUnicodePathsAndDuplicateQueueEntr
     ASSERT_EQ(player.band_gains.size(), 2U);
     EXPECT_FLOAT_EQ(player.band_gains[0], 3.5F);
     EXPECT_FLOAT_EQ(player.band_gains[1], 0.0F);
-    const auto queue = adapter.read_playlist();
+    const auto queue = adapter.read_queue();
     ASSERT_EQ(queue.tracks.size(), 3U);
     EXPECT_EQ(queue.tracks[0], queue.tracks[1]);
     EXPECT_EQ(platform::qt::QtPathAdapter::to_qt(queue.tracks[0]),
         QString::fromUtf8("Music/楽曲.wav"));
-    EXPECT_EQ(queue.repeat, 2);
+    EXPECT_EQ(queue.repeat, engine::RepeatMode::all);
     EXPECT_TRUE(queue.shuffled);
     EXPECT_FALSE(queue.has_occurrence_ids);
     EXPECT_FALSE(queue.selected_occurrence);
@@ -39,12 +39,12 @@ TEST(CompatibilitySettings, ReadsLegacyDefaultsUnicodePathsAndDuplicateQueueEntr
 TEST(CompatibilitySettings, KeepsFullWidthIdsAndRejectsAmbiguousDuplicateTokens)
 {
     QSettings valid{fixture_path("settings/occurrences.ini"), QSettings::IniFormat};
-    const auto queue = platform::qt::QtSettingsAdapter{valid}.read_playlist();
+    const auto queue = platform::qt::QtSettingsAdapter{valid}.read_queue();
     ASSERT_EQ(queue.occurrence_ids.size(), 3U);
     EXPECT_EQ(queue.occurrence_ids[0], std::numeric_limits<std::uint64_t>::max() - 1);
     EXPECT_EQ(queue.selected_occurrence, 7U);
     QSettings invalid{fixture_path("settings/invalid-occurrences.ini"), QSettings::IniFormat};
-    const auto ambiguous = platform::qt::QtSettingsAdapter{invalid}.read_playlist();
+    const auto ambiguous = platform::qt::QtSettingsAdapter{invalid}.read_queue();
     EXPECT_TRUE(ambiguous.has_occurrence_ids);
     EXPECT_TRUE(ambiguous.occurrence_ids.empty());
     EXPECT_FALSE(ambiguous.selected_occurrence);
