@@ -19,9 +19,9 @@
  */
 
 #pragma once
-#include <library/repository.hpp>
 #include <map>
 #include <presentation/tracks/track_row.hpp>
+#include <wiola/library/repository.hpp>
 
 namespace wiola::gui {
 

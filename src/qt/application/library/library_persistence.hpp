@@ -21,13 +21,13 @@
 #pragma once
 #include <condition_variable>
 #include <deque>
-#include <library/commit_receipt.hpp>
-#include <library/revision_delta.hpp>
 #include <map>
 #include <mutex>
 #include <qt/queued_delivery.hpp>
 #include <qt/storage/library_store.hpp>
 #include <thread>
+#include <wiola/library/commit_receipt.hpp>
+#include <wiola/library/revision_delta.hpp>
 
 namespace wiola::app {
 

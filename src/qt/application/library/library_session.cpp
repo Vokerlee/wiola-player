@@ -24,8 +24,8 @@
 #include <QThread>
 #include <algorithm>
 #include <app/library/local_identity.hpp>
-#include <library/records.hpp>
 #include <qt/paths.hpp>
+#include <wiola/library/records.hpp>
 
 namespace wiola::app {
 

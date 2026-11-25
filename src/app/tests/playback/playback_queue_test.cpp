@@ -24,7 +24,7 @@
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
 

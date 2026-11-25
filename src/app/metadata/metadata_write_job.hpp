@@ -19,10 +19,10 @@
  */
 
 #pragma once
-#include <library/identity.hpp>
-#include <library/metadata_patch.hpp>
 #include <memory>
 #include <stop_token>
+#include <wiola/library/identity.hpp>
+#include <wiola/library/metadata_patch.hpp>
 #include <wiola/media/metadata.hpp>
 #include <wiola/media/operation_context.hpp>
 

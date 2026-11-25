@@ -20,8 +20,8 @@
 
 #include "track_row.hpp"
 #include <app/library/local_identity.hpp>
-#include <library/metadata.hpp>
-#include <library/records.hpp>
+#include <wiola/library/metadata.hpp>
+#include <wiola/library/records.hpp>
 
 namespace wiola::gui {
 

@@ -19,8 +19,8 @@
  */
 
 #include <gtest/gtest.h>
-#include <library/metadata.hpp>
-#include <library/metadata_patch.hpp>
+#include <wiola/library/metadata.hpp>
+#include <wiola/library/metadata_patch.hpp>
 
 namespace {
 

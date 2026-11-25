@@ -20,10 +20,10 @@
 
 #pragma once
 #include "metadata_conflicts.hpp"
-#include <library/metadata.hpp>
-#include <library/metadata_patch.hpp>
 #include <map>
 #include <set>
+#include <wiola/library/metadata.hpp>
+#include <wiola/library/metadata_patch.hpp>
 
 namespace wiola::app {
 

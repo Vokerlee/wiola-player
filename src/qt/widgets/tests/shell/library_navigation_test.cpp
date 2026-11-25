@@ -20,7 +20,7 @@
 
 #include <qt/widgets/shell/library_navigation.hpp>
 
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <QApplication>
 

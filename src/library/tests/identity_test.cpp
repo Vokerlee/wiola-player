@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <library/identity.hpp>
+#include <wiola/library/identity.hpp>
 
 #include <gtest/gtest.h>
 

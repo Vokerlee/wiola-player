@@ -20,8 +20,8 @@
 
 #include <app/metadata/metadata_conflicts.hpp>
 
-#include <library/in_memory_repository.hpp>
 #include <media/local/fingerprint.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
 

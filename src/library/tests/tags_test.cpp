@@ -19,9 +19,9 @@
  */
 
 #include <array>
-#include <library/records.hpp>
-#include <library/tags.hpp>
 #include <string>
+#include <wiola/library/records.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <gtest/gtest.h>
 

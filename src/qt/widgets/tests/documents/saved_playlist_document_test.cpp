@@ -25,7 +25,7 @@
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <QAction>
 #include <QApplication>

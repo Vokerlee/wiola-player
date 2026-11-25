@@ -23,6 +23,7 @@
 #include <functional>
 #include <memory>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace wiola::library {

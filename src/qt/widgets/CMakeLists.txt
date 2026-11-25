@@ -63,9 +63,7 @@ wiola_add_library(
         wiola::qt_files
         wiola_qt_settings
         wiola::qt_paths
-        wiola_app
         wiola_codec
-        wiola_library
         wiola_media_revisions
         wiola_m3u
         wiola_library_documents
@@ -80,6 +78,6 @@ add_library(wiola::qt_widgets ALIAS wiola_qt_widgets)
 set_target_properties(wiola_qt_widgets PROPERTIES AUTOMOC ON)
 target_link_libraries(
     wiola_qt_widgets
-    PUBLIC Qt6::Widgets wiola_app
+    PUBLIC Qt6::Widgets wiola_app wiola::library
     PRIVATE wiola::local_media
 )

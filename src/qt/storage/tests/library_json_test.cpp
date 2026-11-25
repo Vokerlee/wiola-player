@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <library/metadata_patch.hpp>
 #include <qt/storage/library_json.hpp>
+#include <wiola/library/metadata_patch.hpp>
 
 #include <QByteArray>
 

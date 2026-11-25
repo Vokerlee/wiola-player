@@ -20,7 +20,7 @@
 
 #include <app/metadata/metadata_edit_service.hpp>
 
-#include <library/metadata.hpp>
+#include <wiola/library/metadata.hpp>
 
 #include <gtest/gtest.h>
 

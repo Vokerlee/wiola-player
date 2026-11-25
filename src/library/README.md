@@ -20,3 +20,15 @@ Workspace mutations store supplied roots with lexical normalization only; they d
 Transactions have an editing phase, a frozen commit phase and a finished phase. The persistence callback can observe the candidate but cannot mutate it or recursively commit it. A failed or throwing commit restores records, identity allocators and staged-delta state immediately. Uncommitted scope exit performs the same nonthrowing cleanup; successful commits remain published even when an observer throws. Explicit rollback after commit failure is unnecessary; the public lifecycle is construction, edits and commit.
 
 `resolve_title` owns title-layer and filename-fallback policy. Complete metadata resolution and normalized search extraction share it; search does not clone unrelated comments/composer fields or stored tag identities.
+
+## Standalone catalog SDK
+
+Select `WIOLA_COMPONENTS=library` to configure the catalog and its media/quantity dependencies without preparing Qt, codecs, playback or a device backend. `ENABLE_UNIT_TESTS=OFF` omits the test framework. The source tree stays flat; CMake exposes supported build/install headers under `<wiola/library/...>`.
+
+```sh
+cmake -S . -B build-library -DWIOLA_COMPONENTS=library -DENABLE_UNIT_TESTS=OFF
+cmake --build build-library
+cmake --install build-library --prefix "$PWD/build-library/sdk"
+```
+
+Consumers use `find_package(wiola_library CONFIG REQUIRED)` and link `wiola::library`. The target supplies C++23, media value types and its thread dependency, without the legacy source-root umbrella. The installed-package test relocates the prefix, compiles each public header independently and exercises catalog transactions, duplicate occurrences, querying and durability receipts. Native file/provider and Qt headers remain outside that package.

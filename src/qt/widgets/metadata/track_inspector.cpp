@@ -23,7 +23,7 @@
 #include <qt/paths.hpp>
 #include <qt/widgets/controls/clock.hpp>
 
-#include <library/records.hpp>
+#include <wiola/library/records.hpp>
 
 #include <QEvent>
 #include <QFormLayout>

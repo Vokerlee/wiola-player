@@ -25,7 +25,7 @@
 
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 
-#include <library/tags.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <QAction>
 #include <QGuiApplication>

@@ -20,7 +20,7 @@
 
 #include <app/metadata/custom_tag_commands.hpp>
 
-#include <library/tags.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <gtest/gtest.h>
 

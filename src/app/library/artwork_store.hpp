@@ -19,9 +19,9 @@
  */
 
 #pragma once
-#include <library/identity.hpp>
 #include <list>
 #include <map>
+#include <wiola/library/identity.hpp>
 #include <wiola/media/artwork_reference.hpp>
 
 namespace wiola::app {

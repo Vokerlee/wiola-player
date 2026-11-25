@@ -21,7 +21,7 @@
 #pragma once
 
 #include <QtGlobal>
-#include <library/snapshot.hpp>
+#include <wiola/library/snapshot.hpp>
 
 #include <vector>
 

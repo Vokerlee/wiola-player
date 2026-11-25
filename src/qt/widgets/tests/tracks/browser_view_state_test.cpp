@@ -23,8 +23,8 @@
 #include <QHeaderView>
 #include <QTest>
 #include <gtest/gtest.h>
-#include <library/in_memory_repository.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 namespace {
 

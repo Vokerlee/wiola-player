@@ -19,8 +19,8 @@
  */
 
 #include <allocation_failure.hpp>
-#include <library/search.hpp>
 #include <new>
+#include <wiola/library/search.hpp>
 
 #include <gtest/gtest.h>
 

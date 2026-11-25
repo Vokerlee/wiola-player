@@ -22,7 +22,7 @@
 #include <app/library/search_index.hpp>
 #include <set>
 
-#include <library/records.hpp>
+#include <wiola/library/records.hpp>
 
 namespace wiola::gui {
 

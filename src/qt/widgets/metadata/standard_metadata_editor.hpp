@@ -21,8 +21,8 @@
 #pragma once
 
 #include <app/metadata/metadata_edit_session.hpp>
-#include <library/metadata.hpp>
-#include <library/metadata_patch.hpp>
+#include <wiola/library/metadata.hpp>
+#include <wiola/library/metadata_patch.hpp>
 
 #include <QLabel>
 #include <QLineEdit>

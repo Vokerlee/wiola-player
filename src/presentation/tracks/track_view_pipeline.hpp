@@ -22,9 +22,9 @@
 
 #include <presentation/tracks/track_sorter.hpp>
 
-#include <library/search.hpp>
 #include <map>
 #include <stop_token>
+#include <wiola/library/search.hpp>
 
 namespace wiola::app {
 

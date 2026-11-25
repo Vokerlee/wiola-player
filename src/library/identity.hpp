@@ -22,6 +22,7 @@
 
 #include <compare>
 #include <cstddef>
+#include <functional>
 #include <string>
 
 namespace wiola::library {

@@ -21,7 +21,7 @@
 #pragma once
 
 #include "workspace_discovery.hpp"
-#include <library/repository_transaction.hpp>
+#include <wiola/library/repository_transaction.hpp>
 
 #include <span>
 

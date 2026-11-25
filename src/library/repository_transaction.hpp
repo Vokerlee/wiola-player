@@ -22,7 +22,7 @@
 #include "commit_receipt.hpp"
 #include <array>
 #include <functional>
-#include <library/in_memory_repository.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 namespace wiola::library {
 

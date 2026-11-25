@@ -9,7 +9,7 @@ wiola_add_library(
         documents/queue_rows.cpp
         documents/saved_playlist_rows.cpp
         documents/workspace_rows.cpp
-    LIBS wiola_app wiola_library wiola::local_media
+    LIBS wiola::local_media
 )
 add_library(wiola::presentation ALIAS wiola_presentation)
 add_executable(wiola_model_boundary EXCLUDE_FROM_ALL boundary.cpp)
@@ -18,7 +18,10 @@ target_link_libraries(
     PRIVATE wiola::presentation wiola_sanitizer wiola_coverage
 )
 
-target_link_libraries(wiola_presentation PUBLIC wiola::playback_api)
+target_link_libraries(
+    wiola_presentation
+    PUBLIC wiola::library wiola_app wiola::playback_api
+)
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)

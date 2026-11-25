@@ -20,7 +20,7 @@
 
 #include "tag_filter_panel.hpp"
 
-#include <library/tags.hpp>
+#include <wiola/library/tags.hpp>
 
 #include <QVBoxLayout>
 

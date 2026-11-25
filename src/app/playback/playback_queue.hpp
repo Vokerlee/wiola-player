@@ -21,7 +21,7 @@
 #pragma once
 
 #include "playback_service.hpp"
-#include <library/repository.hpp>
+#include <wiola/library/repository.hpp>
 
 namespace wiola::app {
 

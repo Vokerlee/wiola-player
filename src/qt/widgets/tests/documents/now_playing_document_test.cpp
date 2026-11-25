@@ -30,8 +30,8 @@
 #include <QLabel>
 #include <QSignalSpy>
 #include <app/library/local_identity.hpp>
-#include <library/in_memory_repository.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
 

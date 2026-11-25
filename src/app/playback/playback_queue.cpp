@@ -20,8 +20,8 @@
 
 #include "playback_queue.hpp"
 
-#include <library/records.hpp>
 #include <media/local/resource.hpp>
+#include <wiola/library/records.hpp>
 
 namespace wiola::app {
 

@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <library/records.hpp>
+#include <wiola/library/records.hpp>
 
 #include <gtest/gtest.h>
 

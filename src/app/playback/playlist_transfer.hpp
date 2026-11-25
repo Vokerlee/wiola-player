@@ -22,8 +22,8 @@
 
 #include "active_playlist.hpp"
 
-#include <library/in_memory_repository.hpp>
-#include <library/repository_transaction.hpp>
+#include <wiola/library/in_memory_repository.hpp>
+#include <wiola/library/repository_transaction.hpp>
 
 #include <filesystem>
 #include <functional>

@@ -19,7 +19,7 @@
  */
 
 #pragma once
-#include <library/repository.hpp>
+#include <wiola/library/repository.hpp>
 
 namespace wiola::library {
 

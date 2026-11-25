@@ -22,10 +22,10 @@
 #include <QPointer>
 #include <QWidget>
 #include <filesystem>
-#include <library/identity.hpp>
 #include <optional>
 #include <span>
 #include <vector>
+#include <wiola/library/identity.hpp>
 
 namespace wiola::gui {
 

@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <library/identity.hpp>
-#include <library/repository.hpp>
+#include <wiola/library/identity.hpp>
+#include <wiola/library/repository.hpp>
 
 #include <QTreeWidget>
 

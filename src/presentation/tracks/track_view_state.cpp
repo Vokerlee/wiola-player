@@ -20,7 +20,7 @@
 
 #include "track_view_state.hpp"
 #include <algorithm>
-#include <library/tags.hpp>
+#include <wiola/library/tags.hpp>
 
 namespace wiola::gui {
 
