@@ -348,6 +348,110 @@ TEST_F(LibraryPersistenceCore, FailedPreparationKeepsCapacityUntilANewerPhysical
 }
 #endif
 
+TEST_F(LibraryPersistenceCore, RejectedOrThrowingDeliveryStillAcknowledgesFlushAndStopExactlyOnce)
+{
+    for (const bool throwing : {false, true}) {
+        for (const bool closing : {false, true}) {
+            std::vector<std::uint64_t> saved;
+            auto callbacks = delivery.callbacks();
+            callbacks.post = [throwing](auto) -> bool {
+                if (throwing)
+                    throw std::runtime_error{"delivery unavailable"};
+                return false;
+            };
+            writer = std::make_unique<app::LibraryPersistence>(store, std::move(callbacks),
+                library::LibrarySnapshot{}, [&](auto number, auto result) {
+                    EXPECT_TRUE(result.succeeded());
+                    saved.push_back(number);
+                });
+            const auto accepted = writer->accept(revision(1));
+            ASSERT_TRUE(accepted);
+            if (closing)
+                writer->stop();
+            else
+                EXPECT_TRUE(writer->flush().succeeded());
+
+            EXPECT_TRUE(accepted.receipt->durable());
+            EXPECT_EQ(saved, (std::vector<std::uint64_t>{1}));
+            EXPECT_TRUE(writer->flush().succeeded());
+            writer->stop();
+            EXPECT_EQ(saved, (std::vector<std::uint64_t>{1}));
+            writer.reset();
+        }
+    }
+}
+
+TEST_F(LibraryPersistenceCore,
+    FailedDrainAcknowledgesTheAttemptBeforeRethrowingAndIgnoresItsLateTask)
+{
+    auto callbacks = delivery.callbacks();
+    callbacks.drain = [] {
+        throw std::runtime_error{"drain failed"};
+    };
+    int saved = 0;
+    writer = std::make_unique<app::LibraryPersistence>(store, std::move(callbacks),
+        library::LibrarySnapshot{}, [&](auto, auto) { ++saved; });
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+
+    EXPECT_THROW(writer->flush(), std::runtime_error);
+
+    EXPECT_TRUE(accepted.receipt->durable());
+    EXPECT_EQ(saved, 1);
+    delivery.drain();
+    EXPECT_EQ(saved, 1);
+    EXPECT_THROW(writer->stop(), std::runtime_error);
+    EXPECT_EQ(saved, 1);
+}
+
+TEST_F(LibraryPersistenceCore, EarlierObserverFailureCannotStrandTheLatestWrittenAttempt)
+{
+    store.block();
+    int saved = 0;
+    start({}, [&](auto, auto) { ++saved; });
+    const auto first = writer->accept(revision(1, "first"));
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(store.wait_entered());
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    first.receipt->observe([](auto) { throw std::runtime_error{"first receipt"}; });
+    store.release();
+    ASSERT_TRUE(delivery.wait_pending(2));
+
+    EXPECT_THROW(writer->flush(), std::runtime_error);
+
+    EXPECT_TRUE(first.receipt->durable());
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(saved, 2);
+    delivery.drain();
+    EXPECT_EQ(saved, 2);
+}
+
+TEST_F(LibraryPersistenceCore,
+    FallbackObserverFailureIsRethrownAfterAcknowledgmentWithoutRepeatingIt)
+{
+    auto callbacks = delivery.callbacks();
+    callbacks.post = [](auto) {
+        return false;
+    };
+    int saved = 0;
+    writer = std::make_unique<app::LibraryPersistence>(store, std::move(callbacks),
+        library::LibrarySnapshot{}, [&](auto, auto) {
+            ++saved;
+            throw std::logic_error{"save observer"};
+        });
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+
+    EXPECT_THROW(writer->flush(), std::logic_error);
+
+    EXPECT_TRUE(accepted.receipt->durable());
+    EXPECT_EQ(saved, 1);
+    EXPECT_TRUE(writer->flush().succeeded());
+    writer->stop();
+    EXPECT_EQ(saved, 1);
+}
+
 TEST_F(LibraryPersistenceCore, EveryDriverExceptionLeavesTheRevisionRetryable)
 {
     struct DriverFailure { };
@@ -733,7 +837,8 @@ TEST_F(LibraryPersistenceCore, QueuedPayloadBudgetIsReleasedAfterThePendingPrefi
 TEST_F(LibraryPersistenceCore, ReorderedOldFailureCannotRegressASuccessfullyAcknowledgedPrefix)
 {
     store.block();
-    start();
+    std::vector<app::SnapshotWriteResult> saved;
+    start({}, [&](auto, auto result) { saved.push_back(result); });
     const auto first = writer->accept(revision(1, "first"));
     ASSERT_TRUE(first);
     ASSERT_TRUE(store.wait_entered());
@@ -748,10 +853,40 @@ TEST_F(LibraryPersistenceCore, ReorderedOldFailureCannotRegressASuccessfullyAckn
     delivery.reverse_pending();
     ASSERT_TRUE(writer->flush().succeeded());
     EXPECT_EQ(first_events, std::vector<bool>{true});
+    EXPECT_EQ(saved, (std::vector<app::SnapshotWriteResult>{{}}));
     EXPECT_TRUE(first.receipt->durable());
     EXPECT_TRUE(second.receipt->durable());
     EXPECT_EQ(writer->durable_revision(), 2U);
     EXPECT_EQ(store.last_snapshot().tracks.size(), 2U);
+}
+
+TEST_F(LibraryPersistenceCore, NewestFailedAttemptStillAcknowledgesTheEarlierDurablePrefix)
+{
+    std::vector<app::SnapshotWriteResult> saved;
+    start({}, [&](auto, auto result) { saved.push_back(result); });
+    const auto first = writer->accept(revision(1, "first"));
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(delivery.wait_pending(1));
+    store.release({app::SnapshotWriteError::io});
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    ASSERT_TRUE(delivery.wait_pending(2));
+    delivery.reverse_pending();
+
+    EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
+
+    EXPECT_TRUE(first.receipt->durable());
+    EXPECT_FALSE(second.receipt->durable());
+    ASSERT_FALSE(saved.empty());
+    EXPECT_TRUE(std::all_of(saved.begin(), saved.end(),
+        [](auto result) { return result.error == app::SnapshotWriteError::io; }));
+    const auto failed_attempts = saved.size();
+    store.release();
+    writer->retry();
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(saved.size(), failed_attempts + 1);
+    EXPECT_TRUE(saved.back().succeeded());
 }
 
 TEST_F(LibraryPersistenceCore, ReceiptCallbackCanDisposeTheWorkflowAndCancelRemainingDelivery)
