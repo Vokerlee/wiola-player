@@ -179,8 +179,8 @@ TEST(SessionPreferences, DestinationRestoresAndTracksLibraryChangesWithoutAnyWin
     app::LibrarySession library{
         platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")),
         std::make_shared<codec::LocalMediaProvider>()};
-    const auto first = library.playlists().create("First"),
-               second = library.playlists().create("Second");
+    const auto first = library.playlists().create("First").id,
+               second = library.playlists().create("Second").id;
     ASSERT_TRUE(first.valid());
     ASSERT_TRUE(second.valid());
     app::SessionPreferences preferences{settings};

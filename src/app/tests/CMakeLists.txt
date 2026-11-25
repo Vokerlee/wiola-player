@@ -1,42 +1,74 @@
 include(GoogleTest)
 
-add_executable(
-    app_library_persistence_test
-    library/persistence/admission_test.cpp
-    library/persistence/snapshot_test.cpp
-    library/persistence/notification_test.cpp
-    library/persistence/lifecycle_test.cpp
-)
+if(TARGET wiola_library_persistence)
+    add_executable(
+        app_library_persistence_test
+        library/persistence/admission_test.cpp
+        library/persistence/snapshot_test.cpp
+        library/persistence/notification_test.cpp
+        library/persistence/lifecycle_test.cpp
+    )
 
-target_link_libraries(
-    app_library_persistence_test
-    PRIVATE
-        wiola::library_persistence
-        wiola_test_allocation_failure
-        GTest::gtest_main
-        wiola_sanitizer
-        wiola_coverage
-        wiola_warnings
-)
+    target_link_libraries(
+        app_library_persistence_test
+        PRIVATE
+            wiola::library_persistence
+            wiola_test_allocation_failure
+            GTest::gtest_main
+            wiola_sanitizer
+            wiola_coverage
+            wiola_warnings
+    )
 
-gtest_discover_tests(app_library_persistence_test)
+    gtest_discover_tests(app_library_persistence_test)
 
-add_executable(
-    library_persistence_consumer_test
-    "${CMAKE_CURRENT_SOURCE_DIR}/library/persistence_consumer.cpp"
-)
+    add_executable(
+        library_persistence_consumer_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/library/persistence_consumer.cpp"
+    )
 
-target_link_libraries(
-    library_persistence_consumer_test
-    PRIVATE wiola::library_persistence
-)
+    target_link_libraries(
+        library_persistence_consumer_test
+        PRIVATE wiola::library_persistence
+    )
 
-wiola_apply_build_controls(library_persistence_consumer_test)
+    wiola_apply_build_controls(library_persistence_consumer_test)
 
-add_test(
-    NAME LibraryPersistence.Consumer
-    COMMAND library_persistence_consumer_test
-)
+    add_test(
+        NAME LibraryPersistence.Consumer
+        COMMAND library_persistence_consumer_test
+    )
+endif()
+
+if(TARGET wiola_saved_playlists)
+    add_executable(app_playlist_name_test library/playlist_name_test.cpp)
+
+    target_link_libraries(
+        app_playlist_name_test
+        PRIVATE wiola::playlist_commands GTest::gtest_main
+    )
+
+    wiola_apply_build_controls(app_playlist_name_test)
+
+    gtest_discover_tests(app_playlist_name_test)
+
+    add_executable(
+        app_playlist_commands_test
+        library/playlist_commands_test.cpp
+    )
+
+    target_link_libraries(
+        app_playlist_commands_test
+        PRIVATE
+            wiola::playlist_commands
+            GTest::gtest_main
+            wiola_test_allocation_failure
+    )
+
+    wiola_apply_build_controls(app_playlist_commands_test)
+
+    gtest_discover_tests(app_playlist_commands_test)
+endif()
 
 if(WIOLA_COMPONENT_BUILD)
     return()

@@ -82,8 +82,8 @@ protected:
 
 TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneExactOccurrence)
 {
-    const auto source = library->playlists().create("Source"),
-               destination = library->playlists().create("Destination");
+    const auto source = library->playlists().create("Source").id,
+               destination = library->playlists().create("Destination").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
@@ -139,7 +139,7 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
 TEST_F(DocumentCommandRouterTest,
     CancelledDestinationPromptReachedThroughContextActionLeavesSelection)
 {
-    const auto source = library->playlists().create("Source");
+    const auto source = library->playlists().create("Source").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto occurrence = library->repository().append_track(source, library::MediaId{"one"});
     ASSERT_TRUE(occurrence);
@@ -174,9 +174,9 @@ TEST_F(DocumentCommandRouterTest,
 TEST_F(DocumentCommandRouterTest,
     MoveCapturesDuplicateOccurrenceBeforePromptChangesDocumentAndSelection)
 {
-    const auto source = library->playlists().create("Source"),
-               destination = library->playlists().create("Destination"),
-               other = library->playlists().create("Other");
+    const auto source = library->playlists().create("Source").id,
+               destination = library->playlists().create("Destination").id,
+               other = library->playlists().create("Other").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
@@ -222,7 +222,7 @@ TEST_F(DocumentCommandRouterTest,
 
 TEST_F(DocumentCommandRouterTest, SavedPlaylistKeyboardActivationRoutesTheExactDuplicateOccurrence)
 {
-    const auto source = library->playlists().create("Duplicates");
+    const auto source = library->playlists().create("Duplicates").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
@@ -251,7 +251,7 @@ TEST_F(DocumentCommandRouterTest, SavedPlaylistKeyboardActivationRoutesTheExactD
 
 TEST_F(DocumentCommandRouterTest, DisabledCapabilitiesAndCancelledPromptsNeverMutateDocuments)
 {
-    const auto destination = library->playlists().create("Destination");
+    const auto destination = library->playlists().create("Destination").id;
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommandContext context{gui::DocumentId::queue(), {},
@@ -284,8 +284,8 @@ TEST_F(DocumentCommandRouterTest, DestroyingRouterWhileAChoiceIsPendingCannotIss
 
 TEST_F(DocumentCommandRouterTest, ExportCapturesPlaylistBeforePromptChangesTheDestination)
 {
-    const auto source = library->playlists().create("Source"),
-               other = library->playlists().create("Other");
+    const auto source = library->playlists().create("Source").id,
+               other = library->playlists().create("Other").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"one"}));
     ASSERT_TRUE(library->repository().append_track(other, library::MediaId{"two"}));

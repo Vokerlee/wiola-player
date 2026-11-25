@@ -22,11 +22,21 @@
 
 #include "library_navigation.hpp"
 
-#include <qt/application/library/saved_playlist_commands.hpp>
-
 #include <QLabel>
 #include <QPushButton>
 #include <QWidget>
+
+namespace wiola::app {
+
+class SavedPlaylistCommands;
+
+}
+
+namespace wiola::library {
+
+struct CommitResult;
+
+}
 
 namespace wiola::gui {
 
@@ -44,7 +54,7 @@ public:
 
 private:
     [[nodiscard]] std::optional<library::PlaylistId> selected() const;
-    bool finish(bool succeeded, const library::PlaylistId& selected = {});
+    bool finish(library::CommitResult committed, const library::PlaylistId& selected = {});
     void show_save_failed();
 
     const library::LibraryRepository& repository_;

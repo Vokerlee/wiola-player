@@ -8,6 +8,7 @@ set(WIOLA_PORTABLE_COMPONENTS
     playback
     library
     library_persistence
+    playlist_commands
 )
 
 set(WIOLA_COMPONENTS
@@ -43,6 +44,10 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
     endif()
 
     if(library_persistence IN_LIST WIOLA_SELECTED_COMPONENTS)
+        list(APPEND WIOLA_SELECTED_COMPONENTS library)
+    endif()
+
+    if(playlist_commands IN_LIST WIOLA_SELECTED_COMPONENTS)
         list(APPEND WIOLA_SELECTED_COMPONENTS library)
     endif()
 

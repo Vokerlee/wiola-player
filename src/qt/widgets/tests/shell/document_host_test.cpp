@@ -57,7 +57,7 @@ protected:
 
 TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeletingRecords)
 {
-    const auto playlist = library->playlists().create("Favorites");
+    const auto playlist = library->playlists().create("Favorites").id;
     gui::DocumentHost host{*library, playback, *preferences, {}};
     ASSERT_TRUE(host.open_playlist(playlist));
     auto* original = host.registry().playlist(playlist);
@@ -79,8 +79,8 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
 
 TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
 {
-    const auto first = library->playlists().create("First");
-    const auto second = library->playlists().create("Second");
+    const auto first = library->playlists().create("First").id;
+    const auto second = library->playlists().create("Second").id;
     playback.add({wiola::media::local_resource("queued.wav"),
         wiola::media::local_resource("queued.wav")});
     const auto entry = playback.playlist().tracks()[1].id();
@@ -100,7 +100,7 @@ TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
 
 TEST_F(DocumentHostTest, CommittedDeletionUpdatesTabsAndActiveIdentity)
 {
-    const auto playlist = library->playlists().create("Deleted");
+    const auto playlist = library->playlists().create("Deleted").id;
     gui::DocumentHost host{*library, playback, *preferences, {}};
     ASSERT_TRUE(host.open_playlist(playlist));
     ASSERT_TRUE(library->playlists().remove(playlist));
