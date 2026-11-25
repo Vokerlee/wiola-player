@@ -9,3 +9,9 @@ wiola_add_test(
     SOURCES resource_test.cpp
     LIBS wiola::local_media
 )
+
+wiola_add_test(
+    media_file_replacement_test
+    SOURCES file_replacement_test.cpp
+    LIBS wiola::file_replacement wiola_library
+)

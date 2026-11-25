@@ -18,37 +18,27 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <chrono>
+#include <fixtures/temporary_directory.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <library/fingerprint.hpp>
-#include <platform/files/file_replacement.hpp>
+#include <media/local/file_replacement.hpp>
 
 namespace {
 
-using namespace wiola::platform;
+using namespace wiola::media;
 
 struct Files {
-    std::filesystem::path directory, source, output, backup;
+    wiola::testing::TemporaryDirectory directory;
+    std::filesystem::path source, output, backup;
 
     Files()
+        : source{directory.path() / std::filesystem::path{u8"музыка.mp3"}}
+        , output{directory.path() / "staged.mp3"}
+        , backup{directory.path() / "backup.mp3"}
     {
-        directory = std::filesystem::temp_directory_path() /
-            ("wiola-replacement-port-" +
-                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
-        if (!std::filesystem::create_directory(directory))
-            throw std::runtime_error{"test directory collision"};
-        source = directory / std::filesystem::u8path("музыка.mp3");
-        output = directory / "staged.mp3";
-        backup = directory / "backup.mp3";
         std::ofstream{source} << "original bytes";
         std::ofstream{output} << "replacement bytes";
-    }
-
-    ~Files()
-    {
-        std::error_code ignored;
-        std::filesystem::remove_all(directory, ignored);
     }
 
     FileReplacementRequest request() const

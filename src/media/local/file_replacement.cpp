@@ -31,7 +31,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #endif
-namespace wiola::platform {
+namespace wiola::media {
 namespace {
 
 std::string utf8(const std::filesystem::path& path)
@@ -308,4 +308,4 @@ std::unique_ptr<FileReplacement> native_file_replacement(FileDigest digest,
     return std::make_unique<NativeReplacement>(std::move(digest), std::move(fault));
 }
 
-} // namespace wiola::platform
+} // namespace wiola::media

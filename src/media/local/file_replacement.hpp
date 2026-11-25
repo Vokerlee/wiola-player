@@ -23,8 +23,9 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 
-namespace wiola::platform {
+namespace wiola::media {
 
 enum class FileReplacementError {
     none,
@@ -66,4 +67,4 @@ using FileReplacementFault = std::function<bool(FileReplacementStep)>;
 [[nodiscard]] std::unique_ptr<FileReplacement> native_file_replacement(FileDigest digest,
     FileReplacementFault fault = {});
 
-} // namespace wiola::platform
+} // namespace wiola::media

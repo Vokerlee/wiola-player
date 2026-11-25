@@ -1,4 +1,3 @@
-wiola_add_library(wiola_file_replacement SOURCES files/file_replacement.cpp)
 if(NOT WIOLA_BUILD_GUI)
     return()
 endif()

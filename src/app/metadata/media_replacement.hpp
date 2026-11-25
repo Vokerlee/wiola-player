@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <platform/files/file_replacement.hpp>
+#include <media/local/file_replacement.hpp>
 #include <wiola/media/metadata.hpp>
 #include <wiola/media/operation_context.hpp>
 #include <wiola/media/provider.hpp>
@@ -33,7 +33,7 @@ namespace wiola::app {
 
 struct MediaReplacementHooks {
     std::function<bool()> before_commit;
-    std::shared_ptr<platform::FileReplacement> replacement;
+    std::shared_ptr<media::FileReplacement> replacement;
     std::string backup_suffix;
 };
 

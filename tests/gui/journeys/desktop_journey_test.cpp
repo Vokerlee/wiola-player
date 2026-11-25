@@ -233,9 +233,9 @@ TEST(DesktopJourney, EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFi
         const auto source = platform::qt::QtPathAdapter::from_qt(evidence["source"].toString());
         const auto original = evidence["original"].toString().toStdString(),
                    updated = evidence["updated"].toString().toStdString();
-        auto port = platform::native_file_replacement(library::fingerprint_media);
+        auto port = media::native_file_replacement(library::fingerprint_media);
         const auto recovered = port->recover(source);
-        ASSERT_EQ(recovered.error, platform::FileReplacementError::none) << recovered.detail;
+        ASSERT_EQ(recovered.error, media::FileReplacementError::none) << recovered.detail;
         EXPECT_TRUE(recovered.recovered);
         const auto digest = library::fingerprint_media(source);
         EXPECT_TRUE(digest == original || digest == updated);
@@ -272,15 +272,15 @@ TEST(DesktopJourney, NativeWindowsSharingViolationPreservesTheUnicodeSource)
     HANDLE file = CreateFileW(prepared.source.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     ASSERT_NE(file, INVALID_HANDLE_VALUE);
-    auto port = platform::native_file_replacement(library::fingerprint_media);
+    auto port = media::native_file_replacement(library::fingerprint_media);
     const auto outcome = port->replace({prepared.source, prepared.temporary,
         prepared.source.parent_path() / "backup.mp3", prepared.source_fingerprint,
         prepared.output_fingerprint});
     CloseHandle(file);
-    EXPECT_NE(outcome.error, platform::FileReplacementError::none);
+    EXPECT_NE(outcome.error, media::FileReplacementError::none);
     EXPECT_FALSE(outcome.source_modified);
     EXPECT_EQ(library::fingerprint_media(prepared.source), prepared.source_fingerprint);
-    EXPECT_EQ(port->recover(prepared.source).error, platform::FileReplacementError::none);
+    EXPECT_EQ(port->recover(prepared.source).error, media::FileReplacementError::none);
 }
 #endif
 

@@ -218,17 +218,16 @@ inline app::PreparedMediaReplacement stage_process_replacement(const QString& di
 inline int crash_child(const QString& directory, int boundary)
 {
     const auto prepared = stage_process_replacement(directory);
-    auto port =
-        platform::native_file_replacement(library::fingerprint_media, [boundary](auto step) {
-            if (static_cast<int>(step) == boundary) {
-                std::cerr << "abrupt stop after replacement stage " << boundary << std::endl;
+    auto port = media::native_file_replacement(library::fingerprint_media, [boundary](auto step) {
+        if (static_cast<int>(step) == boundary) {
+            std::cerr << "abrupt stop after replacement stage " << boundary << std::endl;
 #ifdef WIOLA_TEST_COVERAGE
-                __llvm_profile_write_file();
+            __llvm_profile_write_file();
 #endif
-                std::_Exit(91);
-            }
-            return true;
-        });
+            std::_Exit(91);
+        }
+        return true;
+    });
     app::MediaReplacementHooks hooks;
     hooks.replacement = std::move(port);
     static_cast<void>(app::commit_prepared_media_replacement(prepared, {}, std::move(hooks)));

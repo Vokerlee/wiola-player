@@ -1,3 +1,6 @@
+wiola_add_library(wiola_file_replacement SOURCES file_replacement.cpp)
+add_library(wiola::file_replacement ALIAS wiola_file_replacement)
+
 wiola_add_library(wiola_local_media SOURCES file_stream.cpp resource.cpp)
 add_library(wiola::local_media ALIAS wiola_local_media)
 target_link_libraries(wiola_local_media PUBLIC wiola::media)

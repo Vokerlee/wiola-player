@@ -21,6 +21,6 @@ wiola_add_library(
         workspace/workspace_discovery.cpp
         workspace/workspace_reconciliation.cpp
         workspace/workspace_scanner.cpp
-    LIBS wiola_library wiola_file_replacement wiola::local_media
+    LIBS wiola_library wiola::file_replacement wiola::local_media
 )
 target_link_libraries(wiola_app PUBLIC wiola::playback wiola::audio_dsp)
