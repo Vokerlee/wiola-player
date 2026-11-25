@@ -56,10 +56,10 @@ QtSettingsAdapter::QtSettingsAdapter(QSettings& settings) noexcept
 {
 }
 
-PlayerSettings QtSettingsAdapter::read(const app::VolumeScale& volume,
+app::PlayerSettings QtSettingsAdapter::read(const app::VolumeScale& volume,
     const audio::EqualizerConfig& equalizer) const
 {
-    PlayerSettings settings;
+    app::PlayerSettings settings;
     settings.volume_position = volume.full_position;
     settings.band_gains.reserve(equalizer.layout.count);
 
@@ -73,6 +73,26 @@ PlayerSettings QtSettingsAdapter::read(const app::VolumeScale& volume,
         settings.band_gains.push_back(stored_gain(settings_, index));
 
     return settings;
+}
+
+void QtSettingsAdapter::write_volume_position(int position)
+{
+    settings_.setValue(position_key, position);
+}
+
+void QtSettingsAdapter::write_boosted(bool boosted)
+{
+    settings_.setValue(boosted_key, boosted);
+}
+
+void QtSettingsAdapter::write_equalizer_enabled(bool enabled)
+{
+    settings_.setValue(enabled_key, enabled);
+}
+
+void QtSettingsAdapter::write_band_gain(std::size_t index, float db)
+{
+    settings_.setValue(band_key(index), db);
 }
 
 PlaylistSettings QtSettingsAdapter::read_playlist() const

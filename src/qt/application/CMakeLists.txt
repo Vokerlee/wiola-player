@@ -91,11 +91,7 @@ target_link_libraries(
 
 wiola_add_library(
     wiola_playback_preferences
-    SOURCES
-        playback/playback_preferences.cpp
-        playback/queue_settings.cpp
-        playback/volume_control.cpp
-        playback/equalizer_control.cpp
+    SOURCES playback/playback_preferences.cpp playback/queue_settings.cpp
     LIBS wiola_qt_settings wiola_session_preferences wiola::local_media
 )
 

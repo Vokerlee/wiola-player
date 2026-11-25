@@ -20,10 +20,10 @@
 
 #include <media/local/provider.hpp>
 
+#include <app/playback/volume_control.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
-#include <qt/application/playback/volume_control.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>

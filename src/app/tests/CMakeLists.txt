@@ -169,6 +169,12 @@ wiola_add_test(
 )
 
 wiola_add_test(
+    app_playback_preferences_test
+    SOURCES playback/playback_preferences_test.cpp
+    LIBS wiola_app
+)
+
+wiola_add_test(
     app_active_playlist_test
     SOURCES playback/active_playlist_test.cpp
     LIBS wiola_app

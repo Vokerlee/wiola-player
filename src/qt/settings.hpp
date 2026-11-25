@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <app/playback/playback_settings.hpp>
 #include <app/playback/volume_scale.hpp>
 #include <wiola/audio/equalizer_config.hpp>
 
@@ -32,14 +33,6 @@
 
 namespace wiola::platform::qt {
 
-/// Persisted values applied once at startup. No engine type knows their schema keys.
-struct PlayerSettings {
-    int volume_position{100};
-    bool boosted{false};
-    bool equalizer_enabled{true};
-    std::vector<float> band_gains;
-};
-
 struct PlaylistSettings {
     std::vector<std::filesystem::path> tracks;
     std::optional<std::filesystem::path> selected;
@@ -51,15 +44,19 @@ struct PlaylistSettings {
 };
 
 /// Converts Qt's string-keyed storage into typed values, with defaults for invalid old data.
-class QtSettingsAdapter {
+class QtSettingsAdapter final : public app::PlaybackSettingsWriter {
 public:
     explicit QtSettingsAdapter(QSettings& settings) noexcept;
 
     /// Reads slider positions, switches, and per-band decibel gains for the supplied policies.
-    [[nodiscard]] PlayerSettings read(const app::VolumeScale& volume,
+    [[nodiscard]] app::PlayerSettings read(const app::VolumeScale& volume,
         const audio::EqualizerConfig& equalizer) const;
     [[nodiscard]] PlaylistSettings read_playlist() const;
     void write_playlist(const PlaylistSettings& settings);
+    void write_volume_position(int position) override;
+    void write_boosted(bool boosted) override;
+    void write_equalizer_enabled(bool enabled) override;
+    void write_band_gain(std::size_t index, float db) override;
 
 private:
     QSettings& settings_;

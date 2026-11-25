@@ -25,10 +25,11 @@ namespace wiola::app {
 
 PlaybackPreferences::PlaybackPreferences(PlaybackService& playback)
     : settings_{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"}
+    , settings_adapter_{settings_}
     , ui_session_{settings_}
     , queue_{playback, settings_}
-    , volume_{playback, settings_}
-    , equalizer_{playback, settings_}
+    , volume_{playback, settings_adapter_}
+    , equalizer_{playback, settings_adapter_}
 {
     const auto restored = platform::qt::QtSettingsAdapter{settings_}.read(volume_.scale(),
         playback.equalizer_config());

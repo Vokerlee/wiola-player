@@ -18,12 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <app/playback/equalizer_control.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
-#include <qt/application/playback/equalizer_control.hpp>
 #include <qt/settings.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -55,7 +55,7 @@ protected:
 
     void restore(Control& control)
     {
-        const wiola::platform::qt::PlayerSettings restored{
+        const wiola::app::PlayerSettings restored{
             wiola::platform::qt::QtSettingsAdapter{settings}.read({},
                 equalizer.equalizer_config())};
         control.apply_restored(restored.equalizer_enabled, restored.band_gains);
@@ -63,13 +63,14 @@ protected:
 
     QTemporaryDir directory;
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    wiola::platform::qt::QtSettingsAdapter writer{settings};
     wiola::app::PlaybackService equalizer{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 };
 
 TEST_F(EqualizerControl, StartsFlatAndOn)
 {
-    Control control{equalizer, settings};
+    Control control{equalizer, writer};
 
     restore(control);
 
@@ -82,12 +83,12 @@ TEST_F(EqualizerControl, StartsFlatAndOn)
 
 TEST_F(EqualizerControl, GivesBackWhatTheLastRunLeft)
 {
-    Control{equalizer, settings}.set_band_gain(2, 6.0F);
+    Control{equalizer, writer}.set_band_gain(2, 6.0F);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{next, settings};
+    Control later{next, writer};
 
     restore(later);
 
@@ -96,14 +97,14 @@ TEST_F(EqualizerControl, GivesBackWhatTheLastRunLeft)
 
 TEST_F(EqualizerControl, KeepsWhetherItRuns)
 {
-    Control control{equalizer, settings};
+    Control control{equalizer, writer};
 
     control.set_enabled(false);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{next, settings};
+    Control later{next, writer};
 
     restore(later);
 
@@ -113,7 +114,7 @@ TEST_F(EqualizerControl, KeepsWhetherItRuns)
 /// What is stored is what was applied: the equalizer decides what it allows, not the file.
 TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
 {
-    Control control{equalizer, settings};
+    Control control{equalizer, writer};
     const float limit{control.max_band_gain()};
 
     control.set_band_gain(0, 99.0F);
@@ -123,7 +124,7 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{next, settings};
+    Control later{next, writer};
 
     restore(later);
 
@@ -152,7 +153,7 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
     static_cast<void>(narrow.pump());
     ASSERT_EQ(narrow.open_result(), wiola::engine::OpenResult::opened);
 
-    Control control{narrow, settings};
+    Control control{narrow, writer};
 
     const std::size_t beyond{narrow.num_equalizer_bands()};
     ASSERT_LT(beyond, narrow.equalizer_config().layout.count);
@@ -162,7 +163,7 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
     wiola::app::PlaybackService wide{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{wide, settings};
+    Control later{wide, writer};
 
     restore(later);
 
@@ -175,7 +176,7 @@ TEST_F(EqualizerControl, IgnoresAStoredValueThatIsNotAGain)
 {
     settings.setValue("equalizer/band/1", "high");
 
-    Control control{equalizer, settings};
+    Control control{equalizer, writer};
 
     restore(control);
 
@@ -184,7 +185,7 @@ TEST_F(EqualizerControl, IgnoresAStoredValueThatIsNotAGain)
 
 TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
 {
-    Control control{equalizer, settings};
+    Control control{equalizer, writer};
 
     for (std::size_t index = 0; index < equalizer.equalizer_config().layout.count; ++index)
         control.set_band_gain(index, static_cast<float>(index) - 5.0F);
@@ -192,7 +193,7 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
     wiola::app::PlaybackService next{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
 
-    Control later{next, settings};
+    Control later{next, writer};
 
     restore(later);
 
@@ -204,7 +205,7 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
 TEST_F(EqualizerControl, IgnoresANonFiniteStoredGain)
 {
     settings.setValue("equalizer/band/1", std::numeric_limits<float>::infinity());
-    Control control{equalizer, settings};
+    Control control{equalizer, writer};
 
     restore(control);
 

@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include <app/playback/playback_service.hpp>
+#include "playback_service.hpp"
 #include <wiola/units.hpp>
 
-#include <QSettings>
+#include "playback_settings.hpp"
 
 #include <cstddef>
 #include <span>
@@ -34,7 +34,7 @@ namespace wiola::app {
 /// them, or what they are set to is not what comes back.
 class EqualizerControl {
 public:
-    EqualizerControl(app::PlaybackService& equalizer, QSettings& settings) noexcept;
+    EqualizerControl(app::PlaybackService& equalizer, PlaybackSettingsWriter& settings) noexcept;
 
     /// Applies startup values for every layout band without writing them back. Missing gains are
     /// flat, and the domain applies its own gain bounds.
@@ -53,7 +53,7 @@ public:
 
 private:
     app::PlaybackService& equalizer_;
-    QSettings& settings_;
+    PlaybackSettingsWriter& settings_;
 };
 
 } // namespace wiola::app

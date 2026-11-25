@@ -20,7 +20,7 @@
 
 #include "equalizer_panel.hpp"
 #include <QScrollArea>
-#include <qt/application/playback/equalizer_control.hpp>
+#include <app/playback/equalizer_control.hpp>
 
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 

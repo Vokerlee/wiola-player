@@ -20,22 +20,10 @@
 
 #include "equalizer_control.hpp"
 
-#include <QString>
-
 namespace wiola::app {
 
-namespace {
-
-constexpr auto enabled_key{"equalizer/enabled"};
-
-QString band_key(std::size_t index)
-{
-    return QString{"equalizer/band/%1"}.arg(index);
-}
-
-} // namespace
-
-EqualizerControl::EqualizerControl(app::PlaybackService& equalizer, QSettings& settings) noexcept
+EqualizerControl::EqualizerControl(app::PlaybackService& equalizer,
+    PlaybackSettingsWriter& settings) noexcept
     : equalizer_{equalizer}
     , settings_{settings}
 {
@@ -54,13 +42,15 @@ void EqualizerControl::apply_restored(bool enabled, std::span<const float> gains
 void EqualizerControl::set_enabled(bool enabled)
 {
     equalizer_.set_equalizer_enabled(enabled);
-    settings_.setValue(enabled_key, enabled);
+    settings_.write_equalizer_enabled(enabled);
 }
 
 void EqualizerControl::set_band_gain(std::size_t index, float db)
 {
+    if (index >= equalizer_.equalizer_config().layout.count)
+        return;
     equalizer_.set_equalizer_band(index, db);
-    settings_.setValue(band_key(index), equalizer_.equalizer_band(index));
+    settings_.write_band_gain(index, equalizer_.equalizer_band(index));
 }
 
 bool EqualizerControl::enabled() const noexcept
