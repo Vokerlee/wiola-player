@@ -21,39 +21,88 @@
 #include "commit_receipt.hpp"
 #include <exception>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 
 namespace wiola::library {
 
+struct CommitReceipt::State {
+    enum class Outcome {
+        pending,
+        failed,
+        durable,
+    };
+
+    explicit State(std::uint64_t accepted_revision)
+        : revision{accepted_revision}
+    {
+    }
+
+    void check_owner(const char* message) const
+    {
+        if (std::this_thread::get_id() != owner)
+            throw std::logic_error{message};
+    }
+
+    void cancel() noexcept
+    {
+        if (std::exchange(cancelled, true))
+            return;
+        observers.clear();
+    }
+
+    const std::thread::id owner{std::this_thread::get_id()};
+    const std::uint64_t revision;
+    std::vector<std::shared_ptr<Observer>> observers;
+    Outcome outcome{Outcome::pending};
+    bool cancelled{};
+};
+
+CommitReceipt::CommitReceipt(std::uint64_t revision)
+    : state_{std::make_shared<State>(revision)}
+{
+}
+
+CommitReceipt::~CommitReceipt()
+{
+    state_->cancel();
+}
+
+bool CommitReceipt::durable() const noexcept
+{
+    return state_->outcome == State::Outcome::durable;
+}
+
 void CommitReceipt::observe(Observer observer)
 {
-    if (std::this_thread::get_id() != owner_)
-        throw std::logic_error{"commit receipt accessed outside owner thread"};
-    if (!observer || cancelled_)
+    const auto state = state_;
+    state->check_owner("commit receipt accessed outside owner thread");
+    if (!observer || state->cancelled)
         return;
-    if (durable_) {
-        observer({revision_, true});
+    if (state->outcome == State::Outcome::durable) {
+        observer({state->revision, true});
         return;
     }
-    observers_.push_back(observer);
-    if (failed_)
-        observer({revision_, false});
+    const auto retained = std::make_shared<Observer>(std::move(observer));
+    state->observers.push_back(retained);
+    if (state->outcome == State::Outcome::failed)
+        (*retained)({state->revision, false});
 }
 
 void CommitReceipt::notify(bool durable)
 {
-    if (std::this_thread::get_id() != owner_)
-        throw std::logic_error{"commit receipt resolved outside owner thread"};
-    if (durable_ || cancelled_)
+    const auto state = state_;
+    state->check_owner("commit receipt resolved outside owner thread");
+    if (state->outcome == State::Outcome::durable || state->cancelled)
         return;
-    durable_ = durable;
-    failed_ = !durable;
-    auto observers = durable ? std::move(observers_) : observers_;
+    state->outcome = durable ? State::Outcome::durable : State::Outcome::failed;
+    auto observers = durable ? std::move(state->observers) : state->observers;
     std::exception_ptr failure;
     for (const auto& observer : observers) {
-        if (cancelled_ || (!durable && durable_))
+        if (state->cancelled || (!durable && state->outcome == State::Outcome::durable))
             break;
         try {
-            observer({revision_, durable});
+            (*observer)({state->revision, durable});
         } catch (...) {
             if (!failure)
                 failure = std::current_exception();
@@ -65,10 +114,9 @@ void CommitReceipt::notify(bool durable)
 
 void CommitReceipt::cancel()
 {
-    if (std::this_thread::get_id() != owner_)
-        throw std::logic_error{"commit receipt cancelled outside owner thread"};
-    cancelled_ = true;
-    observers_.clear();
+    const auto state = state_;
+    state->check_owner("commit receipt cancelled outside owner thread");
+    state->cancel();
 }
 
 } // namespace wiola::library

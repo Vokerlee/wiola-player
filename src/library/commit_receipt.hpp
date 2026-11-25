@@ -22,9 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <thread>
 #include <utility>
-#include <vector>
 
 namespace wiola::library {
 
@@ -38,10 +36,12 @@ class CommitReceipt final {
 public:
     using Observer = std::function<void(DurabilityEvent)>;
 
-    explicit CommitReceipt(std::uint64_t revision)
-        : revision_{revision}
-    {
-    }
+    explicit CommitReceipt(std::uint64_t revision);
+    ~CommitReceipt();
+    CommitReceipt(const CommitReceipt&) = delete;
+    CommitReceipt& operator=(const CommitReceipt&) = delete;
+    CommitReceipt(CommitReceipt&&) = delete;
+    CommitReceipt& operator=(CommitReceipt&&) = delete;
 
     void observe(Observer observer);
     /// Deliver to every eligible observer, then rethrow the first callback exception.
@@ -49,13 +49,11 @@ public:
     void notify(bool durable);
     void cancel();
 
-    [[nodiscard]] bool durable() const noexcept { return durable_; }
+    [[nodiscard]] bool durable() const noexcept;
 
 private:
-    std::thread::id owner_{std::this_thread::get_id()};
-    std::uint64_t revision_;
-    std::vector<Observer> observers_;
-    bool durable_{}, failed_{}, cancelled_{};
+    struct State;
+    const std::shared_ptr<State> state_;
 };
 enum class CommitState {
     failed,

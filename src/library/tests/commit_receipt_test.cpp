@@ -21,12 +21,16 @@
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 #include <vector>
 #include <wiola/library/commit_receipt.hpp>
 
 namespace {
 
 using namespace wiola::library;
+
+static_assert(!std::is_copy_constructible_v<CommitReceipt>);
+static_assert(!std::is_move_constructible_v<CommitReceipt>);
 
 TEST(CommitReceipt, WaitsForAnAttemptAndIgnoresEmptyObservers)
 {
@@ -236,6 +240,76 @@ TEST(CommitResult, DistinguishesRejectedAcceptedAndSynchronouslyDurableResults)
     receipt->notify(true);
     EXPECT_TRUE(accepted.receipt->durable());
     EXPECT_FALSE(accepted.durable()); // The original result records acceptance, not later delivery.
+}
+
+TEST(CommitReceipt, MutableObserverStateSurvivesFailedAttemptsAndSuccess)
+{
+    CommitReceipt receipt{67};
+    std::vector<int> calls;
+    receipt.observe([count = 0, &calls](auto) mutable { calls.push_back(++count); });
+    receipt.notify(false);
+    receipt.notify(false);
+    receipt.notify(true);
+    EXPECT_EQ(calls, (std::vector{1, 2, 3}));
+}
+
+TEST(CommitReceipt, CallbackCanReleaseTheLastOwningHandleAndCancelRemainingDelivery)
+{
+    for (const bool durable : {false, true}) {
+        auto receipt = std::make_shared<CommitReceipt>(71);
+        const std::weak_ptr<CommitReceipt> weak = receipt;
+        int first = 0, remaining = 0;
+        receipt->observe([&](auto) {
+            ++first;
+            receipt.reset();
+        });
+        receipt->observe([&](auto) { ++remaining; });
+        receipt->notify(durable);
+        EXPECT_TRUE(weak.expired());
+        EXPECT_EQ(first, 1);
+        EXPECT_EQ(remaining, 0);
+    }
+}
+
+TEST(CommitReceipt, LateFailedObserverCanReleaseTheLastOwningHandle)
+{
+    auto receipt = std::make_shared<CommitReceipt>(73);
+    receipt->notify(false);
+    const std::weak_ptr<CommitReceipt> weak = receipt;
+    int calls = 0;
+    receipt->observe([&](auto event) {
+        EXPECT_FALSE(event.durable);
+        ++calls;
+        receipt.reset();
+    });
+    EXPECT_TRUE(weak.expired());
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(CommitReceipt, RethrowsObserverFailureAfterTheOwningHandleIsReleased)
+{
+    auto receipt = std::make_shared<CommitReceipt>(79);
+    int remaining = 0;
+    receipt->observe([&](auto) {
+        receipt.reset();
+        throw std::runtime_error{"released receipt observer"};
+    });
+    receipt->observe([&](auto) { ++remaining; });
+    EXPECT_THROW(receipt->notify(true), std::runtime_error);
+    EXPECT_FALSE(receipt);
+    EXPECT_EQ(remaining, 0);
+}
+
+TEST(CommitReceipt, CancellationCanReleaseASelfCapturingObserver)
+{
+    auto receipt = std::make_shared<CommitReceipt>(83);
+    const std::weak_ptr<CommitReceipt> weak = receipt;
+    auto* retained = receipt.get();
+    receipt->observe([owner = receipt](auto) { static_cast<void>(owner->durable()); });
+    receipt.reset();
+    ASSERT_FALSE(weak.expired());
+    retained->cancel();
+    EXPECT_TRUE(weak.expired());
 }
 
 } // namespace
