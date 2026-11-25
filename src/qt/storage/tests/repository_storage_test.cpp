@@ -89,6 +89,23 @@ TEST_F(SavedPlaylistStorage, RestoresOrderedEntriesAndDuplicateMediaWithStableId
     EXPECT_EQ(restored.create_playlist("Next").value, "playlist-2");
 }
 
+TEST_F(SavedPlaylistStorage, ResolvesLegacyRelativeWorkspaceRootsAtRestore)
+{
+    wiola::library::LibrarySnapshot legacy;
+    legacy.workspaces.push_back(
+        {.id = {.value = "workspace-legacy"}, .root = "music/album/..", .recursive = false}
+    );
+    wiola::persistence::qt::LibraryStore storage{file()};
+    ASSERT_TRUE(storage.save(legacy).succeeded());
+    wiola::library::InMemoryRepository repository;
+    ASSERT_TRUE(wiola::persistence::qt::restore_repository(storage, repository).succeeded());
+    const auto* workspace = repository.workspace(legacy.workspaces.front().id);
+    ASSERT_NE(workspace, nullptr);
+    EXPECT_EQ(workspace->root,
+        std::filesystem::absolute(legacy.workspaces.front().root).lexically_normal());
+    EXPECT_FALSE(workspace->recursive);
+}
+
 TEST_F(SavedPlaylistStorage, RejectsInvalidSavedRecordsWithoutChangingTheRepository)
 {
     wiola::library::InMemoryRepository repository;
