@@ -20,6 +20,7 @@ if(
     NOT WIOLA_COMPONENT_BUILD
     OR library_persistence IN_LIST WIOLA_SELECTED_COMPONENTS
     OR playlist_commands IN_LIST WIOLA_SELECTED_COMPONENTS
+    OR metadata_edits IN_LIST WIOLA_SELECTED_COMPONENTS
 )
     add_subdirectory(app)
 endif()

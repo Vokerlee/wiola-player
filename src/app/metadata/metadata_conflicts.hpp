@@ -23,6 +23,10 @@
 #include <wiola/library/repository.hpp>
 
 #include <cstdint>
+#include <filesystem>
+#include <functional>
+#include <optional>
+#include <string>
 
 namespace wiola::app {
 
@@ -43,9 +47,16 @@ struct ExpectedMediaState {
 
 class MetadataConflictDetector final {
 public:
+    using ReadFingerprint = std::function<std::optional<std::string>(const std::filesystem::path&)>;
+
+    explicit MetadataConflictDetector(ReadFingerprint read = {});
+
     [[nodiscard]] MetadataConflictKind check(const library::LibraryRepository& repository,
         const library::MediaId& media, const ExpectedMediaState& expected,
         const std::filesystem::path& location = {}) const;
+
+private:
+    ReadFingerprint read_;
 };
 
 } // namespace wiola::app

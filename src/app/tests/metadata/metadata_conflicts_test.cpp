@@ -18,14 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/metadata_conflicts.hpp>
-
-#include <media/local/fingerprint.hpp>
-#include <wiola/library/in_memory_repository.hpp>
-
 #include <gtest/gtest.h>
-
-#include <fstream>
+#include <stdexcept>
+#include <vector>
+#include <wiola/app/metadata/metadata_conflicts.hpp>
+#include <wiola/library/in_memory_repository.hpp>
 
 namespace {
 
@@ -33,68 +30,95 @@ class MetadataConflicts : public testing::Test {
 protected:
     void SetUp() override
     {
-        directory = std::filesystem::temp_directory_path() / "wiola-metadata-conflicts";
-        std::filesystem::remove_all(directory);
-        ASSERT_TRUE(std::filesystem::create_directories(directory));
-        location = directory / "track.wav";
-        std::ofstream{location} << "audio";
-        expected.fingerprint = *wiola::media::fingerprint_media(location);
-        expected.metadata_revision = 4;
-        expected.content_revision = 2;
-
+        expected = {.metadata_revision = 4, .content_revision = 2, .fingerprint = "captured"};
+        observed = expected.fingerprint;
         wiola::library::TrackRecord track;
         track.id = media;
         track.locations = {location};
         track.fingerprint = expected.fingerprint;
-        track.metadata_revision = 4;
-        track.content_revision = 2;
+        track.metadata_revision = expected.metadata_revision;
+        track.content_revision = expected.content_revision;
         ASSERT_TRUE(repository.put_track(track));
+    }
+
+    wiola::app::MetadataConflictDetector detector()
+    {
+        return wiola::app::MetadataConflictDetector{[this](const auto& path) {
+            requested.push_back(path);
+            return observed;
+        }};
     }
 
     wiola::library::MediaId media{"media"};
     wiola::library::InMemoryRepository repository;
     wiola::app::ExpectedMediaState expected;
-    std::filesystem::path location;
-    std::filesystem::path directory;
-
-    void TearDown() override { std::filesystem::remove_all(directory); }
+    std::filesystem::path location{"recorded-location"};
+    std::optional<std::string> observed;
+    std::vector<std::filesystem::path> requested;
 };
 
 TEST_F(MetadataConflicts, AcceptsMatchingExpectedState)
 {
-    wiola::app::MetadataConflictDetector detector;
-    EXPECT_EQ(detector.check(repository, media, expected), wiola::app::MetadataConflictKind::none);
+    auto check = detector();
+    EXPECT_EQ(check.check(repository, media, expected), wiola::app::MetadataConflictKind::none);
+    EXPECT_EQ(requested, (std::vector<std::filesystem::path>{location}));
+    const std::filesystem::path supplied{"explicit-location"};
+    EXPECT_EQ(check.check(repository, media, expected, supplied),
+        wiola::app::MetadataConflictKind::none);
+    EXPECT_EQ(requested.back(), supplied);
 }
 
-TEST_F(MetadataConflicts, DetectsMetadataAndContentRevisionChanges)
+TEST_F(MetadataConflicts, DetectsMetadataAndContentRevisionChangesWithoutReadingTheSource)
 {
-    wiola::app::MetadataConflictDetector detector;
-    auto changed = repository.track(media);
-    auto updated = *changed;
+    auto check = detector();
+    auto updated = *repository.track(media);
     ++updated.metadata_revision;
     ASSERT_TRUE(repository.put_track(updated));
-    EXPECT_EQ(detector.check(repository, media, expected),
+    EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::metadata_changed);
-
     updated.metadata_revision = expected.metadata_revision;
     ++updated.content_revision;
     ASSERT_TRUE(repository.put_track(updated));
-    EXPECT_EQ(detector.check(repository, media, expected),
+    EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::content_changed);
+    EXPECT_TRUE(requested.empty());
 }
 
-TEST_F(MetadataConflicts, DetectsChangedFilesMissingTracksAndUnreadableLocations)
+TEST_F(MetadataConflicts, DetectsChangedTokensMissingTracksAndUnavailableSources)
 {
-    wiola::app::MetadataConflictDetector detector;
-    std::ofstream{location} << "changed";
-    EXPECT_EQ(detector.check(repository, media, expected),
+    auto check = detector();
+    observed = "changed";
+    EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::content_changed);
-
-    EXPECT_EQ(detector.check(repository, wiola::library::MediaId{"missing"}, expected),
+    EXPECT_EQ(check.check(repository, wiola::library::MediaId{"missing"}, expected),
         wiola::app::MetadataConflictKind::missing_media);
+    observed.reset();
+    EXPECT_EQ(check.check(repository, media, expected),
+        wiola::app::MetadataConflictKind::unreadable);
+}
 
-    std::filesystem::remove(location);
-    EXPECT_EQ(detector.check(repository, media, expected),
+TEST_F(MetadataConflicts, RequiresAReaderAndLocationOnlyWhenAFingerprintWasCaptured)
+{
+    wiola::app::MetadataConflictDetector unavailable;
+    EXPECT_EQ(unavailable.check(repository, media, expected),
+        wiola::app::MetadataConflictKind::unreadable);
+    auto check = detector();
+    auto updated = *repository.track(media);
+    updated.locations.clear();
+    ASSERT_TRUE(repository.put_track(updated));
+    EXPECT_EQ(check.check(repository, media, expected),
+        wiola::app::MetadataConflictKind::unreadable);
+    expected.fingerprint.clear();
+    EXPECT_EQ(check.check(repository, media, expected), wiola::app::MetadataConflictKind::none);
+    EXPECT_TRUE(requested.empty());
+}
+
+TEST_F(MetadataConflicts, DriverExceptionsAreReportedAsUnreadable)
+{
+    wiola::app::MetadataConflictDetector check{[](const auto&) -> std::optional<std::string> {
+        throw std::runtime_error{"reader failed"};
+    }};
+    EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::unreadable);
 }
 

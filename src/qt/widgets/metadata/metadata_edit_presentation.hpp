@@ -20,8 +20,8 @@
 
 #pragma once
 #include <QString>
-#include <app/metadata/metadata_edit_service.hpp>
 #include <app/metadata/metadata_write_job.hpp>
+#include <wiola/app/metadata/metadata_edit_service.hpp>
 
 namespace wiola::gui {
 

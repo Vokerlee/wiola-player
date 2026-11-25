@@ -24,6 +24,7 @@
 #include <QThread>
 #include <algorithm>
 #include <app/library/local_identity.hpp>
+#include <media/local/fingerprint.hpp>
 #include <qt/paths.hpp>
 #include <wiola/library/records.hpp>
 
@@ -58,7 +59,8 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , playlists_{repository_, persist_}
     , tags_{repository_, persist_}
     , edits_{repository_, persist_,
-          [this](const MetadataEditOutcome& outcome) { emit metadata_outcome(outcome); }}
+          [this](const MetadataEditOutcome& outcome) { emit metadata_outcome(outcome); },
+          media::fingerprint_media}
     , scans_{*this, [this](WorkspaceScanBatch batch) { publish_scan(std::move(batch)); }}
     , writes_{*this, provider, repository_, persist_,
           [this](const MetadataWriteResult& result) { emit file_write_outcome(result); }}

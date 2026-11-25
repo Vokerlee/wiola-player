@@ -21,8 +21,8 @@
 #pragma once
 #include <app/metadata/background_metadata_writes.hpp>
 #include <app/metadata/media_replacement.hpp>
-#include <app/metadata/metadata_edit_session.hpp>
 #include <qt/queued_delivery.hpp>
+#include <wiola/app/metadata/metadata_edit_session.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
 namespace wiola::app {

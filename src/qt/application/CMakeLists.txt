@@ -68,6 +68,7 @@ wiola_add_library(
     SOURCES library/library_session.cpp
     LIBS
         wiola_library_persistence
+        wiola::file_fingerprint
         wiola_media_revisions
         wiola_metadata_writes
         wiola_workspace_scans

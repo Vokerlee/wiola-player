@@ -56,8 +56,6 @@ QString metadata_file_message(const app::MetadataWriteResult& result)
 QString metadata_edit_message(const app::MetadataEditOutcome& outcome)
 {
     switch (outcome.state) {
-    case app::MetadataEditState::queued:
-        return QString{"Saving application metadata for %1 track(s)"}.arg(outcome.changed);
     case app::MetadataEditState::accepted:
         return QString{"Application metadata updated; saving revision %1"}.arg(outcome.revision);
     case app::MetadataEditState::conflicted:

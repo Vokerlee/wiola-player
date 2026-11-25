@@ -20,9 +20,14 @@
 
 #include "metadata_conflicts.hpp"
 
-#include <media/local/fingerprint.hpp>
+#include <utility>
 
 namespace wiola::app {
+
+MetadataConflictDetector::MetadataConflictDetector(ReadFingerprint read)
+    : read_{std::move(read)}
+{
+}
 
 MetadataConflictKind MetadataConflictDetector::check(const library::LibraryRepository& repository,
     const library::MediaId& media, const ExpectedMediaState& expected,
@@ -43,13 +48,17 @@ MetadataConflictKind MetadataConflictDetector::check(const library::LibraryRepos
 
     const std::filesystem::path candidate =
         location.empty() && !track->locations.empty() ? track->locations.front() : location;
-    const auto fingerprint = media::fingerprint_media(candidate);
-
-    if (!fingerprint)
+    if (candidate.empty() || !read_)
         return MetadataConflictKind::unreadable;
-
-    return *fingerprint == expected.fingerprint ? MetadataConflictKind::none
-                                                : MetadataConflictKind::content_changed;
+    try {
+        const auto fingerprint = read_(candidate);
+        if (!fingerprint)
+            return MetadataConflictKind::unreadable;
+        return *fingerprint == expected.fingerprint ? MetadataConflictKind::none
+                                                    : MetadataConflictKind::content_changed;
+    } catch (...) {
+        return MetadataConflictKind::unreadable;
+    }
 }
 
 } // namespace wiola::app

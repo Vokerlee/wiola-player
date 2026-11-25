@@ -23,9 +23,11 @@
 #include <wiola/library/metadata_patch.hpp>
 
 #include "metadata_conflicts.hpp"
+#include "metadata_edit_session.hpp"
 #include <wiola/library/repository_transaction.hpp>
 
 #include <map>
+#include <memory>
 
 namespace wiola::app {
 
@@ -38,7 +40,6 @@ enum class StandardMetadataError {
 };
 
 enum class MetadataEditState {
-    queued,
     accepted,
     succeeded,
     failed,
@@ -46,7 +47,7 @@ enum class MetadataEditState {
 };
 
 struct MetadataEditOutcome {
-    MetadataEditState state{MetadataEditState::queued};
+    MetadataEditState state{MetadataEditState::failed};
     StandardMetadataError error{StandardMetadataError::none};
     MetadataConflictKind conflict{MetadataConflictKind::none};
     std::size_t changed{0};
@@ -62,13 +63,27 @@ struct MetadataEditOutcome {
     }
 };
 
+enum class MetadataConflictPolicy {
+    require_captured_state,
+    overwrite_current,
+};
+
+/// Owner-thread catalog edits. Notifications run after the transaction has finished.
 class MetadataEditService final {
 public:
     using Persist = library::RepositoryTransaction::Persist;
     using Observer = std::function<void(const MetadataEditOutcome&)>;
 
     MetadataEditService(library::InMemoryRepository& repository, Persist persist,
-        Observer observer = {});
+        Observer observer = {}, MetadataConflictDetector::ReadFingerprint fingerprint = {});
+    ~MetadataEditService();
+    MetadataEditService(const MetadataEditService&) = delete;
+    MetadataEditService& operator=(const MetadataEditService&) = delete;
+    MetadataEditService(MetadataEditService&&) = delete;
+    MetadataEditService& operator=(MetadataEditService&&) = delete;
+
+    [[nodiscard]] MetadataEditOutcome apply(const MetadataEditSession& session,
+        MetadataConflictPolicy policy = MetadataConflictPolicy::require_captured_state);
 
     [[nodiscard]] MetadataEditOutcome apply(const std::vector<library::MediaId>& media,
         const library::StandardMetadataPatch& edit,
@@ -76,10 +91,8 @@ public:
     [[nodiscard]] MetadataEditOutcome reset(const std::vector<library::MediaId>& media);
 
 private:
-    void publish(const MetadataEditOutcome& outcome) const;
-    library::InMemoryRepository& repository_;
-    Persist persist_;
-    Observer observer_;
+    struct State;
+    const std::shared_ptr<State> state_;
 };
 
 } // namespace wiola::app

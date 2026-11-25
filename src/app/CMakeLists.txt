@@ -75,6 +75,38 @@ if(
     wiola_apply_build_controls(wiola_saved_playlists)
 endif()
 
+if(
+    NOT WIOLA_COMPONENT_BUILD
+    OR metadata_edits IN_LIST WIOLA_SELECTED_COMPONENTS
+)
+    add_library(
+        wiola_metadata_edits
+        STATIC
+        metadata/metadata_edit_service.cpp
+        metadata/metadata_edit_session.cpp
+        metadata/metadata_conflicts.cpp
+        metadata/metadata_merge.cpp
+    )
+
+    add_library(wiola::metadata_edits ALIAS wiola_metadata_edits)
+
+    set_target_properties(wiola_metadata_edits PROPERTIES CXX_EXTENSIONS OFF)
+
+    target_link_libraries(wiola_metadata_edits PUBLIC wiola::library)
+
+    wiola_target_headers(
+        wiola_metadata_edits
+        wiola/app/metadata
+        HEADERS
+            metadata/metadata_edit_service.hpp
+            metadata/metadata_edit_session.hpp
+            metadata/metadata_conflicts.hpp
+            metadata/metadata_merge.hpp
+    )
+
+    wiola_apply_build_controls(wiola_metadata_edits)
+endif()
+
 if(NOT WIOLA_COMPONENT_BUILD)
     wiola_add_library(wiola_local_identity SOURCES library/local_identity.cpp)
 
@@ -94,10 +126,6 @@ if(NOT WIOLA_COMPONENT_BUILD)
             metadata/metadata_write_job.cpp
             metadata/custom_tag_commands.cpp
             metadata/media_replacement.cpp
-            metadata/metadata_conflicts.cpp
-            metadata/metadata_merge.cpp
-            metadata/metadata_edit_session.cpp
-            metadata/metadata_edit_service.cpp
             playback/active_playlist.cpp
             playback/playback_queue.cpp
             playback/playback_service.cpp
@@ -114,7 +142,11 @@ if(NOT WIOLA_COMPONENT_BUILD)
 
     target_link_libraries(
         wiola_app
-        PUBLIC wiola::library wiola::playback wiola::audio_dsp
+        PUBLIC
+            wiola::library
+            wiola::playback
+            wiola::audio_dsp
+            wiola::metadata_edits
     )
 endif()
 
