@@ -23,6 +23,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <exception>
 #include <gtest/gtest.h>
 #include <limits>
 #include <mutex>
@@ -97,8 +98,8 @@ public:
         entered_ = true;
         changed_.notify_all();
         changed_.wait(lock, [this] { return !blocked_; });
-        if (throws_)
-            throw std::runtime_error{"controlled storage failure"};
+        if (failure_)
+            std::rethrow_exception(failure_);
         return result_;
     }
 
@@ -109,11 +110,11 @@ public:
         entered_ = false;
     }
 
-    void release(app::SnapshotWriteResult result = {}, bool throws = false)
+    void release(app::SnapshotWriteResult result = {}, std::exception_ptr failure = {})
     {
         std::lock_guard lock{mutex_};
         result_ = result;
-        throws_ = throws;
+        failure_ = std::move(failure);
         blocked_ = false;
         changed_.notify_all();
     }
@@ -135,7 +136,8 @@ private:
     std::condition_variable changed_;
     std::vector<library::LibrarySnapshot> snapshots_;
     app::SnapshotWriteResult result_;
-    bool blocked_{}, throws_{}, entered_{};
+    std::exception_ptr failure_;
+    bool blocked_{}, entered_{};
 };
 
 std::shared_ptr<library::RevisionDelta> revision(std::uint64_t number, const char* id = "media")
@@ -251,7 +253,7 @@ TEST_F(LibraryPersistenceCore, FailedAttemptsRetainBothAcceptedEditsForSuccessfu
 
 TEST_F(LibraryPersistenceCore, RuntimeFailureAtTheDriverBoundaryLeavesTheRevisionRetryable)
 {
-    store.release({}, true);
+    store.release({}, std::make_exception_ptr(std::runtime_error{"controlled storage failure"}));
     start();
     const auto accepted = writer->accept(revision(1));
     ASSERT_TRUE(accepted);
@@ -260,6 +262,36 @@ TEST_F(LibraryPersistenceCore, RuntimeFailureAtTheDriverBoundaryLeavesTheRevisio
     store.release();
     ASSERT_TRUE(writer->flush().succeeded());
     EXPECT_TRUE(accepted.receipt->durable());
+}
+
+TEST_F(LibraryPersistenceCore, EveryDriverExceptionLeavesTheRevisionRetryable)
+{
+    struct DriverFailure { };
+
+    for (const auto& failure : {std::make_exception_ptr(std::logic_error{"driver failure"}),
+             std::make_exception_ptr(std::bad_alloc{}), std::make_exception_ptr(DriverFailure{})}) {
+        store.release({}, failure);
+        start();
+        const auto delta = revision(1, "retained");
+        const auto accepted = writer->accept(delta);
+        ASSERT_TRUE(accepted);
+        std::vector<bool> attempts;
+        accepted.receipt->observe([&](auto event) { attempts.push_back(event.durable); });
+
+        EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
+        EXPECT_EQ(writer->pending_revision(), delta->changes.revision);
+        EXPECT_EQ(writer->durable_revision(), 0U);
+        EXPECT_FALSE(accepted.receipt->durable());
+
+        store.release();
+        writer->retry();
+        ASSERT_TRUE(writer->flush().succeeded());
+        EXPECT_TRUE(accepted.receipt->durable());
+        EXPECT_EQ(attempts, (std::vector<bool>{false, true}));
+        const auto snapshot = store.last_snapshot();
+        ASSERT_EQ(snapshot.tracks.size(), delta->tracks.size());
+        EXPECT_EQ(snapshot.tracks.front(), delta->tracks.front());
+    }
 }
 
 TEST_F(LibraryPersistenceCore, DurabilityWaitersDistinguishPendingSavedAndUnavailableRevisions)
