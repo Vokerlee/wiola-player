@@ -22,7 +22,7 @@
 #include <app/library/location_index.hpp>
 #include <app/library/search_index.hpp>
 #include <app/library/tag_key_catalog.hpp>
-#include <library/location.hpp>
+#include <library/records.hpp>
 
 #include <gtest/gtest.h>
 

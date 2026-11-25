@@ -20,7 +20,7 @@
 
 #include <app/workspace/workspace_reconciliation.hpp>
 
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <media/local/fingerprint.hpp>
 
 #include <fixtures/temporary_directory.hpp>
@@ -91,7 +91,7 @@ TEST_F(WorkspaceReconciliation, RelocatesByFingerprintWithoutChangingTagsOrPlayl
     write(old_path, "same content");
 
     wiola::library::TrackRecord track;
-    track.id = wiola::library::media_id_for(old_path);
+    track.id = wiola::app::media_id_for(old_path);
     track.locations = {old_path};
     track.fingerprint = *wiola::media::fingerprint_media(old_path);
     track.overrides.title = "User title";
@@ -114,7 +114,7 @@ TEST_F(WorkspaceReconciliation, RelocatesByFingerprintWithoutChangingTagsOrPlayl
     EXPECT_EQ(repository.track(track.id)->locations.front(), new_path);
     EXPECT_FALSE(repository.track(track.id)->missing);
     EXPECT_EQ(repository.playlist(playlist)->entries.front().media, track.id);
-    EXPECT_EQ(repository.track(wiola::library::media_id_for(new_path)), nullptr);
+    EXPECT_EQ(repository.track(wiola::app::media_id_for(new_path)), nullptr);
 }
 
 TEST_F(WorkspaceReconciliation, HandlesEditedMissingRestoredAndNewFiles)
@@ -123,7 +123,7 @@ TEST_F(WorkspaceReconciliation, HandlesEditedMissingRestoredAndNewFiles)
     write(path, "before");
 
     wiola::library::TrackRecord track;
-    track.id = wiola::library::media_id_for(path);
+    track.id = wiola::app::media_id_for(path);
     track.locations = {path};
     track.fingerprint = *wiola::media::fingerprint_media(path);
     track.overrides.title = "Keep me";
@@ -151,8 +151,8 @@ TEST_F(WorkspaceReconciliation, HandlesEditedMissingRestoredAndNewFiles)
     result = reconcile(both);
 
     EXPECT_EQ(result.learned, 1);
-    ASSERT_NE(repository.track(wiola::library::media_id_for(learned)), nullptr);
-    EXPECT_FALSE(repository.track(wiola::library::media_id_for(learned))->missing);
+    ASSERT_NE(repository.track(wiola::app::media_id_for(learned)), nullptr);
+    EXPECT_FALSE(repository.track(wiola::app::media_id_for(learned))->missing);
 }
 
 TEST_F(WorkspaceReconciliation, RejectsUnknownWorkspacesAndCountsOutsidePaths)
@@ -195,7 +195,7 @@ TEST_F(WorkspaceReconciliation, FailedPersistenceRollsBackLearnedRowsAndMissingF
     write(old_path, "old");
     write(new_path, "new");
     wiola::library::TrackRecord old;
-    old.id = wiola::library::media_id_for(old_path);
+    old.id = wiola::app::media_id_for(old_path);
     old.locations = {old_path};
     old.fingerprint = *wiola::media::fingerprint_media(old_path);
     ASSERT_TRUE(repository.put_track(old));
@@ -216,7 +216,7 @@ TEST_F(WorkspaceReconciliation, StaleDiscoveryCannotOverwriteNewerContentState)
     const auto path = root / "changed.flac";
     write(path, "before");
     wiola::library::TrackRecord record;
-    record.id = wiola::library::media_id_for(path);
+    record.id = wiola::app::media_id_for(path);
     record.locations = {path};
     record.fingerprint = *wiola::media::fingerprint_media(path);
     ASSERT_TRUE(repository.put_track(record));
@@ -286,7 +286,7 @@ TEST_F(WorkspaceReconciliation, MissingNewFileCannotBeQualifiedAsKnownOrRelocate
     EXPECT_FALSE(discovered.fingerprint.has_value());
     EXPECT_FALSE(discovered.known());
     EXPECT_FALSE(discovered.relocated());
-    EXPECT_EQ(discovered.media, wiola::library::media_id_for(missing));
+    EXPECT_EQ(discovered.media, wiola::app::media_id_for(missing));
     EXPECT_EQ(discovered.expected_content_revision, 0U);
 }
 

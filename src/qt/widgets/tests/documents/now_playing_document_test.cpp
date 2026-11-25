@@ -29,8 +29,8 @@
 #include <QFont>
 #include <QLabel>
 #include <QSignalSpy>
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 
 #include <gtest/gtest.h>
@@ -123,7 +123,7 @@ TEST(NowPlayingDocument, IdleRefreshAndPlayingMarkerDoNotRebuildOrQueryTheSource
     std::size_t resolutions = 0;
     document.set_media_resolver([&](const auto& path) {
         ++resolutions;
-        return library::media_id_for(path);
+        return app::media_id_for(path);
     });
     ASSERT_TRUE(document.show_playlist(playlist));
     auto& table = document.browser().table();
@@ -150,7 +150,7 @@ TEST(NowPlayingDocument, LibraryOverridesRefreshDuplicateOccurrencesWithoutReadi
         wiola::media::local_resource("/missing.wav")});
     library::InMemoryRepository repository;
     library::TrackRecord record;
-    record.id = library::media_id_for("/missing.wav");
+    record.id = app::media_id_for("/missing.wav");
     record.locations = {"/missing.wav"};
     record.overrides.title = "Application title";
     record.metadata_revision = 1;
@@ -179,7 +179,7 @@ TEST(NowPlayingDocument,
     std::size_t lookups = 0;
     document.set_media_resolver([&](const auto& path) {
         ++lookups;
-        return library::media_id_for(path);
+        return app::media_id_for(path);
     });
     document.show_library(repository);
     document.show_playlist(playlist);
@@ -193,7 +193,7 @@ TEST(NowPlayingDocument,
     EXPECT_EQ(lookups, 1000);
     EXPECT_EQ(model->projection_statistics().queries, before.queries);
     library::TrackRecord record;
-    record.id = library::media_id_for("/music/0.wav");
+    record.id = app::media_id_for("/music/0.wav");
     record.locations = {"/music/0.wav"};
     record.overrides.title = "Application title";
     record.metadata_revision = 7;

@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Normalized persistent identities for media locations.
+ * @brief Local-path compatibility for persisted catalog identities.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -18,52 +18,37 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "location.hpp"
-#include "records.hpp"
+#include "local_identity.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <string>
 #include <utility>
 
-namespace wiola::library {
-
-std::filesystem::path preferred_location(const TrackRecord& record)
-{
-    return record.locations.empty() ? std::filesystem::path{} : record.locations.front();
-}
+namespace wiola::app {
 
 namespace {
 
-bool case_insensitive(MediaPathCase policy) noexcept
+bool case_insensitive(LocalPathCase policy) noexcept
 {
-    switch (policy) {
-    case MediaPathCase::sensitive:
-        return false;
-
-    case MediaPathCase::insensitive:
-        return true;
-
-    case MediaPathCase::native:
 #ifdef _WIN32
-        return true;
+    constexpr auto native = LocalPathCase::insensitive;
 #else
-        return false;
+    constexpr auto native = LocalPathCase::sensitive;
 #endif
-    }
-
-    return false;
+    return (policy == LocalPathCase::native ? native : policy) == LocalPathCase::insensitive;
 }
 
 void fold_ascii_case(std::string& path) noexcept
 {
-    std::ranges::transform(path, path.begin(),
-        [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    std::ranges::transform(path, path.begin(), [](unsigned char character) {
+        return static_cast<char>(character >= 'A' && character <= 'Z' ? character + ('a' - 'A')
+                                                                      : character);
+    });
 }
 
 } // namespace
 
-MediaId media_id_for(const std::filesystem::path& location, MediaPathCase case_policy)
+library::MediaId media_id_for(const std::filesystem::path& location, LocalPathCase case_policy)
 {
     if (location.empty())
         return {};
@@ -77,4 +62,4 @@ MediaId media_id_for(const std::filesystem::path& location, MediaPathCase case_p
     return {.value = std::move(normalized)};
 }
 
-} // namespace wiola::library
+} // namespace wiola::app

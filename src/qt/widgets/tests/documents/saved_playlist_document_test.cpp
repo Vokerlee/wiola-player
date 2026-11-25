@@ -24,8 +24,8 @@
 
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 
 #include <QAction>
 #include <QApplication>
@@ -206,7 +206,7 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
     wiola::library::InMemoryRepository repository;
     const auto make = [](std::string name, std::string title, std::string artist) {
         wiola::library::TrackRecord record;
-        record.id = wiola::library::media_id_for(name + ".wav");
+        record.id = wiola::app::media_id_for(name + ".wav");
         record.embedded.title = std::move(title);
         record.embedded.artist = std::move(artist);
         record.embedded.album = "Shared album";

@@ -19,7 +19,7 @@ target_link_libraries(wiola_workspace_watcher PUBLIC Qt6::Core)
 wiola_add_library(
     wiola_m3u
     SOURCES library/m3u_playlist.cpp
-    LIBS wiola_library wiola::qt_paths
+    LIBS wiola_library wiola::local_identity wiola::qt_paths
 )
 target_link_libraries(wiola_m3u PUBLIC Qt6::Core)
 wiola_add_library(
@@ -43,7 +43,12 @@ target_link_libraries(wiola_player_application PUBLIC Qt6::Core wiola_app)
 wiola_add_library(
     wiola_queue_migration
     SOURCES library/queue_library_migration.cpp
-    LIBS wiola::qt_library_store wiola_library wiola::qt_paths wiola_qt_settings
+    LIBS
+        wiola::qt_library_store
+        wiola_library
+        wiola::local_identity
+        wiola::qt_paths
+        wiola_qt_settings
 )
 target_link_libraries(wiola_queue_migration PUBLIC Qt6::Core)
 

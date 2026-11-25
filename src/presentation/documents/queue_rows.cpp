@@ -20,7 +20,7 @@
 
 #include "queue_rows.hpp"
 #include <algorithm>
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 #include <map>
 #include <media/local/resource.hpp>
 #include <set>
@@ -32,7 +32,7 @@ TrackRow queue_row(const engine::QueueEntry& track)
     TrackRow row;
     row.id = track.id();
     if (auto path = media::local_path(track.resource())) {
-        row.media = library::media_id_for(*path);
+        row.media = app::media_id_for(*path);
         row.location = std::move(*path);
         row.location_key = row.media.value;
     }
@@ -197,7 +197,7 @@ std::vector<TrackRow> QueueRows::update_library(const engine::QueueView& playlis
         if (change.includes(library::MediaChangeFields::locations))
             if (const auto* record = repository.track(change.media))
                 for (const auto& path : record->locations) {
-                    if (const auto found = locations_.find(library::media_id_for(path).value);
+                    if (const auto found = locations_.find(app::media_id_for(path).value);
                         found != locations_.end())
                         affected.insert(found->second.begin(), found->second.end());
                 }

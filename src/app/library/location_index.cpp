@@ -19,7 +19,7 @@
  */
 
 #include "location_index.hpp"
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 
 namespace wiola::app {
 
@@ -45,14 +45,14 @@ void LocationIndex::upsert(const library::TrackRecord& record)
     auto& keys = media_[record.id];
     for (const auto& path : record.locations)
         if (!path.empty())
-            keys.insert(library::media_id_for(path));
+            keys.insert(app::media_id_for(path));
     for (const auto& key : keys)
         locations_[key].insert(record.id);
 }
 
 std::optional<library::MediaId> LocationIndex::find(const std::filesystem::path& path) const
 {
-    const auto found = locations_.find(library::media_id_for(path));
+    const auto found = locations_.find(app::media_id_for(path));
     return found == locations_.end() ? std::nullopt : std::optional{*found->second.begin()};
 }
 

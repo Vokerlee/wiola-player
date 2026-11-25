@@ -24,8 +24,8 @@
 
 #include <presentation/tracks/track_sort.hpp>
 
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 #include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
@@ -56,7 +56,7 @@ protected:
         metadata.duration = wiola::units::Time{42.5};
         playlist.describe(playlist.tracks().front().id(), std::move(metadata));
 
-        record.id = wiola::library::media_id_for("Music/Track.flac");
+        record.id = wiola::app::media_id_for("Music/Track.flac");
         record.tags = {
             {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"  },
             {.id = wiola::library::TagId{"tag-2"}, .key = "Genre", .value = "Fusion"}

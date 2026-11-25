@@ -22,8 +22,8 @@
 #include <QFileSystemWatcher>
 #include <QThread>
 #include <algorithm>
+#include <app/library/local_identity.hpp>
 #include <app/workspace/workspace_discovery.hpp>
-#include <library/location.hpp>
 #include <qt/paths.hpp>
 #include <stdexcept>
 
@@ -99,7 +99,7 @@ bool WorkspaceWatcher::add(const library::WorkspaceId& id, const std::filesystem
     const auto normal = normalized(path);
     if (registration == watched_.end() || !normal)
         return false;
-    const auto key = library::media_id_for(*normal).value;
+    const auto key = app::media_id_for(*normal).value;
     registration->second.keys.insert(key);
     if (!paths_.contains(key) && installed_count_ >= policy_.max_paths) {
         registration->second.refused.insert_or_assign(key, *normal);
@@ -155,7 +155,7 @@ void WorkspaceWatcher::fallback_parent(const library::WorkspaceId& id)
     for (std::size_t depth = 0; depth < 256 && !parent.empty(); ++depth) {
         std::error_code error;
         if (std::filesystem::is_directory(parent, error) && !error) {
-            const auto key = library::media_id_for(parent).value;
+            const auto key = app::media_id_for(parent).value;
             found->second.base.insert(key);
             static_cast<void>(add(id, parent));
             return;
@@ -180,7 +180,7 @@ bool WorkspaceWatcher::watch(const library::WorkspaceRecord& workspace)
     registration.workspace = workspace;
     registration.workspace.root = *root;
     registration.epoch = ++next_epoch_;
-    const auto root_key = library::media_id_for(*root).value;
+    const auto root_key = app::media_id_for(*root).value;
     registration.base.insert(root_key);
     registration.awaiting = workspace.recursive;
     std::error_code error;
@@ -214,17 +214,17 @@ void WorkspaceWatcher::directories_discovered(const library::WorkspaceId& id,
         const auto normal = normalized(path);
         if (!normal || !workspace_contains(found->second.workspace.root, *normal))
             continue;
-        const auto key = library::media_id_for(*normal).value;
+        const auto key = app::media_id_for(*normal).value;
         found->second.discovered.insert(key);
         static_cast<void>(add(id, *normal));
-        if (key == library::media_id_for(found->second.workspace.root).value)
+        if (key == app::media_id_for(found->second.workspace.root).value)
             found->second.root_missing = false;
     }
     if (finished) {
         found->second.awaiting = false;
         found->second.failed = !successful;
         if (successful) {
-            const auto root_key = library::media_id_for(found->second.workspace.root).value;
+            const auto root_key = app::media_id_for(found->second.workspace.root).value;
             if (!found->second.root_missing) {
                 for (const auto& base : found->second.base)
                     if (base != root_key)
@@ -303,7 +303,7 @@ void WorkspaceWatcher::changed(const std::filesystem::path& path)
     const auto normal = normalized(path);
     if (!normal)
         return;
-    const auto key = library::media_id_for(*normal).value;
+    const auto key = app::media_id_for(*normal).value;
     const auto found = paths_.find(key);
     if (found == paths_.end())
         return;
@@ -323,7 +323,7 @@ void WorkspaceWatcher::changed(const std::filesystem::path& path)
         registration->second.root_missing =
             !std::filesystem::is_directory(root, error) || static_cast<bool>(error);
         if (registration->second.root_missing) {
-            registration->second.refused.insert_or_assign(library::media_id_for(root).value, root);
+            registration->second.refused.insert_or_assign(app::media_id_for(root).value, root);
             fallback_parent(id);
         } else
             static_cast<void>(add(id, root));

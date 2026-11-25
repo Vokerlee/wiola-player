@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Normalized persistent identities for media locations.
+ * @brief Local-path compatibility for persisted catalog identities.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -24,26 +24,22 @@
 
 #include <filesystem>
 
-namespace wiola::library {
+namespace wiola::app {
 
-struct TrackRecord;
-/// Returns the cached preferred location without probing the filesystem.
-[[nodiscard]] std::filesystem::path preferred_location(const TrackRecord& record);
-
-enum class MediaPathCase {
+enum class LocalPathCase {
     native,
     sensitive,
     insensitive,
 };
 
 /**
- * Converts a location to its persistent media identity without requiring the file to exist.
+ * Maps a native location to its historical catalog identity without opening the file.
  *
- * Lexical normalization deliberately does not resolve symlinks: opening an alias must not move its
- * tags and playlist membership to a different identity. Insensitive matching folds ASCII case and
- * leaves non-ASCII bytes unchanged.
+ * Paths are made absolute and lexically normalized, without resolving symlinks. Case-insensitive
+ * matching folds ASCII only; non-ASCII bytes remain unchanged, independently of the C locale.
+ * This is local-import compatibility policy, not a requirement on catalog or provider identities.
  */
-[[nodiscard]] MediaId media_id_for(const std::filesystem::path& location,
-    MediaPathCase case_policy = MediaPathCase::native);
+[[nodiscard]] library::MediaId media_id_for(const std::filesystem::path& location,
+    LocalPathCase case_policy = LocalPathCase::native);
 
-} // namespace wiola::library
+} // namespace wiola::app

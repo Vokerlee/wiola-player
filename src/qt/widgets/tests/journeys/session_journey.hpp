@@ -3,10 +3,10 @@
 #include <QHeaderView>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <app/library/local_identity.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <gtest/gtest.h>
-#include <library/location.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/player_application.hpp>
@@ -59,7 +59,7 @@ inline void restore_session_journey()
             library::RepositoryTransaction transaction{player.library().repository(),
                 player.library().persistence()};
             library::TrackRecord record;
-            record.id = library::media_id_for(source);
+            record.id = app::media_id_for(source);
             record.locations = {source};
             record.overrides.title = "Repeated";
             record.overrides.artist = "Artist";

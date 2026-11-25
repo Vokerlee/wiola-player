@@ -87,3 +87,9 @@ wiola_add_test(
     SOURCES library/artwork_store_test.cpp
     LIBS wiola_app
 )
+
+wiola_add_test(
+    app_local_identity_test
+    SOURCES library/local_identity_test.cpp
+    LIBS wiola::local_identity
+)

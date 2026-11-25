@@ -20,7 +20,7 @@
 
 #include "workspace_rows.hpp"
 #include <algorithm>
-#include <library/location.hpp>
+#include <app/library/local_identity.hpp>
 
 namespace wiola::gui {
 
@@ -58,7 +58,7 @@ bool WorkspaceRows::apply(const app::WorkspaceScanBatch& batch,
         row.id = WorkspaceTrackId{workspace_.id, entry.media};
         row.media = entry.media;
         row.location = entry.location;
-        row.location_key = library::media_id_for(entry.location).value;
+        row.location_key = app::media_id_for(entry.location).value;
         row.missing = entry.unreadable;
         if (row.metadata.title.empty() && (!record || !record->overrides.title)) {
             const auto title = entry.location.stem().u8string();
@@ -92,7 +92,7 @@ bool WorkspaceRows::update_media(const library::LibraryRepository& repository,
     auto row = present_record(WorkspaceTrackId{workspace_.id, media}, *record);
     const auto& previous = found->second->second;
     if (row.location.empty() || std::ranges::any_of(record->locations, [&](const auto& location) {
-            return library::media_id_for(location).value == previous.location_key;
+            return app::media_id_for(location).value == previous.location_key;
         })) {
         row.location = previous.location;
         row.location_key = previous.location_key;

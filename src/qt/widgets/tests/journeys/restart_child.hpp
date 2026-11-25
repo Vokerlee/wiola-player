@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QSettings>
 #include <QTest>
+#include <app/library/local_identity.hpp>
 #include <app/metadata/media_replacement.hpp>
 #include <cstdlib>
 #include <iostream>
@@ -87,7 +88,7 @@ inline int session_child(const QString& mode, const QString& directory)
             library::RepositoryTransaction seed{player.library().repository(),
                 player.library().persistence()};
             library::TrackRecord record;
-            record.id = library::media_id_for(source);
+            record.id = app::media_id_for(source);
             record.locations = {source};
             record.overrides.title = "Music";
             record.tags = {

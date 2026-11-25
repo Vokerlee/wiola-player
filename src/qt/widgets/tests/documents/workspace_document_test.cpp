@@ -22,8 +22,8 @@
 
 #include <qt/widgets/documents/workspace_document.hpp>
 
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 
 #include <QApplication>
 #include <QEventLoop>
@@ -41,7 +41,7 @@ entries(std::initializer_list<std::filesystem::path> paths)
     std::vector<wiola::app::WorkspaceScanEntry> result;
     for (const auto& path : paths) {
         wiola::app::WorkspaceScanEntry entry;
-        entry.media = wiola::library::media_id_for(path);
+        entry.media = wiola::app::media_id_for(path);
         entry.location = path;
         result.push_back(std::move(entry));
     }
@@ -208,7 +208,7 @@ TEST(WorkspaceDocument, AppliesMediaRevisionsByIdentityWithoutLosingSelection)
 
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
-    record.id = wiola::library::media_id_for("/music/two.wav");
+    record.id = wiola::app::media_id_for("/music/two.wav");
     record.embedded.title = "Embedded title";
     record.embedded.artist = "Learned artist";
     record.overrides.title = "User title";
@@ -228,7 +228,7 @@ TEST(WorkspaceDocument, AppliesMediaRevisionsByIdentityWithoutLosingSelection)
     EXPECT_EQ(repository.track(record.id)->tags.size(), 1);
     EXPECT_EQ(repository.track(record.id)->overrides.title, "User title");
     EXPECT_FALSE(document.show_media_revision(repository,
-        wiola::library::media_id_for("/music/missing.wav")));
+        wiola::app::media_id_for("/music/missing.wav")));
 }
 
 TEST(WorkspaceDocument, RescanAndKnownRelocationKeepTheSelectedMediaIdentity)
@@ -372,7 +372,7 @@ TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProje
     document.begin(workspace, 1);
     app::BrowserViewState restore;
     restore.view.query.title = "track 4999";
-    const auto wanted = library::media_id_for("/music/Track 4999.wav");
+    const auto wanted = app::media_id_for("/music/Track 4999.wav");
     restore.selected = {
         gui::WorkspaceTrackId{workspace.id, wanted}
     };
@@ -384,7 +384,7 @@ TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProje
     for (int i = 0; i < 5000; ++i) {
         app::WorkspaceScanEntry entry;
         entry.location = "/music/Track " + std::to_string(i) + ".wav";
-        entry.media = library::media_id_for(entry.location);
+        entry.media = app::media_id_for(entry.location);
         batch.entries.push_back(std::move(entry));
     }
     ASSERT_TRUE(document.show_batch(batch));

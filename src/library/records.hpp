@@ -83,6 +83,12 @@ struct TrackRecord {
     }
 };
 
+/// Returns the cached preferred location without probing the filesystem.
+[[nodiscard]] inline std::filesystem::path preferred_location(const TrackRecord& record)
+{
+    return record.locations.empty() ? std::filesystem::path{} : record.locations.front();
+}
+
 struct PlaylistEntryRecord {
     PlaylistEntryId id;
     MediaId media;

@@ -26,8 +26,8 @@
 
 #include <qt/widgets/tracks/track_table_model.hpp>
 
+#include <app/library/local_identity.hpp>
 #include <library/in_memory_repository.hpp>
-#include <library/location.hpp>
 #include <queue/playlist.hpp>
 
 #include <QApplication>
@@ -251,7 +251,7 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
 {
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
-    record.id = wiola::library::media_id_for("first.wav");
+    record.id = wiola::app::media_id_for("first.wav");
     record.tags = {
         {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"  },
         {.id = wiola::library::TagId{"tag-2"}, .key = "Genre", .value = "Fusion"},

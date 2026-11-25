@@ -25,7 +25,7 @@
 #include <QTabBar>
 #include <QVBoxLayout>
 #include <algorithm>
-#include <library/location.hpp>
+#include <library/records.hpp>
 #include <media/local/resource.hpp>
 #include <qt/paths.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>

@@ -2,9 +2,9 @@
 
 #include <QTemporaryDir>
 #include <QTest>
+#include <app/library/local_identity.hpp>
 #include <fixtures/gated_media_provider.hpp>
 #include <gtest/gtest.h>
-#include <library/location.hpp>
 #include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
@@ -44,8 +44,8 @@ protected:
         // This private fixture is not open in a session yet; install its tagged source.
         std::filesystem::remove(path);
         std::filesystem::rename(staged, path);
-        media = library::media_id_for(path);
-        barrier_id = library::media_id_for(barrier);
+        media = app::media_id_for(path);
+        barrier_id = app::media_id_for(barrier);
     }
 
     QTemporaryDir directory;
