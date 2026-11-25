@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/metadata_edit_service.hpp>
 #include <qt/widgets/metadata/standard_metadata_editor.hpp>
+#include <wiola/app/metadata/metadata_edit_service.hpp>
 
 #include <QApplication>
 

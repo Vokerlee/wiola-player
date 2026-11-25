@@ -67,6 +67,7 @@ MetadataEditSession::capture(const std::vector<const library::TrackRecord*>& rec
 std::vector<library::MediaId> MetadataEditSession::media() const
 {
     std::vector<library::MediaId> ids;
+    ids.reserve(targets_.size());
     for (const auto& target : targets_)
         ids.push_back(target.media);
     return ids;

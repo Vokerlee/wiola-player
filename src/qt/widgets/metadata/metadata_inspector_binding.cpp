@@ -64,8 +64,7 @@ MetadataInspectorBinding::MetadataInspectorBinding(TrackInspector& inspector, Do
         if (!library_)
             return;
         const auto captured = draft;
-        const auto outcome = library_->metadata_edits().apply(captured.media(), captured.draft(),
-            captured.expectations());
+        const auto outcome = library_->metadata_edits().apply(captured);
         if (!outcome.succeeded()) {
             inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
             return;
@@ -170,8 +169,7 @@ void MetadataInspectorBinding::refresh(const library::LibraryChangeBatch& batch)
 
 void MetadataInspectorBinding::finish_standard_metadata(const app::MetadataEditSession& session)
 {
-    const auto outcome =
-        library_->metadata_edits().apply(session.media(), session.draft(), session.expectations());
+    const auto outcome = library_->metadata_edits().apply(session);
     if (outcome.succeeded()) {
         inspector_->standard_metadata()->discard();
         refresh();
@@ -198,7 +196,7 @@ void MetadataInspectorBinding::resolve_metadata_conflict(MetadataConflictAction 
     }
     const auto outcome = action == MetadataConflictAction::reload
         ? library_->metadata_edits().reset(session.media())
-        : library_->metadata_edits().apply(session.media(), session.draft());
+        : library_->metadata_edits().apply(session, app::MetadataConflictPolicy::overwrite_current);
     if (outcome.succeeded()) {
         editor->discard();
         refresh();

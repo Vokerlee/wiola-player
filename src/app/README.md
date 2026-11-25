@@ -17,4 +17,4 @@ The existing aggregate target is `wiola_app`; focused workflow cases live beside
 
 `library/local_identity.hpp/cpp`, linked through `wiola::local_identity`, owns the historical local-import path-to-ID policy: absolute lexical spelling, native case choice and locale-independent ASCII folding. This compatibility mapping neither opens the resource nor resolves symlinks; it does not constrain catalog or provider identities.
 
-Focused ordinary targets include `wiola::library_persistence` and `wiola::playlist_commands`; both can configure with catalog/value dependencies only. Their [library workflow guide](library/README.md) describes ownership, immutable revisions and per-operation results.
+Focused ordinary targets include `wiola::library_persistence`, `wiola::playlist_commands` and `wiola::metadata_edits`; all can configure with catalog/value dependencies only. The [library workflows](library/README.md) describe immutable revisions and per-operation results; the [metadata workflows](metadata/README.md) own captured edits, conflict checks and post-transaction observation.

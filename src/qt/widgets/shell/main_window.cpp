@@ -46,14 +46,14 @@
 #include <wiola/library/metadata_patch.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
-#include <app/metadata/metadata_edit_service.hpp>
-#include <app/metadata/metadata_merge.hpp>
 #include <app/playback/active_playlist.hpp>
 #include <app/playback/playback_queue.hpp>
 #include <app/playback/playlist_transfer.hpp>
 #include <qt/application/library/m3u_playlist.hpp>
 #include <qt/application/metadata/media_revision_publisher.hpp>
 #include <qt/application/workspace/workspace_watcher.hpp>
+#include <wiola/app/metadata/metadata_edit_service.hpp>
+#include <wiola/app/metadata/metadata_merge.hpp>
 #include <wiola/library/in_memory_repository.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/units.hpp>

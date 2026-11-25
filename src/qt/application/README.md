@@ -9,3 +9,5 @@ The portable [application persistence workflow](../../app/library/README.md) rec
 The Qt composition owns a queued receiver and a snapshot writer adapter, supplying both to portable LibraryPersistence. `library/library_persistence_delivery.hpp` translates the queued receiver into its narrow owner-delivery contract. Persistence policy and worker state live together under `app/library`; Qt files/serialization stay under `qt/storage`.
 
 Saved-playlist commands and their name policy live in the [portable application owner](../../app/library/README.md). LibrarySession supplies persistence and exposes those commands; Qt storage integration remains here. Command results own their commit/receipt, rather than requiring a later mutable-status lookup.
+
+Catalog metadata edits use the [portable metadata workflow](../../app/metadata/README.md). LibrarySession supplies the native fingerprint reader at composition. Bindings send a captured edit session and an explicit conflict policy; application observers run after transaction closure and receive later durability updates only while their service remains alive.

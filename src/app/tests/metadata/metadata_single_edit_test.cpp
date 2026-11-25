@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/metadata/metadata_edit_service.hpp>
+#include <wiola/app/metadata/metadata_edit_service.hpp>
 
 #include <wiola/library/metadata.hpp>
 

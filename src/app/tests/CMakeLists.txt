@@ -70,9 +70,43 @@ if(TARGET wiola_saved_playlists)
     gtest_discover_tests(app_playlist_commands_test)
 endif()
 
+if(TARGET wiola_metadata_edits)
+    foreach(
+        test
+        IN
+        ITEMS
+            metadata_conflicts
+            metadata_edit_service
+            metadata_edit_session
+            metadata_merge
+    )
+        add_executable(app_${test}_test metadata/${test}_test.cpp)
+
+        target_link_libraries(
+            app_${test}_test
+            PRIVATE wiola::metadata_edits GTest::gtest_main
+        )
+
+        wiola_apply_build_controls(app_${test}_test)
+
+        gtest_discover_tests(app_${test}_test)
+    endforeach()
+
+    target_link_libraries(
+        app_metadata_edit_service_test
+        PRIVATE wiola_test_allocation_failure
+    )
+endif()
+
 if(WIOLA_COMPONENT_BUILD)
     return()
 endif()
+
+wiola_add_test(
+    app_background_metadata_integration_test
+    SOURCES metadata/background_metadata_integration_test.cpp
+    LIBS wiola_app
+)
 
 wiola_add_test(
     app_metadata_batch_edit_test
@@ -94,28 +128,10 @@ wiola_add_test(
 )
 
 wiola_add_test(
-    app_metadata_conflicts_test
-    SOURCES metadata/metadata_conflicts_test.cpp
-    LIBS wiola_app
-)
-
-wiola_add_test(
     app_media_replacement_test
     SOURCES metadata/media_replacement_test.cpp
     LIBS wiola_app wiola_codec
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
-)
-
-wiola_add_test(
-    app_metadata_edit_service_test
-    SOURCES metadata/metadata_edit_service_test.cpp
-    LIBS wiola_app
-)
-
-wiola_add_test(
-    app_metadata_merge_test
-    SOURCES metadata/metadata_merge_test.cpp
-    LIBS wiola_app
 )
 
 wiola_add_test(
