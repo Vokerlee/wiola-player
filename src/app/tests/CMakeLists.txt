@@ -2,7 +2,10 @@ include(GoogleTest)
 
 add_executable(
     app_library_persistence_test
-    library/library_persistence_test.cpp
+    library/persistence/admission_test.cpp
+    library/persistence/snapshot_test.cpp
+    library/persistence/notification_test.cpp
+    library/persistence/lifecycle_test.cpp
 )
 
 target_link_libraries(
