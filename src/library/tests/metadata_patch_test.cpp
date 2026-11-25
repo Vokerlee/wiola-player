@@ -130,4 +130,30 @@ TEST(MetadataPatch, FileConversionDoesNotTurnInheritanceIntoEmbeddedDeletion)
     EXPECT_FALSE(file_metadata_patch(patch));
 }
 
+TEST(MetadataPatch, AnyEditedFieldMakesTheRequestNonempty)
+{
+    StandardMetadataPatch patch;
+    EXPECT_TRUE(metadata_patch_empty(patch));
+    patch.title = "Edited";
+    EXPECT_FALSE(metadata_patch_empty(patch));
+    patch = {};
+    patch.year = 0;
+    EXPECT_FALSE(metadata_patch_empty(patch));
+}
+
+TEST(MetadataPatch, AnInvalidEarlyFieldRejectsLaterFieldsAtomically)
+{
+    StandardFieldOverrides stored;
+    stored.artist = "Retained";
+    const auto original = stored;
+    StandardMetadataPatch patch;
+    patch.title = std::string(max_metadata_text_bytes + 1, 'x');
+    patch.artist = "Must not apply";
+    patch.composer = "Neither may this";
+    EXPECT_FALSE(valid_metadata_patch(patch));
+    EXPECT_EQ(apply_metadata_patch(stored, patch), MetadataPatchResult::invalid);
+    EXPECT_EQ(stored, original);
+    EXPECT_FALSE(file_metadata_patch(patch));
+}
+
 } // namespace
