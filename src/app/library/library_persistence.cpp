@@ -382,7 +382,8 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
         Result result;
         try {
             result = store_.write({values(tracks), values(playlists), values(workspaces)});
-        } catch (const std::runtime_error&) {
+        } catch (...) {
+            // A supplied writer must not unwind out of the worker or lose accepted edits.
             result.error = SnapshotWriteError::io;
         }
         {
