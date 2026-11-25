@@ -88,7 +88,7 @@ void difference(const Map& after, const Undo& undo, Changed& changed, Removed& r
 }
 
 template<typename Map, typename Undo>
-void restore(Map& records, Undo& undo) noexcept
+void restore_records(Map& records, Undo& undo) noexcept
 {
     for (auto& [id, before] : undo) {
         records.erase(id);
@@ -118,7 +118,7 @@ RepositoryTransaction::RepositoryTransaction(InMemoryRepository& repository, Per
 
 RepositoryTransaction::~RepositoryTransaction()
 {
-    rollback();
+    restore();
 }
 
 void RepositoryTransaction::touch_track(const MediaId& id)
@@ -136,62 +136,75 @@ void RepositoryTransaction::touch_workspace(const WorkspaceId& id)
     touch(repository_.data_.workspaces_, workspaces_, id);
 }
 
-CommitResult RepositoryTransaction::commit()
+void RepositoryTransaction::check_mutation() const
 {
-    if (finished_)
-        throw std::logic_error{"transaction already completed"};
-    auto delta = std::make_shared<RevisionDelta>();
-    delta->priority = priority_;
-    auto& batch = delta->changes;
-    difference(repository_.data_.tracks_, tracks_, batch.media, batch.removed_media, changed_media);
-    const auto identity = [](const auto*, const auto& record) {
-        return record.id;
-    };
-    difference(repository_.data_.playlists_, playlists_, batch.playlists, batch.removed_playlists,
-        identity);
-    difference(repository_.data_.workspaces_, workspaces_, batch.workspaces,
-        batch.removed_workspaces, identity);
-    if (batch.empty()) {
-        finished_ = true;
-        repository_.transaction_ = nullptr;
-        return true;
-    }
-    batch.revision = repository_.change_revision_ + 1;
-    for (const auto& change : batch.media)
-        delta->tracks.push_back(*repository_.track(change.media));
-    for (const auto& id : batch.playlists)
-        delta->playlists.push_back(*repository_.playlist(id));
-    for (const auto& id : batch.workspaces)
-        delta->workspaces.push_back(*repository_.workspace(id));
-    repository_.staged_delta_ = delta;
-    auto result = persist_(repository_);
-    repository_.staged_delta_.reset();
-    if (!result) {
-        rollback();
-        return result;
-    }
-    result.revision = batch.revision;
-    repository_.change_revision_ = batch.revision;
-    finished_ = true;
-    repository_.transaction_ = nullptr;
-    repository_.changes_.publish(batch);
-    return result;
+    if (phase_ != Phase::editing)
+        throw std::logic_error{"catalog mutation during transaction commit"};
 }
 
-void RepositoryTransaction::rollback() noexcept
+CommitResult RepositoryTransaction::commit()
 {
-    if (finished_)
+    if (phase_ != Phase::editing)
+        throw std::logic_error{"transaction is committing or already completed"};
+    phase_ = Phase::committing;
+    try {
+        auto delta = std::make_shared<RevisionDelta>();
+        delta->priority = priority_;
+        auto& batch = delta->changes;
+        difference(repository_.data_.tracks_, tracks_, batch.media, batch.removed_media,
+            changed_media);
+        const auto identity = [](const auto*, const auto& record) {
+            return record.id;
+        };
+        difference(repository_.data_.playlists_, playlists_, batch.playlists,
+            batch.removed_playlists, identity);
+        difference(repository_.data_.workspaces_, workspaces_, batch.workspaces,
+            batch.removed_workspaces, identity);
+        if (batch.empty()) {
+            phase_ = Phase::finished;
+            repository_.transaction_ = nullptr;
+            return true;
+        }
+        batch.revision = repository_.change_revision_ + 1;
+        for (const auto& change : batch.media)
+            delta->tracks.push_back(*repository_.track(change.media));
+        for (const auto& id : batch.playlists)
+            delta->playlists.push_back(*repository_.playlist(id));
+        for (const auto& id : batch.workspaces)
+            delta->workspaces.push_back(*repository_.workspace(id));
+        repository_.staged_delta_ = delta;
+        auto result = persist_(repository_);
+        repository_.staged_delta_.reset();
+        if (!result) {
+            restore();
+            return result;
+        }
+        result.revision = batch.revision;
+        repository_.change_revision_ = batch.revision;
+        phase_ = Phase::finished;
+        repository_.transaction_ = nullptr;
+        repository_.changes_.publish(batch);
+        return result;
+    } catch (...) {
+        restore();
+        throw;
+    }
+}
+
+void RepositoryTransaction::restore() noexcept
+{
+    if (phase_ == Phase::finished)
         return;
-    restore(repository_.data_.tracks_, tracks_);
-    restore(repository_.data_.playlists_, playlists_);
-    restore(repository_.data_.workspaces_, workspaces_);
+    restore_records(repository_.data_.tracks_, tracks_);
+    restore_records(repository_.data_.playlists_, playlists_);
+    restore_records(repository_.data_.workspaces_, workspaces_);
     repository_.data_.next_playlist_ = allocators_[0];
     repository_.data_.next_entry_ = allocators_[1];
     repository_.data_.next_workspace_ = allocators_[2];
     repository_.data_.next_tag_ = allocators_[3];
     repository_.staged_delta_.reset();
     repository_.transaction_ = nullptr;
-    finished_ = true;
+    phase_ = Phase::finished;
 }
 
 } // namespace wiola::library

@@ -29,8 +29,15 @@
 
 namespace wiola::library {
 
+void InMemoryRepository::check_mutation() const
+{
+    if (transaction_)
+        transaction_->check_mutation();
+}
+
 bool InMemoryRepository::put_track(TrackRecord track)
 {
+    check_mutation();
     if (!track.id.valid() || track.tags.size() > max_tags_per_track)
         return false;
 
@@ -77,6 +84,7 @@ std::vector<TrackRecord> InMemoryRepository::tracks() const
 bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
     const std::vector<PlaylistRecord>& playlists, const std::vector<WorkspaceRecord>& workspaces)
 {
+    check_mutation();
     InMemoryRepository replacement;
 
     for (const TrackRecord& track : tracks) {
@@ -120,6 +128,7 @@ bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
 
 PlaylistId InMemoryRepository::create_playlist(std::string name)
 {
+    check_mutation();
     const PlaylistId id{next_playlist_id()};
     if (transaction_)
         transaction_->touch_playlist(id);
@@ -130,6 +139,7 @@ PlaylistId InMemoryRepository::create_playlist(std::string name)
 
 bool InMemoryRepository::put_playlist(PlaylistRecord playlist)
 {
+    check_mutation();
     if (!playlist.id.valid())
         return false;
 
@@ -150,6 +160,7 @@ bool InMemoryRepository::put_playlist(PlaylistRecord playlist)
 
 bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_playlist(id);
     PlaylistRecord* found{data_.playlists_.contains(id) ? &data_.playlists_.at(id) : nullptr};
@@ -164,6 +175,7 @@ bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
 
 bool InMemoryRepository::delete_playlist(const PlaylistId& id)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_playlist(id);
     return data_.playlists_.erase(id) != 0;
@@ -190,6 +202,7 @@ std::vector<PlaylistRecord> InMemoryRepository::playlists() const
 std::optional<PlaylistEntryId> InMemoryRepository::append_track(const PlaylistId& playlist_id,
     const MediaId& media)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_playlist(playlist_id);
     PlaylistRecord* found{
@@ -206,6 +219,7 @@ std::optional<PlaylistEntryId> InMemoryRepository::append_track(const PlaylistId
 
 bool InMemoryRepository::remove_entry(const PlaylistId& playlist_id, const PlaylistEntryId& entry)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_playlist(playlist_id);
     PlaylistRecord* found{
@@ -221,6 +235,7 @@ bool InMemoryRepository::remove_entry(const PlaylistId& playlist_id, const Playl
 
 WorkspaceId InMemoryRepository::create_workspace(std::filesystem::path root, bool recursive)
 {
+    check_mutation();
     if (root.empty())
         return {};
 
@@ -235,6 +250,7 @@ WorkspaceId InMemoryRepository::create_workspace(std::filesystem::path root, boo
 
 bool InMemoryRepository::put_workspace(WorkspaceRecord workspace)
 {
+    check_mutation();
     if (!workspace.id.valid() || workspace.root.empty())
         return false;
 
@@ -265,6 +281,7 @@ std::vector<WorkspaceRecord> InMemoryRepository::workspaces() const
 
 bool InMemoryRepository::delete_workspace(const WorkspaceId& id)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_workspace(id);
     return data_.workspaces_.erase(id) != 0;
@@ -272,6 +289,7 @@ bool InMemoryRepository::delete_workspace(const WorkspaceId& id)
 
 TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::string value)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_track(media);
     TrackRecord* found{data_.tracks_.contains(media) ? &data_.tracks_.at(media) : nullptr};
@@ -294,6 +312,7 @@ TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::st
 
 bool InMemoryRepository::remove_tag(const MediaId& media, const TagId& tag)
 {
+    check_mutation();
     if (transaction_)
         transaction_->touch_track(media);
     TrackRecord* found{data_.tracks_.contains(media) ? &data_.tracks_.at(media) : nullptr};
