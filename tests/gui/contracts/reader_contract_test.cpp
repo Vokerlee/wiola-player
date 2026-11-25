@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <gui/layout/classic_layout.hpp>
 #include <gui/layout/layout_document.hpp>
-#include <persistence/qt/library_json.hpp>
+#include <qt/storage/library_json.hpp>
 
 namespace {
 

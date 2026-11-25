@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 
 #include <QSettings>
 

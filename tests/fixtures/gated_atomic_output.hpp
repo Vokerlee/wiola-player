@@ -23,8 +23,8 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <persistence/qt/atomic_file_store.hpp>
 #include <qt/paths.hpp>
+#include <qt/storage/atomic_file_store.hpp>
 #include <thread>
 
 namespace wiola::testing {

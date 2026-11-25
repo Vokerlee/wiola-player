@@ -23,7 +23,7 @@
 #include "theme.hpp"
 #include <QSettings>
 #include <memory>
-#include <persistence/qt/atomic_file_store.hpp>
+#include <qt/storage/atomic_file_store.hpp>
 #endif
 #include <QObject>
 #include <cstdint>

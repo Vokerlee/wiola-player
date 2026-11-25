@@ -197,7 +197,7 @@ target_link_libraries(gui_projection_benchmark PRIVATE wiola_gui)
 wiola_add_test(
     gui_reader_contract_test
     SOURCES contracts/reader_contract_test.cpp
-    LIBS wiola_gui wiola_session_preferences wiola_persistence_qt
+    LIBS wiola_gui wiola_session_preferences wiola::qt_library_store
 )
 
 foreach(scale IN ITEMS 1 1.25 1.5 2)

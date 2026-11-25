@@ -19,7 +19,7 @@
  */
 
 #include <gui/shell/saved_playlist_manager.hpp>
-#include <persistence/qt/library_store.hpp>
+#include <qt/storage/library_store.hpp>
 
 #include <QApplication>
 #include <QDir>
