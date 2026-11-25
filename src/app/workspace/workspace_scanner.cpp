@@ -19,6 +19,7 @@
  */
 
 #include "workspace_scanner.hpp"
+#include "native_workspace_files.hpp"
 #include <app/library/local_identity.hpp>
 #include <set>
 
@@ -134,7 +135,8 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
     for (const auto& track : known)
         for (const auto& location : track.locations)
             known_locations.insert(app::media_id_for(location).value);
-    WorkspaceDiscovery discovery{workspace.root, known, stopped};
+    NativeWorkspaceFiles files;
+    WorkspaceDiscovery discovery{files, workspace.root, known, stopped};
     WorkspaceScanBatch batch{.workspace = workspace.id,
         .generation = generation,
         .entries = {},

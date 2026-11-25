@@ -23,6 +23,7 @@
 #include "workspace_discovery.hpp"
 #include <wiola/library/repository_transaction.hpp>
 
+#include <memory>
 #include <span>
 
 namespace wiola::app {
@@ -41,7 +42,7 @@ struct WorkspaceReconciliationResult {
 class WorkspaceReconciliation final {
 public:
     explicit WorkspaceReconciliation(library::RepositoryTransaction::Persist persist)
-        : persist_{std::move(persist)}
+        : persist_{std::make_shared<library::RepositoryTransaction::Persist>(std::move(persist))}
     {
     }
 
@@ -49,7 +50,7 @@ public:
         const library::WorkspaceId& workspace, std::span<const WorkspaceScanEntry> entries) const;
 
 private:
-    library::RepositoryTransaction::Persist persist_;
+    std::shared_ptr<library::RepositoryTransaction::Persist> persist_;
 };
 
 } // namespace wiola::app

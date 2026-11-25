@@ -10,6 +10,7 @@ set(WIOLA_PORTABLE_COMPONENTS
     library_persistence
     playlist_commands
     metadata_edits
+    workspace
 )
 
 set(WIOLA_COMPONENTS
@@ -53,6 +54,10 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
     endif()
 
     if(metadata_edits IN_LIST WIOLA_SELECTED_COMPONENTS)
+        list(APPEND WIOLA_SELECTED_COMPONENTS library)
+    endif()
+
+    if(workspace IN_LIST WIOLA_SELECTED_COMPONENTS)
         list(APPEND WIOLA_SELECTED_COMPONENTS library)
     endif()
 

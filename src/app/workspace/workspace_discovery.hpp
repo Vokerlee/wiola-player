@@ -19,6 +19,8 @@
  */
 
 #pragma once
+
+#include "workspace_files.hpp"
 #include <map>
 #include <set>
 #include <span>
@@ -56,10 +58,10 @@ struct WorkspaceScanEntry {
 /// Worker-owned resolver over an immutable library snapshot. Fingerprinting never runs in a view.
 class WorkspaceDiscovery final {
 public:
-    WorkspaceDiscovery(const std::filesystem::path& root,
+    WorkspaceDiscovery(WorkspaceFiles& files, const std::filesystem::path& root,
         std::span<const library::TrackRecord> known,
         std::span<const std::filesystem::path> current);
-    WorkspaceDiscovery(const std::filesystem::path& root,
+    WorkspaceDiscovery(WorkspaceFiles& files, const std::filesystem::path& root,
         std::span<const library::TrackRecord> known, std::stop_token stop = {});
     [[nodiscard]] WorkspaceScanEntry resolve(const std::filesystem::path& location);
 
@@ -71,6 +73,7 @@ private:
         std::vector<std::filesystem::path> locations;
     };
 
+    WorkspaceFiles& files_;
     std::optional<std::set<std::string>> present_;
     std::map<std::string, std::vector<Candidate>> candidates_;
     std::stop_token stop_;

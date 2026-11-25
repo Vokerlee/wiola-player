@@ -107,13 +107,52 @@ if(
     wiola_apply_build_controls(wiola_metadata_edits)
 endif()
 
-if(NOT WIOLA_COMPONENT_BUILD)
-    wiola_add_library(wiola_local_identity SOURCES library/local_identity.cpp)
+if(NOT WIOLA_COMPONENT_BUILD OR workspace IN_LIST WIOLA_SELECTED_COMPONENTS)
+    add_library(wiola_local_identity STATIC library/local_identity.cpp)
 
     add_library(wiola::local_identity ALIAS wiola_local_identity)
 
+    set_target_properties(wiola_local_identity PROPERTIES CXX_EXTENSIONS OFF)
+
     target_link_libraries(wiola_local_identity PUBLIC wiola::library)
 
+    wiola_target_headers(
+        wiola_local_identity
+        wiola/app/library
+        HEADERS library/local_identity.hpp
+    )
+
+    wiola_apply_build_controls(wiola_local_identity)
+
+    add_library(
+        wiola_workspace
+        STATIC
+        workspace/workspace_discovery.cpp
+        workspace/workspace_reconciliation.cpp
+    )
+
+    add_library(wiola::workspace ALIAS wiola_workspace)
+
+    set_target_properties(wiola_workspace PROPERTIES CXX_EXTENSIONS OFF)
+
+    target_link_libraries(
+        wiola_workspace
+        PUBLIC wiola::library wiola::local_identity
+    )
+
+    wiola_target_headers(
+        wiola_workspace
+        wiola/app/workspace
+        HEADERS
+            workspace/workspace_files.hpp
+            workspace/workspace_discovery.hpp
+            workspace/workspace_reconciliation.hpp
+    )
+
+    wiola_apply_build_controls(wiola_workspace)
+endif()
+
+if(NOT WIOLA_COMPONENT_BUILD)
     wiola_add_library(
         wiola_app
         SOURCES
@@ -130,8 +169,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
             playback/playback_queue.cpp
             playback/playback_service.cpp
             playback/playlist_transfer.cpp
-            workspace/workspace_discovery.cpp
-            workspace/workspace_reconciliation.cpp
+            workspace/native_workspace_files.cpp
             workspace/workspace_scanner.cpp
         LIBS
             wiola::local_identity
@@ -147,6 +185,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
             wiola::playback
             wiola::audio_dsp
             wiola::metadata_edits
+            wiola::workspace
     )
 endif()
 

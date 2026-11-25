@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <app/workspace/native_workspace_files.hpp>
 #include <app/workspace/workspace_reconciliation.hpp>
 
 #include <app/library/local_identity.hpp>
@@ -47,6 +48,7 @@ protected:
         std::ofstream{path, std::ios::binary} << content;
     }
 
+    wiola::app::NativeWorkspaceFiles files;
     wiola::testing::TemporaryDirectory temporary;
     wiola::library::InMemoryRepository repository;
     wiola::library::WorkspaceId workspace;
@@ -57,7 +59,7 @@ protected:
     reconcile(std::span<const std::filesystem::path> paths)
     {
         const auto known = repository.tracks();
-        wiola::app::WorkspaceDiscovery discovery{root, known, paths};
+        wiola::app::WorkspaceDiscovery discovery{files, root, known, paths};
         std::vector<wiola::app::WorkspaceScanEntry> entries;
         for (const auto& path : paths)
             entries.push_back(discovery.resolve(path));
@@ -178,7 +180,7 @@ TEST_F(WorkspaceReconciliation, AppliesWorkerFactsWithoutReopeningTheFile)
     const auto path = root / "cached.flac";
     write(path, "cached discovery");
     const std::vector<std::filesystem::path> paths{path};
-    wiola::app::WorkspaceDiscovery discovery{root, {}, paths};
+    wiola::app::WorkspaceDiscovery discovery{files, root, {}, paths};
     const std::vector entries{discovery.resolve(path)};
     ASSERT_TRUE(entries.front().fingerprint.has_value());
     std::filesystem::remove(path);
@@ -201,7 +203,7 @@ TEST_F(WorkspaceReconciliation, FailedPersistenceRollsBackLearnedRowsAndMissingF
     ASSERT_TRUE(repository.put_track(old));
     const auto before = repository.tracks();
     const std::vector<std::filesystem::path> paths{new_path};
-    wiola::app::WorkspaceDiscovery discovery{root, before, paths};
+    wiola::app::WorkspaceDiscovery discovery{files, root, before, paths};
     const std::vector entries{discovery.resolve(new_path)};
     int notifications = 0;
     auto subscription = repository.observe([&](const auto&) { ++notifications; });
@@ -222,7 +224,7 @@ TEST_F(WorkspaceReconciliation, StaleDiscoveryCannotOverwriteNewerContentState)
     ASSERT_TRUE(repository.put_track(record));
     const auto known = repository.tracks();
     const std::vector<std::filesystem::path> paths{path};
-    wiola::app::WorkspaceDiscovery discovery{root, known, paths};
+    wiola::app::WorkspaceDiscovery discovery{files, root, known, paths};
     const std::vector entries{discovery.resolve(path)};
     ++record.content_revision;
     record.fingerprint = "newer-content";
@@ -239,7 +241,7 @@ TEST_F(WorkspaceReconciliation, ANewerOwnerRecordAtANewPathIsNotOverwrittenByDis
     const auto path = root / "new-path.flac";
     write(path, "scan");
     const std::vector<std::filesystem::path> paths{path};
-    wiola::app::WorkspaceDiscovery discovery{root, {}, paths};
+    wiola::app::WorkspaceDiscovery discovery{files, root, {}, paths};
     const std::vector entries{discovery.resolve(path)};
     wiola::library::TrackRecord newer;
     newer.id = entries.front().media;
@@ -267,7 +269,7 @@ TEST_F(WorkspaceReconciliation, AmbiguousFingerprintsDoNotMergeDistinctMediaIden
     ASSERT_TRUE(repository.put_track(second));
     const auto known = repository.tracks();
     const std::vector<std::filesystem::path> paths{path};
-    wiola::app::WorkspaceDiscovery discovery{root, known, paths};
+    wiola::app::WorkspaceDiscovery discovery{files, root, known, paths};
     const auto discovered = discovery.resolve(path);
     EXPECT_FALSE(discovered.known());
     EXPECT_FALSE(discovered.relocated());
@@ -278,7 +280,7 @@ TEST_F(WorkspaceReconciliation, AmbiguousFingerprintsDoNotMergeDistinctMediaIden
 TEST_F(WorkspaceReconciliation, MissingNewFileCannotBeQualifiedAsKnownOrRelocated)
 {
     const auto missing = root / "not-created.flac";
-    wiola::app::WorkspaceDiscovery discovery{root, {}};
+    wiola::app::WorkspaceDiscovery discovery{files, root, {}};
 
     const auto discovered = discovery.resolve(missing);
 
