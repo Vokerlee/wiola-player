@@ -21,6 +21,7 @@
 #include "background_metadata_writes.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <media/local/fingerprint.hpp>
 #include <media/local/resource.hpp>
 
@@ -98,6 +99,85 @@ std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(Metada
     return id;
 }
 
+MetadataWriteResult BackgroundMetadataWrites::stage(const Pending& pending)
+{
+    MetadataWriteResult result{.job = pending.job,
+        .stage = MetadataWriteStage::failed,
+        .outcome = {},
+        .output = {}};
+    try {
+        const auto& job = pending.job;
+        const auto fingerprint = media::fingerprint_media(job.source);
+        if (fingerprint)
+            result.source_fingerprint = *fingerprint;
+        if (job.context().stop_reason() != media::StopReason::none)
+            result.stage = MetadataWriteStage::cancelled;
+        else if (!job.expected_source.fingerprint.empty() &&
+            media::fingerprint_media(job.source) !=
+                std::optional{job.expected_source.fingerprint}) {
+            result.stage = MetadataWriteStage::conflicted;
+            result.outcome.error = media::MetadataWriteError::conflicted;
+            result.outcome.detail = "source changed before staging";
+        } else if (!fingerprint) {
+            result.outcome.error = media::MetadataWriteError::io;
+            result.outcome.detail = "could not fingerprint source before staging";
+        } else {
+            if (pending.progress)
+                pending.progress({.job = job,
+                    .stage = MetadataWriteStage::remuxing,
+                    .outcome = {},
+                    .output = {},
+                    .source_fingerprint = *fingerprint});
+            auto patch = library::file_metadata_patch(job.patch);
+            auto asset = provider_->open(wiola::media::local_resource(job.source), job.context());
+            if (!patch) {
+                result.outcome.error = media::MetadataWriteError::invalid_edit;
+                result.outcome.detail = patch.error().detail;
+            } else if (!asset) {
+                result.outcome.error = media::MetadataWriteError::io;
+                result.outcome.detail = asset.error().detail;
+            } else {
+                // Application override revisions are deliberately not source-file revisions.
+                auto expected = job.expected_source;
+                expected.metadata_revision.reset();
+                result.job.capabilities = (*asset)->metadata_write_capabilities();
+                result.outcome =
+                    (*asset)->write_metadata({.overrides = *patch, .expected = expected},
+                        job.context());
+                if (result.outcome.state == media::MetadataWriteState::written &&
+                    !result.outcome.source_modified) {
+                    const auto& path = result.outcome.staged_output;
+                    if (!path.empty() && path.lexically_normal() != job.source.lexically_normal()) {
+                        result.output = std::make_shared<StagedMetadataOutput>(path);
+                        result.stage = job.context().stop_reason() == media::StopReason::none
+                            ? MetadataWriteStage::ready
+                            : MetadataWriteStage::cancelled;
+                    } else
+                        result.outcome.error = media::MetadataWriteError::invalid_output;
+                } else if (result.outcome.error == media::MetadataWriteError::cancelled)
+                    result.stage = MetadataWriteStage::cancelled;
+            }
+        }
+    } catch (const std::exception& error) {
+        result.outcome = {.state = media::MetadataWriteState::failed,
+            .error = media::MetadataWriteError::io,
+            .source_modified = false,
+            .detail = error.what()};
+    } catch (...) {
+        result.outcome = {.state = media::MetadataWriteState::failed,
+            .error = media::MetadataWriteError::io,
+            .source_modified = false,
+            .detail = "driver failure"};
+    }
+    if (result.stage != MetadataWriteStage::ready) {
+        result.outcome.state = media::MetadataWriteState::failed;
+        if (result.stage == MetadataWriteStage::cancelled)
+            result.outcome.error = media::MetadataWriteError::cancelled;
+        result.output.reset();
+    }
+    return result;
+}
+
 void BackgroundMetadataWrites::run()
 {
     for (;;) {
@@ -111,77 +191,7 @@ void BackgroundMetadataWrites::run()
             jobs_.pop_front();
             active_ = pending.job.cancellation;
         }
-        MetadataWriteResult result{.job = pending.job,
-            .stage = MetadataWriteStage::failed,
-            .outcome = {},
-            .output = {}};
-        try {
-            const auto& job = pending.job;
-            const auto fingerprint = media::fingerprint_media(job.source);
-            if (fingerprint)
-                result.source_fingerprint = *fingerprint;
-            if (job.context().stop_reason() != media::StopReason::none)
-                result.stage = MetadataWriteStage::cancelled;
-            else if (!job.expected_source.fingerprint.empty() &&
-                media::fingerprint_media(job.source) !=
-                    std::optional{job.expected_source.fingerprint}) {
-                result.stage = MetadataWriteStage::conflicted;
-                result.outcome.error = media::MetadataWriteError::conflicted;
-                result.outcome.detail = "source changed before staging";
-            } else if (!fingerprint) {
-                result.outcome.error = media::MetadataWriteError::io;
-                result.outcome.detail = "could not fingerprint source before staging";
-            } else {
-                if (pending.progress)
-                    pending.progress({.job = job,
-                        .stage = MetadataWriteStage::remuxing,
-                        .outcome = {},
-                        .output = {},
-                        .source_fingerprint = *fingerprint});
-                auto patch = library::file_metadata_patch(job.patch);
-                auto asset =
-                    provider_->open(wiola::media::local_resource(job.source), job.context());
-                if (!patch) {
-                    result.outcome.error = media::MetadataWriteError::invalid_edit;
-                    result.outcome.detail = patch.error().detail;
-                } else if (!asset) {
-                    result.outcome.error = media::MetadataWriteError::io;
-                    result.outcome.detail = asset.error().detail;
-                } else {
-                    // Application override revisions are deliberately not source-file revisions.
-                    auto expected = job.expected_source;
-                    expected.metadata_revision.reset();
-                    result.job.capabilities = (*asset)->metadata_write_capabilities();
-                    result.outcome =
-                        (*asset)->write_metadata({.overrides = *patch, .expected = expected},
-                            job.context());
-                    if (result.outcome.state == media::MetadataWriteState::written &&
-                        !result.outcome.source_modified) {
-                        const auto& path = result.outcome.staged_output;
-                        if (!path.empty() &&
-                            path.lexically_normal() != job.source.lexically_normal()) {
-                            result.output = std::make_shared<StagedMetadataOutput>(path);
-                            result.stage = job.context().stop_reason() == media::StopReason::none
-                                ? MetadataWriteStage::ready
-                                : MetadataWriteStage::cancelled;
-                        } else
-                            result.outcome.error = media::MetadataWriteError::invalid_output;
-                    } else if (result.outcome.error == media::MetadataWriteError::cancelled)
-                        result.stage = MetadataWriteStage::cancelled;
-                }
-            }
-        } catch (const std::runtime_error& error) {
-            result.outcome = {.state = media::MetadataWriteState::failed,
-                .error = media::MetadataWriteError::io,
-                .source_modified = false,
-                .detail = error.what()};
-        }
-        if (result.stage != MetadataWriteStage::ready) {
-            result.outcome.state = media::MetadataWriteState::failed;
-            if (result.stage == MetadataWriteStage::cancelled)
-                result.outcome.error = media::MetadataWriteError::cancelled;
-            result.output.reset();
-        }
+        auto result = stage(pending);
         {
             std::lock_guard lock{mutex_};
             active_.reset();

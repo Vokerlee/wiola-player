@@ -33,7 +33,6 @@ namespace wiola::app {
 
 struct MediaReplacementHooks {
     std::function<bool()> before_commit;
-    std::shared_ptr<media::FileReplacement> replacement;
     std::string backup_suffix;
 };
 
@@ -51,16 +50,17 @@ struct MediaReplacementValidation {
 prepare_media_replacement(const std::filesystem::path& source,
     const std::filesystem::path& temporary, media::MediaProvider& provider,
     std::string_view expected_fingerprint = {}, const media::OperationContext& context = {});
-[[nodiscard]] media::MetadataWriteOutcome
-commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
-    const media::OperationContext& context = {}, MediaReplacementHooks hooks = {});
+[[nodiscard]] media::MetadataWriteOutcome commit_prepared_media_replacement(
+    const PreparedMediaReplacement& prepared, media::FileReplacement& replacement,
+    const media::OperationContext& context = {}, MediaReplacementHooks hooks = {}
+);
 
 /// Reopens and compares source/output audio, retains a backup, then atomically renames the
 /// validated output over the source. Validation or conflict failures never replace the source.
-[[nodiscard]] media::MetadataWriteOutcome commit_media_replacement(
-    const std::filesystem::path& source, const std::filesystem::path& temporary,
-    media::MediaProvider& provider, std::string_view expected_fingerprint = {},
-    const media::OperationContext& context = {}, MediaReplacementHooks hooks = {}
-);
+[[nodiscard]] media::MetadataWriteOutcome
+commit_media_replacement(const std::filesystem::path& source,
+    const std::filesystem::path& temporary, media::MediaProvider& provider,
+    media::FileReplacement& replacement, std::string_view expected_fingerprint = {},
+    const media::OperationContext& context = {}, MediaReplacementHooks hooks = {});
 
 } // namespace wiola::app

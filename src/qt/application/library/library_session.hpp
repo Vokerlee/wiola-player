@@ -151,6 +151,7 @@ private:
     persistence::qt::LibraryStoreResult restore_result_;
     library::LibraryChanges::Subscription changes_;
     WorkspaceScanPublisher scans_;
+    std::unique_ptr<media::FileReplacement> replacement_;
     MetadataWriteService writes_;
     MediaRevisionPublisher metadata_;
     WorkspaceWatcher watcher_;

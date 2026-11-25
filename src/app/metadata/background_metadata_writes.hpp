@@ -47,6 +47,7 @@ private:
     };
 
     void run();
+    MetadataWriteResult stage(const Pending& pending);
     static void cancel(Pending pending);
     std::shared_ptr<media::MediaProvider> provider_;
     std::mutex mutex_;

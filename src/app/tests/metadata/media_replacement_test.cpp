@@ -87,7 +87,9 @@ TEST(MediaReplacement, ValidatesAndCommitsWhileRetainingTheOriginal)
         wiola::media::MetadataWriteState::written);
 
     wiola::codec::LocalMediaProvider provider;
-    const auto outcome = wiola::app::commit_media_replacement(source, output, provider, *expected);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    const auto outcome =
+        wiola::app::commit_media_replacement(source, output, provider, *replacement, *expected);
 
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
     EXPECT_TRUE(outcome.source_modified);
@@ -117,7 +119,9 @@ TEST(MediaReplacement, RejectsInvalidOutputWithoutChangingTheSource)
     }
 
     wiola::codec::LocalMediaProvider provider;
-    const auto outcome = wiola::app::commit_media_replacement(source, output, provider);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    const auto outcome =
+        wiola::app::commit_media_replacement(source, output, provider, *replacement);
 
     EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::invalid_output);
@@ -150,7 +154,9 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
     const auto changed = bytes(source);
 
     wiola::codec::LocalMediaProvider provider;
-    const auto outcome = wiola::app::commit_media_replacement(source, output, provider, *expected);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    const auto outcome =
+        wiola::app::commit_media_replacement(source, output, provider, *replacement, *expected);
 
     EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::conflicted);
@@ -177,13 +183,14 @@ TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
         wiola::media::MetadataWriteState::written);
 
     wiola::codec::LocalMediaProvider provider;
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MediaReplacementHooks hooks;
     hooks.before_commit = [] {
         return false;
     };
 
     const auto outcome =
-        wiola::app::commit_media_replacement(source, output, provider, {}, {}, hooks);
+        wiola::app::commit_media_replacement(source, output, provider, *replacement, {}, {}, hooks);
 
     EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::io);
@@ -308,9 +315,62 @@ TEST(MediaReplacement, RechecksCapturedSourceImmediatelyBeforePreparedCommit)
     ASSERT_TRUE(validation.prepared);
     std::ofstream{source, std::ios::app} << "external metadata";
     const auto external = bytes(source);
-    const auto result = wiola::app::commit_prepared_media_replacement(*validation.prepared);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    const auto result =
+        wiola::app::commit_prepared_media_replacement(*validation.prepared, *replacement);
     EXPECT_EQ(result.error, wiola::media::MetadataWriteError::conflicted);
     EXPECT_EQ(bytes(source), external);
+}
+
+class RefusingReplacement final : public wiola::media::FileReplacement {
+public:
+    wiola::media::FileReplacementResult replace(wiola::media::FileReplacementRequest request,
+        const std::function<bool()>& guard) override
+    {
+        captured = std::move(request);
+        EXPECT_TRUE(guard());
+        return {.error = wiola::media::FileReplacementError::io, .detail = "driver refused"};
+    }
+
+    wiola::media::FileReplacementResult recover(const std::filesystem::path&) override
+    {
+        ADD_FAILURE() << "replacement policy must not choose a recovery mechanism";
+        return {};
+    }
+
+    std::optional<wiola::media::FileReplacementRequest> captured;
+};
+
+TEST(MediaReplacement, SuppliesValidatedOwnedInputsToTheSelectedDriverWithoutNativeFallback)
+{
+    const auto source = temporary("wiola-driver-source.bin");
+    const auto output = temporary("wiola-driver-output.bin");
+    Cleanup cleanup{
+        {source, output}
+    };
+    std::ofstream{source} << "source";
+    std::ofstream{output} << "output";
+    ChunkProvider provider;
+    provider.source = source;
+    const auto validation = wiola::app::prepare_media_replacement(source, output, provider);
+    ASSERT_TRUE(validation.prepared);
+    const auto original = bytes(source);
+    RefusingReplacement driver;
+
+    const auto outcome = wiola::app::commit_prepared_media_replacement(*validation.prepared, driver,
+        {}, {.before_commit = {}, .backup_suffix = "operation"});
+
+    ASSERT_TRUE(driver.captured);
+    EXPECT_EQ(driver.captured->source, source);
+    EXPECT_EQ(driver.captured->output, output);
+    EXPECT_EQ(driver.captured->backup, source.string() + ".wiola-backup.operation");
+    EXPECT_EQ(driver.captured->original_digest, validation.prepared->source_fingerprint);
+    EXPECT_EQ(driver.captured->output_digest, validation.prepared->output_fingerprint);
+    EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::io);
+    EXPECT_FALSE(outcome.source_modified);
+    EXPECT_EQ(outcome.detail, "driver refused");
+    EXPECT_EQ(bytes(source), original);
+    EXPECT_TRUE(std::filesystem::exists(output));
 }
 
 } // namespace
