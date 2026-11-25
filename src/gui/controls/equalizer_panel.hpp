@@ -20,13 +20,17 @@
 
 #pragma once
 
-#include <desktop/playback/equalizer_control.hpp>
-
 #include <QCheckBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSlider>
 #include <QWidget>
+
+namespace wiola::app {
+
+class EqualizerControl;
+
+} // namespace wiola::app
 
 namespace wiola::gui {
 

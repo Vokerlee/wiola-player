@@ -20,6 +20,7 @@
 
 #include "equalizer_panel.hpp"
 #include <QScrollArea>
+#include <desktop/playback/equalizer_control.hpp>
 
 #include <gui/appearance/presentation_tokens.hpp>
 
