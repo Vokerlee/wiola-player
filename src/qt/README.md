@@ -15,7 +15,7 @@ flowchart LR
 
 [settings.hpp](settings.hpp) and [settings.cpp](settings.cpp) own conversion between QSettings and typed player/queue values. Defaults, legacy stored keys, gains and occurrence selection retain their existing semantics. Link `wiola_qt_settings` when using that adapter. Qt settings and GUI tests are selected only when the Qt frontend is enabled.
 
-The [focused tests](tests) stay with these adapters. Portable code can be configured and tested with the Qt frontend disabled; the Qt-specific types do not belong to the public playback/media SDKs.
+The [focused tests](tests) stay with these adapters. Portable code can be configured and tested with the Qt frontend disabled; the Qt-specific types do not belong to the portable playback/media interfaces.
 
 [Storage](storage/README.md) contains independently linkable atomic file operations and library snapshot/schema storage. Keep generic file-mechanism clients independent of the catalog serializer.
 

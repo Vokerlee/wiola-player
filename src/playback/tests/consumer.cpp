@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Independent installed consumer of portable playback values.
+ * @brief Independent target consumer of portable playback values.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

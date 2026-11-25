@@ -17,6 +17,7 @@ set_property(
 
 # What the project is compiled with. Private to us: a consumer's code is not our business.
 add_library(wiola_warnings INTERFACE)
+
 target_compile_options(
     wiola_warnings
     INTERFACE
@@ -52,6 +53,7 @@ if(ENABLE_COVERAGE)
         wiola_coverage
         INTERFACE -fprofile-instr-generate -fcoverage-mapping
     )
+
     target_link_options(wiola_coverage INTERFACE -fprofile-instr-generate)
 endif()
 
@@ -79,11 +81,13 @@ if(ENABLE_ASAN)
         wiola_sanitizer
         INTERFACE -fsanitize=address -fno-optimize-sibling-calls
     )
+
     target_link_options(wiola_sanitizer INTERFACE -fsanitize=address)
 endif()
 
 if(ENABLE_TSAN)
     target_compile_options(wiola_sanitizer INTERFACE -fsanitize=thread)
+
     target_link_options(wiola_sanitizer INTERFACE -fsanitize=thread)
 endif()
 
@@ -98,20 +102,19 @@ configure_file(
 # Where the project's headers are. Each sits beside its own sources, so an include names the
 # subsystem it comes from. The generated one has a root of its own.
 add_library(wiola_core INTERFACE)
+
 target_include_directories(
     wiola_core
     INTERFACE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}/generated"
 )
 
-# Portable foundation components have owned exports; legacy consumers receive those APIs.
+# Legacy consumers receive the portable foundation and media targets.
 target_link_libraries(
     wiola_core
     INTERFACE wiola_borrowed_reference wiola_quantities wiola::media
 )
 
-# Keep instrumentation and warnings private to the source build. Installed static libraries
-# carry the selected runtime options, not references to this project's private build targets.
-# Standalone source consumers own their compiler options when this helper is unavailable.
+# Apply the selected build controls without changing a component's public dependencies.
 function(wiola_apply_build_controls target)
     foreach(
         build_control
@@ -119,21 +122,7 @@ function(wiola_apply_build_controls target)
         ITEMS wiola_coverage wiola_sanitizer wiola_warnings
     )
         if(TARGET ${build_control})
-            target_link_libraries(
-                ${target}
-                PRIVATE $<BUILD_INTERFACE:${build_control}>
-            )
-            get_target_property(
-                runtime_options
-                ${build_control}
-                INTERFACE_LINK_OPTIONS
-            )
-            if(runtime_options)
-                target_link_options(
-                    ${target}
-                    INTERFACE "$<INSTALL_INTERFACE:${runtime_options}>"
-                )
-            endif()
+            target_link_libraries(${target} PRIVATE ${build_control})
         endif()
     endforeach()
 endfunction()
@@ -145,7 +134,9 @@ function(wiola_add_library name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;LIBS")
 
     add_library(${name} STATIC ${arg_SOURCES})
+
     wiola_apply_build_controls(${name})
+
     target_link_libraries(${name} PUBLIC wiola_core PRIVATE ${arg_LIBS})
 endfunction()
 
@@ -155,6 +146,7 @@ function(wiola_add_module name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "LIBS")
 
     add_library(${name} INTERFACE)
+
     target_link_libraries(${name} INTERFACE ${arg_LIBS})
 endfunction()
 
@@ -176,6 +168,7 @@ function(wiola_set_icon target icon)
         "${resource}"
         PROPERTIES OBJECT_DEPENDS "${icon}"
     )
+
     target_sources(${target} PRIVATE "${resource}")
 endfunction()
 
@@ -183,6 +176,7 @@ function(wiola_add_test name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "DATA" "SOURCES;LIBS")
 
     add_executable(${name} ${arg_SOURCES})
+
     target_link_libraries(
         ${name}
         PRIVATE
@@ -193,6 +187,7 @@ function(wiola_add_test name)
             wiola_warnings
             ${arg_LIBS}
     )
+
     set_target_properties(
         ${name}
         PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
@@ -209,5 +204,6 @@ function(wiola_add_test name)
     endif()
 
     include(GoogleTest)
+
     gtest_discover_tests(${name})
 endfunction()

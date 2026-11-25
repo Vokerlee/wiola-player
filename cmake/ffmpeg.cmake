@@ -1,20 +1,26 @@
 include(ExternalProject)
+
 include(ProcessorCount)
 
 set(wiola_ffmpeg_prefix "${CMAKE_BINARY_DIR}/_deps/ffmpeg-install")
+
 set(wiola_ffmpeg_source "${CMAKE_BINARY_DIR}/_deps/ffmpeg-src")
+
 file(MAKE_DIRECTORY "${wiola_ffmpeg_prefix}/include")
 
 set(wiola_ffmpeg_demuxers
     aac;aiff;ape;asf;au;caf;flac;matroska;mov;mp3;mpc;mpc8;ogg;tta;w64;wav;wv
 )
+
 set(wiola_ffmpeg_muxers flac;ipod;mov;mp3;mp4;ogg)
+
 set(wiola_ffmpeg_decoders
     aac;alac;ape;flac;mp2;mp3;mpc7;mpc8;opus;tta;vorbis;wavpack;wmav1;wmav2
     pcm_alaw;pcm_f32be;pcm_f32le;pcm_f64be;pcm_f64le;pcm_mulaw;pcm_s8
     pcm_s16be;pcm_s16le;pcm_s24be;pcm_s24le;pcm_s32be;pcm_s32le;pcm_u8
     adpcm_ima_wav;adpcm_ms
 )
+
 set(wiola_ffmpeg_parsers aac;flac;mpegaudio;opus;vorbis)
 
 set(wiola_ffmpeg_configure
@@ -45,12 +51,15 @@ set(wiola_ffmpeg_configure
 foreach(component IN LISTS wiola_ffmpeg_demuxers)
     list(APPEND wiola_ffmpeg_configure "--enable-demuxer=${component}")
 endforeach()
+
 foreach(component IN LISTS wiola_ffmpeg_muxers)
     list(APPEND wiola_ffmpeg_configure "--enable-muxer=${component}")
 endforeach()
+
 foreach(component IN LISTS wiola_ffmpeg_decoders)
     list(APPEND wiola_ffmpeg_configure "--enable-decoder=${component}")
 endforeach()
+
 foreach(component IN LISTS wiola_ffmpeg_parsers)
     list(APPEND wiola_ffmpeg_configure "--enable-parser=${component}")
 endforeach()
@@ -62,6 +71,7 @@ if(CMAKE_CROSSCOMPILING)
             "The pinned FFmpeg recipe currently supports native builds and MinGW Windows"
         )
     endif()
+
     list(
         APPEND wiola_ffmpeg_configure
         --enable-cross-compile
@@ -93,12 +103,14 @@ ExternalProject_Add(
 
 function(wiola_ffmpeg_import library)
     add_library(wiola_ffmpeg_${library} STATIC IMPORTED GLOBAL)
+
     set_target_properties(
         wiola_ffmpeg_${library}
         PROPERTIES
             IMPORTED_LOCATION "${wiola_ffmpeg_prefix}/lib/lib${library}.a"
             INTERFACE_INCLUDE_DIRECTORIES "${wiola_ffmpeg_prefix}/include"
     )
+
     add_dependencies(wiola_ffmpeg_${library} wiola_ffmpeg_build)
 endfunction()
 
@@ -107,7 +119,9 @@ foreach(library IN ITEMS avutil avcodec avformat swresample)
 endforeach()
 
 find_package(Threads REQUIRED)
+
 add_library(wiola_ffmpeg INTERFACE)
+
 target_link_libraries(
     wiola_ffmpeg
     INTERFACE

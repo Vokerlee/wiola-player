@@ -21,17 +21,16 @@ Transactions have an editing phase, a frozen commit phase and a finished phase. 
 
 `resolve_title` owns title-layer and filename-fallback policy. Complete metadata resolution and normalized search extraction share it; search does not clone unrelated comments/composer fields or stored tag identities.
 
-## Standalone catalog SDK
+## Independent catalog target
 
-Select `WIOLA_COMPONENTS=library` to configure the catalog and its media/quantity dependencies without preparing Qt, codecs, playback or a device backend. `ENABLE_UNIT_TESTS=OFF` omits the test framework. The source tree stays flat; CMake exposes supported build/install headers under `<wiola/library/...>`.
+Select `WIOLA_COMPONENTS=library` to configure the catalog and its media/quantity dependencies without preparing Qt, codecs, playback or a device backend. `ENABLE_UNIT_TESTS=OFF` omits the test framework. The source tree stays flat; CMake exposes qualified headers under `<wiola/library/...>`.
 
 ```sh
 cmake -S . -B build-library -DWIOLA_COMPONENTS=library -DENABLE_UNIT_TESTS=OFF
 cmake --build build-library
-cmake --install build-library --prefix "$PWD/build-library/sdk"
 ```
 
-Consumers use `find_package(wiola_library CONFIG REQUIRED)` and link `wiola::library`. The target supplies C++23, media value types and its thread dependency, without the legacy source-root umbrella. The installed-package test relocates the prefix, compiles each public header independently and exercises catalog transactions, duplicate occurrences, querying and durability receipts. Native file/provider and Qt headers remain outside that package.
+Clients link `wiola::library`. The target supplies C++23, media values and its thread dependency without the legacy source-root umbrella. `Library.Consumer` is a normal C++ executable exercising identities, tags, transactions, queries and receipts through that target.
 
 Durability receipts belong to the accepting thread. A failed attempt retains its observers for retry; success is terminal. Cancellation suppresses remaining and future callbacks. Delivery isolates observer exceptions, finishes all eligible callbacks, then rethrows the first failure. An observer that completes a revision reentrantly prevents stale failure delivery to the remaining callbacks. `CommitResult` records the original acceptance state; later durability is observed through its receipt.
 

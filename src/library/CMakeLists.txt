@@ -1,5 +1,5 @@
-include(GNUInstallDirs)
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/headers.cmake")
+
 find_package(Threads REQUIRED)
 
 add_library(
@@ -15,16 +15,16 @@ add_library(
     search.cpp
     tags.cpp
 )
+
 add_library(wiola::library ALIAS wiola_library)
-set_target_properties(
-    wiola_library
-    PROPERTIES EXPORT_NAME library CXX_EXTENSIONS OFF
-)
+
+set_target_properties(wiola_library PROPERTIES CXX_EXTENSIONS OFF)
+
 target_compile_features(wiola_library PUBLIC cxx_std_23)
-wiola_export_headers(
+
+wiola_target_headers(
     wiola_library
     wiola/library
-    wiola_library
     HEADERS
         commit_receipt.hpp
         identity.hpp
@@ -41,29 +41,12 @@ wiola_export_headers(
         snapshot.hpp
         tags.hpp
 )
+
 target_link_libraries(wiola_library PUBLIC wiola::media Threads::Threads)
+
 if(COMMAND wiola_apply_build_controls)
     wiola_apply_build_controls(wiola_library)
 endif()
-
-install(
-    TARGETS wiola_library
-    EXPORT wiola_library_targets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT wiola_library
-)
-install(
-    EXPORT wiola_library_targets
-    FILE wiola_library-targets.cmake
-    NAMESPACE wiola::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wiola_library
-    COMPONENT wiola_library
-)
-install(
-    FILES package.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wiola_library
-    RENAME wiola_library-config.cmake
-    COMPONENT wiola_library
-)
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)

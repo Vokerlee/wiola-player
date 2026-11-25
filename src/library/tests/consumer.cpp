@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Installed catalog contract and transaction consumer.
+ * @brief Public catalog contract and transaction consumer.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -31,10 +31,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-
-#if __has_include(<media/local/provider.hpp>) || __has_include(<library/identity.hpp>)
-#error "The installed catalog exposes source-tree or native-driver include roots"
-#endif
 
 namespace library = wiola::library;
 static_assert(!std::is_convertible_v<library::MediaId, library::PlaylistEntryId>);

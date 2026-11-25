@@ -1,6 +1,6 @@
 # Source owners
 
-The tree groups code by responsibility. Kernel, driver, presentation and Qt owners keep their contracts, implementations, build definition and focused tests together. Shared portable fixtures and test-support utilities live under the repository test root. SDK headers retain their namespaced includes through CMake exports; the source tree keeps declarations beside the code that implements them.
+The tree groups code by responsibility. Kernel, driver, presentation and Qt owners keep their contracts, implementations, build definition and focused tests together. Shared portable fixtures and test-support utilities live under the repository test root. Targets provide qualified includes through build-only forwarding headers; declarations stay beside their implementations.
 
 | Owner | Responsibility |
 | --- | --- |
@@ -27,4 +27,4 @@ flowchart TD
     Media --> Foundation[Foundation values]
 ```
 
-The host supplies media/output/processing collaborators through C++ ports. Concrete drivers stay with their subsystem. Qt types and event delivery stay in the Qt owner; portable clients can select the media/audio/playback components or build the headless presentation consumer. Existing source-level dependencies are declared by CMake targets, and installed consumers qualify the public SDK boundary.
+The host supplies media/output/processing collaborators through C++ ports. Concrete drivers stay with their subsystem. Qt types and event delivery stay in the Qt owner; portable clients can select the media/audio/playback components or build the headless presentation consumer. Existing source-level dependencies are declared by CMake targets, and ordinary C++ consumers exercise each public target.

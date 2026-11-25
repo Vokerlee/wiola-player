@@ -7,6 +7,7 @@ wiola_add_test(
         wiola_library
         wiola::local_media
 )
+
 wiola_add_test(
     presentation_track_sorter_test
     SOURCES track_sorter_test.cpp

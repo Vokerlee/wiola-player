@@ -10,4 +10,5 @@ wiola_add_library(
         qualification.cpp
     LIBS wiola::local_media wiola_ffmpeg
 )
+
 target_link_libraries(wiola_codec_ffmpeg PUBLIC wiola::media)

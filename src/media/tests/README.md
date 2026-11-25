@@ -18,6 +18,6 @@ flowchart LR
 
 Configure with `-DWIOLA_COMPONENTS=media` and build the local targets declared in `CMakeLists.txt`. Ordinary player builds compose these same targets. The real local-file integration cases live under `local/tests` and link the concrete file adapter directly. Signature tests consume the shared byte fixture rather than writing globally named temporary files.
 
-The installed-consumer case is registered in this directory's `CMakeLists.txt`. CMake installs and relocates the package, compiles every actual installed header independently, and links the C++ consumer. Native consumers also run; cross consumers only link. Each run retains compiler/test logs in its own `Testing/PublicPackage-*` directory under the configured build. No Python checker or JSON header manifest is involved.
+`Media.Consumer` is an ordinary executable built from `consumer.cpp` and linked to `wiola::media`. It exercises the public contracts using supplied collaborators; CTest runs the configured executable directly.
 
 `media_resource_test` verifies owned reference values, provider-qualified identity, stable ordering/grouping when labels differ, and namespace separation for equal keys. Nonthrowing moves preserve the playback installation commit guarantee.

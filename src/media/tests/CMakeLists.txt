@@ -2,6 +2,7 @@ include(GoogleTest)
 
 function(wiola_media_add_test target source)
     add_executable(${target} ${source})
+
     target_link_libraries(
         ${target}
         PRIVATE
@@ -11,25 +12,33 @@ function(wiola_media_add_test target source)
             wiola_sanitizer
             wiola_warnings
     )
+
     gtest_discover_tests(${target})
 endfunction()
 
 wiola_media_add_test(media_audio_decoder_contract_test decoder_contract_test.cpp)
+
 wiola_media_add_test(media_audio_decoder_port_test decoder_port_test.cpp)
+
 wiola_media_add_test(media_byte_stream_contract_test byte_stream_test.cpp)
+
 target_include_directories(
     media_byte_stream_contract_test
     PRIVATE "${PROJECT_SOURCE_DIR}/tests"
 )
+
 wiola_media_add_test(media_resource_test resource_test.cpp)
+
 wiola_media_add_test(media_track_metadata_test track_metadata_test.cpp)
+
 wiola_media_add_test(media_metadata_writer_test metadata_writer_test.cpp)
+
 wiola_media_add_test(pcm_stream_spec_test stream_spec_test.cpp)
 
-wiola_add_public_consumer_test(
-    Media.InstalledConsumer
-    PACKAGE wiola_media
-    TARGET wiola::media
-    CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/consumer.cpp"
-    COMPONENTS wiola_quantities wiola_media
-)
+add_executable(media_consumer_test "${CMAKE_CURRENT_SOURCE_DIR}/consumer.cpp")
+
+target_link_libraries(media_consumer_test PRIVATE wiola::media)
+
+wiola_apply_build_controls(media_consumer_test)
+
+add_test(NAME Media.Consumer COMMAND media_consumer_test)
