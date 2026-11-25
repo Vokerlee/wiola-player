@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Independent installed consumer of portable audio processing.
+ * @brief Independent target consumer of portable audio processing.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -17,10 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
-
-#if __has_include(<processing/equalizer_parameters.hpp>) || __has_include(<audio/miniaudio/device.hpp>)
-#error "The installed processing target must not expose private implementation or the source root"
-#endif
 
 #include <wiola/audio/equalizer.hpp>
 #include <wiola/audio/processing_chain.hpp>

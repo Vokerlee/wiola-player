@@ -8,11 +8,13 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if(NOT WIOLA_COMPONENT_BUILD)
     include(ffmpeg)
+
     if(WIOLA_BUILD_GUI)
         find_package(Qt6 REQUIRED COMPONENTS Widgets)
     endif()
 
     set(MINIAUDIO_NO_LIBVORBIS ON)
+
     set(MINIAUDIO_NO_LIBOPUS ON)
 
     FetchContent_Declare(
@@ -30,6 +32,7 @@ if(WIOLA_BUILD_TESTS)
     if(WIOLA_BUILD_GUI)
         find_package(Qt6 REQUIRED COMPONENTS Test)
     endif()
+
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git

@@ -13,18 +13,18 @@ add_library(
     transport_worker.cpp
     transport_wait.cpp
 )
-set_target_properties(
-    wiola_playback_transport
-    PROPERTIES EXPORT_NAME playback_transport
-)
+
 target_compile_features(wiola_playback_transport PUBLIC cxx_std_23)
+
 target_include_directories(
     wiola_playback_transport
-    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
+
 if(COMMAND wiola_apply_build_controls)
     wiola_apply_build_controls(wiola_playback_transport)
 endif()
+
 target_link_libraries(
     wiola_playback_transport
     PUBLIC

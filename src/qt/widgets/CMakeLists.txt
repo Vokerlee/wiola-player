@@ -75,6 +75,7 @@ add_library(wiola::qt_widgets ALIAS wiola_qt_widgets)
 
 # Qt needs its own generated sources, and its headers are part of using this library.
 set_target_properties(wiola_qt_widgets PROPERTIES AUTOMOC ON)
+
 target_link_libraries(
     wiola_qt_widgets
     PUBLIC Qt6::Widgets wiola_app wiola::library wiola_library_session

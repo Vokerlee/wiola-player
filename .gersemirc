@@ -1,3 +1,5 @@
+# Separate statements and logical blocks with a blank line.
+# Gersemi preserves this authored spacing between commands.
 indent: 4
 line_length: 80
 list_expansion: favour-inlining

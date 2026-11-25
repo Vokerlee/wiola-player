@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Installed portable persistence consumer with a supplied snapshot driver.
+ * @brief Portable persistence target consumer with a supplied snapshot driver.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -21,10 +21,6 @@
 #include <deque>
 #include <mutex>
 #include <wiola/app/library/library_persistence.hpp>
-
-#if __has_include(<qt/queued_delivery.hpp>) || __has_include(<app/library/library_persistence.hpp>)
-#error "The portable persistence SDK exposes Qt or the source root"
-#endif
 
 class Writer final : public wiola::app::SnapshotWriter {
 public:

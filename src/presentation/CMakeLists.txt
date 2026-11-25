@@ -11,8 +11,11 @@ wiola_add_library(
         documents/workspace_rows.cpp
     LIBS wiola::local_media
 )
+
 add_library(wiola::presentation ALIAS wiola_presentation)
+
 add_executable(wiola_model_boundary EXCLUDE_FROM_ALL boundary.cpp)
+
 target_link_libraries(
     wiola_model_boundary
     PRIVATE wiola::presentation wiola_sanitizer wiola_coverage

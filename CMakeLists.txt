@@ -12,10 +12,13 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -24,10 +27,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(ENABLE_UNIT_TESTS "Build unit tests" ON)
+
 option(WIOLA_BUILD_GUI "Build the Qt GUI and player executable" ON)
+
 option(ENABLE_COVERAGE "Instrument the project's code for coverage" OFF)
 
 option(ENABLE_ASAN "Build the project's code with the address sanitizer" OFF)
+
 option(ENABLE_TSAN "Build the project's code with the thread sanitizer" OFF)
 
 include(components)
@@ -38,15 +44,16 @@ endif()
 
 # One answer, read by the dependency list as well as by this file.
 set(WIOLA_BUILD_TESTS OFF)
+
 if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING AND ENABLE_UNIT_TESTS)
     set(WIOLA_BUILD_TESTS ON)
 endif()
 
 include(build)
+
 include(dependencies)
 
 if(WIOLA_BUILD_TESTS)
-    include(TestPublicPackage)
     add_subdirectory(tests/support)
 endif()
 
@@ -58,8 +65,10 @@ endif()
 
 if(WIOLA_BUILD_TESTS AND NOT WIOLA_COMPONENT_BUILD)
     add_subdirectory(tests)
+
     if(WIOLA_BUILD_GUI AND NOT CMAKE_CROSSCOMPILING AND ENABLE_TSAN)
         add_subdirectory(scripts/qt/tsan)
+
         wiola_add_qt_tsan_runtime_check(gui_desktop_journey_test)
     endif()
 endif()

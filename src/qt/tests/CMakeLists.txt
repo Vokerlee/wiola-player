@@ -9,4 +9,5 @@ wiola_add_test(
     SOURCES queued_delivery_test.cpp
     LIBS wiola::qt_delivery
 )
+
 add_subdirectory(compatibility)
