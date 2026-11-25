@@ -97,6 +97,36 @@ TEST_F(LibraryPersistenceCore, RuntimeFailureAtTheDriverBoundaryLeavesTheRevisio
     EXPECT_TRUE(accepted.receipt->durable());
 }
 
+TEST_F(LibraryPersistenceCore, FlushReportsAnUnseenDriverFailureThenRetriesTheReportedFailure)
+{
+    store.release({app::SnapshotWriteError::io});
+    start();
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+    ASSERT_TRUE(delivery.wait_pending(1));
+    store.release();
+
+    EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
+    EXPECT_FALSE(accepted.receipt->durable());
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(accepted.receipt->durable());
+}
+
+TEST_F(LibraryPersistenceCore, FlushRetriesADriverFailureAlreadyDeliveredByTheOwner)
+{
+    store.release({app::SnapshotWriteError::io});
+    start();
+    const auto accepted = writer->accept(revision(1));
+    ASSERT_TRUE(accepted);
+    ASSERT_TRUE(delivery.wait_pending(1));
+    delivery.drain();
+    EXPECT_FALSE(accepted.receipt->durable());
+    store.release();
+
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(accepted.receipt->durable());
+}
+
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
 TEST_F(LibraryPersistenceCore, PartialPreparationFailureRetainsTheEntireAcceptedDelta)
 {
@@ -132,6 +162,25 @@ TEST_F(LibraryPersistenceCore, PartialPreparationFailureRetainsTheEntireAccepted
 #endif
 
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST_F(LibraryPersistenceCore, FlushReportsAnAlreadyCompletedPreparationFailureBeforeRetrying)
+{
+    store.block();
+    writer = std::make_unique<app::LibraryPersistence>(store, fail_after_first_delivery(delivery),
+        library::LibrarySnapshot{});
+    ASSERT_TRUE(writer->accept(revision(1, "first")));
+    ASSERT_TRUE(store.wait_entered());
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    store.release();
+    ASSERT_TRUE(delivery.wait_pending(2));
+
+    EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
+    EXPECT_FALSE(second.receipt->durable());
+    ASSERT_TRUE(writer->flush().succeeded());
+    EXPECT_TRUE(second.receipt->durable());
+    EXPECT_EQ(store.last_snapshot().tracks.size(), 2U);
+}
+
 TEST_F(LibraryPersistenceCore, FailedPreparationKeepsCapacityUntilANewerPhysicalResultRecoversIt)
 {
     const app::LibraryPersistenceLimits limits{.pending_revisions = 2};

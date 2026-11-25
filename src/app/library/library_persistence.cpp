@@ -540,9 +540,15 @@ LibraryPersistence::Result LibraryPersistence::flush()
         {
             std::unique_lock lock{state->mutex_};
             target = state->latest_;
-            if (!state->stopping_ && !(state->has_durable_ && state->durable_ >= target)) {
+            // Report an unseen completed attempt before starting another. A failed
+            // preparation retains pending entries, but needs a new retry after delivery.
+            const bool awaiting_delivery = !state->active_ && !state->retry_ &&
+                state->last_attempt_.number > state->delivered_attempt_ &&
+                state->last_attempt_.revision >= target;
+            if (!state->stopping_ && !awaiting_delivery &&
+                !(state->has_durable_ && state->durable_ >= target)) {
                 const auto before = state->last_attempt_.number;
-                if (!state->active_ && state->pending_.empty())
+                if (!state->active_)
                     state->retry_ = true;
                 state->changed_.notify_all();
                 state->changed_.wait(lock, [&] {
