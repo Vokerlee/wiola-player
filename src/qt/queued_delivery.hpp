@@ -20,10 +20,9 @@
 
 #pragma once
 #include <QObject>
-#include <deque>
 #include <functional>
 #include <memory>
-#include <mutex>
+#include <utility>
 
 namespace wiola::app {
 
@@ -59,20 +58,17 @@ public:
 
     /// Stop accepting new payloads; queued payloads may still drain on the owner thread.
     void stop_accepting();
+
+    /// Close the receiver and release pending payloads outside the publication lock.
     void discard();
+
+    /// Deliver accepted payloads on the owner thread; callbacks may destroy this receiver.
     void drain();
 
 protected:
     void customEvent(QEvent* event) override;
 
 private:
-    struct State {
-        std::mutex mutex;
-        std::deque<std::function<void()>> pending;
-        bool accepting{true};
-        QueuedDelivery* receiver;
-    };
-
     std::shared_ptr<State> state_;
 };
 

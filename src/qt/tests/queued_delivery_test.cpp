@@ -26,6 +26,7 @@
 #include <latch>
 #include <memory>
 #include <qt/queued_delivery.hpp>
+#include <stdexcept>
 #include <thread>
 
 namespace {
@@ -119,6 +120,136 @@ TEST(QueuedDelivery, UnrelatedEventsDoNotConsumeAcceptedPayloads)
     EXPECT_EQ(calls, 0);
     receiver.stop_accepting();
     receiver.drain();
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(QueuedDelivery, ReceiverMayBeDestroyedByDrainedCallback)
+{
+    auto receiver = std::make_unique<wiola::app::QueuedDelivery>(*QCoreApplication::instance());
+    const auto endpoint = receiver->endpoint();
+    int calls = 0;
+    ASSERT_TRUE(endpoint.post([&] {
+        ++calls;
+        receiver.reset();
+    }));
+    ASSERT_TRUE(endpoint.post([&] { ++calls; }));
+
+    receiver->drain();
+
+    EXPECT_EQ(calls, 1);
+    EXPECT_FALSE(endpoint.post([&] { ++calls; }));
+    QCoreApplication::sendPostedEvents();
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(QueuedDelivery, ReceiverMayBeDestroyedByPostedCallback)
+{
+    auto receiver = std::make_unique<wiola::app::QueuedDelivery>(*QCoreApplication::instance());
+    const auto endpoint = receiver->endpoint();
+    int calls = 0;
+    ASSERT_TRUE(endpoint.post([&] {
+        ++calls;
+        receiver.reset();
+    }));
+    ASSERT_TRUE(endpoint.post([&] { ++calls; }));
+
+    QCoreApplication::sendPostedEvents();
+
+    EXPECT_EQ(calls, 1);
+    EXPECT_FALSE(endpoint.post([&] { ++calls; }));
+}
+
+TEST(QueuedDelivery, ContextMayBeDestroyedByDrainedCallback)
+{
+    auto context = std::make_unique<QObject>();
+    wiola::app::QueuedDelivery receiver{*context};
+    int calls = 0;
+    ASSERT_TRUE(receiver.post([&] {
+        ++calls;
+        context.reset();
+    }));
+    ASSERT_TRUE(receiver.post([&] { ++calls; }));
+
+    receiver.drain();
+    receiver.discard();
+    receiver.drain();
+    QCoreApplication::sendPostedEvents(&receiver);
+
+    EXPECT_EQ(calls, 1);
+    EXPECT_FALSE(receiver.post([&] { ++calls; }));
+}
+
+TEST(QueuedDelivery, DiscardedPayloadMayPostBackDuringDestruction)
+{
+    wiola::app::QueuedDelivery receiver{*QCoreApplication::instance()};
+    bool destroyed = false;
+    bool accepted = true;
+
+    struct Payload {
+        wiola::app::QueuedDelivery::Endpoint endpoint;
+        bool& destroyed;
+        bool& accepted;
+
+        ~Payload()
+        {
+            destroyed = true;
+            accepted = endpoint.post([] { FAIL() << "discarded receiver called"; });
+        }
+    };
+
+    auto payload = std::make_shared<Payload>(receiver.endpoint(), destroyed, accepted);
+    ASSERT_TRUE(receiver.post([payload] { }));
+    payload.reset();
+
+    receiver.discard();
+
+    EXPECT_TRUE(destroyed);
+    EXPECT_FALSE(accepted);
+    receiver.discard();
+    receiver.drain();
+    QCoreApplication::sendPostedEvents(&receiver);
+}
+
+TEST(QueuedDelivery, DiscardedPayloadMayReleaseReceiver)
+{
+    auto receiver = std::make_unique<wiola::app::QueuedDelivery>(*QCoreApplication::instance());
+    const auto endpoint = receiver->endpoint();
+    bool destroyed = false;
+
+    struct Payload {
+        std::unique_ptr<wiola::app::QueuedDelivery>& receiver;
+        bool& destroyed;
+
+        ~Payload()
+        {
+            destroyed = true;
+            receiver.reset();
+        }
+    };
+
+    auto payload = std::make_shared<Payload>(receiver, destroyed);
+    ASSERT_TRUE(endpoint.post([payload] { }));
+    payload.reset();
+
+    receiver->discard();
+
+    EXPECT_TRUE(destroyed);
+    EXPECT_FALSE(receiver);
+    EXPECT_FALSE(endpoint.post([] { }));
+}
+
+TEST(QueuedDelivery, ThrowingDrainedCallbackPreservesRemainingPayloads)
+{
+    wiola::app::QueuedDelivery receiver{*QCoreApplication::instance()};
+    int calls = 0;
+    ASSERT_TRUE(receiver.post([] { throw std::runtime_error{"callback failed"}; }));
+    ASSERT_TRUE(receiver.post([&] { ++calls; }));
+
+    EXPECT_THROW(receiver.drain(), std::runtime_error);
+    EXPECT_EQ(calls, 0);
+    receiver.drain();
+    EXPECT_EQ(calls, 1);
+    QCoreApplication::sendPostedEvents(&receiver);
     EXPECT_EQ(calls, 1);
 }
 
