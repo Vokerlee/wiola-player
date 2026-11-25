@@ -32,3 +32,5 @@ cmake --install build-library --prefix "$PWD/build-library/sdk"
 ```
 
 Consumers use `find_package(wiola_library CONFIG REQUIRED)` and link `wiola::library`. The target supplies C++23, media value types and its thread dependency, without the legacy source-root umbrella. The installed-package test relocates the prefix, compiles each public header independently and exercises catalog transactions, duplicate occurrences, querying and durability receipts. Native file/provider and Qt headers remain outside that package.
+
+Durability receipts belong to the accepting thread. A failed attempt retains its observers for retry; success is terminal. Cancellation suppresses remaining and future callbacks. Delivery isolates observer exceptions, finishes all eligible callbacks, then rethrows the first failure. An observer that completes a revision reentrantly prevents stale failure delivery to the remaining callbacks. `CommitResult` records the original acceptance state; later durability is observed through its receipt.
