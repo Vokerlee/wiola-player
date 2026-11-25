@@ -8,6 +8,7 @@
 #include <QSignalSpy>
 #include <QSlider>
 #include <app/playback/playback_service.hpp>
+#include <desktop/playback/equalizer_control.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/gui_interaction.hpp>
 #include <fixtures/wav.hpp>
