@@ -21,7 +21,7 @@
 #include "background_metadata_writes.hpp"
 
 #include <algorithm>
-#include <library/fingerprint.hpp>
+#include <media/local/fingerprint.hpp>
 #include <media/local/resource.hpp>
 
 namespace wiola::app {
@@ -117,13 +117,13 @@ void BackgroundMetadataWrites::run()
             .output = {}};
         try {
             const auto& job = pending.job;
-            const auto fingerprint = library::fingerprint_media(job.source);
+            const auto fingerprint = media::fingerprint_media(job.source);
             if (fingerprint)
                 result.source_fingerprint = *fingerprint;
             if (job.context().stop_reason() != media::StopReason::none)
                 result.stage = MetadataWriteStage::cancelled;
             else if (!job.expected_source.fingerprint.empty() &&
-                library::fingerprint_media(job.source) !=
+                media::fingerprint_media(job.source) !=
                     std::optional{job.expected_source.fingerprint}) {
                 result.stage = MetadataWriteStage::conflicted;
                 result.outcome.error = media::MetadataWriteError::conflicted;

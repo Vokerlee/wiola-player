@@ -20,7 +20,7 @@
 
 #include "metadata_conflicts.hpp"
 
-#include <library/fingerprint.hpp>
+#include <media/local/fingerprint.hpp>
 
 namespace wiola::app {
 
@@ -43,7 +43,7 @@ MetadataConflictKind MetadataConflictDetector::check(const library::LibraryRepos
 
     const std::filesystem::path candidate =
         location.empty() && !track->locations.empty() ? track->locations.front() : location;
-    const auto fingerprint = library::fingerprint_media(candidate);
+    const auto fingerprint = media::fingerprint_media(candidate);
 
     if (!fingerprint)
         return MetadataConflictKind::unreadable;

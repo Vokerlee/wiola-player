@@ -22,9 +22,9 @@
 
 #include <media/local/resource.hpp>
 
-#include <library/fingerprint.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
+#include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
@@ -80,7 +80,7 @@ TEST(MediaReplacement, ValidatesAndCommitsWhileRetainingTheOriginal)
 
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
     const auto original = bytes(source);
-    const auto expected = wiola::library::fingerprint_media(source);
+    const auto expected = wiola::media::fingerprint_media(source);
     ASSERT_TRUE(expected);
 
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
@@ -138,7 +138,7 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
     };
 
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
-    const auto expected = wiola::library::fingerprint_media(source);
+    const auto expected = wiola::media::fingerprint_media(source);
     ASSERT_TRUE(expected);
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);

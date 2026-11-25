@@ -21,7 +21,6 @@
 #include "metadata_write_service.hpp"
 
 #include <QThread>
-#include <library/fingerprint.hpp>
 #include <library/location.hpp>
 #include <media/local/resource.hpp>
 

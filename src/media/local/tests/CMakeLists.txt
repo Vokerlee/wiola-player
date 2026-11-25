@@ -13,5 +13,11 @@ wiola_add_test(
 wiola_add_test(
     media_file_replacement_test
     SOURCES file_replacement_test.cpp
-    LIBS wiola::file_replacement wiola_library
+    LIBS wiola::file_replacement wiola::file_fingerprint
+)
+
+wiola_add_test(
+    media_file_fingerprint_test
+    SOURCES fingerprint_test.cpp
+    LIBS wiola::file_fingerprint
 )

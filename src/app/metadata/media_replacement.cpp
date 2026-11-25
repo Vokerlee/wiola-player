@@ -22,7 +22,7 @@
 
 #include <media/local/resource.hpp>
 
-#include <library/fingerprint.hpp>
+#include <media/local/fingerprint.hpp>
 
 #include <algorithm>
 #include <array>
@@ -133,7 +133,7 @@ MediaReplacementValidation prepare_media_replacement(const std::filesystem::path
     if (source.lexically_normal() == temporary.lexically_normal())
         return failed(failure(media::MetadataWriteError::invalid_edit,
             "source and staged output must differ"));
-    const auto original = library::fingerprint_media(source);
+    const auto original = media::fingerprint_media(source);
     if (!original)
         return failed(failure(media::MetadataWriteError::io, "could not fingerprint source"));
     if (!expected_fingerprint.empty() && *original != expected_fingerprint)
@@ -144,7 +144,7 @@ MediaReplacementValidation prepare_media_replacement(const std::filesystem::path
         std::filesystem::remove(temporary, ignored);
         return failed(*invalid);
     }
-    const auto output = library::fingerprint_media(temporary);
+    const auto output = media::fingerprint_media(temporary);
     if (!output)
         return failed(failure(media::MetadataWriteError::invalid_output,
             "could not fingerprint staged output"));
@@ -172,8 +172,8 @@ commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
     const auto& temporary = prepared.temporary;
     if (context.stop_reason() != media::StopReason::none)
         return failure(media::MetadataWriteError::cancelled, context.error().detail);
-    if (library::fingerprint_media(source) != std::optional{prepared.source_fingerprint} ||
-        library::fingerprint_media(temporary) != std::optional{prepared.output_fingerprint})
+    if (media::fingerprint_media(source) != std::optional{prepared.source_fingerprint} ||
+        media::fingerprint_media(temporary) != std::optional{prepared.output_fingerprint})
         return failure(media::MetadataWriteError::conflicted,
             "source or staged output changed after validation");
     if (hooks.before_commit && !hooks.before_commit())
@@ -183,7 +183,7 @@ commit_prepared_media_replacement(const PreparedMediaReplacement& prepared,
     backup += ".wiola-backup";
     if (!hooks.backup_suffix.empty())
         backup += "." + hooks.backup_suffix;
-    auto native = media::native_file_replacement(library::fingerprint_media);
+    auto native = media::native_file_replacement(media::fingerprint_media);
     auto& port = hooks.replacement ? *hooks.replacement : *native;
     const auto outcome = port.replace({source, temporary, backup, prepared.source_fingerprint,
                                           prepared.output_fingerprint},
