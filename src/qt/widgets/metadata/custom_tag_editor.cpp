@@ -19,6 +19,7 @@
  */
 
 #include "custom_tag_editor.hpp"
+#include <library/tags.hpp>
 
 #include <QHBoxLayout>
 #include <QSignalBlocker>
@@ -58,13 +59,13 @@ CustomTagEditor::CustomTagEditor(QWidget* parent)
     key_->setObjectName("customTagKey");
     key_->setAccessibleName("Custom tag key");
     key_->setPlaceholderText("Key, for example genre");
-    key_->setMaxLength(128);
+    key_->setMaxLength(static_cast<int>(library::max_tag_key_bytes));
 
     value_ = new QLineEdit{this};
     value_->setObjectName("customTagValue");
     value_->setAccessibleName("Custom tag value");
     value_->setPlaceholderText("Value");
-    value_->setMaxLength(1024);
+    value_->setMaxLength(static_cast<int>(library::max_tag_value_bytes));
 
     add_ = new QPushButton{"Add", this};
     add_->setObjectName("addCustomTag");

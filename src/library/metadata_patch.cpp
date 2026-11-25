@@ -19,7 +19,6 @@
  */
 
 #include "metadata_patch.hpp"
-#include "tags.hpp"
 #include <tuple>
 #include <type_traits>
 
@@ -76,7 +75,7 @@ bool valid_metadata_patch(const StandardMetadataPatch& patch)
     visit(patch, [&](const auto& edit, auto, auto) {
         if constexpr (std::is_same_v<typename std::decay_t<decltype(edit)>::Value, std::string>) {
             if (const auto* value = edit.value())
-                valid = valid && value->size() <= max_tag_value_bytes &&
+                valid = valid && value->size() <= max_metadata_text_bytes &&
                     value->find('\0') == std::string::npos;
         }
     });
