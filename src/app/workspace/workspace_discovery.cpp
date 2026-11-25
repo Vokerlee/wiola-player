@@ -20,8 +20,7 @@
 
 #include "workspace_discovery.hpp"
 #include <algorithm>
-#include <app/library/local_identity.hpp>
-#include <media/local/fingerprint.hpp>
+#include <wiola/app/library/local_identity.hpp>
 
 namespace wiola::app {
 
@@ -38,8 +37,9 @@ bool workspace_contains(const std::filesystem::path& root, const std::filesystem
     return !relative.empty() && *relative.begin() != "..";
 }
 
-WorkspaceDiscovery::WorkspaceDiscovery(const std::filesystem::path& root,
+WorkspaceDiscovery::WorkspaceDiscovery(WorkspaceFiles& files, const std::filesystem::path& root,
     std::span<const library::TrackRecord> known, std::span<const std::filesystem::path> current)
+    : files_{files}
 {
     present_.emplace();
     for (const auto& path : current)
@@ -47,9 +47,10 @@ WorkspaceDiscovery::WorkspaceDiscovery(const std::filesystem::path& root,
     index(root, known);
 }
 
-WorkspaceDiscovery::WorkspaceDiscovery(const std::filesystem::path& root,
+WorkspaceDiscovery::WorkspaceDiscovery(WorkspaceFiles& files, const std::filesystem::path& root,
     std::span<const library::TrackRecord> known, std::stop_token stop)
-    : stop_{stop}
+    : files_{files}
+    , stop_{stop}
 {
     index(root, known);
 }
@@ -74,7 +75,7 @@ WorkspaceScanEntry WorkspaceDiscovery::resolve(const std::filesystem::path& loca
     WorkspaceScanEntry result;
     result.location = location;
     result.media = app::media_id_for(location);
-    result.fingerprint = media::fingerprint_media_cancellable(location, stop_);
+    result.fingerprint = files_.fingerprint(location, stop_);
     result.unreadable = !result.fingerprint;
     if (const auto known = locations_.find(result.media.value); known != locations_.end()) {
         result.media = known->second;
@@ -92,9 +93,8 @@ WorkspaceScanEntry WorkspaceDiscovery::resolve(const std::filesystem::path& loca
                     if (present_)
                         present = present || present_->contains(app::media_id_for(path).value);
                     else {
-                        std::error_code error;
-                        const bool exists = std::filesystem::exists(path, error);
-                        present = present || exists || static_cast<bool>(error);
+                        present =
+                            present || files_.presence(path) != WorkspaceFiles::Presence::absent;
                     }
                 }
                 if (present)

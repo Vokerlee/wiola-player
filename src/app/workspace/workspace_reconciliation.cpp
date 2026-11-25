@@ -20,7 +20,7 @@
 
 #include "workspace_reconciliation.hpp"
 
-#include <app/library/local_identity.hpp>
+#include <wiola/app/library/local_identity.hpp>
 #include <wiola/library/relocation.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
@@ -41,7 +41,9 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
         return workspace_contains(root, path) &&
             (recursive || app::media_id_for(path.parent_path()) == app::media_id_for(root));
     };
-    library::RepositoryTransaction transaction{repository, persist_};
+    const auto persist = persist_;
+    library::RepositoryTransaction transaction{repository,
+        [persist](const auto& candidate) { return (*persist)(candidate); }};
     WorkspaceReconciliationResult result;
     std::set<library::MediaId> seen;
     for (const auto& entry : entries) {

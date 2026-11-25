@@ -98,6 +98,22 @@ if(TARGET wiola_metadata_edits)
     )
 endif()
 
+if(TARGET wiola_workspace)
+    add_executable(
+        app_workspace_policy_test
+        workspace/workspace_policy_test.cpp
+    )
+
+    target_link_libraries(
+        app_workspace_policy_test
+        PRIVATE wiola::workspace GTest::gtest_main
+    )
+
+    wiola_apply_build_controls(app_workspace_policy_test)
+
+    gtest_discover_tests(app_workspace_policy_test)
+endif()
+
 if(WIOLA_COMPONENT_BUILD)
     return()
 endif()
