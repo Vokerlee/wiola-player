@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/resource.hpp>
 #include <loading/loader.hpp>
 
 #include <fakes/decoder.hpp>
@@ -34,7 +35,6 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
-#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -62,11 +62,11 @@ wiola::media::DecoderOpenResult success(std::size_t num_frames = 64)
     return wiola::media::DecoderOpenResult{std::make_unique<FakeDecoder>(Frames{num_frames})};
 }
 
-LoadRequest request(std::filesystem::path path, std::uint64_t generation = 1)
+LoadRequest request(wiola::media::ResourceReference resource, std::uint64_t generation = 1)
 {
     return LoadRequest{.generation = generation,
         .entry = QueueEntryId{generation},
-        .path = std::move(path),
+        .resource = std::move(resource),
         .intent = LoadIntent::install};
 }
 
@@ -108,7 +108,7 @@ TEST(Loader, HasNothingBeforeItIsAsked)
 {
     static_assert(!std::is_default_constructible_v<Loader>);
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             ADD_FAILURE() << "an idle loader must not open media";
             return success();
         }
@@ -121,12 +121,12 @@ TEST(Loader, HasNothingBeforeItIsAsked)
 TEST(Loader, OpensAFileAndHandsItOver)
 {
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return success();
         }
     )};
 
-    loader.start(request("track.wav", 7));
+    loader.start(request(wiola::testing::resource("track.wav", "track"), 7));
 
     const std::optional<LoadCompletion> completed{wait_for(loader)};
 
@@ -141,14 +141,14 @@ TEST(Loader, OpensAFileAndHandsItOver)
 TEST(Loader, SaysWhyAFileWouldNotOpen)
 {
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return wiola::media::DecoderOpenResult{wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::unreadable,
                     .detail = "missing"}}};
         }
     )};
 
-    loader.start(request("missing.wav"));
+    loader.start(request(wiola::testing::resource("missing.wav", "missing")));
 
     const std::optional<LoadCompletion> completed{wait_for(loader)};
 
@@ -161,32 +161,33 @@ TEST(Loader, SaysWhyAFileWouldNotOpen)
 TEST(Loader, NullProviderAssetBecomesADamagedCompletionAndTheWorkerCanRecover)
 {
     wiola::testing::FakeMediaProvider valid{
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return success();
         },
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return wiola::media::Result{wiola::media::Metadata{}};
         }};
     Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
-        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context)
+        [&](const wiola::media::ResourceReference& resource,
+            const wiola::media::OperationContext& context)
             -> wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> {
-            if (path == "empty.media")
+            if (resource == wiola::testing::resource("empty.media", "empty"))
                 return std::unique_ptr<wiola::media::MediaAsset>{};
-            return valid.open(path, context);
+            return valid.open(resource, context);
         }
     )};
 
-    loader.start(request("empty.media", 7));
+    loader.start(request(wiola::testing::resource("empty.media", "empty"), 7));
     const auto failed{wait_for(loader)};
     ASSERT_TRUE(failed);
     EXPECT_EQ(failed->request.generation, 7U);
     EXPECT_EQ(failed->request.entry, QueueEntryId{7});
-    EXPECT_EQ(failed->request.path, "empty.media");
+    EXPECT_EQ(failed->request.resource, wiola::testing::resource("empty.media", "empty"));
     ASSERT_FALSE(failed->opened);
     EXPECT_EQ(failed->opened.error().category, wiola::media::ErrorCategory::damaged);
     EXPECT_EQ(failed->opened.error().detail, "media provider returned no asset");
 
-    loader.start(request("working.media", 8));
+    loader.start(request(wiola::testing::resource("working.media", "working"), 8));
     const auto recovered{wait_for(loader)};
     ASSERT_TRUE(recovered);
     EXPECT_EQ(recovered->request.generation, 8U);
@@ -198,7 +199,7 @@ TEST(Loader, NullProviderAssetBecomesADamagedCompletionAndTheWorkerCanRecover)
 TEST(Loader, ProviderErrorKeepsItsCategoryAndDiagnostic)
 {
     Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
-        [](const std::filesystem::path&, const wiola::media::OperationContext&)
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&)
             -> wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> {
             return wiola::media::unexpected{
                 wiola::media::Error{.category = wiola::media::ErrorCategory::timed_out,
@@ -207,7 +208,7 @@ TEST(Loader, ProviderErrorKeepsItsCategoryAndDiagnostic)
         }
     )};
 
-    loader.start(request("resource.media"));
+    loader.start(request(wiola::testing::resource("resource.media", "resource")));
     const auto failed{wait_for(loader)};
 
     ASSERT_TRUE(failed);
@@ -221,22 +222,24 @@ TEST(Loader, ProviderAndAssetReceiveTheSameActiveContext)
     std::stop_token opened_with;
     std::stop_token decoded_with;
     wiola::testing::FakeMediaProvider valid{
-        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
-            EXPECT_EQ(path, "resource.media");
+        [&](const wiola::media::ResourceReference& resource,
+            const wiola::media::OperationContext& context) {
+            EXPECT_EQ(resource, wiola::testing::resource("resource.media", "resource"));
             decoded_with = context.stop;
             return success();
         },
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return wiola::media::Result{wiola::media::Metadata{}};
         }};
     Loader loader{std::make_shared<wiola::testing::FakeMediaProvider>(
-        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
+        [&](const wiola::media::ResourceReference& resource,
+            const wiola::media::OperationContext& context) {
             opened_with = context.stop;
-            return valid.open(path, context);
+            return valid.open(resource, context);
         }
     )};
 
-    loader.start(request("resource.media"));
+    loader.start(request(wiola::testing::resource("resource.media", "resource")));
     const auto completed{wait_for(loader)};
 
     ASSERT_TRUE(completed);
@@ -251,12 +254,12 @@ TEST(Loader, ProviderAndAssetReceiveTheSameActiveContext)
 TEST(Loader, HandsTheAnswerOverOnlyOnce)
 {
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return success();
         }
     )};
 
-    loader.start(request("track.wav"));
+    loader.start(request(wiola::testing::resource("track.wav", "track")));
 
     ASSERT_TRUE(wait_for(loader).has_value());
     EXPECT_FALSE(loader.take().has_value());
@@ -266,13 +269,13 @@ TEST(Loader, HoldsALoadUntilItsOpenerReturns)
 {
     Gate opening;
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [&opening](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             opening.wait();
             return success();
         }
     )};
 
-    loader.start(request("track.wav"));
+    loader.start(request(wiola::testing::resource("track.wav", "track")));
     opening.wait_until_entered();
 
     EXPECT_TRUE(loader.busy());
@@ -286,11 +289,11 @@ TEST(Loader, HoldsALoadUntilItsOpenerReturns)
 TEST(Loader, KeepsOnlyTheFileAskedForLast)
 {
     Gate first_open;
-    const std::filesystem::path first{"first.wav"};
+    const wiola::media::ResourceReference first{wiola::testing::resource("first.wav", "first")};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&first_open, &first](const std::filesystem::path& path,
+        [&first_open, &first](const wiola::media::ResourceReference& resource,
             const wiola::media::OperationContext&) {
-            if (path == first) {
+            if (resource == first) {
                 first_open.wait();
                 return success(10);
             }
@@ -301,7 +304,7 @@ TEST(Loader, KeepsOnlyTheFileAskedForLast)
 
     loader.start(request(first, 1));
     first_open.wait_until_entered();
-    loader.start(request("last.wav", 2));
+    loader.start(request(wiola::testing::resource("last.wav", "last"), 2));
     first_open.release();
 
     const std::optional<LoadCompletion> completed{wait_for(loader)};
@@ -317,15 +320,15 @@ TEST(Loader, KeepsOnlyTheFileAskedForLast)
 TEST(Loader, TakesAnotherFileAfterOneIsDone)
 {
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return success();
         }
     )};
 
-    loader.start(request("first.wav", 1));
+    loader.start(request(wiola::testing::resource("first.wav", "first"), 1));
     ASSERT_TRUE(wait_for(loader).has_value());
 
-    loader.start(request("again.wav", 2));
+    loader.start(request(wiola::testing::resource("again.wav", "again"), 2));
 
     EXPECT_TRUE(wait_for(loader).has_value());
 }
@@ -334,19 +337,19 @@ TEST(Loader, DoesNotCancelACompletedDecoderWhenAnotherLoadStarts)
 {
     std::stop_token first_stop;
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&first_stop](const std::filesystem::path& path,
+        [&first_stop](const wiola::media::ResourceReference& resource,
             const wiola::media::OperationContext& context) {
-            if (path == "first.wav")
+            if (resource == wiola::testing::resource("first.wav", "first"))
                 first_stop = context.stop;
 
             return success();
         }
     )};
 
-    loader.start(request("first.wav", 1));
+    loader.start(request(wiola::testing::resource("first.wav", "first"), 1));
     ASSERT_TRUE(wait_for(loader).has_value());
 
-    loader.start(request("second.wav", 2));
+    loader.start(request(wiola::testing::resource("second.wav", "second"), 2));
     ASSERT_TRUE(wait_for(loader).has_value());
 
     EXPECT_FALSE(first_stop.stop_requested());
@@ -361,13 +364,13 @@ TEST(Loader, CanBeThrownAwayWhileItIsReading)
     }};
 
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
+        [&opening](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             opening.wait();
             return success();
         }
     )};
 
-    loader.start(request("track.wav"));
+    loader.start(request(wiola::testing::resource("track.wav", "track")));
     opening.wait_until_entered();
 }
 
@@ -376,9 +379,9 @@ TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
     Gate opening;
     std::atomic<bool> old_was_cancelled{false};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&opening, &old_was_cancelled](const std::filesystem::path& path,
+        [&opening, &old_was_cancelled](const wiola::media::ResourceReference& resource,
             const wiola::media::OperationContext& context) -> wiola::media::DecoderOpenResult {
-            if (path == "old.wav") {
+            if (resource == wiola::testing::resource("old.wav", "old")) {
                 opening.wait();
                 old_was_cancelled = context.stop_reason() == wiola::media::StopReason::cancelled;
                 return wiola::media::unexpected{context.error()};
@@ -388,9 +391,9 @@ TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
         }
     )};
 
-    loader.start(request("old.wav", 1));
+    loader.start(request(wiola::testing::resource("old.wav", "old"), 1));
     opening.wait_until_entered();
-    loader.start(request("current.wav", 2));
+    loader.start(request(wiola::testing::resource("current.wav", "current"), 2));
     opening.release();
 
     const auto completed{wait_for(loader)};
@@ -403,21 +406,21 @@ TEST(Loader, ReplacementCooperativelyCancelsTheActiveOpenOnly)
 TEST(Loader, TurnsAWorkerExceptionIntoAnUnreadableCompletion)
 {
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [](const std::filesystem::path& path,
+        [](const wiola::media::ResourceReference& resource,
             const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
-            if (path == "broken.wav")
+            if (resource == wiola::testing::resource("broken.wav", "broken"))
                 throw std::runtime_error{"broken decoder"};
             return success();
         }
     )};
 
-    loader.start(request("broken.wav"));
+    loader.start(request(wiola::testing::resource("broken.wav", "broken")));
     const auto failed{wait_for(loader)};
     ASSERT_TRUE(failed.has_value());
     ASSERT_FALSE(failed->opened.has_value());
     EXPECT_EQ(failed->opened.error().category, wiola::media::ErrorCategory::unreadable);
 
-    loader.start(request("working.wav", 2));
+    loader.start(request(wiola::testing::resource("working.wav", "working"), 2));
     const auto recovered{wait_for(loader)};
     ASSERT_TRUE(recovered.has_value());
     EXPECT_TRUE(recovered->opened.has_value());
@@ -429,8 +432,9 @@ TEST(Loader, CancellationCallbacksCanObserveLoaderStateWithoutDeadlocking)
     std::atomic<bool> observed{false};
     Loader* current{};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
-            if (path == "old.wav") {
+        [&](const wiola::media::ResourceReference& resource,
+            const wiola::media::OperationContext& context) {
+            if (resource == wiola::testing::resource("old.wav", "old")) {
                 std::stop_callback callback{context.stop, [&] { observed = current->busy(); }};
                 opening.wait();
             }
@@ -438,9 +442,9 @@ TEST(Loader, CancellationCallbacksCanObserveLoaderStateWithoutDeadlocking)
         }
     )};
     current = &loader;
-    loader.start(request("old.wav"));
+    loader.start(request(wiola::testing::resource("old.wav", "old")));
     opening.wait_until_entered();
-    loader.start(request("new.wav", 2));
+    loader.start(request(wiola::testing::resource("new.wav", "new"), 2));
     EXPECT_TRUE(observed);
     opening.release();
     const auto completed{wait_for(loader)};
@@ -453,9 +457,9 @@ TEST(Loader, ReplacedCompletionDestroysItsDecoderOutsideTheStateMutex)
     std::atomic<bool> destroyed{false};
     Loader* current{};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&](const std::filesystem::path& path,
+        [&](const wiola::media::ResourceReference& resource,
             const wiola::media::OperationContext&) -> DecoderOpenResult {
-            if (path == "old.wav")
+            if (resource == wiola::testing::resource("old.wav", "old"))
                 return DecoderOpenResult{std::make_unique<ObservedDecoder>([&] {
                     static_cast<void>(current->busy());
                     destroyed = true;
@@ -464,10 +468,10 @@ TEST(Loader, ReplacedCompletionDestroysItsDecoderOutsideTheStateMutex)
         }
     )};
     current = &loader;
-    loader.start(request("old.wav"));
+    loader.start(request(wiola::testing::resource("old.wav", "old")));
     while (loader.busy())
         std::this_thread::yield();
-    loader.start(request("new.wav", 2));
+    loader.start(request(wiola::testing::resource("new.wav", "new"), 2));
     EXPECT_TRUE(destroyed);
     ASSERT_TRUE(wait_for(loader));
 }
@@ -477,7 +481,7 @@ TEST(Loader, CancelRetiresAnUnclaimedDecoderOutsideTheStateMutex)
     std::atomic<bool> destroyed{false};
     Loader* current{};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&](const std::filesystem::path&,
+        [&](const wiola::media::ResourceReference&,
             const wiola::media::OperationContext&) -> DecoderOpenResult {
             return DecoderOpenResult{std::make_unique<ObservedDecoder>([&] {
                 static_cast<void>(current->busy());
@@ -486,7 +490,7 @@ TEST(Loader, CancelRetiresAnUnclaimedDecoderOutsideTheStateMutex)
         }
     )};
     current = &loader;
-    loader.start(request("old.wav"));
+    loader.start(request(wiola::testing::resource("old.wav", "old")));
     while (loader.busy())
         std::this_thread::yield();
     loader.cancel();
@@ -500,21 +504,22 @@ TEST(Loader, CancelDropsQueuedAndLateCompletionsAndAllowsReopening)
     Gate opening;
     std::atomic<int> calls{0};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&](const std::filesystem::path& path, const wiola::media::OperationContext&) {
+        [&](const wiola::media::ResourceReference& resource,
+            const wiola::media::OperationContext&) {
             ++calls;
-            if (path == "old.wav")
+            if (resource == wiola::testing::resource("old.wav", "old"))
                 opening.wait();
             return success();
         }
     )};
-    loader.start(request("old.wav"));
+    loader.start(request(wiola::testing::resource("old.wav", "old")));
     opening.wait_until_entered();
-    loader.start(request("queued.wav", 2));
+    loader.start(request(wiola::testing::resource("queued.wav", "queued"), 2));
     loader.cancel();
     opening.release();
     EXPECT_FALSE(wait_for(loader));
     EXPECT_EQ(calls, 1);
-    loader.start(request("current.wav", 3));
+    loader.start(request(wiola::testing::resource("current.wav", "current"), 3));
     const auto completed{wait_for(loader)};
     ASSERT_TRUE(completed);
     EXPECT_EQ(completed->request.generation, 3U);
@@ -526,7 +531,7 @@ TEST(Loader, CancelCooperativelyStopsTheActiveOpener)
     Gate opening;
     std::atomic<bool> cancelled{false};
     Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-        [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+        [&](const wiola::media::ResourceReference&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] {
                                             cancelled = true;
                                             opening.release();
@@ -535,7 +540,7 @@ TEST(Loader, CancelCooperativelyStopsTheActiveOpener)
             return success();
         }
     )};
-    loader.start(request("old.wav"));
+    loader.start(request(wiola::testing::resource("old.wav", "old")));
     opening.wait_until_entered();
     loader.cancel();
     EXPECT_FALSE(wait_for(loader));
@@ -548,12 +553,13 @@ TEST(Loader, CompletedDecoderContextSurvivesLoaderDestruction)
     std::optional<LoadCompletion> installed;
     {
         Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-            [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            [&](const wiola::media::ResourceReference&,
+                const wiola::media::OperationContext& context) {
                 completed_stop = context.stop;
                 return success();
             }
         )};
-        loader.start(request("installed.wav"));
+        loader.start(request(wiola::testing::resource("installed.wav", "installed")));
         installed = wait_for(loader);
         ASSERT_TRUE(installed);
     }
@@ -571,10 +577,11 @@ TEST(Loader, AllocationFailureRemainsFatalRatherThanAnUnreadableFile)
             // A fatal allocation path must not invoke arbitrary atexit handlers.
             std::set_terminate([] { std::_Exit(EXIT_FAILURE); });
             Loader loader{wiola::testing::FakeMediaProvider::decoder_only(
-                [](const std::filesystem::path&, const wiola::media::OperationContext&)
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&)
                     -> wiola::media::DecoderOpenResult { throw std::bad_alloc{}; }
             )};
-            loader.start(request("allocation-failure.wav"));
+            loader.start(request(wiola::testing::resource("allocation-failure.wav",
+                "allocation-failure")));
             while (loader.busy())
                 std::this_thread::yield();
             std::_Exit(EXIT_SUCCESS);

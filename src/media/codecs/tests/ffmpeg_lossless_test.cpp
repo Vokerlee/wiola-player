@@ -20,6 +20,8 @@
 
 #include <media/local/provider.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -73,7 +75,9 @@ TEST(LosslessFamilyQualification, LosslessVariantsMatchTheReferencePcmExactly)
 
     wiola::codec::LocalMediaProvider provider;
     for (const std::string_view name : {"tone-lossless.wv", "tone.ape", "tone.tta"}) {
-        auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        auto asset{provider.open(
+            wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
+        )};
         ASSERT_TRUE(asset) << name;
         auto decoder{(*asset)->create_decoder()};
         ASSERT_TRUE(decoder) << name;
@@ -87,7 +91,9 @@ TEST(LosslessFamilyQualification, LosslessVariantsMatchTheReferencePcmExactly)
 TEST(LosslessFamilyQualification, ReadsUnicodeApeMetadata)
 {
     wiola::codec::LocalMediaProvider provider;
-    auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.ape")};
+    auto asset{provider.open(
+        wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.ape")
+    )};
     ASSERT_TRUE(asset);
 
     auto metadata{(*asset)->read_metadata()};

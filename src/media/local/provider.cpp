@@ -23,6 +23,7 @@
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
 #include <media/local/file_stream.hpp>
+#include <media/local/resource.hpp>
 
 #include <utility>
 
@@ -109,15 +110,22 @@ LocalMediaProvider::LocalMediaProvider(MediaBackendRegistry registry)
 {
 }
 
-media::Result<std::unique_ptr<media::MediaAsset>>
-LocalMediaProvider::open(const std::filesystem::path& path, const media::OperationContext& context)
+media::Result<std::unique_ptr<media::MediaAsset>> LocalMediaProvider::open(
+    const media::ResourceReference& resource, const media::OperationContext& context
+)
 {
-    auto stream{media::LocalFileStream::open(path, context)};
+    if (context.stop_reason() != media::StopReason::none)
+        return media::unexpected{context.error()};
+    auto path{media::local_path(resource)};
+    if (!path)
+        return media::unexpected{path.error()};
+    auto stream{media::LocalFileStream::open(*path, context)};
 
     if (!stream)
         return media::unexpected{stream.error()};
 
-    std::unique_ptr<media::MediaAsset> asset{std::make_unique<LocalMediaAsset>(path, registry_)};
+    std::unique_ptr<media::MediaAsset> asset{
+        std::make_unique<LocalMediaAsset>(std::move(*path), registry_)};
     return asset;
 }
 

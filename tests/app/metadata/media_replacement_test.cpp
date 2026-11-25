@@ -20,6 +20,8 @@
 
 #include <app/metadata/media_replacement.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <library/fingerprint.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
@@ -261,9 +263,11 @@ public:
     std::filesystem::path source;
     bool changed{};
 
-    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
-    open(const std::filesystem::path& path, const wiola::media::OperationContext&) override
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> open(
+        const wiola::media::ResourceReference& resource, const wiola::media::OperationContext&
+    ) override
     {
+        const auto path{wiola::media::local_path(resource).value()};
         return std::unique_ptr<wiola::media::MediaAsset>{
             std::make_unique<ChunkAsset>(path == source ? 137 : 701, path != source && changed)};
     }

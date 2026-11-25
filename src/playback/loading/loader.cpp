@@ -115,7 +115,7 @@ void Loader::work(const std::stop_token& stop)
 
         auto opened{[&]() -> media::DecoderOpenResult {
             try {
-                auto asset{provider_->open(request.path, context)};
+                auto asset{provider_->open(request.resource, context)};
                 if (!asset)
                     return media::unexpected{asset.error()};
                 if (!*asset)

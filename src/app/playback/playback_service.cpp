@@ -59,7 +59,7 @@ void PlaybackService::stop_accepting() noexcept
     impl_->session.stop();
 }
 
-engine::OperationReceipt PlaybackService::open(std::vector<std::filesystem::path> tracks)
+engine::OperationReceipt PlaybackService::open(std::vector<media::ResourceReference> tracks)
 {
     if (!impl_->accepting)
         return {.id = 0,
@@ -72,7 +72,7 @@ engine::OperationReceipt PlaybackService::open(std::vector<std::filesystem::path
         .acceptance = engine::CommandResult::accepted};
 }
 
-void PlaybackService::add(std::vector<std::filesystem::path> tracks)
+void PlaybackService::add(std::vector<media::ResourceReference> tracks)
 {
     if (!impl_->accepting)
         return;
@@ -139,9 +139,9 @@ engine::CommandResult PlaybackService::resume() noexcept
 }
 
 std::optional<engine::Session::MediaReplacementState>
-PlaybackService::release_media(const std::filesystem::path& path)
+PlaybackService::release_media(const media::ResourceReference& resource)
 {
-    return impl_->session.release_media(path);
+    return impl_->session.release_media(resource);
 }
 
 void PlaybackService::restore_media(const engine::Session::MediaReplacementState& state)
@@ -330,7 +330,7 @@ const engine::QueueView& PlaybackService::playlist() const noexcept
     return impl_->session.playlist();
 }
 
-const std::filesystem::path& PlaybackService::track() const noexcept
+const media::ResourceReference& PlaybackService::track() const noexcept
 {
     return impl_->session.track();
 }

@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/resource.hpp>
 #include <wiola/playback/buffering_config.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
@@ -121,17 +122,17 @@ TEST(PlaybackContracts, CompletionRetainsItsOwnFailureAfterTheOriginalChanges)
 TEST(PlaybackContracts, EntryObservationOwnsFactsAndSharesOnlyImmutableArtwork)
 {
     using namespace wiola;
-    std::filesystem::path path{"original.wav"};
+    wiola::media::ResourceReference resource{wiola::testing::resource("original.wav", "original")};
     media::TrackMetadata metadata;
     metadata.title = "original title";
     const auto artwork{std::make_shared<const media::Artwork>()};
-    const engine::QueueEntry entry{engine::QueueEntryId{7}, path, metadata, artwork, 3};
-    path.clear();
+    const engine::QueueEntry entry{engine::QueueEntryId{7}, resource, metadata, artwork, 3};
+    resource = {};
     metadata.title.clear();
     const auto retained{entry};
 
     EXPECT_EQ(retained.id(), engine::QueueEntryId{7});
-    EXPECT_EQ(retained.path(), std::filesystem::path{"original.wav"});
+    EXPECT_EQ(retained.resource(), wiola::testing::resource("original.wav", "original"));
     EXPECT_EQ(retained.metadata().title, "original title");
     EXPECT_EQ(retained.artwork(), artwork);
     EXPECT_EQ(retained.revision(), 3U);

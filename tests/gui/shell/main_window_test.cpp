@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/local/provider.hpp>
+
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
 #include <desktop/playback/volume_control.hpp>
@@ -33,7 +35,7 @@
 #include <gui/shell/document_host.hpp>
 #include <gui/shell/main_window.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
-#include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 
 #include <fixtures/wav.hpp>
 #include <fixtures/widget_diagnostics.hpp>
@@ -435,11 +437,11 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
     wiola::app::PlaybackService window_playback{
         [](wiola::audio::Source&) { return std::unique_ptr<wiola::audio::Output>{}; },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
@@ -447,7 +449,7 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
-    window_playback.open({"valid-decoder"});
+    window_playback.open({wiola::media::local_resource("valid-decoder")});
     ASSERT_TRUE(pump_until(window, window_playback, [&] {
         return window_playback.open_result() == wiola::engine::OpenResult::output_unavailable;
     }));

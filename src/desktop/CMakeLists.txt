@@ -42,6 +42,7 @@ wiola_add_library(
         wiola_playback_preferences
         wiola_codec
         wiola::audio_miniaudio
+        wiola::local_media
 )
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)
 target_link_libraries(wiola_player_application PUBLIC Qt6::Core wiola_app)
@@ -84,7 +85,11 @@ wiola_add_library(
         playback/queue_settings.cpp
         playback/volume_control.cpp
         playback/equalizer_control.cpp
-    LIBS wiola_app wiola_qt_settings wiola_session_preferences
+    LIBS
+        wiola_app
+        wiola_qt_settings
+        wiola_session_preferences
+        wiola::local_media
 )
 target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core wiola_app)
 

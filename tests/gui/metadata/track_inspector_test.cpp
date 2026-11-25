@@ -18,10 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/local/provider.hpp>
+
 #include <desktop/library/library_session.hpp>
 #include <gui/metadata/track_inspector.hpp>
 #include <gui/model/documents/queue_rows.hpp>
-#include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 #include <queue/playlist.hpp>
@@ -77,7 +79,7 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
     std::ofstream{path} << "audio";
 
     wiola::engine::Playlist playlist;
-    playlist.set({path});
+    playlist.set({wiola::media::local_resource(path)});
     const auto id = playlist.tracks()[0].id();
     wiola::media::TrackMetadata metadata;
     metadata.title = "Title";
@@ -117,7 +119,7 @@ TEST(TrackInspector, MarksMissingFilesAndClearsWhenThereIsNoSelection)
     ASSERT_TRUE(directory.isValid());
 
     wiola::engine::Playlist playlist;
-    playlist.set({temporary_path(directory, "missing.flac")});
+    playlist.set({wiola::media::local_resource(temporary_path(directory, "missing.flac"))});
 
     wiola::gui::TrackInspector inspector;
     wiola::gui::InspectorContext context;

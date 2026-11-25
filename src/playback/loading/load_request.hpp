@@ -21,11 +21,11 @@
 #pragma once
 
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 #include <wiola/units.hpp>
 
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 
 namespace wiola::engine {
@@ -38,7 +38,7 @@ enum class LoadIntent {
 struct LoadRequest {
     std::uint64_t generation{0};
     QueueEntryId entry;
-    std::filesystem::path path;
+    media::ResourceReference resource;
     LoadIntent intent{LoadIntent::install};
     std::optional<units::Time> position{};
 

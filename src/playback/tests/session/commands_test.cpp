@@ -23,11 +23,11 @@
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
 #include <gtest/gtest.h>
 
 #include <atomic>
 #include <cstddef>
-#include <filesystem>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -96,7 +96,8 @@ TEST(Session, RefusesAFileItCannotRead)
 {
     SessionFixture fixture;
 
-    EXPECT_EQ(load_and_wait(fixture.session, std::filesystem::path{"no-such-track.wav"}),
+    EXPECT_EQ(load_and_wait(fixture.session,
+                  wiola::testing::resource("no-such-track.wav", "no-such-track")),
         OpenResult::unreadable);
     EXPECT_FALSE(fixture.session.loaded());
     EXPECT_EQ(fixture.num_outputs, 0U);
@@ -113,11 +114,11 @@ TEST(Session, NamesTheTrackItLoaded)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path path{fixture.track()};
+    const wiola::media::ResourceReference resource{fixture.track()};
 
-    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
 
-    EXPECT_EQ(fixture.session.track(), path);
+    EXPECT_EQ(fixture.session.track(), resource);
 }
 
 /// The name follows what is playing, not what was asked for: a file that would not open leaves
@@ -126,13 +127,14 @@ TEST(Session, KeepsTheNameOfTheTrackAFailedLoadDidNotReplace)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path path{fixture.track()};
+    const wiola::media::ResourceReference resource{fixture.track()};
 
-    ASSERT_EQ(load_and_wait(fixture.session, path), OpenResult::opened);
-    ASSERT_EQ(load_and_wait(fixture.session, std::filesystem::path{"no-such-track.wav"}),
+    ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(fixture.session,
+                  wiola::testing::resource("no-such-track.wav", "no-such-track")),
         OpenResult::unreadable);
 
-    EXPECT_EQ(fixture.session.track(), path);
+    EXPECT_EQ(fixture.session.track(), resource);
 }
 
 TEST(Session, KeepsWhatWasLoadedWhenTheNextFileFails)
@@ -147,7 +149,8 @@ TEST(Session, KeepsWhatWasLoadedWhenTheNextFileFails)
     ASSERT_TRUE(fixture.session.play());
     ASSERT_EQ(fixture.session.state(), State::playing);
 
-    EXPECT_EQ(load_and_wait(fixture.session, std::filesystem::path{"no-such-track.wav"}),
+    EXPECT_EQ(load_and_wait(fixture.session,
+                  wiola::testing::resource("no-such-track.wav", "no-such-track")),
         OpenResult::unreadable);
 
     EXPECT_TRUE(fixture.session.loaded());
@@ -227,8 +230,8 @@ TEST(Session, PlaysTheNextTrackWhenOneEnds)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -245,7 +248,7 @@ TEST(Session, StaysAtTheEndOfTheList)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path only{fixture.track()};
+    const wiola::media::ResourceReference only{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, only), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
@@ -266,8 +269,8 @@ TEST(Session, PlaysNothingNextWhenTheListenerStops)
     SessionFixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -292,8 +295,8 @@ TEST(Session, PlaysTheNextTrackAndTheOneBefore)
     SessionFixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -313,8 +316,8 @@ TEST(Session, AddsToTheQueueWithoutDisturbingWhatIsPlaying)
     SessionFixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path added{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference added{fixture.track()};
 
     ASSERT_EQ(load_and_wait(fixture.session, first), OpenResult::opened);
     ASSERT_TRUE(fixture.session.play());
@@ -331,7 +334,7 @@ TEST(Session, TakesUpWhatEveryAddedTrackSays)
 {
     SessionFixture fixture;
 
-    const std::vector<std::filesystem::path> both{fixture.track(), fixture.track()};
+    const std::vector<wiola::media::ResourceReference> both{fixture.track(), fixture.track()};
 
     fixture.session.add(both);
 
@@ -348,7 +351,7 @@ TEST(Session, ReadsTheFirstTrackAddedToAnEmptyQueue)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path added{fixture.track()};
+    const wiola::media::ResourceReference added{fixture.track()};
 
     fixture.session.add({added});
 
@@ -364,8 +367,8 @@ TEST(Session, KeepsPlayingATrackTakenOutOfTheQueue)
     SessionFixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -403,7 +406,7 @@ TEST(Session, TakesUpWhatQueuedTracksSayAboutThemselves)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path track{fixture.track()};
+    const wiola::media::ResourceReference track{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
@@ -424,9 +427,9 @@ TEST(Session, TakesUpWhatEveryTrackOfAnOpenedListSays)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
-    const std::vector<std::filesystem::path> both{first, next};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
+    const std::vector<wiola::media::ResourceReference> both{first, next};
 
     ASSERT_EQ(fixture.session.open(both), OpenResult::loading);
 
@@ -443,11 +446,11 @@ TEST(Session, NamesAQueuedTrackAfterItsFileToBeginWith)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path track{fixture.track()};
+    const wiola::media::ResourceReference track{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({track}), OpenResult::loading);
 
-    EXPECT_EQ(fixture.session.playlist().tracks().front().metadata().title, track.stem().string());
+    EXPECT_EQ(fixture.session.playlist().tracks().front().metadata().title, track.label());
 }
 
 /// What a listener picking a track out of their queue asks for.
@@ -456,8 +459,8 @@ TEST(Session, PlaysTheTrackItIsSentTo)
     SessionFixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -476,20 +479,20 @@ TEST(Session, ShowsTheQueueInTheOrderItWasGiven)
 {
     SessionFixture fixture;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     fixture.session.shuffle(true);
     EXPECT_TRUE(fixture.session.shuffled());
 
     ASSERT_EQ(fixture.session.playlist().tracks().size(), 2U);
-    EXPECT_EQ(fixture.session.playlist().tracks().front().path(), first);
-    EXPECT_EQ(fixture.session.playlist().tracks().back().path(), next);
+    EXPECT_EQ(fixture.session.playlist().tracks().front().resource(), first);
+    EXPECT_EQ(fixture.session.playlist().tracks().back().resource(), next);
     fixture.session.shuffle(false);
     EXPECT_FALSE(fixture.session.shuffled());
-    EXPECT_EQ(fixture.session.playlist().tracks().front().path(), first);
-    EXPECT_EQ(fixture.session.playlist().tracks().back().path(), next);
+    EXPECT_EQ(fixture.session.playlist().tracks().front().resource(), first);
+    EXPECT_EQ(fixture.session.playlist().tracks().back().resource(), next);
 }
 
 TEST(Session, GoesNowhereBeyondTheEndsOfTheList)
@@ -508,8 +511,8 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
     SessionFixture fixture;
     fixture.consuming = false;
 
-    const std::filesystem::path first{fixture.track()};
-    const std::filesystem::path next{fixture.track()};
+    const wiola::media::ResourceReference first{fixture.track()};
+    const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
     ASSERT_TRUE(poll_until(fixture.session, [&fixture] { return fixture.session.loaded(); }));
@@ -533,24 +536,26 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [&num_reads](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [&num_reads](const wiola::media::ResourceReference&,
+                const wiola::media::OperationContext&) {
                 ++num_reads;
                 wiola::media::Metadata metadata;
                 metadata.track.title = "read";
                 return metadata;
             }
         )};
-    std::vector<std::filesystem::path> paths;
-    paths.reserve(300);
+    std::vector<wiola::media::ResourceReference> resources;
+    resources.reserve(300);
 
     for (std::size_t index{0}; index < 300; ++index)
-        paths.push_back("track-" + std::to_string(index) + ".wav");
+        resources.push_back(wiola::testing::resource("track-" + std::to_string(index) + ".wav",
+            "Track"));
 
-    EXPECT_EQ(session.open(std::move(paths)), OpenResult::loading);
+    EXPECT_EQ(session.open(std::move(resources)), OpenResult::loading);
     ASSERT_TRUE(poll_until(session,
         [&session] { return session.playlist().metadata_revision() == 300U; }));
 
@@ -578,16 +583,16 @@ TEST(Session, ForwardsCompleteMetadataValuesWithoutReinterpretingTheirFields)
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [&observed](const std::filesystem::path&, const wiola::media::OperationContext&) {
-                return observed;
-            }
+            [&observed](const wiola::media::ResourceReference&,
+                const wiola::media::OperationContext&) { return observed; }
         )};
 
-    EXPECT_EQ(session.open({"observed.media"}), OpenResult::loading);
+    EXPECT_EQ(session.open({wiola::testing::resource("observed.media", "observed")}),
+        OpenResult::loading);
     ASSERT_TRUE(poll_until(session,
         [&session] { return session.loaded() && session.playlist().metadata_revision() == 1U; }));
     const auto& entry{session.playlist().tracks().front()};
@@ -603,11 +608,11 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&)
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&)
                 -> wiola::media::Result<wiola::media::Metadata> {
                 return wiola::media::unexpected{
                     wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
@@ -616,7 +621,8 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
             }
         )};
 
-    EXPECT_EQ(session.open({"playable.wav"}), OpenResult::loading);
+    EXPECT_EQ(session.open({wiola::testing::resource("playable.wav", "playable")}),
+        OpenResult::loading);
     ASSERT_TRUE(poll_until(session,
         [&session] { return session.loaded() && session.playlist().metadata_revision() == 1U; }));
 
@@ -632,17 +638,18 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [&opening](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [&opening](const wiola::media::ResourceReference&,
+                const wiola::media::OperationContext&) {
                 opening.wait();
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
 
-    session.open({"late.wav"});
+    session.open({wiola::testing::resource("late.wav", "late")});
     opening.wait_until_entered();
     session.clear();
     opening.release();
@@ -657,24 +664,24 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
 TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
 {
     wiola::testing::Gate opening;
-    const std::filesystem::path second{"second.wav"};
+    const wiola::media::ResourceReference second{wiola::testing::resource("second.wav", "second")};
     wiola::audio::ProcessingChain processing;
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [&opening, &second](const std::filesystem::path& path,
+            [&opening, &second](const wiola::media::ResourceReference& resource,
                 const wiola::media::OperationContext&) {
-                if (path == second)
+                if (resource == second)
                     opening.wait();
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
 
-    session.open({"first.wav", second});
+    session.open({wiola::testing::resource("first.wav", "first"), second});
     ASSERT_TRUE(poll_until(session, [&session] { return session.loaded(); }));
     ASSERT_TRUE(session.play());
     ASSERT_TRUE(session.next_track());
@@ -685,7 +692,7 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
     ASSERT_TRUE(poll_until(session, [&session] { return !session.reading(); }));
     session.catch_up();
 
-    EXPECT_EQ(session.track(), std::filesystem::path{"first.wav"});
+    EXPECT_EQ(session.track(), wiola::testing::resource("first.wav", "first"));
     EXPECT_EQ(session.state(), State::stopped);
     EXPECT_FALSE(session.playing());
 }
@@ -697,17 +704,18 @@ TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
     wiola::audio::ProcessingChain processing;
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            [&](const wiola::media::ResourceReference&,
+                const wiola::media::OperationContext& context) {
                 std::stop_callback callback{context.stop, [&] { cancelled = true; }};
                 opening.wait();
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    ASSERT_EQ(session.open({"late.wav"}), OpenResult::loading);
+    ASSERT_EQ(session.open({wiola::testing::resource("late.wav", "late")}), OpenResult::loading);
     opening.wait_until_entered();
     session.stop();
     EXPECT_TRUE(cancelled);
@@ -723,17 +731,18 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
     wiola::audio::ProcessingChain processing;
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [&](const std::filesystem::path&, const wiola::media::OperationContext& context) {
+            [&](const wiola::media::ResourceReference&,
+                const wiola::media::OperationContext& context) {
                 std::stop_callback callback{context.stop, [&] { cancelled = true; }};
                 opening.wait();
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    session.open({"late.wav"});
+    session.open({wiola::testing::resource("late.wav", "late")});
     opening.wait_until_entered();
     session.open({});
     EXPECT_TRUE(cancelled);
@@ -750,21 +759,24 @@ TEST(Session, RemovingThePendingOccurrenceCancelsItsOpenWithoutReplacingActivePl
     wiola::audio::ProcessingChain processing;
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
-            [&](const std::filesystem::path& path, const wiola::media::OperationContext& context) {
-                if (path == "pending.media") {
+            [&](const wiola::media::ResourceReference& resource,
+                const wiola::media::OperationContext& context) {
+                if (resource == wiola::testing::resource("pending.media", "pending")) {
                     std::stop_callback callback{context.stop, [&] { cancelled = true; }};
                     opening.wait();
                 }
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
-            [](const std::filesystem::path&, const wiola::media::OperationContext&) {
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 return wiola::media::Metadata{};
             }
         )};
-    ASSERT_EQ(load_and_wait(session, "active.media"), OpenResult::opened);
+    ASSERT_EQ(load_and_wait(session, wiola::testing::resource("active.media", "active")),
+        OpenResult::opened);
     ASSERT_TRUE(session.play());
-    ASSERT_EQ(session.open({"pending.media"}), OpenResult::loading);
+    ASSERT_EQ(session.open({wiola::testing::resource("pending.media", "pending")}),
+        OpenResult::loading);
     opening.wait_until_entered();
 
     EXPECT_TRUE(session.remove(0));
@@ -775,7 +787,7 @@ TEST(Session, RemovingThePendingOccurrenceCancelsItsOpenWithoutReplacingActivePl
     EXPECT_TRUE(session.playlist().empty());
     EXPECT_TRUE(session.loaded());
     EXPECT_TRUE(session.playing());
-    EXPECT_EQ(session.track(), "active.media");
+    EXPECT_EQ(session.track(), wiola::testing::resource("active.media", "active"));
 }
 
 } // namespace

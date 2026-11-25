@@ -20,6 +20,8 @@
 
 #include <media/local/provider.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -65,7 +67,9 @@ TEST(ContainerQualification, SelectedLegacyAndEbmlStreamsDrainWithActualPcmShape
              std::tuple{"tone-opus.mka",   48000, 12000U},
              std::tuple{"tone-opus.webm",  48000, 12000U},
     }) {
-        auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+        auto asset{provider.open(
+            wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
+        )};
         ASSERT_TRUE(asset) << name;
         auto decoder{(*asset)->create_decoder()};
         ASSERT_TRUE(decoder) << name;
@@ -114,7 +118,9 @@ TEST(ContainerQualification, SelectedStreamsSeekToTheirSequentialTimelines)
 TEST(ContainerQualification, ReadsUnicodeWmaMetadata)
 {
     wiola::codec::LocalMediaProvider provider;
-    auto asset{provider.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone-wmav2.wma")};
+    auto asset{provider.open(
+        wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone-wmav2.wma")
+    )};
     ASSERT_TRUE(asset);
 
     auto metadata{(*asset)->read_metadata()};

@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/local/provider.hpp>
+
 #include <desktop/library/library_session.hpp>
 #include <desktop/playback/playback_preferences.hpp>
 #include <desktop/playback/volume_control.hpp>
@@ -30,7 +32,7 @@
 #include <gui/shell/main_window.hpp>
 #include <gui/shell/saved_playlist_manager.hpp>
 #include <gui/tracks/track_browser.hpp>
-#include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 
 #include <gui/appearance/theme_editor.hpp>
 #include <gui/layout/classic_layout.hpp>
@@ -368,8 +370,10 @@ TEST_F(MainWindowShell, LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocum
     EXPECT_EQ(now_playing->chosen_tracks(), selected);
     EXPECT_EQ(table->visible_count(), 2);
     ASSERT_EQ(window_playback.playlist().tracks().size(), 2);
-    EXPECT_EQ(window_playback.playlist().tracks()[0].path(), first);
-    EXPECT_EQ(window_playback.playlist().tracks()[1].path(), second);
+    EXPECT_EQ(window_playback.playlist().tracks()[0].resource(),
+        wiola::media::local_resource(first));
+    EXPECT_EQ(window_playback.playlist().tracks()[1].resource(),
+        wiola::media::local_resource(second));
     EXPECT_EQ(window_playback.playlist().position(), 0);
 }
 
@@ -437,7 +441,8 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     EXPECT_EQ(window.findChild<QWidget*>("documentGrid"), nullptr);
     EXPECT_EQ(window.findChild<QTabWidget*>("inspectorTabs"), nullptr);
     ASSERT_EQ(window_playback.playlist().tracks().size(), 1);
-    EXPECT_EQ(window_playback.playlist().tracks().front().path(), "/tmp/wiola-nested-layout.mp3");
+    EXPECT_EQ(window_playback.playlist().tracks().front().resource(),
+        wiola::media::local_resource("/tmp/wiola-nested-layout.mp3"));
 }
 
 TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
@@ -686,7 +691,8 @@ TEST_F(MainWindowShell, LayoutPreviewCommandsAndCancelDoNotTouchPlayerState)
     preview_command->click();
 
     EXPECT_EQ(window_playback.playlist().tracks().size(), 1);
-    EXPECT_EQ(window_playback.playlist().tracks()[0].path(), "/tmp/wiola-preview-queue.mp3");
+    EXPECT_EQ(window_playback.playlist().tracks()[0].resource(),
+        wiola::media::local_resource("/tmp/wiola-preview-queue.mp3"));
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_EQ(editor->result(), 0);
 
@@ -721,7 +727,7 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
 
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    window_playback.add({path});
+    window_playback.add({wiola::media::local_resource(path)});
     wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
@@ -792,7 +798,7 @@ TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPla
     ASSERT_TRUE(seed.commit());
     app::PlaybackService playback{wiola::testing::passive_output,
         std::make_shared<wiola::codec::LocalMediaProvider>()};
-    playback.add(playing.locations);
+    playback.add(wiola::media::local_resources(playing.locations));
 
     app::PlaybackPreferences preferences{playback};
     gui::MainWindow window{playback, library, preferences};
@@ -816,7 +822,8 @@ TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPla
     EXPECT_EQ(library.repository().track(selected.id)->overrides.title, "Edited selection");
     EXPECT_FALSE(library.repository().track(playing.id)->overrides.title);
     ASSERT_NE(playback.playlist().current(), nullptr);
-    EXPECT_EQ(playback.playlist().current()->path(), playing.locations.front());
+    EXPECT_EQ(playback.playlist().current()->resource(),
+        wiola::media::local_resource(playing.locations.front()));
 }
 
 TEST_F(MainWindowShell, CustomLayoutReopensFromAcceptedValuesAndRestartsWithoutLosingEdits)

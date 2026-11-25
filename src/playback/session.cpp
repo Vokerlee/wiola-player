@@ -36,7 +36,7 @@ Session::Session(audio::Stage& processing, OutputFactory make_output,
 
 Session::~Session() = default;
 
-OpenResult Session::open(std::vector<std::filesystem::path> tracks)
+OpenResult Session::open(std::vector<media::ResourceReference> tracks)
 {
     return impl_->open(std::move(tracks));
 }
@@ -51,7 +51,7 @@ bool Session::previous_track()
     return impl_->previous_track();
 }
 
-void Session::add(std::vector<std::filesystem::path> tracks)
+void Session::add(std::vector<media::ResourceReference> tracks)
 {
     impl_->add(std::move(tracks));
 }
@@ -111,7 +111,7 @@ OpenResult Session::open_result() const noexcept
     return impl_->open_result();
 }
 
-const std::filesystem::path& Session::track() const noexcept
+const media::ResourceReference& Session::track() const noexcept
 {
     return impl_->track();
 }
@@ -142,9 +142,9 @@ void Session::stop() noexcept
 }
 
 std::optional<Session::MediaReplacementState>
-Session::release_media(const std::filesystem::path& path)
+Session::release_media(const media::ResourceReference& resource)
 {
-    return impl_->release_media(path);
+    return impl_->release_media(resource);
 }
 
 OpenResult Session::restore_media(const MediaReplacementState& state)

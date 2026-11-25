@@ -1,4 +1,5 @@
 #include <QAccessible>
+
 #include <QAccessibleValueInterface>
 #include <QAction>
 #include <QCheckBox>
@@ -15,6 +16,7 @@
 #include <gui/controls/seek_bar.hpp>
 #include <limits>
 #include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace {
@@ -143,7 +145,7 @@ TEST_F(GuiInteraction, LargeFontEqualizerRemainsScrollableAndKeyboardAdjustsTheL
     const auto path = wiola::platform::qt::QtPathAdapter::from_qt(data_.filePath("equalizer.wav"));
     std::filesystem::copy_file(generated, path);
     std::filesystem::remove(generated);
-    static_cast<void>(playback.open({path}));
+    static_cast<void>(playback.open({wiola::media::local_resource(path)}));
     ASSERT_TRUE(wiola::testing::await_gui([&] {
         static_cast<void>(playback.pump());
         return playback.loaded();

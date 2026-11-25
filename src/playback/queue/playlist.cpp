@@ -28,22 +28,22 @@ namespace wiola::engine {
 
 namespace {
 
-media::TrackMetadata with_fallback_title(const std::filesystem::path& path,
+media::TrackMetadata with_fallback_title(const media::ResourceReference& resource,
     media::TrackMetadata metadata)
 {
     if (metadata.title.empty())
-        metadata.title = path.stem().string();
+        metadata.title = resource.label();
     return metadata;
 }
 
 std::pair<std::vector<QueueEntry>, QueueEntryId>
-make_entries(std::vector<std::filesystem::path> paths, QueueEntryId next)
+make_entries(std::vector<media::ResourceReference> resources, QueueEntryId next)
 {
     std::vector<QueueEntry> entries;
-    entries.reserve(paths.size());
-    for (auto& path : paths) {
-        auto metadata{with_fallback_title(path, {})};
-        entries.emplace_back(next, std::move(path), std::move(metadata));
+    entries.reserve(resources.size());
+    for (auto& resource : resources) {
+        auto metadata{with_fallback_title(resource, {})};
+        entries.emplace_back(next, std::move(resource), std::move(metadata));
         ++next.value;
     }
     return {std::move(entries), next};
@@ -51,9 +51,9 @@ make_entries(std::vector<std::filesystem::path> paths, QueueEntryId next)
 
 } // namespace
 
-void Playlist::set(std::vector<std::filesystem::path> paths)
+void Playlist::set(std::vector<media::ResourceReference> resources)
 {
-    auto [tracks, next]{make_entries(std::move(paths), next_id_)};
+    auto [tracks, next]{make_entries(std::move(resources), next_id_)};
     std::map<QueueEntryId, std::size_t> indices;
 
     for (std::size_t index{0}; index < tracks.size(); ++index) {
@@ -71,12 +71,12 @@ void Playlist::set(std::vector<std::filesystem::path> paths)
     ++structural_revision_;
 }
 
-void Playlist::add(std::vector<std::filesystem::path> paths)
+void Playlist::add(std::vector<media::ResourceReference> resources)
 {
-    if (paths.empty())
+    if (resources.empty())
         return;
 
-    auto [tracks, next]{make_entries(std::move(paths), next_id_)};
+    auto [tracks, next]{make_entries(std::move(resources), next_id_)};
     tracks_.reserve(tracks_.size() + tracks.size());
     order_.reserve(tracks_.size() + tracks.size());
 
@@ -188,7 +188,7 @@ void Playlist::apply_metadata(std::span<const QueueEntryId> entries,
         if (!index)
             continue;
 
-        descriptions.emplace_back(*index, with_fallback_title(tracks_[*index].path_, metadata));
+        descriptions.emplace_back(*index, with_fallback_title(tracks_[*index].resource_, metadata));
     }
 
     // All allocation completes before changing any occurrence or revision.

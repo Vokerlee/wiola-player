@@ -19,7 +19,9 @@
  */
 
 #include <gui/documents/now_playing_document.hpp>
+
 #include <gui/tracks/track_table_view.hpp>
+#include <media/local/resource.hpp>
 #include <queue/playlist.hpp>
 
 #include <QAction>
@@ -50,7 +52,8 @@ TEST(NowPlayingDocument, PresentsTheActualEngineQueueAndCurrentTrack)
 {
     wiola::gui::NowPlayingDocument document;
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     playlist.go_to(1);
 
     document.show_playlist(playlist);
@@ -75,7 +78,8 @@ TEST(NowPlayingDocument, ForwardsIdentityBasedCommandsFromItsTable)
 {
     wiola::gui::NowPlayingDocument document;
     wiola::engine::Playlist playlist;
-    playlist.set({"first.wav", "second.wav"});
+    playlist.set({wiola::media::local_resource("first.wav"),
+        wiola::media::local_resource("second.wav")});
     document.show_playlist(playlist);
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
@@ -114,7 +118,7 @@ TEST(NowPlayingDocument, IdleRefreshAndPlayingMarkerDoNotRebuildOrQueryTheSource
     for (int i = 0; i < 1000; ++i)
         tracks.push_back("/music/" + std::to_string(i) + ".wav");
     engine::Playlist playlist;
-    playlist.set(std::move(tracks));
+    playlist.set(wiola::media::local_resources(tracks));
     gui::NowPlayingDocument document;
     std::size_t resolutions = 0;
     document.set_media_resolver([&](const auto& path) {
@@ -142,7 +146,8 @@ TEST(NowPlayingDocument, LibraryOverridesRefreshDuplicateOccurrencesWithoutReadi
 {
     using namespace wiola;
     engine::Playlist playlist;
-    playlist.set({"/missing.wav", "/missing.wav"});
+    playlist.set({wiola::media::local_resource("/missing.wav"),
+        wiola::media::local_resource("/missing.wav")});
     library::InMemoryRepository repository;
     library::TrackRecord record;
     record.id = library::media_id_for("/missing.wav");
@@ -167,7 +172,7 @@ TEST(NowPlayingDocument,
     for (int i = 0; i < 1000; ++i)
         tracks.push_back("/music/" + std::to_string(i == 1 ? 0 : i) + ".wav");
     engine::Playlist playlist;
-    playlist.set(std::move(tracks));
+    playlist.set(wiola::media::local_resources(tracks));
     playlist.describe(playlist.tracks()[0].id(), {.title = "Raw title", .artist = "Raw artist"});
     library::InMemoryRepository repository;
     gui::NowPlayingDocument document;

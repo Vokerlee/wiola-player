@@ -19,7 +19,9 @@
  */
 
 #include "now_playing_document.hpp"
+
 #include <gui/model/documents/queue_rows.hpp>
+#include <media/local/resource.hpp>
 
 #include <gui/tracks/track_browser.hpp>
 
@@ -113,7 +115,8 @@ NowPlayingDocument::displayed_paths(const engine::QueueView& playlist) const
     for (const engine::QueueEntryId id : queue_entry_ids(browser_->table().displayed_rows())) {
         const auto row = playlist.index_of(id);
         if (row)
-            paths.push_back(playlist.tracks()[*row].path());
+            if (auto path = media::local_path(playlist.tracks()[*row].resource()))
+                paths.push_back(std::move(*path));
     }
 
     return paths;

@@ -21,12 +21,12 @@
 #pragma once
 
 #include <wiola/media/metadata.hpp>
+#include <wiola/media/resource.hpp>
 #include <wiola/media/result.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <span>
 #include <vector>
 
@@ -39,14 +39,14 @@ public:
     struct Request {
         std::uint64_t generation{0};
         QueueEntryId id;
-        std::filesystem::path path;
+        media::ResourceReference resource;
     };
 
     /// Echo the accepted request identity; payload ownership transfers with delivery.
     struct Reading {
         std::uint64_t generation{0};
         QueueEntryId id;
-        std::filesystem::path path;
+        media::ResourceReference resource;
         media::Result<media::Metadata> result;
     };
 

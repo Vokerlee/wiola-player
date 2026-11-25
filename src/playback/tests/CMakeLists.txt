@@ -16,6 +16,10 @@ target_link_libraries(
         wiola_sanitizer
         wiola_warnings
 )
+target_include_directories(
+    playback_contract_test
+    PRIVATE "${PROJECT_SOURCE_DIR}/tests"
+)
 include(GoogleTest)
 gtest_discover_tests(playback_contract_test)
 

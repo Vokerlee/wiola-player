@@ -20,6 +20,8 @@
 
 #include "queue_settings.hpp"
 
+#include <media/local/resource.hpp>
+
 #include <platform/qt/player_settings.hpp>
 
 #include <algorithm>
@@ -76,7 +78,7 @@ std::size_t QueueSettings::restore()
         return gone;
 
     const auto first_new = playback_.playlist().tracks().size();
-    playback_.add(tracks);
+    playback_.add(wiola::media::local_resources(tracks));
     if (stored.occurrence_ids.size() == stored.tracks.size())
         for (std::size_t i = 0; i < available.size(); ++i)
             restored_.emplace(engine::QueueEntryId{stored.occurrence_ids[available[i]]},
@@ -108,14 +110,18 @@ void QueueSettings::save()
     settings.shuffled = presentation.shuffled;
 
     for (const engine::QueueEntry& track : playback_.playlist().tracks()) {
-        settings.tracks.push_back(track.path());
-        settings.occurrence_ids.push_back(track.id().value);
+        if (auto path = media::local_path(track.resource())) {
+            settings.tracks.push_back(std::move(*path));
+            settings.occurrence_ids.push_back(track.id().value);
+        }
     }
     settings.has_occurrence_ids = true;
 
     if (const engine::QueueEntry* current = playback_.playlist().current()) {
-        settings.selected = current->path();
-        settings.selected_occurrence = current->id().value;
+        if (auto path = media::local_path(current->resource())) {
+            settings.selected = std::move(*path);
+            settings.selected_occurrence = current->id().value;
+        }
     }
 
     platform::qt::QtSettingsAdapter{settings_}.write_playlist(settings);

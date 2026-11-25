@@ -21,23 +21,24 @@
 #pragma once
 
 #include <wiola/media/metadata.hpp>
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
 
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <utility>
 
 namespace wiola::engine {
 
 /// Owned facts for one occurrence. A queue exposes const entries; metadata updates preserve
-/// identity/location. Copies retain their own metadata and share only immutable artwork.
+/// identity/resource. Copies retain their own metadata and share only immutable artwork.
 class QueueEntry {
 public:
-    QueueEntry(QueueEntryId id, std::filesystem::path path, media::TrackMetadata metadata = {},
-        std::shared_ptr<const media::Artwork> artwork = {}, std::uint64_t revision = 0) noexcept
+    QueueEntry(QueueEntryId id, media::ResourceReference resource,
+        media::TrackMetadata metadata = {}, std::shared_ptr<const media::Artwork> artwork = {},
+        std::uint64_t revision = 0) noexcept
         : id_{id}
-        , path_{std::move(path)}
+        , resource_{std::move(resource)}
         , metadata_{std::move(metadata)}
         , artwork_{std::move(artwork)}
         , revision_{revision}
@@ -46,7 +47,7 @@ public:
 
     [[nodiscard]] constexpr QueueEntryId id() const noexcept { return id_; }
 
-    [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
+    [[nodiscard]] const media::ResourceReference& resource() const noexcept { return resource_; }
 
     [[nodiscard]] const media::TrackMetadata& metadata() const noexcept { return metadata_; }
 
@@ -59,7 +60,7 @@ public:
 
 private:
     QueueEntryId id_;
-    std::filesystem::path path_;
+    media::ResourceReference resource_;
     media::TrackMetadata metadata_;
     std::shared_ptr<const media::Artwork> artwork_;
     std::uint64_t revision_;

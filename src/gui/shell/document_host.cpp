@@ -19,6 +19,7 @@
  */
 
 #include "document_host.hpp"
+
 #include <QLabel>
 #include <QPushButton>
 #include <QTabBar>
@@ -29,6 +30,7 @@
 #include <gui/documents/workspace_document.hpp>
 #include <gui/tracks/track_browser.hpp>
 #include <library/location.hpp>
+#include <media/local/resource.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace wiola::gui {
@@ -54,9 +56,11 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     registry_.add(*queue_, [this] {
         std::vector<SelectedTrack> selected;
         for (const auto id : queue_->chosen_tracks())
-            if (const auto row = playback_.playlist().index_of(id))
-                selected.push_back({library_.media_at(playback_.playlist().tracks()[*row].path()),
-                    id, playback_.playlist().tracks()[*row].path()});
+            if (const auto row = playback_.playlist().index_of(id)) {
+                auto path = media::local_path(playback_.playlist().tracks()[*row].resource());
+                selected.push_back({path ? library_.media_at(*path) : library::MediaId{}, id,
+                    path ? std::move(*path) : std::filesystem::path{}});
+            }
         return selected;
     });
     connect(queue_, &NowPlayingDocument::track_chosen, &lifetime_, [this](engine::QueueEntryId id) {

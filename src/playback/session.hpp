@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/buffering_config.hpp>
 #include <wiola/playback/open_result.hpp>
 #include <wiola/playback/operation_outcome.hpp>
@@ -32,7 +33,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -84,7 +84,7 @@ public:
     /// this returns `loading` and whatever is playing keeps playing; `catch_up` is what finishes
     /// the job. A file that will not open leaves the track that was playing alone, and says why
     /// through `open_result`.
-    OpenResult open(std::vector<std::filesystem::path> tracks);
+    OpenResult open(std::vector<media::ResourceReference> tracks);
 
     /// Stands at the next track of the list and reads it, keeping whether something was playing.
     /// False when there is nowhere to go.
@@ -95,7 +95,7 @@ public:
 
     /// Puts `tracks` at the end of the queue, leaving what is playing alone. With nothing
     /// loaded, the first of them is read so that there is something to press play on.
-    void add(std::vector<std::filesystem::path> tracks);
+    void add(std::vector<media::ResourceReference> tracks);
 
     /// Takes the track that was put at `index` out of the queue. What is playing keeps playing,
     /// even when it is the one taken out: the queue says what comes next, not what is on.
@@ -137,7 +137,7 @@ public:
 
     /// The last installed resource, empty before the first installation. A failed candidate
     /// or temporary handoff retains its identity independently of the selected queue entry.
-    [[nodiscard]] const std::filesystem::path& track() const noexcept;
+    [[nodiscard]] const media::ResourceReference& track() const noexcept;
 
     bool play() noexcept;
     bool pause() noexcept;
@@ -159,7 +159,7 @@ public:
     /// queue selection. A pending open for the same resource is cancelled with its intent kept;
     /// an unrelated open remains pending. This does not exclude other provider/metadata I/O.
     [[nodiscard]] std::optional<MediaReplacementState>
-    release_media(const std::filesystem::path& path);
+    release_media(const media::ResourceReference& resource);
     /// Restores the latest held intent without changing queue selection. An unrelated pending
     /// open takes precedence: success revokes the ticket, failure permits deferred restoration.
     /// New selections, queue replacement/removal of the held occurrence, or clear revoke it.

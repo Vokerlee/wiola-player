@@ -26,6 +26,7 @@
 #include <gui/layout/layout_session.hpp>
 #include <gui/layout/view_registry.hpp>
 #include <library/library_changes.hpp>
+#include <wiola/media/resource.hpp>
 #include <wiola/playback/open_result.hpp>
 #endif
 
@@ -175,7 +176,7 @@ private:
 
     /// The track the title names, and where in the queue it stood: a listener may queue the
     /// same file twice, and moving from one of them to the other is still a new track.
-    std::filesystem::path named_;
+    media::ResourceReference named_;
     std::optional<std::size_t> named_place_;
 
     /// Shared command objects; buttons and keyboard shortcuts trigger the same actions.

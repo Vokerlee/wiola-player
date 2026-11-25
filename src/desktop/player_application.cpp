@@ -21,6 +21,8 @@
 #include "player_application.hpp"
 #include <audio/miniaudio/device.hpp>
 #include <media/local/provider.hpp>
+
+#include <media/local/resource.hpp>
 #include <stdexcept>
 
 namespace wiola::app {
@@ -60,7 +62,7 @@ PlayerApplication::PlayerApplication(PlayerRuntimeConfig config, QObject* parent
     preferences_.ui_session().bind_library(library_);
     library_.file_writes().set_handoff(
         [this](const std::filesystem::path& path) -> MetadataWriteService::Restore {
-            auto state = playback_.release_media(path);
+            auto state = playback_.release_media(wiola::media::local_resource(path));
             if (!state)
                 return {};
             return [this, state = *state] {

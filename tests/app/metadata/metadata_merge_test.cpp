@@ -61,7 +61,7 @@ public:
 class FakeProvider final : public wiola::media::MediaProvider {
 public:
     wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
-    open(const std::filesystem::path&, const wiola::media::OperationContext&) override
+    open(const wiola::media::ResourceReference&, const wiola::media::OperationContext&) override
     {
         return std::unique_ptr<wiola::media::MediaAsset>{std::make_unique<FakeAsset>()};
     }

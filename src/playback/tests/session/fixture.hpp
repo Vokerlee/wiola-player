@@ -23,12 +23,12 @@
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
 #include <fixtures/shaping.hpp>
 #include <wiola/playback/session.hpp>
 
 #include <chrono>
 #include <cstddef>
-#include <filesystem>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -44,9 +44,9 @@ namespace units = wiola::units;
 
 /// Loads and waits for it, the way a window that draws does: asking, then taking the answer up
 /// on a later turn.
-inline OpenResult load_and_wait(Session& session, const std::filesystem::path& path)
+inline OpenResult load_and_wait(Session& session, const wiola::media::ResourceReference& resource)
 {
-    session.open({path});
+    session.open({resource});
 
     while (session.reading())
         std::this_thread::yield();
@@ -79,13 +79,14 @@ bool poll_until(Session& session, Predicate settled)
 struct SessionFixture {
 private:
     mutable std::mutex media_mutex_;
-    std::map<std::filesystem::path, wiola::media::DecoderStreamInfo> media_;
+    std::map<wiola::media::ResourceReference, wiola::media::DecoderStreamInfo> media_;
     std::size_t next_resource_{};
 
-    std::optional<wiola::media::DecoderStreamInfo> lookup(const std::filesystem::path& path) const
+    std::optional<wiola::media::DecoderStreamInfo>
+    lookup(const wiola::media::ResourceReference& resource) const
     {
         const std::lock_guard lock{media_mutex_};
-        const auto found{media_.find(path)};
+        const auto found{media_.find(resource)};
         return found == media_.end() ? std::nullopt : std::optional{found->second};
     }
 
@@ -109,17 +110,18 @@ public:
                                    : std::make_unique<wiola::testing::FakeOutput>();
               },
               std::make_shared<wiola::testing::FakeMediaProvider>(
-                  [this](const std::filesystem::path& path,
+                  [this](const wiola::media::ResourceReference& resource,
                       const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
-                      const auto info{lookup(path)};
+                      const auto info{lookup(resource)};
                       if (!info)
                           return missing();
                       return wiola::media::DecoderOpenResult{
                           std::make_unique<wiola::testing::FakeDecoder>(*info)};
                   },
-                  [this](const std::filesystem::path& path, const wiola::media::OperationContext&)
+                  [this](const wiola::media::ResourceReference& resource,
+                      const wiola::media::OperationContext&)
                       -> wiola::media::Result<wiola::media::Metadata> {
-                      const auto info{lookup(path)};
+                      const auto info{lookup(resource)};
                       if (!info)
                           return missing();
                       wiola::media::Metadata result;
@@ -130,16 +132,17 @@ public:
     {
     }
 
-    std::filesystem::path track(wiola::pcm::StreamSpec spec = {})
+    wiola::media::ResourceReference track(wiola::pcm::StreamSpec spec = {})
     {
-        const std::filesystem::path path{"resource-" + std::to_string(++next_resource_) + ".media"};
+        const std::string key{"resource-" + std::to_string(++next_resource_)};
+        const auto resource{wiola::testing::resource(key + ".media", key)};
         const wiola::media::DecoderStreamInfo info{.spec = spec,
             .length = spec.checked_frames_at(duration).value(),
             .length_accuracy = wiola::media::LengthAccuracy::exact,
             .seekable = true};
         const std::lock_guard lock{media_mutex_};
-        media_.emplace(path, info);
-        return path;
+        media_.emplace(resource, info);
+        return resource;
     }
 
     /// Set before loading, when a test needs a track that cannot run out from under it.

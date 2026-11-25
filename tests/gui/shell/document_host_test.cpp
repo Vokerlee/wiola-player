@@ -19,6 +19,7 @@
  */
 
 #include <QApplication>
+
 #include <QEvent>
 #include <QPushButton>
 #include <QTemporaryDir>
@@ -27,6 +28,7 @@
 #include <gui/documents/saved_playlist_document.hpp>
 #include <gui/shell/document_host.hpp>
 #include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 #include <memory>
 
 namespace {
@@ -79,7 +81,8 @@ TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
 {
     const auto first = library->playlists().create("First");
     const auto second = library->playlists().create("Second");
-    playback.add({"queued.wav", "queued.wav"});
+    playback.add({wiola::media::local_resource("queued.wav"),
+        wiola::media::local_resource("queued.wav")});
     const auto entry = playback.playlist().tracks()[1].id();
     {
         gui::DocumentHost host{*library, playback, *preferences, {}};

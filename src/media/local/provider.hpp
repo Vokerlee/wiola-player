@@ -30,7 +30,7 @@ public:
     LocalMediaProvider();
     explicit LocalMediaProvider(MediaBackendRegistry registry);
 
-    media::Result<std::unique_ptr<media::MediaAsset>> open(const std::filesystem::path& path,
+    media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference& resource,
         const media::OperationContext& context = {}) override;
 
     [[nodiscard]] std::vector<std::string> playback_extensions() const override;

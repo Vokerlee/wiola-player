@@ -20,6 +20,8 @@
 
 #include <desktop/metadata/media_revision_publisher.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QThread>
@@ -78,8 +80,10 @@ public:
     }
 
     wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
-    open(const std::filesystem::path& path, const wiola::media::OperationContext& context) override
+    open(const wiola::media::ResourceReference& resource,
+        const wiola::media::OperationContext& context) override
     {
+        const auto path{wiola::media::local_path(resource).value()};
         if (gate_ && path == "barrier.wav")
             gate_->arrive(context.stop);
         if (path == "throws.wav")
@@ -223,8 +227,9 @@ TEST(MediaRevisionPublisher, WorkerIoExceptionsBecomeTypedFailures)
 
 class CancellableProvider final : public wiola::media::MediaProvider {
 public:
-    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
-    open(const std::filesystem::path&, const wiola::media::OperationContext& context) override
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>> open(
+        const wiola::media::ResourceReference&, const wiola::media::OperationContext& context
+    ) override
     {
         std::unique_lock lock{mutex};
         entered = true;

@@ -20,6 +20,8 @@
 
 #include <gui/model/documents/queue_rows.hpp>
 
+#include <media/local/resource.hpp>
+
 #include <gui/model/tracks/track_sorter.hpp>
 
 #include <library/in_memory_repository.hpp>
@@ -42,7 +44,8 @@ TrackSortKey key(TrackSortField field, TrackSortDirection direction = TrackSortD
 TEST(TrackSorter, AppliesMultipleKeysWithDeterministicIdentityFallback)
 {
     wiola::engine::Playlist playlist;
-    playlist.set({"b.wav", "a.wav", "c.wav"});
+    playlist.set({wiola::media::local_resource("b.wav"), wiola::media::local_resource("a.wav"),
+        wiola::media::local_resource("c.wav")});
     playlist.describe(playlist.tracks()[0].id(),
         {.title = "Same", .artist = "Zed", .album = {}, .duration = {}});
     playlist.describe(playlist.tracks()[1].id(),
@@ -71,7 +74,8 @@ TEST(TrackSorter, AppliesMultipleKeysWithDeterministicIdentityFallback)
 TEST(TrackSorter, KeepsMissingDurationsLastAndUsesTagKeys)
 {
     wiola::engine::Playlist playlist;
-    playlist.set({"unknown.wav", "short.wav", "long.wav"});
+    playlist.set({wiola::media::local_resource("unknown.wav"),
+        wiola::media::local_resource("short.wav"), wiola::media::local_resource("long.wav")});
     playlist.describe(playlist.tracks()[1].id(),
         {.title = {}, .artist = {}, .album = {}, .duration = wiola::units::Time{1}});
     playlist.describe(playlist.tracks()[2].id(),

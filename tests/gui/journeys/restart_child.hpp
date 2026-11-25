@@ -12,6 +12,7 @@
 #include <gui/layout/classic_layout.hpp>
 #include <iostream>
 #include <library/fingerprint.hpp>
+#include <media/local/resource.hpp>
 #include <stdexcept>
 
 #ifdef WIOLA_TEST_COVERAGE
@@ -115,7 +116,7 @@ inline int session_child(const QString& mode, const QString& directory)
             journey_require(static_cast<bool>(seed.commit()), "accept seeded session");
             journey_require(player.library().active_playlist().set(destination),
                 "set independent destination");
-            player.playback().add({source, source});
+            player.playback().add({media::local_resource(source), media::local_resource(source)});
             journey_require(player.playback().play_track(1), "select second queue occurrence");
             window.refresh();
             host->queue().browser().table().selectRow(1);
@@ -188,7 +189,7 @@ inline app::PreparedMediaReplacement stage_process_replacement(const QString& di
     );
     std::filesystem::copy_file(journey_fixture("tone.mp3"), source);
     codec::LocalMediaProvider provider;
-    auto asset = provider.open(source);
+    auto asset = provider.open(media::local_resource(source));
     journey_require(static_cast<bool>(asset), "open real replacement source");
     media::MetadataWriteRequest request;
     request.overrides.title = "Process committed metadata";

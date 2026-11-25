@@ -78,7 +78,7 @@ public:
 
 class Provider final : public media::MediaProvider {
 public:
-    media::Result<std::unique_ptr<media::MediaAsset>> open(const std::filesystem::path&,
+    media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference&,
         const media::OperationContext&) override
     {
         return std::unique_ptr<media::MediaAsset>{std::make_unique<Asset>()};
@@ -112,7 +112,8 @@ int main()
         return 4;
 
     Provider provider;
-    auto asset = provider.open("controlled", {});
+    auto asset =
+        provider.open(media::ResourceReference{"consumer", "controlled", "Controlled"}, {});
     if (!asset)
         return 1;
     auto opened = (*asset)->create_decoder();

@@ -15,6 +15,7 @@
 #include <gui/tracks/track_browser.hpp>
 #include <library/location.hpp>
 #include <media/local/provider.hpp>
+#include <media/local/resource.hpp>
 #include <platform/qt/qt_path_adapter.hpp>
 
 namespace wiola::testing {
@@ -81,7 +82,8 @@ inline void restore_session_journey()
             ASSERT_TRUE(player.library().repository().put_playlist(playlist));
             ASSERT_TRUE(transaction.commit());
             ASSERT_TRUE(player.library().active_playlist().set(destination));
-            player.playback().add({source, missing, source});
+            player.playback().add({media::local_resource(source), media::local_resource(missing),
+                media::local_resource(source)});
             ASSERT_TRUE(player.playback().play_track(2));
             window.refresh();
             auto* host =
