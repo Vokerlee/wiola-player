@@ -25,7 +25,7 @@ wiola_add_test(
 wiola_add_test(
     library_repository_transaction_test
     SOURCES repository_transaction_test.cpp
-    LIBS wiola_library
+    LIBS wiola_library wiola_test_allocation_failure
 )
 
 wiola_add_test(
