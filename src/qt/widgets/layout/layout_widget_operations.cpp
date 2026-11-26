@@ -64,10 +64,17 @@ void configure_widget(QWidget& widget, const LayoutNode& node)
             box->setDirection(QBoxLayout::LeftToRight);
             const bool commands = std::ranges::all_of(node.children,
                 [](const auto& child) { return child.kind == LayoutComponentKind::button; });
-            box->setAlignment(commands ? Qt::AlignLeft | Qt::AlignVCenter : Qt::Alignment{});
+            box->setAlignment(node.alignment ? *node.alignment | Qt::AlignVCenter
+                    : commands               ? Qt::AlignLeft | Qt::AlignVCenter
+                                             : Qt::Alignment{});
         } else if (node.kind == LayoutComponentKind::column ||
             node.kind == LayoutComponentKind::group)
             box->setDirection(QBoxLayout::TopToBottom);
+    }
+    if (auto* grid = qobject_cast<QGridLayout*>(widget.layout())) {
+        const int columns = node.columns.value_or(1);
+        for (int column = 0; column < std::max(grid->columnCount(), columns); ++column)
+            grid->setColumnStretch(column, column < columns ? 1 : 0);
     }
     if (!widget.property(minimum_key).isValid()) {
         widget.setProperty(minimum_key, widget.minimumSize());

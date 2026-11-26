@@ -43,7 +43,7 @@ public:
 private:
     QLineEdit *title_, *sizes_;
     QSpinBox *width_, *columns_;
-    QComboBox *action_, *orientation_;
+    QComboBox *action_, *orientation_, *alignment_;
     QLabel* error_;
     bool updating_{};
     std::function<void()> observer_;

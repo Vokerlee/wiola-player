@@ -106,6 +106,10 @@ bool valid_container_properties(const LayoutNode& node)
             !std::ranges::all_of(node.sizes,
                 [](int size) { return size > 0 && size <= max_dimension; })))
         return false;
+    if (node.alignment &&
+        (!descriptor->supports(ComponentProperty::alignment) ||
+            layout_alignment_name(*node.alignment).isEmpty()))
+        return false;
     if (node.columns &&
         (!descriptor->supports(ComponentProperty::columns) || *node.columns < 1 ||
             *node.columns > static_cast<int>(max_children)))
@@ -133,6 +137,12 @@ struct Parser {
         if (!component_kind(object.value("type").toString(), output.kind))
             return LayoutJsonError::invalid_component;
 
+        const auto alignment = object.value("alignment");
+        if (!alignment.isUndefined()) {
+            output.alignment = parse_layout_alignment(alignment.toString());
+            if (!output.alignment)
+                return LayoutJsonError::invalid_component;
+        }
         const QJsonValue orientation = object.value("orientation");
         if (!orientation.isUndefined()) {
             if (!orientation.isString() ||
@@ -338,6 +348,28 @@ QString layout_component_name(LayoutComponentKind kind)
     return descriptor ? QString::fromLatin1(descriptor->key) : QString{};
 }
 
+QString layout_alignment_name(Qt::AlignmentFlag alignment)
+{
+    switch (alignment) {
+    case Qt::AlignLeft:
+        return "left";
+    case Qt::AlignHCenter:
+        return "center";
+    case Qt::AlignRight:
+        return "right";
+    default:
+        return {};
+    }
+}
+
+std::optional<Qt::AlignmentFlag> parse_layout_alignment(const QString& name)
+{
+    for (const auto value : {Qt::AlignLeft, Qt::AlignHCenter, Qt::AlignRight})
+        if (layout_alignment_name(value) == name)
+            return value;
+    return {};
+}
+
 QByteArray write_layout_json(const LayoutDocument& document)
 {
     if (validate_layout_document(document) != LayoutJsonError::none)
@@ -366,6 +398,8 @@ QByteArray write_layout_json(const LayoutDocument& document)
         }
         if (!size.isEmpty())
             result.insert("size", size);
+        if (node.alignment)
+            result.insert("alignment", layout_alignment_name(*node.alignment));
         if (node.orientation)
             result.insert("orientation",
                 *node.orientation == Qt::Horizontal ? "horizontal" : "vertical");
