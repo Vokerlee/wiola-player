@@ -23,3 +23,12 @@ target_include_directories(
     wiola_core_adapter_boundary
     PRIVATE "${PROJECT_SOURCE_DIR}/src"
 )
+
+if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
+    set_target_properties(
+        wiola_core_adapter_boundary
+        PROPERTIES EXCLUDE_FROM_ALL FALSE
+    )
+
+    add_test(NAME qt_core_consumer COMMAND wiola_core_adapter_boundary)
+endif()

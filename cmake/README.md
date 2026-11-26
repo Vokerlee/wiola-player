@@ -16,3 +16,5 @@ flowchart LR
 `build.cmake` supplies compiler controls and thin local library/test declarations. Internal implementation/test include access is private. Each public declaration links the targets supplying its field and signature types. The version header belongs to the executable build.
 
 `components.cmake` selects ordinary source targets for independent core/application work. The dependency recipes prepare external SDKs only for the chosen composition. Configure presets describe toolchains and build directories; CTest and the existing LLVM reporting command provide test and coverage execution.
+
+Top-level `BUILD_TESTING` registers the lightweight presentation and QtCore consumer checks through CTest target names. `ENABLE_UNIT_TESTS` additionally builds the GoogleTest suites. The headless preset leaves those suites disabled and runs its registered public consumer through the normal configure/build/test presets. CMake supplies executable paths to CTest.
