@@ -36,6 +36,7 @@ extern "C" {
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <stop_token>
 
 namespace {
 
@@ -99,7 +100,7 @@ struct InputFixture {
     wiola::codec::ffmpeg::FfmpegStreamFacts facts;
 };
 
-InputFixture open_input(const char* name)
+InputFixture open_input(const char* name, const wiola::media::OperationContext& context = {})
 {
     auto stream{
         wiola::media::LocalFileStream::open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
@@ -107,7 +108,7 @@ InputFixture open_input(const char* name)
     if (!stream)
         throw std::runtime_error{"fixture stream did not open"};
 
-    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(*stream))};
+    auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(*stream), context)};
 
     if (!input)
         throw std::runtime_error{"fixture input did not open"};
@@ -322,3 +323,31 @@ TEST(FfmpegPacketDecoder, EnforcesItsPacketWorkBudget)
 }
 
 } // namespace
+
+TEST(FfmpegPacketDecoder, CancellationPrecedesBufferedFrameDelivery)
+{
+    std::stop_source cancellation;
+    auto fixture = open_input("tone.wav", {.stop = cancellation.get_token()});
+    auto decoder = wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts);
+    ASSERT_TRUE(decoder);
+    cancellation.request_stop();
+    const auto reopened = wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts);
+    ASSERT_FALSE(reopened);
+    EXPECT_EQ(reopened.error().category, wiola::media::ErrorCategory::cancelled);
+    const auto event = (*decoder)->next_frame();
+    ASSERT_FALSE(event);
+    EXPECT_EQ(event.error().category, wiola::media::ErrorCategory::cancelled);
+}
+
+TEST(FfmpegPacketDecoder, RejectsStreamFactsOutsideItsOwnedInput)
+{
+    auto fixture = open_input("tone.wav");
+    for (const auto index : {static_cast<std::size_t>(fixture.input->format()->nb_streams),
+             std::numeric_limits<std::size_t>::max()}) {
+        auto facts = fixture.facts;
+        facts.stream_index = index;
+        const auto decoder = wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, facts);
+        ASSERT_FALSE(decoder);
+        EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::damaged);
+    }
+}
