@@ -40,7 +40,7 @@ std::span<const ActionDescriptor> action_descriptors()
                          true},
         ActionDescriptor{PlayerAction::add, "add", "Add", "Ctrl+Shift+A", std::nullopt},
         ActionDescriptor{PlayerAction::remove, "remove", "Remove", "Delete", std::nullopt},
-        ActionDescriptor{PlayerAction::clear, "clear", "Clear", "Ctrl+Shift+Backspace",
+        ActionDescriptor{PlayerAction::clear, "clear", "Clear play queue", "Ctrl+Shift+Backspace",
                          std::nullopt},
         ActionDescriptor{PlayerAction::equalizer, "equalizer", "EQ", "Ctrl+E", std::nullopt}
     };

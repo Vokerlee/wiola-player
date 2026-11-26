@@ -21,6 +21,7 @@
 #include "document_command_router.hpp"
 #include <algorithm>
 #include <app/playback/playback_queue.hpp>
+#include <qt/widgets/documents/playlist_name.hpp>
 #include <wiola/app/library/playlist_transfer.hpp>
 #include <wiola/library/records.hpp>
 #include <wiola/qt/paths.hpp>
@@ -224,11 +225,13 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
     if (moving && !source)
         return;
     std::optional<library::PlaylistId> destination = context.active_playlist;
-    if (moving || command == TrackCommand::transfer_destination) {
+    if ((moving || command == TrackCommand::transfer_destination) && context.target_playlist)
+        destination = context.target_playlist;
+    else if (moving || command == TrackCommand::transfer_destination) {
         std::vector<PlaylistChoice> choices;
         for (const auto& playlist : library_->repository().playlists())
             if (!moving || playlist.id != *source)
-                choices.push_back({playlist.id, playlist.name});
+                choices.push_back({playlist.id, playlist_name(playlist).toStdString()});
         const QPointer<DocumentCommandRouter> alive{this};
         destination = dialogs_.destination(choices);
         if (!alive || !library_ || !destination)

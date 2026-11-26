@@ -24,7 +24,6 @@
 #include <wiola/presentation/documents/saved_playlist_rows.hpp>
 
 #include <QLabel>
-#include <QPushButton>
 #include <QWidget>
 
 #include <functional>
@@ -45,6 +44,8 @@ public:
     [[nodiscard]] std::vector<SelectedTrack> selection() const;
     void set_active(bool active);
 
+    [[nodiscard]] bool active() const noexcept { return active_; }
+
     [[nodiscard]] bool contains(const library::MediaId& media) const
     {
         return source_.contains(media);
@@ -54,22 +55,22 @@ public:
     [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
     void on_apply_order_requested(std::function<void()> observer);
     void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
-    void on_play_requested(std::function<void()> observer);
     void on_transfer_active_requested(std::function<void()> observer);
     void on_transfer_destination_requested(std::function<void()> observer);
     void on_transfer_move_requested(std::function<void()> observer);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
 
 private:
     void update_heading();
 
     QLabel* heading_{nullptr};
-    QPushButton* play_button_{nullptr};
     TrackBrowser* browser_{nullptr};
     SavedPlaylistRows source_;
     QString name_;
     bool active_{false};
     std::function<void(library::PlaylistEntryId)> entry_observer_;
-    std::function<void()> playback_observer_;
     std::function<void()> transfer_active_observer_;
     std::function<void()> transfer_destination_observer_;
     std::function<void()> transfer_move_observer_;

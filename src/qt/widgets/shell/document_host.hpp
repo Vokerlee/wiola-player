@@ -32,7 +32,6 @@ namespace wiola::gui {
 class TrackBrowser;
 
 struct DocumentCommands {
-    std::function<void()> open_folder;
     std::function<void()> selection_changed;
     std::function<void()> edit_track;
     std::function<void(TrackCommand, DocumentCommandContext)> execute;
@@ -68,6 +67,7 @@ public:
 private:
     void restore_browser(const DocumentId& id, TrackBrowser& browser, bool complete);
     void configure_browser(TrackBrowser& browser);
+    [[nodiscard]] DocumentCommandContext selection_context(const DocumentId& id) const;
     void refresh(const library::LibraryChangeBatch& batch);
     void restore();
     void save();
@@ -76,9 +76,12 @@ private:
     DocumentCommands commands_;
     app::SessionPreferences& preferences_;
     DocumentRegistry registry_;
-    QWidget* empty_;
     NowPlayingDocument* queue_;
     bool restoring_{true};
+    bool queue_requested_{};
+    bool updating_activity_{};
+    QIcon activity_icon_;
+    qint64 activity_palette_{};
     std::optional<library::PlaylistId> last_playlist_;
     std::uint64_t catalog_revision_{};
     library::LibraryChanges::Subscription changes_;

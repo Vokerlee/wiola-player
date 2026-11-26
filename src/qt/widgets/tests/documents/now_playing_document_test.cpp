@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QKeyEvent>
 #include <qt/widgets/documents/now_playing_document.hpp>
 
 #include <qt/widgets/tracks/track_table_view.hpp>
@@ -97,12 +98,12 @@ TEST(NowPlayingDocument, ForwardsIdentityBasedCommandsFromItsTable)
     QObject::connect(&document, &wiola::gui::NowPlayingDocument::removal_asked,
         [&removals] { ++removals; });
 
-    QAction* play = action(*table, "Play selected track");
+    EXPECT_EQ(action(*table, "Play selected track"), nullptr);
     QAction* remove = action(*table, "Remove selected tracks");
-    ASSERT_NE(play, nullptr);
     ASSERT_NE(remove, nullptr);
 
-    play->trigger();
+    QKeyEvent enter{QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier};
+    QApplication::sendEvent(table, &enter);
     remove->trigger();
 
     const auto selected = playlist.tracks()[1].id();

@@ -78,7 +78,7 @@ TEST(TrackBrowser, CapabilitiesGovernMenusAndKeyboardCommands)
         TrackCapabilities::workspace()};
     for (const auto capabilities : contexts) {
         TrackBrowser browser{capabilities};
-        auto* move = action(browser, "Move to playlist →");
+        auto* move = action(browser, "Move to playlist");
         auto* remove = action(browser, "Remove selected tracks");
         ASSERT_NE(move, nullptr);
         ASSERT_NE(remove, nullptr);
