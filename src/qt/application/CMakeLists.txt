@@ -33,7 +33,7 @@ target_link_libraries(wiola_m3u PUBLIC Qt6::Core wiola::library)
 wiola_add_library(
     wiola_player_application
     SOURCES player_application.cpp
-    LIBS wiola_codec wiola::audio_miniaudio wiola::local_media
+    LIBS wiola::local_media
 )
 
 set_target_properties(wiola_player_application PROPERTIES AUTOMOC ON)

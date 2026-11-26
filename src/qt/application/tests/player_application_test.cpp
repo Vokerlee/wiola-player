@@ -107,13 +107,21 @@ protected:
         return tracks.back();
     }
 
+    static wiola::app::PlayerRuntimeConfig runtime()
+    {
+        wiola::app::PlayerRuntimeConfig config;
+        config.provider = wiola::codec::ffmpeg::make_provider();
+        config.output = wiola::testing::passive_output;
+        return config;
+    }
+
     inline static std::unique_ptr<QTemporaryDir> settings_directory;
     std::vector<std::filesystem::path> tracks;
 };
 
 TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
 {
-    wiola::app::PlayerApplication player;
+    wiola::app::PlayerApplication player{runtime()};
     const std::filesystem::path source = track("wiola_application_load.wav");
 
     {
@@ -143,7 +151,7 @@ TEST_F(PlayerApplication, KeepsPumpingAfterTheWindowThatStartedALoadIsDestroyed)
 
 TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestination)
 {
-    wiola::app::PlayerApplication player;
+    wiola::app::PlayerApplication player{runtime()};
     auto& library = player.library();
     const auto playlist = library.playlists().create("Retained").id;
     ASSERT_TRUE(playlist.valid());
@@ -174,7 +182,7 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
 
 TEST_F(PlayerApplication, RecreatingAWindowDoesNotRestoreOrDuplicateTheQueueAgain)
 {
-    wiola::app::PlayerApplication player;
+    wiola::app::PlayerApplication player{runtime()};
     const auto source = track("wiola_runtime_recreate.wav");
     player.playback().add({wiola::media::local_resource(source),
         wiola::media::local_resource(source)});
@@ -192,7 +200,7 @@ TEST_F(PlayerApplication, RecreatingAWindowDoesNotRestoreOrDuplicateTheQueueAgai
 
 TEST_F(PlayerApplication, ObserverLifetimeAndShutdownDoNotLeaveLiveCallbacksOrCommands)
 {
-    wiola::app::PlayerApplication player;
+    wiola::app::PlayerApplication player{runtime()};
     int calls = 0;
     {
         QObject view;
@@ -281,7 +289,7 @@ TEST_F(PlayerApplication, ReportsFailedFlushAndAllowsAnExplicitRetry)
 
 TEST_F(PlayerApplication, WorkspaceRelocationPreservesSavedReferencesAndCanonicalMedia)
 {
-    wiola::app::PlayerApplication player;
+    wiola::app::PlayerApplication player{runtime()};
     QTemporaryDir workspace_directory;
     ASSERT_TRUE(workspace_directory.isValid());
     const auto old_name = workspace_directory.path() + "/old.wav";

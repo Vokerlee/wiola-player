@@ -80,14 +80,21 @@ private:
     library::InMemoryRepository& repository_;
     media::FileReplacement& replacement_;
     library::RepositoryTransaction::Persist persist_;
-    Observer observer_;
+    std::shared_ptr<Observer> observer_;
     Handoff handoff_;
     DurabilityGate durability_;
     std::function<void()> flush_durability_;
     std::map<library::MediaId, std::uint64_t> generations_;
     std::map<MetadataWriteOperationId, MetadataWriteJob> operations_;
     std::deque<std::shared_ptr<Prepared>> ready_;
-    bool accepting_{true}, committing_{};
+    enum class Phase {
+        running,
+        closing,
+        retry,
+        closed,
+    };
+    Phase phase_{Phase::running};
+    bool committing_{};
     std::uint64_t next_operation_{};
     BackgroundMetadataWrites staging_;
     std::mutex mutex_;

@@ -22,7 +22,9 @@
 #include "metadata_write_job.hpp"
 #include <condition_variable>
 #include <deque>
+#include <exception>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <wiola/media/provider.hpp>
@@ -46,13 +48,15 @@ private:
         Observer progress;
     };
 
+    void close();
     void run();
     MetadataWriteResult stage(const Pending& pending);
     static void cancel(Pending pending);
     std::shared_ptr<media::MediaProvider> provider_;
     std::mutex mutex_;
     std::condition_variable available_;
-    std::deque<Pending> jobs_;
+    std::unique_ptr<std::deque<Pending>> jobs_{std::make_unique<std::deque<Pending>>()};
+    std::exception_ptr delivery_failure_;
     std::shared_ptr<std::stop_source> active_;
     bool stopping_{};
     std::uint64_t next_operation_{};

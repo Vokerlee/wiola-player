@@ -19,16 +19,33 @@
  */
 
 #include <core/version.hpp>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <qt/application/library/queue_library_migration.hpp>
 #include <qt/application/player_application.hpp>
 #include <qt/widgets/shell/main_window.hpp>
+#include <wiola/audio/miniaudio/device.hpp>
 
 #include <QApplication>
 #include <QDebug>
 #include <QSettings>
 
 #include <iostream>
+#include <memory>
 #include <string_view>
+
+namespace {
+
+wiola::app::PlayerRuntimeConfig desktop_runtime()
+{
+    wiola::app::PlayerRuntimeConfig config;
+    config.provider = wiola::codec::ffmpeg::make_provider();
+    config.output = [](wiola::audio::Source& source) {
+        return std::make_unique<wiola::audio::Device>(source);
+    };
+    return config;
+}
+
+} // namespace
 
 int main(int argc, char** argv)
 {
@@ -59,7 +76,7 @@ int main(int argc, char** argv)
     if (migration.migrate(settings) != wiola::persistence::qt::LibraryStoreResult{})
         qWarning("Could not migrate the queued tracks into the library");
 
-    wiola::app::PlayerApplication player;
+    wiola::app::PlayerApplication player{desktop_runtime()};
     wiola::gui::MainWindow window{player.playback(), player.library(), player.preferences()};
 
     player.observe(

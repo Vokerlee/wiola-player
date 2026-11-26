@@ -28,6 +28,7 @@
 #include <gtest/gtest.h>
 #include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/fingerprint.hpp>
+#include <memory>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <qt/paths.hpp>
 #include <stdexcept>
@@ -306,4 +307,82 @@ int main(int argc, char** argv)
     testing::InitGoogleTest(&argc, argv);
     QCoreApplication app{argc, argv};
     return RUN_ALL_TESTS();
+}
+
+TEST(MetadataWriteService, InterruptedFinalFlushCanBeRetriedAfterWorkersHaveClosed)
+{
+    QObject context;
+    wiola::library::InMemoryRepository repository;
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    wiola::app::MetadataWriteService service{context, wiola::codec::ffmpeg::make_provider(),
+        repository, *replacement, [](const auto&) { return true; }, [](const auto&) { }};
+    int attempts{};
+    service.set_durability({}, [&] {
+        if (++attempts == 1)
+            throw std::runtime_error{"flush interrupted"};
+    });
+    EXPECT_THROW(service.stop(), std::runtime_error);
+    EXPECT_NO_THROW(service.stop());
+    EXPECT_EQ(attempts, 2);
+}
+
+TEST(MetadataWriteService, TerminalShutdownObserverCanReleaseTheService)
+{
+    QObject context;
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = {"missing-location"};
+    ASSERT_TRUE(repository.put_track(record));
+    auto edit = wiola::app::MetadataEditSession::capture({repository.track(record.id)});
+    wiola::library::StandardMetadataPatch patch;
+    patch.title = "Draft";
+    edit.set_draft(patch);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    std::unique_ptr<wiola::app::MetadataWriteService> service;
+    int observed{};
+    service = std::make_unique<wiola::app::MetadataWriteService>(
+        context, wiola::codec::ffmpeg::make_provider(), repository, *replacement,
+        [](const auto&) { return true; },
+        [&, calls = 0](const auto& result) mutable {
+            if (result.stage != wiola::app::MetadataWriteStage::queued) {
+                service.reset();
+                observed = ++calls;
+            }
+        }
+    );
+    ASSERT_EQ(service->submit(edit).size(), 1);
+    service->stop();
+    EXPECT_FALSE(service);
+    EXPECT_EQ(observed, 1);
+}
+
+TEST(MetadataWriteService, TerminalObserverFailureStillDrainsOtherJobsAndFlushesDurability)
+{
+    QObject context;
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord first, second;
+    first.id = {"first-missing-location"};
+    second.id = {"second-missing-location"};
+    ASSERT_TRUE(repository.put_track(first));
+    ASSERT_TRUE(repository.put_track(second));
+    auto edit = wiola::app::MetadataEditSession::capture({repository.track(first.id),
+        repository.track(second.id)});
+    wiola::library::StandardMetadataPatch patch;
+    patch.title = "Draft";
+    edit.set_draft(patch);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    int terminal{}, flushed{};
+    wiola::app::MetadataWriteService service{context, wiola::codec::ffmpeg::make_provider(),
+        repository, *replacement, [](const auto&) { return true; },
+        [&](const auto& result) {
+            if (result.stage != wiola::app::MetadataWriteStage::queued && ++terminal == 1)
+                throw std::runtime_error{"terminal observer failed"};
+        }};
+    service.set_durability({}, [&] { ++flushed; });
+    ASSERT_EQ(service.submit(edit).size(), 2);
+    EXPECT_THROW(service.stop(), std::runtime_error);
+    EXPECT_EQ(terminal, 2);
+    EXPECT_EQ(flushed, 1);
+    EXPECT_NO_THROW(service.stop());
+    EXPECT_EQ(flushed, 2);
 }
