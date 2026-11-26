@@ -24,7 +24,8 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QScopedValueRollback>
+#include <QPointer>
+#include <QScopeGuard>
 #include <QThread>
 #include <cmath>
 #include <optional>
@@ -225,18 +226,25 @@ ThemeError ThemeManager::accept(ThemeState candidate)
     candidate = std::move(canonical);
     if (candidate == accepted_)
         return ThemeError::none;
-    const QScopedValueRollback<bool> transaction{applying_, true};
+    const QPointer<ThemeManager> owner{this};
+    const auto transaction = qScopeGuard([owner] {
+        if (owner)
+            owner->applying_ = false;
+    });
+    applying_ = true;
     using namespace persistence::qt;
     if (store_.write(FileSlot::backup, last_good_) != FileStoreError::none ||
         store_.write(FileSlot::primary, encoded) != FileStoreError::none)
         return ThemeError::io;
     accepted_ = std::move(candidate);
     last_good_ = encoded;
-    apply_theme(colors());
-    ++generation_;
+    const auto palette = colors();
+    const auto generation = ++generation_;
     legacy_.remove("theme");
     legacy_.sync();
-    emit theme_changed(generation_);
+    apply_theme(palette);
+    if (owner)
+        emit theme_changed(generation);
     return ThemeError::none;
 }
 

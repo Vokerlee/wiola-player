@@ -19,11 +19,13 @@
  */
 
 #include <QApplication>
+#include <QEvent>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
+#include <memory>
 #include <qt/tests/support/atomic_output.hpp>
 #include <qt/widgets/appearance/artwork_presentation.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
@@ -38,6 +40,53 @@ QByteArray bytes(const QString& path)
     if (!file.open(QIODevice::ReadOnly))
         return {};
     return file.readAll();
+}
+
+class PaletteClosure final : public QObject {
+public:
+    explicit PaletteClosure(std::unique_ptr<ThemeManager>& manager)
+        : manager_{manager}
+    {
+    }
+
+private:
+    bool eventFilter(QObject*, QEvent* event) override
+    {
+        if (event->type() == QEvent::ApplicationPaletteChange)
+            manager_.reset();
+        return false;
+    }
+
+    std::unique_ptr<ThemeManager>& manager_;
+};
+
+TEST(ThemeManager, ChangedObserverMayReleaseTheManagerAfterAcceptance)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    QObject receiver;
+    auto manager = std::make_unique<ThemeManager>(settings);
+    QObject::connect(manager.get(), &ThemeManager::theme_changed, &receiver,
+        [&](auto) { manager.reset(); });
+    EXPECT_EQ(manager->select(ThemeChoice::dark), ThemeError::none);
+    EXPECT_FALSE(manager);
+    ThemeState stored;
+    ASSERT_EQ(read_theme_json(bytes(directory.filePath("theme.json")), stored), ThemeError::none);
+    EXPECT_EQ(stored.selected, ThemeChoice::dark);
+}
+
+TEST(ThemeManager, PaletteDeliveryMayReleaseTheManagerBeforeItsOwnNotification)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    auto manager = std::make_unique<ThemeManager>(settings);
+    PaletteClosure observer{manager};
+    qApp->installEventFilter(&observer);
+    EXPECT_EQ(manager->select(ThemeChoice::dark), ThemeError::none);
+    EXPECT_FALSE(manager);
+    ThemeState stored;
+    ASSERT_EQ(read_theme_json(bytes(directory.filePath("theme.json")), stored), ThemeError::none);
+    EXPECT_EQ(stored.selected, ThemeChoice::dark);
 }
 
 TEST(ThemeManager, PersistsAcceptedColorsKeepsCustomAcrossPresetsAndPublishesOneGeneration)
