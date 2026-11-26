@@ -156,7 +156,7 @@ wiola_add_test(
 wiola_add_test(
     gui_main_window_shell_test
     SOURCES main_window_shell_test.cpp
-    LIBS wiola::qt_widgets wiola_player_application wiola::ffmpeg
+    LIBS wiola::qt_widgets wiola_player_application wiola::ffmpeg Qt6::Test
 )
 
 target_link_libraries(

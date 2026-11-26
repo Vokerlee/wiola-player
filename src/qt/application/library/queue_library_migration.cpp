@@ -54,7 +54,7 @@ persistence::qt::LibraryStoreResult QueueLibraryMigration::migrate(QSettings& se
     library::LibrarySnapshot library;
     library::PlaylistRecord migrated;
     migrated.id = {.value = "playlist-migrated-queue"};
-    migrated.name = "Migrated queue";
+    migrated.name = "My playlist";
 
     std::map<library::MediaId, std::size_t> known;
 

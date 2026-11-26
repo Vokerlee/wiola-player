@@ -27,6 +27,7 @@ wiola_add_library(
         layout/layout_editor.cpp
         shell/document_host.cpp
         shell/main_window.cpp
+        shell/window_panels.cpp
         shell/document_command_router.cpp
         shell/player_dialogs.cpp
         shell/player_menu.cpp

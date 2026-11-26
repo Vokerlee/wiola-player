@@ -75,28 +75,40 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
     results_->setObjectName("trackSearchResults");
     results_->setAccessibleName("Search result count");
 
-    QFormLayout* fields = new QFormLayout;
+    title_->setPlaceholderText("Search track titles…");
+    title_->setClearButtonEnabled(true);
+    clear_title_->hide();
+    more_ = new QToolButton{this};
+    more_->setObjectName("advancedTrackSearch");
+    more_->setText("More filters");
+    more_->setCheckable(true);
+    more_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    more_->setArrowType(Qt::RightArrow);
+    advanced_ = new QWidget{this};
+    auto* fields = new QFormLayout{advanced_};
+    fields->setContentsMargins(0, 0, 0, 0);
     const auto add_field = [fields](const QString& label, QLineEdit* input, QPushButton* clear) {
-        QHBoxLayout* row = new QHBoxLayout;
-        row->addWidget(input);
-        row->addWidget(clear);
-        fields->addRow(label, row);
+        input->setClearButtonEnabled(true);
+        clear->hide();
+        fields->addRow(label, input);
     };
-
-    add_field("Title", title_, clear_title_);
     add_field("Artist", artist_, clear_artist_);
     add_field("Album", album_, clear_album_);
     add_field("Tags", tags_, clear_tags_);
-
-    QHBoxLayout* footer = new QHBoxLayout;
-    footer->addWidget(results_);
-    footer->addStretch();
-    footer->addWidget(reset_);
-
-    QVBoxLayout* layout = new QVBoxLayout{this};
+    advanced_->hide();
+    connect(more_, &QToolButton::toggled, this, [this](bool expanded) {
+        advanced_->setVisible(expanded);
+        more_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+    });
+    auto* search = new QHBoxLayout;
+    search->addWidget(title_, 1);
+    search->addWidget(more_);
+    search->addWidget(reset_);
+    auto* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->addLayout(fields);
-    layout->addLayout(footer);
+    layout->addLayout(search);
+    layout->addWidget(advanced_);
+    layout->addWidget(results_);
 
     const auto changed = [this] {
         if (observer_)
@@ -132,6 +144,7 @@ void TrackSearchPanel::show_query(const library::SearchQuery& query)
     artist_->setText(QString::fromStdString(query.artist));
     album_->setText(QString::fromStdString(query.album));
     tags_->setText(QString::fromStdString(query.tags));
+    more_->setChecked(!query.artist.empty() || !query.album.empty() || !query.tags.empty());
 }
 
 void TrackSearchPanel::show_results(std::size_t visible, std::size_t total, bool pending)

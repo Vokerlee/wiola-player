@@ -51,6 +51,8 @@ public:
 
     void set_view_state(TrackViewState state);
 
+    void set_tag_keys(const std::vector<std::string>& keys) { filters_->suggest_keys(keys); }
+
     [[nodiscard]] const TrackViewState& view_state() const noexcept { return table_->view_state(); }
 
     void show_library(const library::LibraryRepository& repository);
@@ -75,6 +77,7 @@ signals:
     void row_activated(wiola::gui::TrackRowId id);
     void command_requested(wiola::gui::TrackCommand command);
     void selection_changed();
+    void edit_requested();
 
 private:
     void update_results();

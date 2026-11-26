@@ -19,6 +19,7 @@
  */
 
 #include "document_host.hpp"
+#include <qt/widgets/documents/playlist_name.hpp>
 
 #include <QLabel>
 #include <QPushButton>
@@ -153,6 +154,11 @@ DocumentHost::~DocumentHost()
 
 void DocumentHost::configure_browser(TrackBrowser& browser)
 {
+    connect(&browser, &TrackBrowser::edit_requested, &lifetime_, [this] {
+        if (commands_.edit_track)
+            commands_.edit_track();
+    });
+
     const QPointer<app::LibrarySession> artwork_library{&library_};
     browser.table().set_artwork_source(
         [artwork_library](const auto& id) {
@@ -164,6 +170,7 @@ void DocumentHost::configure_browser(TrackBrowser& browser)
         }
     );
     browser.table().set_tag_catalog(&library_.tag_keys());
+    browser.set_tag_keys(library_.tag_keys().keys());
     browser.table().set_search_index(&library_.search());
     connect(&browser.table(), &TrackTableView::view_state_changed, &lifetime_, [this] { save(); });
     connect(&browser.table(), &TrackTableView::browser_preferences_changed, &lifetime_,
@@ -239,7 +246,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
     document->on_transfer_move_requested([this, id] {
         dispatch(TrackCommand::move, DocumentId::playlist(id));
     });
-    addTab(document, QString::fromStdString(library_.repository().playlist(id)->name));
+    addTab(document, playlist_name(*library_.repository().playlist(id)));
     restore_browser(DocumentId::playlist(id), document->browser(), true);
     return activate(DocumentId::playlist(id));
 }
@@ -315,6 +322,14 @@ void DocumentHost::refresh_active_destination()
 
 void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
 {
+    const auto keys = library_.tag_keys().keys();
+    queue_->browser().set_tag_keys(keys);
+    for (const auto& [id, document] : registry_.playlists())
+        if (document)
+            document->browser().set_tag_keys(keys);
+    for (const auto& [id, document] : registry_.workspaces())
+        if (document)
+            document->browser().set_tag_keys(keys);
     if (catalog_revision_ != library_.tag_keys().revision()) {
         catalog_revision_ = library_.tag_keys().revision();
         queue_->browser().table().refresh_catalog();
@@ -333,7 +348,7 @@ void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
         }
         if (std::ranges::find(batch.playlists, id) != batch.playlists.end()) {
             static_cast<void>(document->show_playlist(library_.repository(), id));
-            setTabText(indexOf(document), QString::fromStdString(playlist->name));
+            setTabText(indexOf(document), playlist_name(*playlist));
         } else {
             for (const auto& change : batch.media)
                 static_cast<void>(document->show_media_revision(library_.repository(),

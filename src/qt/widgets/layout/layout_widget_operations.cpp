@@ -60,9 +60,12 @@ void configure_widget(QWidget& widget, const LayoutNode& node)
     if (auto* group = qobject_cast<QGroupBox*>(&widget))
         group->setTitle(node.title);
     if (auto* box = qobject_cast<QBoxLayout*>(widget.layout())) {
-        if (node.kind == LayoutComponentKind::row)
+        if (node.kind == LayoutComponentKind::row) {
             box->setDirection(QBoxLayout::LeftToRight);
-        else if (node.kind == LayoutComponentKind::column ||
+            const bool commands = std::ranges::all_of(node.children,
+                [](const auto& child) { return child.kind == LayoutComponentKind::button; });
+            box->setAlignment(commands ? Qt::AlignLeft | Qt::AlignVCenter : Qt::Alignment{});
+        } else if (node.kind == LayoutComponentKind::column ||
             node.kind == LayoutComponentKind::group)
             box->setDirection(QBoxLayout::TopToBottom);
     }

@@ -53,12 +53,14 @@ LayoutBuilder::LayoutBuilder()
     };
     add(LayoutComponentKind::row, [](QWidget* parent, const auto&) {
         auto* widget = new QWidget{parent};
-        new QHBoxLayout{widget};
+        auto* layout = new QHBoxLayout{widget};
+        layout->setContentsMargins(0, 0, 0, 0);
         return widget;
     });
     add(LayoutComponentKind::column, [](QWidget* parent, const auto&) {
         auto* widget = new QWidget{parent};
-        new QVBoxLayout{widget};
+        auto* layout = new QVBoxLayout{widget};
+        layout->setContentsMargins(0, 0, 0, 0);
         return widget;
     });
     add(LayoutComponentKind::stack,

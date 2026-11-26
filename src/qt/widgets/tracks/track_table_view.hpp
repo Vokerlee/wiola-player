@@ -98,6 +98,7 @@ signals:
     void row_chosen(wiola::gui::TrackRowId id);
     void view_state_changed();
     void removal_asked();
+    void edit_asked();
     void transfer_active_asked();
     void transfer_destination_asked();
     void transfer_move_asked();

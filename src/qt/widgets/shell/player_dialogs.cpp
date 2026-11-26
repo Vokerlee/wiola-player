@@ -59,41 +59,32 @@ std::optional<std::filesystem::path> NativePlayerDialogs::folder()
         : std::nullopt;
 }
 
+FileDialogSpecification file_dialog_specification(PlayerFileChoice purpose)
+{
+    switch (purpose) {
+    case PlayerFileChoice::import_playlist:
+        return {"Import playlist", "M3U8 playlists (*.m3u8 *.m3u);;All files (*)", false};
+    case PlayerFileChoice::export_playlist:
+        return {"Save playlist as", "M3U8 playlists (*.m3u8)", true};
+    case PlayerFileChoice::import_layout:
+        return {"Import layout", "Layout (*.json)", false};
+    case PlayerFileChoice::export_layout:
+        return {"Export layout", "Layout (*.json)", true};
+    case PlayerFileChoice::import_theme:
+        return {"Import theme", "Theme (*.json)", false};
+    case PlayerFileChoice::export_theme:
+        return {"Export theme", "Theme (*.json)", true};
+    }
+    return {};
+}
+
 std::optional<std::filesystem::path> NativePlayerDialogs::file(PlayerFileChoice purpose)
 {
     if (!parent_)
         return {};
-    QString title, filter;
-    bool save = false;
-    switch (purpose) {
-    case PlayerFileChoice::import_playlist:
-        title = "Import M3U8 playlist";
-        filter = "M3U8 playlists (*.m3u8 *.m3u);;All files (*)";
-        break;
-    case PlayerFileChoice::export_playlist:
-        title = "Export M3U8 playlist";
-        filter = "M3U8 playlists (*.m3u8)";
-        save = true;
-        break;
-    case PlayerFileChoice::import_layout:
-        title = "Import layout";
-        filter = "Layout (*.json)";
-        break;
-    case PlayerFileChoice::export_layout:
-        title = "Export layout";
-        filter = "Layout (*.json)";
-        save = true;
-        break;
-    case PlayerFileChoice::import_theme:
-        title = "Import theme";
-        filter = "Theme (*.json)";
-        break;
-    case PlayerFileChoice::export_theme:
-        title = "Export theme";
-        filter = "Theme (*.json)";
-        save = true;
-        break;
-    }
+    const auto [title, filter, save] = file_dialog_specification(purpose);
+    if (title.isEmpty())
+        return {};
     return path_choice(save ? QFileDialog::getSaveFileName(parent_, title, {}, filter)
                             : QFileDialog::getOpenFileName(parent_, title, {}, filter));
 }

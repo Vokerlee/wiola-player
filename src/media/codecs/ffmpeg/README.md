@@ -16,3 +16,5 @@ AV structures, C callbacks, tag mapping, artwork limits and writable-container d
 The input closes the format context before its custom I/O context and buffer. Callback errors preserve the first stream diagnostic; exception translation never allocates. Packet decoding checks its input stream index and observes cancellation between pump operations. Seeking prepares a candidate input/decoder/converter and publishes it only after successful preroll.
 
 [Integration tests](../tests) qualify real encoded fixtures, metadata roundtrips and decoded audio. Format-independent selection cases link `wiola::codec_registry` without FFmpeg. The supported writable-format qualification belongs to the FFmpeg metadata writer suite.
+
+`MetadataText` owns bounded metadata dictionary reads and a narrow compatibility repair for MP3 tags with contradictory UTF-16 byte order. It requires independently byte-swapped numeric track and disc fields before correcting compatible text. It does not infer encoding from a language or filename, and retains ambiguous values and other scripts. The repair changes returned metadata values only; source files are never rewritten during reads.

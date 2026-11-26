@@ -169,4 +169,14 @@ void QtSettingsAdapter::write_queue(const app::QueueSnapshot& settings)
     }
 }
 
+QByteArray QtSettingsAdapter::read_panel_state() const
+{
+    return settings_.value("window/panels").toByteArray();
+}
+
+void QtSettingsAdapter::write_panel_state(const QByteArray& state)
+{
+    settings_.setValue("window/panels", state);
+}
+
 } // namespace wiola::platform::qt

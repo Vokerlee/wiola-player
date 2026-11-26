@@ -24,8 +24,10 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QInputDialog>
 #include <QLabel>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <memory>
 
 #include <gtest/gtest.h>
@@ -80,6 +82,25 @@ TEST_F(SavedPlaylistManager, CreatesRenamesDuplicatesAndDeletesWithVisibleSavedS
     EXPECT_EQ(repository.playlist(*copy), nullptr);
     EXPECT_NE(repository.playlist(*original), nullptr);
     EXPECT_EQ(state->text(), "All changes saved");
+}
+
+TEST_F(SavedPlaylistManager, RenamingFromTheContextMenuUsesTheCurrentPlaylistName)
+{
+    wiola::app::SavedPlaylistCommands commands{repository, [](const auto&) { return true; }};
+    wiola::gui::SavedPlaylistManager manager{repository, commands, navigation};
+    ASSERT_TRUE(manager.create("Before"));
+    const auto id = navigation.selected_playlist();
+    ASSERT_TRUE(id);
+    QTimer::singleShot(0, &manager, [] {
+        for (auto* widget : QApplication::topLevelWidgets())
+            if (auto* dialog = qobject_cast<QInputDialog*>(widget)) {
+                EXPECT_EQ(dialog->textValue(), "Before");
+                dialog->setTextValue("After");
+                dialog->accept();
+            }
+    });
+    manager.findChild<QPushButton*>("renamePlaylist")->click();
+    EXPECT_EQ(repository.playlist(*id)->name, "After");
 }
 
 TEST_F(SavedPlaylistManager, ReportsSaveFailureAndValidatesSelectionAndNames)

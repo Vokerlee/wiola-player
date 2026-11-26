@@ -33,9 +33,9 @@ PlayerMenus build_player_menus(QMenuBar& bar, PlayerActions& actions, QObject& r
     QObject::connect(file->addAction("Open folder..."), &QAction::triggered, &receiver,
         std::move(commands.open_folder));
     file->addSeparator();
-    QObject::connect(file->addAction("Import M3U8..."), &QAction::triggered, &receiver,
+    QObject::connect(file->addAction("Import playlist..."), &QAction::triggered, &receiver,
         std::move(commands.import_playlist));
-    QObject::connect(file->addAction("Export M3U8..."), &QAction::triggered, &receiver,
+    QObject::connect(file->addAction("Save playlist as..."), &QAction::triggered, &receiver,
         std::move(commands.export_playlist));
     file->addSeparator();
     QObject::connect(file->addAction("Retry saving library"), &QAction::triggered, &receiver,

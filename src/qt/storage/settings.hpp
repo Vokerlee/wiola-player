@@ -45,6 +45,8 @@ public:
         const audio::EqualizerConfig& equalizer) const;
     [[nodiscard]] app::QueueSnapshot read_queue() const override;
     void write_queue(const app::QueueSnapshot& settings) override;
+    [[nodiscard]] QByteArray read_panel_state() const;
+    void write_panel_state(const QByteArray& state);
     void write_volume_position(int position) override;
     void write_boosted(bool boosted) override;
     void write_equalizer_enabled(bool enabled) override;
