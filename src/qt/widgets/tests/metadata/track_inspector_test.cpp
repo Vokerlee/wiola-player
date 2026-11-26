@@ -20,11 +20,11 @@
 
 #include <media/codecs/ffmpeg/composition.hpp>
 
-#include <media/local/resource.hpp>
-#include <presentation/documents/queue_rows.hpp>
 #include <qt/application/library/library_session.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <queue/playlist.hpp>
 

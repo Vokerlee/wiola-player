@@ -1,9 +1,9 @@
 #include "fixture_files.hpp"
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
-#include <qt/paths.hpp>
 #include <qt/widgets/layout/layout_document.hpp>
 #include <qt/widgets/layout/layout_session.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

@@ -24,9 +24,9 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <limits>
-#include <qt/paths.hpp>
 #include <stdexcept>
 #include <utility>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::persistence::qt {
 namespace {

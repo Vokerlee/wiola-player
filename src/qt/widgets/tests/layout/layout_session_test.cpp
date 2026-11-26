@@ -22,10 +22,10 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
-#include <qt/paths.hpp>
 #include <qt/tests/support/atomic_output.hpp>
 #include <qt/widgets/layout/layout_builder.hpp>
 #include <qt/widgets/layout/layout_session.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

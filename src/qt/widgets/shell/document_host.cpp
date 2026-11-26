@@ -25,13 +25,13 @@
 #include <QTabBar>
 #include <QVBoxLayout>
 #include <algorithm>
-#include <media/local/resource.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <wiola/library/records.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::gui {
 

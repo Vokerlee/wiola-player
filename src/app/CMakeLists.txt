@@ -178,11 +178,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
             playback/queue_settings.cpp
             workspace/native_workspace_files.cpp
             workspace/workspace_scanner.cpp
-        LIBS
-            wiola::local_identity
-            wiola::file_replacement
-            wiola::file_fingerprint
-            wiola::local_media
+        LIBS wiola::local_identity wiola::file_fingerprint wiola::local_media
     )
 
     target_link_libraries(
@@ -192,6 +188,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
             wiola::playback_service
             wiola::metadata_edits
             wiola::workspace
+            wiola::file_replacement
     )
 endif()
 

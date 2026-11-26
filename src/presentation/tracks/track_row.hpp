@@ -20,10 +20,10 @@
 
 #pragma once
 #include <memory>
-#include <presentation/tracks/track_identity.hpp>
 #include <wiola/library/records.hpp>
 #include <wiola/media/artwork_reference.hpp>
 #include <wiola/media/metadata.hpp>
+#include <wiola/presentation/tracks/track_identity.hpp>
 
 namespace wiola::gui {
 

@@ -23,8 +23,8 @@
 #include "document_id.hpp"
 #include <map>
 #include <optional>
-#include <presentation/tracks/browser_view_state.hpp>
 #include <vector>
+#include <wiola/presentation/tracks/browser_view_state.hpp>
 
 namespace wiola::gui {
 

@@ -24,7 +24,7 @@ The caller owns and serializes blocking decoder operations on a worker. Stream i
 
 Configure with `-DWIOLA_COMPONENTS=media` to omit unrelated adapters. Link `wiola::media` directly. Its C++ consumer and unit tests use that target and the selected build controls, without an install/export step.
 
-The legacy `wiola_core` umbrella temporarily forwards this public target for unmigrated callers. This component does not depend on that umbrella. Concrete driver integration tests remain outside this subtree and are not a prerequisite for editing media contracts.
+Concrete driver integration tests live with their implementations. Media contract clients link the owned public target directly.
 
 Use an instrumented build and the standard LLVM reports to inspect this component's coverage. For a focused local report, run `python3 -m scripts.coverage --build-dir BUILD --source src/media --exclude '/tests/|/local/|/codecs/' --target media_audio_decoder_contract_test media_audio_decoder_port_test`. This runs the selected configured tests and reports their mappings; it does not define source ownership, architecture rules or coverage thresholds. CI controls coverage acceptance.
 

@@ -56,7 +56,6 @@ wiola_add_library(
         metadata/standard_metadata_editor.cpp
         documents/workspace_document.cpp
     LIBS
-        wiola::presentation
         wiola::qt_projection
         wiola_playback_preferences
         wiola::qt_files
@@ -78,6 +77,11 @@ set_target_properties(wiola_qt_widgets PROPERTIES AUTOMOC ON)
 
 target_link_libraries(
     wiola_qt_widgets
-    PUBLIC Qt6::Widgets wiola_app wiola::library wiola_library_session
+    PUBLIC
+        Qt6::Widgets
+        wiola_app
+        wiola::library
+        wiola_library_session
+        wiola::presentation
     PRIVATE wiola::local_media
 )

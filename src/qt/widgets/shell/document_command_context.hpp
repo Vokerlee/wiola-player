@@ -19,10 +19,10 @@
  */
 
 #pragma once
-#include <presentation/documents/document_id.hpp>
-#include <presentation/tracks/track_commands.hpp>
-#include <presentation/tracks/track_identity.hpp>
 #include <vector>
+#include <wiola/presentation/documents/document_id.hpp>
+#include <wiola/presentation/tracks/track_commands.hpp>
+#include <wiola/presentation/tracks/track_identity.hpp>
 
 namespace wiola::gui {
 

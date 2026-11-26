@@ -20,9 +20,9 @@
 
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
-#include <qt/paths.hpp>
 #include <qt/storage/library_store.hpp>
 #include <qt/storage/snapshot_writer.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

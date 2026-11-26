@@ -19,7 +19,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <presentation/documents/session_documents.hpp>
+#include <wiola/presentation/documents/session_documents.hpp>
 
 namespace {
 

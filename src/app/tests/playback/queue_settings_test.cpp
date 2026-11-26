@@ -24,8 +24,8 @@
 #include <fakes/provider.hpp>
 #include <fakes/resource.hpp>
 #include <gtest/gtest.h>
-#include <media/local/resource.hpp>
 #include <stdexcept>
+#include <wiola/media/local/resource.hpp>
 
 namespace {
 

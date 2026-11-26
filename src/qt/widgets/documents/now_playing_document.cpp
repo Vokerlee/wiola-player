@@ -20,8 +20,8 @@
 
 #include "now_playing_document.hpp"
 
-#include <media/local/resource.hpp>
-#include <presentation/documents/queue_rows.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 
 #include <qt/widgets/tracks/track_browser.hpp>
 

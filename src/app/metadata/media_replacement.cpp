@@ -20,9 +20,9 @@
 
 #include "media_replacement.hpp"
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
-#include <media/local/fingerprint.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 #include <algorithm>
 #include <array>

@@ -1,3 +1,5 @@
+include(headers)
+
 if(NOT WIOLA_BUILD_GUI)
     return()
 endif()
@@ -8,10 +10,7 @@ add_library(wiola::qt_paths ALIAS wiola_qt_paths)
 
 target_compile_features(wiola_qt_paths INTERFACE cxx_std_23)
 
-target_include_directories(
-    wiola_qt_paths
-    INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/.."
-)
+wiola_target_headers(wiola_qt_paths wiola/qt HEADERS paths.hpp)
 
 target_link_libraries(wiola_qt_paths INTERFACE Qt6::Core)
 
@@ -38,7 +37,6 @@ add_executable(wiola-player main.cpp)
 target_link_libraries(
     wiola-player
     PRIVATE
-        wiola_core
         wiola_coverage
         wiola::qt_widgets
         wiola_player_application
@@ -47,6 +45,11 @@ target_link_libraries(
         wiola_queue_migration
         wiola_sanitizer
         wiola_warnings
+)
+
+target_include_directories(
+    wiola-player
+    PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}/generated"
 )
 
 # Windows opens a console for anything but a GUI binary. Ignored on other systems.

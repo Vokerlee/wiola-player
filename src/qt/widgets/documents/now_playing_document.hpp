@@ -21,7 +21,7 @@
 #pragma once
 
 #ifndef Q_MOC_RUN
-#include <presentation/documents/queue_rows.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 #endif
 
 #include <QWidget>

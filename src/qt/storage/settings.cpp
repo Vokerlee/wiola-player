@@ -21,7 +21,7 @@
 #include "settings.hpp"
 #include <set>
 
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QString>
 #include <QStringList>

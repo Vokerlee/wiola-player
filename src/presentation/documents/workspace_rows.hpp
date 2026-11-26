@@ -20,11 +20,11 @@
 
 #pragma once
 #include <map>
-#include <presentation/tracks/track_row.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <wiola/app/workspace/workspace_scan.hpp>
 #include <wiola/library/repository.hpp>
+#include <wiola/presentation/tracks/track_row.hpp>
 
 namespace wiola::gui {
 

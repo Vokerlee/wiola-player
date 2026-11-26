@@ -19,7 +19,7 @@
  */
 
 #include <fixtures/temporary_directory.hpp>
-#include <media/local/file_stream.hpp>
+#include <wiola/media/local/file_stream.hpp>
 
 #include <gtest/gtest.h>
 

@@ -20,7 +20,7 @@
 
 #include <media/codecs/ffmpeg/composition.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 

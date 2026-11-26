@@ -23,9 +23,9 @@
 #include <app/library/search_index.hpp>
 #include <qt/projection/track_projection.hpp>
 
-#include <presentation/tracks/track_view_pipeline.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/controls/clock.hpp>
+#include <wiola/presentation/tracks/track_view_pipeline.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <wiola/library/records.hpp>
 #include <wiola/library/repository.hpp>

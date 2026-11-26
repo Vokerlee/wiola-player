@@ -1,9 +1,9 @@
 // This translation unit deliberately has no Qt dependency.
-#include <presentation/documents/queue_rows.hpp>
-#include <presentation/documents/saved_playlist_rows.hpp>
-#include <presentation/documents/session_documents.hpp>
-#include <presentation/documents/workspace_rows.hpp>
-#include <presentation/tracks/track_view_pipeline.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
+#include <wiola/presentation/documents/saved_playlist_rows.hpp>
+#include <wiola/presentation/documents/session_documents.hpp>
+#include <wiola/presentation/documents/workspace_rows.hpp>
+#include <wiola/presentation/tracks/track_view_pipeline.hpp>
 #if defined(QT_CORE_LIB) || defined(QT_GUI_LIB) || defined(QT_WIDGETS_LIB)
 #error The presentation model must build without Qt.
 #endif

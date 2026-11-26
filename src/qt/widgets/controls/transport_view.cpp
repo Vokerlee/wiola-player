@@ -25,12 +25,12 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <media/local/resource.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/layout/view_registry.hpp>
 #include <qt/widgets/shell/action_button_binding.hpp>
 #include <stdexcept>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::gui {
 

@@ -28,8 +28,8 @@
 #include <algorithm>
 #include <condition_variable>
 #include <fstream>
-#include <media/local/fingerprint.hpp>
 #include <mutex>
+#include <wiola/media/local/fingerprint.hpp>
 
 namespace {
 

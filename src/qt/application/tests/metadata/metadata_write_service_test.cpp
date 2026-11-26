@@ -27,12 +27,12 @@
 #include <exception>
 #include <gtest/gtest.h>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/fingerprint.hpp>
 #include <memory>
 #include <qt/application/metadata/metadata_write_service.hpp>
-#include <qt/paths.hpp>
 #include <stdexcept>
 #include <utility>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

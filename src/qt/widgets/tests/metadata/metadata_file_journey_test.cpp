@@ -5,15 +5,15 @@
 #include <app/library/local_identity.hpp>
 #include <array>
 #include <fakes/output.hpp>
-#include <media/local/resource.hpp>
 #include <qt/application/player_application.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/shell/main_window.hpp>
 #include <qt/widgets/tests/support/gui_interaction.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

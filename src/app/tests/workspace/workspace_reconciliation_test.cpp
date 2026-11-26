@@ -22,7 +22,7 @@
 #include <app/workspace/workspace_reconciliation.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <media/local/fingerprint.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>

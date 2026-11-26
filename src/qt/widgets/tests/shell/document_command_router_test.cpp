@@ -31,7 +31,6 @@
 #include <QTest>
 #include <fakes/output.hpp>
 #include <gtest/gtest.h>
-#include <media/local/resource.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
@@ -41,6 +40,7 @@
 #include <qt/widgets/tests/support/gui_interaction.hpp>
 #include <qt/widgets/tests/support/player_dialogs.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/media/local/resource.hpp>
 
 namespace {
 

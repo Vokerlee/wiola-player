@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/local/fingerprint.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>

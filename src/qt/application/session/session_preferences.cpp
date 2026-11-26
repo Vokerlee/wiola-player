@@ -24,8 +24,8 @@
 #include <QScopeGuard>
 #include <QThread>
 #include <qt/application/library/library_session.hpp>
-#include <qt/paths.hpp>
 #include <stdexcept>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::app {
 namespace {

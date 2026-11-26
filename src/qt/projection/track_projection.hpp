@@ -22,7 +22,7 @@
 
 #include <QObject>
 #include <memory>
-#include <presentation/tracks/track_projection.hpp>
+#include <wiola/presentation/tracks/track_projection.hpp>
 
 namespace wiola::gui {
 

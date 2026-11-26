@@ -20,7 +20,7 @@
 
 #include "m3u_playlist.hpp"
 
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <app/library/local_identity.hpp>
 

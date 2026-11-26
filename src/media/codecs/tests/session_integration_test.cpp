@@ -22,8 +22,8 @@
 
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
-#include <media/local/resource.hpp>
 #include <wiola/audio/stage.hpp>
+#include <wiola/media/local/resource.hpp>
 #include <wiola/playback/session.hpp>
 
 #include <gtest/gtest.h>
