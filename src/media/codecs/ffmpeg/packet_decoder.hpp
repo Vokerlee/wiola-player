@@ -75,7 +75,6 @@ private:
         PacketDecoderOptions options) noexcept;
 
     [[nodiscard]] media::Result<void> initialize();
-    [[nodiscard]] media::Result<FfmpegFrameEvent> error(media::Error error);
     [[nodiscard]] int receive() noexcept;
     [[nodiscard]] int send(const AVPacket* packet) noexcept;
     [[nodiscard]] int read() noexcept;

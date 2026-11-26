@@ -48,6 +48,11 @@ PacketDecoder::PacketDecoder(FfmpegInput& input, std::size_t stream_index,
 media::Result<std::unique_ptr<PacketDecoder>> PacketDecoder::open(FfmpegInput& input,
     const FfmpegStreamFacts& facts, PacketDecoderOptions options)
 {
+    if (input.context().stop_reason() != media::StopReason::none)
+        return media::unexpected{input.context().error()};
+    if (facts.stream_index >= input.format()->nb_streams)
+        return media::unexpected{decode_error("stream facts do not belong to this input")};
+
     auto decoder{
         std::unique_ptr<PacketDecoder>{new PacketDecoder{input, facts.stream_index, options}}};
 
@@ -110,11 +115,6 @@ PacketDecoder::~PacketDecoder()
         avcodec_free_context(&codec_);
 }
 
-media::Result<FfmpegFrameEvent> PacketDecoder::error(media::Error error)
-{
-    return media::unexpected{std::move(error)};
-}
-
 int PacketDecoder::receive() noexcept
 {
     if (options_.api.receive)
@@ -157,6 +157,9 @@ media::Result<FfmpegFrameEvent> PacketDecoder::next_frame()
         return FfmpegFrameEvent{.frame = nullptr, .end_of_stream = true};
 
     for (int work{0}; work < options_.work_budget; ++work) {
+        if (input_.context().stop_reason() != media::StopReason::none)
+            return media::unexpected{input_.context().error()};
+
         const int received{receive()};
 
         if (received >= 0)
@@ -169,16 +172,16 @@ media::Result<FfmpegFrameEvent> PacketDecoder::next_frame()
         }
 
         if (received != AVERROR(EAGAIN))
-            return error(decode_error("FFmpeg frame reception failed"));
+            return media::unexpected{decode_error("FFmpeg frame reception failed")};
 
         if (packet_pending_) {
             const int sent{send(packet_)};
 
             if (sent == AVERROR(EAGAIN))
-                return error(decode_error("FFmpeg packet/frame pump is stalled"));
+                return media::unexpected{decode_error("FFmpeg packet/frame pump is stalled")};
 
             if (sent < 0)
-                return error(decode_error("FFmpeg packet submission failed"));
+                return media::unexpected{decode_error("FFmpeg packet submission failed")};
 
             packet_pending_ = false;
             av_packet_unref(packet_);
@@ -201,7 +204,8 @@ media::Result<FfmpegFrameEvent> PacketDecoder::next_frame()
             if (result != AVERROR_EOF) {
                 const auto& io_error{input_.io_error()};
 
-                return error(io_error ? *io_error : decode_error("FFmpeg packet demuxing failed"));
+                return media::unexpected{
+                    io_error ? *io_error : decode_error("FFmpeg packet demuxing failed")};
             }
 
             demux_ended_ = true;
@@ -214,7 +218,7 @@ media::Result<FfmpegFrameEvent> PacketDecoder::next_frame()
                 continue;
 
             if (sent < 0)
-                return error(decode_error("FFmpeg decoder drain failed"));
+                return media::unexpected{decode_error("FFmpeg decoder drain failed")};
 
             drain_sent_ = true;
         }
