@@ -30,6 +30,7 @@
 #include <QAction>
 #include <QGuiApplication>
 #include <QHeaderView>
+#include <QMenu>
 #include <QPainter>
 #include <QScrollBar>
 #include <QStyledItemDelegate>
@@ -84,7 +85,7 @@ TrackTableView::TrackTableView(QWidget* parent)
     setShowGrid(false);
     setWordWrap(false);
     setTextElideMode(Qt::ElideRight);
-    setToolTip("Double-click a track to play it; Delete removes the selected tracks");
+    setToolTip("Double-click a track or press Enter to play it");
     setFocusPolicy(Qt::StrongFocus);
     setAccessibleName("Track list");
 
@@ -130,14 +131,7 @@ TrackTableView::TrackTableView(QWidget* parent)
             });
     }
 
-    QAction* play = new QAction{"Play selected track", this};
-    addAction(play);
     setContextMenuPolicy(Qt::ActionsContextMenu);
-
-    connect(play, &QAction::triggered, this, [this] {
-        if (const auto id = model_.row_id(currentIndex()))
-            emit row_chosen(*id);
-    });
 
     auto* edit = new QAction{"Edit track details…", this};
     edit->setObjectName("editTrackDetails");
@@ -157,20 +151,33 @@ TrackTableView::TrackTableView(QWidget* parent)
     addAction(add_active);
     connect(add_active, &QAction::triggered, this, &TrackTableView::transfer_active_asked);
 
-    QAction* add_to = new QAction{"Add to playlist →", this};
+    QAction* add_to = new QAction{"Add to playlist", this};
     addAction(add_to);
     connect(add_to, &QAction::triggered, this, &TrackTableView::transfer_destination_asked);
 
-    QAction* move_to = new QAction{"Move to playlist →", this};
+    QAction* move_to = new QAction{"Move to playlist", this};
     addAction(move_to);
     connect(move_to, &QAction::triggered, this, &TrackTableView::transfer_move_asked);
+
+    for (const auto& [action, command] : {
+             std::pair{add_to,  TrackCommand::transfer_destination},
+             std::pair{move_to, TrackCommand::move                }
+    }) {
+        auto* menu = new QMenu{this};
+        action->setMenu(menu);
+        connect(menu, &QMenu::aboutToShow, this, [this, menu, command] {
+            menu->clear();
+            emit playlist_menu_requested(menu, command);
+            if (menu->isEmpty())
+                menu->addAction("No playlists available")->setEnabled(false);
+        });
+    }
 
     QAction* apply_order = new QAction{"Apply displayed order to playback", this};
     addAction(apply_order);
     connect(apply_order, &QAction::triggered, this, &TrackTableView::order_application_asked);
 
     command_actions_ = {
-        {TrackCommand::play,                 play       },
         {TrackCommand::remove,               remove     },
         {TrackCommand::transfer,             add_active },
         {TrackCommand::transfer_destination, add_to     },
@@ -657,6 +664,14 @@ void TrackTableView::mousePressEvent(QMouseEvent* event)
 void TrackTableView::keyPressEvent(QKeyEvent* event)
 {
     pending_restore_.reset();
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) &&
+        !event->modifiers().testAnyFlags(Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier |
+            Qt::ShiftModifier) &&
+        capabilities_.supports(TrackCommand::play)) {
+        if (const auto id = model_.row_id(currentIndex()))
+            emit row_chosen(*id);
+        return;
+    }
     if (event->key() == Qt::Key_Delete && capabilities_.supports(TrackCommand::remove)) {
         emit removal_asked();
         return;

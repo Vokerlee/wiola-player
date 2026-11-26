@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QKeyEvent>
+#include <QPushButton>
 #include <fixtures/track_view.hpp>
 
 #include <qt/widgets/tracks/track_table_view.hpp>
@@ -87,28 +89,25 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
 
     const QList<QAction*> actions = table->actions();
     ASSERT_FALSE(actions.empty());
-    actions.front()->trigger();
+    QKeyEvent enter{QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier};
+    QApplication::sendEvent(table, &enter);
 
     EXPECT_EQ(chosen, duplicate);
 
-    int play_requests{0};
-    document.on_play_requested([&play_requests] { ++play_requests; });
-    QPushButton* play_saved = document.findChild<QPushButton*>("playSavedPlaylist");
-    ASSERT_NE(play_saved, nullptr);
-    play_saved->click();
-
-    EXPECT_EQ(play_requests, 1);
+    EXPECT_EQ(document.findChild<QPushButton*>("playSavedPlaylist"), nullptr);
 
     EXPECT_EQ(document.findChild<QPushButton*>("useActivePlaylist"), nullptr);
     document.set_active(true);
-    EXPECT_EQ(heading->text(), "Favorites — Active playlist");
+    EXPECT_EQ(heading->text(), "Favorites");
+    EXPECT_TRUE(document.active());
+    EXPECT_EQ(heading->accessibleDescription(), "Active playlist");
     document.set_active(false);
     EXPECT_EQ(heading->text(), "Favorites");
 
     int moves{0};
     document.on_transfer_move_requested([&moves] { ++moves; });
     const auto move = std::ranges::find_if(actions,
-        [](QAction* candidate) { return candidate->text() == "Move to playlist →"; });
+        [](QAction* candidate) { return candidate->text() == "Move to playlist"; });
     ASSERT_NE(move, actions.end());
     (*move)->trigger();
     EXPECT_EQ(moves, 1);

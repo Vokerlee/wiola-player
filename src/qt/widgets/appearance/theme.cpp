@@ -227,7 +227,8 @@ QPalette theme_palette(const ThemeColors& colors)
     return palette;
 }
 
-QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon)
+QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
+    QPalette::ColorRole color)
 {
     const QPixmap source = styled.style()->standardIcon(icon).pixmap(24, 24);
     const auto tinted = [&source](const QColor& color) {
@@ -241,10 +242,8 @@ QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon)
     };
 
     QIcon result;
-    result.addPixmap(tinted(styled.palette().color(QPalette::Active, QPalette::ButtonText)),
-        QIcon::Normal);
-    result.addPixmap(tinted(styled.palette().color(QPalette::Disabled, QPalette::ButtonText)),
-        QIcon::Disabled);
+    result.addPixmap(tinted(styled.palette().color(QPalette::Active, color)), QIcon::Normal);
+    result.addPixmap(tinted(styled.palette().color(QPalette::Disabled, color)), QIcon::Disabled);
     return result;
 }
 
@@ -288,6 +287,7 @@ void apply_theme(const ThemeColors& colors)
     constexpr int control_padding = 5;
     qApp->setStyleSheet(QString{
         "QPushButton, QLineEdit, QComboBox, QSpinBox { padding: %1px; min-height: 1.2em; }\n"
+        "QPushButton:checked { background-color: %7; color: %8; border: 1px solid %7; }\n"
         "QToolButton { padding: 4px; }\n"
         "QTabBar::tab { padding: 7px 12px; }\n"
         "QHeaderView::section { padding: 6px; }\n"
@@ -301,7 +301,8 @@ void apply_theme(const ThemeColors& colors)
             .arg(control_padding)
             .arg(colors.focus.name(), colors.error.name(), colors.text.name(),
                 colors.surface.name())
-            .arg(colors.muted_text.name()));
+            .arg(colors.muted_text.name())
+            .arg(colors.accent.name(), colors.accent_text.name()));
 }
 
 } // namespace wiola::gui

@@ -74,7 +74,8 @@ struct ThemeColors {
 [[nodiscard]] double contrast_ratio(const QColor& first, const QColor& second);
 [[nodiscard]] QString theme_contrast_error(const ThemeColors& colors);
 [[nodiscard]] QPalette theme_palette(const ThemeColors& colors);
-[[nodiscard]] QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon);
+[[nodiscard]] QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
+    QPalette::ColorRole color = QPalette::ButtonText);
 [[nodiscard]] QPixmap themed_artwork_placeholder(const QWidget& styled, int size);
 void apply_theme(Theme theme);
 void apply_theme(const ThemeColors& colors);

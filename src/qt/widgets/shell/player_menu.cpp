@@ -27,7 +27,7 @@ PlayerMenus build_player_menus(QMenuBar& bar, PlayerActions& actions, QObject& r
     PlayerFileCommands commands)
 {
     auto* file = bar.addMenu("&File");
-    for (const auto id : {PlayerAction::open, PlayerAction::add, PlayerAction::clear})
+    for (const auto id : {PlayerAction::open, PlayerAction::add})
         file->addAction(actions.action(id));
     file->addSeparator();
     QObject::connect(file->addAction("Open folder..."), &QAction::triggered, &receiver,
@@ -44,6 +44,7 @@ PlayerMenus build_player_menus(QMenuBar& bar, PlayerActions& actions, QObject& r
     for (const auto id :
         {PlayerAction::previous, PlayerAction::play, PlayerAction::next, PlayerAction::stop})
         playback->addAction(actions.action(id));
+    playback->addAction(actions.action(PlayerAction::clear));
     playback->addSeparator();
     for (const auto id : {PlayerAction::repeat, PlayerAction::shuffle})
         playback->addAction(actions.action(id));

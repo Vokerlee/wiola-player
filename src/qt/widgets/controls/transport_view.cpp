@@ -78,7 +78,7 @@ TransportView::TransportView(PlayerActions& actions, QWidget* parent)
         button->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
         buttons_[static_cast<std::size_t>(descriptor.id)] = button;
         if (descriptor.id == PlayerAction::previous || descriptor.id == PlayerAction::play ||
-            descriptor.id == PlayerAction::next || descriptor.id == PlayerAction::stop)
+            descriptor.id == PlayerAction::next)
             controls->addWidget(button);
         else
             button->hide();
@@ -91,6 +91,8 @@ void TransportView::register_views(ViewRegistry& registry)
 {
     const auto add = [&](const char* key, QWidget* widget, LayoutComponentKind kind,
                          bool structure = false) {
+        if (widget->objectName().isEmpty())
+            widget->setObjectName(QString::fromLatin1(key));
         if (!registry.add(component_view(key), widget, kind, structure))
             throw std::logic_error{"duplicate transport view"};
     };

@@ -197,9 +197,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
             inspector_->edit_details();
         }
     };
-    document_commands.open_folder = [this] {
-        commands_->choose_folder();
-    };
     document_commands.execute = [this](auto command, auto context) {
         commands_->execute(command, std::move(context));
     };
@@ -349,7 +346,10 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(actions_.action(PlayerAction::add), &QAction::triggered, commands_,
         [commands = commands_] { commands->choose_tracks(true); });
     connect(actions_.action(PlayerAction::remove), &QAction::triggered, document_host_,
-        [host = document_host_] { host->dispatch(TrackCommand::remove, DocumentId::queue()); });
+        [host = document_host_] {
+            if (const auto current = host->registry().active())
+                host->dispatch(TrackCommand::remove, *current);
+        });
     connect(actions_.action(PlayerAction::clear), &QAction::triggered, commands_,
         &DocumentCommandRouter::clear_queue);
     connect(actions_.action(PlayerAction::equalizer), &QAction::triggered, this,
@@ -370,6 +370,11 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
                     library->retry_save();
             }});
     auto* view = menus.view;
+    auto* queue_view = view->addAction("Play queue");
+    queue_view->setObjectName("showPlayQueue");
+    connect(queue_view, &QAction::triggered, document_host_,
+        [host = document_host_] { static_cast<void>(host->activate(DocumentId::queue())); });
+    view->addSeparator();
     panels_->add_menu_actions(*view);
     QAction* classic = view->addAction("Classic");
     QAction* library = view->addAction("Library Focus");

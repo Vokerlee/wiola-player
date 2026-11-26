@@ -22,6 +22,8 @@
 #include <qt/widgets/documents/playlist_name.hpp>
 
 #include <QSignalBlocker>
+#include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <utility>
 
 namespace wiola::gui {
@@ -144,14 +146,19 @@ void LibraryNavigation::show_repository(const library::LibraryRepository& reposi
 
 void LibraryNavigation::set_active_playlist(std::optional<library::PlaylistId> id)
 {
-    if (active_ == id)
+    if (active_ == id && activity_palette_ == palette().cacheKey())
         return;
+    activity_palette_ = palette().cacheKey();
     active_ = std::move(id);
     show_activity();
 }
 
 void LibraryNavigation::show_activity()
 {
+    const auto icon = active_
+        ? themed_standard_icon(*this, PresentationTokens{}.playlist.activity_icon,
+              QPalette::Highlight)
+        : QIcon{};
     for (int row = 0; row < playlists_->childCount(); ++row) {
         auto* item = playlists_->child(row);
         const bool active =
@@ -159,7 +166,8 @@ void LibraryNavigation::show_activity()
         auto font = this->font();
         font.setBold(active);
         item->setFont(0, font);
-        item->setText(0, item->data(0, name_role).toString() + (active ? " — Active" : ""));
+        item->setText(0, item->data(0, name_role).toString());
+        item->setIcon(0, active ? icon : QIcon{});
         item->setToolTip(0, active ? "Active playlist: contains the current track" : "");
     }
 }

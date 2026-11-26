@@ -21,6 +21,7 @@
 #include <qt/widgets/appearance/theme.hpp>
 
 #include <QApplication>
+#include <QPushButton>
 #include <QWidget>
 
 #include <gtest/gtest.h>
@@ -60,6 +61,32 @@ TEST(Theme, ApplyingDarkThemeUpdatesNativePaletteAndSemanticStates)
     EXPECT_TRUE(qApp->styleSheet().contains("padding: 5px"));
     EXPECT_TRUE(qApp->styleSheet().contains("QLabel[status=\"error\"]"));
     EXPECT_TRUE(qApp->styleSheet().contains("QLabel[status=\"busy\"]"));
+}
+
+TEST(Theme, CheckedButtonsHaveAContrastingAccentFillInBothThemes)
+{
+    using namespace wiola::gui;
+    for (const auto theme : {Theme::light, Theme::dark}) {
+        apply_theme(theme);
+        const auto colors = theme_colors(theme);
+        QPushButton button{"Shuffle"};
+        button.setCheckable(true);
+        button.resize(button.sizeHint().expandedTo(QSize{140, 40}));
+        button.show();
+        QApplication::processEvents();
+        const QPoint sample{8, button.height() / 2};
+        const auto off = button.grab().toImage().pixelColor(sample);
+        button.setChecked(true);
+        QApplication::processEvents();
+        const auto on = button.grab().toImage().pixelColor(sample);
+        EXPECT_EQ(on, colors.accent);
+        EXPECT_NE(on, off);
+        EXPECT_GE(contrast_ratio(on, off), 3.0);
+        EXPECT_GE(contrast_ratio(colors.accent, colors.accent_text), 4.5);
+        button.setChecked(false);
+        QApplication::processEvents();
+        EXPECT_EQ(button.grab().toImage().pixelColor(sample), off);
+    }
 }
 
 TEST(Theme, CustomIconsAndArtworkFollowTheActivePalette)

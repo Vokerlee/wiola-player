@@ -52,6 +52,7 @@ public:
 private:
     void show_activity();
     std::optional<library::PlaylistId> active_;
+    qint64 activity_palette_{};
     QTreeWidgetItem* playlists_{nullptr};
     QTreeWidgetItem* workspaces_{nullptr};
     std::function<void(library::PlaylistId)> playlist_observer_;

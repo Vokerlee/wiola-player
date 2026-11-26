@@ -111,17 +111,23 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
         document->browser().restore_browser_state(state);
         QAction* transfer = nullptr;
         for (auto* action : table.actions())
-            if (action->text() == "Add to playlist →")
+            if (action->text() == "Add to playlist")
                 transfer = action;
         ASSERT_NE(transfer, nullptr);
         ASSERT_TRUE(transfer->isEnabled());
-        QMenu menu;
-        menu.setUpdatesEnabled(false);
-        menu.addAction(transfer);
-        menu.popup(QPoint{10, 10});
-        ASSERT_TRUE(wiola::testing::await_gui([&] { return menu.isVisible(); }));
-        QTest::mouseClick(&menu, Qt::LeftButton, Qt::NoModifier,
-            menu.actionGeometry(transfer).center());
+        auto* menu = transfer->menu();
+        ASSERT_NE(menu, nullptr);
+        menu->setUpdatesEnabled(false);
+        menu->popup(QPoint{10, 10});
+        ASSERT_TRUE(wiola::testing::await_gui([&] { return menu->isVisible(); }));
+        QAction* choice = nullptr;
+        for (auto* item : menu->actions())
+            if (item->data().toString().toStdString() == destination.value)
+                choice = item;
+        ASSERT_NE(choice, nullptr);
+        QTest::mouseClick(menu, Qt::LeftButton, Qt::NoModifier,
+            menu->actionGeometry(choice).center());
+        EXPECT_EQ(dialogs.prompts, 0);
         ASSERT_EQ(library->repository().playlist(destination)->entries.size(), opening + 1);
         EXPECT_EQ(library->repository().playlist(source)->entries.size(), 2);
         EXPECT_EQ(library->playlist_destination().id(), destination);
@@ -136,8 +142,7 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
     EXPECT_EQ(playback.playlist().tracks().size(), 0);
 }
 
-TEST_F(DocumentCommandRouterTest,
-    CancelledDestinationPromptReachedThroughContextActionLeavesSelection)
+TEST_F(DocumentCommandRouterTest, DismissingDestinationSubmenuLeavesSelectionAndPlaylistsUnchanged)
 {
     const auto source = library->playlists().create("Source").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
@@ -165,10 +170,67 @@ TEST_F(DocumentCommandRouterTest,
     menu.popup(QPoint{10, 10});
     QTest::mouseClick(&menu, Qt::LeftButton, Qt::NoModifier,
         menu.actionGeometry(transfer).center());
-    EXPECT_EQ(dialogs.prompts, 1);
+    transfer->menu()->hide();
+    menu.hide();
+    EXPECT_EQ(dialogs.prompts, 0);
     EXPECT_TRUE(outcomes.empty());
     EXPECT_EQ(table.chosen_rows(), (std::vector<gui::TrackRowId>{*occurrence}));
     EXPECT_EQ(library->repository().playlist(source)->entries.size(), 1);
+}
+
+TEST_F(DocumentCommandRouterTest,
+    InlineMoveMenuUsesFriendlyNamesAndCapturesOneOccurrenceBeforeFocusChanges)
+{
+    const auto source = library->playlists().create("Source").id;
+    const auto other = library->playlists().create("Other").id;
+    const library::PlaylistId migrated{"playlist-migrated-queue"};
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
+    ASSERT_TRUE(library->repository().put_playlist({.id = migrated, .name = "Migrated queue"}));
+    const auto first = library->repository().append_track(source, library::MediaId{"one"});
+    const auto duplicate = library->repository().append_track(source, library::MediaId{"one"});
+    ASSERT_TRUE(first && duplicate);
+    ASSERT_TRUE(seed.commit());
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    gui::DocumentCommands callbacks;
+    callbacks.execute = [&](auto command, auto context) {
+        commands.execute(command, std::move(context));
+    };
+    gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+    ASSERT_TRUE(host.open_playlist(source));
+    auto& table = host.registry().playlist(source)->browser().table();
+    table.selectRow(1);
+    QAction* move = nullptr;
+    for (auto* item : table.actions())
+        if (item->text() == "Move to playlist")
+            move = item;
+    ASSERT_NE(move, nullptr);
+    auto* destinations = move->menu();
+    ASSERT_NE(destinations, nullptr);
+    destinations->setUpdatesEnabled(false);
+    destinations->popup(QPoint{10, 10});
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return destinations->isVisible(); }));
+    ASSERT_EQ(destinations->actions().size(), 2);
+    QAction* selected = nullptr;
+    for (auto* item : destinations->actions()) {
+        EXPECT_NE(item->data().toString().toStdString(), source.value);
+        EXPECT_NE(item->text(), "Migrated queue");
+        if (item->data().toString().toStdString() == migrated.value) {
+            selected = item;
+            EXPECT_EQ(item->text(), "My playlist");
+        }
+    }
+    ASSERT_NE(selected, nullptr);
+    table.selectRow(0);
+    ASSERT_TRUE(host.open_playlist(other));
+    selected->trigger();
+    destinations->hide();
+    EXPECT_EQ(dialogs.prompts, 0);
+    const auto* remaining = library->repository().playlist(source);
+    ASSERT_EQ(remaining->entries.size(), 1);
+    EXPECT_EQ(remaining->entries.front().id, *first);
+    EXPECT_EQ(library->repository().playlist(migrated)->entries.size(), 1);
+    EXPECT_TRUE(library->repository().playlist(other)->entries.empty());
 }
 
 TEST_F(DocumentCommandRouterTest,

@@ -47,6 +47,7 @@ PlayerActions::PlayerActions(QWidget& styled)
 
     new PlayerShortcuts{styled, this};
     reload_icons(styled);
+    set_shuffled(false);
 }
 
 void PlayerActions::reload_icons(const QWidget& styled)
@@ -108,11 +109,14 @@ void PlayerActions::set_repeat(engine::RepeatMode repeat)
 void PlayerActions::set_shuffled(bool shuffled)
 {
     QAction* command = action(PlayerAction::shuffle);
-    if (command->isChecked() == shuffled)
+    const QString tip =
+        shuffled ? "Shuffle on — random playback order" : "Shuffle off — playlist order";
+    if (command->isChecked() == shuffled && command->toolTip() == tip)
         return;
     {
         const QSignalBlocker blocked{command};
         command->setChecked(shuffled);
+        command->setToolTip(tip);
     }
     emit command->changed();
 }

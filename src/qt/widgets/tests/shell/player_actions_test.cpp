@@ -127,11 +127,13 @@ TEST_F(PlayerActions, ReflectsShuffleWithoutEmittingANewCommand)
     actions.set_shuffled(true);
 
     EXPECT_TRUE(shuffle->isChecked());
+    EXPECT_TRUE(shuffle->toolTip().contains("on"));
     EXPECT_EQ(toggles, 0);
 
     actions.set_shuffled(false);
 
     EXPECT_FALSE(shuffle->isChecked());
+    EXPECT_TRUE(shuffle->toolTip().contains("off"));
     EXPECT_EQ(toggles, 0);
 }
 

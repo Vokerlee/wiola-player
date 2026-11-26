@@ -105,17 +105,19 @@ TEST(LibraryNavigation, ActiveMarkerIsIndependentOfSelectionAndSurvivesRepositor
     auto* entries = navigation.topLevelItem(0);
     EXPECT_EQ(entries->child(0)->text(0), "First");
     EXPECT_FALSE(entries->child(0)->font(0).bold());
-    EXPECT_EQ(entries->child(1)->text(0), "Second — Active");
+    EXPECT_EQ(entries->child(1)->text(0), "Second");
     EXPECT_TRUE(entries->child(1)->font(0).bold());
+    EXPECT_FALSE(entries->child(1)->icon(0).isNull());
     EXPECT_EQ(navigation.selected_playlist(), first);
     ASSERT_TRUE(repository.rename_playlist(second, "Renamed"));
     navigation.show_repository(repository);
-    EXPECT_EQ(entries->child(1)->text(0), "Renamed — Active");
+    EXPECT_EQ(entries->child(1)->text(0), "Renamed");
     EXPECT_EQ(navigation.selected_playlist(), first);
     EXPECT_EQ(choices, 0);
     navigation.set_active_playlist({});
     EXPECT_EQ(entries->child(1)->text(0), "Renamed");
     EXPECT_FALSE(entries->child(1)->font(0).bold());
+    EXPECT_TRUE(entries->child(1)->icon(0).isNull());
     EXPECT_TRUE(entries->child(1)->toolTip(0).isEmpty());
 }
 

@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QKeyEvent>
 #include <wiola/presentation/documents/queue_rows.hpp>
 
 #include <wiola/media/local/resource.hpp>
@@ -109,12 +110,11 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.setCurrentIndex(view.model()->index(1, 0));
 
-    QAction* play = action(view, "Play selected track");
+    EXPECT_EQ(action(view, "Play selected track"), nullptr);
     QAction* remove = action(view, "Remove selected tracks");
     QAction* add_active = action(view, "Add to active playlist");
-    QAction* add_to = action(view, "Add to playlist →");
-    QAction* move_to = action(view, "Move to playlist →");
-    ASSERT_NE(play, nullptr);
+    QAction* add_to = action(view, "Add to playlist");
+    QAction* move_to = action(view, "Move to playlist");
     ASSERT_NE(remove, nullptr);
     ASSERT_NE(add_active, nullptr);
     ASSERT_NE(add_to, nullptr);
@@ -138,7 +138,8 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
     QObject::connect(&view, &wiola::gui::TrackTableView::transfer_move_asked,
         [&moves] { ++moves; });
 
-    play->trigger();
+    QKeyEvent enter{QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier};
+    QApplication::sendEvent(&view, &enter);
     remove->trigger();
     add_active->trigger();
     add_to->trigger();

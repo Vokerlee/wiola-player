@@ -155,7 +155,7 @@ TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
     ASSERT_NE(tools, nullptr);
     EXPECT_NE(action(*file, "Open tracks"), nullptr);
     EXPECT_NE(action(*file, "Add"), nullptr);
-    EXPECT_NE(action(*file, "Clear"), nullptr);
+    EXPECT_NE(action(*playback, "Clear play queue"), nullptr);
     EXPECT_NE(action(*file, "Open folder..."), nullptr);
     EXPECT_NE(action(*file, "Import playlist..."), nullptr);
     EXPECT_NE(action(*file, "Save playlist as..."), nullptr);
@@ -206,17 +206,19 @@ TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocumen
     ASSERT_NE(documents, nullptr);
     ASSERT_NE(now_playing, nullptr);
     ASSERT_NE(play_button, nullptr);
-    ASSERT_EQ(documents->count(), 2);
+    ASSERT_EQ(documents->count(), 1);
 
     EXPECT_EQ(documents->tabText(0), "Now Playing");
-    EXPECT_EQ(documents->tabText(1), "Open Folder");
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(documents->currentWidget(), now_playing);
     EXPECT_FALSE(play_button->isEnabled());
 
-    documents->setCurrentIndex(1);
-
-    EXPECT_EQ(documents->currentIndex(), 1);
+    EXPECT_NE(action(*menu(window, "&File"), "Open folder..."), nullptr);
+    EXPECT_EQ(window.findChild<QPushButton*>("openFolderFromDocuments"), nullptr);
+    const auto saved = window_library.playlists().create("Saved list").id;
+    auto* host = window.findChild<wiola::gui::DocumentHost*>("documentTabs");
+    ASSERT_TRUE(host->open_playlist(saved));
+    EXPECT_EQ(documents->currentWidget(), host->registry().playlist(saved));
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(window.windowTitle(), "Wiola Player");
     EXPECT_FALSE(play_button->isEnabled());
@@ -243,14 +245,14 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
         ASSERT_NE(documents, nullptr);
         ASSERT_NE(play_button, nullptr);
         ASSERT_TRUE(manager->create("Road"));
-        ASSERT_EQ(documents->count(), 3);
+        ASSERT_EQ(documents->count(), 2);
 
-        EXPECT_EQ(documents->currentIndex(), 2);
-        EXPECT_EQ(documents->tabText(2), "Road");
+        EXPECT_EQ(documents->currentIndex(), 1);
+        EXPECT_EQ(documents->tabText(1), "Road");
         EXPECT_FALSE(play_button->isEnabled());
 
         wiola::gui::SavedPlaylistDocument* editor =
-            static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(2));
+            static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(1));
         QPushButton* use_active = editor->findChild<QPushButton*>("useActivePlaylist");
         EXPECT_EQ(use_active, nullptr);
         EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(), "Road");
@@ -273,9 +275,9 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 
     ASSERT_NE(documents, nullptr);
     ASSERT_NE(play_button, nullptr);
-    ASSERT_EQ(documents->count(), 3);
-    EXPECT_EQ(documents->tabText(2), "Road");
-    EXPECT_EQ(static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(2))
+    ASSERT_EQ(documents->count(), 2);
+    EXPECT_EQ(documents->tabText(1), "Road");
+    EXPECT_EQ(static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(1))
                   ->findChild<QLabel*>("savedPlaylistHeading")
                   ->text(),
         "Road");
@@ -359,7 +361,10 @@ TEST_F(MainWindowShell, LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocum
     ASSERT_EQ(table->visible_count(), 2);
     ASSERT_EQ(now_playing->chosen_tracks(), selected);
 
-    documents->setCurrentIndex(1);
+    const auto alternate = window_library.playlists().create("Alternate").id;
+    ASSERT_TRUE(
+        window.findChild<wiola::gui::DocumentHost*>("documentTabs")->open_playlist(alternate)
+    );
     QWidget* active = documents->currentWidget();
     QWidget* previous_root = window.centralWidget();
     wiola::gui::LayoutDocument layout = wiola::gui::classic_layout_document();
@@ -399,7 +404,10 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     ASSERT_NE(documents, nullptr);
     ASSERT_NE(inspector, nullptr);
     ASSERT_NE(area, nullptr);
-    documents->setCurrentIndex(1);
+    const auto alternate = window_library.playlists().create("Alternate").id;
+    ASSERT_TRUE(
+        window.findChild<wiola::gui::DocumentHost*>("documentTabs")->open_playlist(alternate)
+    );
     QWidget* active = documents->currentWidget();
 
     auto layout = wiola::gui::classic_layout_document();
@@ -476,7 +484,6 @@ TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
     ASSERT_NE(document_area, nullptr);
     ASSERT_NE(root, nullptr);
 
-    documents->setCurrentIndex(1);
     QWidget* active = documents->currentWidget();
     QWidget* original_parent = document_area->parentWidget();
 
@@ -578,8 +585,8 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
         auto* documents = window.findChild<QTabWidget*>("documentTabs");
         ASSERT_NE(documents, nullptr);
-        ASSERT_EQ(documents->count(), 3);
-        EXPECT_EQ(documents->tabText(2), "Persistent");
+        ASSERT_EQ(documents->count(), 2);
+        EXPECT_EQ(documents->tabText(1), "Persistent");
         EXPECT_NE(window.findChild<QWidget*>("libraryFocusRoot"), nullptr);
         EXPECT_FALSE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
         EXPECT_TRUE(action(*menu(window, "&View"), "Library Focus")->isChecked());
@@ -593,8 +600,8 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
     wiola::gui::MainWindow restored{restored_playback, restored_library, restored_preferences};
     auto* documents = restored.findChild<QTabWidget*>("documentTabs");
     ASSERT_NE(documents, nullptr);
-    ASSERT_EQ(documents->count(), 3);
-    EXPECT_EQ(documents->tabText(2), "Persistent");
+    ASSERT_EQ(documents->count(), 2);
+    EXPECT_EQ(documents->tabText(1), "Persistent");
     EXPECT_NE(restored.findChild<QWidget*>("libraryFocusRoot"), nullptr);
     EXPECT_FALSE(restored.findChild<QWidget*>("libraryNavigation")->isHidden());
     EXPECT_TRUE(action(*menu(restored, "&View"), "Library Focus")->isChecked());
@@ -992,6 +999,17 @@ TEST_F(MainWindowShell, DefaultBrowserHasMovablePanelsAndReadableCompactControls
                 theme == wiola::gui::Theme::dark ? "desktop-dark.png" : "desktop-light.png"
             )));
         }
+        auto* shuffle = window.findChild<QPushButton*>("shuffleQueue");
+        ASSERT_NE(shuffle, nullptr);
+        ASSERT_FALSE(shuffle->isChecked());
+        shuffle->click();
+        EXPECT_TRUE(shuffle->isChecked());
+        if (!directory.isEmpty())
+            EXPECT_TRUE(window.grab().save(QDir{directory}.filePath(theme == wiola::gui::Theme::dark
+                    ? "desktop-dark-shuffle-on.png"
+                    : "desktop-light-shuffle-on.png")));
+        shuffle->click();
+        EXPECT_FALSE(shuffle->isChecked());
     }
     more->click();
     QApplication::processEvents();
@@ -1109,7 +1127,7 @@ TEST_F(MainWindowShell, DockedTrackDetailsLeaveFullWidthPlaybackAndItsCurrentTra
             EXPECT_TRUE(transport->isAncestorOf(control));
             EXPECT_TRUE(control->isVisible());
         }
-        for (const auto* name : {"openTracks", "addTracks", "removeTracks", "clearQueue"}) {
+        for (const auto* name : {"openTracks", "addTracks"}) {
             auto* control = window.findChild<QPushButton*>(name);
             ASSERT_NE(control, nullptr);
             EXPECT_TRUE(window.centralWidget()->isAncestorOf(control));
@@ -1274,12 +1292,17 @@ TEST_F(MainWindowShell, PlaybackControlsAndTimelineRemainCenteredWithIndependent
                 details->setVisible(show_details);
                 QApplication::processEvents();
                 QRect controls;
-                for (const auto* name :
-                    {"previousTrack", "playPause", "nextTrack", "stopPlayback"}) {
+                for (const auto* name : {"previousTrack", "playPause", "nextTrack"}) {
                     auto* button = window.findChild<QPushButton*>(name);
                     ASSERT_NE(button, nullptr);
                     controls = controls.united(bounds(button));
                 }
+                auto* stop = window.findChild<QPushButton*>("stopPlayback");
+                ASSERT_NE(stop, nullptr);
+                EXPECT_TRUE(stop->isHidden());
+                ASSERT_NE(action(*menu(window, "&Playback"), "Stop"), nullptr);
+                EXPECT_NEAR(bounds(window.findChild<QPushButton*>("playPause")).center().x(),
+                    bounds(footer).center().x(), 2);
                 EXPECT_NEAR(controls.center().x(), bounds(footer).center().x(), 2);
                 EXPECT_NEAR(bounds(seek).center().x(), bounds(footer).center().x(), 2);
                 EXPECT_LT(bounds(title).right(), bounds(seek).left());
@@ -1343,16 +1366,21 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
         return view->template findChild<QLabel*>("savedPlaylistHeading")->text();
     };
     EXPECT_EQ(host->active_playlist(), first);
-    EXPECT_EQ(heading(first_view), "First list — Active playlist");
-    EXPECT_EQ(host->tabText(host->indexOf(first_view)), "First list — Active");
-    EXPECT_EQ(navigation->currentItem()->text(0), "First list — Active");
+    EXPECT_EQ(heading(first_view), "First list");
+    EXPECT_EQ(host->tabText(host->indexOf(first_view)), "First list");
+    EXPECT_EQ(navigation->currentItem()->text(0), "First list");
     EXPECT_TRUE(navigation->currentItem()->font(0).bold());
+    EXPECT_FALSE(navigation->currentItem()->icon(0).isNull());
     first_view->findChild<QLineEdit*>("searchTitle")->setText("no matching tracks");
     EXPECT_EQ(host->active_playlist(), first);
-    ASSERT_TRUE(host->activate(gui::DocumentId::queue()));
+    EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
+    action(*menu(window, "&View"), "Play queue")->trigger();
+    EXPECT_EQ(host->currentWidget(), &host->queue());
+    EXPECT_TRUE(host->isTabVisible(host->indexOf(&host->queue())));
     EXPECT_EQ(host->active_playlist(), first);
     EXPECT_EQ(host->capture(gui::DocumentId::queue()).active_playlist, first);
-    host->setCurrentIndex(1);
+    ASSERT_TRUE(host->activate(gui::DocumentId::playlist(first)));
+    EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
     EXPECT_EQ(host->active_playlist(), first);
     EXPECT_EQ(preferences.ui_session().state().documents.last_playlist, first);
     ASSERT_TRUE(navigation->select_playlist(second));
@@ -1368,7 +1396,7 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
         ASSERT_TRUE(change.commit());
     }
     EXPECT_EQ(host->active_playlist(), second);
-    EXPECT_EQ(heading(second_view), "Second list — Active playlist");
+    EXPECT_EQ(heading(second_view), "Second list");
     EXPECT_EQ(heading(first_view), "First list");
     ASSERT_TRUE(playback.play_track(1));
     ASSERT_TRUE(wiola::testing::await_gui([&] { return !playback.reading(); }));
@@ -1389,7 +1417,7 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
         ASSERT_TRUE(change.commit());
     }
     EXPECT_EQ(host->active_playlist(), second);
-    EXPECT_EQ(heading(second_view), "Renamed — Active playlist");
+    EXPECT_EQ(heading(second_view), "Renamed");
     window.resize(1100, 720);
     window.show();
     QApplication::processEvents();
@@ -1419,6 +1447,37 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     EXPECT_FALSE(host->active_playlist());
     EXPECT_TRUE(std::filesystem::exists(first_path));
     EXPECT_TRUE(std::filesystem::exists(second_path));
+}
+
+TEST_F(MainWindowShell, OptionalStopControlCanBeAddedToACustomLayoutAndRetiredOnPresetRestore)
+{
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    wiola::gui::MainWindow window{playback, library, preferences};
+    window.show();
+    auto* stop = window.findChild<QPushButton*>("stopPlayback");
+    ASSERT_NE(stop, nullptr);
+    EXPECT_TRUE(stop->isHidden());
+    auto custom = wiola::gui::classic_layout_document();
+    auto* controls = wiola::gui::locate_layout_node(custom.root, "transportControls").node;
+    ASSERT_NE(controls, nullptr);
+    wiola::gui::LayoutNode optional;
+    optional.id = "stopPlayback";
+    optional.kind = wiola::gui::LayoutComponentKind::button;
+    optional.action = wiola::gui::PlayerAction::stop;
+    optional.view = wiola::gui::component_view("stopPlayback");
+    controls->children.push_back(optional);
+    custom.node_count = wiola::gui::layout_node_count(custom.root);
+    ASSERT_TRUE(window.switch_layout(custom));
+    EXPECT_FALSE(stop->isHidden());
+    for (const auto* preset : {"Classic", "Library Focus"}) {
+        action(*menu(window, "&View"), preset)->trigger();
+        QApplication::processEvents();
+        EXPECT_TRUE(stop->isHidden());
+        EXPECT_NE(action(*menu(window, "&Playback"), "Stop"), nullptr);
+    }
 }
 
 TEST_F(MainWindowShell, FileDialogDescriptionsAreReadableAndInvalidChoicesNeverOpenAPicker)

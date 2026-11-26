@@ -21,11 +21,13 @@
 #include "document_host.hpp"
 #include <qt/widgets/documents/playlist_name.hpp>
 
-#include <QLabel>
-#include <QPushButton>
+#include <QMenu>
+#include <QScopedValueRollback>
 #include <QTabBar>
-#include <QVBoxLayout>
 #include <algorithm>
+#include <memory>
+#include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
@@ -44,7 +46,6 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     , playback_{playback}
     , commands_{std::move(commands)}
     , preferences_{preferences}
-    , empty_{new QWidget{this}}
     , queue_{new NowPlayingDocument{this}}
 {
     configure_browser(queue_->browser());
@@ -82,28 +83,11 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     connect(queue_, &NowPlayingDocument::order_application_asked, &lifetime_,
         [this] { dispatch(TrackCommand::apply_order, DocumentId::queue()); });
     static_cast<void>(registry_.activate(DocumentId::queue()));
-    auto* empty_layout = new QVBoxLayout{empty_};
-    auto* explanation =
-        new QLabel{"Open a folder to browse its tracks without changing Now Playing.", empty_};
-    explanation->setAlignment(Qt::AlignCenter);
-    explanation->setWordWrap(true);
-    auto* open = new QPushButton{"Open folder...", empty_};
-    open->setObjectName("openFolderFromDocuments");
-    empty_layout->addStretch();
-    empty_layout->addWidget(explanation);
-    empty_layout->addWidget(open);
-    empty_layout->addStretch();
-    addTab(empty_, "Open Folder");
-    for (int index : {0, 1}) {
-        tabBar()->setTabButton(index, QTabBar::RightSide, nullptr);
-        tabBar()->setTabButton(index, QTabBar::LeftSide, nullptr);
-    }
-    connect(open, &QPushButton::clicked, &lifetime_, [this] {
-        if (commands_.open_folder)
-            commands_.open_folder();
-    });
+    tabBar()->setTabButton(0, QTabBar::RightSide, nullptr);
+    tabBar()->setTabButton(0, QTabBar::LeftSide, nullptr);
     connect(this, &QTabWidget::currentChanged, &lifetime_, [this](int) {
         registry_.activate(currentWidget());
+        queue_requested_ = !restoring_ && currentWidget() == queue_;
         if (!restoring_)
             if (const auto shown = registry_.active(); shown && shown->playlist())
                 last_playlist_ = *shown->playlist();
@@ -167,6 +151,35 @@ void DocumentHost::configure_browser(TrackBrowser& browser)
             commands_.edit_track();
     });
 
+    connect(&browser.table(), &TrackTableView::playlist_menu_requested, &lifetime_,
+        [this, &browser](QMenu* menu, TrackCommand command) {
+            std::optional<DocumentId> source;
+            for (QWidget* view = &browser; view && !source; view = view->parentWidget())
+                source = registry_.identify(view);
+            if (!source)
+                return;
+            const auto context =
+                std::make_shared<const DocumentCommandContext>(selection_context(*source));
+            const auto execute = commands_.execute;
+            for (const auto& playlist : library_.repository().playlists()) {
+                if (command == TrackCommand::move && source->playlist() &&
+                    *source->playlist() == playlist.id)
+                    continue;
+                auto label = playlist_name(playlist);
+                label.replace("&", "&&");
+                auto* destination = menu->addAction(label);
+                destination->setData(QString::fromStdString(playlist.id.value));
+                destination->setEnabled(!context->selection.empty());
+                connect(destination, &QAction::triggered, &lifetime_,
+                    [execute, context, command, target = playlist.id] {
+                        auto chosen = *context;
+                        chosen.target_playlist = target;
+                        if (execute)
+                            execute(command, std::move(chosen));
+                    });
+            }
+        });
+
     const QPointer<app::LibrarySession> artwork_library{&library_};
     browser.table().set_artwork_source(
         [artwork_library](const auto& id) {
@@ -196,9 +209,16 @@ void DocumentHost::dispatch(TrackCommand command, const DocumentId& id)
         commands_.execute(command, capture(id));
 }
 
-DocumentCommandContext DocumentHost::capture(const DocumentId& id) const
+DocumentCommandContext DocumentHost::selection_context(const DocumentId& id) const
 {
     DocumentCommandContext context{id, registry_.capabilities(id), registry_.selection(id), {}};
+    context.active_playlist = active_playlist();
+    return context;
+}
+
+DocumentCommandContext DocumentHost::capture(const DocumentId& id) const
+{
+    auto context = selection_context(id);
     if (id.is_queue())
         context.displayed_paths = queue_->displayed_paths(playback_.playlist());
     else if (const auto* playlist = id.playlist()) {
@@ -208,7 +228,6 @@ DocumentCommandContext DocumentHost::capture(const DocumentId& id) const
         if (const auto* view = registry_.workspace(*workspace))
             context.displayed_paths = view->displayed_paths();
     }
-    context.active_playlist = active_playlist();
     return context;
 }
 
@@ -216,6 +235,10 @@ bool DocumentHost::activate(const DocumentId& id)
 {
     if (!registry_.activate(id))
         return false;
+    if (!restoring_ && id.is_queue()) {
+        queue_requested_ = true;
+        setTabVisible(indexOf(queue_), true);
+    }
     if (!restoring_ && id.playlist())
         last_playlist_ = *id.playlist();
     setCurrentWidget(registry_.view(id));
@@ -234,10 +257,6 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
         return false;
     }
     registry_.add(id, *document, [document] { return document->selection(); });
-    document->on_play_requested([this, id] {
-        if (commands_.play_playlist)
-            commands_.play_playlist(id, {});
-    });
     document->on_entry_chosen([this, id](auto entry) {
         if (commands_.play_playlist)
             commands_.play_playlist(id, entry);
@@ -340,17 +359,38 @@ std::optional<library::PlaylistId> DocumentHost::active_playlist() const
 
 void DocumentHost::refresh_playback()
 {
+    if (updating_activity_)
+        return;
+    const QScopedValueRollback<bool> updating{updating_activity_, true};
     const auto active = active_playlist();
+    if (activity_palette_ != palette().cacheKey()) {
+        activity_palette_ = palette().cacheKey();
+        activity_icon_ = themed_standard_icon(*this, PresentationTokens{}.playlist.activity_icon,
+            QPalette::Highlight);
+    }
     for (const auto& [id, document] : registry_.playlists()) {
         const auto* playlist = library_.repository().playlist(id);
         if (!document || !playlist)
             continue;
         const bool playing = active == id;
         document->set_active(playing);
-        const auto label = playlist_name(*playlist) + (playing ? " — Active" : "");
+        const auto label = playlist_name(*playlist);
         const int index = indexOf(document);
         if (tabText(index) != label)
             setTabText(index, label);
+        const auto icon = playing ? activity_icon_ : QIcon{};
+        if (tabIcon(index).cacheKey() != icon.cacheKey())
+            setTabIcon(index, icon);
+        const QString tip = playing ? "Active playlist" : "";
+        if (tabToolTip(index) != tip)
+            setTabToolTip(index, tip);
+    }
+    const int queue_index = indexOf(queue_);
+    if (queue_index >= 0) {
+        const bool visible = !active || queue_requested_;
+        if (!visible && currentWidget() == queue_)
+            setCurrentWidget(registry_.playlist(*active));
+        setTabVisible(queue_index, visible);
     }
 }
 
@@ -418,7 +458,7 @@ void DocumentHost::restore()
     }
     restore_browser(DocumentId::queue(), queue_->browser(), false);
     if (!state.documents.visible) {
-        setCurrentWidget(empty_);
+        static_cast<void>(activate(DocumentId::queue()));
         return;
     }
     if (!activate(*state.documents.visible))

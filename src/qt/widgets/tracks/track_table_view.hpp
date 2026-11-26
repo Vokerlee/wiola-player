@@ -35,6 +35,7 @@
 #include <vector>
 
 class QAction;
+class QMenu;
 
 namespace wiola::gui {
 
@@ -100,6 +101,7 @@ signals:
     void removal_asked();
     void edit_asked();
     void transfer_active_asked();
+    void playlist_menu_requested(QMenu* menu, wiola::gui::TrackCommand command);
     void transfer_destination_asked();
     void transfer_move_asked();
     void order_application_asked();
