@@ -203,7 +203,7 @@ wiola_add_test(
 wiola_add_test(
     gui_document_command_router_test
     SOURCES shell/document_command_router_test.cpp
-    LIBS wiola::qt_widgets Qt6::Test
+    LIBS wiola::qt_widgets wiola_playback_preferences Qt6::Test
 )
 
 # Explicit benchmark target: measurements are artifacts, not wall-clock CI pass/fail assertions.
