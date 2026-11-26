@@ -232,12 +232,9 @@ TEST(PlaylistCommands, PersistMayDisposeTheCommandFacadeWhileItsRepositoryRemain
     EXPECT_EQ(repository.playlist(created.id)->name, "Retained");
 }
 
-TEST(PlaylistCommands, ThrowingOrUnavailablePersistRestoresTheCandidate)
+TEST(PlaylistCommands, ThrowingPersistenceRestoresTheCandidate)
 {
     library::InMemoryRepository repository;
-    app::SavedPlaylistCommands unavailable{repository, {}};
-    EXPECT_THROW(static_cast<void>(unavailable.create("Unavailable")), std::bad_function_call);
-    EXPECT_TRUE(repository.playlists().empty());
     app::SavedPlaylistCommands throwing{repository,
         [](const auto&) -> library::CommitResult { throw std::runtime_error{"store failed"}; }};
     EXPECT_THROW(static_cast<void>(throwing.create("Rejected")), std::runtime_error);
@@ -289,5 +286,11 @@ TEST(PlaylistCommands, EveryPreparationAllocationFailureRestoresTheRepository)
     }
 }
 #endif
+
+TEST(PlaylistCommands, RejectsAnEmptyPersistencePolicyBeforeAcceptingCommands)
+{
+    wiola::library::InMemoryRepository repository;
+    EXPECT_THROW((wiola::app::SavedPlaylistCommands{repository, {}}), std::invalid_argument);
+}
 
 } // namespace

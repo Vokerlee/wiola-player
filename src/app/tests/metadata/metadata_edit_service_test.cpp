@@ -492,4 +492,9 @@ TEST_F(MetadataEditService,
     EXPECT_EQ(repository.track(media)->display_title(), "B");
 }
 
+TEST_F(MetadataEditService, RejectsAnEmptyPersistencePolicyBeforeAcceptingEdits)
+{
+    EXPECT_THROW((wiola::app::MetadataEditService{repository, {}}), std::invalid_argument);
+}
+
 } // namespace

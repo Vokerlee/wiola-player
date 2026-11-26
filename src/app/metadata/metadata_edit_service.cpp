@@ -34,6 +34,8 @@ struct MetadataEditService::State : std::enable_shared_from_this<State> {
         , observer{std::move(observe)}
         , conflicts{std::move(fingerprint)}
     {
+        if (!persist)
+            throw std::invalid_argument{"metadata edits require an explicit persistence policy"};
     }
 
     void check_owner() const

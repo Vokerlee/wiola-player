@@ -1,4 +1,6 @@
-include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/headers.cmake")
+include(headers)
+
+add_subdirectory(playback)
 
 if(
     NOT WIOLA_COMPONENT_BUILD
@@ -173,10 +175,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
             metadata/custom_tag_commands.cpp
             metadata/media_replacement.cpp
             playback/playback_queue.cpp
-            playback/playback_service.cpp
             playback/queue_settings.cpp
-            playback/volume_control.cpp
-            playback/equalizer_control.cpp
             workspace/native_workspace_files.cpp
             workspace/workspace_scanner.cpp
         LIBS
@@ -190,8 +189,7 @@ if(NOT WIOLA_COMPONENT_BUILD)
         wiola_app
         PUBLIC
             wiola::library
-            wiola::playback
-            wiola::audio_dsp
+            wiola::playback_service
             wiola::metadata_edits
             wiola::workspace
     )

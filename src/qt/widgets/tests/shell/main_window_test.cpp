@@ -20,7 +20,6 @@
 
 #include <media/local/provider.hpp>
 
-#include <app/playback/volume_control.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
@@ -36,6 +35,7 @@
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/shell/main_window.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
+#include <wiola/app/playback/volume_control.hpp>
 
 #include <fixtures/wav.hpp>
 #include <qt/widgets/tests/support/widget_diagnostics.hpp>

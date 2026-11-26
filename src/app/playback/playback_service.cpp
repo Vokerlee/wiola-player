@@ -25,6 +25,7 @@
 #include <wiola/audio/volume.hpp>
 
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::app {
@@ -47,8 +48,10 @@ struct PlaybackService::Impl {
 
 PlaybackService::PlaybackService(engine::OutputFactory output,
     std::shared_ptr<media::MediaProvider> provider)
-    : impl_{std::make_unique<Impl>(std::move(output), std::move(provider))}
 {
+    if (!output)
+        throw std::invalid_argument{"playback application requires an output factory"};
+    impl_ = std::make_unique<Impl>(std::move(output), std::move(provider));
 }
 
 PlaybackService::~PlaybackService() = default;

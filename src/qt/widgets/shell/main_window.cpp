@@ -25,9 +25,7 @@
 #include "player_actions.hpp"
 #include "saved_playlist_manager.hpp"
 #include <QApplication>
-#include <app/playback/playback_service.hpp>
 #include <app/playback/queue_settings.hpp>
-#include <app/playback/volume_control.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
@@ -43,6 +41,8 @@
 #include <qt/widgets/layout/layout_session.hpp>
 #include <qt/widgets/layout/view_registry.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
+#include <wiola/app/playback/playback_service.hpp>
+#include <wiola/app/playback/volume_control.hpp>
 #include <wiola/library/metadata_patch.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>

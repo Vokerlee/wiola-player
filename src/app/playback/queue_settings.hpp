@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <app/playback/playback_service.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 #include "queue_settings_store.hpp"
 #include <functional>

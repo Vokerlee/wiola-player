@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 #include <wiola/app/library/local_identity.hpp>
 #include <wiola/app/workspace/workspace_reconciliation.hpp>
@@ -293,6 +294,11 @@ TEST_F(WorkspacePolicy, UnreadableLocationsAreRetainedWithoutDuplicatingPaths)
         EXPECT_TRUE(repository.track(entry.media)->missing);
         EXPECT_EQ(repository.track(entry.media)->locations, (std::vector{output}));
     }
+}
+
+TEST_F(WorkspacePolicy, RejectsAnEmptyPersistencePolicyBeforeReconciliation)
+{
+    EXPECT_THROW((wiola::app::WorkspaceReconciliation{{}}), std::invalid_argument);
 }
 
 } // namespace

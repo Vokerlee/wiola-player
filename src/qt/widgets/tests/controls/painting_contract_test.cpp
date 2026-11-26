@@ -7,8 +7,6 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QSlider>
-#include <app/playback/equalizer_control.hpp>
-#include <app/playback/playback_service.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <limits>
@@ -20,6 +18,8 @@
 #include <qt/widgets/controls/equalizer_panel.hpp>
 #include <qt/widgets/controls/seek_bar.hpp>
 #include <qt/widgets/tests/support/gui_interaction.hpp>
+#include <wiola/app/playback/equalizer_control.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 namespace {
 

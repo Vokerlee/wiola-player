@@ -22,10 +22,10 @@
 #include "document_command_context.hpp"
 #include <QTabWidget>
 #include <QWidget>
-#include <app/playback/playback_service.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/widgets/documents/document_registry.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 namespace wiola::gui {
 

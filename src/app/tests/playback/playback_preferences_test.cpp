@@ -18,13 +18,13 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/playback/equalizer_control.hpp>
-#include <app/playback/volume_control.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
 #include <gtest/gtest.h>
 #include <map>
 #include <stdexcept>
+#include <wiola/app/playback/equalizer_control.hpp>
+#include <wiola/app/playback/volume_control.hpp>
 
 namespace {
 
@@ -153,6 +153,21 @@ TEST_F(PlaybackPreferencesPolicy, StartupClampsAnUnboundedRestoredPositionToTheA
     volume.apply_restored(-1, true);
     EXPECT_EQ(volume.position(), 0);
     EXPECT_EQ(store.writes, 0U);
+}
+
+TEST_F(PlaybackPreferencesPolicy, FailedBoostStorageStillLeavesRuntimeVolumeWithinItsNewBounds)
+{
+    app::VolumeControl volume{playback, store};
+    volume.set_boosted(true);
+    volume.set_position(volume.max_position());
+    ASSERT_GT(volume.position(), volume.scale().full_position);
+    store.fail = true;
+
+    EXPECT_THROW(volume.set_boosted(false), std::logic_error);
+
+    EXPECT_FALSE(volume.boosted());
+    EXPECT_EQ(volume.position(), volume.scale().full_position);
+    EXPECT_FLOAT_EQ(playback.volume(), 1.0F);
 }
 
 } // namespace

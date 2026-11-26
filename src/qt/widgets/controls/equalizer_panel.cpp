@@ -20,7 +20,7 @@
 
 #include "equalizer_panel.hpp"
 #include <QScrollArea>
-#include <app/playback/equalizer_control.hpp>
+#include <wiola/app/playback/equalizer_control.hpp>
 
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 

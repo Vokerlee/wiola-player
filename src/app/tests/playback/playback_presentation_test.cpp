@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/playback/playback_service.hpp>
 #include <fakes/resource.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 #include <fakes/provider.hpp>
 

@@ -21,6 +21,7 @@
 #include "saved_playlist_commands.hpp"
 #include "playlist_name.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 namespace wiola::app {
@@ -30,6 +31,8 @@ SavedPlaylistCommands::SavedPlaylistCommands(library::InMemoryRepository& reposi
     : repository_{repository}
     , persist_{std::make_shared<Persist>(std::move(persist))}
 {
+    if (!*persist_)
+        throw std::invalid_argument{"playlist commands require an explicit persistence policy"};
 }
 
 SavedPlaylistCommands::Persist SavedPlaylistCommands::persistence() const

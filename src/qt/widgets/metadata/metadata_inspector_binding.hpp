@@ -22,9 +22,9 @@
 #include "track_inspector.hpp"
 #include <QObject>
 #include <QPointer>
-#include <app/playback/playback_service.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/widgets/shell/document_host.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 namespace wiola::gui {
 
