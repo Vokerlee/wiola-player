@@ -105,8 +105,9 @@ bool SavedPlaylistManager::create(const std::string& name)
         return false;
     }
 
+    const QPointer<SavedPlaylistManager> owner{this};
     const auto created = commands_.create(name);
-    return finish(created.commit, created.id);
+    return owner ? finish(created.commit, created.id) : static_cast<bool>(created.commit);
 }
 
 bool SavedPlaylistManager::rename_selected(const std::string& name)
@@ -122,7 +123,9 @@ bool SavedPlaylistManager::rename_selected(const std::string& name)
         return false;
     }
 
-    return finish(commands_.rename(*id, name), *id);
+    const QPointer<SavedPlaylistManager> owner{this};
+    const auto committed = commands_.rename(*id, name);
+    return owner ? finish(committed, *id) : static_cast<bool>(committed);
 }
 
 bool SavedPlaylistManager::duplicate_selected()
@@ -133,8 +136,9 @@ bool SavedPlaylistManager::duplicate_selected()
         return false;
     }
 
+    const QPointer<SavedPlaylistManager> owner{this};
     const auto duplicate = commands_.duplicate(*id);
-    return finish(duplicate.commit, duplicate.id);
+    return owner ? finish(duplicate.commit, duplicate.id) : static_cast<bool>(duplicate.commit);
 }
 
 bool SavedPlaylistManager::remove_selected()
@@ -145,7 +149,9 @@ bool SavedPlaylistManager::remove_selected()
         return false;
     }
 
-    return finish(commands_.remove(*id));
+    const QPointer<SavedPlaylistManager> owner{this};
+    const auto committed = commands_.remove(*id);
+    return owner ? finish(committed) : static_cast<bool>(committed);
 }
 
 std::optional<library::PlaylistId> SavedPlaylistManager::selected() const
@@ -160,15 +166,22 @@ bool SavedPlaylistManager::finish(library::CommitResult committed, const library
         return false;
     }
 
+    const QPointer<SavedPlaylistManager> owner{this};
     navigation_.show_repository(repository_);
+    if (!owner)
+        return true;
 
     if (id.valid())
         navigation_.select_playlist(id);
+    if (!owner)
+        return true;
 
     if (committed.revision != 0) {
         displayed_revision_ = committed.revision;
         save_state_->setText(committed.durable() ? "All changes saved"
                                                  : "Changes accepted; saving library");
+        if (!owner)
+            return true;
         if (committed.receipt)
             committed.receipt->observe([owner = QPointer<SavedPlaylistManager>{this}](auto event) {
                 if (owner && owner->displayed_revision_ == event.revision)
@@ -178,15 +191,21 @@ bool SavedPlaylistManager::finish(library::CommitResult committed, const library
             });
     }
 
-    if (changed_observer_)
-        changed_observer_();
+    if (!owner)
+        return true;
+    const auto observer = changed_observer_;
+    if (observer)
+        (*observer)();
 
     return true;
 }
 
 void SavedPlaylistManager::on_changed(std::function<void()> observer)
 {
-    changed_observer_ = std::move(observer);
+    auto replacement =
+        observer ? std::make_shared<std::function<void()>>(std::move(observer)) : nullptr;
+    auto retired = std::move(changed_observer_);
+    changed_observer_ = std::move(replacement);
 }
 
 void SavedPlaylistManager::show_save_failed()

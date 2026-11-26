@@ -21,7 +21,11 @@
 #pragma once
 #include <app/metadata/background_metadata_writes.hpp>
 #include <app/metadata/media_replacement.hpp>
+#include <functional>
+#include <map>
+#include <memory>
 #include <qt/queued_delivery.hpp>
+#include <vector>
 #include <wiola/app/metadata/metadata_edit_session.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
@@ -40,13 +44,8 @@ public:
         library::RepositoryTransaction::Persist persist, Observer observer);
     ~MetadataWriteService();
 
-    void set_handoff(Handoff handoff) { handoff_ = std::move(handoff); }
-
-    void set_durability(DurabilityGate gate, std::function<void()> flush)
-    {
-        durability_ = std::move(gate);
-        flush_durability_ = std::move(flush);
-    }
+    void set_handoff(Handoff handoff);
+    void set_durability(DurabilityGate gate, std::function<void()> flush);
 
     [[nodiscard]] std::vector<MetadataWriteOperationId> submit(const MetadataEditSession& edit);
     void cancel(const library::MediaId& media);
@@ -79,11 +78,11 @@ private:
     std::shared_ptr<media::MediaProvider> provider_;
     library::InMemoryRepository& repository_;
     media::FileReplacement& replacement_;
-    library::RepositoryTransaction::Persist persist_;
+    std::shared_ptr<library::RepositoryTransaction::Persist> persist_;
     std::shared_ptr<Observer> observer_;
-    Handoff handoff_;
-    DurabilityGate durability_;
-    std::function<void()> flush_durability_;
+    std::shared_ptr<Handoff> handoff_;
+    std::shared_ptr<DurabilityGate> durability_;
+    std::shared_ptr<std::function<void()>> flush_durability_;
     std::map<library::MediaId, std::uint64_t> generations_;
     std::map<MetadataWriteOperationId, MetadataWriteJob> operations_;
     std::deque<std::shared_ptr<Prepared>> ready_;

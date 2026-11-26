@@ -26,6 +26,7 @@
 #include <QDir>
 #include <QLabel>
 #include <QTemporaryDir>
+#include <memory>
 
 #include <gtest/gtest.h>
 
@@ -140,6 +141,46 @@ TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlde
 }
 
 } // namespace
+
+TEST_F(SavedPlaylistManager, CommandCompletionMayCloseTheManagerBeforePresentation)
+{
+    std::unique_ptr<wiola::gui::SavedPlaylistManager> manager;
+    wiola::app::SavedPlaylistCommands commands{repository, [&](const auto&) {
+                                                   manager.reset();
+                                                   return true;
+                                               }};
+    manager = std::make_unique<wiola::gui::SavedPlaylistManager>(repository, commands, navigation);
+    EXPECT_TRUE(manager->create("Accepted before close"));
+    EXPECT_FALSE(manager);
+    ASSERT_EQ(repository.playlists().size(), 1);
+}
+
+TEST_F(SavedPlaylistManager, NavigationSelectionMayCloseTheManagerBeforeStatusDelivery)
+{
+    wiola::app::SavedPlaylistCommands commands{repository, [](const auto&) { return true; }};
+    auto manager =
+        std::make_unique<wiola::gui::SavedPlaylistManager>(repository, commands, navigation);
+    QObject::connect(&navigation, &QTreeWidget::currentItemChanged, &navigation,
+        [&](auto*, auto*) { manager.reset(); });
+    EXPECT_TRUE(manager->create("Selected before close"));
+    EXPECT_FALSE(manager);
+    EXPECT_TRUE(navigation.selected_playlist());
+}
+
+TEST_F(SavedPlaylistManager, ActiveObserverRetainsItsStateAfterClosingTheManager)
+{
+    wiola::app::SavedPlaylistCommands commands{repository, [](const auto&) { return true; }};
+    auto manager =
+        std::make_unique<wiola::gui::SavedPlaylistManager>(repository, commands, navigation);
+    int observed{};
+    manager->on_changed([&, calls = 0]() mutable {
+        manager.reset();
+        observed = ++calls;
+    });
+    EXPECT_TRUE(manager->create("Observed close"));
+    EXPECT_FALSE(manager);
+    EXPECT_EQ(observed, 1);
+}
 
 int main(int argc, char** argv)
 {

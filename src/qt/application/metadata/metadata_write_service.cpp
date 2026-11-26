@@ -24,9 +24,23 @@
 #include <QThread>
 #include <exception>
 #include <media/local/resource.hpp>
+#include <stdexcept>
+#include <stop_token>
 #include <wiola/library/records.hpp>
 
 namespace wiola::app {
+namespace {
+
+std::shared_ptr<media::MediaProvider>
+checked_provider(std::shared_ptr<media::MediaProvider> provider,
+    const library::RepositoryTransaction::Persist& persist)
+{
+    if (!provider || !persist)
+        throw std::invalid_argument{"metadata writes require media and persistence drivers"};
+    return provider;
+}
+
+} // namespace
 
 MetadataWriteService::MetadataWriteService(QObject& owner,
     std::shared_ptr<media::MediaProvider> provider, library::InMemoryRepository& repository,
@@ -34,10 +48,10 @@ MetadataWriteService::MetadataWriteService(QObject& owner,
     Observer observer)
     : delivery_{owner}
     , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
-    , provider_{std::move(provider)}
+    , provider_{checked_provider(std::move(provider), persist)}
     , repository_{repository}
     , replacement_{replacement}
-    , persist_{std::move(persist)}
+    , persist_{std::make_shared<library::RepositoryTransaction::Persist>(std::move(persist))}
     , observer_{observer ? std::make_shared<Observer>(std::move(observer)) : nullptr}
     , staging_{provider_}
     , worker_{[this] { run(); }}
@@ -53,6 +67,23 @@ MetadataWriteService::~MetadataWriteService()
     lifetime_->owner = nullptr;
 }
 
+void MetadataWriteService::set_handoff(Handoff handoff)
+{
+    auto replacement = handoff ? std::make_shared<Handoff>(std::move(handoff)) : nullptr;
+    auto retired = std::move(handoff_);
+    handoff_ = std::move(replacement);
+}
+
+void MetadataWriteService::set_durability(DurabilityGate gate, std::function<void()> flush)
+{
+    auto next_gate = gate ? std::make_shared<DurabilityGate>(std::move(gate)) : nullptr;
+    auto next_flush = flush ? std::make_shared<std::function<void()>>(std::move(flush)) : nullptr;
+    auto retired_gate = std::move(durability_);
+    auto retired_flush = std::move(flush_durability_);
+    durability_ = std::move(next_gate);
+    flush_durability_ = std::move(next_flush);
+}
+
 void MetadataWriteService::publish(const MetadataWriteResult& result)
 {
     Q_ASSERT(QThread::currentThread() == delivery_.thread());
@@ -64,6 +95,7 @@ void MetadataWriteService::publish(const MetadataWriteResult& result)
 std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const MetadataEditSession& edit)
 {
     Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    const auto lifetime = lifetime_;
     std::vector<MetadataWriteOperationId> accepted;
     if (phase_ != Phase::running)
         return accepted;
@@ -71,6 +103,8 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
     const auto patch = edit.draft();
     for (const auto& target : targets) {
         cancel(target.media);
+        if (!lifetime->owner)
+            return accepted;
         MetadataWriteJob job;
         job.operation = {++next_operation_};
         job.media = target.media;
@@ -87,6 +121,8 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
         operations_.emplace(job.operation, job);
         accepted.push_back(job.operation);
         publish({.job = job, .stage = MetadataWriteStage::queued, .outcome = {}, .output = {}});
+        if (!lifetime->owner)
+            return accepted;
         if (job.context().stop_reason() != media::StopReason::none ||
             generations_[job.media] != job.generation) {
             finish({
@@ -98,6 +134,8 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
                             .detail = "superseded during submission"},
                 .output = {}
             });
+            if (!lifetime->owner)
+                return accepted;
             continue;
         }
         if (!staging_.enqueue(
@@ -126,9 +164,12 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
 
 void MetadataWriteService::cancel(const library::MediaId& media)
 {
-    for (auto& [id, job] : operations_)
+    std::vector<std::shared_ptr<std::stop_source>> cancellations;
+    for (const auto& [id, job] : operations_)
         if (job.media == media)
-            job.cancellation->request_stop();
+            cancellations.push_back(job.cancellation);
+    for (const auto& cancellation : cancellations)
+        cancellation->request_stop();
 }
 
 void MetadataWriteService::staged(MetadataWriteResult result)
@@ -212,6 +253,7 @@ void MetadataWriteService::ready(std::shared_ptr<Prepared> prepared)
 
 void MetadataWriteService::begin_commit()
 {
+    const auto lifetime = lifetime_;
     if (committing_ || ready_.empty())
         return;
     auto prepared = std::move(ready_.front());
@@ -228,13 +270,15 @@ void MetadataWriteService::begin_commit()
         result.stage = MetadataWriteStage::conflicted;
     if (result.stage != MetadataWriteStage::ready) {
         finish(std::move(result));
-        begin_commit();
+        if (lifetime->owner)
+            begin_commit();
         return;
     }
     if (durability_ && !prepared->intent_durable) {
         committing_ = true;
         const std::weak_ptr<Lifetime> weak = lifetime_;
-        durability_(result.job.library_revision, [weak, prepared](bool durable) {
+        const auto durability = durability_;
+        (*durability)(result.job.library_revision, [weak, prepared](bool durable) {
             if (const auto state = weak.lock(); state && state->owner) {
                 auto& owner = *state->owner;
                 owner.committing_ = false;
@@ -252,17 +296,23 @@ void MetadataWriteService::begin_commit()
                         .detail = "Application metadata could not be saved; the source file was "
                                   "retained"};
                     owner.finish(std::move(prepared->result));
-                    owner.begin_commit();
+                    if (state->owner)
+                        state->owner->begin_commit();
                 }
             }
         });
         return;
     }
-    if (handoff_)
-        prepared->restore = handoff_(result.job.source);
+    const auto handoff = handoff_;
+    if (handoff)
+        prepared->restore = (*handoff)(result.job.source);
+    if (!lifetime->owner)
+        return;
     committing_ = true;
     result.stage = MetadataWriteStage::reloading;
     publish(result);
+    if (!lifetime->owner)
+        return;
     {
         std::lock_guard lock{mutex_};
         pending_ = std::move(prepared);
@@ -309,9 +359,12 @@ void MetadataWriteService::run()
 
 void MetadataWriteService::completed(std::shared_ptr<Prepared> prepared)
 {
+    const auto lifetime = lifetime_;
     auto& result = prepared->result;
     if (prepared->restore)
         prepared->restore();
+    if (!lifetime->owner)
+        return;
     if (result.outcome.source_modified && prepared->learned) {
         const auto* record = repository_.track(result.job.media);
         if (record) {
@@ -320,17 +373,21 @@ void MetadataWriteService::completed(std::shared_ptr<Prepared> prepared)
             updated.fingerprint = prepared->replacement->output_fingerprint;
             ++updated.content_revision;
             ++updated.metadata_revision;
-            library::RepositoryTransaction transaction{repository_, persist_,
+            library::RepositoryTransaction transaction{repository_,
+                [persist = persist_](const auto& records) { return (*persist)(records); },
                 library::CommitPriority::file_result};
             library::CommitResult committed;
             if (repository_.put_track(std::move(updated)))
                 committed = transaction.commit();
+            if (!lifetime->owner)
+                return;
             if (!committed) {
                 result.outcome.error = media::MetadataWriteError::io;
                 result.outcome.detail = "File updated, but accepting its library update failed";
             } else if (!committed.durable() && durability_) {
                 const std::weak_ptr<Lifetime> weak = lifetime_;
-                durability_(committed.revision, [weak, prepared](bool durable) {
+                const auto durability = durability_;
+                (*durability)(committed.revision, [weak, prepared](bool durable) {
                     if (const auto state = weak.lock(); state && state->owner)
                         state->owner->finish_commit(prepared, durable);
                 });
@@ -363,8 +420,10 @@ void MetadataWriteService::finish_commit(std::shared_ptr<Prepared> prepared, boo
         ? MetadataWriteStage::cancelled
         : MetadataWriteStage::failed;
     committing_ = false;
+    const auto lifetime = lifetime_;
     finish(std::move(result));
-    begin_commit();
+    if (lifetime->owner)
+        begin_commit();
 }
 
 void MetadataWriteService::finish(MetadataWriteResult result)
@@ -435,8 +494,9 @@ void MetadataWriteService::stop()
     if (!lifetime->owner)
         return;
     try {
-        if (flush_durability_)
-            flush_durability_();
+        const auto flush = flush_durability_;
+        if (flush)
+            (*flush)();
     } catch (...) {
         remember_failure();
     }

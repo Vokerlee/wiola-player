@@ -66,7 +66,7 @@ private:
     QPushButton* remove_button_{nullptr};
     std::uint64_t displayed_revision_{};
     QLabel* save_state_{nullptr};
-    std::function<void()> changed_observer_;
+    std::shared_ptr<std::function<void()>> changed_observer_;
 };
 
 } // namespace wiola::gui
