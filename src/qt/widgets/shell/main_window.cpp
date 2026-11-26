@@ -88,6 +88,7 @@
 #include <QMenuBar>
 #include <QScreen>
 #include <QSplitter>
+#include <QStatusBar>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -161,6 +162,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     setWindowTitle("Wiola Player");
     setMinimumSize(tokens.player.window_min_width, tokens.player.window_min_height);
 
+    statusBar()->setObjectName("playbackFooter");
+    statusBar()->setSizeGripEnabled(false);
     transport_ = new TransportView{actions_, this};
     volume_view_ = new VolumeView{this};
     status_ = new StatusView{this};
@@ -671,10 +674,22 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
     if (QLayout* layout = root->layout())
         layout->setSpacing(tokens.player.section_spacing);
 
+    // Built-in playback controls belong to the window chrome, outside the docked panels.
+    // Custom layouts retain their explicit placement of the same registered live views.
+    auto* footer = statusBar();
+    footer->removeWidget(transport_);
+    if (choice != LayoutChoice::custom) {
+        footer->addPermanentWidget(transport_, 1);
+        transport_->show();
+    } else if (belongs_to_root(transport_))
+        transport_->show();
+    footer->setVisible(choice != LayoutChoice::custom);
+
     setCentralWidget(root);
     if (isVisible()) {
         root->show();
-        if (previous_focus && belongs_to_root(previous_focus))
+        if (previous_focus &&
+            (belongs_to_root(previous_focus) || footer->isAncestorOf(previous_focus)))
             previous_focus->setFocus(Qt::OtherFocusReason);
     }
     show_layout_choice();
