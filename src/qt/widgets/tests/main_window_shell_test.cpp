@@ -52,6 +52,8 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHeaderView>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
@@ -525,19 +527,11 @@ TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
     QWidget* active = documents->currentWidget();
     QMenu* view = menu(window, "&View");
     ASSERT_NE(view, nullptr);
-    QAction* queue = action(*view, "Queue Focus");
+    EXPECT_EQ(action(*view, "Queue Focus"), nullptr);
     QAction* library = action(*view, "Library Focus");
     QAction* classic = action(*view, "Classic");
-    ASSERT_NE(queue, nullptr);
     ASSERT_NE(library, nullptr);
     ASSERT_NE(classic, nullptr);
-
-    queue->trigger();
-
-    EXPECT_EQ(documents->currentWidget(), active);
-    EXPECT_TRUE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
-    EXPECT_TRUE(window.findChild<QDockWidget*>("inspectorDock")->isHidden());
-    EXPECT_TRUE(area->isHidden());
 
     library->trigger();
 
@@ -571,7 +565,7 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         ASSERT_NE(manager, nullptr);
         ASSERT_TRUE(manager->create("Persistent"));
 
-        action(*menu(window, "&View"), "Queue Focus")->trigger();
+        action(*menu(window, "&View"), "Library Focus")->trigger();
 
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
         EXPECT_FALSE(settings.contains("layout/preset"));
@@ -588,11 +582,9 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         ASSERT_NE(documents, nullptr);
         ASSERT_EQ(documents->count(), 3);
         EXPECT_EQ(documents->tabText(2), "Persistent");
-        EXPECT_NE(window.findChild<QWidget*>("queueFocusRoot"), nullptr);
-        EXPECT_TRUE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
-        EXPECT_TRUE(action(*menu(window, "&View"), "Queue Focus")->isChecked());
-
-        action(*menu(window, "&View"), "Library Focus")->trigger();
+        EXPECT_NE(window.findChild<QWidget*>("libraryFocusRoot"), nullptr);
+        EXPECT_FALSE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
+        EXPECT_TRUE(action(*menu(window, "&View"), "Library Focus")->isChecked());
     }
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
@@ -608,6 +600,50 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
     EXPECT_NE(restored.findChild<QWidget*>("libraryFocusRoot"), nullptr);
     EXPECT_FALSE(restored.findChild<QWidget*>("libraryNavigation")->isHidden());
     EXPECT_TRUE(action(*menu(restored, "&View"), "Library Focus")->isChecked());
+}
+
+TEST_F(MainWindowShell, RetiredQueueFocusSettingsOpenClassicWithBottomTransport)
+{
+    QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+    settings.setValue("layout/preset", "queue-focus");
+    settings.sync();
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    {
+        wiola::gui::MainWindow window{playback, library, preferences};
+        EXPECT_NE(window.findChild<QWidget*>("classicRoot"), nullptr);
+        EXPECT_EQ(action(*menu(window, "&View"), "Queue Focus"), nullptr);
+        EXPECT_TRUE(action(*menu(window, "&View"), "Classic")->isChecked());
+    }
+
+    auto legacy = wiola::gui::classic_layout_document();
+    legacy.root.id = "queueFocusRoot";
+    std::swap(legacy.root.children[0], legacy.root.children[2]);
+    QFile file{QFileInfo{settings.fileName()}.dir().filePath("layout.json")};
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    ASSERT_GT(file.write(QJsonDocument{
+                  QJsonObject{{"schema", 1}, {"choice", "queue-focus"},
+                              {"layout",
+                          QJsonDocument::fromJson(wiola::gui::write_layout_json(legacy)).object()}}
+    }
+                      .toJson()),
+        0);
+    file.close();
+
+    wiola::gui::MainWindow restored{playback, library, preferences};
+    restored.show();
+    QApplication::processEvents();
+    auto* root = restored.findChild<QWidget*>("classicRoot");
+    auto* transport = restored.findChild<QWidget*>("playbackGroup");
+    auto* tabs = restored.findChild<QWidget*>("documentTabs");
+    ASSERT_NE(root, nullptr);
+    ASSERT_NE(transport, nullptr);
+    ASSERT_NE(tabs, nullptr);
+    EXPECT_GT(transport->mapTo(&restored, QPoint{}).y(), tabs->mapTo(&restored, QPoint{}).y());
+    EXPECT_TRUE(action(*menu(restored, "&View"), "Classic")->isChecked());
+    EXPECT_EQ(action(*menu(restored, "&View"), "Queue Focus"), nullptr);
 }
 
 TEST_F(MainWindowShell, RestoresTheNativeThemeChoice)

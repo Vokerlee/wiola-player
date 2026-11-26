@@ -32,8 +32,6 @@ QString layout_choice_name(LayoutChoice choice)
         return "classic";
     case LayoutChoice::library_focus:
         return "library-focus";
-    case LayoutChoice::queue_focus:
-        return "queue-focus";
     case LayoutChoice::custom:
         return "custom";
     }
@@ -42,8 +40,11 @@ QString layout_choice_name(LayoutChoice choice)
 
 std::optional<LayoutChoice> parse_layout_choice(const QString& key)
 {
-    for (const auto choice : {LayoutChoice::classic, LayoutChoice::library_focus,
-             LayoutChoice::queue_focus, LayoutChoice::custom})
+    // Retired built-in presets reopen with the current standard presentation.
+    if (key == "queue-focus")
+        return LayoutChoice::classic;
+    for (const auto choice :
+        {LayoutChoice::classic, LayoutChoice::library_focus, LayoutChoice::custom})
         if (layout_choice_name(choice) == key)
             return choice;
     return {};

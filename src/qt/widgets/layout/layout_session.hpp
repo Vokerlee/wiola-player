@@ -28,7 +28,6 @@ namespace wiola::gui {
 enum class LayoutChoice {
     classic,
     library_focus,
-    queue_focus,
     custom,
 };
 [[nodiscard]] QString layout_choice_name(LayoutChoice choice);
