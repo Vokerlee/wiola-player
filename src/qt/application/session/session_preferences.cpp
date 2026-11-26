@@ -21,7 +21,7 @@
 #include "session_preferences.hpp"
 #include <QDir>
 #include <QFileInfo>
-#include <QScopedValueRollback>
+#include <QScopeGuard>
 #include <QThread>
 #include <qt/application/library/library_session.hpp>
 #include <qt/paths.hpp>
@@ -117,14 +117,23 @@ SessionPreferences::SessionPreferences(const QSettings& legacy,
 
 SessionPreferences::~SessionPreferences()
 {
-    static_cast<void>(flush());
+    try {
+        static_cast<void>(flush());
+    } catch (...) {
+    }
 }
 
 void SessionPreferences::edit(const std::function<void(SessionState&)>& change)
 {
     Q_ASSERT(QThread::currentThread() == thread());
+    const QPointer<SessionPreferences> owner{this};
+    const auto revision = revision_;
     auto candidate = state_;
     change(candidate);
+    if (!owner)
+        return;
+    if (revision_ != revision)
+        throw std::logic_error{"session edit was superseded by a reentrant edit"};
     if (candidate == state_)
         return;
     state_ = std::move(candidate);
@@ -170,7 +179,12 @@ SessionStateError SessionPreferences::flush()
     Q_ASSERT(QThread::currentThread() == thread());
     if (flushing_)
         return SessionStateError::busy;
-    const QScopedValueRollback<bool> in_progress{flushing_, true};
+    const QPointer<SessionPreferences> owner{this};
+    const auto in_progress = qScopeGuard([owner] {
+        if (owner)
+            owner->flushing_ = false;
+    });
+    flushing_ = true;
     timer_.stop();
     if (!dirty_)
         return SessionStateError::none;

@@ -23,10 +23,12 @@
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 #include <media/codecs/ffmpeg/composition.hpp>
+#include <memory>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/paths.hpp>
 #include <qt/tests/support/atomic_output.hpp>
+#include <stdexcept>
 
 namespace {
 
@@ -221,6 +223,49 @@ TEST(SessionPreferences, QueueRestorationUsesTheExplicitOccurrenceMapAndDropsUnk
 }
 
 } // namespace
+
+TEST(SessionPreferences, EditCallbackMayReleaseThePreferenceOwner)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    auto preferences = std::make_unique<app::SessionPreferences>(settings);
+    preferences->edit([&](auto& state) {
+        state.layout_identity = "classic";
+        preferences.reset();
+    });
+    EXPECT_FALSE(preferences);
+}
+
+TEST(SessionPreferences, SaveFailureObserverMayReleaseThePreferenceOwner)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    bool fail = true;
+    auto preferences = std::make_unique<app::SessionPreferences>(settings,
+        [&](const auto& path) { return std::make_unique<FaultOutput>(path, fail); });
+    QObject receiver;
+    QObject::connect(preferences.get(), &app::SessionPreferences::save_failed, &receiver,
+        [&](auto) { preferences.reset(); });
+    preferences->edit([](auto& state) { state.layout_identity = "classic"; });
+    EXPECT_EQ(preferences->flush(), app::SessionStateError::io);
+    EXPECT_FALSE(preferences);
+}
+
+TEST(SessionPreferences, AStaleEditCannotOverwriteAnAcceptedReentrantEdit)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    app::SessionPreferences preferences{settings};
+    EXPECT_THROW(preferences.edit([&](auto& state) {
+        state.layout_identity = "classic";
+        preferences.edit([](auto& newer) { newer.layout_identity = "custom"; });
+    }),
+        std::logic_error);
+    EXPECT_EQ(preferences.state().layout_identity, "custom");
+    ASSERT_EQ(preferences.flush(), app::SessionStateError::none);
+    app::SessionPreferences restored{settings};
+    EXPECT_EQ(restored.state().layout_identity, "custom");
+}
 
 int main(int argc, char** argv)
 {
