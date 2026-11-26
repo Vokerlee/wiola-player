@@ -26,7 +26,7 @@ namespace wiola::gui {
 std::span<const ComponentDescriptor> component_descriptors()
 {
     static constexpr std::array descriptors{
-        ComponentDescriptor{LayoutComponentKind::row,           "row",           true,  3         },
+        ComponentDescriptor{LayoutComponentKind::row,           "row",           true,  3 | 64    },
         ComponentDescriptor{LayoutComponentKind::column,        "column",        true,  3         },
         ComponentDescriptor{LayoutComponentKind::stack,         "stack",         true,  3         },
         ComponentDescriptor{LayoutComponentKind::splitter,      "splitter",      true,  3 | 8 | 16},

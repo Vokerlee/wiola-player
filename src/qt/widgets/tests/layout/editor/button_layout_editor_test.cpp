@@ -221,6 +221,26 @@ TEST(ButtonLayoutEditor, InvalidDraftBlocksApplyAndReturnCommitsPropertiesWithou
     EXPECT_FALSE(editor.isVisible());
 }
 
+TEST(ButtonLayoutEditor, RowAlignmentCanBeEditedUndoneAndResetToAutomatic)
+{
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    tree->setCurrentItem(item(*tree, "transportControls"));
+    auto* alignment = editor.findChild<QComboBox*>("layoutRowAlignment");
+    ASSERT_NE(alignment, nullptr);
+    EXPECT_EQ(alignment->currentData().toInt(), static_cast<int>(Qt::AlignHCenter));
+    for (const auto value :
+        {static_cast<int>(Qt::AlignLeft), static_cast<int>(Qt::AlignRight), 0}) {
+        alignment->setCurrentIndex(alignment->findData(value));
+        emit alignment->activated(alignment->currentIndex());
+        const auto* row = find(editor.document().root, "transportControls");
+        ASSERT_NE(row, nullptr);
+        EXPECT_EQ(row->alignment ? static_cast<int>(*row->alignment) : 0, value);
+        editor.findChild<QPushButton*>("undoLayoutEdit")->click();
+        EXPECT_EQ(find(editor.document().root, "transportControls")->alignment, Qt::AlignHCenter);
+    }
+}
+
 TEST(ButtonLayoutEditor, AddsConfiguresAndAppliesPaletteActions)
 {
     wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};

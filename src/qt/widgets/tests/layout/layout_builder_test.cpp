@@ -227,6 +227,31 @@ TEST(LayoutBuilder, BuildsVerticalSplitterWithGridAndLabeledTabs)
     EXPECT_EQ(tabs->tabText(1), "second");
 }
 
+TEST(LayoutBuilder, ReusedGridDropsStretchFromRemovedColumns)
+{
+    using namespace wiola::gui;
+    QWidget owner;
+    auto* grid = new QWidget{&owner};
+    auto* layout = new QGridLayout{grid};
+    LayoutBuilder builder;
+    ASSERT_TRUE(register_fixture_view(builder, "grid", grid));
+    LayoutNode node{.id = "grid", .kind = LayoutComponentKind::grid};
+    node.columns = 3;
+    node.children = {
+        {.id = "one",   .kind = LayoutComponentKind::status},
+        {.id = "two",   .kind = LayoutComponentKind::status},
+        {.id = "three", .kind = LayoutComponentKind::status}
+    };
+    ASSERT_EQ(build_fixture(builder, node, {}, &owner), grid);
+    EXPECT_EQ(layout->columnStretch(2), 1);
+    node.columns = 2;
+    node.children.pop_back();
+    ASSERT_EQ(build_fixture(builder, node, {}, &owner), grid);
+    EXPECT_EQ(layout->columnStretch(0), 1);
+    EXPECT_EQ(layout->columnStretch(1), 1);
+    EXPECT_EQ(layout->columnStretch(2), 0);
+}
+
 TEST(LayoutBuilder, PlacesBorrowedWidgetsInGridCellsAndTabPages)
 {
     QWidget owner;

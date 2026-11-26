@@ -43,6 +43,12 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
     orientation_->addItem("Horizontal", static_cast<int>(Qt::Horizontal));
     orientation_->addItem("Vertical", static_cast<int>(Qt::Vertical));
     orientation_->addItem("Automatic", 0);
+    alignment_ = new QComboBox{this};
+    alignment_->setObjectName("layoutRowAlignment");
+    alignment_->addItem("Automatic", 0);
+    alignment_->addItem("Left", static_cast<int>(Qt::AlignLeft));
+    alignment_->addItem("Center", static_cast<int>(Qt::AlignHCenter));
+    alignment_->addItem("Right", static_cast<int>(Qt::AlignRight));
     columns_ = new QSpinBox{this};
     columns_->setObjectName("layoutGridColumns");
     columns_->setRange(1, 32);
@@ -61,6 +67,7 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
     form->addRow("Fixed width", width_);
     form->addRow("Action", action_);
     form->addRow("Orientation", orientation_);
+    form->addRow("Alignment", alignment_);
     form->addRow("Grid columns", columns_);
     form->addRow("Splitter weights", sizes_);
     form->addRow(error_);
@@ -72,6 +79,7 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
     connect(width_, &QSpinBox::editingFinished, this, changed);
     connect(action_, &QComboBox::activated, this, [changed](int) { changed(); });
     connect(orientation_, &QComboBox::activated, this, [changed](int) { changed(); });
+    connect(alignment_, &QComboBox::activated, this, [changed](int) { changed(); });
     connect(columns_, &QSpinBox::editingFinished, this, changed);
     connect(sizes_, &QLineEdit::editingFinished, this, changed);
 }
@@ -93,6 +101,11 @@ void LayoutPropertyInspector::show_node(const LayoutNode* node)
     show_field(orientation_, splitter);
     show_field(sizes_, splitter);
     show_field(columns_, node && node->kind == LayoutComponentKind::grid);
+    show_field(alignment_, node && node->kind == LayoutComponentKind::row);
+    alignment_->setEnabled(node && node->kind == LayoutComponentKind::row);
+    alignment_->setCurrentIndex(
+        alignment_->findData(node && node->alignment ? static_cast<int>(*node->alignment) : 0)
+    );
     orientation_->setEnabled(splitter);
     sizes_->setEnabled(splitter);
     columns_->setEnabled(node && node->kind == LayoutComponentKind::grid);
@@ -121,6 +134,12 @@ std::optional<LayoutNode> LayoutPropertyInspector::configuration(const LayoutNod
         width_->value() == 0 ? std::optional<int>{} : std::optional<int>{width_->value()};
     if (result.kind == LayoutComponentKind::button && !result.view)
         result.action = parse_action(action_->currentData().toString());
+    if (result.kind == LayoutComponentKind::row) {
+        const int alignment = alignment_->currentData().toInt();
+        result.alignment = alignment == 0
+            ? std::optional<Qt::AlignmentFlag>{}
+            : std::optional<Qt::AlignmentFlag>{static_cast<Qt::AlignmentFlag>(alignment)};
+    }
     if (result.kind == LayoutComponentKind::splitter) {
         const auto orientation = orientation_->currentData().toInt();
         result.orientation = orientation == 0
