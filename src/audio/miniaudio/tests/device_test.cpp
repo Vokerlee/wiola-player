@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <audio/miniaudio/device.hpp>
 #include <fakes/tone.hpp>
+#include <wiola/audio/miniaudio/device.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

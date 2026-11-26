@@ -1,12 +1,24 @@
-wiola_add_library(
-    wiola_audio_miniaudio
-    SOURCES device.cpp
-    LIBS miniaudio wiola_audio_output wiola_audio_dsp
-)
+include(headers)
+
+add_library(wiola_audio_miniaudio STATIC device.cpp)
 
 add_library(wiola::audio_miniaudio ALIAS wiola_audio_miniaudio)
 
-target_link_libraries(wiola_audio_miniaudio PUBLIC wiola::audio_output)
+set_target_properties(wiola_audio_miniaudio PROPERTIES CXX_EXTENSIONS OFF)
+
+target_link_libraries(
+    wiola_audio_miniaudio
+    PUBLIC wiola::audio_output
+    PRIVATE miniaudio
+)
+
+wiola_target_headers(
+    wiola_audio_miniaudio
+    wiola/audio/miniaudio
+    HEADERS device.hpp
+)
+
+wiola_apply_build_controls(wiola_audio_miniaudio)
 
 if(WIOLA_BUILD_TESTS)
     add_executable(audio_device_test tests/device_test.cpp)

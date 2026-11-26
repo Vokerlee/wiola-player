@@ -460,3 +460,5 @@ Follow one PCM block through the implementation:
 11. [`output_session.cpp`](../../playback/pipeline/output_session.cpp) — output reuse and format changes.
 
 Portable [contract and DSP tests](../tests) and native [device tests](tests) cover their respective owners. Native Windows playback still requires a real Windows audio-device smoke test; a MinGW cross-build alone cannot prove driver behavior.
+
+The adapter is an ordinary `wiola::audio_miniaudio` target exposing `<wiola/audio/miniaudio/device.hpp>`. Its public dependency is the portable output contract; miniaudio is private. It neither links DSP nor exports the repository source root. Processing remains supplied by the borrowed Source. The configured CMake target and headers are sufficient to compile a device consumer without the legacy core umbrella.
