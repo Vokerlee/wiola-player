@@ -10,10 +10,10 @@
 #include <app/metadata/media_replacement.hpp>
 #include <cstdlib>
 #include <iostream>
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
 #include <qt/widgets/layout/classic_layout.hpp>
 #include <stdexcept>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
 #include <wiola/media/local/resource.hpp>
 

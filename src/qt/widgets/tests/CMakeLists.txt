@@ -61,7 +61,7 @@ wiola_add_test(
 wiola_add_test(
     gui_track_inspector_test
     SOURCES metadata/track_inspector_test.cpp
-    LIBS wiola::qt_widgets wiola_playback_queue
+    LIBS wiola::qt_widgets wiola_playback_queue wiola::ffmpeg
 )
 
 target_link_libraries(
@@ -90,7 +90,7 @@ wiola_add_test(
 wiola_add_test(
     gui_main_window_test
     SOURCES shell/main_window_test.cpp
-    LIBS wiola::qt_widgets wiola_playback_preferences
+    LIBS wiola::qt_widgets wiola_playback_preferences wiola::ffmpeg
 )
 
 target_link_libraries(gui_main_window_test PRIVATE wiola::local_media)
@@ -156,7 +156,7 @@ wiola_add_test(
 wiola_add_test(
     gui_main_window_shell_test
     SOURCES main_window_shell_test.cpp
-    LIBS wiola::qt_widgets wiola_player_application
+    LIBS wiola::qt_widgets wiola_player_application wiola::ffmpeg
 )
 
 target_link_libraries(
@@ -173,7 +173,7 @@ wiola_add_test(
 wiola_add_test(
     gui_document_host_test
     SOURCES shell/document_host_test.cpp
-    LIBS wiola::qt_widgets
+    LIBS wiola::qt_widgets wiola::ffmpeg
 )
 
 target_link_libraries(gui_document_host_test PRIVATE wiola::local_media)
@@ -229,7 +229,7 @@ target_link_libraries(gui_player_sections_test PRIVATE wiola::local_media)
 wiola_add_test(
     gui_document_command_router_test
     SOURCES shell/document_command_router_test.cpp
-    LIBS wiola::qt_widgets wiola_playback_preferences Qt6::Test
+    LIBS wiola::qt_widgets wiola_playback_preferences Qt6::Test wiola::ffmpeg
 )
 
 target_link_libraries(
@@ -265,7 +265,12 @@ endforeach()
 wiola_add_test(
     gui_desktop_journey_test
     SOURCES journeys/desktop_journey_test.cpp
-    LIBS wiola::qt_paths wiola::qt_widgets wiola_player_application Qt6::Test
+    LIBS
+        wiola::qt_paths
+        wiola::qt_widgets
+        wiola_player_application
+        Qt6::Test
+        wiola::ffmpeg
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
@@ -290,7 +295,7 @@ wiola_add_test(
 wiola_add_test(
     gui_metadata_file_journey_test
     SOURCES metadata/metadata_file_journey_test.cpp
-    LIBS wiola::qt_widgets wiola_player_application Qt6::Test
+    LIBS wiola::qt_widgets wiola_player_application Qt6::Test wiola::ffmpeg
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
@@ -310,7 +315,7 @@ wiola_add_test(
 wiola_add_test(
     gui_painting_contract_test
     SOURCES controls/painting_contract_test.cpp
-    LIBS wiola::qt_widgets wiola::qt_settings Qt6::Test
+    LIBS wiola::qt_widgets wiola::qt_settings Qt6::Test wiola::ffmpeg
 )
 
 target_link_libraries(

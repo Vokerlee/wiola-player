@@ -24,10 +24,10 @@
 #include <fstream>
 #include <future>
 #include <iterator>
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <stdexcept>
 #include <support/allocation_failure.hpp>
 #include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <gtest/gtest.h>
 

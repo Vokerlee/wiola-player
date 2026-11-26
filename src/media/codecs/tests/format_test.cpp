@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/format.hpp>
-#include <media/codecs/registry.hpp>
+#include <wiola/media/codecs/format.hpp>
+#include <wiola/media/codecs/registry.hpp>
 
 #include <fakes/byte_stream.hpp>
 

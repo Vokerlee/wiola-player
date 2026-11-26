@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/registry.hpp>
+#include <wiola/media/codecs/registry.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 

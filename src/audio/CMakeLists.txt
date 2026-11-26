@@ -65,9 +65,4 @@ endif()
 # prepare or compile a device SDK. The kernel still links only the contracts it consumes.
 if(NOT WIOLA_COMPONENT_BUILD)
     add_subdirectory(miniaudio)
-
-    wiola_add_module(
-        wiola_audio
-        LIBS wiola_audio_output wiola::audio_miniaudio wiola_audio_dsp
-    )
 endif()

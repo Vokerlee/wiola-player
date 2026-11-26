@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/ffmpeg/qualification.hpp>
-#include <media/codecs/registry.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/codecs/registry.hpp>
 
 #include <gtest/gtest.h>
 

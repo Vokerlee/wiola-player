@@ -75,7 +75,6 @@ wiola_add_library(
         wiola_metadata_writes
         wiola_workspace_scans
         wiola_workspace_watcher
-        wiola_codec
         wiola::qt_paths
 )
 

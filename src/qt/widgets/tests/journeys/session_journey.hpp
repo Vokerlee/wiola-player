@@ -7,7 +7,6 @@
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <gtest/gtest.h>
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <qt/application/player_application.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
@@ -15,6 +14,7 @@
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/shell/main_window.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
 #include <wiola/qt/paths.hpp>
 
