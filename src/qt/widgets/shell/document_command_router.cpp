@@ -115,8 +115,6 @@ void DocumentCommandRouter::export_playlist(std::optional<library::PlaylistId> i
 {
     if (!library_)
         return;
-    if (!id)
-        id = library_->playlist_destination().id();
     if (!id) {
         publish({"Open a saved playlist to export"});
         return;
@@ -181,12 +179,6 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
 {
     if (!library_ || !context.document.valid() || !context.capabilities.supports(command))
         return;
-    if (command == TrackCommand::activate_destination) {
-        if (const auto* id = context.document.playlist();
-            id && library_->repository().playlist(*id))
-            static_cast<void>(library_->playlist_destination().set(*id));
-        return;
-    }
     if (command == TrackCommand::remove) {
         if (!context.document.is_queue())
             return;
@@ -231,7 +223,7 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
     const bool moving = command == TrackCommand::move;
     if (moving && !source)
         return;
-    std::optional<library::PlaylistId> destination = library_->playlist_destination().id();
+    std::optional<library::PlaylistId> destination = context.active_playlist;
     if (moving || command == TrackCommand::transfer_destination) {
         std::vector<PlaylistChoice> choices;
         for (const auto& playlist : library_->repository().playlists())
@@ -247,7 +239,7 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
         return;
     }
     if (!destination) {
-        publish({"Choose an active playlist first"});
+        publish({"No active playlist. Use Add to playlist to choose a destination."});
         return;
     }
     app::PlaylistTransfer transfer{library_->repository(), library_->playlist_destination(),

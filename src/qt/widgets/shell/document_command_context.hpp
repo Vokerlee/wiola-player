@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include <optional>
 #include <vector>
 #include <wiola/presentation/documents/document_id.hpp>
 #include <wiola/presentation/tracks/track_commands.hpp>
@@ -32,6 +33,7 @@ struct DocumentCommandContext {
     TrackCapabilities capabilities;
     std::vector<SelectedTrack> selection;
     std::vector<std::filesystem::path> displayed_paths;
+    std::optional<library::PlaylistId> active_playlist;
 };
 
 } // namespace wiola::gui

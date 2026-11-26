@@ -348,22 +348,26 @@ QByteArray encode(const SessionState& state)
             {"sizes", values                    }
         });
     }
-    return QJsonDocument{
-        QJsonObject{{"version", 1}, {"open", open},
-                    {"visible",
-                state.documents.visible ? QJsonValue{document(*state.documents.visible)}
-                                        : QJsonValue{}},
-                    {"destination",
-                state.documents.destination
-                    ? QJsonValue{QString::fromStdString(state.documents.destination->value)}
-                    : QJsonValue{}},
-                    {"browsers", browsers},
-                    {"window",
-                QJsonArray{state.window.x(), state.window.y(), state.window.width(),
-                    state.window.height()}},
-                    {"splitters", splitters}, {"layout", state.layout_identity}}
-    }
-        .toJson(QJsonDocument::Compact);
+    auto object = QJsonObject{
+        {"version",     1                         },
+        {"open",        open                      },
+        {"visible",
+         state.documents.visible ? QJsonValue{document(*state.documents.visible)}
+                                    : QJsonValue{}},
+        {"destination",
+         state.documents.destination
+                ? QJsonValue{QString::fromStdString(state.documents.destination->value)}
+                : QJsonValue{}                    },
+        {"browsers",    browsers                  },
+        {"window",
+         QJsonArray{state.window.x(), state.window.y(), state.window.width(),
+                state.window.height()}            },
+        {"splitters",   splitters                 },
+        {"layout",      state.layout_identity     }
+    };
+    if (state.documents.last_playlist)
+        object.insert("lastPlaylist", QString::fromStdString(state.documents.last_playlist->value));
+    return QJsonDocument{object}.toJson(QJsonDocument::Compact);
 }
 
 } // namespace
@@ -386,7 +390,7 @@ SessionStateError read_session_state(QByteArrayView bytes, SessionState& output)
         return SessionStateError::unsupported_version;
     if (!keys(object,
             {"version", "open", "visible", "destination", "browsers", "window", "splitters",
-                "layout"}) ||
+                "layout", "lastPlaylist"}) ||
         !object.value("open").isArray() || object.value("open").toArray().size() > 128 ||
         !object.value("browsers").isArray() || object.value("browsers").toArray().size() > 128 ||
         !object.value("splitters").isArray() || object.value("splitters").toArray().size() > 128)
@@ -411,6 +415,12 @@ SessionStateError read_session_state(QByteArrayView bytes, SessionState& output)
         if (!text(object.value("destination"), id, 128) || id.empty())
             return SessionStateError::invalid;
         next.documents.destination = library::PlaylistId{id};
+    }
+    if (!object.value("lastPlaylist").isUndefined() && !object.value("lastPlaylist").isNull()) {
+        std::string id;
+        if (!text(object.value("lastPlaylist"), id, 128) || id.empty())
+            return SessionStateError::invalid;
+        next.documents.last_playlist = library::PlaylistId{id};
     }
     for (const auto& value : object.value("browsers").toArray()) {
         if (!value.isObject())

@@ -91,6 +91,7 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
     ASSERT_TRUE(seed.commit());
     ASSERT_TRUE(library->playlist_destination().set(destination));
     wiola::testing::ScriptedPlayerDialogs dialogs;
+    dialogs.chosen_destination = destination;
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
     callbacks.execute = [&](auto command, auto context) {
@@ -110,7 +111,7 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
         document->browser().restore_browser_state(state);
         QAction* transfer = nullptr;
         for (auto* action : table.actions())
-            if (action->text() == "Add to active playlist")
+            if (action->text() == "Add to playlist →")
                 transfer = action;
         ASSERT_NE(transfer, nullptr);
         ASSERT_TRUE(transfer->isEnabled());
@@ -281,6 +282,31 @@ TEST_F(DocumentCommandRouterTest, DestroyingRouterWhileAChoiceIsPendingCannotIss
     EXPECT_TRUE(outcomes.empty());
 }
 
+TEST_F(DocumentCommandRouterTest,
+    AddToActiveUsesCapturedPlaybackContextAndNeverFallsBackToLegacyDestination)
+{
+    const auto active = library->playlists().create("Active").id;
+    const auto legacy = library->playlists().create("Legacy destination").id;
+    ASSERT_TRUE(library->playlist_destination().set(legacy));
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    gui::DocumentCommandContext context{gui::DocumentId::queue(), gui::TrackCapabilities::queue(),
+        {{library::MediaId{"one"}, engine::QueueEntryId{1}, "one.wav"}}, {}};
+    context.active_playlist = active;
+    commands.execute(gui::TrackCommand::transfer, context);
+    ASSERT_EQ(library->repository().playlist(active)->entries.size(), 1);
+    EXPECT_TRUE(library->repository().playlist(legacy)->entries.empty());
+    context.active_playlist.reset();
+    commands.execute(gui::TrackCommand::transfer, context);
+    EXPECT_EQ(library->repository().playlist(active)->entries.size(), 1);
+    EXPECT_TRUE(library->repository().playlist(legacy)->entries.empty());
+    ASSERT_FALSE(outcomes.empty());
+    EXPECT_TRUE(outcomes.back().message.contains("No active playlist"));
+    commands.export_playlist({});
+    EXPECT_EQ(dialogs.prompts, 0);
+    EXPECT_TRUE(outcomes.back().message.contains("Open a saved playlist"));
+}
+
 TEST_F(DocumentCommandRouterTest, ExportCapturesPlaylistBeforePromptChangesTheDestination)
 {
     const auto source = library->playlists().create("Source").id,
@@ -296,7 +322,7 @@ TEST_F(DocumentCommandRouterTest, ExportCapturesPlaylistBeforePromptChangesTheDe
         static_cast<void>(library->playlist_destination().set(other));
     };
     auto commands = router(dialogs);
-    commands.export_playlist({});
+    commands.export_playlist(source);
     QFile file{directory.filePath("export.m3u8")};
     ASSERT_TRUE(file.open(QIODevice::ReadOnly));
     const auto bytes = file.readAll();
