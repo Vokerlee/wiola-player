@@ -90,6 +90,35 @@ TEST(LibraryNavigation, LegacyPlaylistNameIsClearWithoutChangingIdentityOrUserRe
     EXPECT_EQ(navigation.currentItem()->text(0), "My own name");
 }
 
+TEST(LibraryNavigation, ActiveMarkerIsIndependentOfSelectionAndSurvivesRepositoryRefresh)
+{
+    wiola::library::InMemoryRepository repository;
+    const auto first = repository.create_playlist("First");
+    const auto second = repository.create_playlist("Second");
+    wiola::gui::LibraryNavigation navigation;
+    navigation.show_repository(repository);
+    ASSERT_TRUE(navigation.select_playlist(first));
+    int choices{};
+    navigation.on_playlist_chosen([&](auto) { ++choices; });
+    navigation.set_active_playlist(second);
+    navigation.set_active_playlist(second);
+    auto* entries = navigation.topLevelItem(0);
+    EXPECT_EQ(entries->child(0)->text(0), "First");
+    EXPECT_FALSE(entries->child(0)->font(0).bold());
+    EXPECT_EQ(entries->child(1)->text(0), "Second — Active");
+    EXPECT_TRUE(entries->child(1)->font(0).bold());
+    EXPECT_EQ(navigation.selected_playlist(), first);
+    ASSERT_TRUE(repository.rename_playlist(second, "Renamed"));
+    navigation.show_repository(repository);
+    EXPECT_EQ(entries->child(1)->text(0), "Renamed — Active");
+    EXPECT_EQ(navigation.selected_playlist(), first);
+    EXPECT_EQ(choices, 0);
+    navigation.set_active_playlist({});
+    EXPECT_EQ(entries->child(1)->text(0), "Renamed");
+    EXPECT_FALSE(entries->child(1)->font(0).bold());
+    EXPECT_TRUE(entries->child(1)->toolTip(0).isEmpty());
+}
+
 TEST(LibraryNavigation, RefreshesContentsWithoutReusingDisplayNamesAsIdentity)
 {
     wiola::library::InMemoryRepository repository;
@@ -120,7 +149,13 @@ TEST(LibraryNavigation, RefreshesContentsWithoutReusingDisplayNamesAsIdentity)
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+#ifdef Q_OS_WIN
+        qputenv("QT_QPA_PLATFORM", "windows");
+#else
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+#endif
+    }
     testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
 

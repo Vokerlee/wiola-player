@@ -30,6 +30,7 @@
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/app/playback/playback_presentation.hpp>
 #include <wiola/library/records.hpp>
 #include <wiola/media/local/resource.hpp>
 #include <wiola/qt/paths.hpp>
@@ -103,6 +104,10 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     });
     connect(this, &QTabWidget::currentChanged, &lifetime_, [this](int) {
         registry_.activate(currentWidget());
+        if (!restoring_)
+            if (const auto shown = registry_.active(); shown && shown->playlist())
+                last_playlist_ = *shown->playlist();
+        refresh_playback();
         save();
         if (commands_.selection_changed)
             commands_.selection_changed();
@@ -111,8 +116,6 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
         if (const auto id = registry_.identify(widget(index)))
             static_cast<void>(close(*id));
     });
-    connect(&library_, &app::LibrarySession::active_destination_changed, &lifetime_,
-        [this] { refresh_active_destination(); });
     connect(&library_, &app::LibrarySession::workspace_scan_started, &lifetime_,
         [this](const auto& id, std::uint64_t generation) {
             if (auto* view = registry_.workspace(id))
@@ -143,6 +146,11 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     });
     restore();
     restoring_ = false;
+    if (const auto shown = registry_.active(); shown && shown->playlist())
+        last_playlist_ = *shown->playlist();
+    if (last_playlist_ && !registry_.playlist(*last_playlist_))
+        last_playlist_.reset();
+    refresh_playback();
     save();
 }
 
@@ -200,6 +208,7 @@ DocumentCommandContext DocumentHost::capture(const DocumentId& id) const
         if (const auto* view = registry_.workspace(*workspace))
             context.displayed_paths = view->displayed_paths();
     }
+    context.active_playlist = active_playlist();
     return context;
 }
 
@@ -207,7 +216,10 @@ bool DocumentHost::activate(const DocumentId& id)
 {
     if (!registry_.activate(id))
         return false;
+    if (!restoring_ && id.playlist())
+        last_playlist_ = *id.playlist();
     setCurrentWidget(registry_.view(id));
+    refresh_playback();
     return true;
 }
 
@@ -222,10 +234,6 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
         return false;
     }
     registry_.add(id, *document, [document] { return document->selection(); });
-    document->set_active(library_.playlist_destination().id() == id);
-    document->on_active_requested([this, id] {
-        dispatch(TrackCommand::activate_destination, DocumentId::playlist(id));
-    });
     document->on_play_requested([this, id] {
         if (commands_.play_playlist)
             commands_.play_playlist(id, {});
@@ -307,6 +315,8 @@ bool DocumentHost::close(const DocumentId& id)
     auto* document = registry_.view(id);
     if (!document)
         return false;
+    if (id.playlist() && last_playlist_ == *id.playlist())
+        last_playlist_.reset();
     registry_.remove(id);
     removeTab(indexOf(document));
     document->deleteLater();
@@ -314,10 +324,34 @@ bool DocumentHost::close(const DocumentId& id)
     return true;
 }
 
-void DocumentHost::refresh_active_destination()
+std::optional<library::PlaylistId> DocumentHost::active_playlist() const
 {
-    for (const auto& [id, document] : registry_.playlists())
-        document->set_active(library_.playlist_destination().id() == id);
+    if (!last_playlist_ || !playback_.playlist().current())
+        return {};
+    const auto playback = app::present_playback(playback_).playback;
+    if (!playback.loaded)
+        return {};
+    const auto path = media::local_path(playback.track);
+    const auto* document = registry_.playlist(*last_playlist_);
+    if (!path || !document || !document->contains(library_.media_at(*path)))
+        return {};
+    return last_playlist_;
+}
+
+void DocumentHost::refresh_playback()
+{
+    const auto active = active_playlist();
+    for (const auto& [id, document] : registry_.playlists()) {
+        const auto* playlist = library_.repository().playlist(id);
+        if (!document || !playlist)
+            continue;
+        const bool playing = active == id;
+        document->set_active(playing);
+        const auto label = playlist_name(*playlist) + (playing ? " — Active" : "");
+        const int index = indexOf(document);
+        if (tabText(index) != label)
+            setTabText(index, label);
+    }
 }
 
 void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
@@ -358,7 +392,7 @@ void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
     for (const auto& [id, document] : registry_.workspaces())
         if (!library_.repository().workspace(id))
             static_cast<void>(close(DocumentId::workspace(id)));
-    refresh_active_destination();
+    refresh_playback();
 }
 
 void DocumentHost::restore_browser(const DocumentId& id, TrackBrowser& browser, bool complete)
@@ -375,6 +409,7 @@ void DocumentHost::restore_browser(const DocumentId& id, TrackBrowser& browser, 
 void DocumentHost::restore()
 {
     const auto state = preferences_.state();
+    last_playlist_ = state.documents.last_playlist;
     for (const auto& id : state.documents.open) {
         if (id.playlist())
             static_cast<void>(open_playlist(*id.playlist()));
@@ -412,6 +447,7 @@ void DocumentHost::save()
     preferences_.edit([&](auto& state) {
         state.documents.open = std::move(open);
         state.documents.visible = active;
+        state.documents.last_playlist = last_playlist_;
         for (auto& [id, value] : browsers)
             state.documents.browsers.insert_or_assign(id, std::move(value));
         while (state.documents.browsers.size() > 128) {

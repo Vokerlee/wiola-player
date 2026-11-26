@@ -38,12 +38,10 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
 
     heading_ = new QLabel{this};
     heading_->setObjectName("savedPlaylistHeading");
+    heading_->setTextFormat(Qt::PlainText);
     QFont font = heading_->font();
     font.setBold(true);
     heading_->setFont(font);
-
-    active_button_ = new QPushButton{"Use as active playlist", this};
-    active_button_->setObjectName("useActivePlaylist");
 
     play_button_ = new QPushButton{"Play in Now Playing", this};
     play_button_->setObjectName("playSavedPlaylist");
@@ -54,14 +52,8 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(heading_);
-    layout->addWidget(active_button_);
     layout->addWidget(play_button_);
     layout->addWidget(browser_);
-
-    connect(active_button_, &QPushButton::clicked, [this] {
-        if (active_observer_)
-            active_observer_();
-    });
 
     connect(play_button_, &QPushButton::clicked, [this] {
         if (playback_observer_)
@@ -134,13 +126,15 @@ std::vector<SelectedTrack> SavedPlaylistDocument::selection() const
 
 void SavedPlaylistDocument::set_active(bool active)
 {
-    active_destination_ = active;
+    if (active_ == active)
+        return;
+    active_ = active;
     update_heading();
 }
 
 void SavedPlaylistDocument::update_heading()
 {
-    heading_->setText(active_destination_ ? name_ + " — Active destination" : name_);
+    heading_->setText(active_ ? name_ + " — Active playlist" : name_);
 }
 
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
@@ -170,11 +164,6 @@ void SavedPlaylistDocument::on_entry_chosen(std::function<void(library::Playlist
 void SavedPlaylistDocument::on_play_requested(std::function<void()> observer)
 {
     playback_observer_ = std::move(observer);
-}
-
-void SavedPlaylistDocument::on_active_requested(std::function<void()> observer)
-{
-    active_observer_ = std::move(observer);
 }
 
 void SavedPlaylistDocument::on_transfer_active_requested(std::function<void()> observer)

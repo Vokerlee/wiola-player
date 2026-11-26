@@ -29,7 +29,6 @@ enum class TrackCommand : unsigned {
     transfer = 4,
     move = 8,
     apply_order = 16,
-    activate_destination = 32,
     append = 64,
     transfer_destination = 128,
 };
@@ -53,7 +52,7 @@ public:
     {
         return {TrackCommand::play, TrackCommand::remove, TrackCommand::transfer,
             TrackCommand::transfer_destination, TrackCommand::move, TrackCommand::apply_order,
-            TrackCommand::activate_destination, TrackCommand::append};
+            TrackCommand::append};
     }
 
     static constexpr TrackCapabilities queue() noexcept
@@ -65,7 +64,7 @@ public:
     static constexpr TrackCapabilities playlist() noexcept
     {
         return {TrackCommand::play, TrackCommand::transfer, TrackCommand::transfer_destination,
-            TrackCommand::move, TrackCommand::apply_order, TrackCommand::activate_destination};
+            TrackCommand::move, TrackCommand::apply_order};
     }
 
     static constexpr TrackCapabilities workspace() noexcept

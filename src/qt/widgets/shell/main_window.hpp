@@ -196,7 +196,6 @@ private:
     app::LibrarySession& library_session_;
     const library::LibraryRepository& library_;
     library::LibraryChanges::Subscription library_changes_;
-    const app::PlaylistDestination& playlist_destination_;
 
     std::unique_ptr<PlayerDialogs> dialogs_;
     std::unique_ptr<WindowPanels> panels_;

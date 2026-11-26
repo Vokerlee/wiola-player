@@ -36,6 +36,11 @@ public:
 
     [[nodiscard]] const TrackRow* row(const library::PlaylistEntryId& id) const;
 
+    [[nodiscard]] bool contains(const library::MediaId& media) const
+    {
+        return media_.contains(media);
+    }
+
 private:
     std::vector<TrackRow> rows_;
     std::map<library::PlaylistEntryId, std::size_t> entries_;

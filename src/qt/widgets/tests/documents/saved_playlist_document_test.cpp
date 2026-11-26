@@ -66,6 +66,8 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
     ASSERT_EQ(table->model()->rowCount(), 2);
 
     EXPECT_EQ(heading->text(), "Favorites");
+    EXPECT_TRUE(document.contains(media.id));
+    EXPECT_FALSE(document.contains(wiola::library::MediaId{"unknown"}));
     EXPECT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
         "Override");
     EXPECT_EQ(table->model()->data(table->model()->index(0, 2), Qt::DisplayRole).toString(),
@@ -97,15 +99,11 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
 
     EXPECT_EQ(play_requests, 1);
 
-    int active_requests{0};
-    document.on_active_requested([&active_requests] { ++active_requests; });
-    QPushButton* use_active = document.findChild<QPushButton*>("useActivePlaylist");
-    ASSERT_NE(use_active, nullptr);
-    use_active->click();
+    EXPECT_EQ(document.findChild<QPushButton*>("useActivePlaylist"), nullptr);
     document.set_active(true);
-
-    EXPECT_EQ(active_requests, 1);
-    EXPECT_EQ(heading->text(), "Favorites — Active destination");
+    EXPECT_EQ(heading->text(), "Favorites — Active playlist");
+    document.set_active(false);
+    EXPECT_EQ(heading->text(), "Favorites");
 
     int moves{0};
     document.on_transfer_move_requested([&moves] { ++moves; });

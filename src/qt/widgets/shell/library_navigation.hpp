@@ -45,10 +45,13 @@ public:
     void show_workspaces(const std::vector<WorkspaceNavigationEntry>& workspaces);
     [[nodiscard]] std::optional<library::PlaylistId> selected_playlist() const;
     bool select_playlist(const library::PlaylistId& id);
+    void set_active_playlist(std::optional<library::PlaylistId> id);
     void on_playlist_chosen(std::function<void(library::PlaylistId)> observer);
     void on_workspace_chosen(std::function<void(library::WorkspaceId)> observer);
 
 private:
+    void show_activity();
+    std::optional<library::PlaylistId> active_;
     QTreeWidgetItem* playlists_{nullptr};
     QTreeWidgetItem* workspaces_{nullptr};
     std::function<void(library::PlaylistId)> playlist_observer_;

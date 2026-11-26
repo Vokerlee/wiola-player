@@ -252,15 +252,12 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
         wiola::gui::SavedPlaylistDocument* editor =
             static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(2));
         QPushButton* use_active = editor->findChild<QPushButton*>("useActivePlaylist");
-        ASSERT_NE(use_active, nullptr);
-        use_active->click();
-        EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(),
-            "Road — Active destination");
+        EXPECT_EQ(use_active, nullptr);
+        EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(), "Road");
 
         documents->setCurrentIndex(0);
         EXPECT_EQ(window.windowTitle(), "Wiola Player");
-        EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(),
-            "Road — Active destination");
+        EXPECT_EQ(editor->findChild<QLabel*>("savedPlaylistHeading")->text(), "Road");
         EXPECT_FALSE(play_button->isEnabled());
     }
 
@@ -281,7 +278,7 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
     EXPECT_EQ(static_cast<wiola::gui::SavedPlaylistDocument*>(documents->widget(2))
                   ->findChild<QLabel*>("savedPlaylistHeading")
                   ->text(),
-        "Road — Active destination");
+        "Road");
     EXPECT_EQ(documents->currentIndex(), 0);
     EXPECT_FALSE(play_button->isEnabled());
 }
@@ -1296,6 +1293,132 @@ TEST_F(MainWindowShell, PlaybackControlsAndTimelineRemainCenteredWithIndependent
             }
         }
     }
+}
+
+TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMembershipAutomatically)
+{
+    using namespace wiola;
+    QTemporaryDir tracks;
+    ASSERT_TRUE(tracks.isValid());
+    const auto directory = platform::qt::QtPathAdapter::from_qt(tracks.path());
+    const auto first_path =
+        wiola::testing::write_wav("First.wav", wiola::testing::source_rate, directory);
+    const auto second_path =
+        wiola::testing::write_wav("Second.wav", wiola::testing::source_rate, directory);
+    app::PlaybackService playback{wiola::testing::passive_output, codec::ffmpeg::make_provider()};
+    app::LibrarySession library{codec::ffmpeg::make_provider()};
+    app::PlaybackPreferences preferences{playback};
+    const auto first_media = library.media_at(first_path),
+               second_media = library.media_at(second_path);
+    library::RepositoryTransaction seed{library.repository(), library.persistence()};
+    library::TrackRecord first_track, second_track;
+    first_track.id = first_media;
+    first_track.locations = {first_path};
+    second_track.id = second_media;
+    second_track.locations = {second_path};
+    ASSERT_TRUE(library.repository().put_track(first_track));
+    ASSERT_TRUE(library.repository().put_track(second_track));
+    const auto first = library.repository().create_playlist("First list");
+    const auto second = library.repository().create_playlist("Second list");
+    ASSERT_TRUE(library.repository().append_track(first, first_media));
+    ASSERT_TRUE(library.repository().append_track(first, first_media));
+    const auto second_entry = library.repository().append_track(second, second_media);
+    ASSERT_TRUE(second_entry);
+    ASSERT_TRUE(seed.commit());
+    gui::MainWindow window{playback, library, preferences};
+    auto* host = window.findChild<gui::DocumentHost*>();
+    auto* navigation = window.findChild<gui::LibraryNavigation*>();
+    ASSERT_NE(host, nullptr);
+    ASSERT_NE(navigation, nullptr);
+    ASSERT_TRUE(navigation->select_playlist(first));
+    EXPECT_FALSE(host->active_playlist());
+    EXPECT_EQ(window.findChild<QPushButton*>("useActivePlaylist"), nullptr);
+    window.open({first_path, second_path});
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return !playback.reading(); }));
+    playback.pump();
+    window.refresh();
+    auto* first_view = host->registry().playlist(first);
+    ASSERT_NE(first_view, nullptr);
+    const auto heading = [](auto* view) {
+        return view->template findChild<QLabel*>("savedPlaylistHeading")->text();
+    };
+    EXPECT_EQ(host->active_playlist(), first);
+    EXPECT_EQ(heading(first_view), "First list — Active playlist");
+    EXPECT_EQ(host->tabText(host->indexOf(first_view)), "First list — Active");
+    EXPECT_EQ(navigation->currentItem()->text(0), "First list — Active");
+    EXPECT_TRUE(navigation->currentItem()->font(0).bold());
+    first_view->findChild<QLineEdit*>("searchTitle")->setText("no matching tracks");
+    EXPECT_EQ(host->active_playlist(), first);
+    ASSERT_TRUE(host->activate(gui::DocumentId::queue()));
+    EXPECT_EQ(host->active_playlist(), first);
+    EXPECT_EQ(host->capture(gui::DocumentId::queue()).active_playlist, first);
+    host->setCurrentIndex(1);
+    EXPECT_EQ(host->active_playlist(), first);
+    EXPECT_EQ(preferences.ui_session().state().documents.last_playlist, first);
+    ASSERT_TRUE(navigation->select_playlist(second));
+    auto* second_view = host->registry().playlist(second);
+    ASSERT_NE(second_view, nullptr);
+    EXPECT_FALSE(host->active_playlist());
+    EXPECT_EQ(heading(first_view), "First list");
+    EXPECT_EQ(heading(second_view), "Second list");
+    EXPECT_FALSE(navigation->currentItem()->font(0).bold());
+    {
+        library::RepositoryTransaction change{library.repository(), library.persistence()};
+        ASSERT_TRUE(library.repository().append_track(second, first_media));
+        ASSERT_TRUE(change.commit());
+    }
+    EXPECT_EQ(host->active_playlist(), second);
+    EXPECT_EQ(heading(second_view), "Second list — Active playlist");
+    EXPECT_EQ(heading(first_view), "First list");
+    ASSERT_TRUE(playback.play_track(1));
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return !playback.reading(); }));
+    playback.pump();
+    window.refresh();
+    EXPECT_EQ(host->active_playlist(), second);
+    {
+        library::RepositoryTransaction change{library.repository(), library.persistence()};
+        ASSERT_TRUE(library.repository().remove_entry(second, *second_entry));
+        ASSERT_TRUE(change.commit());
+    }
+    EXPECT_FALSE(host->active_playlist());
+    EXPECT_EQ(heading(second_view), "Second list");
+    {
+        library::RepositoryTransaction change{library.repository(), library.persistence()};
+        ASSERT_TRUE(library.repository().append_track(second, second_media));
+        ASSERT_TRUE(library.repository().rename_playlist(second, "Renamed"));
+        ASSERT_TRUE(change.commit());
+    }
+    EXPECT_EQ(host->active_playlist(), second);
+    EXPECT_EQ(heading(second_view), "Renamed — Active playlist");
+    window.resize(1100, 720);
+    window.show();
+    QApplication::processEvents();
+    const auto previews = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+    if (!previews.isEmpty()) {
+        QDir{}.mkpath(previews);
+        EXPECT_TRUE(window.grab().save(QDir{previews}.filePath("automatic-active-playlist.png")));
+    }
+    playback.clear();
+    window.refresh();
+    EXPECT_FALSE(host->active_playlist());
+    EXPECT_EQ(heading(second_view), "Renamed");
+    window.open({second_path});
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return !playback.reading(); }));
+    playback.pump();
+    window.refresh();
+    EXPECT_EQ(host->active_playlist(), second);
+    {
+        library::RepositoryTransaction change{library.repository(), library.persistence()};
+        ASSERT_TRUE(library.repository().delete_playlist(second));
+        ASSERT_TRUE(change.commit());
+    }
+    EXPECT_FALSE(host->active_playlist());
+    EXPECT_EQ(host->registry().playlist(second), nullptr);
+    playback.clear();
+    window.refresh();
+    EXPECT_FALSE(host->active_playlist());
+    EXPECT_TRUE(std::filesystem::exists(first_path));
+    EXPECT_TRUE(std::filesystem::exists(second_path));
 }
 
 TEST_F(MainWindowShell, FileDialogDescriptionsAreReadableAndInvalidChoicesNeverOpenAPicker)

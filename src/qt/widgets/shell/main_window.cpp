@@ -151,7 +151,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , equalizer_{preferences.equalizer()}
     , library_session_{library_session}
     , library_{library_session.repository()}
-    , playlist_destination_{library_session.playlist_destination()}
 {
     for (const auto& descriptor : action_descriptors())
         addAction(actions_.action(descriptor.id));
@@ -507,8 +506,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(volume_view_, &VolumeView::boost_requested, this, &MainWindow::set_boosted);
     connect(transport_, &TransportView::seek_requested, this, &MainWindow::seek_to);
     connect(documents_, &QTabWidget::currentChanged, this, &MainWindow::show_document_context);
-    connect(&library_session_, &app::LibrarySession::active_destination_changed, this,
-        &MainWindow::show_document_context);
     show_document_context();
 
     if (const std::size_t gone{preferences.missing_tracks()}; gone != 0)
@@ -770,6 +767,7 @@ void MainWindow::show_list_buttons()
 
 void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
 {
+    show_document_context();
     const engine::PlaybackSnapshot& playback = presentation.playback;
     const engine::OpenResult result{playback.open_result};
 
@@ -873,7 +871,10 @@ void MainWindow::seek_to(double fraction)
 void MainWindow::show_document_context()
 {
     QString destination = "None selected";
-    if (const auto id = playlist_destination_.id())
+    document_host_->refresh_playback();
+    const auto active = document_host_->active_playlist();
+    navigation_->set_active_playlist(active);
+    if (const auto id = active)
         if (const auto record = library_.playlist(*id))
             destination = QString::fromStdString(record->name);
     status_->show_context(documents_->tabText(documents_->currentIndex()), destination);
@@ -887,6 +888,7 @@ void MainWindow::show_status(const QString& message)
 void MainWindow::refresh()
 {
     transport_->present(app::present_playback(playback_));
+    show_document_context();
     if (now_playing_->show_playlist(playback_.playlist()) && inspector_binding_)
         inspector_binding_->refresh();
 }
