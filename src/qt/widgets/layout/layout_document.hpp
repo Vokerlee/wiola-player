@@ -49,6 +49,8 @@ struct LayoutNode {
     std::optional<int> columns;
     std::vector<LayoutNode> children;
     std::optional<ViewReference> view;
+
+    bool operator==(const LayoutNode&) const = default;
 };
 
 struct LayoutDocument {

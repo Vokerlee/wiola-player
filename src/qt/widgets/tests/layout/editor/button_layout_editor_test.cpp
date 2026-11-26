@@ -23,14 +23,18 @@
 
 #include <QApplication>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QHeaderView>
 #include <QLineEdit>
 #include <QMimeData>
 #include <QPointer>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSplitter>
 #include <QTest>
+#include <qt/widgets/appearance/theme.hpp>
 
 #include <gtest/gtest.h>
 
@@ -86,6 +90,134 @@ TEST(ButtonLayoutEditor, TextEditingShortcutsDoNotDeleteComponentsAndSmallWindow
     EXPECT_TRUE(cancel->isVisibleTo(&editor));
     cancel->setFocus();
     QTest::keyClick(cancel, Qt::Key_Space);
+    EXPECT_FALSE(editor.isVisible());
+}
+
+TEST(ButtonLayoutEditor, ReadableResizablePanelsAndPreviewHaveIndependentScrollAreas)
+{
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
+    editor.resize(editor.fontMetrics().averageCharWidth() * 200,
+        editor.fontMetrics().height() * 50);
+    editor.show();
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    auto* palette = editor.findChild<QListWidget*>("layoutComponentPalette");
+    auto* columns = editor.findChild<QSplitter*>("layoutEditorColumns");
+    auto* rows = editor.findChild<QSplitter*>("layoutEditorRows");
+    auto* scroll = editor.findChild<QScrollArea*>("layoutEditorScroll");
+    auto* preview = editor.findChild<QScrollArea*>("layoutPreviewScroll");
+    ASSERT_NE(tree, nullptr);
+    ASSERT_NE(palette, nullptr);
+    ASSERT_NE(columns, nullptr);
+    ASSERT_NE(rows, nullptr);
+    ASSERT_NE(scroll, nullptr);
+    ASSERT_NE(preview, nullptr);
+    ASSERT_EQ(columns->count(), 3);
+    ASSERT_EQ(rows->count(), 2);
+    const auto visible_in = [](const QWidget& viewport, const QWidget& widget) {
+        return viewport.rect().contains(QRect{widget.mapTo(&viewport, QPoint{}), widget.size()});
+    };
+    for (const auto theme : {wiola::gui::Theme::light, wiola::gui::Theme::dark}) {
+        wiola::gui::apply_theme(theme);
+        QApplication::processEvents();
+        EXPECT_GE(tree->viewport()->width(), editor.fontMetrics().averageCharWidth() * 36);
+        EXPECT_TRUE(visible_in(*scroll->viewport(), *tree));
+        EXPECT_TRUE(visible_in(*scroll->viewport(), *palette));
+        for (const auto* name : {"addLayoutAction", "removeLayoutComponent", "addLayoutContainer",
+                 "undoLayoutEdit", "redoLayoutEdit"}) {
+            auto* command = editor.findChild<QPushButton*>(name);
+            ASSERT_NE(command, nullptr);
+            EXPECT_TRUE(visible_in(*scroll->viewport(), *command)) << name;
+        }
+        EXPECT_EQ(scroll->horizontalScrollBar()->maximum(), 0);
+        EXPECT_TRUE(visible_in(*scroll->viewport(), *preview));
+        EXPECT_GT(tree->columnWidth(0), tree->fontMetrics().horizontalAdvance("transportControls"));
+        const auto directory = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+        if (!directory.isEmpty()) {
+            QDir{}.mkpath(directory);
+            EXPECT_TRUE(editor.grab().save(QDir{directory}.filePath(theme == wiola::gui::Theme::dark
+                    ? "layout-editor-dark.png"
+                    : "layout-editor-light.png")));
+        }
+    }
+    tree->setCurrentItem(item(*tree, "openTracks"));
+    const auto panel_sizes = columns->sizes();
+    auto* width = editor.findChild<QSpinBox*>("layoutComponentWidth");
+    ASSERT_NE(width, nullptr);
+    width->setValue(width->maximum());
+    emit width->editingFinished();
+    QApplication::processEvents();
+    EXPECT_GT(preview->horizontalScrollBar()->maximum(), 0);
+    EXPECT_EQ(scroll->horizontalScrollBar()->maximum(), 0);
+    EXPECT_EQ(columns->sizes(), panel_sizes);
+    editor.findChild<QPushButton*>("undoLayoutEdit")->click();
+    const int initial = tree->width();
+    const auto sizes = columns->sizes();
+    columns->setSizes({sizes[0], sizes[1] + sizes[2] / 2, sizes[2] / 2});
+    QApplication::processEvents();
+    EXPECT_GT(tree->width(), initial);
+    editor.resize(640, 480);
+    QApplication::processEvents();
+    EXPECT_GE(tree->viewport()->width(), editor.fontMetrics().averageCharWidth() * 36);
+    for (const auto* name : {"applyLayoutEdit", "cancelLayoutEdit"}) {
+        auto* command = editor.findChild<QPushButton*>(name);
+        ASSERT_NE(command, nullptr);
+        EXPECT_TRUE(visible_in(editor, *command));
+    }
+}
+
+TEST(ButtonLayoutEditor, InvalidDraftBlocksApplyAndReturnCommitsPropertiesWithoutClosing)
+{
+    using namespace wiola::gui;
+    LayoutDocument initial{
+        .root = {.id = "split",
+                 .kind = LayoutComponentKind::splitter,
+                 .children = {{.id = "left", .kind = LayoutComponentKind::status},
+                {.id = "right", .kind = LayoutComponentKind::status}}},
+        .node_count = 3
+    };
+    LayoutEditorDialog editor{initial};
+    int attempts{};
+    LayoutDocument accepted;
+    editor.on_apply([&](const LayoutDocument& document) {
+        accepted = document;
+        return ++attempts == 2;
+    });
+    editor.show();
+    editor.activateWindow();
+    auto* weights = editor.findChild<QLineEdit*>("layoutSplitterSizes");
+    auto* title = editor.findChild<QLineEdit*>("layoutComponentTitle");
+    auto* apply = editor.findChild<QPushButton*>("applyLayoutEdit");
+    ASSERT_NE(weights, nullptr);
+    ASSERT_NE(title, nullptr);
+    ASSERT_NE(apply, nullptr);
+    weights->setFocus();
+    QTest::keyClicks(weights, "invalid");
+    QTest::keyClick(weights, Qt::Key_Return);
+    EXPECT_TRUE(editor.isVisible());
+    EXPECT_EQ(attempts, 0);
+    apply->click();
+    EXPECT_TRUE(editor.isVisible());
+    EXPECT_EQ(attempts, 0);
+    EXPECT_EQ(weights->text(), "invalid");
+    weights->setText("1, 2");
+    QTest::keyClick(weights, Qt::Key_Return);
+    EXPECT_TRUE(editor.isVisible());
+    EXPECT_EQ(attempts, 0);
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{1, 2}));
+    editor.findChild<QPushButton*>("undoLayoutEdit")->click();
+    EXPECT_TRUE(editor.document().root.sizes.empty());
+    editor.findChild<QPushButton*>("redoLayoutEdit")->click();
+    EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{1, 2}));
+    title->setText("Final draft");
+    apply->click();
+    EXPECT_EQ(attempts, 1);
+    EXPECT_TRUE(editor.isVisible());
+    EXPECT_EQ(accepted.root.title, "Final draft");
+    EXPECT_EQ(editor.findChild<QLabel*>("layoutEditorStatus")->text(),
+        "Could not apply this layout");
+    apply->click();
+    EXPECT_EQ(attempts, 2);
+    EXPECT_EQ(editor.result(), QDialog::Accepted);
     EXPECT_FALSE(editor.isVisible());
 }
 
@@ -328,13 +460,16 @@ TEST(LayoutEditorComponents, RejectsOversizedAndUnknownDragPayloadsWithoutIssuin
 
 int main(int argc, char** argv)
 {
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
 #ifdef WIOLA_TEST_TSAN
-    qputenv("QT_QPA_PLATFORM", "minimal");
+        qputenv("QT_QPA_PLATFORM", "minimal");
+#elif defined(Q_OS_WIN)
+        qputenv("QT_QPA_PLATFORM", "windows");
 #else
-    qputenv("QT_QPA_PLATFORM", "offscreen");
+        qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
+    }
     testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
-
     return RUN_ALL_TESTS();
 }
