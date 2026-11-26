@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Saved-playlist and workspace navigation using repository identities.
+ * @brief Play queue, saved-playlist and workspace navigation.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -70,6 +70,16 @@ LibraryNavigation::LibraryNavigation(QWidget* parent)
     setMinimumWidth(160);
     setSelectionMode(QAbstractItemView::SingleSelection);
 
+    queue_ = new QTreeWidgetItem{this, {"Play queue"}};
+    queue_->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+    queue_->setToolTip(0, "Tracks queued for playback");
+    const auto open_queue = [this](QTreeWidgetItem* item, int) {
+        if (item == queue_ && queue_observer_)
+            queue_observer_();
+    };
+    connect(this, &QTreeWidget::itemClicked, this, open_queue);
+    connect(this, &QTreeWidget::itemActivated, this, open_queue);
+
     playlists_ = group(*this, "Playlists");
     workspaces_ = group(*this, "Folders");
 
@@ -94,6 +104,11 @@ LibraryNavigation::LibraryNavigation(QWidget* parent)
                 break;
             }
         });
+}
+
+void LibraryNavigation::on_queue_chosen(std::function<void()> observer)
+{
+    queue_observer_ = std::move(observer);
 }
 
 void LibraryNavigation::on_playlist_chosen(std::function<void(library::PlaylistId)> observer)

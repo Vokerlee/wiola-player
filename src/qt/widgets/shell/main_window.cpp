@@ -251,6 +251,9 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     panels_ = std::make_unique<WindowPanels>(*this, *library_pane_, *inspector_,
         std::vector<QWidget*>{navigation_, playlist_manager_});
 
+    navigation_->on_queue_chosen([this] {
+        static_cast<void>(document_host_->activate(DocumentId::queue()));
+    });
     navigation_->on_playlist_chosen([this](const auto& id) {
         static_cast<void>(document_host_->open_playlist(id));
     });
