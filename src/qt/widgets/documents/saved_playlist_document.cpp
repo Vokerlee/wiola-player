@@ -19,6 +19,7 @@
  */
 
 #include "saved_playlist_document.hpp"
+#include <qt/widgets/documents/playlist_name.hpp>
 
 #include <qt/widgets/tracks/track_browser.hpp>
 
@@ -103,7 +104,7 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     if (playlist == nullptr)
         return false;
 
-    name_ = QString::fromStdString(playlist->name);
+    name_ = playlist_name(*playlist);
     update_heading();
 
     if (!source_.reconcile(repository, id))

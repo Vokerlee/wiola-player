@@ -25,9 +25,13 @@
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QToolButton>
 #include <QWidget>
 
 #include <functional>
+
+class QComboBox;
+class QScrollArea;
 
 namespace wiola::gui {
 
@@ -48,11 +52,17 @@ public:
 
     void on_edit(Observer observer);
     void show_filters(std::vector<library::TagFilter> filters);
+    void suggest_keys(const std::vector<std::string>& keys);
 
 private:
     void add(library::TagFilterMode mode);
     void rebuild_chips();
 
+    QToolButton* disclosure_{nullptr};
+    QWidget* editor_{nullptr};
+    QComboBox* keys_{nullptr};
+    QScrollArea* chip_scroll_{nullptr};
+    std::vector<std::string> available_keys_;
     QLineEdit* key_{nullptr};
     QLineEdit* value_{nullptr};
     QPushButton* include_{nullptr};

@@ -1,4 +1,5 @@
 #include <QCoreApplication>
+#include <fakes/provider.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <QTemporaryDir>
@@ -137,6 +138,31 @@ TEST_F(LibraryLifetime, CapturedReadAfterRecordRemovalCannotResurrectItsIdentity
 }
 
 } // namespace
+
+TEST(LibraryMetadata, UnavailableBackgroundTagsDoNotPublishGlobalErrorMessages)
+{
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    auto provider = wiola::testing::FakeMediaProvider::metadata_only(
+        [](const auto&, const auto&) -> wiola::media::Result<wiola::media::Metadata> {
+            return wiola::media::unexpected{
+                wiola::media::Error{.category = wiola::media::ErrorCategory::unsupported,
+                                    .detail = "no tags"}
+            };
+        }
+    );
+    wiola::app::LibrarySession session{
+        wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")), provider};
+    QStringList notices;
+    QObject::connect(&session, &wiola::app::LibrarySession::status_changed, &session,
+        [&](const QString& notice) { notices.push_back(notice); });
+    const wiola::library::MediaId media{"no-tags"};
+    session.request_metadata(media, "no-tags.wav");
+    ASSERT_TRUE(QTest::qWaitFor([&] { return session.artwork(media).known(); }));
+    EXPECT_TRUE(notices.empty());
+    EXPECT_EQ(session.repository().track(media), nullptr);
+    EXPECT_TRUE(session.shutdown().succeeded());
+}
 
 int main(int argc, char** argv)
 {

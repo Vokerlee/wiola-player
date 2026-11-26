@@ -34,6 +34,7 @@ class TrackBrowser;
 struct DocumentCommands {
     std::function<void()> open_folder;
     std::function<void()> selection_changed;
+    std::function<void()> edit_track;
     std::function<void(TrackCommand, DocumentCommandContext)> execute;
     std::function<void(library::PlaylistId, std::optional<library::PlaylistEntryId>)> play_playlist;
     std::function<void(library::WorkspaceId, bool)> rescan;

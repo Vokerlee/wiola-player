@@ -19,6 +19,7 @@
  */
 
 #include "main_window.hpp"
+#include "window_panels.hpp"
 
 #include "document_host.hpp"
 #include "library_navigation.hpp"
@@ -190,6 +191,13 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         if (inspector_binding_)
             inspector_binding_->refresh();
     };
+    document_commands.edit_track = [this] {
+        if (inspector_binding_) {
+            inspector_binding_->refresh();
+            panels_->show_inspector();
+            inspector_->edit_details();
+        }
+    };
     document_commands.open_folder = [this] {
         commands_->choose_folder();
     };
@@ -244,6 +252,9 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     document_area_->setStretchFactor(1, 1);
     document_area_->setStretchFactor(2, 0);
 
+    panels_ = std::make_unique<WindowPanels>(*this, *library_pane_, *inspector_,
+        std::vector<QWidget*>{navigation_, playlist_manager_});
+
     navigation_->on_playlist_chosen([this](const auto& id) {
         static_cast<void>(document_host_->open_playlist(id));
     });
@@ -276,11 +287,18 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         layout_for(legacy_layout),
         parse_layout_choice(legacy_layout).value_or(LayoutChoice::classic)
     );
+    if (layout_session_->choice() != LayoutChoice::custom) {
+        const auto choice = layout_session_->choice();
+        layout_session_->update_preset(layout_for(layout_choice_name(choice)));
+    }
     if (!install_layout(layout_session_->document(), layout_session_->choice(), false)) {
         layout_session_->use_fallback(classic_layout_document(), LayoutChoice::classic);
         static_cast<void>(install_layout(layout_session_->document(), LayoutChoice::classic,
             false));
     }
+    const auto panel_state = platform::qt::QtSettingsAdapter{settings_}.read_panel_state();
+    if (!panel_state.isEmpty())
+        restoreState(panel_state, 1);
     const auto geometry = ui_preferences_.state().window;
     if (geometry.isValid()) {
         auto* screen = QGuiApplication::screenAt(geometry.center());
@@ -353,6 +371,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
                     library->retry_save();
             }});
     auto* view = menus.view;
+    panels_->add_menu_actions(*view);
     QAction* classic = view->addAction("Classic");
     QAction* library = view->addAction("Library Focus");
     QAction* queue = view->addAction("Queue Focus");
@@ -527,6 +546,7 @@ void MainWindow::save_window_state()
 {
     if (!layout_session_)
         return;
+    platform::qt::QtSettingsAdapter{settings_}.write_panel_state(saveState(1));
     const auto geometry = this->geometry();
     std::map<std::string, std::vector<int>> splitters;
     for (auto* splitter : findChildren<QSplitter*>())
@@ -634,9 +654,12 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
         return false;
     };
 
+    panels_->reconcile(*root);
+    if (choice != LayoutChoice::custom)
+        panels_->focus_queue(choice == LayoutChoice::queue_focus);
     for (const auto& [id, registration] : live.entries()) {
         QWidget* widget = registration.widget.data();
-        if (!widget)
+        if (!widget || panels_->contains(*widget))
             continue;
         bool registered_ancestor = false;
         for (QWidget* ancestor = widget->parentWidget(); ancestor && ancestor != this;

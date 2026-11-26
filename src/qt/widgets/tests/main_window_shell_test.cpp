@@ -45,6 +45,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QDockWidget>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -56,14 +57,20 @@
 #include <QMenuBar>
 #include <QPushButton>
 #include <QSettings>
+#include <QSlider>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <qt/application/player_application.hpp>
+#include <qt/widgets/appearance/theme.hpp>
+#include <qt/widgets/layout/layout_tree.hpp>
+#include <qt/widgets/shell/player_dialogs.hpp>
 #include <qt/widgets/tests/journeys/session_journey.hpp>
+#include <qt/widgets/tests/support/gui_interaction.hpp>
 
 #include <gtest/gtest.h>
 
@@ -147,8 +154,8 @@ TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
     EXPECT_NE(action(*file, "Add"), nullptr);
     EXPECT_NE(action(*file, "Clear"), nullptr);
     EXPECT_NE(action(*file, "Open folder..."), nullptr);
-    EXPECT_NE(action(*file, "Import M3U8..."), nullptr);
-    EXPECT_NE(action(*file, "Export M3U8..."), nullptr);
+    EXPECT_NE(action(*file, "Import playlist..."), nullptr);
+    EXPECT_NE(action(*file, "Save playlist as..."), nullptr);
     EXPECT_NE(action(*tools, "EQ"), nullptr);
 
     QAction* play = action(*playback, "Play");
@@ -291,15 +298,14 @@ TEST_F(MainWindowShell, GroupsControlsAndExposesTheirPurposeAndKeyboardFocus)
     QPushButton* equalizer = button(window, "EQ");
 
     ASSERT_NE(playback, nullptr);
-    ASSERT_NE(queue, nullptr);
+    EXPECT_EQ(queue, nullptr);
     ASSERT_NE(play, nullptr);
     ASSERT_NE(boost, nullptr);
     ASSERT_NE(equalizer, nullptr);
 
-    EXPECT_EQ(playback->title(), "Now playing");
-    EXPECT_EQ(queue->title(), "Queue commands");
-    EXPECT_GE(window.minimumWidth(), 980);
-    EXPECT_GE(window.minimumHeight(), 640);
+    EXPECT_TRUE(playback->title().isEmpty());
+    EXPECT_GE(window.minimumWidth(), 820);
+    EXPECT_GE(window.minimumHeight(), 520);
     EXPECT_EQ(play->focusPolicy(), Qt::StrongFocus);
     EXPECT_EQ(boost->focusPolicy(), Qt::StrongFocus);
     EXPECT_EQ(boost->accessibleName(), "Boost volume above 100%");
@@ -397,10 +403,21 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     QWidget* active = documents->currentWidget();
 
     auto layout = wiola::gui::classic_layout_document();
-    auto found = std::ranges::find_if(layout.root.children,
-        [](const LayoutNode& node) { return node.id == "documentArea"; });
-    ASSERT_NE(found, layout.root.children.end());
-    ASSERT_EQ(found->children.size(), 3);
+    auto found = layout.root.children.begin() + 1;
+    found->id = "documentArea";
+    found->kind = LayoutComponentKind::splitter;
+    found->view = wiola::gui::component_view("documentArea");
+    found->children = {
+        {.id = "customLibrary",
+         .kind = LayoutComponentKind::inspector,
+         .view = wiola::gui::component_view("libraryNavigation")},
+        {.id = "customDocuments",
+         .kind = LayoutComponentKind::document_host,
+         .view = wiola::gui::component_view("documentTabs")     },
+        {.id = "customInspector",
+         .kind = LayoutComponentKind::inspector,
+         .view = wiola::gui::component_view("trackInspector")   }
+    };
     LayoutNode grid;
     grid.id = "documentGrid";
     grid.kind = LayoutComponentKind::grid;
@@ -414,7 +431,7 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     found->orientation = Qt::Vertical;
     found->sizes = {2, 1};
     found->children = {grid, tabs};
-    layout.node_count += 2;
+    layout.node_count = wiola::gui::layout_node_count(layout.root);
 
     ASSERT_TRUE(window.switch_layout(layout));
     auto* built_grid = window.findChild<QWidget*>("documentGrid");
@@ -433,9 +450,10 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     ASSERT_TRUE(window.switch_layout(wiola::gui::classic_layout_document()));
     EXPECT_EQ(window.findChild<QTabWidget*>("documentTabs"), documents);
     EXPECT_EQ(documents->currentWidget(), active);
-    EXPECT_EQ(area->orientation(), Qt::Horizontal);
-    EXPECT_EQ(area->widget(1), documents);
-    EXPECT_EQ(area->widget(2), inspector);
+    EXPECT_TRUE(area->isHidden());
+    EXPECT_EQ(window.findChild<QDockWidget*>("inspectorDock")->widget(), inspector);
+    EXPECT_TRUE(window.findChild<QDockWidget*>("libraryDock")
+            ->isAncestorOf(window.findChild<QWidget*>("libraryNavigation")));
     EXPECT_EQ(window.findChild<QWidget*>("documentGrid"), nullptr);
     EXPECT_EQ(window.findChild<QTabWidget*>("inspectorTabs"), nullptr);
     ASSERT_EQ(window_playback.playlist().tracks().size(), 1);
@@ -517,25 +535,25 @@ TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
     queue->trigger();
 
     EXPECT_EQ(documents->currentWidget(), active);
-    EXPECT_TRUE(navigation->isHidden());
-    EXPECT_TRUE(inspector->isHidden());
+    EXPECT_TRUE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
+    EXPECT_TRUE(window.findChild<QDockWidget*>("inspectorDock")->isHidden());
     EXPECT_TRUE(area->isHidden());
 
     library->trigger();
 
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_FALSE(navigation->isHidden());
-    EXPECT_FALSE(inspector->isHidden());
+    EXPECT_TRUE(window.findChild<QDockWidget*>("inspectorDock")->isHidden());
     EXPECT_TRUE(area->isHidden());
 
     classic->trigger();
 
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_FALSE(navigation->isHidden());
-    EXPECT_FALSE(inspector->isHidden());
-    EXPECT_FALSE(area->isHidden());
-    EXPECT_GE(area->indexOf(documents), 0);
-    EXPECT_GE(area->indexOf(inspector), 0);
+    EXPECT_TRUE(window.findChild<QDockWidget*>("inspectorDock")->isHidden());
+    EXPECT_TRUE(area->isHidden());
+    EXPECT_TRUE(window.findChild<QDockWidget*>("libraryDock")->isAncestorOf(navigation));
+    EXPECT_EQ(window.findChild<QDockWidget*>("inspectorDock")->widget(), inspector);
 }
 
 TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
@@ -571,7 +589,7 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         ASSERT_EQ(documents->count(), 3);
         EXPECT_EQ(documents->tabText(2), "Persistent");
         EXPECT_NE(window.findChild<QWidget*>("queueFocusRoot"), nullptr);
-        EXPECT_TRUE(window.findChild<QWidget*>("libraryNavigation")->isHidden());
+        EXPECT_TRUE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
         EXPECT_TRUE(action(*menu(window, "&View"), "Queue Focus")->isChecked());
 
         action(*menu(window, "&View"), "Library Focus")->trigger();
@@ -885,13 +903,143 @@ TEST_F(MainWindowShell,
     EXPECT_TRUE(action(*menu(window, "&View"), "Custom theme")->isChecked());
 }
 
+TEST_F(MainWindowShell, DefaultBrowserHasMovablePanelsAndReadableCompactControlsInBothThemes)
+{
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    wiola::gui::MainWindow window{playback, library, preferences};
+    QTemporaryDir tracks;
+    ASSERT_TRUE(tracks.isValid());
+    const auto directory = wiola::platform::qt::QtPathAdapter::from_qt(tracks.path());
+    window.open({wiola::testing::write_wav("Evening light.wav", wiola::testing::source_rate,
+                     directory),
+        wiola::testing::write_wav("Midnight journey.wav", wiola::testing::source_rate, directory),
+        wiola::testing::write_wav("Тихий вечер.wav", wiola::testing::source_rate, directory)});
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return !playback.reading(); }));
+    playback.pump();
+    window.refresh();
+    window.update_after_pump(wiola::app::present_playback(playback));
+    window.resize(1100, 720);
+    window.show();
+    auto* sidebar = window.findChild<QDockWidget*>("libraryDock");
+    auto* details = window.findChild<QDockWidget*>("inspectorDock");
+    ASSERT_NE(sidebar, nullptr);
+    ASSERT_NE(details, nullptr);
+    EXPECT_TRUE(sidebar->features().testFlag(QDockWidget::DockWidgetMovable));
+    EXPECT_TRUE(sidebar->features().testFlag(QDockWidget::DockWidgetFloatable));
+    EXPECT_TRUE(details->isHidden());
+    auto* browser = window.findChild<wiola::gui::TrackBrowser*>();
+    ASSERT_NE(browser, nullptr);
+    auto* search = browser->findChild<QLineEdit*>("searchTitle");
+    auto* more = browser->findChild<QToolButton*>("advancedTrackSearch");
+    auto* filters = browser->findChild<QToolButton*>("tagFilterDisclosure");
+    ASSERT_NE(search, nullptr);
+    ASSERT_NE(more, nullptr);
+    ASSERT_NE(filters, nullptr);
+    EXPECT_FALSE(more->isChecked());
+    EXPECT_FALSE(filters->isChecked());
+    for (const auto theme : {wiola::gui::Theme::light, wiola::gui::Theme::dark}) {
+        action(*menu(window, "&View"),
+            theme == wiola::gui::Theme::dark ? "Dark theme" : "Light theme")
+            ->trigger();
+        QApplication::processEvents();
+        EXPECT_GE(search->height(), search->sizeHint().height());
+        EXPECT_GT(browser->table().height(), window.height() / 3);
+        auto* volume = window.findChild<QSlider*>("volumeSlider");
+        ASSERT_NE(volume, nullptr);
+        EXPECT_LT(volume->width(), window.width() / 4);
+        EXPECT_EQ(search->palette().color(QPalette::Base), wiola::gui::theme_colors(theme).surface);
+        const auto directory = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+        if (!directory.isEmpty()) {
+            QDir{}.mkpath(directory);
+            EXPECT_TRUE(window.grab().save(QDir{directory}.filePath(
+                theme == wiola::gui::Theme::dark ? "desktop-dark.png" : "desktop-light.png"
+            )));
+        }
+    }
+    more->click();
+    QApplication::processEvents();
+    auto* artist = browser->findChild<QLineEdit*>("searchArtist");
+    EXPECT_TRUE(artist->isVisible());
+    EXPECT_GE(artist->height(), artist->sizeHint().height());
+    sidebar->setFloating(true);
+    EXPECT_TRUE(sidebar->isFloating());
+    auto* view = menu(window, "&View");
+    ASSERT_NE(view, nullptr);
+    action(*view, "Reset panel positions")->trigger();
+    EXPECT_FALSE(sidebar->isFloating());
+    EXPECT_TRUE(sidebar->isVisible());
+}
+
+TEST_F(MainWindowShell, EditingIsRequestedFromASelectedTrackAndPanelPositionsPersist)
+{
+    {
+        wiola::app::PlaybackService playback{wiola::testing::passive_output,
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+        wiola::app::PlaybackPreferences preferences{playback};
+        wiola::gui::MainWindow window{playback, library, preferences};
+        window.show();
+        auto* details = window.findChild<QDockWidget*>("inspectorDock");
+        ASSERT_TRUE(details->isHidden());
+        window.open({"selected-track.wav"});
+        auto* queue = window.findChild<wiola::gui::NowPlayingDocument*>();
+        ASSERT_NE(queue, nullptr);
+        auto& table = queue->browser().table();
+        ASSERT_GT(table.model()->rowCount(), 0);
+        table.selectRow(0);
+        auto* edit = queue->findChild<QPushButton*>("editSelectedTrack");
+        ASSERT_NE(edit, nullptr);
+        ASSERT_TRUE(edit->isEnabled());
+        EXPECT_TRUE(details->isHidden());
+        edit->click();
+        EXPECT_TRUE(details->isVisible());
+        EXPECT_TRUE(window.findChild<QToolButton*>("metadataDisclosure")->isChecked());
+        auto* sidebar = window.findChild<QDockWidget*>("libraryDock");
+        window.addDockWidget(Qt::RightDockWidgetArea, sidebar);
+        sidebar->hide();
+    }
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    wiola::gui::MainWindow restored{playback, library, preferences};
+    auto* sidebar = restored.findChild<QDockWidget*>("libraryDock");
+    EXPECT_EQ(restored.dockWidgetArea(sidebar), Qt::RightDockWidgetArea);
+    EXPECT_TRUE(sidebar->isHidden());
+    EXPECT_FALSE(restored.findChild<QDockWidget*>("inspectorDock")->isHidden());
+}
+
+TEST_F(MainWindowShell, FileDialogDescriptionsAreReadableAndInvalidChoicesNeverOpenAPicker)
+{
+    using wiola::gui::PlayerFileChoice;
+    for (const auto purpose : {PlayerFileChoice::import_playlist, PlayerFileChoice::export_playlist,
+             PlayerFileChoice::import_layout, PlayerFileChoice::export_layout,
+             PlayerFileChoice::import_theme, PlayerFileChoice::export_theme}) {
+        const auto specification = wiola::gui::file_dialog_specification(purpose);
+        EXPECT_FALSE(specification.title.isEmpty());
+        EXPECT_FALSE(specification.filter.isEmpty());
+        EXPECT_EQ(specification.save,
+            purpose == PlayerFileChoice::export_playlist ||
+                purpose == PlayerFileChoice::export_layout ||
+                purpose == PlayerFileChoice::export_theme);
+    }
+    EXPECT_EQ(wiola::gui::file_dialog_specification(PlayerFileChoice::import_playlist).title,
+        "Import playlist");
+    EXPECT_EQ(wiola::gui::file_dialog_specification(PlayerFileChoice::export_playlist).title,
+        "Save playlist as");
+    auto parent = std::make_unique<QWidget>();
+    wiola::gui::NativePlayerDialogs dialogs{*parent};
+    EXPECT_FALSE(dialogs.file(static_cast<PlayerFileChoice>(-1)));
+    parent.reset();
+    EXPECT_FALSE(dialogs.file(PlayerFileChoice::import_playlist));
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
-    ::testing::InitGoogleTest(&argc, argv);
-    QApplication application{argc, argv};
-
-    return RUN_ALL_TESTS();
+    return wiola::testing::run_gui_tests(argc, argv);
 }

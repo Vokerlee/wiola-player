@@ -20,6 +20,7 @@
 
 #pragma once
 #include <QPointer>
+#include <QString>
 #include <QWidget>
 #include <filesystem>
 #include <optional>
@@ -37,6 +38,15 @@ enum class PlayerFileChoice {
     import_theme,
     export_theme,
 };
+
+struct FileDialogSpecification {
+    QString title;
+    QString filter;
+    bool save{};
+};
+
+/// Dialog wording and file types are independent of the operating-system picker.
+[[nodiscard]] FileDialogSpecification file_dialog_specification(PlayerFileChoice purpose);
 
 struct PlaylistChoice {
     library::PlaylistId id;

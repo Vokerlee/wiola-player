@@ -126,25 +126,31 @@ void SeekBar::paintEvent(QPaintEvent* /*event*/)
 {
     QPainter painter{this};
 
-    const QRect track{rect()};
-    const auto played{static_cast<int>(fraction_ * track.width())};
-    const QPalette& colors{palette()};
-
-    painter.fillRect(track, colors.color(tokens.colors.seek_track));
-    painter.fillRect(QRect{track.left(), track.top(), played, track.height()},
-        colors.color(isEnabled() ? tokens.colors.seek_played : tokens.colors.seek_played_disabled));
-
-    if (hasFocus()) {
-        painter.setPen(colors.color(QPalette::Highlight));
-        painter.drawRect(rect().adjusted(0, 0, -1, -1));
-    }
-
-    // The edge of the filled part is the position, and is what a drag takes hold of, so it is
-    // drawn rather than left as wherever two colors happen to meet.
+    painter.setRenderHint(QPainter::Antialiasing);
+    const QRectF track{0, height() * 0.25, static_cast<qreal>(width()), height() * 0.5};
+    const qreal radius = track.height() / 2;
+    const qreal played = fraction_ * track.width();
+    const auto& colors = palette();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(colors.color(tokens.colors.seek_track));
+    painter.drawRoundedRect(track, radius, radius);
+    painter.save();
+    painter.setClipRect(QRectF{track.left(), track.top(), played, track.height()});
+    painter.setBrush(colors.color(isEnabled() ? tokens.colors.seek_played
+                                              : tokens.colors.seek_played_disabled));
+    painter.drawRoundedRect(track, radius, radius);
+    painter.restore();
     if (isEnabled()) {
-        painter.fillRect(QRect{track.left() + played - tokens.seek.edge_width / 2, track.top(),
-                             tokens.seek.edge_width, track.height()},
-            colors.color(tokens.colors.seek_edge));
+        painter.setBrush(colors.color(tokens.colors.seek_edge));
+        const qreal handle = std::max(radius, static_cast<qreal>(tokens.seek.edge_width * 2));
+        const qreal center = std::clamp(played, handle, std::max(handle, width() - handle));
+        painter.drawEllipse(QPointF{center, height() / 2.0}, handle, handle);
+    }
+    if (hasFocus()) {
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        painter.setPen(colors.color(QPalette::Highlight));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRect(rect().adjusted(0, 0, -1, -1));
     }
 }
 

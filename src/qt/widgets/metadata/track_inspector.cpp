@@ -123,10 +123,9 @@ TrackInspector::TrackInspector(QWidget* parent)
         });
         return toggle;
     };
-    metadata_toggle_ =
-        disclosure("metadataDisclosure", "Edit application metadata", standard_metadata_);
+    metadata_toggle_ = disclosure("metadataDisclosure", "Edit track details", standard_metadata_);
     layout->addWidget(conflicts_);
-    tags_toggle_ = disclosure("customTagsDisclosure", "Edit shared custom tags", custom_tags_);
+    tags_toggle_ = disclosure("customTagsDisclosure", "Track tags", custom_tags_);
     layout->addStretch();
 
     connect(standard_metadata_->findChild<QPushButton*>("cancelStandardMetadata"),
@@ -138,6 +137,12 @@ TrackInspector::TrackInspector(QWidget* parent)
             }
         });
     show_context({});
+}
+
+void TrackInspector::edit_details()
+{
+    metadata_toggle_->setChecked(true);
+    standard_metadata_->setFocus(Qt::OtherFocusReason);
 }
 
 void TrackInspector::show_context(InspectorContext next)

@@ -53,7 +53,7 @@ TEST(LibraryNavigation, ListsRepositoryPlaylistsAndTypedWorkspaces)
     EXPECT_EQ(playlists->text(0), "Playlists");
     EXPECT_EQ(playlists->child(0)->text(0), "Road");
     EXPECT_EQ(playlists->child(1)->text(0), "Evening");
-    EXPECT_EQ(workspaces->text(0), "Workspaces");
+    EXPECT_EQ(workspaces->text(0), "Folders");
     EXPECT_EQ(workspaces->child(0)->text(0), "Music");
     EXPECT_TRUE(playlists->isExpanded());
     EXPECT_TRUE(workspaces->isExpanded());
@@ -72,6 +72,22 @@ TEST(LibraryNavigation, ListsRepositoryPlaylistsAndTypedWorkspaces)
 
     navigation.setCurrentItem(workspaces->child(0));
     EXPECT_EQ(chosen_workspace, wiola::library::WorkspaceId{"workspace-music"});
+}
+
+TEST(LibraryNavigation, LegacyPlaylistNameIsClearWithoutChangingIdentityOrUserRenames)
+{
+    wiola::library::InMemoryRepository repository;
+    const wiola::library::PlaylistId id{"playlist-migrated-queue"};
+    ASSERT_TRUE(repository.put_playlist({.id = id, .name = "Migrated queue"}));
+    wiola::gui::LibraryNavigation navigation;
+    navigation.show_repository(repository);
+    ASSERT_TRUE(navigation.select_playlist(id));
+    EXPECT_EQ(navigation.currentItem()->text(0), "My playlist");
+    EXPECT_EQ(repository.playlist(id)->name, "Migrated queue");
+    ASSERT_TRUE(repository.rename_playlist(id, "My own name"));
+    navigation.show_repository(repository);
+    ASSERT_TRUE(navigation.select_playlist(id));
+    EXPECT_EQ(navigation.currentItem()->text(0), "My own name");
 }
 
 TEST(LibraryNavigation, RefreshesContentsWithoutReusingDisplayNamesAsIdentity)

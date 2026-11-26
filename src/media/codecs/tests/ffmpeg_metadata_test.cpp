@@ -19,6 +19,7 @@
  */
 
 #include <media/codecs/ffmpeg/metadata.hpp>
+#include <media/codecs/ffmpeg/metadata_text.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <wiola/media/local/resource.hpp>
@@ -94,6 +95,22 @@ Bytes text_frame(std::string_view id, std::string_view text)
     append(frame, {0, 0});
     append(frame, {0});
     append(frame, text);
+    return frame;
+}
+
+Bytes utf16_frame(std::string_view id, std::u16string_view text, bool matching_bom)
+{
+    Bytes frame;
+    append(frame, id);
+    const auto size = static_cast<unsigned>(3 + text.size() * 2);
+    append(frame, {0, 0, 0, size, 0, 0, 1, 0xff, 0xfe});
+    for (const char16_t unit : text) {
+        const auto high = static_cast<unsigned>(unit >> 8);
+        const auto low = static_cast<unsigned>(unit & 0xff);
+        append(frame,
+            matching_bom ? std::initializer_list<unsigned>{low, high}
+                         : std::initializer_list<unsigned>{high, low});
+    }
     return frame;
 }
 
@@ -252,6 +269,111 @@ std::vector<float> decoded_samples(const std::filesystem::path& path)
     }
 
     return samples;
+}
+
+class MetadataDictionary final {
+public:
+    ~MetadataDictionary() { av_dict_free(&value); }
+
+    void set(const char* key, const std::string& text)
+    {
+        ASSERT_GE(av_dict_set(&value, key, text.c_str(), 0), 0);
+    }
+
+    void swapped_numbers()
+    {
+        set("track", "㄀⼀㄀㌀");
+        set("disc", "㄀⼀㄀");
+    }
+
+    AVDictionary* value{};
+};
+
+TEST(FfmpegMetadata, MixedAndAmbiguousDictionaryValuesStayOwnedAndUnchanged)
+{
+    MetadataDictionary primary, secondary;
+    primary.swapped_numbers();
+    secondary.set("artist", "Correct secondary artist");
+    for (const auto& title : {std::string{"ASCII title"}, std::string{"Город"},
+             std::string{"中文音樂"}, std::string{"🎵"}, std::string{"\xff\xfe"}}) {
+        primary.set("title", title);
+        const wiola::codec::ffmpeg::MetadataText text{primary.value, secondary.value, true};
+        EXPECT_EQ(text.field("title"), title);
+        EXPECT_EQ(text.first({"missing", "artist"}), "Correct secondary artist");
+        EXPECT_TRUE(text.field("missing").empty());
+    }
+    primary.set("title", std::string(64 * 1024 + 1, 'x'));
+    EXPECT_TRUE(
+        (wiola::codec::ffmpeg::MetadataText{primary.value, nullptr, true}).field("title").empty()
+    );
+    primary.set("title", "ጄ㸄䀄㸄㐄");
+    EXPECT_EQ((wiola::codec::ffmpeg::MetadataText{primary.value, nullptr, false}).field("title"),
+        "ጄ㸄䀄㸄㐄");
+    secondary.swapped_numbers();
+    secondary.set("title", "ጄ㸄䀄㸄㐄");
+    EXPECT_EQ((wiola::codec::ffmpeg::MetadataText{nullptr, secondary.value, true}).field("title"),
+        "Город");
+}
+
+TEST(FfmpegMetadata, RepairsContradictoryUtf16WithIndependentTrackAndDiscWitnesses)
+{
+    const wiola::testing::TemporaryDirectory files;
+    Bytes frames;
+    append_frame(frames, utf16_frame("TIT2", u"Город в море трав", false));
+    append_frame(frames, utf16_frame("TPE1", u"ГРОТ", false));
+    append_frame(frames, utf16_frame("TALB", u"Ледокол «Вега»", false));
+    append_frame(frames, utf16_frame("TCON", u"Rusrap", false));
+    append_frame(frames, utf16_frame("TRCK", u"1/13", false));
+    append_frame(frames, utf16_frame("TPOS", u"1/1", false));
+    append_frame(frames, text_frame("TYER", "2017"));
+    const auto path = tagged_copy(files.path(), "wrong-bom.mp3", frames);
+    const auto before = std::filesystem::file_size(path);
+    auto metadata = wiola::codec::ffmpeg::read_metadata(path);
+    ASSERT_TRUE(metadata);
+    EXPECT_EQ(metadata->track.title, "Город в море трав");
+    EXPECT_EQ(metadata->track.artist, "ГРОТ");
+    EXPECT_EQ(metadata->track.album, "Ледокол «Вега»");
+    EXPECT_EQ(metadata->track.genre, "Rusrap");
+    EXPECT_EQ(metadata->track.track_number, 1U);
+    EXPECT_EQ(metadata->track.disc_number, 1U);
+    EXPECT_EQ(metadata->track.year, 2017U);
+    EXPECT_EQ(std::filesystem::file_size(path), before);
+}
+
+TEST(FfmpegMetadata, DoesNotGuessByteOrderFromAnIsolatedUnusualTitleOrTrackNumber)
+{
+    const wiola::testing::TemporaryDirectory files;
+    Bytes frames;
+    append_frame(frames, utf16_frame("TIT2", u"中文音樂", true));
+    append_frame(frames, utf16_frame("TRCK", u"1/13", false));
+    const auto path = tagged_copy(files.path(), "ambiguous.mp3", frames);
+    auto metadata = wiola::codec::ffmpeg::read_metadata(path);
+    ASSERT_TRUE(metadata);
+    EXPECT_EQ(metadata->track.title, "中文音樂");
+    EXPECT_FALSE(metadata->track.track_number);
+}
+
+TEST(FfmpegMetadata, ValidMultilingualUtf16AndNumericTagsAreNeverByteSwapped)
+{
+    const wiola::testing::TemporaryDirectory files;
+    for (const auto title : {u"Город в море трав", u"中文音樂", u"Music 🎵"}) {
+        Bytes frames;
+        append_frame(frames, utf16_frame("TIT2", title, true));
+        append_frame(frames, utf16_frame("TRCK", u"1/13", true));
+        append_frame(frames, utf16_frame("TPOS", u"1/1", true));
+        const auto path = tagged_copy(files.path(), "unicode.mp3", frames);
+        auto metadata = wiola::codec::ffmpeg::read_metadata(path);
+        ASSERT_TRUE(metadata);
+        EXPECT_EQ(metadata->track.track_number, 1U);
+        EXPECT_EQ(metadata->track.disc_number, 1U);
+        EXPECT_FALSE(metadata->track.title.empty());
+        if (std::u16string_view{title} == u"Город в море трав")
+            EXPECT_EQ(metadata->track.title, "Город в море трав");
+        else if (std::u16string_view{title} == u"中文音樂")
+            EXPECT_EQ(metadata->track.title, "中文音樂");
+        else
+            EXPECT_EQ(metadata->track.title, "Music 🎵");
+    }
 }
 
 TEST(FfmpegMetadata, RejectsAFileThatIsNotThere)

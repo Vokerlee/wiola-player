@@ -72,6 +72,18 @@ QWidget* PreparedLayout::attach(QWidget* parent)
         widget->hide();
     };
 
+    // A splitter omitted by the new layout must not retain old decorative containers.
+    // Registered descendants are recovered below before the retired hierarchy is destroyed.
+    for (const auto& [id, registration] : views_.entries()) {
+        auto* splitter = qobject_cast<QSplitter*>(registration.widget.data());
+        if (!splitter || std::ranges::any_of(attachments_, [splitter](const auto& attachment) {
+                return attachment.widget == splitter;
+            }))
+            continue;
+        while (splitter->count() != 0)
+            retire(splitter->widget(0));
+    }
+
     // No borrowed widget moves until the entire candidate tree is known to be constructible.
     for (auto attachment = attachments_.rbegin(); attachment != attachments_.rend(); ++attachment) {
         QWidget* placeholder = attachment->placeholder;

@@ -37,8 +37,10 @@ StatusView::StatusView(QWidget* parent)
     for (auto* label : {document_.data(), destination_.data(), message_.data()}) {
         label->setTextFormat(Qt::PlainText);
         label->setWordWrap(true);
-        body->addWidget(label);
+        label->hide();
     }
+    body->addWidget(message_);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     message_->setAccessibleName("Player status");
     document_->setAccessibleName("Visible document");
     destination_->setAccessibleName("Transfer destination");
@@ -47,6 +49,7 @@ StatusView::StatusView(QWidget* parent)
 void StatusView::show_message(const QString& text)
 {
     message_->setText(text);
+    message_->setVisible(!text.isEmpty());
     message_->setAccessibleDescription(text);
 }
 

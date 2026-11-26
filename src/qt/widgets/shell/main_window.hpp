@@ -68,6 +68,7 @@ class LibraryRepository;
 namespace wiola::gui {
 
 class PlayerDialogs;
+class WindowPanels;
 class ThemeManager;
 class TransportView;
 class VolumeView;
@@ -198,6 +199,7 @@ private:
     const app::PlaylistDestination& playlist_destination_;
 
     std::unique_ptr<PlayerDialogs> dialogs_;
+    std::unique_ptr<WindowPanels> panels_;
     DocumentCommandRouter* commands_{nullptr};
     QPointer<MetadataInspectorBinding> inspector_binding_;
     TransportView* transport_{nullptr};

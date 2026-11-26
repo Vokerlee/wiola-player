@@ -21,6 +21,8 @@
 #include <qt/widgets/tracks/tag_filter_panel.hpp>
 
 #include <QApplication>
+#include <QComboBox>
+#include <QScrollArea>
 
 #include <algorithm>
 #include <gtest/gtest.h>
@@ -73,6 +75,35 @@ TEST(TagFilterPanel, AddsIncludeExcludeAndRemovableChips)
     chips.front()->click();
     ASSERT_EQ(filters.size(), 1);
     EXPECT_EQ(filters.front().key, "mood");
+}
+
+TEST(TagFilterPanel, AdvancedFiltersOfferKnownNamesAndKeepManyChipsWithinThePanel)
+{
+    wiola::gui::TagFilterPanel panel;
+    panel.resize(360, 240);
+    panel.show();
+    auto* toggle = panel.findChild<QToolButton*>("tagFilterDisclosure");
+    ASSERT_NE(toggle, nullptr);
+    EXPECT_FALSE(toggle->isChecked());
+    toggle->click();
+    auto* picker = panel.findChild<QComboBox*>();
+    ASSERT_NE(picker, nullptr);
+    panel.suggest_keys({"mood", "genre"});
+    EXPECT_EQ(picker->count(), 2);
+    picker->setEditText("my own tag");
+    panel.suggest_keys({"mood", "genre", "year"});
+    EXPECT_EQ(picker->currentText(), "my own tag");
+    std::vector<wiola::library::TagFilter> filters;
+    for (int index = 0; index < 20; ++index)
+        filters.push_back({.key = "tag" + std::to_string(index), .value = "value"});
+    panel.show_filters(filters);
+    QApplication::processEvents();
+    auto* scroll = panel.findChild<QScrollArea*>();
+    ASSERT_NE(scroll, nullptr);
+    EXPECT_TRUE(scroll->isVisible());
+    EXPECT_LE(scroll->width(), panel.width());
+    toggle->click();
+    EXPECT_FALSE(picker->isVisible());
 }
 
 TEST(TagFilterPanel, RejectsBlankAndNormalizedDuplicateFilters)
