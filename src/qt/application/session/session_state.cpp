@@ -186,7 +186,7 @@ constexpr std::pair<TrackSortField, const char*> sort_fields[] = {
     {TrackSortField::custom_tag, "tag"     }
 };
 
-QJsonObject browser(const BrowserViewState& state)
+QJsonObject browser(const gui::BrowserViewState& state)
 {
     QJsonArray filters, sorts, columns, selected;
     for (const auto& filter : state.view.query.filters)
@@ -232,7 +232,7 @@ QJsonObject browser(const BrowserViewState& state)
     };
 }
 
-bool browser(const QJsonValue& value, BrowserViewState& output)
+bool browser(const QJsonValue& value, gui::BrowserViewState& output)
 {
     if (!value.isObject())
         return false;
@@ -332,9 +332,9 @@ bool browser(const QJsonValue& value, BrowserViewState& output)
 QByteArray encode(const SessionState& state)
 {
     QJsonArray open, browsers, splitters;
-    for (const auto& id : state.open)
+    for (const auto& id : state.documents.open)
         open.append(document(id));
-    for (const auto& [id, value] : state.browsers)
+    for (const auto& [id, value] : state.documents.browsers)
         browsers.append(QJsonObject{
             {"document", document(id)  },
             {"state",    browser(value)}
@@ -350,10 +350,13 @@ QByteArray encode(const SessionState& state)
     }
     return QJsonDocument{
         QJsonObject{{"version", 1}, {"open", open},
-                    {"visible", state.visible ? QJsonValue{document(*state.visible)} : QJsonValue{}},
+                    {"visible",
+                state.documents.visible ? QJsonValue{document(*state.documents.visible)}
+                                        : QJsonValue{}},
                     {"destination",
-                state.destination ? QJsonValue{QString::fromStdString(state.destination->value)}
-                                  : QJsonValue{}},
+                state.documents.destination
+                    ? QJsonValue{QString::fromStdString(state.documents.destination->value)}
+                    : QJsonValue{}},
                     {"browsers", browsers},
                     {"window",
                 QJsonArray{state.window.x(), state.window.y(), state.window.width(),
@@ -389,34 +392,34 @@ SessionStateError read_session_state(QByteArrayView bytes, SessionState& output)
         !object.value("splitters").isArray() || object.value("splitters").toArray().size() > 128)
         return SessionStateError::invalid;
     SessionState next;
-    next.open.clear();
+    next.documents.open.clear();
     std::set<gui::DocumentId> ids;
     for (const auto& value : object.value("open").toArray()) {
         const auto id = document(value);
         if (!id || !ids.insert(*id).second)
             return SessionStateError::invalid;
-        next.open.push_back(*id);
+        next.documents.open.push_back(*id);
     }
-    next.visible.reset();
+    next.documents.visible.reset();
     if (!object.value("visible").isNull()) {
-        next.visible = document(object.value("visible"));
-        if (!next.visible)
+        next.documents.visible = document(object.value("visible"));
+        if (!next.documents.visible)
             return SessionStateError::invalid;
     }
     if (!object.value("destination").isNull()) {
         std::string id;
         if (!text(object.value("destination"), id, 128) || id.empty())
             return SessionStateError::invalid;
-        next.destination = library::PlaylistId{id};
+        next.documents.destination = library::PlaylistId{id};
     }
     for (const auto& value : object.value("browsers").toArray()) {
         if (!value.isObject())
             return SessionStateError::invalid;
         const auto item = value.toObject();
         const auto id = document(item.value("document"));
-        BrowserViewState state;
+        gui::BrowserViewState state;
         if (!keys(item, {"document", "state"}) || !id || !browser(item.value("state"), state) ||
-            !next.browsers.emplace(*id, std::move(state)).second)
+            !next.documents.browsers.emplace(*id, std::move(state)).second)
             return SessionStateError::invalid;
     }
     const auto geometry = object.value("window");
@@ -456,9 +459,10 @@ SessionStateError read_session_state(QByteArrayView bytes, SessionState& output)
 
 QByteArray write_session_state(const SessionState& state)
 {
-    if (state.open.size() > 128 || state.browsers.size() > 128 || state.splitters.size() > 128)
+    if (state.documents.open.size() > 128 || state.documents.browsers.size() > 128 ||
+        state.splitters.size() > 128)
         return {};
-    for (const auto& [id, browser] : state.browsers)
+    for (const auto& [id, browser] : state.documents.browsers)
         if (browser.selected.size() > 10000 || browser.columns.size() > 128 ||
             browser.view.query.filters.size() > 128 || browser.view.sort_keys.size() > 8)
             return {};

@@ -19,11 +19,11 @@
  */
 
 #pragma once
-#include <app/workspace/workspace_scanner.hpp>
 #include <map>
 #include <presentation/tracks/track_row.hpp>
 #include <unordered_map>
 #include <unordered_set>
+#include <wiola/app/workspace/workspace_scan.hpp>
 #include <wiola/library/repository.hpp>
 
 namespace wiola::gui {

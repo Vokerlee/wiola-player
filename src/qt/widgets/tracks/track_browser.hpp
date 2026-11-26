@@ -38,12 +38,12 @@ public:
     void show_rows(const std::vector<TrackRow>& rows, std::optional<TrackRowId> current = {},
         const library::LibraryRepository* repository = nullptr);
 
-    [[nodiscard]] app::BrowserViewState capture_browser_state()
+    [[nodiscard]] gui::BrowserViewState capture_browser_state()
     {
         return table_->capture_browser_state();
     }
 
-    void restore_browser_state(app::BrowserViewState state)
+    void restore_browser_state(gui::BrowserViewState state)
     {
         set_view_state(state.view);
         table_->restore_browser_state(std::move(state));

@@ -54,15 +54,15 @@ TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWi
     app::SessionState original;
     const auto playlist = gui::DocumentId::playlist(library::PlaylistId{"playlist"}),
                workspace = gui::DocumentId::workspace(library::WorkspaceId{"folder"});
-    original.open = {gui::DocumentId::queue(), playlist, workspace};
-    original.visible = workspace;
-    original.destination = library::PlaylistId{"destination"};
+    original.documents.open = {gui::DocumentId::queue(), playlist, workspace};
+    original.documents.visible = workspace;
+    original.documents.destination = library::PlaylistId{"destination"};
     original.window = QRect{-100, 20, 1200, 800};
     original.splitters = {
         {"documentArea", {180, 620, 220}}
     };
     original.layout_identity = "custom";
-    app::BrowserViewState browser;
+    gui::BrowserViewState browser;
     browser.view.query = {
         .title = "Song",
         .artist = "Artist",
@@ -84,18 +84,18 @@ TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWi
     browser.current = browser.selected.front();
     browser.anchor = browser.selected.back();
     browser.anchor_offset = -5;
-    original.browsers.emplace(gui::DocumentId::queue(), browser);
+    original.documents.browsers.emplace(gui::DocumentId::queue(), browser);
     browser.selected = {library::PlaylistEntryId{"first"}, library::PlaylistEntryId{"second"}};
     browser.current = browser.selected.back();
     browser.anchor = browser.selected.front();
-    original.browsers.emplace(playlist, browser);
+    original.documents.browsers.emplace(playlist, browser);
     browser.selected = {
         gui::WorkspaceTrackId{library::WorkspaceId{"folder"},
                               library::MediaId{"local:music/Unicode-楽曲.flac"}}
     };
     browser.current = browser.selected.front();
     browser.anchor = browser.current;
-    original.browsers.emplace(workspace, browser);
+    original.documents.browsers.emplace(workspace, browser);
     const auto bytes = app::write_session_state(original);
     ASSERT_FALSE(bytes.isEmpty());
     app::SessionState restored;
@@ -108,8 +108,8 @@ TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWi
     EXPECT_EQ(app::read_session_state(QByteArray(2 * 1024 * 1024 + 1, ' '), restored),
         app::SessionStateError::too_large);
     EXPECT_EQ(restored, before);
-    original.browsers.begin()->second.selected.push_back(
-        original.browsers.begin()->second.selected.front()
+    original.documents.browsers.begin()->second.selected.push_back(
+        original.documents.browsers.begin()->second.selected.front()
     );
     EXPECT_TRUE(app::write_session_state(original).isEmpty());
 }
@@ -126,8 +126,9 @@ TEST(SessionPreferences, DurableMigrationRetainsLegacyKeysUntilTheWriteSucceeds)
     bool fail = true;
     app::SessionPreferences preferences{settings,
         [&](const auto& path) { return std::make_unique<FaultOutput>(path, fail); }};
-    EXPECT_EQ(preferences.state().visible, gui::DocumentId::playlist(library::PlaylistId{"saved"}));
-    EXPECT_EQ(preferences.state().destination, library::PlaylistId{"destination"});
+    EXPECT_EQ(preferences.state().documents.visible,
+        gui::DocumentId::playlist(library::PlaylistId{"saved"}));
+    EXPECT_EQ(preferences.state().documents.destination, library::PlaylistId{"destination"});
     EXPECT_EQ(preferences.flush(), app::SessionStateError::io);
     settings.sync();
     EXPECT_TRUE(settings.contains("documents/current_id"));
@@ -184,14 +185,14 @@ TEST(SessionPreferences, DestinationRestoresAndTracksLibraryChangesWithoutAnyWin
     ASSERT_TRUE(first.valid());
     ASSERT_TRUE(second.valid());
     app::SessionPreferences preferences{settings};
-    preferences.edit([&](auto& state) { state.destination = first; });
+    preferences.edit([&](auto& state) { state.documents.destination = first; });
     preferences.bind_library(library);
     EXPECT_EQ(library.active_playlist().id(), first);
     preferences.bind_library(library);
     ASSERT_TRUE(library.active_playlist().set(second));
-    EXPECT_EQ(preferences.state().destination, second);
+    EXPECT_EQ(preferences.state().documents.destination, second);
     ASSERT_TRUE(library.playlists().remove(second));
-    EXPECT_FALSE(preferences.state().destination);
+    EXPECT_FALSE(preferences.state().documents.destination);
     EXPECT_NE(library.repository().playlist(first), nullptr);
     EXPECT_EQ(preferences.flush(), app::SessionStateError::none);
 }
@@ -202,7 +203,7 @@ TEST(SessionPreferences, QueueRestorationUsesTheExplicitOccurrenceMapAndDropsUnk
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
     app::SessionPreferences preferences{settings};
     preferences.edit([](auto& state) {
-        auto& browser = state.browsers[gui::DocumentId::queue()];
+        auto& browser = state.documents.browsers[gui::DocumentId::queue()];
         browser.selected = {engine::QueueEntryId{11}, engine::QueueEntryId{12},
             engine::QueueEntryId{13}};
         browser.current = engine::QueueEntryId{13};
@@ -212,7 +213,7 @@ TEST(SessionPreferences, QueueRestorationUsesTheExplicitOccurrenceMapAndDropsUnk
         {engine::QueueEntryId{11}, engine::QueueEntryId{91}},
         {engine::QueueEntryId{13}, engine::QueueEntryId{92}}
     });
-    const auto& browser = preferences.state().browsers.at(gui::DocumentId::queue());
+    const auto& browser = preferences.state().documents.browsers.at(gui::DocumentId::queue());
     EXPECT_EQ(browser.selected,
         (std::vector<gui::TrackRowId>{engine::QueueEntryId{91}, engine::QueueEntryId{92}}));
     EXPECT_EQ(browser.current, gui::TrackRowId{engine::QueueEntryId{92}});

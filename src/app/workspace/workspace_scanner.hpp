@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "workspace_discovery.hpp"
+#include "workspace_scan.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -30,35 +30,9 @@
 
 namespace wiola::app {
 
-enum class WorkspaceScanStatus {
-    running,
-    complete,
-    cancelled,
-    failed,
-};
-
-enum class WorkspaceScanError {
-    none,
-    unreadable_root,
-    permission_denied,
-    limit_exceeded,
-    io,
-    rejected,
-    unsupported_formats,
-};
-
 struct WorkspaceScanPolicy {
     std::size_t batch_size{64}, max_tracks{100000}, max_entries{1000000}, max_directories{100000};
     std::function<void(const std::filesystem::path&, std::size_t, std::stop_token)> after_entry;
-};
-
-struct WorkspaceScanBatch {
-    library::WorkspaceId workspace;
-    std::uint64_t generation{0};
-    std::vector<WorkspaceScanEntry> entries;
-    WorkspaceScanStatus status{WorkspaceScanStatus::running};
-    WorkspaceScanError error{WorkspaceScanError::none};
-    std::vector<std::filesystem::path> directories;
 };
 
 class WorkspaceScanner final {

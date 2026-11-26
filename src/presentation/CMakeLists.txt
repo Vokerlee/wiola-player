@@ -7,6 +7,7 @@ wiola_add_library(
         tracks/track_view_state.cpp
         tracks/track_view_pipeline.cpp
         documents/queue_rows.cpp
+        documents/session_documents.cpp
         documents/saved_playlist_rows.cpp
         documents/workspace_rows.cpp
     LIBS wiola::local_media

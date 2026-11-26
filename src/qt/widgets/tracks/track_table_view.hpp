@@ -23,8 +23,8 @@
 #ifndef Q_MOC_RUN
 #include "track_table_model.hpp"
 #include <app/library/tag_key_catalog.hpp>
+#include <presentation/tracks/browser_view_state.hpp>
 #include <presentation/tracks/track_commands.hpp>
-#include <qt/application/session/session_state.hpp>
 #endif
 
 #include <QKeyEvent>
@@ -60,8 +60,8 @@ public:
         catalog_revision_.reset();
     }
 
-    [[nodiscard]] app::BrowserViewState capture_browser_state();
-    void restore_browser_state(app::BrowserViewState state);
+    [[nodiscard]] gui::BrowserViewState capture_browser_state();
+    void restore_browser_state(gui::BrowserViewState state);
     void finish_browser_restore();
 
     void defer_browser_restore() { finish_restore_requested_ = false; }
@@ -119,7 +119,7 @@ private:
     void restore_selection(const std::vector<TrackRowId>& selected,
         const std::optional<TrackRowId>& current);
 
-    std::optional<app::BrowserViewState> pending_restore_;
+    std::optional<gui::BrowserViewState> pending_restore_;
     bool projecting_{false};
     bool finish_restore_requested_{};
     TrackCapabilities capabilities_{TrackCapabilities::all()};

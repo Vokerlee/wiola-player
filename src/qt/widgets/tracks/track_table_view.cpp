@@ -186,10 +186,10 @@ TrackTableView::TrackTableView(QWidget* parent)
     });
 }
 
-app::BrowserViewState TrackTableView::capture_browser_state()
+gui::BrowserViewState TrackTableView::capture_browser_state()
 {
     remember_columns();
-    app::BrowserViewState state;
+    gui::BrowserViewState state;
     state.view = view_state();
     state.columns = column_layout_;
     if (pending_restore_) {
@@ -209,7 +209,7 @@ app::BrowserViewState TrackTableView::capture_browser_state()
     return state;
 }
 
-void TrackTableView::restore_browser_state(app::BrowserViewState state)
+void TrackTableView::restore_browser_state(gui::BrowserViewState state)
 {
     finish_restore_requested_ = false;
     {

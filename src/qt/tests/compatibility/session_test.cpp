@@ -14,12 +14,12 @@ TEST(CompatibilitySession, ReadsDocumentIdentityQueryAndFullWidthOccurrenceToken
     app::SessionState state;
     ASSERT_EQ(app::read_session_state(fixture("session/current-v1.json"), state),
         app::SessionStateError::none);
-    ASSERT_EQ(state.open.size(), 3U);
-    EXPECT_EQ(state.open[1], gui::DocumentId::playlist(library::PlaylistId{"saved"}));
-    EXPECT_EQ(state.visible, state.open[1]);
-    EXPECT_EQ(state.destination, library::PlaylistId{"saved"});
+    ASSERT_EQ(state.documents.open.size(), 3U);
+    EXPECT_EQ(state.documents.open[1], gui::DocumentId::playlist(library::PlaylistId{"saved"}));
+    EXPECT_EQ(state.documents.visible, state.documents.open[1]);
+    EXPECT_EQ(state.documents.destination, library::PlaylistId{"saved"});
     EXPECT_EQ(state.window, QRect(-100, 20, 1200, 800));
-    const auto& browser = state.browsers.at(gui::DocumentId::queue());
+    const auto& browser = state.documents.browsers.at(gui::DocumentId::queue());
     EXPECT_EQ(browser.view.query.artist, "Бах");
     ASSERT_EQ(browser.view.query.filters.size(), 1U);
     EXPECT_EQ(browser.view.query.filters[0].value, "Calm");

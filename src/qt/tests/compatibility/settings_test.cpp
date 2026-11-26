@@ -60,14 +60,14 @@ TEST(CompatibilitySettings, MigratesLegacyDocumentsWithoutTouchingTheInputCorpus
     QSettings settings{path, QSettings::IniFormat};
     {
         app::SessionPreferences preferences{settings};
-        EXPECT_EQ(preferences.state().visible,
+        EXPECT_EQ(preferences.state().documents.visible,
             gui::DocumentId::playlist(library::PlaylistId{"saved"}));
-        EXPECT_EQ(preferences.state().destination, library::PlaylistId{"saved"});
-        ASSERT_EQ(preferences.state().open.size(), 3U);
+        EXPECT_EQ(preferences.state().documents.destination, library::PlaylistId{"saved"});
+        ASSERT_EQ(preferences.state().documents.open.size(), 3U);
         ASSERT_EQ(preferences.flush(), app::SessionStateError::none);
     }
     app::SessionPreferences restored{settings};
-    EXPECT_EQ(restored.state().destination, library::PlaylistId{"saved"});
+    EXPECT_EQ(restored.state().documents.destination, library::PlaylistId{"saved"});
     EXPECT_EQ(fixture("settings/legacy.ini"), legacy);
 }
 

@@ -35,31 +35,32 @@ SessionState legacy_state(const QSettings& settings)
     SessionState state;
     for (const auto& id : settings.value("documents/open_playlists").toStringList())
         if (!id.isEmpty())
-            state.open.push_back(gui::DocumentId::playlist(library::PlaylistId{id.toStdString()}));
+            state.documents.open.push_back(gui::DocumentId::playlist(library::PlaylistId{
+                id.toStdString()}));
     for (const auto& id : settings.value("documents/open_workspaces").toStringList())
         if (!id.isEmpty())
-            state.open.push_back(gui::DocumentId::workspace(library::WorkspaceId{
+            state.documents.open.push_back(gui::DocumentId::workspace(library::WorkspaceId{
                 id.toStdString()}));
     const auto kind = settings.value("documents/current_kind").toString();
     const auto current = settings.value("documents/current_id").toString().toStdString();
     if (kind == "empty")
-        state.visible.reset();
+        state.documents.visible.reset();
     else if (kind == "playlist" && !current.empty())
-        state.visible = gui::DocumentId::playlist(library::PlaylistId{current});
+        state.documents.visible = gui::DocumentId::playlist(library::PlaylistId{current});
     else if (kind == "workspace" && !current.empty())
-        state.visible = gui::DocumentId::workspace(library::WorkspaceId{current});
+        state.documents.visible = gui::DocumentId::workspace(library::WorkspaceId{current});
     else if (kind.isEmpty()) {
         const auto workspace =
                        settings.value("documents/current_workspace").toString().toStdString(),
                    playlist = settings.value("documents/current_playlist").toString().toStdString();
         if (!workspace.empty())
-            state.visible = gui::DocumentId::workspace(library::WorkspaceId{workspace});
+            state.documents.visible = gui::DocumentId::workspace(library::WorkspaceId{workspace});
         else if (!playlist.empty())
-            state.visible = gui::DocumentId::playlist(library::PlaylistId{playlist});
+            state.documents.visible = gui::DocumentId::playlist(library::PlaylistId{playlist});
     }
     const auto destination = settings.value("playlists/active").toString().toStdString();
     if (!destination.empty())
-        state.destination = library::PlaylistId{destination};
+        state.documents.destination = library::PlaylistId{destination};
     return state;
 }
 
@@ -136,28 +137,7 @@ void SessionPreferences::remap_queue(
     const std::map<engine::QueueEntryId, engine::QueueEntryId>& mapping
 )
 {
-    edit([&](auto& state) {
-        for (auto& [id, browser] : state.browsers) {
-            const auto remap =
-                [&](std::optional<gui::TrackRowId> value) -> std::optional<gui::TrackRowId> {
-                if (!value)
-                    return {};
-                if (const auto* queue = std::get_if<engine::QueueEntryId>(&*value)) {
-                    const auto found = mapping.find(*queue);
-                    return found == mapping.end() ? std::nullopt
-                                                  : std::optional<gui::TrackRowId>{found->second};
-                }
-                return value;
-            };
-            std::vector<gui::TrackRowId> selected;
-            for (const auto& occurrence : browser.selected)
-                if (auto mapped = remap(occurrence))
-                    selected.push_back(*mapped);
-            browser.selected = std::move(selected);
-            browser.current = remap(browser.current);
-            browser.anchor = remap(browser.anchor);
-        }
-    });
+    edit([&](auto& state) { state.documents.remap_queue(mapping); });
 }
 
 void SessionPreferences::bind_library(LibrarySession& library)
@@ -168,17 +148,18 @@ void SessionPreferences::bind_library(LibrarySession& library)
     if (library_)
         throw std::logic_error{"preferences already belong to another library session"};
     library_ = &library;
-    if (state_.destination && library.repository().playlist(*state_.destination))
-        static_cast<void>(library.active_playlist().set(*state_.destination));
+    if (state_.documents.destination &&
+        library.repository().playlist(*state_.documents.destination))
+        static_cast<void>(library.active_playlist().set(*state_.documents.destination));
     else {
         if (library.active_playlist().id())
             static_cast<void>(library.active_playlist().clear_if(*library.active_playlist().id()));
-        if (state_.destination)
-            edit([](auto& state) { state.destination.reset(); });
+        if (state_.documents.destination)
+            edit([](auto& state) { state.documents.destination.reset(); });
     }
     connect(&library, &LibrarySession::active_destination_changed, this,
         [this](const std::optional<library::PlaylistId>& destination) {
-            edit([&](auto& state) { state.destination = destination; });
+            edit([&](auto& state) { state.documents.destination = destination; });
         });
 }
 
