@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <wiola/media/local/resource.hpp>
 

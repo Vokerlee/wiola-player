@@ -40,7 +40,8 @@ listed in [`qualification.cpp`](ffmpeg/qualification.cpp).
 ### Wiola has one production backend: FFmpeg
 
 FFmpeg is not one of several decoding backends today; it is **the only one**. The registry still
-provides a neutral opening point, but its default production catalog leads to the FFmpeg backend.
+provides a neutral opening point. The executable explicitly selects the FFmpeg backend through
+`wiola::ffmpeg`; linking `wiola::codec_registry` alone never selects a decoder.
 The useful boundary is therefore not “a plugin system with many implementations.” It is a way to
 keep FFmpeg's C objects, error codes, and ownership rules out of the engine and to allow simple fake
 decoders in tests.

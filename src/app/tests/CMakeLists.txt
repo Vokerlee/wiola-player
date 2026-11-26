@@ -162,14 +162,14 @@ wiola_add_test(
 wiola_add_test(
     app_background_metadata_writes_test
     SOURCES metadata/background_metadata_writes_test.cpp
-    LIBS wiola_app wiola_codec wiola_test_allocation_failure
+    LIBS wiola_app wiola::ffmpeg wiola_test_allocation_failure
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
 wiola_add_test(
     app_media_replacement_test
     SOURCES metadata/media_replacement_test.cpp
-    LIBS wiola_app wiola_codec
+    LIBS wiola_app wiola::ffmpeg
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
@@ -211,7 +211,7 @@ target_link_libraries(app_queue_settings_test PRIVATE wiola::local_media)
 wiola_add_test(
     app_playback_queue_test
     SOURCES playback/playback_queue_test.cpp
-    LIBS wiola_app wiola_codec
+    LIBS wiola_app wiola::ffmpeg
 )
 
 target_link_libraries(app_playback_queue_test PRIVATE wiola::local_media)

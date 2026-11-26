@@ -23,7 +23,9 @@
 #include <transport/player.hpp>
 
 #include <fakes/output.hpp>
+#include <fixtures/temporary_directory.hpp>
 #include <fixtures/wav.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <gtest/gtest.h>
 
@@ -31,7 +33,12 @@
 
 TEST(Player, PlaysToTheEndOnItsOwn)
 {
-    auto source{wiola::testing::open_fixture()};
+    const wiola::testing::TemporaryDirectory files;
+    const auto path =
+        wiola::testing::write_wav("track.wav", wiola::testing::source_rate, files.path());
+    auto opened = wiola::codec::ffmpeg::make_registry().open(path);
+    ASSERT_TRUE(opened);
+    auto source = std::move(opened.value());
     ASSERT_NE(source, nullptr);
     const auto* decoder{source.get()};
     wiola::pcm::PcmQueue queue{source->spec(), wiola::pcm::Frames{512}};

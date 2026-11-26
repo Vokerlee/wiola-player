@@ -34,7 +34,7 @@ target_link_libraries(app_m3u_playlist_test PRIVATE wiola::qt_paths)
 wiola_add_test(
     app_player_application_test
     SOURCES player_application_test.cpp
-    LIBS wiola_player_application wiola::qt_widgets
+    LIBS wiola_player_application wiola::qt_widgets wiola::ffmpeg
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
@@ -60,7 +60,7 @@ target_link_libraries(app_queue_library_migration_test PRIVATE wiola::qt_paths)
 wiola_add_test(
     gui_playlist_control_test
     SOURCES playback/queue_settings_test.cpp
-    LIBS wiola_playback_preferences wiola_codec
+    LIBS wiola_playback_preferences wiola::ffmpeg
 )
 
 target_link_libraries(gui_playlist_control_test PRIVATE wiola::local_media)
@@ -68,7 +68,7 @@ target_link_libraries(gui_playlist_control_test PRIVATE wiola::local_media)
 wiola_add_test(
     desktop_metadata_write_service_test
     SOURCES metadata/metadata_write_service_test.cpp
-    LIBS wiola_metadata_writes wiola_codec wiola::qt_paths
+    LIBS wiola_metadata_writes wiola::ffmpeg wiola::qt_paths
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
@@ -80,7 +80,7 @@ target_link_libraries(
 wiola_add_test(
     desktop_session_preferences_test
     SOURCES session/session_preferences_test.cpp
-    LIBS wiola_session_preferences wiola_library_session wiola_codec
+    LIBS wiola_session_preferences wiola_library_session wiola::ffmpeg
 )
 
 target_link_libraries(desktop_session_preferences_test PRIVATE wiola::qt_paths)
@@ -106,7 +106,7 @@ wiola_add_test(
 wiola_add_test(
     desktop_library_lifetime_test
     SOURCES library/library_lifetime_test.cpp
-    LIBS wiola_library_session wiola_codec Qt6::Test
+    LIBS wiola_library_session wiola::ffmpeg Qt6::Test
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 

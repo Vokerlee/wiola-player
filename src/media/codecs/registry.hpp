@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <media/codecs/format.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/codecs/format.hpp>
 
 #include <cstddef>
 #include <stop_token>

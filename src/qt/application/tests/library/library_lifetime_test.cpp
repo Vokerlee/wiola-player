@@ -1,5 +1,5 @@
 #include <QCoreApplication>
-#include <media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <QTemporaryDir>
 #include <QTest>

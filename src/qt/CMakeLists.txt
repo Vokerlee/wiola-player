@@ -40,7 +40,7 @@ target_link_libraries(
         wiola_coverage
         wiola::qt_widgets
         wiola_player_application
-        wiola_ffmpeg_provider
+        wiola::ffmpeg
         wiola::audio_miniaudio
         wiola_queue_migration
         wiola_sanitizer
