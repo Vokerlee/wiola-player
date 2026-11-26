@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -60,9 +59,9 @@ wiola::media::DecoderOpenResult open_mp4(const char* name)
 
 TEST(Mp4Qualification, AacLcAndAlacDecodeTheirCompleteAudibleTimelines)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     for (const char* name : {"multi-audio.m4a", "attached-art.m4a", "tone-alac.mp4"}) {
-        auto asset{provider.open(
+        auto asset{provider->open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
         )};
         ASSERT_TRUE(asset) << name;
@@ -106,9 +105,9 @@ TEST(Mp4Qualification, AacLcAndAlacSeeksMatchSequentialSamples)
 
 TEST(Mp4Qualification, AttachedArtworkAndUnicodeMetadataRemainAvailable)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{
-        provider.open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
+        provider->open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
             "attached-art.m4a"))};
     ASSERT_TRUE(asset);
 

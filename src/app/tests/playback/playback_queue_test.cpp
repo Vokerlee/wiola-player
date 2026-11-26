@@ -22,7 +22,6 @@
 #include <media/codecs/ffmpeg/composition.hpp>
 
 #include <fakes/output.hpp>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 
 #include <wiola/library/in_memory_repository.hpp>

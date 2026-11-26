@@ -32,7 +32,6 @@
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <media/local/fingerprint.hpp>
-#include <media/local/provider.hpp>
 #include <qt/paths.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
 

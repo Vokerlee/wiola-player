@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -60,12 +59,12 @@ wiola::media::DecoderOpenResult open_adts(const char* name)
 
 TEST(AdtsQualification, AacLcUsesActualRateAndChannelsWithEstimatedLength)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     for (const auto& [name, rate, channels, frames] : {
              std::tuple{"tone-lc.aac",      44100, 2U, 12288U},
              std::tuple{"tone-lc-mono.aac", 22050, 1U, 7168U },
     }) {
-        auto asset{provider.open(
+        auto asset{provider->open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
         )};
         ASSERT_TRUE(asset) << name;

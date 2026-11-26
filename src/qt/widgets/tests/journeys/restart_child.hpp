@@ -190,8 +190,8 @@ inline app::PreparedMediaReplacement stage_process_replacement(const QString& di
         QDir{directory}.filePath(QString::fromUtf8("音楽.mp3"))
     );
     std::filesystem::copy_file(journey_fixture("tone.mp3"), source);
-    codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset = provider.open(media::local_resource(source));
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset = provider->open(media::local_resource(source));
     journey_require(static_cast<bool>(asset), "open real replacement source");
     media::MetadataWriteRequest request;
     request.overrides.title = "Process committed metadata";
@@ -199,7 +199,7 @@ inline app::PreparedMediaReplacement stage_process_replacement(const QString& di
     journey_require(staged.state == media::MetadataWriteState::written && !staged.source_modified,
         "stage real remux");
     const auto output = staged.staged_output;
-    auto validation = app::prepare_media_replacement(source, output, provider);
+    auto validation = app::prepare_media_replacement(source, output, *provider);
     journey_require(validation.prepared.has_value(),
         "validate unchanged decoded audio before crash");
     const auto& prepared = *validation.prepared;

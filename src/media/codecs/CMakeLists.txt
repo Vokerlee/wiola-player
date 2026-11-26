@@ -8,10 +8,7 @@ wiola_add_library(
 
 target_link_libraries(wiola_codec_decode PUBLIC wiola::media)
 
-wiola_add_module(
-    wiola_codec
-    LIBS wiola_codec_decode wiola_codec_provider wiola_ffmpeg_provider
-)
+wiola_add_module(wiola_codec LIBS wiola_codec_decode wiola_ffmpeg_provider)
 
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)

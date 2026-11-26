@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -74,9 +73,9 @@ TEST(LosslessFamilyQualification, LosslessVariantsMatchTheReferencePcmExactly)
     auto expected{read_all(**reference)};
     ASSERT_TRUE(expected);
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     for (const std::string_view name : {"tone-lossless.wv", "tone.ape", "tone.tta"}) {
-        auto asset{provider.open(
+        auto asset{provider->open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
         )};
         ASSERT_TRUE(asset) << name;
@@ -91,8 +90,8 @@ TEST(LosslessFamilyQualification, LosslessVariantsMatchTheReferencePcmExactly)
 
 TEST(LosslessFamilyQualification, ReadsUnicodeApeMetadata)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset{provider.open(
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset{provider->open(
         wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.ape")
     )};
     ASSERT_TRUE(asset);

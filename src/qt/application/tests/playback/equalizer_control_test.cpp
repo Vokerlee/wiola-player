@@ -22,7 +22,6 @@
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/settings.hpp>
 #include <wiola/app/playback/equalizer_control.hpp>

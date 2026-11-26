@@ -20,7 +20,6 @@
 
 #include <fakes/output.hpp>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 #include <qt/settings.hpp>
 #include <wiola/app/playback/volume_control.hpp>
 #include <wiola/app/playback/volume_scale.hpp>

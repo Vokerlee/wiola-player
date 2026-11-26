@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -53,9 +52,9 @@ wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& de
 
 TEST(ChannelLayoutQualification, PreservesEveryFivePointOneSideChannel)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{
-        provider.open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
+        provider->open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
             "channels-5.1.caf"))};
     ASSERT_TRUE(asset);
     auto decoder{(*asset)->create_decoder()};
@@ -76,9 +75,9 @@ TEST(ChannelLayoutQualification, PreservesEveryFivePointOneSideChannel)
 
 TEST(ChannelLayoutQualification, RejectsAnUnsupportedSixPointOneMapping)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{
-        provider.open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
+        provider->open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
             "channels-6.1.caf"))};
 
     ASSERT_TRUE(asset);

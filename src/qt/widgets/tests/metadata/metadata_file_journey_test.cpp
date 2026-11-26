@@ -5,7 +5,6 @@
 #include <app/library/local_identity.hpp>
 #include <array>
 #include <fakes/output.hpp>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/player_application.hpp>
 #include <qt/paths.hpp>
@@ -22,8 +21,8 @@ using namespace wiola;
 
 std::vector<float> decoded_samples(const std::filesystem::path& path)
 {
-    codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset = provider.open(wiola::media::local_resource(path));
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset = provider->open(wiola::media::local_resource(path));
     if (!asset)
         throw std::runtime_error{asset.error().detail};
     auto decoder = (*asset)->create_decoder();
@@ -127,8 +126,8 @@ TEST_P(MetadataFileJourney, FileButtonWritesTheSelectedDuplicateAndPreservesDeco
         }
         EXPECT_EQ(table.model()->rowCount(), 2);
         EXPECT_EQ(table.chosen_rows().size(), 1);
-        codec::LocalMediaProvider reader{wiola::codec::ffmpeg::make_registry()};
-        auto reopened = reader.open(media::local_resource(path));
+        auto reader{wiola::codec::ffmpeg::make_provider()};
+        auto reopened = reader->open(media::local_resource(path));
         ASSERT_TRUE(reopened);
         auto metadata = (*reopened)->read_metadata();
         ASSERT_TRUE(metadata);

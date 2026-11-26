@@ -21,18 +21,11 @@
 #include "composition.hpp"
 #include "decoder.hpp"
 
-#include <media/local/provider.hpp>
-
 namespace wiola::codec::ffmpeg {
 
 MediaBackendRegistry make_registry()
 {
     return MediaBackendRegistry{{backend()}};
-}
-
-std::shared_ptr<media::MediaProvider> make_provider()
-{
-    return std::make_shared<LocalMediaProvider>(make_registry());
 }
 
 } // namespace wiola::codec::ffmpeg

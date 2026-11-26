@@ -243,8 +243,8 @@ TEST(DesktopJourney, EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFi
         EXPECT_FALSE(std::filesystem::exists(recovered.journal));
         if (std::filesystem::exists(recovered.backup))
             EXPECT_EQ(media::fingerprint_media(recovered.backup), original);
-        codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-        auto asset = provider.open(wiola::media::local_resource(source));
+        auto provider{wiola::codec::ffmpeg::make_provider()};
+        auto asset = provider->open(wiola::media::local_resource(source));
         ASSERT_TRUE(asset);
         auto metadata = (*asset)->read_metadata();
         ASSERT_TRUE(metadata);

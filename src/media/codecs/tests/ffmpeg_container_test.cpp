@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -61,14 +60,14 @@ wiola::media::DecoderOpenResult open_file(std::string_view name)
 
 TEST(ContainerQualification, SelectedLegacyAndEbmlStreamsDrainWithActualPcmShapes)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     for (const auto& [name, rate, frames] : {
              std::tuple{"tone-wmav2.wma",  44100, 10240U},
              std::tuple{"tone-vorbis.mka", 44100, 10897U},
              std::tuple{"tone-opus.mka",   48000, 12000U},
              std::tuple{"tone-opus.webm",  48000, 12000U},
     }) {
-        auto asset{provider.open(
+        auto asset{provider->open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
         )};
         ASSERT_TRUE(asset) << name;
@@ -118,8 +117,8 @@ TEST(ContainerQualification, SelectedStreamsSeekToTheirSequentialTimelines)
 
 TEST(ContainerQualification, ReadsUnicodeWmaMetadata)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset{provider.open(
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset{provider->open(
         wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone-wmav2.wma")
     )};
     ASSERT_TRUE(asset);
