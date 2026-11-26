@@ -49,7 +49,10 @@ LayoutNode transport()
     using K = LayoutComponentKind;
     using A = PlayerAction;
     return container("playbackGroup", K::group,
-        {leaf("trackLabel", K::status),
+        {container("playbackHeading", K::row,
+             {leaf("trackLabel", K::status), leaf("repeatQueue", K::button, A::repeat),
+                 leaf("shuffleQueue", K::button, A::shuffle),
+                 leaf("equalizer", K::button, A::equalizer)}),
             container("transportControls", K::row,
                 {leaf("previousTrack", K::button, A::previous),
                     leaf("playPause", K::button, A::play), leaf("nextTrack", K::button, A::next),
@@ -79,9 +82,7 @@ LayoutDocument player_layout_document(PlayerLayoutPreset preset)
         {container("libraryCommands", K::row,
              {leaf("openTracks", K::button, A::open), leaf("addTracks", K::button, A::add),
                  leaf("removeTracks", K::button, A::remove),
-                 leaf("clearQueue", K::button, A::clear), leaf("repeatQueue", K::button, A::repeat),
-                 leaf("shuffleQueue", K::button, A::shuffle),
-                 leaf("equalizer", K::button, A::equalizer)}),
+                 leaf("clearQueue", K::button, A::clear)}),
             leaf("documentTabs", K::document_host), transport(), leaf("playerStatus", K::status)});
     document.node_count = layout_node_count(document.root);
     return document;

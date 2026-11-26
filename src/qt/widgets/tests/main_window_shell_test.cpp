@@ -61,6 +61,7 @@
 #include <QSettings>
 #include <QSlider>
 #include <QSplitter>
+#include <QStatusBar>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -1046,6 +1047,165 @@ TEST_F(MainWindowShell, EditingIsRequestedFromASelectedTrackAndPanelPositionsPer
     EXPECT_EQ(restored.dockWidgetArea(sidebar), Qt::RightDockWidgetArea);
     EXPECT_TRUE(sidebar->isHidden());
     EXPECT_FALSE(restored.findChild<QDockWidget*>("inspectorDock")->isHidden());
+}
+
+TEST_F(MainWindowShell, DockedTrackDetailsLeaveFullWidthPlaybackAndItsCurrentTrackUnchanged)
+{
+    using namespace wiola;
+    app::PlaybackService playback{wiola::testing::passive_output, codec::ffmpeg::make_provider()};
+    app::LibrarySession library{codec::ffmpeg::make_provider()};
+    app::PlaybackPreferences preferences{playback};
+    gui::MainWindow window{playback, library, preferences};
+    QTemporaryDir tracks;
+    ASSERT_TRUE(tracks.isValid());
+    const auto directory = platform::qt::QtPathAdapter::from_qt(tracks.path());
+    const auto playing =
+        wiola::testing::write_wav("Playing.wav", wiola::testing::source_rate, directory);
+    const auto selected =
+        wiola::testing::write_wav("Selected.wav", wiola::testing::source_rate, directory);
+    const auto expected_title = platform::qt::QtPathAdapter::to_qt(playing.filename());
+    window.open({playing, selected});
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return !playback.reading(); }));
+    playback.pump();
+    window.refresh();
+    window.resize(1280, 800);
+    window.show();
+    QApplication::processEvents();
+
+    auto* footer = window.findChild<QStatusBar*>("playbackFooter");
+    auto* transport = window.findChild<QWidget*>("playbackGroup");
+    auto* title = window.findChild<QLabel*>("trackLabel");
+    auto* seek = window.findChild<QWidget*>("positionBar");
+    auto* volume = window.findChild<QSlider*>("volumeSlider");
+    auto* details = window.findChild<QDockWidget*>("inspectorDock");
+    auto* sidebar = window.findChild<QDockWidget*>("libraryDock");
+    auto* queue = window.findChild<gui::NowPlayingDocument*>();
+    ASSERT_NE(footer, nullptr);
+    ASSERT_NE(transport, nullptr);
+    ASSERT_NE(title, nullptr);
+    ASSERT_NE(seek, nullptr);
+    ASSERT_NE(volume, nullptr);
+    ASSERT_NE(details, nullptr);
+    ASSERT_NE(sidebar, nullptr);
+    ASSERT_NE(queue, nullptr);
+    ASSERT_TRUE(footer->isVisible());
+    ASSERT_TRUE(footer->isAncestorOf(transport));
+    ASSERT_FALSE(window.centralWidget()->isAncestorOf(transport));
+    ASSERT_EQ(title->text(), expected_title);
+    ASSERT_EQ(queue->browser().table().model()->rowCount(), 2);
+    const auto geometry = [&window](const QWidget* widget) {
+        return QRect{widget->mapTo(&window, QPoint{}), widget->size()};
+    };
+
+    for (const auto theme : {"Light theme", "Dark theme"}) {
+        action(*menu(window, "&View"), theme)->trigger();
+        QApplication::processEvents();
+        const auto footer_geometry = geometry(footer);
+        const auto transport_geometry = geometry(transport);
+        const auto seek_geometry = geometry(seek);
+        const auto volume_geometry = geometry(volume);
+        EXPECT_EQ(footer_geometry.left(), window.contentsRect().left());
+        EXPECT_EQ(footer_geometry.right(), window.contentsRect().right());
+        for (const auto* name : {"repeatQueue", "shuffleQueue", "equalizer"}) {
+            auto* control = window.findChild<QPushButton*>(name);
+            ASSERT_NE(control, nullptr);
+            EXPECT_TRUE(transport->isAncestorOf(control));
+            EXPECT_TRUE(control->isVisible());
+        }
+        for (const auto* name : {"openTracks", "addTracks", "removeTracks", "clearQueue"}) {
+            auto* control = window.findChild<QPushButton*>(name);
+            ASSERT_NE(control, nullptr);
+            EXPECT_TRUE(window.centralWidget()->isAncestorOf(control));
+            EXPECT_FALSE(footer->isAncestorOf(control));
+        }
+        const auto unchanged = [&] {
+            QApplication::processEvents();
+            EXPECT_EQ(geometry(footer), footer_geometry);
+            EXPECT_EQ(geometry(transport), transport_geometry);
+            EXPECT_EQ(geometry(seek), seek_geometry);
+            EXPECT_EQ(geometry(volume), volume_geometry);
+            EXPECT_EQ(title->text(), expected_title);
+            ASSERT_NE(playback.playlist().current(), nullptr);
+            EXPECT_EQ(playback.playlist().current()->resource(), media::local_resource(playing));
+        };
+        queue->browser().table().selectRow(1);
+        auto* edit = queue->findChild<QPushButton*>("editSelectedTrack");
+        ASSERT_NE(edit, nullptr);
+        ASSERT_TRUE(edit->isEnabled());
+        edit->click();
+        ASSERT_TRUE(details->isVisible());
+        unchanged();
+        window.resizeDocks({details}, {details->width() + 80}, Qt::Horizontal);
+        unchanged();
+        sidebar->hide();
+        unchanged();
+        details->setFloating(true);
+        unchanged();
+        details->setFloating(false);
+        window.addDockWidget(Qt::LeftDockWidgetArea, details);
+        unchanged();
+        const auto previews = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+        if (!previews.isEmpty()) {
+            QDir{}.mkpath(previews);
+            EXPECT_TRUE(window.grab().save(QDir{previews}.filePath(
+                QString{"footer-with-details-%1.png"}.arg(QString::fromLatin1(theme).first(4))
+            )));
+        }
+        details->hide();
+        sidebar->show();
+        window.addDockWidget(Qt::RightDockWidgetArea, details);
+        unchanged();
+    }
+}
+
+TEST_F(MainWindowShell, PlaybackFooterSurvivesCustomPlacementOmissionAndReturnToPresets)
+{
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    wiola::gui::MainWindow window{playback, library, preferences};
+    window.show();
+    auto* footer = window.findChild<QStatusBar*>("playbackFooter");
+    const QPointer<QWidget> transport = window.findChild<QWidget*>("playbackGroup");
+    const QPointer<QWidget> seek = window.findChild<QWidget*>("positionBar");
+    ASSERT_NE(footer, nullptr);
+    ASSERT_NE(transport, nullptr);
+    ASSERT_NE(seek, nullptr);
+    EXPECT_FALSE(window.import_layout("invalid"));
+    EXPECT_TRUE(footer->isAncestorOf(transport));
+    for (const auto* preset : {"Library Focus", "Classic"}) {
+        auto custom = wiola::gui::classic_layout_document();
+        custom.root.id = "customPlaybackRoot";
+        ASSERT_TRUE(window.switch_layout(custom));
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        EXPECT_TRUE(footer->isHidden());
+        ASSERT_NE(transport, nullptr);
+        EXPECT_TRUE(window.centralWidget()->isAncestorOf(transport));
+        EXPECT_TRUE(transport->isVisible());
+        std::erase_if(custom.root.children,
+            [](const auto& node) { return node.id == "playbackGroup"; });
+        custom.node_count = wiola::gui::layout_node_count(custom.root);
+        ASSERT_TRUE(window.switch_layout(custom));
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        ASSERT_NE(transport, nullptr);
+        EXPECT_TRUE(transport->isHidden());
+        action(*menu(window, "&View"), preset)->trigger();
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QApplication::processEvents();
+        ASSERT_NE(transport, nullptr);
+        ASSERT_NE(seek, nullptr);
+        EXPECT_TRUE(footer->isVisible());
+        EXPECT_TRUE(footer->isAncestorOf(transport));
+        EXPECT_TRUE(transport->isVisible());
+        EXPECT_TRUE(seek->isVisible());
+        for (const auto* name : {"repeatQueue", "shuffleQueue", "equalizer"}) {
+            auto* control = window.findChild<QPushButton*>(name);
+            ASSERT_NE(control, nullptr);
+            EXPECT_TRUE(transport->isAncestorOf(control));
+            EXPECT_TRUE(control->isVisible());
+        }
+    }
 }
 
 TEST_F(MainWindowShell, FileDialogDescriptionsAreReadableAndInvalidChoicesNeverOpenAPicker)
