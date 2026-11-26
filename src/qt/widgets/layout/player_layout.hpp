@@ -26,7 +26,6 @@ namespace wiola::gui {
 enum class PlayerLayoutPreset {
     classic,
     library_focus,
-    queue_focus,
 };
 [[nodiscard]] LayoutDocument player_layout_document(PlayerLayoutPreset preset);
 

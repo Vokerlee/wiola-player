@@ -42,7 +42,6 @@ public:
     void add_menu_actions(QMenu& menu);
     void show_inspector();
     void reset();
-    void focus_queue(bool focused);
 
 private:
     QMainWindow& window_;
