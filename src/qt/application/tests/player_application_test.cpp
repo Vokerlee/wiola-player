@@ -22,8 +22,8 @@
 #include <qt/application/player_application.hpp>
 #include <wiola/library/records.hpp>
 
-#include <media/local/resource.hpp>
 #include <qt/widgets/shell/main_window.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <QFile>
 #include <QLineEdit>
@@ -31,9 +31,9 @@
 #include <app/library/local_identity.hpp>
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
-#include <media/local/fingerprint.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QApplication>
 #include <QCoreApplication>

@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <limits>
 #include <qt/application/session/session_preferences.hpp>
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 #include <wiola/qt/storage/settings.hpp>
 
 namespace {

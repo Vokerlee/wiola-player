@@ -22,8 +22,8 @@
 #include <algorithm>
 #include <app/library/local_identity.hpp>
 #include <map>
-#include <media/local/resource.hpp>
 #include <set>
+#include <wiola/media/local/resource.hpp>
 
 namespace wiola::gui {
 

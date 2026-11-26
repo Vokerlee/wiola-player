@@ -20,8 +20,8 @@
 
 #include "workspace_document.hpp"
 
-#include <qt/paths.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <wiola/library/records.hpp>
 

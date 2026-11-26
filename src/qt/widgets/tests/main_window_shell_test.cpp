@@ -20,7 +20,6 @@
 
 #include <media/codecs/ffmpeg/composition.hpp>
 
-#include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
@@ -33,15 +32,16 @@
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <wiola/app/playback/volume_control.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <qt/paths.hpp>
 #include <qt/storage/library_store.hpp>
 #include <qt/widgets/appearance/theme_editor.hpp>
 #include <qt/widgets/layout/classic_layout.hpp>
 #include <qt/widgets/layout/editor/layout_editor_dialog.hpp>
 #include <qt/widgets/tracks/tag_filter_panel.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QApplication>
 #include <QDir>

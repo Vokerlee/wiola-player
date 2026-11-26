@@ -21,9 +21,9 @@
 #include "document_command_router.hpp"
 #include <algorithm>
 #include <app/playback/playback_queue.hpp>
-#include <qt/paths.hpp>
 #include <wiola/app/library/playlist_transfer.hpp>
 #include <wiola/library/records.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::gui {
 

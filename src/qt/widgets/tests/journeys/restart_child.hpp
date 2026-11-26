@@ -11,11 +11,11 @@
 #include <cstdlib>
 #include <iostream>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/fingerprint.hpp>
-#include <media/local/resource.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
 #include <qt/widgets/layout/classic_layout.hpp>
 #include <stdexcept>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #ifdef WIOLA_TEST_COVERAGE
 extern "C" int __llvm_profile_write_file();

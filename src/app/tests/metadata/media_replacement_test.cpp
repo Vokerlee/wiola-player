@@ -21,12 +21,12 @@
 #include <app/metadata/media_replacement.hpp>
 #include <media/codecs/ffmpeg/composition.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
-#include <media/local/fingerprint.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 #include <gtest/gtest.h>
 

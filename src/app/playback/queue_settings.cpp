@@ -20,7 +20,7 @@
 
 #include "queue_settings.hpp"
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <stdexcept>
 

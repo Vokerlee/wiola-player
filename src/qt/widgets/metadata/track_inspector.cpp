@@ -20,8 +20,8 @@
 
 #include "track_inspector.hpp"
 
-#include <qt/paths.hpp>
 #include <qt/widgets/controls/clock.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <wiola/library/records.hpp>
 

@@ -24,8 +24,8 @@
 #include <algorithm>
 #include <app/library/local_identity.hpp>
 #include <app/workspace/workspace_discovery.hpp>
-#include <qt/paths.hpp>
 #include <stdexcept>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::app {
 namespace {

@@ -23,7 +23,7 @@
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 #include <qt/application/library/library_documents.hpp>
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

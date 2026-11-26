@@ -26,7 +26,6 @@
 #include "saved_playlist_manager.hpp"
 #include <QApplication>
 #include <app/playback/queue_settings.hpp>
-#include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
@@ -44,6 +43,7 @@
 #include <wiola/app/playback/playback_service.hpp>
 #include <wiola/app/playback/volume_control.hpp>
 #include <wiola/library/metadata_patch.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/playback/playback_queue.hpp>
@@ -62,7 +62,6 @@
 #include "player_menu.hpp"
 #include <qt/widgets/metadata/metadata_inspector_binding.hpp>
 
-#include <qt/paths.hpp>
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/appearance/theme_editor.hpp>
@@ -70,6 +69,7 @@
 #include <qt/widgets/layout/editor/layout_editor_dialog.hpp>
 #include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/layout/layout_builder.hpp>
+#include <wiola/qt/paths.hpp>
 #include <wiola/qt/storage/settings.hpp>
 
 #include <wiola/library/metadata.hpp>

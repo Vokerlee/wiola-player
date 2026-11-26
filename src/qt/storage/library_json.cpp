@@ -20,7 +20,7 @@
 
 #include "library_json.hpp"
 
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <wiola/library/tags.hpp>
 

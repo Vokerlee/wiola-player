@@ -20,8 +20,8 @@
 
 #pragma once
 #include <map>
-#include <presentation/tracks/track_row.hpp>
 #include <wiola/library/repository.hpp>
+#include <wiola/presentation/tracks/track_row.hpp>
 
 namespace wiola::gui {
 

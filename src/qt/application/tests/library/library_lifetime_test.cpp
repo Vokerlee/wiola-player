@@ -6,10 +6,10 @@
 #include <app/library/local_identity.hpp>
 #include <fixtures/gated_media_provider.hpp>
 #include <gtest/gtest.h>
-#include <media/local/fingerprint.hpp>
-#include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
-#include <qt/paths.hpp>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

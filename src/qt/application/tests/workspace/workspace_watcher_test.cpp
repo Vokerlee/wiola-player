@@ -28,8 +28,8 @@
 
 #include <QTemporaryDir>
 #include <fstream>
-#include <qt/paths.hpp>
 #include <set>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

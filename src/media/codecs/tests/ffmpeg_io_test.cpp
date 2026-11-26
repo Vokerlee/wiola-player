@@ -21,8 +21,8 @@
 #include <media/codecs/ffmpeg/input.hpp>
 
 #include <fixtures/temporary_directory.hpp>
-#include <media/local/file_stream.hpp>
 #include <support/allocation_failure.hpp>
+#include <wiola/media/local/file_stream.hpp>
 
 #include <gtest/gtest.h>
 

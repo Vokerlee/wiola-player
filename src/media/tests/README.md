@@ -1,6 +1,6 @@
 # Media contract tests
 
-These targets link `wiola::media` directly, without the checkout-wide `wiola_core` include path. No production driver, filesystem fixture, output device or Qt service is part of their dependency closure.
+These targets link `wiola::media` directly. No production driver, filesystem fixture, output device or Qt service is part of their dependency closure.
 
 ```mermaid
 flowchart LR

@@ -30,7 +30,7 @@ cmake -S . -B build-library -DWIOLA_COMPONENTS=library -DENABLE_UNIT_TESTS=OFF
 cmake --build build-library
 ```
 
-Clients link `wiola::library`. The target supplies C++23, media values and its thread dependency without the legacy source-root umbrella. `Library.Consumer` is a normal C++ executable exercising identities, tags, transactions, queries and receipts through that target.
+Clients link `wiola::library`. The target supplies C++23, media values and its thread dependency through its owned public headers. `Library.Consumer` is a normal C++ executable exercising identities, tags, transactions, queries and receipts through that target.
 
 Durability receipts belong to the accepting thread. A failed attempt retains its observers for retry; success is terminal. Cancellation suppresses remaining and future callbacks. Delivery isolates observer exceptions, finishes all eligible callbacks, then rethrows the first failure. An observer that completes a revision reentrantly prevents stale failure delivery to the remaining callbacks. `CommitResult` records the original acceptance state; later durability is observed through its receipt.
 

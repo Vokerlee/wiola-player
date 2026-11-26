@@ -18,3 +18,5 @@ wiola_add_library(
     SOURCES composition.cpp provider.cpp
     LIBS wiola_codec_decode wiola_codec_ffmpeg
 )
+
+target_link_libraries(wiola_ffmpeg_provider PRIVATE wiola::local_media)

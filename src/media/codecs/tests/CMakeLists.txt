@@ -14,11 +14,18 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_ffmpeg_io_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_ffmpeg_packet_decoder_test
     SOURCES ffmpeg_packet_decoder_test.cpp
     LIBS wiola_codec_ffmpeg wiola_ffmpeg
     DATA "${fixtures}"
+)
+
+target_link_libraries(
+    codec_ffmpeg_packet_decoder_test
+    PRIVATE wiola::local_media
 )
 
 wiola_add_test(
@@ -28,12 +35,16 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_ffmpeg_ogg_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_ffmpeg_mp4_test
     SOURCES ffmpeg_mp4_test.cpp
     LIBS wiola_codec wiola_codec_ffmpeg wiola_ffmpeg
     DATA "${fixtures}"
 )
+
+target_link_libraries(codec_ffmpeg_mp4_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     codec_ffmpeg_adts_test
@@ -42,12 +53,16 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_ffmpeg_adts_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_ffmpeg_sampled_file_test
     SOURCES ffmpeg_sampled_file_test.cpp
     LIBS wiola_codec wiola_codec_ffmpeg wiola_ffmpeg
     DATA "${fixtures}"
 )
+
+target_link_libraries(codec_ffmpeg_sampled_file_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     codec_ffmpeg_lossless_test
@@ -56,6 +71,8 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_ffmpeg_lossless_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_ffmpeg_container_test
     SOURCES ffmpeg_container_test.cpp
@@ -63,11 +80,18 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_ffmpeg_container_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_ffmpeg_channel_layout_test
     SOURCES ffmpeg_channel_layout_test.cpp
     LIBS wiola_codec wiola_codec_ffmpeg wiola_ffmpeg
     DATA "${fixtures}"
+)
+
+target_link_libraries(
+    codec_ffmpeg_channel_layout_test
+    PRIVATE wiola::local_media
 )
 
 wiola_add_test(
@@ -90,6 +114,8 @@ wiola_add_test(
     LIBS wiola_codec_ffmpeg wiola_ffmpeg_provider wiola_ffmpeg
     DATA "${fixtures}"
 )
+
+target_link_libraries(codec_ffmpeg_metadata_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     codec_ffmpeg_metadata_writer_test
@@ -130,6 +156,8 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_provider_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_audio_decoder_test
     SOURCES audio_decoder_test.cpp
@@ -156,3 +184,5 @@ wiola_add_test(
     LIBS wiola_codec wiola::playback wiola::audio_output
     DATA "${fixtures}"
 )
+
+target_link_libraries(codec_session_integration_test PRIVATE wiola::local_media)

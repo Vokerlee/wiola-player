@@ -61,6 +61,8 @@ wiola_add_library(
     LIBS wiola::qt_delivery
 )
 
+target_link_libraries(wiola_metadata_writes PRIVATE wiola::local_media)
+
 target_link_libraries(wiola_metadata_writes PUBLIC Qt6::Core wiola_app)
 
 wiola_add_library(
@@ -92,12 +94,12 @@ target_link_libraries(
 wiola_add_library(
     wiola_playback_preferences
     SOURCES playback/playback_preferences.cpp
-    LIBS wiola_session_preferences wiola::local_media
+    LIBS wiola::local_media
 )
 
 target_link_libraries(
     wiola_playback_preferences
-    PUBLIC Qt6::Core wiola_app wiola::qt_settings
+    PUBLIC Qt6::Core wiola_app wiola::qt_settings wiola_session_preferences
 )
 
 wiola_add_library(
@@ -106,9 +108,14 @@ wiola_add_library(
     LIBS wiola::qt_files wiola_library_session wiola::presentation
 )
 
+target_link_libraries(wiola_session_preferences PRIVATE wiola::qt_paths)
+
 set_target_properties(wiola_session_preferences PROPERTIES AUTOMOC ON)
 
-target_link_libraries(wiola_session_preferences PUBLIC Qt6::Core wiola_app)
+target_link_libraries(
+    wiola_session_preferences
+    PUBLIC Qt6::Core wiola_app wiola::presentation
+)
 
 wiola_add_library(
     wiola_library_documents

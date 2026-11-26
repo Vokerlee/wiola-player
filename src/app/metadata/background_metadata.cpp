@@ -20,8 +20,8 @@
 
 #include "background_metadata.hpp"
 
-#include <media/local/resource.hpp>
 #include <wiola/media/artwork_reference.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <stdexcept>
 #include <utility>

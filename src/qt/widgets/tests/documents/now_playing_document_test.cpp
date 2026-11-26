@@ -20,9 +20,9 @@
 
 #include <qt/widgets/documents/now_playing_document.hpp>
 
-#include <media/local/resource.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <queue/playlist.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <QAction>
 #include <QApplication>

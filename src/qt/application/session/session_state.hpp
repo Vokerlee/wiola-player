@@ -23,7 +23,7 @@
 #include <QRect>
 #include <QString>
 #include <map>
-#include <presentation/documents/session_documents.hpp>
+#include <wiola/presentation/documents/session_documents.hpp>
 
 namespace wiola::app {
 

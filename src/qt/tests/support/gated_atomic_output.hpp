@@ -23,9 +23,9 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <qt/paths.hpp>
 #include <qt/storage/atomic_file_store.hpp>
 #include <thread>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::testing {
 

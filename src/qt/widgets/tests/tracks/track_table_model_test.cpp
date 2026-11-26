@@ -20,9 +20,9 @@
 
 #include <fixtures/track_view.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
-#include <presentation/documents/queue_rows.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 
 #include <qt/widgets/tracks/track_table_model.hpp>
 

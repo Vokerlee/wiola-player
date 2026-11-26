@@ -22,6 +22,8 @@ wiola_add_test(
     LIBS wiola::qt_library_store
 )
 
+target_link_libraries(qt_snapshot_writer_test PRIVATE wiola::qt_paths)
+
 include(GoogleTest)
 
 foreach(control IN ITEMS volume equalizer)

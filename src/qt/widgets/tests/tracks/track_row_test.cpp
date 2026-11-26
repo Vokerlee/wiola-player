@@ -20,15 +20,15 @@
 
 #include <fixtures/track_view.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <QAction>
 #include <QApplication>
 #include <gtest/gtest.h>
-#include <presentation/documents/queue_rows.hpp>
 #include <qt/widgets/tracks/track_table_model.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <queue/playlist.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 
 #include <algorithm>
 

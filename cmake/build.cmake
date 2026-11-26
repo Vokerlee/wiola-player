@@ -1,5 +1,5 @@
-# How everything in this project is built. Stated once here rather than repeated per target, so
-# that a new library is a list of sources and nothing else.
+# Shared compiler controls and thin declarations for internal implementations and tests.
+# Each source owner declares its API headers and actual dependencies.
 
 # A build with no type gets no optimisation at all. That is not a neutral default here: the
 # decoder feeds a callback that must answer within a device period, and unoptimised it runs
@@ -95,23 +95,8 @@ endif()
 # every translation unit.
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/version.hpp.in"
-    "${PROJECT_BINARY_DIR}/generated/core/version.hpp"
+    "${PROJECT_BINARY_DIR}/generated/wiola/version.hpp"
     @ONLY
-)
-
-# Where the project's headers are. Each sits beside its own sources, so an include names the
-# subsystem it comes from. The generated one has a root of its own.
-add_library(wiola_core INTERFACE)
-
-target_include_directories(
-    wiola_core
-    INTERFACE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}/generated"
-)
-
-# Legacy consumers receive the portable foundation and media targets.
-target_link_libraries(
-    wiola_core
-    INTERFACE wiola_borrowed_reference wiola_quantities wiola::media
 )
 
 # Apply the selected build controls without changing a component's public dependencies.
@@ -127,9 +112,8 @@ function(wiola_apply_build_controls target)
     endforeach()
 endfunction()
 
-# Adds a library built the way this project builds them: it can see the public headers, and it is
-# compiled with the project's warnings. `LIBS` is whatever else it needs, kept private, since a
-# static library's dependencies are its own business.
+# Internal implementations have private checkout access and compiler controls.
+# Public APIs and public type dependencies are declared in the owning CMakeLists.txt.
 function(wiola_add_library name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;LIBS")
 
@@ -137,7 +121,11 @@ function(wiola_add_library name)
 
     wiola_apply_build_controls(${name})
 
-    target_link_libraries(${name} PUBLIC wiola_core PRIVATE ${arg_LIBS})
+    target_compile_features(${name} PUBLIC cxx_std_23)
+
+    target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/src")
+
+    target_link_libraries(${name} PRIVATE ${arg_LIBS})
 endfunction()
 
 # Groups the libraries a module was split into, so that whatever depends on the module names the
@@ -181,7 +169,6 @@ function(wiola_add_test name)
         ${name}
         PRIVATE
             GTest::gtest_main
-            wiola_core
             wiola_coverage
             wiola_sanitizer
             wiola_warnings
@@ -193,8 +180,11 @@ function(wiola_add_test name)
         PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
-    # What the tests share among themselves. The project's own headers arrive with wiola_core.
-    target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/tests")
+    # Internal tests may inspect implementation headers; public consumers link owned API targets.
+    target_include_directories(
+        ${name}
+        PRIVATE "${PROJECT_SOURCE_DIR}/tests" "${PROJECT_SOURCE_DIR}/src"
+    )
 
     if(arg_DATA)
         target_compile_definitions(
