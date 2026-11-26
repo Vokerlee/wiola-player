@@ -30,6 +30,7 @@
 
 #include <QApplication>
 #include <QBuffer>
+#include <QDir>
 #include <QImage>
 #include <QLabel>
 #include <QTemporaryDir>
@@ -107,7 +108,8 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "Title");
     EXPECT_EQ(field(inspector, "inspectorArtist")->text(), "Artist");
     EXPECT_EQ(field(inspector, "inspectorAlbum")->text(), "Album");
-    EXPECT_EQ(field(inspector, "inspectorLocation")->text(), QString::fromStdString(path.string()));
+    EXPECT_EQ(field(inspector, "inspectorLocation")->text(),
+        QDir::toNativeSeparators(wiola::platform::qt::QtPathAdapter::to_qt(path)));
     EXPECT_EQ(field(inspector, "inspectorDuration")->text(), "1:05");
     EXPECT_EQ(field(inspector, "inspectorAvailability")->text(), "Available");
     EXPECT_FALSE(field(inspector, "inspectorAvailability")->property("missing").toBool());
@@ -266,7 +268,13 @@ TEST(TrackInspector, MultiSelectionUsesMixedEditorAndDisablesSingleTrackCustomTa
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+#ifdef Q_OS_WIN
+        qputenv("QT_QPA_PLATFORM", "windows");
+#else
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+#endif
+    }
     testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
 

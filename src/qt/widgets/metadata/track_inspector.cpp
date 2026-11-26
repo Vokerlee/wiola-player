@@ -189,7 +189,7 @@ void TrackInspector::show_context(InspectorContext next)
     title_->setText(fallback(track.metadata.title, "Unknown title"));
     artist_->setText(fallback(track.metadata.artist, "Unknown artist"));
     album_->setText(fallback(track.metadata.album, "Unknown album"));
-    location_->setText(platform::qt::QtPathAdapter::to_qt(track.location));
+    location_->setText(platform::qt::QtPathAdapter::display(track.location));
     duration_->setText(track.metadata.duration ? as_clock(*track.metadata.duration)
                                                : QString{"Unknown"});
     const bool known = editable != nullptr;
