@@ -64,6 +64,7 @@
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QTemporaryDir>
+#include <QTest>
 #include <QTimer>
 #include <QToolButton>
 #include <fakes/output.hpp>
@@ -1374,13 +1375,27 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     first_view->findChild<QLineEdit*>("searchTitle")->setText("no matching tracks");
     EXPECT_EQ(host->active_playlist(), first);
     EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
-    action(*menu(window, "&View"), "Play queue")->trigger();
+    auto* queue_navigation = navigation->topLevelItem(0);
+    ASSERT_NE(queue_navigation, nullptr);
+    EXPECT_EQ(queue_navigation->text(0), "Play queue");
+    window.show();
+    QApplication::processEvents();
+    const auto open_queue_from_sidebar = [&] {
+        QTest::mouseClick(navigation->viewport(), Qt::LeftButton, Qt::NoModifier,
+            navigation->visualItemRect(queue_navigation).center());
+    };
+    open_queue_from_sidebar();
     EXPECT_EQ(host->currentWidget(), &host->queue());
     EXPECT_TRUE(host->isTabVisible(host->indexOf(&host->queue())));
     EXPECT_EQ(host->active_playlist(), first);
     EXPECT_EQ(host->capture(gui::DocumentId::queue()).active_playlist, first);
     ASSERT_TRUE(host->activate(gui::DocumentId::playlist(first)));
     EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
+    open_queue_from_sidebar();
+    EXPECT_EQ(host->currentWidget(), &host->queue());
+    ASSERT_TRUE(host->activate(gui::DocumentId::playlist(first)));
+    action(*menu(window, "&View"), "Play queue")->trigger();
+    EXPECT_EQ(host->currentWidget(), &host->queue());
     EXPECT_EQ(host->active_playlist(), first);
     EXPECT_EQ(preferences.ui_session().state().documents.last_playlist, first);
     ASSERT_TRUE(navigation->select_playlist(second));

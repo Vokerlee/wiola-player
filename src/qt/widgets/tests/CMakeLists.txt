@@ -37,7 +37,7 @@ target_link_libraries(gui_now_playing_document_test PRIVATE wiola::local_media)
 wiola_add_test(
     gui_library_navigation_test
     SOURCES shell/library_navigation_test.cpp
-    LIBS wiola::qt_widgets wiola_library
+    LIBS wiola::qt_widgets wiola_library Qt6::Test
 )
 
 wiola_add_test(
