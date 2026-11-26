@@ -70,6 +70,7 @@ private:
     PlaybackPreferences preferences_{playback_};
     QTimer pump_timer_;
     QTimer refresh_timer_;
+    bool shutting_down_{};
 };
 
 } // namespace wiola::app

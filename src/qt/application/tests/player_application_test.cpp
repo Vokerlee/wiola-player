@@ -51,6 +51,8 @@
 #include <filesystem>
 #include <memory>
 #include <set>
+#include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -205,6 +207,56 @@ TEST_F(PlayerApplication, ObserverLifetimeAndShutdownDoNotLeaveLiveCallbacksOrCo
         wiola::engine::CommandResult::unavailable);
     EXPECT_FALSE(player.library().playlists().create("After quit").id.valid());
     EXPECT_TRUE(player.shutdown());
+}
+
+TEST_F(PlayerApplication, ReentrantShutdownReportsBusyUntilTheOuterFlushCompletes)
+{
+    QTemporaryDir directory;
+    wiola::app::PlayerRuntimeConfig config;
+    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.output = wiola::testing::passive_output;
+    config.library_file =
+        wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    wiola::app::PlayerApplication player{std::move(config)};
+    bool observed = false;
+    bool nested = true;
+    QObject::connect(&player.library(), &wiola::app::LibrarySession::library_save_finished, &player,
+        [&](auto, bool) {
+            if (!std::exchange(observed, true))
+                nested = player.shutdown();
+        });
+    const auto created = player.library().playlists().create("Shutdown boundary");
+    ASSERT_TRUE(created.id.valid());
+
+    EXPECT_TRUE(player.shutdown());
+    EXPECT_TRUE(observed);
+    EXPECT_FALSE(nested);
+    ASSERT_TRUE(created.commit.receipt);
+    EXPECT_TRUE(created.commit.receipt->durable());
+    EXPECT_TRUE(player.shutdown());
+}
+
+TEST_F(PlayerApplication, CompletionObserverFailureDoesNotPreventAnExplicitShutdownRetry)
+{
+    QTemporaryDir directory;
+    wiola::app::PlayerRuntimeConfig config;
+    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.output = wiola::testing::passive_output;
+    config.library_file =
+        wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    wiola::app::PlayerApplication player{std::move(config)};
+    const auto connection =
+        QObject::connect(&player.library(), &wiola::app::LibrarySession::library_save_finished,
+            &player, [](auto, bool) { throw std::logic_error{"completion observer failed"}; });
+    const auto created = player.library().playlists().create("Retained after observer failure");
+    ASSERT_TRUE(created.id.valid());
+
+    EXPECT_THROW(static_cast<void>(player.shutdown()), std::logic_error);
+    QObject::disconnect(connection);
+    EXPECT_TRUE(player.shutdown());
+    ASSERT_TRUE(created.commit.receipt);
+    EXPECT_TRUE(created.commit.receipt->durable());
+    EXPECT_NE(player.library().repository().playlist(created.id), nullptr);
 }
 
 TEST_F(PlayerApplication, ReportsFailedFlushAndAllowsAnExplicitRetry)

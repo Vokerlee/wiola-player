@@ -19,6 +19,8 @@
  */
 
 #include "player_application.hpp"
+#include <QScopedValueRollback>
+#include <QThread>
 #include <audio/miniaudio/device.hpp>
 #include <media/local/provider.hpp>
 
@@ -94,6 +96,10 @@ void PlayerApplication::observe(QObject& receiver,
 
 bool PlayerApplication::shutdown()
 {
+    Q_ASSERT(QThread::currentThread() == thread());
+    if (shutting_down_)
+        return false;
+    const QScopedValueRollback<bool> in_progress{shutting_down_, true};
     pump_timer_.stop();
     refresh_timer_.stop();
     playback_.stop_accepting();

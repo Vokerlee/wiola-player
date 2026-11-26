@@ -132,23 +132,24 @@ LibrarySession::~LibrarySession()
 SnapshotWriteResult LibrarySession::shutdown()
 {
     check_owner();
-    if (!accepting_ && shutdown_result_.succeeded())
-        return shutdown_result_;
+    if (!accepting_ && shutdown_result_ && shutdown_result_->succeeded())
+        return *shutdown_result_;
     writes_.stop();
     accepting_ = false;
     watcher_.stop();
     scans_.stop();
     pending_scans_.clear();
     metadata_.stop();
-    shutdown_result_ = !restore_result_.succeeded() && repository_.change_revision() == 0
+    auto result = !restore_result_.succeeded() && repository_.change_revision() == 0
         ? persistence::qt::snapshot_write_result(restore_result_)
         : persistence_worker_->flush();
-    if (shutdown_result_.succeeded())
+    if (result.succeeded())
         persistence_worker_->stop();
     settings_.sync();
-    if (shutdown_result_.succeeded() && settings_.status() != QSettings::NoError)
-        shutdown_result_.error = SnapshotWriteError::io;
-    return shutdown_result_;
+    if (result.succeeded() && settings_.status() != QSettings::NoError)
+        result.error = SnapshotWriteError::io;
+    shutdown_result_ = result;
+    return result;
 }
 
 void LibrarySession::retry_save()
