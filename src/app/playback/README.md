@@ -14,7 +14,7 @@ flowchart LR
 
 Service commands and observations use `media::ResourceReference`. The same reference reaches Session, snapshots and resource handoff without a second path cache or filename interpretation. The caller supplies the media provider and output factory. A new provider can interpret its own keys without changing this service or the kernel.
 
-PlaybackQueue adapts the current path-based library and saved-playlist workflows into those commands. Its explicitly named path operations perform local conversion at this boundary. ActivePlaylist and playlist-transfer operations own destination/occurrence policy independently of the queue being played. Frontend event delivery and persistence completion do not belong to Session.
+PlaybackQueue adapts the current path-based library and saved-playlist workflows into those commands. Its explicitly named path operations perform local conversion at this boundary. Saved-playlist destinations and transfers live with [catalog commands](../library/README.md); they do not own the playback queue. Frontend event delivery and persistence completion do not belong to Session.
 
 VolumeControl and EqualizerControl own frontend control policy beside PlaybackService. They apply restored values without writing them back and send semantic writes through PlaybackSettingsWriter. The borrowed playback service and writer outlive the controls. The writer owns persistence failure behavior; a failed write does not roll back a runtime audio change that has already been applied.
 

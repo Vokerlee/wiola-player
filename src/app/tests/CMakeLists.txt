@@ -41,33 +41,36 @@ if(TARGET wiola_library_persistence)
 endif()
 
 if(TARGET wiola_saved_playlists)
-    add_executable(app_playlist_name_test library/playlist_name_test.cpp)
+    foreach(
+        test
+        IN
+        ITEMS
+            playlist_name
+            playlist_commands
+            playlist_destination
+            playlist_transfer
+    )
+        add_executable(app_${test}_test library/${test}_test.cpp)
+
+        target_link_libraries(
+            app_${test}_test
+            PRIVATE wiola::playlist_commands GTest::gtest_main
+        )
+
+        wiola_apply_build_controls(app_${test}_test)
+
+        gtest_discover_tests(app_${test}_test)
+    endforeach()
 
     target_link_libraries(
-        app_playlist_name_test
-        PRIVATE wiola::playlist_commands GTest::gtest_main
-    )
-
-    wiola_apply_build_controls(app_playlist_name_test)
-
-    gtest_discover_tests(app_playlist_name_test)
-
-    add_executable(
         app_playlist_commands_test
-        library/playlist_commands_test.cpp
+        PRIVATE wiola_test_allocation_failure
     )
 
     target_link_libraries(
-        app_playlist_commands_test
-        PRIVATE
-            wiola::playlist_commands
-            GTest::gtest_main
-            wiola_test_allocation_failure
+        app_playlist_destination_test
+        PRIVATE wiola_test_allocation_failure
     )
-
-    wiola_apply_build_controls(app_playlist_commands_test)
-
-    gtest_discover_tests(app_playlist_commands_test)
 endif()
 
 if(TARGET wiola_metadata_edits)
@@ -163,12 +166,6 @@ wiola_add_test(
 )
 
 wiola_add_test(
-    app_playlist_transfer_test
-    SOURCES playback/playlist_transfer_test.cpp
-    LIBS wiola_app
-)
-
-wiola_add_test(
     app_queue_settings_test
     SOURCES playback/queue_settings_test.cpp
     LIBS wiola_app
@@ -177,12 +174,6 @@ wiola_add_test(
 wiola_add_test(
     app_playback_preferences_test
     SOURCES playback/playback_preferences_test.cpp
-    LIBS wiola_app
-)
-
-wiola_add_test(
-    app_active_playlist_test
-    SOURCES playback/active_playlist_test.cpp
     LIBS wiola_app
 )
 

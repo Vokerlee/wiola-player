@@ -187,9 +187,9 @@ TEST(SessionPreferences, DestinationRestoresAndTracksLibraryChangesWithoutAnyWin
     app::SessionPreferences preferences{settings};
     preferences.edit([&](auto& state) { state.documents.destination = first; });
     preferences.bind_library(library);
-    EXPECT_EQ(library.active_playlist().id(), first);
+    EXPECT_EQ(library.playlist_destination().id(), first);
     preferences.bind_library(library);
-    ASSERT_TRUE(library.active_playlist().set(second));
+    ASSERT_TRUE(library.playlist_destination().set(second));
     EXPECT_EQ(preferences.state().documents.destination, second);
     ASSERT_TRUE(library.playlists().remove(second));
     EXPECT_FALSE(preferences.state().documents.destination);

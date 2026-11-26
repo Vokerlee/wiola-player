@@ -25,7 +25,6 @@
 #include <app/library/search_index.hpp>
 #include <app/library/tag_key_catalog.hpp>
 #include <app/metadata/custom_tag_commands.hpp>
-#include <app/playback/active_playlist.hpp>
 #include <app/workspace/workspace_reconciliation.hpp>
 #include <optional>
 #include <qt/application/metadata/media_revision_publisher.hpp>
@@ -35,6 +34,7 @@
 #include <qt/queued_delivery.hpp>
 #include <qt/storage/library_store.hpp>
 #include <qt/storage/snapshot_writer.hpp>
+#include <wiola/app/library/playlist_destination.hpp>
 #include <wiola/app/library/saved_playlist_commands.hpp>
 #include <wiola/app/metadata/metadata_edit_service.hpp>
 #include <wiola/app/metadata/metadata_merge.hpp>
@@ -72,7 +72,7 @@ public:
         return writes_;
     }
 
-    [[nodiscard]] ActivePlaylist& active_playlist();
+    [[nodiscard]] PlaylistDestination& playlist_destination();
     /// Owned, owner-thread snapshot safe across repository transactions.
     [[nodiscard]] std::optional<library::TrackRecord> snapshot(const library::MediaId& id) const;
     [[nodiscard]] const SearchIndex& search() const;
@@ -133,7 +133,7 @@ private:
     SavedPlaylistCommands playlists_;
     CustomTagCommands tags_;
     MetadataEditService edits_;
-    ActivePlaylist active_;
+    PlaylistDestination destination_;
     SearchIndex search_;
     mutable ArtworkStore artwork_;
     std::map<library::MediaId, std::uint64_t> metadata_pending_;

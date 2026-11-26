@@ -18,39 +18,46 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "active_playlist.hpp"
+#include "playlist_destination.hpp"
+#include <utility>
 
 namespace wiola::app {
 
-bool ActivePlaylist::set(const library::PlaylistId& id)
+bool PlaylistDestination::set(const library::PlaylistId& id)
 {
     if (!id.valid())
         return false;
 
     if (id_ == id)
         return true;
-    id_ = id;
-    if (observer_) {
-        const auto notify = observer_;
-        notify(id_);
-    }
+    auto next = std::optional{id};
+    const auto notify = observer_;
+    auto event = notify ? next : std::optional<library::PlaylistId>{};
+    id_.swap(next);
+    if (notify)
+        (*notify)(std::move(event));
     return true;
 }
 
-bool ActivePlaylist::clear_if(const library::PlaylistId& id)
+bool PlaylistDestination::clear_if(const library::PlaylistId& id)
 {
     if (id_ != id)
         return false;
 
+    const auto notify = observer_;
     id_.reset();
-    if (observer_) {
-        const auto notify = observer_;
-        notify(id_);
-    }
+    if (notify)
+        (*notify)({});
     return true;
 }
 
-const std::optional<library::PlaylistId>& ActivePlaylist::id() const noexcept
+void PlaylistDestination::on_changed(Observer observer)
+{
+    auto next = observer ? std::make_shared<Observer>(std::move(observer)) : nullptr;
+    auto previous = std::exchange(observer_, std::move(next));
+}
+
+const std::optional<library::PlaylistId>& PlaylistDestination::id() const noexcept
 {
     return id_;
 }

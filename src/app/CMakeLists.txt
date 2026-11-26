@@ -58,6 +58,8 @@ if(
         STATIC
         library/saved_playlist_commands.cpp
         library/playlist_name.cpp
+        library/playlist_destination.cpp
+        library/playlist_transfer.cpp
     )
 
     add_library(wiola::playlist_commands ALIAS wiola_saved_playlists)
@@ -69,7 +71,11 @@ if(
     wiola_target_headers(
         wiola_saved_playlists
         wiola/app/library
-        HEADERS library/saved_playlist_commands.hpp library/playlist_name.hpp
+        HEADERS
+            library/saved_playlist_commands.hpp
+            library/playlist_name.hpp
+            library/playlist_destination.hpp
+            library/playlist_transfer.hpp
     )
 
     wiola_apply_build_controls(wiola_saved_playlists)
@@ -166,13 +172,11 @@ if(NOT WIOLA_COMPONENT_BUILD)
             metadata/metadata_write_job.cpp
             metadata/custom_tag_commands.cpp
             metadata/media_replacement.cpp
-            playback/active_playlist.cpp
             playback/playback_queue.cpp
             playback/playback_service.cpp
             playback/queue_settings.cpp
             playback/volume_control.cpp
             playback/equalizer_control.cpp
-            playback/playlist_transfer.cpp
             workspace/native_workspace_files.cpp
             workspace/workspace_scanner.cpp
         LIBS

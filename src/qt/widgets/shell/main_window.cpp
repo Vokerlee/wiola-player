@@ -46,12 +46,11 @@
 #include <wiola/library/metadata_patch.hpp>
 
 #include <app/metadata/custom_tag_commands.hpp>
-#include <app/playback/active_playlist.hpp>
 #include <app/playback/playback_queue.hpp>
-#include <app/playback/playlist_transfer.hpp>
 #include <qt/application/library/m3u_playlist.hpp>
 #include <qt/application/metadata/media_revision_publisher.hpp>
 #include <qt/application/workspace/workspace_watcher.hpp>
+#include <wiola/app/library/playlist_destination.hpp>
 #include <wiola/app/metadata/metadata_edit_service.hpp>
 #include <wiola/app/metadata/metadata_merge.hpp>
 #include <wiola/library/in_memory_repository.hpp>
@@ -153,7 +152,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     , equalizer_{preferences.equalizer()}
     , library_session_{library_session}
     , library_{library_session.repository()}
-    , active_playlist_{library_session.active_playlist()}
+    , playlist_destination_{library_session.playlist_destination()}
 {
     for (const auto& descriptor : action_descriptors())
         addAction(actions_.action(descriptor.id));
@@ -843,7 +842,7 @@ void MainWindow::seek_to(double fraction)
 void MainWindow::show_document_context()
 {
     QString destination = "None selected";
-    if (const auto id = active_playlist_.id())
+    if (const auto id = playlist_destination_.id())
         if (const auto record = library_.playlist(*id))
             destination = QString::fromStdString(record->name);
     status_->show_context(documents_->tabText(documents_->currentIndex()), destination);

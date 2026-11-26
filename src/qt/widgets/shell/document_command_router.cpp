@@ -21,8 +21,8 @@
 #include "document_command_router.hpp"
 #include <algorithm>
 #include <app/playback/playback_queue.hpp>
-#include <app/playback/playlist_transfer.hpp>
 #include <qt/paths.hpp>
+#include <wiola/app/library/playlist_transfer.hpp>
 #include <wiola/library/records.hpp>
 
 namespace wiola::gui {
@@ -116,7 +116,7 @@ void DocumentCommandRouter::export_playlist(std::optional<library::PlaylistId> i
     if (!library_)
         return;
     if (!id)
-        id = library_->active_playlist().id();
+        id = library_->playlist_destination().id();
     if (!id) {
         publish({"Open a saved playlist to export"});
         return;
@@ -184,7 +184,7 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
     if (command == TrackCommand::activate_destination) {
         if (const auto* id = context.document.playlist();
             id && library_->repository().playlist(*id))
-            static_cast<void>(library_->active_playlist().set(*id));
+            static_cast<void>(library_->playlist_destination().set(*id));
         return;
     }
     if (command == TrackCommand::remove) {
@@ -231,7 +231,7 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
     const bool moving = command == TrackCommand::move;
     if (moving && !source)
         return;
-    std::optional<library::PlaylistId> destination = library_->active_playlist().id();
+    std::optional<library::PlaylistId> destination = library_->playlist_destination().id();
     if (moving || command == TrackCommand::transfer_destination) {
         std::vector<PlaylistChoice> choices;
         for (const auto& playlist : library_->repository().playlists())
@@ -250,7 +250,7 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
         publish({"Choose an active playlist first"});
         return;
     }
-    app::PlaylistTransfer transfer{library_->repository(), library_->active_playlist(),
+    app::PlaylistTransfer transfer{library_->repository(), library_->playlist_destination(),
         library_->persistence()};
     app::PlaylistTransferResult result;
     if (moving) {
@@ -265,7 +265,7 @@ void DocumentCommandRouter::execute(TrackCommand command, DocumentCommandContext
             media.push_back({selected.media, selected.location});
         result = transfer.add_to(*destination, media);
     }
-    publish({result.succeeded
+    publish({result.succeeded()
             ? QString{moving ? "%1 track(s) moved" : "%1 track(s) added"}.arg(result.added)
             : QString{"Could not save the playlist transfer"}});
 }

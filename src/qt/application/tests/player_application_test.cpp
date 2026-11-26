@@ -147,7 +147,7 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
     auto& library = player.library();
     const auto playlist = library.playlists().create("Retained").id;
     ASSERT_TRUE(playlist.valid());
-    ASSERT_TRUE(library.active_playlist().set(playlist));
+    ASSERT_TRUE(library.playlist_destination().set(playlist));
     wiola::library::TrackRecord record;
     record.id = {"retained-media"};
     record.embedded.title = "Only in memory";
@@ -163,7 +163,7 @@ TEST_F(PlayerApplication, RecreatingAWindowKeepsTheSameLibraryAndActiveDestinati
         EXPECT_EQ(library.repository().playlists().size(), 1);
     }
     wiola::gui::MainWindow replacement{player.playback(), library, player.preferences()};
-    EXPECT_EQ(library.active_playlist().id(), playlist);
+    EXPECT_EQ(library.playlist_destination().id(), playlist);
     ASSERT_NE(library.repository().track(record.id), nullptr);
     EXPECT_EQ(library.repository().track(record.id)->metadata_revision, 17);
     EXPECT_EQ(library.repository().change_revision(), revision);

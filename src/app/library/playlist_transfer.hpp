@@ -20,13 +20,14 @@
 
 #pragma once
 
-#include "active_playlist.hpp"
+#include "playlist_destination.hpp"
 
 #include <wiola/library/in_memory_repository.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -39,26 +40,31 @@ struct MediaTransfer {
 
 struct PlaylistTransferResult {
     std::size_t added{0};
-    bool succeeded{false};
+    library::CommitResult commit;
+
+    [[nodiscard]] bool succeeded() const noexcept { return static_cast<bool>(commit); }
 };
 
 class PlaylistTransfer final {
 public:
     using Persist = library::RepositoryTransaction::Persist;
 
-    PlaylistTransfer(library::InMemoryRepository& repository, const ActivePlaylist& active,
-        Persist persist);
+    PlaylistTransfer(library::InMemoryRepository& repository,
+        const PlaylistDestination& destination, Persist persist);
 
-    [[nodiscard]] PlaylistTransferResult add_to_active(const std::vector<MediaTransfer>& media);
+    [[nodiscard]] PlaylistTransferResult
+    add_to_destination(const std::vector<MediaTransfer>& media);
     [[nodiscard]] PlaylistTransferResult add_to(const library::PlaylistId& playlist,
         const std::vector<MediaTransfer>& media);
     [[nodiscard]] PlaylistTransferResult move_to(const library::PlaylistId& source,
         const library::PlaylistId& destination, std::span<const library::PlaylistEntryId> entries);
 
 private:
+    [[nodiscard]] Persist persistence() const;
+
     library::InMemoryRepository& repository_;
-    const ActivePlaylist& active_;
-    Persist persist_;
+    const PlaylistDestination& destination_;
+    std::shared_ptr<Persist> persist_;
 };
 
 } // namespace wiola::app

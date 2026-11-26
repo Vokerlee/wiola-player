@@ -23,23 +23,31 @@
 #include <wiola/library/identity.hpp>
 
 #include <functional>
+#include <memory>
 #include <optional>
+#include <utility>
 
 namespace wiola::app {
 
-class ActivePlaylist final {
+class PlaylistDestination final {
 public:
+    PlaylistDestination() = default;
+    PlaylistDestination(const PlaylistDestination&) = delete;
+    PlaylistDestination& operator=(const PlaylistDestination&) = delete;
+    PlaylistDestination(PlaylistDestination&&) = delete;
+    PlaylistDestination& operator=(PlaylistDestination&&) = delete;
+
     [[nodiscard]] bool set(const library::PlaylistId& id);
     [[nodiscard]] bool clear_if(const library::PlaylistId& id);
     [[nodiscard]] const std::optional<library::PlaylistId>& id() const noexcept;
 
     using Observer = std::function<void(std::optional<library::PlaylistId>)>;
 
-    void on_changed(Observer observer) { observer_ = std::move(observer); }
+    void on_changed(Observer observer);
 
 private:
-    Observer observer_;
     std::optional<library::PlaylistId> id_;
+    std::shared_ptr<Observer> observer_;
 };
 
 } // namespace wiola::app
