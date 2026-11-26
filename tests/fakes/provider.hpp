@@ -41,6 +41,21 @@ public:
         std::function<media::Result<media::Metadata>(const media::ResourceReference&,
             const media::OperationContext&)>;
 
+    /// A supplied driver with no available assets, useful for idle control clients.
+    [[nodiscard]] static std::shared_ptr<FakeMediaProvider> unavailable()
+    {
+        return std::make_shared<FakeMediaProvider>(
+            [](
+                const media::ResourceReference&, const media::OperationContext&
+            ) -> media::Result<std::unique_ptr<media::MediaAsset>> {
+                return media::unexpected{
+                    media::Error{.category = media::ErrorCategory::unreadable,
+                                 .detail = "test provider has no assets"}
+                };
+            }
+        );
+    }
+
     /// A decoder-only driver leaves metadata explicitly unsupported.
     [[nodiscard]] static std::shared_ptr<FakeMediaProvider> decoder_only(DecoderFactory decoder)
     {

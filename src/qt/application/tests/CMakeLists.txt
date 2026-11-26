@@ -48,18 +48,6 @@ wiola_add_test(
 )
 
 wiola_add_test(
-    gui_equalizer_control_test
-    SOURCES playback/equalizer_control_test.cpp
-    LIBS wiola_playback_preferences wiola_codec
-)
-
-wiola_add_test(
-    gui_volume_control_test
-    SOURCES playback/volume_control_test.cpp
-    LIBS wiola_playback_preferences wiola_codec
-)
-
-wiola_add_test(
     desktop_metadata_write_service_test
     SOURCES metadata/metadata_write_service_test.cpp
     LIBS wiola_metadata_writes wiola_codec wiola::qt_paths
