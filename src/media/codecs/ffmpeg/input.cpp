@@ -138,7 +138,7 @@ media::Result<void> FfmpegInput::initialize()
             failure(media::ErrorCategory::unreadable, "FFmpeg I/O allocation failed")};
     }
 
-    format_->pb = static_cast<AVIOContext*>(io_);
+    format_->pb = io_;
     format_->flags |= AVFMT_FLAG_CUSTOM_IO;
     format_->probesize = probe_bytes;
     format_->max_analyze_duration = probe_time;
@@ -189,9 +189,8 @@ FfmpegInput::~FfmpegInput()
         avformat_close_input(&format_);
 
     if (io_) {
-        auto* context{static_cast<AVIOContext*>(io_)};
-        av_freep(&context->buffer);
-        avio_context_free(&context);
+        av_freep(&io_->buffer);
+        avio_context_free(&io_);
     }
 }
 
@@ -280,6 +279,14 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stre
     };
 }
 
+void FfmpegInput::remember_exception(media::ErrorCategory category) noexcept
+{
+    // This runs across a C ABI, including when the stream failed to allocate.
+    // Empty diagnostic storage needs no allocation; preserve the first failure.
+    if (!io_error_)
+        io_error_.emplace(media::Error{.category = category, .detail = {}});
+}
+
 int FfmpegInput::read(void* opaque, unsigned char* output, int size) noexcept
 {
     return static_cast<FfmpegInput*>(opaque)->read(output, size);
@@ -296,13 +303,12 @@ int FfmpegInput::read(unsigned char* output, int size) noexcept
                 context_)};
         if (!count) {
             if (!io_error_)
-                io_error_ = count.error();
+                io_error_ = std::move(count.error());
             return AVERROR(EIO);
         }
         return *count == 0 ? AVERROR_EOF : static_cast<int>(*count);
     } catch (...) {
-        io_error_ =
-            failure(media::ErrorCategory::read_failed, "byte stream read threw an exception");
+        remember_exception(media::ErrorCategory::read_failed);
         return AVERROR(EIO);
     }
 }
@@ -329,20 +335,21 @@ std::int64_t FfmpegInput::seek(std::int64_t offset, int origin) noexcept
     try {
         auto moved{stream_->seek(offset, *mapped, context_)};
         if (!moved) {
-            io_error_ = moved.error();
+            if (!io_error_)
+                io_error_ = std::move(moved.error());
             return AVERROR(EIO);
         }
         auto position{stream_->tell(context_)};
         if (!position) {
-            io_error_ = position.error();
+            if (!io_error_)
+                io_error_ = std::move(position.error());
             return AVERROR(EIO);
         }
         if (*position > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
             return AVERROR(EOVERFLOW);
         return static_cast<std::int64_t>(*position);
     } catch (...) {
-        io_error_ =
-            failure(media::ErrorCategory::seek_failed, "byte stream seek threw an exception");
+        remember_exception(media::ErrorCategory::seek_failed);
         return AVERROR(EIO);
     }
 }

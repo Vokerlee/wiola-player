@@ -76,13 +76,15 @@ private:
     static int reject_secondary_open(AVFormatContext*, AVIOContext**, const char*, int,
         AVDictionary**) noexcept;
 
+    void remember_exception(media::ErrorCategory category) noexcept;
+
     int read(unsigned char* output, int size) noexcept;
     std::int64_t seek(std::int64_t offset, int origin) noexcept;
 
     std::unique_ptr<media::ByteStream> stream_;
     media::OperationContext context_;
     AVFormatContext* format_{nullptr};
-    void* io_{nullptr};
+    AVIOContext* io_{nullptr};
     std::uint64_t size_{0};
     std::optional<media::Error> io_error_;
 };

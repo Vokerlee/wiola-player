@@ -22,6 +22,7 @@
 
 #include <fixtures/temporary_directory.hpp>
 #include <media/local/file_stream.hpp>
+#include <support/allocation_failure.hpp>
 
 #include <gtest/gtest.h>
 
@@ -545,3 +546,60 @@ TEST(FfmpegInput, HonorsTheFfmpegInterruptCallbackDuringInspection)
 }
 
 } // namespace
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(FfmpegInput, ReadExceptionTranslationSurvivesPersistentAllocationFailure)
+{
+    auto stream = std::make_unique<FaultyStream>(fixture_bytes());
+    auto* observed = stream.get();
+    auto input = wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream));
+    ASSERT_TRUE(input);
+    observed->throw_reads();
+    auto* io = (*input)->format()->pb;
+    std::uint8_t byte{};
+    int result{};
+    {
+        wiola::testing::AllocationFailure failure{0};
+        result = io->read_packet(io->opaque, &byte, 1);
+    }
+    EXPECT_EQ(result, AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, wiola::media::ErrorCategory::read_failed);
+}
+
+TEST(FfmpegInput, SeekExceptionTranslationSurvivesPersistentAllocationFailure)
+{
+    auto stream = std::make_unique<FaultyStream>(fixture_bytes());
+    auto* observed = stream.get();
+    auto input = wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream));
+    ASSERT_TRUE(input);
+    observed->throw_seeks();
+    auto* io = (*input)->format()->pb;
+    std::int64_t result{};
+    {
+        wiola::testing::AllocationFailure failure{0};
+        result = io->seek(io->opaque, 0, SEEK_SET);
+    }
+    EXPECT_EQ(result, AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, wiola::media::ErrorCategory::seek_failed);
+}
+#endif
+
+TEST(FfmpegInput, LaterSeekFailurePreservesTheFirstReadDiagnostic)
+{
+    auto stream = std::make_unique<FaultyStream>(fixture_bytes());
+    auto* observed = stream.get();
+    auto input = wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream));
+    ASSERT_TRUE(input);
+    auto* io = (*input)->format()->pb;
+    observed->fail_reads();
+    std::uint8_t byte{};
+    ASSERT_EQ(io->read_packet(io->opaque, &byte, 1), AVERROR(EIO));
+    const auto first = *(*input)->io_error();
+    observed->throw_seeks();
+    EXPECT_EQ(io->seek(io->opaque, 0, SEEK_SET), AVERROR(EIO));
+    ASSERT_TRUE((*input)->io_error());
+    EXPECT_EQ((*input)->io_error()->category, first.category);
+    EXPECT_EQ((*input)->io_error()->detail, first.detail);
+}
