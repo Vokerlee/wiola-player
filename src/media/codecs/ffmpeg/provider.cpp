@@ -22,8 +22,8 @@
 
 #include "metadata.hpp"
 #include "metadata_writer.hpp"
-#include <media/local/file_stream.hpp>
-#include <media/local/resource.hpp>
+#include <wiola/media/local/file_stream.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <utility>
 

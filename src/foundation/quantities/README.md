@@ -10,7 +10,7 @@ flowchart LR
   Tests[Focused quantities tests] --> API
 ```
 
-Link `wiola::quantities` and include `<wiola/units.hpp>`. Public headers expose only this component and standard library types; the target exports the supported header and language requirement without the source-root umbrella, Qt, codec, device or application dependencies. Clients link the target directly.
+Link `wiola::quantities` and include `<wiola/units.hpp>`. Public headers expose only this component and standard library types; the target exports the supported header and language requirement through its owned public headers. Clients link the target directly.
 
 The implementation preserves existing value semantics, reciprocal preconditions and namespaces. Reciprocal conversions require nonzero quantities; runtime assertions and compile-time constraints retain their existing behavior. Private arithmetic stays in the header's detail namespace, where templates can use it without a separate helper component.
 

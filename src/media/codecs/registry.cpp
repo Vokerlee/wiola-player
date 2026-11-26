@@ -20,7 +20,7 @@
 
 #include "registry.hpp"
 
-#include <media/local/file_stream.hpp>
+#include <wiola/media/local/file_stream.hpp>
 
 #include <algorithm>
 #include <cctype>

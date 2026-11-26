@@ -1,6 +1,6 @@
 # Buffering tests
 
-These targets link the scoped buffering target and GoogleTest directly, without the checkout-wide `wiola_core` include root:
+These targets link the scoped buffering target and GoogleTest directly:
 
 - `spsc_ring_buffer_test`: capacity, region/commit, wraparound, discard, endpoint transfer and producer/consumer concurrency. Oversized constructor requests must throw before invalid power-of-two arithmetic.
 - `pcm_queue_test`: checked frame capacity, channel order, aligned short operations and wraparound.

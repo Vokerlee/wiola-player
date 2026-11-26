@@ -26,9 +26,9 @@
 #include <memory>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
-#include <qt/paths.hpp>
 #include <qt/tests/support/atomic_output.hpp>
 #include <stdexcept>
+#include <wiola/qt/paths.hpp>
 
 namespace {
 

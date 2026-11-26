@@ -22,7 +22,7 @@
 #include <media/codecs/ffmpeg/composition.hpp>
 #include <wiola/qt/storage/settings.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <wiola/app/playback/playback_service.hpp>
 

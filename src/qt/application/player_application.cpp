@@ -22,8 +22,8 @@
 #include <QScopedValueRollback>
 #include <QThread>
 
-#include <media/local/resource.hpp>
 #include <stdexcept>
+#include <wiola/media/local/resource.hpp>
 
 namespace wiola::app {
 namespace {

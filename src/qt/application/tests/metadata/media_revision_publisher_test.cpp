@@ -20,7 +20,7 @@
 
 #include <qt/application/metadata/media_revision_publisher.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <QCoreApplication>
 #include <QEventLoop>

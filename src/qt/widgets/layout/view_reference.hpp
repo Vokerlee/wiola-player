@@ -21,10 +21,10 @@
 #pragma once
 #include "component_descriptor.hpp"
 #include <QJsonObject>
-#include <presentation/documents/document_id.hpp>
 #include <qt/widgets/shell/action_descriptor.hpp>
 #include <string>
 #include <variant>
+#include <wiola/presentation/documents/document_id.hpp>
 
 namespace wiola::gui {
 

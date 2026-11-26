@@ -27,6 +27,6 @@ function(wiola_target_headers target include_prefix)
             CONTENT "#pragma once\n#include \"${source_header}\"\n"
         )
 
-        target_sources(${target} ${scope} "${source_header}")
+        target_sources(${target} PRIVATE "${source_header}")
     endforeach()
 endfunction()

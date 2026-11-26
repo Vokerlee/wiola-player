@@ -24,7 +24,6 @@
 #include <QPushButton>
 #include <QSlider>
 #include <gtest/gtest.h>
-#include <media/local/resource.hpp>
 #include <qt/widgets/controls/seek_bar.hpp>
 #include <qt/widgets/controls/status_view.hpp>
 #include <qt/widgets/controls/transport_view.hpp>
@@ -32,6 +31,7 @@
 #include <qt/widgets/layout/layout_tree.hpp>
 #include <qt/widgets/layout/player_layout.hpp>
 #include <qt/widgets/layout/view_registry.hpp>
+#include <wiola/media/local/resource.hpp>
 
 namespace {
 

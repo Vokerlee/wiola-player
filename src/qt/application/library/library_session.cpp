@@ -24,9 +24,9 @@
 #include <QThread>
 #include <algorithm>
 #include <app/library/local_identity.hpp>
-#include <media/local/fingerprint.hpp>
-#include <qt/paths.hpp>
 #include <wiola/library/records.hpp>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::app {
 

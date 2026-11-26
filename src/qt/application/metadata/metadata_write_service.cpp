@@ -23,10 +23,10 @@
 #include <QScopeGuard>
 #include <QThread>
 #include <exception>
-#include <media/local/resource.hpp>
 #include <stdexcept>
 #include <stop_token>
 #include <wiola/library/records.hpp>
+#include <wiola/media/local/resource.hpp>
 
 namespace wiola::app {
 namespace {

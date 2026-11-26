@@ -11,14 +11,14 @@
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <limits>
-#include <media/local/resource.hpp>
-#include <qt/paths.hpp>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
 #include <qt/widgets/controls/seek_bar.hpp>
 #include <qt/widgets/tests/support/gui_interaction.hpp>
 #include <wiola/app/playback/equalizer_control.hpp>
 #include <wiola/app/playback/playback_service.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 #include <wiola/qt/storage/settings.hpp>
 
 namespace {

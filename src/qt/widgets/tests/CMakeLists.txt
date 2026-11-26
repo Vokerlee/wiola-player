@@ -16,17 +16,23 @@ wiola_add_test(
     LIBS wiola::qt_widgets wiola_playback_queue Qt6::Test
 )
 
+target_link_libraries(gui_track_table_model_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     gui_track_table_view_test
     SOURCES tracks/track_table_view_test.cpp
     LIBS wiola::qt_widgets wiola_playback_queue Qt6::Test
 )
 
+target_link_libraries(gui_track_table_view_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     gui_now_playing_document_test
     SOURCES documents/now_playing_document_test.cpp
     LIBS wiola::qt_widgets wiola_playback_queue Qt6::Test
 )
+
+target_link_libraries(gui_now_playing_document_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     gui_library_navigation_test
@@ -58,6 +64,11 @@ wiola_add_test(
     LIBS wiola::qt_widgets wiola_playback_queue
 )
 
+target_link_libraries(
+    gui_track_inspector_test
+    PRIVATE wiola::local_media wiola::qt_paths
+)
+
 wiola_add_test(
     gui_saved_playlist_manager_test
     SOURCES shell/saved_playlist_manager_test.cpp
@@ -81,6 +92,8 @@ wiola_add_test(
     SOURCES shell/main_window_test.cpp
     LIBS wiola::qt_widgets wiola_playback_preferences
 )
+
+target_link_libraries(gui_main_window_test PRIVATE wiola::local_media)
 
 if(ENABLE_TSAN)
     target_compile_definitions(
@@ -146,6 +159,11 @@ wiola_add_test(
     LIBS wiola::qt_widgets wiola_player_application
 )
 
+target_link_libraries(
+    gui_main_window_shell_test
+    PRIVATE wiola::local_media wiola::qt_paths
+)
+
 wiola_add_test(
     gui_document_registry_test
     SOURCES documents/document_registry_test.cpp
@@ -158,11 +176,15 @@ wiola_add_test(
     LIBS wiola::qt_widgets
 )
 
+target_link_libraries(gui_document_host_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     gui_track_row_test
     SOURCES tracks/track_row_test.cpp
     LIBS wiola::qt_widgets wiola_playback_queue
 )
+
+target_link_libraries(gui_track_row_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     gui_track_browser_test
@@ -182,6 +204,8 @@ wiola_add_test(
     LIBS wiola::qt_widgets
 )
 
+target_link_libraries(gui_layout_session_test PRIVATE wiola::qt_paths)
+
 wiola_add_test(
     gui_browser_view_state_test
     SOURCES tracks/browser_view_state_test.cpp
@@ -191,7 +215,7 @@ wiola_add_test(
 wiola_add_test(
     gui_theme_manager_test
     SOURCES appearance/theme_manager_test.cpp
-    LIBS wiola::qt_widgets
+    LIBS wiola::qt_paths wiola::qt_widgets
 )
 
 wiola_add_test(
@@ -200,10 +224,17 @@ wiola_add_test(
     LIBS wiola::qt_widgets
 )
 
+target_link_libraries(gui_player_sections_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     gui_document_command_router_test
     SOURCES shell/document_command_router_test.cpp
     LIBS wiola::qt_widgets wiola_playback_preferences Qt6::Test
+)
+
+target_link_libraries(
+    gui_document_command_router_test
+    PRIVATE wiola::local_media
 )
 
 # Explicit benchmark target: measurements are artifacts, not wall-clock CI pass/fail assertions.
@@ -234,8 +265,13 @@ endforeach()
 wiola_add_test(
     gui_desktop_journey_test
     SOURCES journeys/desktop_journey_test.cpp
-    LIBS wiola::qt_widgets wiola_player_application Qt6::Test
+    LIBS wiola::qt_paths wiola::qt_widgets wiola_player_application Qt6::Test
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
+)
+
+target_link_libraries(
+    gui_desktop_journey_test
+    PRIVATE wiola::file_fingerprint wiola::local_media
 )
 
 qt_finalize_target(gui_desktop_journey_test)
@@ -258,6 +294,11 @@ wiola_add_test(
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
+target_link_libraries(
+    gui_metadata_file_journey_test
+    PRIVATE wiola::local_media wiola::qt_paths
+)
+
 qt_finalize_target(gui_metadata_file_journey_test)
 
 wiola_add_test(
@@ -270,6 +311,11 @@ wiola_add_test(
     gui_painting_contract_test
     SOURCES controls/painting_contract_test.cpp
     LIBS wiola::qt_widgets wiola::qt_settings Qt6::Test
+)
+
+target_link_libraries(
+    gui_painting_contract_test
+    PRIVATE wiola::local_media wiola::qt_paths
 )
 
 if(ENABLE_COVERAGE)
@@ -292,4 +338,9 @@ install(
     DESTINATION media
     COMPONENT wiola_desktop_tests
     EXCLUDE_FROM_ALL
+)
+
+target_include_directories(
+    gui_projection_benchmark
+    PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests"
 )

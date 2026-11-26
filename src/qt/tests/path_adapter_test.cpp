@@ -18,7 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <gtest/gtest.h>
 

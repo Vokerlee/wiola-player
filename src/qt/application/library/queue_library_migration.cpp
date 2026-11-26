@@ -21,8 +21,8 @@
 #include "queue_library_migration.hpp"
 
 #include <app/library/local_identity.hpp>
-#include <qt/paths.hpp>
 #include <qt/storage/library_store.hpp>
+#include <wiola/qt/paths.hpp>
 #include <wiola/qt/storage/settings.hpp>
 
 #include <QFile>

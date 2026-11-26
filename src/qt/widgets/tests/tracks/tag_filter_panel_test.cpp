@@ -24,8 +24,8 @@
 
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <presentation/tracks/track_view_state.hpp>
 #include <qt/widgets/tests/support/gui_interaction.hpp>
+#include <wiola/presentation/tracks/track_view_state.hpp>
 
 namespace {
 

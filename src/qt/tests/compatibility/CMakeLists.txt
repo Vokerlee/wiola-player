@@ -14,3 +14,5 @@ wiola_add_test(
         wiola::qt_widgets
         wiola_qt_settings
 )
+
+target_link_libraries(compatibility_corpus_test PRIVATE wiola::qt_paths)

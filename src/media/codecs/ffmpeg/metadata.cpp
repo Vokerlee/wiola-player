@@ -22,7 +22,7 @@
 
 #include "input.hpp"
 
-#include <media/local/file_stream.hpp>
+#include <wiola/media/local/file_stream.hpp>
 
 extern "C" {
 #include <libavformat/avformat.h>

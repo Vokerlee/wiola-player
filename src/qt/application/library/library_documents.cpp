@@ -20,8 +20,8 @@
 
 #include "library_documents.hpp"
 #include <QFileInfo>
-#include <qt/paths.hpp>
 #include <qt/storage/atomic_file_store.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::app {
 

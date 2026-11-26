@@ -1,8 +1,8 @@
 #include "fixture_files.hpp"
 
-#include <qt/paths.hpp>
 #include <qt/storage/library_json.hpp>
 #include <qt/storage/library_store.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QTemporaryDir>
 #include <gtest/gtest.h>

@@ -21,7 +21,7 @@
 #include <qt/application/library/m3u_playlist.hpp>
 
 #include <app/library/local_identity.hpp>
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QCoreApplication>
 #include <QTemporaryDir>

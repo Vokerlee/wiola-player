@@ -18,11 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <presentation/documents/queue_rows.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 
-#include <presentation/tracks/track_sort.hpp>
+#include <wiola/presentation/tracks/track_sort.hpp>
 
 #include <app/library/local_identity.hpp>
 #include <queue/playlist.hpp>

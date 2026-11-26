@@ -173,10 +173,20 @@ wiola_add_test(
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 
+target_link_libraries(
+    app_media_replacement_test
+    PRIVATE wiola::file_fingerprint wiola::local_media
+)
+
 wiola_add_test(
     app_workspace_reconciliation_test
     SOURCES workspace/workspace_reconciliation_test.cpp
     LIBS wiola_app
+)
+
+target_link_libraries(
+    app_workspace_reconciliation_test
+    PRIVATE wiola::file_fingerprint
 )
 
 wiola_add_test(
@@ -185,17 +195,26 @@ wiola_add_test(
     LIBS wiola_app
 )
 
+target_link_libraries(
+    app_workspace_scanner_test
+    PRIVATE wiola::file_fingerprint
+)
+
 wiola_add_test(
     app_queue_settings_test
     SOURCES playback/queue_settings_test.cpp
     LIBS wiola_app
 )
 
+target_link_libraries(app_queue_settings_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     app_playback_queue_test
     SOURCES playback/playback_queue_test.cpp
     LIBS wiola_app wiola_codec
 )
+
+target_link_libraries(app_playback_queue_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     app_metadata_single_edit_test

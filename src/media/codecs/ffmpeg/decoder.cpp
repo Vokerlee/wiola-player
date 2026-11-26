@@ -24,7 +24,7 @@
 #include "packet_decoder.hpp"
 #include "pcm_converter.hpp"
 
-#include <media/local/file_stream.hpp>
+#include <wiola/media/local/file_stream.hpp>
 
 extern "C" {
 #include <libavformat/avformat.h>

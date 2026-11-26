@@ -18,3 +18,8 @@ target_link_libraries(
         wiola_sanitizer
         wiola_coverage
 )
+
+target_include_directories(
+    wiola_core_adapter_boundary
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)

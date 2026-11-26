@@ -26,10 +26,10 @@
 #include <QTemporaryDir>
 #include <fakes/output.hpp>
 #include <gtest/gtest.h>
-#include <media/local/resource.hpp>
 #include <memory>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/shell/document_host.hpp>
+#include <wiola/media/local/resource.hpp>
 
 namespace {
 

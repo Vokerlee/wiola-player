@@ -23,7 +23,7 @@
 #include <QFileDialog>
 #include <QMenu>
 #include <map>
-#include <qt/paths.hpp>
+#include <wiola/qt/paths.hpp>
 
 namespace wiola::gui {
 namespace {

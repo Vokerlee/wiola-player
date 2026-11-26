@@ -20,7 +20,7 @@
 
 #include "native_workspace_files.hpp"
 
-#include <media/local/fingerprint.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 namespace wiola::app {
 

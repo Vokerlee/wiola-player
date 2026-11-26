@@ -22,9 +22,9 @@
 
 #include <algorithm>
 #include <exception>
-#include <media/local/fingerprint.hpp>
-#include <media/local/resource.hpp>
 #include <stdexcept>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/media/local/resource.hpp>
 
 namespace wiola::app {
 

@@ -21,8 +21,8 @@
 #include <fixtures/temporary_directory.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <media/local/file_replacement.hpp>
-#include <media/local/fingerprint.hpp>
+#include <wiola/media/local/file_replacement.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 namespace {
 

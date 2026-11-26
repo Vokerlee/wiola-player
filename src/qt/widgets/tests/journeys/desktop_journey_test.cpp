@@ -1,12 +1,12 @@
 #include "restart_child.hpp"
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/fingerprint.hpp>
+#include <wiola/media/local/fingerprint.hpp>
 
 #include "session_journey.hpp"
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QTest>
-#include <media/local/resource.hpp>
+#include <wiola/media/local/resource.hpp>
 #ifndef _WIN32
 #include <fcntl.h>
 #include <signal.h>
