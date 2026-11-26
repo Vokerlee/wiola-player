@@ -32,3 +32,20 @@ TEST(QtPathAdapter, PreservesNonAsciiPathsInBothDirections)
     EXPECT_EQ(converted, QString::fromUtf8("music/Романтика-音楽.flac"));
     EXPECT_EQ(wiola::platform::qt::QtPathAdapter::from_qt(converted), path);
 }
+
+TEST(QtPathAdapter, DisplaysNativeSeparatorsAndDriveLetterWithoutChangingStoredSpelling)
+{
+    using namespace wiola::platform::qt::QtPathAdapter;
+    const auto original = QString::fromUtf8("c:/Users/Роман/Музыка.flac");
+    const auto path = from_qt(original);
+#ifdef _WIN32
+    EXPECT_EQ(display(path), QString::fromUtf8("C:\\Users\\Роман\\Музыка.flac"));
+    EXPECT_EQ(display(from_qt("//server/Share/Music.flac")), "\\\\server\\Share\\Music.flac");
+#else
+    EXPECT_EQ(display(path), original);
+    EXPECT_EQ(display(from_qt("/Music/Track.flac")), "/Music/Track.flac");
+#endif
+    EXPECT_EQ(to_qt(path), original);
+    EXPECT_TRUE(display({}).isEmpty());
+    EXPECT_EQ(display(from_qt("Track.flac")), "Track.flac");
+}
