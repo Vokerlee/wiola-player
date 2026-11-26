@@ -48,7 +48,7 @@ class SearchIndex;
 namespace wiola::gui {
 
 class TrackProjection;
-struct TrackProjectionInput;
+class TrackProjectionInput;
 
 class TrackTableModel final : public QAbstractTableModel {
 public:

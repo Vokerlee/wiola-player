@@ -1,3 +1,5 @@
+find_package(Threads REQUIRED)
+
 wiola_add_library(
     wiola_presentation
     SOURCES
@@ -6,6 +8,7 @@ wiola_add_library(
         tracks/track_sorter.cpp
         tracks/track_view_state.cpp
         tracks/track_view_pipeline.cpp
+        tracks/track_projection.cpp
         documents/queue_rows.cpp
         documents/session_documents.cpp
         documents/saved_playlist_rows.cpp
@@ -24,7 +27,7 @@ target_link_libraries(
 
 target_link_libraries(
     wiola_presentation
-    PUBLIC wiola::library wiola_app wiola::playback_api
+    PUBLIC wiola::library wiola_app wiola::playback_api Threads::Threads
 )
 
 if(WIOLA_BUILD_TESTS)

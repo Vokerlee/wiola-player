@@ -6,5 +6,5 @@
 #endif
 int main()
 {
-    return wiola::gui::TrackProjectionInput{}.rows.empty() ? 0 : 1;
+    return wiola::gui::TrackProjectionInput{}.rows().empty() ? 0 : 1;
 }
