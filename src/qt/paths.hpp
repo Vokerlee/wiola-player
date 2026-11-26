@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <QDir>
 #include <QString>
 
 #include <filesystem>
@@ -42,6 +43,17 @@ namespace wiola::platform::qt::QtPathAdapter {
 #else
     return QString::fromStdString(path.string());
 #endif
+}
+
+/// Native UI spelling; never use display text as a catalog identity or stored location.
+[[nodiscard]] inline QString display(const std::filesystem::path& path)
+{
+    auto text = QDir::toNativeSeparators(to_qt(path));
+#ifdef _WIN32
+    if (text.size() >= 2 && text.at(1) == u':')
+        text[0] = text.at(0).toUpper();
+#endif
+    return text;
 }
 
 } // namespace wiola::platform::qt::QtPathAdapter

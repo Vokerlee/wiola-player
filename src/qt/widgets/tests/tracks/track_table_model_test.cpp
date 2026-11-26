@@ -84,6 +84,25 @@ QPixmap cover_at(wiola::gui::TrackTableModel& model, int row)
     return model.data(model.index(row, 0), Qt::DecorationRole).value<QPixmap>();
 }
 
+TEST_F(TrackTableModelTest, TooltipsUseNativePathDisplayAndRetainAvailability)
+{
+    wiola::gui::TrackTableModel model{styled};
+    wiola::gui::TrackRow track;
+    track.id = wiola::library::PlaylistEntryId{"path-display"};
+    track.location = std::filesystem::path{"c:/Users/Music/Track.flac"};
+    model.show_rows({track});
+#ifdef _WIN32
+    const QString expected = "C:\\Users\\Music\\Track.flac";
+#else
+    const QString expected = "c:/Users/Music/Track.flac";
+#endif
+    EXPECT_EQ(model.data(model.index(0, 1), Qt::ToolTipRole).toString(), expected);
+    track.missing = true;
+    model.show_rows({track});
+    EXPECT_EQ(model.data(model.index(0, 1), Qt::ToolTipRole).toString(),
+        expected + " — unavailable");
+}
+
 TEST_F(TrackTableModelTest, KeepsPersistentIndexesThroughInsertRemoveSortAndFilter)
 {
     wiola::gui::TrackTableModel model{styled};
@@ -523,7 +542,13 @@ TEST_F(TrackTableModelTest, BoundedGeneratedMutationsMatchAnIndependentIdentityO
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+#ifdef Q_OS_WIN
+        qputenv("QT_QPA_PLATFORM", "windows");
+#else
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+#endif
+    }
     testing::InitGoogleTest(&argc, argv);
     QApplication application{argc, argv};
 

@@ -174,7 +174,7 @@ QVariant TrackTableModel::data(const QModelIndex& index, int role) const
     const TrackRow& track{rows_[static_cast<std::size_t>(index.row())]};
 
     if (role == Qt::ToolTipRole)
-        return platform::qt::QtPathAdapter::to_qt(track.location) +
+        return platform::qt::QtPathAdapter::display(track.location) +
             (track.missing ? " — unavailable" : "");
 
     if (role == Qt::DisplayRole && index.column() >= standard_columns) {
