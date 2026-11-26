@@ -215,7 +215,7 @@ bool DocumentHost::open_playlist(const library::PlaylistId& id)
         return false;
     }
     registry_.add(id, *document, [document] { return document->selection(); });
-    document->set_active(library_.active_playlist().id() == id);
+    document->set_active(library_.playlist_destination().id() == id);
     document->on_active_requested([this, id] {
         dispatch(TrackCommand::activate_destination, DocumentId::playlist(id));
     });
@@ -310,7 +310,7 @@ bool DocumentHost::close(const DocumentId& id)
 void DocumentHost::refresh_active_destination()
 {
     for (const auto& [id, document] : registry_.playlists())
-        document->set_active(library_.active_playlist().id() == id);
+        document->set_active(library_.playlist_destination().id() == id);
 }
 
 void DocumentHost::refresh(const library::LibraryChangeBatch& batch)

@@ -150,10 +150,12 @@ void SessionPreferences::bind_library(LibrarySession& library)
     library_ = &library;
     if (state_.documents.destination &&
         library.repository().playlist(*state_.documents.destination))
-        static_cast<void>(library.active_playlist().set(*state_.documents.destination));
+        static_cast<void>(library.playlist_destination().set(*state_.documents.destination));
     else {
-        if (library.active_playlist().id())
-            static_cast<void>(library.active_playlist().clear_if(*library.active_playlist().id()));
+        if (library.playlist_destination().id())
+            static_cast<void>(
+                library.playlist_destination().clear_if(*library.playlist_destination().id())
+            );
         if (state_.documents.destination)
             edit([](auto& state) { state.documents.destination.reset(); });
     }

@@ -90,7 +90,7 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
     ASSERT_TRUE(seed.commit());
-    ASSERT_TRUE(library->active_playlist().set(destination));
+    ASSERT_TRUE(library->playlist_destination().set(destination));
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
@@ -124,7 +124,7 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
             menu.actionGeometry(transfer).center());
         ASSERT_EQ(library->repository().playlist(destination)->entries.size(), opening + 1);
         EXPECT_EQ(library->repository().playlist(source)->entries.size(), 2);
-        EXPECT_EQ(library->active_playlist().id(), destination);
+        EXPECT_EQ(library->playlist_destination().id(), destination);
         EXPECT_EQ(host.registry().active(), gui::DocumentId::playlist(source));
         EXPECT_EQ(table.chosen_rows(), (std::vector<gui::TrackRowId>{*second}));
         QPointer<QWidget> retired{document};
@@ -207,7 +207,7 @@ TEST_F(DocumentCommandRouterTest,
             document->browser().restore_browser_state(state);
         }
         ASSERT_TRUE(host.activate(gui::DocumentId::playlist(other)));
-        static_cast<void>(library->active_playlist().set(other));
+        static_cast<void>(library->playlist_destination().set(other));
     };
     commands.execute(gui::TrackCommand::move, captured);
     const auto* remaining = library->repository().playlist(source);
@@ -290,11 +290,11 @@ TEST_F(DocumentCommandRouterTest, ExportCapturesPlaylistBeforePromptChangesTheDe
     ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"one"}));
     ASSERT_TRUE(library->repository().append_track(other, library::MediaId{"two"}));
     ASSERT_TRUE(seed.commit());
-    static_cast<void>(library->active_playlist().set(source));
+    static_cast<void>(library->playlist_destination().set(source));
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_path = std::filesystem::path{directory.filePath("export.m3u8").toStdString()};
     dialogs.prompted = [&] {
-        static_cast<void>(library->active_playlist().set(other));
+        static_cast<void>(library->playlist_destination().set(other));
     };
     auto commands = router(dialogs);
     commands.export_playlist({});

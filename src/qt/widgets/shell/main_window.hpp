@@ -55,7 +55,7 @@ class SessionPreferences;
 class QueueSettings;
 class VolumeControl;
 class EqualizerControl;
-class ActivePlaylist;
+class PlaylistDestination;
 
 } // namespace wiola::app
 
@@ -195,7 +195,7 @@ private:
     app::LibrarySession& library_session_;
     const library::LibraryRepository& library_;
     library::LibraryChanges::Subscription library_changes_;
-    const app::ActivePlaylist& active_playlist_;
+    const app::PlaylistDestination& playlist_destination_;
 
     std::unique_ptr<PlayerDialogs> dialogs_;
     DocumentCommandRouter* commands_{nullptr};

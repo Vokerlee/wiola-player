@@ -91,10 +91,10 @@ LibrarySession::LibrarySession(std::filesystem::path file,
                                std::uint64_t revision, auto completed
                            ) { persistence_worker_->when_durable(revision, std::move(completed)); },
         [this] { static_cast<void>(persistence_worker_->flush()); });
-    active_.on_changed([this](auto id) { emit active_destination_changed(id); });
+    destination_.on_changed([this](auto id) { emit active_destination_changed(id); });
     const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
     if (repository_.playlist(active))
-        static_cast<void>(active_.set(active));
+        static_cast<void>(destination_.set(active));
     for (const auto& track : repository_.tracks()) {
         search_.upsert(track);
         tag_keys_.upsert(track);
@@ -199,10 +199,10 @@ MetadataEditService& LibrarySession::metadata_edits()
     return edits_;
 }
 
-ActivePlaylist& LibrarySession::active_playlist()
+PlaylistDestination& LibrarySession::playlist_destination()
 {
     check_owner();
-    return active_;
+    return destination_;
 }
 
 std::optional<library::TrackRecord> LibrarySession::snapshot(const library::MediaId& id) const
@@ -399,7 +399,7 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
             static_cast<void>(scan_workspace(id, workspace_extensions_));
         }
     for (const auto& playlist : batch.removed_playlists)
-        static_cast<void>(active_.clear_if(playlist));
+        static_cast<void>(destination_.clear_if(playlist));
 }
 
 } // namespace wiola::app

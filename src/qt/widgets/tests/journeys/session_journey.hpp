@@ -81,7 +81,7 @@ inline void restore_session_journey()
             };
             ASSERT_TRUE(player.library().repository().put_playlist(playlist));
             ASSERT_TRUE(transaction.commit());
-            ASSERT_TRUE(player.library().active_playlist().set(destination));
+            ASSERT_TRUE(player.library().playlist_destination().set(destination));
             player.playback().add({media::local_resource(source), media::local_resource(missing),
                 media::local_resource(source)});
             ASSERT_TRUE(player.playback().play_track(2));
@@ -133,7 +133,7 @@ inline void restore_session_journey()
             table.selectRow(1);
             EXPECT_EQ(table.chosen_rows(), (std::vector<gui::TrackRowId>{chosen}));
             EXPECT_EQ(host->registry().active(), gui::DocumentId::playlist(saved));
-            EXPECT_EQ(player.library().active_playlist().id(), destination);
+            EXPECT_EQ(player.library().playlist_destination().id(), destination);
             window.resize(1100, 750);
             window.close();
             EXPECT_EQ(player.preferences().ui_session().state().window, window.geometry());
@@ -145,7 +145,7 @@ inline void restore_session_journey()
         EXPECT_EQ(player.preferences().missing_tracks(), 1);
         ASSERT_EQ(player.playback().playlist().tracks().size(), 2);
         EXPECT_EQ(player.playback().playlist().position(), 1);
-        EXPECT_EQ(player.library().active_playlist().id(), destination);
+        EXPECT_EQ(player.library().playlist_destination().id(), destination);
         {
             gui::MainWindow window{player.playback(), player.library(), player.preferences()};
             auto* host =
@@ -166,7 +166,7 @@ inline void restore_session_journey()
             ASSERT_EQ(queue.size(), 1);
             EXPECT_EQ(queue.front(),
                 gui::TrackRowId{player.playback().playlist().tracks()[1].id()});
-            EXPECT_EQ(player.library().active_playlist().id(), destination);
+            EXPECT_EQ(player.library().playlist_destination().id(), destination);
             ASSERT_NE(player.library().repository().track(unavailable), nullptr);
             EXPECT_TRUE(player.library().repository().track(unavailable)->missing);
         }

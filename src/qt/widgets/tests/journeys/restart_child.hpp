@@ -115,7 +115,7 @@ inline int session_child(const QString& mode, const QString& directory)
             journey_require(player.library().repository().put_workspace(workspace),
                 "seed workspace");
             journey_require(static_cast<bool>(seed.commit()), "accept seeded session");
-            journey_require(player.library().active_playlist().set(destination),
+            journey_require(player.library().playlist_destination().set(destination),
                 "set independent destination");
             player.playback().add({media::local_resource(source), media::local_resource(source)});
             journey_require(player.playback().play_track(1), "select second queue occurrence");
@@ -152,7 +152,7 @@ inline int session_child(const QString& mode, const QString& directory)
                 "restore duplicate queue");
             journey_require(player.playback().playlist().position() == 1,
                 "restore current duplicate occurrence");
-            journey_require(player.library().active_playlist().id() == destination,
+            journey_require(player.library().playlist_destination().id() == destination,
                 "restore independent destination");
             journey_require(host->registry().workspace(folder),
                 "restore independent workspace tab");

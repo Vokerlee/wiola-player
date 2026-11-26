@@ -20,6 +20,8 @@
 
 #include "playlist_transfer.hpp"
 
+#include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 #include <wiola/library/repository_transaction.hpp>
@@ -27,16 +29,26 @@
 namespace wiola::app {
 
 PlaylistTransfer::PlaylistTransfer(library::InMemoryRepository& repository,
-    const ActivePlaylist& active, Persist persist)
+    const PlaylistDestination& destination, Persist persist)
     : repository_{repository}
-    , active_{active}
-    , persist_{std::move(persist)}
+    , destination_{destination}
+    , persist_{std::make_shared<Persist>(std::move(persist))}
 {
+    if (!*persist_)
+        throw std::invalid_argument{"playlist transfers require an explicit persistence policy"};
 }
 
-PlaylistTransferResult PlaylistTransfer::add_to_active(const std::vector<MediaTransfer>& media)
+PlaylistTransfer::Persist PlaylistTransfer::persistence() const
 {
-    return active_.id() ? add_to(*active_.id(), media) : PlaylistTransferResult{};
+    return [persist = persist_](const library::LibraryRepository& records) {
+        return (*persist)(records);
+    };
+}
+
+PlaylistTransferResult PlaylistTransfer::add_to_destination(const std::vector<MediaTransfer>& media)
+{
+    const auto destination = destination_.id();
+    return destination ? add_to(*destination, media) : PlaylistTransferResult{};
 }
 
 PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playlist,
@@ -45,7 +57,7 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
     if (media.empty() || repository_.playlist(playlist) == nullptr)
         return {};
 
-    library::RepositoryTransaction transaction{repository_, persist_};
+    library::RepositoryTransaction transaction{repository_, persistence()};
     PlaylistTransferResult result;
 
     for (const MediaTransfer& item : media) {
@@ -72,8 +84,8 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
     if (result.added == 0)
         return result;
 
-    result.succeeded = transaction.commit();
-    if (!result.succeeded) {
+    result.commit = transaction.commit();
+    if (!result.succeeded()) {
         result.added = 0;
     }
 
@@ -87,7 +99,7 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
         repository_.playlist(destination) == nullptr)
         return {};
 
-    library::RepositoryTransaction transaction{repository_, persist_};
+    library::RepositoryTransaction transaction{repository_, persistence()};
     PlaylistTransferResult result;
 
     for (const library::PlaylistEntryId& id : entries) {
@@ -109,8 +121,8 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
     if (result.added == 0)
         return result;
 
-    result.succeeded = transaction.commit();
-    if (!result.succeeded) {
+    result.commit = transaction.commit();
+    if (!result.succeeded()) {
         result.added = 0;
     }
 
