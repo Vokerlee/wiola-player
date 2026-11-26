@@ -22,6 +22,7 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QScrollArea>
+#include <QSplitter>
 #include <qt/widgets/layout/layout_tree.hpp>
 
 #include <qt/widgets/layout/layout_builder.hpp>
@@ -64,10 +65,9 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
 {
     setObjectName("buttonLayoutEditor");
     setWindowTitle("Edit button layout");
-    const QSize preferred{fontMetrics().averageCharWidth() * 110, fontMetrics().height() * 32};
-    resize(QGuiApplication::primaryScreen()
-            ? preferred.boundedTo(QGuiApplication::primaryScreen()->availableGeometry().size())
-            : preferred);
+    const QSize preferred{fontMetrics().averageCharWidth() * 152, fontMetrics().height() * 46};
+    const auto* screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
+    resize(screen ? preferred.boundedTo(screen->availableGeometry().size() * 0.9) : preferred);
 
     palette_ = new ComponentPalette{this};
     hierarchy_ = new LayoutHierarchy{this};
@@ -121,14 +121,43 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
 
     preview_ = new LayoutPreviewHost{this};
     auto* right = new QVBoxLayout;
-    right->addWidget(new QLabel{"Inspector", this});
+    right->addWidget(new QLabel{"Properties", this});
     right->addWidget(inspector_);
-    right->addWidget(preview_, 1);
+    right->addStretch();
 
-    auto* contents = new QHBoxLayout;
-    contents->addLayout(left, 1);
-    contents->addLayout(center, 2);
-    contents->addLayout(right, 1);
+    auto* columns = new QSplitter{Qt::Horizontal, this};
+    columns->setObjectName("layoutEditorColumns");
+    columns->setAccessibleName("Resizable layout editing panels");
+    columns->setChildrenCollapsible(false);
+    const int character = fontMetrics().averageCharWidth();
+    for (const auto& [layout, characters] : {
+             std::pair{left,   22},
+             std::pair{center, 44},
+             std::pair{right,  30}
+    }) {
+        auto* panel = new QWidget;
+        panel->setLayout(layout);
+        panel->setMinimumWidth(character * characters);
+        columns->addWidget(panel);
+    }
+    columns->setStretchFactor(1, 1);
+    columns->setSizes({character * 26, character * 70, character * 40});
+
+    auto* preview_scroll = new QScrollArea{this};
+    preview_scroll->setObjectName("layoutPreviewScroll");
+    preview_scroll->setAccessibleName("Scrollable isolated layout preview");
+    preview_scroll->setWidgetResizable(true);
+    preview_scroll->setWidget(preview_);
+    auto* rows = new QSplitter{Qt::Vertical, this};
+    rows->setObjectName("layoutEditorRows");
+    rows->setChildrenCollapsible(false);
+    rows->addWidget(columns);
+    rows->addWidget(preview_scroll);
+    rows->setStretchFactor(0, 1);
+    rows->setSizes({fontMetrics().height() * 28, fontMetrics().height() * 12});
+
+    auto* contents = new QVBoxLayout;
+    contents->addWidget(rows);
 
     auto* root = new QVBoxLayout{this};
     auto* scroll = new QScrollArea{this};
@@ -142,6 +171,10 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     root->addWidget(status_);
     root->addWidget(buttons);
 
+    // Return commits the focused property; applying the whole layout is always explicit.
+    for (auto* button : findChildren<QPushButton*>())
+        button->setAutoDefault(false);
+
     connect(add, &QPushButton::clicked, this, &LayoutEditorDialog::add_from_palette);
     connect(add_container_button, &QPushButton::clicked, this, &LayoutEditorDialog::add_container);
     connect(remove, &QPushButton::clicked, this, &LayoutEditorDialog::remove_selected);
@@ -152,6 +185,8 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     connect(hierarchy_, &QTreeWidget::itemSelectionChanged, this,
         &LayoutEditorDialog::update_inspector);
     connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this, [this] {
+        if (!configure_selected())
+            return;
         if (!apply_observer_ || apply_observer_(editor_.document()))
             accept();
         else
@@ -302,18 +337,22 @@ void LayoutEditorDialog::drop_component(LayoutDrop request)
     }
 }
 
-void LayoutEditorDialog::configure_selected()
+bool LayoutEditorDialog::configure_selected()
 {
     const auto location = locate_layout_node(editor_.document().root, selected_id());
     if (!location.node)
-        return;
+        return true;
     const auto configured = inspector_->configuration(*location.node);
     if (!configured) {
         status_->setText(inspector_->error());
-        return;
+        return false;
     }
+    if (*configured == *location.node)
+        return true;
     const auto id = location.node->id;
-    finish_edit(editor_.configure(id, *configured), id);
+    const bool succeeded = editor_.configure(id, *configured);
+    finish_edit(succeeded, id);
+    return succeeded;
 }
 
 void LayoutEditorDialog::rebuild(const QString& selected)

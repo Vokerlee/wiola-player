@@ -21,6 +21,7 @@
 #include "layout_tree_views.hpp"
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QHeaderView>
 #include <QMimeData>
 #include <QSignalBlocker>
 
@@ -82,6 +83,9 @@ LayoutHierarchy::LayoutHierarchy(QWidget* parent)
 {
     setObjectName("layoutHierarchy");
     setHeaderLabels({"Component", "Type"});
+    header()->setStretchLastSection(false);
+    header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
     setSelectionMode(QAbstractItemView::SingleSelection);
     setDragEnabled(true);
     setAcceptDrops(true);
@@ -140,6 +144,7 @@ void LayoutHierarchy::show_document(const LayoutDocument& document, const QStrin
             {node.id, layout_component_name(node.kind)}
         };
         item->setData(0, identity_role, node.id);
+        item->setToolTip(0, node.id);
         if (parent)
             parent->addChild(item);
         else
