@@ -27,6 +27,7 @@
 #include <fakes/output.hpp>
 #include <gtest/gtest.h>
 #include <memory>
+#include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/shell/document_host.hpp>
 #include <wiola/media/local/resource.hpp>
@@ -87,7 +88,7 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
     ASSERT_NE(original, nullptr);
     EXPECT_TRUE(host.open_playlist(playlist));
     EXPECT_EQ(host.registry().playlist(playlist), original);
-    EXPECT_EQ(host.tabs().count(), 3);
+    EXPECT_EQ(host.tabs().count(), 2);
     EXPECT_FALSE(host.close(gui::DocumentId::queue()));
     ASSERT_TRUE(host.close(gui::DocumentId::playlist(playlist)));
     EXPECT_EQ(host.registry().playlist(playlist), nullptr);
@@ -97,7 +98,7 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
     ASSERT_NE(replacement, nullptr);
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     EXPECT_EQ(host.registry().playlist(playlist), replacement);
-    EXPECT_EQ(host.tabs().count(), 3);
+    EXPECT_EQ(host.tabs().count(), 2);
 }
 
 TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
@@ -114,7 +115,7 @@ TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
         ASSERT_TRUE(host.activate(gui::DocumentId::playlist(first)));
     }
     gui::DocumentHost restored{*library, playback, *preferences, {}};
-    EXPECT_EQ(restored.tabs().count(), 4);
+    EXPECT_EQ(restored.tabs().count(), 3);
     EXPECT_EQ(restored.registry().active(), gui::DocumentId::playlist(first));
     EXPECT_EQ(restored.tabs().tabText(restored.tabs().currentIndex()), "First");
     ASSERT_EQ(playback.playlist().tracks().size(), 2);
@@ -129,24 +130,17 @@ TEST_F(DocumentHostTest, CommittedDeletionUpdatesTabsAndActiveIdentity)
     ASSERT_TRUE(library->playlists().remove(playlist));
     EXPECT_EQ(host.registry().playlist(playlist), nullptr);
     EXPECT_EQ(host.registry().active(), host.registry().identify(host.tabs().currentWidget()));
-    EXPECT_EQ(host.tabs().count(), 2);
+    EXPECT_EQ(host.tabs().count(), 1);
     EXPECT_FALSE(host.open_playlist(playlist));
 }
 
-TEST_F(DocumentHostTest, EmptyStateRequestsOpenFolderWithoutCreatingAWorkspace)
+TEST_F(DocumentHostTest, NoPermanentOpenFolderTabIsCreated)
 {
-    int requests = 0;
-    gui::DocumentCommands commands;
-    commands.open_folder = [&] {
-        ++requests;
-    };
-    gui::DocumentHost host{*library, playback, *preferences, std::move(commands)};
-    auto* open = host.findChild<QPushButton*>("openFolderFromDocuments");
-    ASSERT_NE(open, nullptr);
-    open->click();
-    EXPECT_EQ(requests, 1);
+    gui::DocumentHost host{*library, playback, *preferences, {}};
+    EXPECT_EQ(host.count(), 1);
+    EXPECT_EQ(host.currentWidget(), &host.queue());
+    EXPECT_EQ(host.findChild<QPushButton*>("openFolderFromDocuments"), nullptr);
     EXPECT_TRUE(library->repository().workspaces().empty());
-    EXPECT_TRUE(host.registry().workspaces().empty());
 }
 
 } // namespace

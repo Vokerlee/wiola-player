@@ -178,7 +178,7 @@ TEST(WorkspaceDocument, RoutesSelectedPathsToPlaybackAndTransferCallbacks)
     for (QAction* action : table->actions()) {
         if (action->text() == "Add to active playlist")
             action->trigger();
-        if (action->text() == "Add to playlist →")
+        if (action->text() == "Add to playlist")
             action->trigger();
     }
 

@@ -34,6 +34,7 @@ struct DocumentCommandContext {
     std::vector<SelectedTrack> selection;
     std::vector<std::filesystem::path> displayed_paths;
     std::optional<library::PlaylistId> active_playlist;
+    std::optional<library::PlaylistId> target_playlist;
 };
 
 } // namespace wiola::gui

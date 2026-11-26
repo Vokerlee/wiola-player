@@ -50,7 +50,7 @@ LayoutNode transport()
     using A = PlayerAction;
     auto controls = container("transportControls", K::row,
         {leaf("previousTrack", K::button, A::previous), leaf("playPause", K::button, A::play),
-            leaf("nextTrack", K::button, A::next), leaf("stopPlayback", K::button, A::stop)});
+            leaf("nextTrack", K::button, A::next)});
     controls.alignment = Qt::AlignHCenter;
     auto options = container("playbackOptions", K::row,
         {leaf("repeatQueue", K::button, A::repeat), leaf("shuffleQueue", K::button, A::shuffle),
@@ -86,9 +86,7 @@ LayoutDocument player_layout_document(PlayerLayoutPreset preset)
                                                                     : "libraryFocusRoot",
         K::column,
         {container("libraryCommands", K::row,
-             {leaf("openTracks", K::button, A::open), leaf("addTracks", K::button, A::add),
-                 leaf("removeTracks", K::button, A::remove),
-                 leaf("clearQueue", K::button, A::clear)}),
+             {leaf("openTracks", K::button, A::open), leaf("addTracks", K::button, A::add)}),
             leaf("documentTabs", K::document_host), transport(), leaf("playerStatus", K::status)});
     document.node_count = layout_node_count(document.root);
     return document;

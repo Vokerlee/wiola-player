@@ -24,7 +24,9 @@
 #include <qt/widgets/tracks/track_browser.hpp>
 
 #include <QLabel>
+#include <QPainter>
 #include <QVBoxLayout>
+#include <qt/widgets/appearance/presentation_tokens.hpp>
 
 #include <algorithm>
 #include <utility>
@@ -39,26 +41,18 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     heading_ = new QLabel{this};
     heading_->setObjectName("savedPlaylistHeading");
     heading_->setTextFormat(Qt::PlainText);
+    heading_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     QFont font = heading_->font();
     font.setBold(true);
     heading_->setFont(font);
-
-    play_button_ = new QPushButton{"Play in Now Playing", this};
-    play_button_->setObjectName("playSavedPlaylist");
 
     browser_ = new TrackBrowser{TrackCapabilities::playlist(), this};
     browser_->table().setAccessibleName("Saved playlist tracks");
 
     QVBoxLayout* layout = new QVBoxLayout{this};
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(PresentationTokens{}.player.control_spacing, 0, 0, 0);
     layout->addWidget(heading_);
-    layout->addWidget(play_button_);
     layout->addWidget(browser_);
-
-    connect(play_button_, &QPushButton::clicked, [this] {
-        if (playback_observer_)
-            playback_observer_();
-    });
 
     connect(browser_, &TrackBrowser::row_activated, this, [this](TrackRowId occurrence) {
         if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence);
@@ -134,7 +128,10 @@ void SavedPlaylistDocument::set_active(bool active)
 
 void SavedPlaylistDocument::update_heading()
 {
-    heading_->setText(active_ ? name_ + " — Active playlist" : name_);
+    heading_->setText(name_);
+    heading_->setAccessibleDescription(active_ ? "Active playlist" : "");
+    heading_->setToolTip(active_ ? name_ + "\nActive playlist" : name_);
+    update();
 }
 
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
@@ -161,9 +158,14 @@ void SavedPlaylistDocument::on_entry_chosen(std::function<void(library::Playlist
     entry_observer_ = std::move(observer);
 }
 
-void SavedPlaylistDocument::on_play_requested(std::function<void()> observer)
+void SavedPlaylistDocument::paintEvent(QPaintEvent* event)
 {
-    playback_observer_ = std::move(observer);
+    QWidget::paintEvent(event);
+    if (active_) {
+        QPainter painter{this};
+        painter.fillRect(0, 0, PresentationTokens{}.playlist.activity_accent_width, height(),
+            palette().color(QPalette::Highlight));
+    }
 }
 
 void SavedPlaylistDocument::on_transfer_active_requested(std::function<void()> observer)

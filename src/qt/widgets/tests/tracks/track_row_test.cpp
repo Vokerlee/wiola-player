@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QKeyEvent>
 #include <fixtures/track_view.hpp>
 
 #include <wiola/media/local/resource.hpp>
@@ -201,7 +202,8 @@ TEST(TrackRows, SelectionAndActivationRetainDistinctSavedOccurrenceIdentities)
     std::optional<gui::TrackRowId> activated;
     QObject::connect(&view, &gui::TrackTableView::row_chosen,
         [&](gui::TrackRowId id) { activated = std::move(id); });
-    view.actions().front()->trigger();
+    QKeyEvent enter{QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier};
+    QApplication::sendEvent(&view, &enter);
     EXPECT_EQ(activated, duplicate.id);
     first.metadata.title = "Updated";
     view.show_rows({duplicate, first});

@@ -48,6 +48,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QSettings>
@@ -76,6 +78,16 @@ QPushButton* command(QWidget& window, const QString& accessible_name)
     });
 
     return found == buttons.end() ? nullptr : *found;
+}
+
+QAction* playback_command(MainWindow& window, const QString& name)
+{
+    for (auto* menu : window.menuBar()->findChildren<QMenu*>())
+        if (menu->title() == "&Playback")
+            for (auto* action : menu->actions())
+                if (action->text() == name)
+                    return action;
+    return nullptr;
 }
 
 template<typename Widget>
@@ -217,7 +229,7 @@ TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
     const QPushButton* previous = command(window, "Previous track");
     const QPushButton* play = command(window, "Play");
     const QPushButton* next = command(window, "Next track");
-    const QPushButton* stop = command(window, "Stop");
+    const QAction* stop = playback_command(window, "Stop");
     const SeekBar* position = window.findChild<SeekBar*>();
     const QLabel* track_name = with_text<QLabel>(window, "no track");
 
@@ -251,7 +263,7 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
     QPushButton* previous = command(window, "Previous track");
     QPushButton* play = command(window, "Play");
     QPushButton* next = command(window, "Next track");
-    QPushButton* stop = command(window, "Stop");
+    QAction* stop = playback_command(window, "Stop");
     SeekBar* position = window.findChild<SeekBar*>();
 
     ASSERT_NE(previous, nullptr);
@@ -284,7 +296,7 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
         return window.windowTitle() == QString::fromStdString(first.filename().string());
     }));
 
-    stop->click();
+    stop->trigger();
     QCoreApplication::processEvents();
 
     EXPECT_EQ(play->accessibleName(), "Play");
