@@ -117,6 +117,26 @@ if(TARGET wiola_workspace)
     gtest_discover_tests(app_workspace_policy_test)
 endif()
 
+if(TARGET wiola_playback_service)
+    foreach(test IN ITEMS playback_service playback_preferences)
+        add_executable(app_${test}_test playback/${test}_test.cpp)
+
+        target_link_libraries(
+            app_${test}_test
+            PRIVATE wiola::playback_service GTest::gtest_main
+        )
+
+        target_include_directories(
+            app_${test}_test
+            PRIVATE "${PROJECT_SOURCE_DIR}/tests"
+        )
+
+        wiola_apply_build_controls(app_${test}_test)
+
+        gtest_discover_tests(app_${test}_test)
+    endforeach()
+endif()
+
 if(WIOLA_COMPONENT_BUILD)
     return()
 endif()
@@ -172,21 +192,9 @@ wiola_add_test(
 )
 
 wiola_add_test(
-    app_playback_preferences_test
-    SOURCES playback/playback_preferences_test.cpp
-    LIBS wiola_app
-)
-
-wiola_add_test(
     app_playback_queue_test
     SOURCES playback/playback_queue_test.cpp
     LIBS wiola_app wiola_codec
-)
-
-wiola_add_test(
-    app_playback_service_test
-    SOURCES playback/playback_service_test.cpp
-    LIBS wiola_app
 )
 
 wiola_add_test(

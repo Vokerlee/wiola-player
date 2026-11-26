@@ -20,7 +20,6 @@
 
 #include <media/local/provider.hpp>
 
-#include <app/playback/volume_control.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
@@ -33,6 +32,7 @@
 #include <qt/widgets/shell/main_window.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/app/playback/volume_control.hpp>
 
 #include <app/library/local_identity.hpp>
 #include <qt/paths.hpp>

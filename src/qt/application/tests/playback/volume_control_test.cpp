@@ -18,11 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/playback/volume_control.hpp>
-#include <app/playback/volume_scale.hpp>
 #include <fakes/output.hpp>
 #include <media/local/provider.hpp>
 #include <qt/settings.hpp>
+#include <wiola/app/playback/volume_control.hpp>
+#include <wiola/app/playback/volume_scale.hpp>
 
 #include <QSettings>
 #include <QTemporaryDir>

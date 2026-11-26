@@ -25,6 +25,8 @@
 
 #include <memory>
 #include <span>
+#include <stdexcept>
+#include <utility>
 
 namespace wiola::app {
 
@@ -44,6 +46,8 @@ public:
     explicit WorkspaceReconciliation(library::RepositoryTransaction::Persist persist)
         : persist_{std::make_shared<library::RepositoryTransaction::Persist>(std::move(persist))}
     {
+        if (!*persist_)
+            throw std::invalid_argument{"workspace reconciliation requires a persistence policy"};
     }
 
     [[nodiscard]] WorkspaceReconciliationResult reconcile(library::InMemoryRepository& repository,

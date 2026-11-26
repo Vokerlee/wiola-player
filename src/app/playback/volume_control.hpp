@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <app/playback/volume_scale.hpp>
+#include <wiola/app/playback/volume_scale.hpp>
 
 #include "playback_service.hpp"
 

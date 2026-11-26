@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <app/playback/playback_service.hpp>
 #include <fakes/resource.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 #include <fakes/provider.hpp>
 
@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -513,4 +514,12 @@ TEST(PlaybackService, FractionSeekLeavesAnUnknownLengthStreamUntouched)
 
     EXPECT_EQ(service.time_played(), wiola::units::Time{});
     EXPECT_EQ(service.track(), wiola::testing::resource("unknown-length", "unknown-length"));
+}
+
+TEST(PlaybackService, RejectsAnEmptyOutputFactoryBeforeConstructingPlaybackState)
+{
+    auto provider = wiola::testing::FakeMediaProvider::metadata_only([](const auto&, const auto&) {
+        return wiola::media::Result<wiola::media::Metadata>{wiola::media::Metadata{}};
+    });
+    EXPECT_THROW((wiola::app::PlaybackService{{}, provider}), std::invalid_argument);
 }

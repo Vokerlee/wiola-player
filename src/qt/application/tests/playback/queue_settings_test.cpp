@@ -23,7 +23,7 @@
 
 #include <media/local/resource.hpp>
 
-#include <app/playback/playback_service.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>

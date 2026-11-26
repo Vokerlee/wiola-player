@@ -11,6 +11,7 @@ set(WIOLA_PORTABLE_COMPONENTS
     playlist_commands
     metadata_edits
     workspace
+    playback_service
 )
 
 set(WIOLA_COMPONENTS
@@ -36,6 +37,10 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
             message(FATAL_ERROR "Unknown portable component: ${component}")
         endif()
     endforeach()
+
+    if(playback_service IN_LIST WIOLA_SELECTED_COMPONENTS)
+        list(APPEND WIOLA_SELECTED_COMPONENTS playback)
+    endif()
 
     if(playback IN_LIST WIOLA_SELECTED_COMPONENTS)
         list(APPEND WIOLA_SELECTED_COMPONENTS audio)

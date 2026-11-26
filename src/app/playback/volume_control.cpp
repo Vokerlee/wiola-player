@@ -56,10 +56,10 @@ void VolumeControl::apply_position(int percent)
 void VolumeControl::set_boosted(bool boosted)
 {
     boosted_ = boosted;
+    // Keep runtime state valid before a storage adapter can fail.
+    apply_position(position_);
     settings_.write_boosted(boosted_);
-
-    // What was asked for past full is not what a slider that stops at full may ask.
-    set_position(position_);
+    settings_.write_volume_position(position_);
 }
 
 int VolumeControl::position() const noexcept

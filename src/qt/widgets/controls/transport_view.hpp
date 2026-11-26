@@ -20,8 +20,8 @@
 
 #pragma once
 #ifndef Q_MOC_RUN
-#include <app/playback/playback_presentation.hpp>
 #include <qt/widgets/shell/player_actions.hpp>
+#include <wiola/app/playback/playback_presentation.hpp>
 #endif
 #include <QGroupBox>
 #include <QLabel>

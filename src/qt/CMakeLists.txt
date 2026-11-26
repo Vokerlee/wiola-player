@@ -19,7 +19,7 @@ wiola_add_library(wiola_qt_settings SOURCES settings.cpp LIBS wiola::qt_paths)
 
 target_link_libraries(
     wiola_qt_settings
-    PUBLIC Qt6::Core wiola::audio_dsp wiola::playback
+    PUBLIC Qt6::Core wiola::audio_dsp wiola::playback_preferences_api
 )
 
 wiola_add_library(

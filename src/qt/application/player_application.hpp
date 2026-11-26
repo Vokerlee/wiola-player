@@ -20,10 +20,10 @@
 
 #pragma once
 #ifndef Q_MOC_RUN
-#include <app/playback/playback_service.hpp>
 #include <functional>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 #include <wiola/playback/output_factory.hpp>
 #endif
 #include <QObject>

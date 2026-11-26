@@ -25,3 +25,9 @@ QueueSettings owns restoration and capture of the current queue. QueueSettingsSt
 Occurrence remapping preserves duplicate paths as separate queue entries. Legacy filename selection is relative to the newly appended portion of the queue. Save omits resources whose provider has no local path, and never invents a local filename for a different provider. The borrowed playback service and snapshot store must outlive the workflow; restore runs during application startup while playback still accepts queue changes.
 
 A rejected restoration admission is counted as unrestored tracks before any occurrence mapping is built. This keeps explicit restore calls safe after playback stops accepting work. Capturing the current queue remains available for the final shutdown save.
+
+`wiola::playback_service` builds the PlaybackService façade and volume/equalizer controls using the portable playback kernel and DSP. Configure `WIOLA_COMPONENTS=playback_service` to develop this API with supplied media/output drivers without preparing Qt, codecs or a device backend. Public includes use `<wiola/app/playback/...>`. Its ordinary target declaration lives here beside the implementation.
+
+`wiola::playback_preferences_api` contains the typed settings writer, queue snapshot store and scale contracts. A storage adapter can link those headers and playback values without linking the playback implementation. These are ordinary CMake targets; no internal package/SDK installation is required.
+
+An output factory is required even when it intentionally returns no device; missing configuration is rejected before playback state is created. Volume changes apply a valid runtime state before storage calls. If disabling boost fails to save, the runtime position/gain already respect the reduced travel.

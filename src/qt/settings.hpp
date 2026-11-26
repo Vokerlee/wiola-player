@@ -20,9 +20,9 @@
 
 #pragma once
 
-#include <app/playback/playback_settings.hpp>
-#include <app/playback/queue_settings_store.hpp>
-#include <app/playback/volume_scale.hpp>
+#include <wiola/app/playback/playback_settings.hpp>
+#include <wiola/app/playback/queue_settings_store.hpp>
+#include <wiola/app/playback/volume_scale.hpp>
 #include <wiola/audio/equalizer_config.hpp>
 
 #include <QSettings>
