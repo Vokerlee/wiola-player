@@ -1118,6 +1118,15 @@ TEST_F(MainWindowShell, DockedTrackDetailsLeaveFullWidthPlaybackAndItsCurrentTra
             EXPECT_TRUE(window.centralWidget()->isAncestorOf(control));
             EXPECT_FALSE(footer->isAncestorOf(control));
         }
+        action(*menu(window, "&Tools"), "Edit button layout...")->trigger();
+        auto* editor = window.findChild<QDialog*>("buttonLayoutEditor");
+        ASSERT_NE(editor, nullptr);
+        editor->findChild<QPushButton*>("applyLayoutEdit")->click();
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        ASSERT_TRUE(footer->isVisible());
+        ASSERT_TRUE(footer->isAncestorOf(transport));
+        EXPECT_FALSE(preferences.ui_session().state().splitters.contains("layoutEditorColumns"));
+        EXPECT_FALSE(preferences.ui_session().state().splitters.contains("layoutEditorRows"));
         const auto unchanged = [&] {
             QApplication::processEvents();
             EXPECT_EQ(geometry(footer), footer_geometry);
@@ -1179,9 +1188,9 @@ TEST_F(MainWindowShell, PlaybackFooterSurvivesCustomPlacementOmissionAndReturnTo
         custom.root.id = "customPlaybackRoot";
         ASSERT_TRUE(window.switch_layout(custom));
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-        EXPECT_TRUE(footer->isHidden());
+        EXPECT_TRUE(footer->isVisible());
         ASSERT_NE(transport, nullptr);
-        EXPECT_TRUE(window.centralWidget()->isAncestorOf(transport));
+        EXPECT_TRUE(footer->isAncestorOf(transport));
         EXPECT_TRUE(transport->isVisible());
         std::erase_if(custom.root.children,
             [](const auto& node) { return node.id == "playbackGroup"; });
@@ -1206,6 +1215,37 @@ TEST_F(MainWindowShell, PlaybackFooterSurvivesCustomPlacementOmissionAndReturnTo
             EXPECT_TRUE(control->isVisible());
         }
     }
+}
+
+TEST_F(MainWindowShell, PlaybackOnlyLayoutRemainsAFullWidthFooterAndCanRestoreDocuments)
+{
+    using namespace wiola;
+    app::PlaybackService playback{wiola::testing::passive_output, codec::ffmpeg::make_provider()};
+    app::LibrarySession library{codec::ffmpeg::make_provider()};
+    app::PlaybackPreferences preferences{playback};
+    gui::MainWindow window{playback, library, preferences};
+    const auto original = gui::classic_layout_document();
+    auto* tabs = window.findChild<QWidget*>("documentTabs");
+    auto* footer = window.findChild<QStatusBar*>("playbackFooter");
+    QPointer<QWidget> transport = window.findChild<QWidget*>("playbackGroup");
+    ASSERT_NE(tabs, nullptr);
+    ASSERT_NE(footer, nullptr);
+    ASSERT_NE(transport, nullptr);
+    gui::LayoutDocument only_player;
+    only_player.root = *gui::locate_layout_node(original.root, "playbackGroup").node;
+    only_player.node_count = gui::layout_node_count(only_player.root);
+    window.show();
+    ASSERT_TRUE(window.switch_layout(only_player));
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    ASSERT_NE(transport, nullptr);
+    EXPECT_NE(window.centralWidget(), transport);
+    EXPECT_TRUE(footer->isAncestorOf(transport));
+    EXPECT_TRUE(footer->isVisible());
+    action(*menu(window, "&View"), "Classic")->trigger();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    EXPECT_EQ(window.findChild<QWidget*>("documentTabs"), tabs);
+    EXPECT_TRUE(tabs->isVisible());
+    EXPECT_TRUE(footer->isAncestorOf(transport));
 }
 
 TEST_F(MainWindowShell, FileDialogDescriptionsAreReadableAndInvalidChoicesNeverOpenAPicker)
