@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Library-focused and queue-focused player layout presets.
+ * @brief Library-focused player layout preset.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -25,6 +25,5 @@
 namespace wiola::gui {
 
 [[nodiscard]] LayoutDocument library_focus_layout_document();
-[[nodiscard]] LayoutDocument queue_focus_layout_document();
 
 } // namespace wiola::gui

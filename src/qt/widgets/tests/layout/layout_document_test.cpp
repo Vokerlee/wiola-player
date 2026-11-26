@@ -118,16 +118,15 @@ TEST(LayoutDocument, ClassicPresetIsValidAndComplete)
     EXPECT_EQ(document.root.id, "classicRoot");
 }
 
-TEST(LayoutDocument, FocusedPresetsRetainCompletePlayerControls)
+TEST(LayoutDocument, LibraryPresetRetainsCompletePlayerControls)
 {
     const auto library = wiola::gui::library_focus_layout_document();
-    const auto queue = wiola::gui::queue_focus_layout_document();
+    const auto classic = wiola::gui::classic_layout_document();
 
     EXPECT_EQ(library.root.id, "libraryFocusRoot");
-    EXPECT_EQ(queue.root.id, "queueFocusRoot");
-    EXPECT_EQ(library.node_count, queue.node_count);
-    EXPECT_NE(library.root.children.front().id, queue.root.children.front().id);
-    EXPECT_GT(queue.node_count, 20U);
+    EXPECT_EQ(library.node_count, classic.node_count);
+    EXPECT_EQ(library.root.children.front().id, classic.root.children.front().id);
+    EXPECT_GT(library.node_count, 20U);
 }
 
 TEST(LayoutDocument, RoundTripsNestedContainersWithTheirProperties)

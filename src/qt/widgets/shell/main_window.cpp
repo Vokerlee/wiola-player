@@ -107,9 +107,6 @@ LayoutDocument layout_for(const QString& choice)
     if (choice == "library-focus")
         return library_focus_layout_document();
 
-    if (choice == "queue-focus")
-        return queue_focus_layout_document();
-
     return classic_layout_document();
 }
 
@@ -374,22 +371,19 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     panels_->add_menu_actions(*view);
     QAction* classic = view->addAction("Classic");
     QAction* library = view->addAction("Library Focus");
-    QAction* queue = view->addAction("Queue Focus");
     auto* presets = new QActionGroup{this};
     layout_presets_ = presets;
     classic->setData("classic");
     library->setData("library-focus");
-    queue->setData("queue-focus");
     presets->setExclusive(true);
 
-    for (QAction* preset : {classic, library, queue}) {
+    for (QAction* preset : {classic, library}) {
         preset->setCheckable(true);
         presets->addAction(preset);
     }
 
     classic->setChecked(selected_layout == "classic");
     library->setChecked(selected_layout == "library-focus");
-    queue->setChecked(selected_layout == "queue-focus");
 
     const auto choose_layout = [this](const QString& choice) {
         static_cast<void>(install_layout(layout_for(choice),
@@ -400,7 +394,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(classic, &QAction::triggered, this, [choose_layout] { choose_layout("classic"); });
     connect(library, &QAction::triggered, this,
         [choose_layout] { choose_layout("library-focus"); });
-    connect(queue, &QAction::triggered, this, [choose_layout] { choose_layout("queue-focus"); });
 
     view->addSeparator();
     QAction* light = view->addAction("Light theme");
@@ -655,8 +648,6 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
     };
 
     panels_->reconcile(*root);
-    if (choice != LayoutChoice::custom)
-        panels_->focus_queue(choice == LayoutChoice::queue_focus);
     for (const auto& [id, registration] : live.entries()) {
         QWidget* widget = registration.widget.data();
         if (!widget || panels_->contains(*widget))

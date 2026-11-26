@@ -74,8 +74,7 @@ LayoutDocument player_layout_document(PlayerLayoutPreset preset)
     using A = PlayerAction;
     LayoutDocument document;
     document.root = container(preset == PlayerLayoutPreset::classic ? "classicRoot"
-            : preset == PlayerLayoutPreset::library_focus           ? "libraryFocusRoot"
-                                                                    : "queueFocusRoot",
+                                                                    : "libraryFocusRoot",
         K::column,
         {container("libraryCommands", K::row,
              {leaf("openTracks", K::button, A::open), leaf("addTracks", K::button, A::add),
@@ -84,8 +83,6 @@ LayoutDocument player_layout_document(PlayerLayoutPreset preset)
                  leaf("shuffleQueue", K::button, A::shuffle),
                  leaf("equalizer", K::button, A::equalizer)}),
             leaf("documentTabs", K::document_host), transport(), leaf("playerStatus", K::status)});
-    if (preset == PlayerLayoutPreset::queue_focus)
-        std::swap(document.root.children[0], document.root.children[2]);
     document.node_count = layout_node_count(document.root);
     return document;
 }

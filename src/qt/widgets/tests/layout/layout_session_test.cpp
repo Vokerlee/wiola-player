@@ -20,6 +20,8 @@
 
 #include <QApplication>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 #include <qt/tests/support/atomic_output.hpp>
@@ -77,6 +79,41 @@ TEST(LayoutSession, PresetRefreshDoesNotRewriteFilesReportRecoveryOrReplaceCusto
     LayoutSession custom{path(directory), document("userLayout"), LayoutChoice::custom};
     custom.update_preset(document("currentPreset"));
     EXPECT_EQ(custom.document().root.id, "userLayout");
+}
+
+TEST(LayoutSession, RetiredQueuePresetRestoresAsClassicWithoutReportingCorruption)
+{
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const auto legacy = document("queueFocusRoot");
+    const auto encoded =
+        QJsonDocument{
+            QJsonObject{{"schema", 1}, {"choice", "queue-focus"},
+                        {"layout", QJsonDocument::fromJson(write_layout_json(legacy)).object()}}
+    }
+            .toJson();
+    overwrite(directory, encoded);
+
+    LayoutSession restored{path(directory), document("fallback"), LayoutChoice::classic};
+    EXPECT_EQ(parse_layout_choice("queue-focus"), LayoutChoice::classic);
+    EXPECT_EQ(restored.choice(), LayoutChoice::classic);
+    EXPECT_EQ(restored.restore_error(), LayoutSessionError::none);
+    restored.update_preset(document("classicRoot"));
+    EXPECT_EQ(restored.document().root.id, "classicRoot");
+    EXPECT_EQ(bytes(directory), encoded);
+
+    QWidget owner;
+    LayoutBuilder builder;
+    const auto current = restored.document();
+    ASSERT_EQ(restored
+                  .accept(current, restored.choice(), builder.prepare(current.root, {}, &owner),
+                      &owner)
+                  .error,
+        LayoutSessionError::none);
+    LayoutSession reopened{path(directory), document("fallback"), LayoutChoice::classic};
+    EXPECT_EQ(reopened.choice(), LayoutChoice::classic);
+    EXPECT_EQ(reopened.document().root.id, "classicRoot");
+    EXPECT_FALSE(bytes(directory).contains("queue-focus"));
 }
 
 TEST(LayoutSession, AcceptedCustomDocumentAndIdentitySurviveRestartExactly)

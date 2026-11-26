@@ -133,8 +133,7 @@ TEST(PlayerSections, ContextAndErrorsRemainPlainAccessibleText)
 
 TEST(PlayerSections, PresetsShareTypedSectionReferencesAndValidateAfterRoundTrip)
 {
-    for (const auto preset : {PlayerLayoutPreset::classic, PlayerLayoutPreset::library_focus,
-             PlayerLayoutPreset::queue_focus}) {
+    for (const auto preset : {PlayerLayoutPreset::classic, PlayerLayoutPreset::library_focus}) {
         const auto document = player_layout_document(preset);
         EXPECT_EQ(validate_layout_document(document), LayoutJsonError::none);
         EXPECT_EQ(document.node_count, layout_node_count(document.root));

@@ -120,12 +120,6 @@ void WindowPanels::add_menu_actions(QMenu& menu)
     connect(reset_action, &QAction::triggered, this, [this] { reset(); });
 }
 
-void WindowPanels::focus_queue(bool focused)
-{
-    if (!library_embedded_)
-        library_dock_->setVisible(!focused);
-}
-
 void WindowPanels::reset()
 {
     for (auto* dock : {library_dock_, inspector_dock_})

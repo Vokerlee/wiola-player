@@ -28,9 +28,4 @@ LayoutDocument library_focus_layout_document()
     return player_layout_document(PlayerLayoutPreset::library_focus);
 }
 
-LayoutDocument queue_focus_layout_document()
-{
-    return player_layout_document(PlayerLayoutPreset::queue_focus);
-}
-
 } // namespace wiola::gui
