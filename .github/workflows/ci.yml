@@ -126,8 +126,7 @@ jobs:
           build-dir: build-headless
       - run: cmake --preset linux-headless
       - run: cmake --build --preset linux-headless -j
-      - run: cmake --build --preset linux-headless -j --target wiola_model_boundary
-      - run: build-headless/bin/wiola_model_boundary
+      - run: ctest --preset linux-headless --no-tests=error
 
   release:
     runs-on: ubuntu-24.04
