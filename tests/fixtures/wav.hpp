@@ -20,16 +20,12 @@
 
 #pragma once
 
-#include <media/codecs/ffmpeg/composition.hpp>
-#include <wiola/media/audio_decoder.hpp>
-
 #include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <memory>
 #include <numbers>
 #include <random>
 #include <string>
@@ -49,7 +45,8 @@ inline void append(std::string& out, std::uint32_t value, std::size_t num_bytes)
 }
 
 /// Writes a few seconds of tone as a WAV file, and gives back where it put it.
-inline std::filesystem::path write_wav(const char* name, std::uint32_t rate = source_rate)
+inline std::filesystem::path write_wav(const char* name, std::uint32_t rate = source_rate,
+    const std::filesystem::path& directory = std::filesystem::temp_directory_path())
 {
     const auto num_frames{static_cast<std::size_t>(source_seconds * rate)};
 
@@ -89,18 +86,12 @@ inline std::filesystem::path write_wav(const char* name, std::uint32_t rate = so
     const std::filesystem::path unique{std::filesystem::path{name}.stem().string() + "-" +
         std::to_string(run) + "-" + std::to_string(written.fetch_add(1)) +
         std::filesystem::path{name}.extension().string()};
-    const std::filesystem::path path{std::filesystem::temp_directory_path() / unique};
+    const std::filesystem::path path{directory / unique};
     std::ofstream out{path, std::ios::binary};
     out.write(file.data(), static_cast<std::streamsize>(file.size()));
     out.close();
 
     return path;
-}
-
-/// The same file, opened.
-inline std::unique_ptr<media::AudioDecoder> open_fixture(const char* name = "wiola_fixture.wav")
-{
-    return std::move(codec::ffmpeg::make_registry().open(write_wav(name)).value());
 }
 
 } // namespace wiola::testing

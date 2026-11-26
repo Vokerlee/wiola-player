@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <fixtures/temporary_directory.hpp>
 

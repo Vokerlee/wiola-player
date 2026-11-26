@@ -19,7 +19,7 @@
  */
 
 #include <app/metadata/media_replacement.hpp>
-#include <media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <wiola/media/local/resource.hpp>
 

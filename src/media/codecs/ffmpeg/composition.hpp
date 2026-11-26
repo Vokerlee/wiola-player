@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Private neutral audio decoder backed by FFmpeg libraries.
+ * @brief Explicit construction of the FFmpeg media adapter.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -20,12 +20,14 @@
 
 #pragma once
 
-#include <media/codecs/registry.hpp>
+#include <wiola/media/codecs/registry.hpp>
 #include <wiola/media/provider.hpp>
 
 #include <memory>
 
 namespace wiola::codec::ffmpeg {
+
+[[nodiscard]] Backend backend();
 
 /// Explicit construction of the FFmpeg-backed local media composition.
 [[nodiscard]] MediaBackendRegistry make_registry();

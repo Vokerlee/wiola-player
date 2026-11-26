@@ -128,16 +128,6 @@ function(wiola_add_library name)
     target_link_libraries(${name} PRIVATE ${arg_LIBS})
 endfunction()
 
-# Groups the libraries a module was split into, so that whatever depends on the module names the
-# module and not its parts.
-function(wiola_add_module name)
-    cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "LIBS")
-
-    add_library(${name} INTERFACE)
-
-    target_link_libraries(${name} INTERFACE ${arg_LIBS})
-endfunction()
-
 # Gives `target` the icon Windows shows for it. Does nothing elsewhere, where an executable carries
 # no resources of its own.
 function(wiola_set_icon target icon)

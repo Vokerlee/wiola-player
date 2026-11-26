@@ -22,12 +22,12 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <memory>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/tests/support/atomic_output.hpp>
 #include <stdexcept>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/qt/paths.hpp>
 
 namespace {

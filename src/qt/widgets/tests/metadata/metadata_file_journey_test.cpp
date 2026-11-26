@@ -1,5 +1,5 @@
 #include <QSignalSpy>
-#include <media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <QToolButton>
 #include <app/library/local_identity.hpp>

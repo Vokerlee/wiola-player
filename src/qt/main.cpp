@@ -18,11 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <qt/application/library/queue_library_migration.hpp>
 #include <qt/application/player_application.hpp>
 #include <qt/widgets/shell/main_window.hpp>
 #include <wiola/audio/miniaudio/device.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/version.hpp>
 
 #include <QApplication>

@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <qt/application/player_application.hpp>
 #include <wiola/library/records.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <qt/widgets/shell/main_window.hpp>
 #include <wiola/media/local/resource.hpp>

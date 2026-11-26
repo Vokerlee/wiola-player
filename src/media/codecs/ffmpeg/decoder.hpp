@@ -23,7 +23,6 @@
 #include "conversion_api.hpp"
 #include "packet_decoder.hpp"
 
-#include <media/codecs/format.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
 #include <cstdint>
@@ -48,8 +47,6 @@ struct FfmpegDecoderOptions {
     int decode_work_budget{64};
     int seek_work_budget{65536};
 };
-
-[[nodiscard]] Backend backend();
 
 class FfmpegDecoder final : public media::AudioDecoder {
 public:

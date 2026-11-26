@@ -19,7 +19,7 @@
  */
 
 #include <QApplication>
-#include <media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <QEvent>
 #include <QPushButton>

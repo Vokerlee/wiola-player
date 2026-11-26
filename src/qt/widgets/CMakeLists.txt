@@ -61,7 +61,6 @@ wiola_add_library(
         wiola::qt_files
         wiola_qt_settings
         wiola::qt_paths
-        wiola_codec
         wiola_media_revisions
         wiola_m3u
         wiola_library_documents

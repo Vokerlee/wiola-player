@@ -19,7 +19,7 @@
  */
 
 #include <app/playback/queue_settings.hpp>
-#include <media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/qt/storage/settings.hpp>
 
 #include <wiola/media/local/resource.hpp>

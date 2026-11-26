@@ -19,6 +19,7 @@
  */
 
 #include "decoder.hpp"
+#include "composition.hpp"
 
 #include "input.hpp"
 #include "packet_decoder.hpp"

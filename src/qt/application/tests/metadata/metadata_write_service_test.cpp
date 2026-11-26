@@ -26,11 +26,11 @@
 #include <chrono>
 #include <exception>
 #include <gtest/gtest.h>
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <memory>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <stdexcept>
 #include <utility>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
 #include <wiola/qt/paths.hpp>
 
