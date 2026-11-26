@@ -19,6 +19,7 @@
  */
 
 #include <app/metadata/media_replacement.hpp>
+#include <media/codecs/ffmpeg/composition.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -86,7 +87,7 @@ TEST(MediaReplacement, ValidatesAndCommitsWhileRetainingTheOriginal)
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);
 
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto outcome =
         wiola::app::commit_media_replacement(source, output, provider, *replacement, *expected);
@@ -118,7 +119,7 @@ TEST(MediaReplacement, RejectsInvalidOutputWithoutChangingTheSource)
         invalid << "invalid media";
     }
 
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto outcome =
         wiola::app::commit_media_replacement(source, output, provider, *replacement);
@@ -153,7 +154,7 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
     }
     const auto changed = bytes(source);
 
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto outcome =
         wiola::app::commit_media_replacement(source, output, provider, *replacement, *expected);
@@ -182,7 +183,7 @@ TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);
 
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MediaReplacementHooks hooks;
     hooks.before_commit = [] {

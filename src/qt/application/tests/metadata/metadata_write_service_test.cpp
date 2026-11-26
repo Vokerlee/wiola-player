@@ -26,6 +26,7 @@
 #include <chrono>
 #include <exception>
 #include <gtest/gtest.h>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/fingerprint.hpp>
 #include <media/local/provider.hpp>
 #include <qt/application/metadata/metadata_write_service.hpp>
@@ -56,9 +57,8 @@ TEST(MetadataWriteService, EnqueueRejectionIsIdentifiedAndDeliveredLaterOnOwnerT
     edit.set_draft(patch);
     std::vector<wiola::app::MetadataWriteResult> outcomes;
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
-    wiola::app::MetadataWriteService service{context,
-        std::make_shared<wiola::codec::LocalMediaProvider>(), repository, *replacement,
-        [](const auto&) { return true; },
+    wiola::app::MetadataWriteService service{context, wiola::codec::ffmpeg::make_provider(),
+        repository, *replacement, [](const auto&) { return true; },
         [&](const auto& result) {
             EXPECT_EQ(QThread::currentThread(), context.thread());
             outcomes.push_back(result);
@@ -98,7 +98,7 @@ TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSu
     std::vector<wiola::app::MetadataWriteResult> terminal;
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MetadataWriteService service{*QCoreApplication::instance(),
-        std::make_shared<wiola::codec::LocalMediaProvider>(), repository, *replacement,
+        wiola::codec::ffmpeg::make_provider(), repository, *replacement,
         [](const auto&) { return true; },
         [&](const auto& result) {
             if (result.stage == wiola::app::MetadataWriteStage::queued && !submitted) {
@@ -156,7 +156,7 @@ void qualify_durable_file_write(bool save_result)
     int handoffs = 0;
     auto replacement = media::native_file_replacement(media::fingerprint_media);
     app::MetadataWriteService service{*QCoreApplication::instance(),
-        std::make_shared<codec::LocalMediaProvider>(), repository, *replacement,
+        wiola::codec::ffmpeg::make_provider(), repository, *replacement,
         [&](const auto&) {
             const auto revision = repository.staged_delta()->changes.revision;
             return library::CommitResult::accepted(revision,
@@ -277,7 +277,7 @@ TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPe
         ThrowOnceReplacement replacement{failure};
         std::vector<app::MetadataWriteResult> terminal;
         app::MetadataWriteService service{*QCoreApplication::instance(),
-            std::make_shared<codec::LocalMediaProvider>(), repository, replacement,
+            wiola::codec::ffmpeg::make_provider(), repository, replacement,
             [](const auto&) { return true; },
             [&](const auto& result) {
                 if (result.stage == app::MetadataWriteStage::failed ||

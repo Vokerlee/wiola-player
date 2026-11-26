@@ -19,6 +19,7 @@
  */
 
 #include <QApplication>
+#include <media/codecs/ffmpeg/composition.hpp>
 
 #include <QFile>
 #include <QLineEdit>
@@ -51,8 +52,7 @@ protected:
     void SetUp() override
     {
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.path());
-        library =
-            std::make_unique<app::LibrarySession>(std::make_shared<codec::LocalMediaProvider>());
+        library = std::make_unique<app::LibrarySession>(wiola::codec::ffmpeg::make_provider());
         preferences = std::make_unique<app::PlaybackPreferences>(playback);
         library::RepositoryTransaction seed{library->repository(), library->persistence()};
         for (const auto& name : {"one", "two"}) {
@@ -73,7 +73,7 @@ protected:
 
     QTemporaryDir directory;
     app::PlaybackService playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     std::unique_ptr<app::LibrarySession> library;
     std::unique_ptr<app::PlaybackPreferences> preferences;

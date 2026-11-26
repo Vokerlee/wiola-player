@@ -27,7 +27,6 @@ namespace wiola::codec {
 
 class LocalMediaProvider final : public media::MediaProvider {
 public:
-    LocalMediaProvider();
     explicit LocalMediaProvider(MediaBackendRegistry registry);
 
     media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference& resource,

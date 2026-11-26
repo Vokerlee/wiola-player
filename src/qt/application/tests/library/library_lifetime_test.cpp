@@ -1,4 +1,5 @@
 #include <QCoreApplication>
+#include <media/codecs/ffmpeg/composition.hpp>
 
 #include <QTemporaryDir>
 #include <QTest>
@@ -31,7 +32,7 @@ protected:
         std::filesystem::copy_file(path, barrier);
         std::filesystem::path staged;
         {
-            codec::LocalMediaProvider provider;
+            codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
             auto asset = provider.open(wiola::media::local_resource(path));
             ASSERT_TRUE(asset);
             media::MetadataWriteRequest request;
@@ -56,9 +57,9 @@ protected:
 TEST_F(LibraryLifetime, CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbeddedMetadata)
 {
     wiola::testing::MetadataReadGate gate;
-    auto provider = std::make_shared<wiola::testing::GatedMediaProvider>(
-        std::make_shared<codec::LocalMediaProvider>(), gate
-    );
+    auto provider =
+        std::make_shared<wiola::testing::GatedMediaProvider>(wiola::codec::ffmpeg::make_provider(),
+            gate);
     app::LibrarySession session{
         platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")), provider};
     ReleaseRead release{gate};
@@ -106,9 +107,9 @@ TEST_F(LibraryLifetime, CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbedded
 TEST_F(LibraryLifetime, CapturedReadAfterRecordRemovalCannotResurrectItsIdentity)
 {
     wiola::testing::MetadataReadGate gate;
-    auto provider = std::make_shared<wiola::testing::GatedMediaProvider>(
-        std::make_shared<codec::LocalMediaProvider>(), gate
-    );
+    auto provider =
+        std::make_shared<wiola::testing::GatedMediaProvider>(wiola::codec::ffmpeg::make_provider(),
+            gate);
     app::LibrarySession session{
         platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")), provider};
     ReleaseRead release{gate};

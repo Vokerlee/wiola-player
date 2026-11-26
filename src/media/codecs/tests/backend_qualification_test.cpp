@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/registry.hpp>
 
 #include <gtest/gtest.h>
@@ -28,7 +29,7 @@
 
 TEST(BackendQualification, AdvertisesOnlyTheCurrentlyVerifiedPlaybackSet)
 {
-    const wiola::codec::MediaBackendRegistry registry;
+    const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     std::vector<std::string> extensions{registry.playback_extensions()};
     std::ranges::sort(extensions);
 

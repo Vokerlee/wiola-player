@@ -20,8 +20,6 @@
 
 #include "registry.hpp"
 
-#include <media/codecs/ffmpeg/decoder.hpp>
-
 #include <media/local/file_stream.hpp>
 
 #include <algorithm>
@@ -42,17 +40,7 @@ std::string lowercased_extension(const std::filesystem::path& path)
     return extension;
 }
 
-std::vector<Backend> default_backends()
-{
-    return {ffmpeg::backend()};
-}
-
 } // namespace
-
-MediaBackendRegistry::MediaBackendRegistry()
-    : MediaBackendRegistry{default_backends()}
-{
-}
 
 MediaBackendRegistry::MediaBackendRegistry(std::vector<Backend> backends, std::size_t max_attempts)
     : backends_{std::move(backends)}

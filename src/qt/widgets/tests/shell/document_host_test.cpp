@@ -19,6 +19,7 @@
  */
 
 #include <QApplication>
+#include <media/codecs/ffmpeg/composition.hpp>
 
 #include <QEvent>
 #include <QPushButton>
@@ -43,13 +44,12 @@ protected:
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.path());
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
         preferences = std::make_unique<app::SessionPreferences>(settings);
-        library =
-            std::make_unique<app::LibrarySession>(std::make_shared<codec::LocalMediaProvider>());
+        library = std::make_unique<app::LibrarySession>(wiola::codec::ffmpeg::make_provider());
     }
 
     QTemporaryDir directory;
     app::PlaybackService playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     std::unique_ptr<app::LibrarySession> library;
     std::unique_ptr<app::SessionPreferences> preferences;

@@ -23,6 +23,7 @@
 #include <fstream>
 #include <future>
 #include <iterator>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 #include <stdexcept>
 #include <wiola/library/in_memory_repository.hpp>
@@ -237,8 +238,7 @@ TEST(BackgroundMetadataWrites, StagesQualifiedMediaWithoutTouchingSourceAndOwnsC
     std::mutex mutex;
     std::condition_variable done;
     std::optional<wiola::app::MetadataWriteResult> result;
-    wiola::app::BackgroundMetadataWrites writes{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::app::BackgroundMetadataWrites writes{wiola::codec::ffmpeg::make_provider()};
     auto job = edit("Staged title");
     job.source = source;
     const auto operation = writes.enqueue(job, [&](auto output) {

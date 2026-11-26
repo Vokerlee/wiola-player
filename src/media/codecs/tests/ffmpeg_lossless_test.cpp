@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -54,7 +55,7 @@ wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& de
 
 wiola::media::DecoderOpenResult open_file(std::string_view name)
 {
-    wiola::codec::MediaBackendRegistry registry;
+    wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
 }
 
@@ -73,7 +74,7 @@ TEST(LosslessFamilyQualification, LosslessVariantsMatchTheReferencePcmExactly)
     auto expected{read_all(**reference)};
     ASSERT_TRUE(expected);
 
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     for (const std::string_view name : {"tone-lossless.wv", "tone.ape", "tone.tta"}) {
         auto asset{provider.open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
@@ -90,7 +91,7 @@ TEST(LosslessFamilyQualification, LosslessVariantsMatchTheReferencePcmExactly)
 
 TEST(LosslessFamilyQualification, ReadsUnicodeApeMetadata)
 {
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto asset{provider.open(
         wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.ape")
     )};

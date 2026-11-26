@@ -22,6 +22,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
@@ -179,7 +180,7 @@ TEST(SessionPreferences, DestinationRestoresAndTracksLibraryChangesWithoutAnyWin
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
     app::LibrarySession library{
         platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")),
-        std::make_shared<codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     const auto first = library.playlists().create("First").id,
                second = library.playlists().create("Second").id;
     ASSERT_TRUE(first.valid());

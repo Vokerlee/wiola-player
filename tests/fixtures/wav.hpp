@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <media/codecs/registry.hpp>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
 #include <atomic>
@@ -100,7 +100,7 @@ inline std::filesystem::path write_wav(const char* name, std::uint32_t rate = so
 /// The same file, opened.
 inline std::unique_ptr<media::AudioDecoder> open_fixture(const char* name = "wiola_fixture.wav")
 {
-    return std::move(codec::MediaBackendRegistry{}.open(write_wav(name)).value());
+    return std::move(codec::ffmpeg::make_registry().open(write_wav(name)).value());
 }
 
 } // namespace wiola::testing

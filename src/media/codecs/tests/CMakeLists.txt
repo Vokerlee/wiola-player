@@ -87,14 +87,14 @@ wiola_add_test(
 wiola_add_test(
     codec_ffmpeg_metadata_test
     SOURCES ffmpeg_metadata_test.cpp
-    LIBS wiola_codec_ffmpeg wiola_codec_provider wiola_ffmpeg
+    LIBS wiola_codec_ffmpeg wiola_ffmpeg_provider wiola_ffmpeg
     DATA "${fixtures}"
 )
 
 wiola_add_test(
     codec_ffmpeg_metadata_writer_test
     SOURCES ffmpeg_metadata_writer_test.cpp
-    LIBS wiola_codec_ffmpeg wiola_codec_provider wiola_ffmpeg
+    LIBS wiola_codec_ffmpeg wiola_ffmpeg_provider wiola_ffmpeg
     DATA "${fixtures}"
 )
 
@@ -107,7 +107,11 @@ wiola_add_test(
 
 wiola_add_test(codec_format_test SOURCES format_test.cpp LIBS wiola_codec)
 
-wiola_add_test(codec_registry_test SOURCES registry_test.cpp LIBS wiola_codec)
+wiola_add_test(
+    codec_registry_test
+    SOURCES registry_test.cpp
+    LIBS wiola_codec_decode
+)
 
 wiola_add_test(
     codec_backend_qualification_test

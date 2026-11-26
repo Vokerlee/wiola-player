@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/format.hpp>
 #include <media/codecs/registry.hpp>
 
@@ -134,7 +135,7 @@ TEST(FileHead, ComparesBytesRatherThanCharacters)
 
 TEST(FormatWriteCapabilities, OnlyQualifiedFormatsExposeWritableFields)
 {
-    const wiola::codec::MediaBackendRegistry registry;
+    const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     std::size_t formats = 0;
 
     for (const wiola::codec::Backend& backend : registry.backends()) {

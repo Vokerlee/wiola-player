@@ -21,6 +21,7 @@
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/settings.hpp>
@@ -65,7 +66,7 @@ protected:
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
     wiola::platform::qt::QtSettingsAdapter writer{settings};
     wiola::app::PlaybackService equalizer{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 };
 
 TEST_F(EqualizerControl, StartsFlatAndOn)
@@ -86,7 +87,7 @@ TEST_F(EqualizerControl, GivesBackWhatTheLastRunLeft)
     Control{equalizer, writer}.set_band_gain(2, 6.0F);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{next, writer};
 
@@ -102,7 +103,7 @@ TEST_F(EqualizerControl, KeepsWhetherItRuns)
     control.set_enabled(false);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{next, writer};
 
@@ -122,7 +123,7 @@ TEST_F(EqualizerControl, KeepsWhatTheEqualizerAllowed)
     EXPECT_FLOAT_EQ(control.band_gain(0), limit);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{next, writer};
 
@@ -161,7 +162,7 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
     control.set_band_gain(beyond, 5.0F);
 
     wiola::app::PlaybackService wide{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{wide, writer};
 
@@ -191,7 +192,7 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
         control.set_band_gain(index, static_cast<float>(index) - 5.0F);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{next, writer};
 

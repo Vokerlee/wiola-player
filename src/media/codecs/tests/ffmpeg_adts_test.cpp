@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -53,13 +54,13 @@ wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& de
 
 wiola::media::DecoderOpenResult open_adts(const char* name)
 {
-    wiola::codec::MediaBackendRegistry registry;
+    wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
 }
 
 TEST(AdtsQualification, AacLcUsesActualRateAndChannelsWithEstimatedLength)
 {
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     for (const auto& [name, rate, channels, frames] : {
              std::tuple{"tone-lc.aac",      44100, 2U, 12288U},
              std::tuple{"tone-lc-mono.aac", 22050, 1U, 7168U },

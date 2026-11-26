@@ -103,8 +103,6 @@ private:
 
 } // namespace
 
-LocalMediaProvider::LocalMediaProvider() = default;
-
 LocalMediaProvider::LocalMediaProvider(MediaBackendRegistry registry)
     : registry_{std::move(registry)}
 {

@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -128,8 +129,8 @@ protected:
 TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -183,8 +184,8 @@ TEST_F(MainWindowShell, MenusSharePlayerCommandsWithButtonsAndShortcuts)
 TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocument)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -218,9 +219,8 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -257,9 +257,8 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 
     SCOPED_TRACE("restore the second window");
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession restored_library{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession restored_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     wiola::gui::MainWindow restored{restored_playback, restored_library, restored_preferences};
@@ -281,8 +280,8 @@ TEST_F(MainWindowShell, RestoresSavedPlaylistEditorsWithoutChangingPlayback)
 TEST_F(MainWindowShell, GroupsControlsAndExposesTheirPurposeAndKeyboardFocus)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -323,8 +322,8 @@ TEST_F(MainWindowShell, LayoutSwitchPreservesQueueSelectionFiltersAndActiveDocum
     const std::filesystem::path first{"/tmp/wiola-layout-first.mp3"};
     const std::filesystem::path second{"/tmp/wiola-layout-second.mp3"};
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -382,8 +381,8 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
     using wiola::gui::LayoutComponentKind;
     using wiola::gui::LayoutNode;
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -448,8 +447,8 @@ TEST_F(MainWindowShell, NestedContainersRoundTripWithoutReplacingOpenDocuments)
 TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -487,8 +486,8 @@ TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
 TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -544,9 +543,8 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
 {
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -564,9 +562,8 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
 
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -582,9 +579,8 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
     }
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession restored_library{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession restored_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     wiola::gui::MainWindow restored{restored_playback, restored_library, restored_preferences};
@@ -601,9 +597,8 @@ TEST_F(MainWindowShell, RestoresTheNativeThemeChoice)
 {
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -612,9 +607,8 @@ TEST_F(MainWindowShell, RestoresTheNativeThemeChoice)
     }
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession restored_library{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession restored_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     wiola::gui::MainWindow restored{restored_playback, restored_library, restored_preferences};
@@ -626,9 +620,8 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
 {
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -643,9 +636,8 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
     }
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession restored_library{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession restored_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     wiola::gui::MainWindow restored{restored_playback, restored_library, restored_preferences};
@@ -655,8 +647,8 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
 TEST_F(MainWindowShell, LayoutPreviewCommandsAndCancelDoNotTouchPlayerState)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -726,9 +718,9 @@ TEST_F(MainWindowShell, CommittedCustomTagsRefreshEveryOpenPlaylist)
     ASSERT_TRUE(store.save(library::snapshot_of(records)).succeeded());
 
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     window_playback.add({wiola::media::local_resource(path)});
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     gui::MainWindow window{window_playback, window_library, window_preferences};
@@ -782,7 +774,7 @@ TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPla
     QTemporaryDir directory;
     app::LibrarySession library{
         platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")),
-        std::make_shared<codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     library::TrackRecord selected, playing;
     selected.id = {"selected"};
     selected.locations = {"selected.wav"};
@@ -797,7 +789,7 @@ TEST_F(MainWindowShell, SelectedPlaylistTrackOwnsBothEditorsWhileAnotherTrackPla
     ASSERT_TRUE(library.repository().append_track(playlist, selected.id));
     ASSERT_TRUE(seed.commit());
     app::PlaybackService playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     playback.add(wiola::media::local_resources(playing.locations));
 
     app::PlaybackPreferences preferences{playback};
@@ -831,8 +823,8 @@ TEST_F(MainWindowShell, CustomLayoutReopensFromAcceptedValuesAndRestartsWithoutL
     QByteArray accepted;
     {
         wiola::app::PlaybackService playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences preferences{playback};
         wiola::gui::MainWindow window{playback, library, preferences};
@@ -851,8 +843,8 @@ TEST_F(MainWindowShell, CustomLayoutReopensFromAcceptedValuesAndRestartsWithoutL
     }
     {
         wiola::app::PlaybackService playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences preferences{playback};
         wiola::gui::MainWindow window{playback, library, preferences};
@@ -871,8 +863,8 @@ TEST_F(MainWindowShell,
     ReopeningThemeEditorsUsesCurrentAcceptedColorsAndCustomChoiceSurvivesSwitching)
 {
     wiola::app::PlaybackService playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences preferences{playback};
     wiola::gui::MainWindow window{playback, library, preferences};

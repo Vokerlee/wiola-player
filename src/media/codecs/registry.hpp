@@ -32,7 +32,6 @@ namespace wiola::codec {
 
 class MediaBackendRegistry {
 public:
-    MediaBackendRegistry();
     explicit MediaBackendRegistry(std::vector<Backend> backends, std::size_t max_attempts = 16);
 
     /// Uses signatures/extensions only to order bounded, cancellable backend-acceptance probes.

@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -54,13 +55,13 @@ wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& de
 
 wiola::media::DecoderOpenResult open_ogg(const char* name)
 {
-    wiola::codec::MediaBackendRegistry registry;
+    wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
 }
 
 TEST(OggQualification, VorbisAndOpusDecodeThroughOneProviderWithCorrectRates)
 {
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     for (const auto& [name, rate, frames] : {
              // Lossy qualification follows FFmpeg's independent decoded timeline.
              std::tuple{"tone-vorbis.ogg", 44100, 10897},
