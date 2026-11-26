@@ -20,11 +20,13 @@
 
 #include <app/metadata/background_metadata_writes.hpp>
 #include <exception>
+#include <fixtures/temporary_directory.hpp>
 #include <fstream>
 #include <future>
 #include <iterator>
 #include <media/codecs/ffmpeg/composition.hpp>
 #include <stdexcept>
+#include <support/allocation_failure.hpp>
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
@@ -41,6 +43,7 @@ namespace {
 using namespace std::chrono_literals;
 
 struct WriteState {
+    wiola::testing::TemporaryDirectory files;
     std::mutex mutex;
     std::condition_variable changed;
     std::vector<wiola::media::MetadataWriteRequest> writes;
@@ -87,7 +90,7 @@ public:
             .error = wiola::media::MetadataWriteError::none,
             .source_modified = false,
             .detail = "temporary output",
-            .staged_output = "temporary output"};
+            .staged_output = state_->files.path() / "staged.mp3"};
     }
 
 private:
@@ -130,7 +133,8 @@ wiola::app::MetadataWriteJob edit(std::string title)
     wiola::app::MetadataWriteJob job;
     job.media = {"media"};
     static const auto source = [] {
-        const auto path = std::filesystem::temp_directory_path() / "wiola-fake-write-source.mp3";
+        static const wiola::testing::TemporaryDirectory files;
+        const auto path = files.path() / "source.mp3";
         std::ofstream{path} << "fake source";
         return path;
     }();
@@ -225,7 +229,8 @@ TEST(BackgroundMetadataWrites, RejectsStaleExpectedStateBeforeOpeningAnAsset)
 
 TEST(BackgroundMetadataWrites, StagesQualifiedMediaWithoutTouchingSourceAndOwnsCleanup)
 {
-    const auto source = std::filesystem::temp_directory_path() / "wiola-owned-stage.mp3";
+    const wiola::testing::TemporaryDirectory files;
+    const auto source = files.path() / "source.mp3";
     std::error_code ignored;
     std::filesystem::remove(source, ignored);
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
@@ -339,3 +344,41 @@ TEST(BackgroundMetadataWrites, DriverExceptionsProduceTerminalOutcomesAndTheWork
 }
 
 } // namespace
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+TEST(BackgroundMetadataWrites, EmptyShutdownDoesNotAllocateBeforeJoiningItsWorker)
+{
+    auto state = std::make_shared<WriteState>();
+    wiola::app::BackgroundMetadataWrites writes{std::make_shared<FakeProvider>(state)};
+    std::exception_ptr failed;
+    {
+        wiola::testing::AllocationFailure failure{0};
+        try {
+            writes.stop();
+        } catch (...) {
+            failed = std::current_exception();
+        }
+    }
+    EXPECT_FALSE(failed);
+}
+#endif
+
+TEST(BackgroundMetadataWrites, ObserverFailureIsReportedAfterTheWorkerClosesAndDoesNotLoseNextJob)
+{
+    auto state = std::make_shared<WriteState>();
+    state->release_first = true;
+    wiola::app::BackgroundMetadataWrites writes{std::make_shared<FakeProvider>(state)};
+    std::promise<void> first;
+    auto notified = first.get_future();
+    ASSERT_TRUE(writes.enqueue(edit("first"), [&](auto) {
+        first.set_value();
+        throw std::runtime_error{"observer failure"};
+    }));
+    ASSERT_EQ(notified.wait_for(5s), std::future_status::ready);
+    std::promise<void> second;
+    auto recovered = second.get_future();
+    ASSERT_TRUE(writes.enqueue(edit("second"), [&](auto) { second.set_value(); }));
+    ASSERT_EQ(recovered.wait_for(5s), std::future_status::ready);
+    EXPECT_THROW(writes.stop(), std::runtime_error);
+    EXPECT_NO_THROW(writes.stop());
+}

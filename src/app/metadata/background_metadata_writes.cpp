@@ -24,6 +24,7 @@
 #include <exception>
 #include <media/local/fingerprint.hpp>
 #include <media/local/resource.hpp>
+#include <stdexcept>
 
 namespace wiola::app {
 
@@ -35,7 +36,10 @@ BackgroundMetadataWrites::BackgroundMetadataWrites(std::shared_ptr<media::MediaP
 
 BackgroundMetadataWrites::~BackgroundMetadataWrites()
 {
-    stop();
+    try {
+        close();
+    } catch (...) {
+    }
 }
 
 void BackgroundMetadataWrites::cancel(Pending pending)
@@ -55,19 +59,40 @@ void BackgroundMetadataWrites::cancel(Pending pending)
 
 void BackgroundMetadataWrites::stop()
 {
-    std::deque<Pending> cancelled;
+    if (worker_.get_id() == std::this_thread::get_id())
+        throw std::logic_error{"metadata write worker cannot join itself"};
+    close();
+}
+
+void BackgroundMetadataWrites::close()
+{
+    std::unique_ptr<std::deque<Pending>> cancelled;
+    std::shared_ptr<std::stop_source> active;
     {
         std::lock_guard lock{mutex_};
+        if (stopping_)
+            return;
         stopping_ = true;
-        cancelled.swap(jobs_);
-        if (active_)
-            active_->request_stop();
+        cancelled = std::move(jobs_);
+        active = active_;
     }
-    for (auto& pending : cancelled)
-        cancel(std::move(pending));
     available_.notify_all();
+    if (active)
+        active->request_stop();
     if (worker_.joinable())
         worker_.join();
+
+    auto failure = delivery_failure_;
+    for (auto& pending : *cancelled) {
+        try {
+            cancel(std::move(pending));
+        } catch (...) {
+            if (!failure)
+                failure = std::current_exception();
+        }
+    }
+    if (failure)
+        std::rethrow_exception(failure);
 }
 
 std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(MetadataWriteJob job,
@@ -81,17 +106,17 @@ std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(Metada
         std::lock_guard lock{mutex_};
         if (stopping_)
             return {};
-        const auto previous = std::ranges::find_if(jobs_,
+        const auto previous = std::ranges::find_if(*jobs_,
             [&](const auto& item) { return item.job.media == job.media; });
-        if (previous == jobs_.end() && jobs_.size() >= 256)
+        if (previous == jobs_->end() && jobs_->size() >= 256)
             return {};
         id = job.operation.valid() ? job.operation : MetadataWriteOperationId{++next_operation_};
         job.operation = id;
-        if (previous != jobs_.end()) {
+        if (previous != jobs_->end()) {
             superseded = std::move(*previous);
             *previous = {std::move(job), std::move(observer), std::move(progress)};
         } else
-            jobs_.push_back({std::move(job), std::move(observer), std::move(progress)});
+            jobs_->push_back({std::move(job), std::move(observer), std::move(progress)});
     }
     if (superseded)
         cancel(std::move(*superseded));
@@ -184,19 +209,26 @@ void BackgroundMetadataWrites::run()
         Pending pending;
         {
             std::unique_lock lock{mutex_};
-            available_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
+            available_.wait(lock, [this] { return stopping_ || !jobs_->empty(); });
             if (stopping_)
                 return;
-            pending = std::move(jobs_.front());
-            jobs_.pop_front();
+            pending = std::move(jobs_->front());
+            jobs_->pop_front();
             active_ = pending.job.cancellation;
         }
-        auto result = stage(pending);
-        {
+        try {
+            auto result = stage(pending);
+            {
+                std::lock_guard lock{mutex_};
+                active_.reset();
+            }
+            pending.observer(std::move(result));
+        } catch (...) {
             std::lock_guard lock{mutex_};
             active_.reset();
+            if (!delivery_failure_)
+                delivery_failure_ = std::current_exception();
         }
-        pending.observer(std::move(result));
     }
 }
 

@@ -162,7 +162,7 @@ wiola_add_test(
 wiola_add_test(
     app_background_metadata_writes_test
     SOURCES metadata/background_metadata_writes_test.cpp
-    LIBS wiola_app wiola_codec
+    LIBS wiola_app wiola_codec wiola_test_allocation_failure
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )
 

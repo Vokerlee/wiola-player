@@ -46,7 +46,6 @@ struct PlayerRuntimeConfig {
 class PlayerApplication final : public QObject {
     Q_OBJECT
 public:
-    explicit PlayerApplication(QObject* parent = nullptr);
     explicit PlayerApplication(PlayerRuntimeConfig config, QObject* parent = nullptr);
     ~PlayerApplication() override;
 

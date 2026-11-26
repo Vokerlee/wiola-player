@@ -20,6 +20,7 @@
 
 #include "metadata_write_service.hpp"
 
+#include <QScopeGuard>
 #include <QThread>
 #include <exception>
 #include <media/local/resource.hpp>
@@ -37,7 +38,7 @@ MetadataWriteService::MetadataWriteService(QObject& owner,
     , repository_{repository}
     , replacement_{replacement}
     , persist_{std::move(persist)}
-    , observer_{std::move(observer)}
+    , observer_{observer ? std::make_shared<Observer>(std::move(observer)) : nullptr}
     , staging_{provider_}
     , worker_{[this] { run(); }}
 {
@@ -45,22 +46,26 @@ MetadataWriteService::MetadataWriteService(QObject& owner,
 
 MetadataWriteService::~MetadataWriteService()
 {
-    stop();
+    try {
+        stop();
+    } catch (...) {
+    }
     lifetime_->owner = nullptr;
 }
 
 void MetadataWriteService::publish(const MetadataWriteResult& result)
 {
     Q_ASSERT(QThread::currentThread() == delivery_.thread());
-    if (observer_)
-        observer_(result);
+    const auto observer = observer_;
+    if (observer)
+        (*observer)(result);
 }
 
 std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const MetadataEditSession& edit)
 {
     Q_ASSERT(QThread::currentThread() == delivery_.thread());
     std::vector<MetadataWriteOperationId> accepted;
-    if (!accepting_)
+    if (phase_ != Phase::running)
         return accepted;
     const auto targets = edit.targets();
     const auto patch = edit.draft();
@@ -192,7 +197,7 @@ void MetadataWriteService::progress(MetadataWriteResult result)
 void MetadataWriteService::ready(std::shared_ptr<Prepared> prepared)
 {
     auto& result = prepared->result;
-    if (!accepting_ || result.job.context().stop_reason() != media::StopReason::none ||
+    if (phase_ != Phase::running || result.job.context().stop_reason() != media::StopReason::none ||
         generations_[result.job.media] != result.job.generation) {
         result.stage = MetadataWriteStage::cancelled;
         result.outcome.error = media::MetadataWriteError::cancelled;
@@ -213,7 +218,7 @@ void MetadataWriteService::begin_commit()
     ready_.pop_front();
     auto& result = prepared->result;
     const auto* record = repository_.track(result.job.media);
-    if (!accepting_ || result.job.context().stop_reason() != media::StopReason::none)
+    if (phase_ != Phase::running || result.job.context().stop_reason() != media::StopReason::none)
         result.stage = MetadataWriteStage::cancelled;
     else if (!record ||
         (result.job.expected_source.content_revision &&
@@ -371,18 +376,26 @@ void MetadataWriteService::finish(MetadataWriteResult result)
 
 void MetadataWriteService::stop()
 {
-    if (!accepting_)
+    Q_ASSERT(QThread::currentThread() == delivery_.thread());
+    if (phase_ == Phase::closing || phase_ == Phase::closed)
         return;
-    accepting_ = false;
+    phase_ = Phase::closing;
+    const auto lifetime = lifetime_;
+    const auto interrupted = qScopeGuard([lifetime] {
+        if (lifetime->owner && lifetime->owner->phase_ == Phase::closing)
+            lifetime->owner->phase_ = Phase::retry;
+    });
+    std::exception_ptr failure;
+    const auto remember_failure = [&] {
+        if (!failure)
+            failure = std::current_exception();
+    };
     for (auto& [id, job] : operations_)
         job.cancellation->request_stop();
-    staging_.stop();
-    delivery_.drain();
-    while (!ready_.empty()) {
-        auto value = std::move(ready_.front());
-        ready_.pop_front();
-        value->result.stage = MetadataWriteStage::cancelled;
-        finish(std::move(value->result));
+    try {
+        staging_.stop();
+    } catch (...) {
+        remember_failure();
     }
     {
         std::lock_guard lock{mutex_};
@@ -391,9 +404,47 @@ void MetadataWriteService::stop()
     changed_.notify_all();
     if (worker_.joinable())
         worker_.join();
-    delivery_.drain();
-    if (flush_durability_)
-        flush_durability_();
+
+    // Workers are quiescent before owner-thread observers can fail or close the service.
+    const auto drain = [&] {
+        while (lifetime->owner) {
+            try {
+                delivery_.drain();
+                break;
+            } catch (...) {
+                remember_failure();
+            }
+        }
+    };
+    drain();
+    if (!lifetime->owner)
+        return;
+    while (!ready_.empty()) {
+        auto value = std::move(ready_.front());
+        ready_.pop_front();
+        value->result.stage = MetadataWriteStage::cancelled;
+        try {
+            finish(std::move(value->result));
+        } catch (...) {
+            remember_failure();
+        }
+        if (!lifetime->owner)
+            return;
+    }
+    drain();
+    if (!lifetime->owner)
+        return;
+    try {
+        if (flush_durability_)
+            flush_durability_();
+    } catch (...) {
+        remember_failure();
+    }
+    if (!lifetime->owner)
+        return;
+    if (failure)
+        std::rethrow_exception(failure);
+    phase_ = Phase::closed;
 }
 
 } // namespace wiola::app

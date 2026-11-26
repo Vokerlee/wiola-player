@@ -21,24 +21,12 @@
 #include "player_application.hpp"
 #include <QScopedValueRollback>
 #include <QThread>
-#include <media/codecs/ffmpeg/composition.hpp>
-#include <wiola/audio/miniaudio/device.hpp>
 
 #include <media/local/resource.hpp>
 #include <stdexcept>
 
 namespace wiola::app {
 namespace {
-
-PlayerRuntimeConfig defaults()
-{
-    PlayerRuntimeConfig config;
-    config.provider = wiola::codec::ffmpeg::make_provider();
-    config.output = [](audio::Source& source) {
-        return std::make_unique<audio::Device>(source);
-    };
-    return config;
-}
 
 std::shared_ptr<media::MediaProvider> checked_provider(const PlayerRuntimeConfig& config)
 {
@@ -49,11 +37,6 @@ std::shared_ptr<media::MediaProvider> checked_provider(const PlayerRuntimeConfig
 }
 
 } // namespace
-
-PlayerApplication::PlayerApplication(QObject* parent)
-    : PlayerApplication{defaults(), parent}
-{
-}
 
 PlayerApplication::PlayerApplication(PlayerRuntimeConfig config, QObject* parent)
     : QObject{parent}
