@@ -23,6 +23,7 @@
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <QApplication>
+#include <QTest>
 
 #include <gtest/gtest.h>
 
@@ -43,10 +44,11 @@ TEST(LibraryNavigation, ListsRepositoryPlaylistsAndTypedWorkspaces)
         {.id = wiola::library::WorkspaceId{"workspace-music"}, .name = "Music"}
     });
 
-    ASSERT_EQ(navigation.topLevelItemCount(), 2);
+    ASSERT_EQ(navigation.topLevelItemCount(), 3);
+    EXPECT_EQ(navigation.topLevelItem(0)->text(0), "Play queue");
 
-    QTreeWidgetItem* playlists = navigation.topLevelItem(0);
-    QTreeWidgetItem* workspaces = navigation.topLevelItem(1);
+    QTreeWidgetItem* playlists = navigation.topLevelItem(1);
+    QTreeWidgetItem* workspaces = navigation.topLevelItem(2);
     ASSERT_EQ(playlists->childCount(), 2);
     ASSERT_EQ(workspaces->childCount(), 1);
 
@@ -72,6 +74,42 @@ TEST(LibraryNavigation, ListsRepositoryPlaylistsAndTypedWorkspaces)
 
     navigation.setCurrentItem(workspaces->child(0));
     EXPECT_EQ(chosen_workspace, wiola::library::WorkspaceId{"workspace-music"});
+}
+
+TEST(LibraryNavigation, QueueIsIndependentOfLibraryGroupsAndCanBeReopenedByMouseOrKeyboard)
+{
+    wiola::library::InMemoryRepository repository;
+    const auto saved = repository.create_playlist("Saved");
+    wiola::gui::LibraryNavigation navigation;
+    navigation.show_repository(repository);
+    navigation.show();
+    auto* queue = navigation.topLevelItem(0);
+    ASSERT_NE(queue, nullptr);
+    EXPECT_EQ(queue->parent(), nullptr);
+    EXPECT_EQ(queue->childCount(), 0);
+    int requests{};
+    navigation.on_queue_chosen([&] { ++requests; });
+    navigation.topLevelItem(1)->setExpanded(false);
+    navigation.topLevelItem(2)->setExpanded(false);
+    const auto click = [&] {
+        QTest::mouseClick(navigation.viewport(), Qt::LeftButton, Qt::NoModifier,
+            navigation.visualItemRect(queue).center());
+    };
+    click();
+    EXPECT_EQ(requests, 1);
+    EXPECT_FALSE(navigation.selected_playlist());
+    navigation.show_repository(repository);
+    navigation.show_workspaces({});
+    EXPECT_EQ(navigation.currentItem(), queue);
+    EXPECT_EQ(navigation.topLevelItem(0), queue);
+    EXPECT_EQ(requests, 1);
+    click();
+    EXPECT_EQ(requests, 2);
+    navigation.setFocus();
+    QTest::keyClick(&navigation, Qt::Key_Return);
+    EXPECT_EQ(requests, 3);
+    EXPECT_EQ(repository.playlists().size(), 1);
+    EXPECT_NE(repository.playlist(saved), nullptr);
 }
 
 TEST(LibraryNavigation, LegacyPlaylistNameIsClearWithoutChangingIdentityOrUserRenames)
@@ -102,7 +140,7 @@ TEST(LibraryNavigation, ActiveMarkerIsIndependentOfSelectionAndSurvivesRepositor
     navigation.on_playlist_chosen([&](auto) { ++choices; });
     navigation.set_active_playlist(second);
     navigation.set_active_playlist(second);
-    auto* entries = navigation.topLevelItem(0);
+    auto* entries = navigation.topLevelItem(1);
     EXPECT_EQ(entries->child(0)->text(0), "First");
     EXPECT_FALSE(entries->child(0)->font(0).bold());
     EXPECT_EQ(entries->child(1)->text(0), "Second");
@@ -135,7 +173,7 @@ TEST(LibraryNavigation, RefreshesContentsWithoutReusingDisplayNamesAsIdentity)
         chosen = std::move(id);
     });
 
-    QTreeWidgetItem* playlists = navigation.topLevelItem(0);
+    QTreeWidgetItem* playlists = navigation.topLevelItem(1);
     navigation.setCurrentItem(playlists->child(1));
     EXPECT_EQ(chosen, second);
     EXPECT_NE(first, second);
