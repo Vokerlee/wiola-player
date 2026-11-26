@@ -21,16 +21,31 @@
 #include "fingerprint.hpp"
 
 #include <array>
+#include <charconv>
 #include <cstdint>
 #include <fstream>
-#include <iomanip>
-#include <sstream>
+#include <string>
 
 namespace wiola::media {
+namespace {
+
+void append_hex(std::string& encoded, std::uint64_t value)
+{
+    // Sixteen base-16 digits hold every uint64_t; this encoding has no locale.
+    std::array<char, 16> digits;
+    const auto end = std::to_chars(digits.data(), digits.data() + digits.size(), value, 16).ptr;
+    encoded.append(digits.size() - static_cast<std::size_t>(end - digits.data()), '0');
+    encoded.append(digits.data(), end);
+}
+
+} // namespace
 
 std::optional<std::string> fingerprint_media_cancellable(const std::filesystem::path& file,
     std::stop_token stop)
 {
+    if (stop.stop_requested())
+        return std::nullopt;
+
     std::ifstream input{file, std::ios::binary};
 
     if (!input.is_open())
@@ -59,11 +74,11 @@ std::optional<std::string> fingerprint_media_cancellable(const std::filesystem::
     if (!input.eof())
         return std::nullopt;
 
-    std::ostringstream encoded;
-    encoded << "fnv1a64:" << std::hex << std::setfill('0') << std::setw(16) << hash << ':'
-            << std::setw(16) << bytes;
-
-    return encoded.str();
+    std::string encoded{"fnv1a64:"};
+    append_hex(encoded, hash);
+    encoded += ':';
+    append_hex(encoded, bytes);
+    return encoded;
 }
 
 std::optional<std::string> fingerprint_media(const std::filesystem::path& file)

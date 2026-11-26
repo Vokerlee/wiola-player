@@ -25,9 +25,11 @@
 
 #include <filesystem>
 #include <fstream>
+#include <locale>
 #include <stop_token>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -40,6 +42,39 @@ void write(const std::filesystem::path& file, std::string_view content)
     std::ofstream output{file, std::ios::binary};
     output.write(content.data(), static_cast<std::streamsize>(content.size()));
     ASSERT_TRUE(output);
+}
+
+class GroupedNumbers final : public std::numpunct<char> {
+    char do_thousands_sep() const override { return '_'; }
+
+    std::string do_grouping() const override { return "\1"; }
+};
+
+class ScopedLocale final {
+public:
+    explicit ScopedLocale(std::locale locale)
+        : previous_{std::locale::global(std::move(locale))}
+    {
+    }
+
+    ScopedLocale(const ScopedLocale&) = delete;
+    ScopedLocale& operator=(const ScopedLocale&) = delete;
+
+    ~ScopedLocale() { std::locale::global(previous_); }
+
+private:
+    std::locale previous_;
+};
+
+TEST(MediaFingerprint, StoredIdentityDoesNotDependOnTheProcessNumericLocale)
+{
+    const TemporaryDirectory directory;
+    const auto file = directory.path() / "track.wav";
+    write(file, "foobar");
+    const ScopedLocale grouped{
+        std::locale{std::locale::classic(), new GroupedNumbers}
+    };
+    EXPECT_EQ(fingerprint_media(file), "fnv1a64:85944171f73967e8:0000000000000006");
 }
 
 TEST(MediaFingerprint, DependsOnContentRatherThanLocation)
