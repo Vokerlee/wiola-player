@@ -348,8 +348,8 @@ void DocumentHost::refresh(const library::LibraryChangeBatch& batch)
 
 void DocumentHost::restore_browser(const DocumentId& id, TrackBrowser& browser, bool complete)
 {
-    if (const auto found = preferences_.state().browsers.find(id);
-        found != preferences_.state().browsers.end()) {
+    if (const auto found = preferences_.state().documents.browsers.find(id);
+        found != preferences_.state().documents.browsers.end()) {
         const auto state = found->second;
         browser.restore_browser_state(state);
         if (complete)
@@ -360,18 +360,18 @@ void DocumentHost::restore_browser(const DocumentId& id, TrackBrowser& browser, 
 void DocumentHost::restore()
 {
     const auto state = preferences_.state();
-    for (const auto& id : state.open) {
+    for (const auto& id : state.documents.open) {
         if (id.playlist())
             static_cast<void>(open_playlist(*id.playlist()));
         else if (id.workspace())
             static_cast<void>(open_workspace(*id.workspace()));
     }
     restore_browser(DocumentId::queue(), queue_->browser(), false);
-    if (!state.visible) {
+    if (!state.documents.visible) {
         setCurrentWidget(empty_);
         return;
     }
-    if (!activate(*state.visible))
+    if (!activate(*state.documents.visible))
         static_cast<void>(activate(DocumentId::queue()));
 }
 
@@ -380,7 +380,7 @@ void DocumentHost::save()
     if (restoring_)
         return;
     std::vector<DocumentId> open;
-    std::map<DocumentId, app::BrowserViewState> browsers;
+    std::map<DocumentId, gui::BrowserViewState> browsers;
     for (int index = 0; index < count(); ++index)
         if (const auto id = registry_.identify(widget(index))) {
             open.push_back(*id);
@@ -395,17 +395,18 @@ void DocumentHost::save()
         }
     const auto active = registry_.active();
     preferences_.edit([&](auto& state) {
-        state.open = std::move(open);
-        state.visible = active;
+        state.documents.open = std::move(open);
+        state.documents.visible = active;
         for (auto& [id, value] : browsers)
-            state.browsers.insert_or_assign(id, std::move(value));
-        while (state.browsers.size() > 128) {
-            auto oldest = std::ranges::find_if(state.browsers, [&](const auto& item) {
-                return std::ranges::find(state.open, item.first) == state.open.end();
+            state.documents.browsers.insert_or_assign(id, std::move(value));
+        while (state.documents.browsers.size() > 128) {
+            auto oldest = std::ranges::find_if(state.documents.browsers, [&](const auto& item) {
+                return std::ranges::find(state.documents.open, item.first) ==
+                    state.documents.open.end();
             });
-            if (oldest == state.browsers.end())
+            if (oldest == state.documents.browsers.end())
                 break;
-            state.browsers.erase(oldest);
+            state.documents.browsers.erase(oldest);
         }
     });
 }

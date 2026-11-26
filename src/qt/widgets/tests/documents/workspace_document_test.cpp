@@ -370,7 +370,7 @@ TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProje
     gui::WorkspaceDocument document;
     library::WorkspaceRecord workspace{.id = {"workspace"}, .root = "/music"};
     document.begin(workspace, 1);
-    app::BrowserViewState restore;
+    gui::BrowserViewState restore;
     restore.view.query.title = "track 4999";
     const auto wanted = app::media_id_for("/music/Track 4999.wav");
     restore.selected = {

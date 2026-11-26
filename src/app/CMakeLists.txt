@@ -145,6 +145,7 @@ if(NOT WIOLA_COMPONENT_BUILD OR workspace IN_LIST WIOLA_SELECTED_COMPONENTS)
         wiola/app/workspace
         HEADERS
             workspace/workspace_files.hpp
+            workspace/workspace_scan.hpp
             workspace/workspace_discovery.hpp
             workspace/workspace_reconciliation.hpp
     )

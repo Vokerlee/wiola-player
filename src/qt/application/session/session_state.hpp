@@ -23,27 +23,12 @@
 #include <QRect>
 #include <QString>
 #include <map>
-#include <presentation/documents/document_id.hpp>
-#include <presentation/tracks/track_column_identity.hpp>
-#include <presentation/tracks/track_identity.hpp>
-#include <presentation/tracks/track_view_state.hpp>
+#include <presentation/documents/session_documents.hpp>
 
 namespace wiola::app {
 
-struct BrowserViewState {
-    gui::TrackViewState view;
-    std::map<gui::TrackColumnId, gui::TrackColumnLayout> columns;
-    std::vector<gui::TrackRowId> selected;
-    std::optional<gui::TrackRowId> current, anchor;
-    int anchor_offset{};
-    bool operator==(const BrowserViewState&) const = default;
-};
-
 struct SessionState {
-    std::vector<gui::DocumentId> open{gui::DocumentId::queue()};
-    std::optional<gui::DocumentId> visible{gui::DocumentId::queue()};
-    std::optional<library::PlaylistId> destination;
-    std::map<gui::DocumentId, BrowserViewState> browsers;
+    gui::SessionDocuments documents;
     QRect window;
     std::map<std::string, std::vector<int>> splitters;
     QString layout_identity;

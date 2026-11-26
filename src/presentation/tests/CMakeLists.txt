@@ -17,3 +17,9 @@ wiola_add_test(
         wiola_library
         wiola::local_media
 )
+
+wiola_add_test(
+    presentation_session_documents_test
+    SOURCES session_documents_test.cpp
+    LIBS wiola::presentation
+)

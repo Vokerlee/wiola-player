@@ -58,7 +58,7 @@ TEST(BrowserViewState, DeferredSelectionRestoresWhenItsOccurrenceArrivesAndNewUs
     table.resize(600, 300);
     table.show();
     QApplication::processEvents();
-    app::BrowserViewState saved;
+    gui::BrowserViewState saved;
     saved.selected = {library::PlaylistEntryId{"second"}};
     saved.current = saved.selected.front();
     table.restore_browser_state(saved);
@@ -120,7 +120,7 @@ TEST(BrowserViewState, QueryPanelsSortAndDuplicateOccurrenceSelectionRestoreToge
 {
     gui::TrackBrowser browser{gui::TrackCapabilities::playlist()};
     browser.show_rows({row("first"), row("second")});
-    app::BrowserViewState state;
+    gui::BrowserViewState state;
     state.view.query = {.title = "Song", .artist = "Artist", .album = "Album", .tags = "Calm"};
     state.view.sort_keys = {
         {.field = gui::TrackSortField::artist, .direction = gui::TrackSortDirection::descending}
