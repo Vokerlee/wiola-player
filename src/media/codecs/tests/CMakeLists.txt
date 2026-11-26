@@ -10,7 +10,7 @@ wiola_add_test(
 wiola_add_test(
     codec_ffmpeg_io_test
     SOURCES ffmpeg_io_test.cpp
-    LIBS wiola_codec_ffmpeg wiola_ffmpeg
+    LIBS wiola_codec_ffmpeg wiola_ffmpeg wiola_test_allocation_failure
     DATA "${fixtures}"
 )
 

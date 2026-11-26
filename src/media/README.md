@@ -36,3 +36,5 @@ Local file access belongs to [local](local); format recognition and FFmpeg belon
 Native path composition and reversal live in [the local adapter](local/README.md). Metadata staging artifacts still describe the existing local file-write transaction; generic playback identity does not grant a resource native write capabilities.
 
 Backend policy requires an explicit `MediaBackendRegistry` backend set; an empty set supports no formats. The registry does not select or link FFmpeg. The host selects `codec::ffmpeg::make_provider()` for the current local-file composition; FFmpeg tests can select `make_registry()` explicitly. Adding another backend changes its implementation and the host composition, rather than a default inside selection policy.
+
+FFmpeg owns its custom I/O context and buffer until after the format context closes. Its C callbacks preserve the first byte-stream failure. Exception translation uses an empty, allocation-free diagnostic so even persistent allocation failure cannot escape a `noexcept` C callback; normal returned errors retain their supplied details.
