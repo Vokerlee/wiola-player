@@ -13,7 +13,7 @@ flowchart LR
 
 [paths.hpp](paths.hpp) owns native path/QString conversion. `wiola::qt_paths` is a header-only QtCore target with no player/kernel dependency. Windows conversion uses native UTF-16; other platforms preserve their existing string representation. This adapter translates native file paths, rather than interpreting arbitrary resource-provider keys.
 
-[settings.hpp](settings.hpp) and [settings.cpp](settings.cpp) own conversion between QSettings and typed player/queue values. Defaults, legacy stored keys, gains and occurrence selection retain their existing semantics. Link `wiola_qt_settings` when using that adapter. Qt settings and GUI tests are selected only when the Qt frontend is enabled.
+[storage/settings.hpp](storage/settings.hpp) and [storage/settings.cpp](storage/settings.cpp) own conversion between QSettings and typed player/queue values. Defaults, legacy stored keys, gains and occurrence selection retain their existing semantics. Link `wiola::qt_settings` and include `<wiola/qt/storage/settings.hpp>` when using that adapter. Qt settings and GUI tests are selected only when the Qt frontend is enabled.
 
 The [focused tests](tests) stay with these adapters. Portable code can be configured and tested with the Qt frontend disabled; the Qt-specific types do not belong to the portable playback/media interfaces.
 

@@ -1,6 +1,6 @@
 # Qt storage
 
-This owner contains the complete QtCore storage mechanism and the library snapshot adapter built on it. Each implementation sits beside its declaration and [focused tests](tests).
+This owner contains the complete QtCore storage mechanisms, typed player settings and the library snapshot adapter. Each implementation sits beside its declaration and [focused tests](tests).
 
 ```mermaid
 flowchart LR
@@ -21,3 +21,6 @@ flowchart LR
 Application persistence workflows own when a snapshot is accepted or a save is acknowledged. This driver translates and stores snapshots; it does not own playback, GUI lifetime or catalog mutation policy.
 
 `snapshot_writer.hpp/cpp` implements the application-owned SnapshotWriter port over LibraryStore. The adapter translates format/file diagnostics into portable write outcomes at that boundary; detailed load/save diagnostics remain available from LibraryStore. The storage target depends on the writing interface and catalog, without linking the persistence worker implementation.
+
+
+`settings.hpp/cpp` owns QSettings key conversion for the application playback/queue ports. Link `wiola::qt_settings` and include `<wiola/qt/storage/settings.hpp>`. The adapter exports its actual typed preference and audio configuration dependencies; native path conversion remains a private implementation dependency. PlaybackPreferences publicly links this target because its public declaration owns an adapter. No legacy settings header remains in the parent folder, and stored keys/values are unchanged.
