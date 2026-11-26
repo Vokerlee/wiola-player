@@ -21,8 +21,8 @@
 #include "player_application.hpp"
 #include <QScopedValueRollback>
 #include <QThread>
-#include <audio/miniaudio/device.hpp>
 #include <media/codecs/ffmpeg/composition.hpp>
+#include <wiola/audio/miniaudio/device.hpp>
 
 #include <media/local/resource.hpp>
 #include <stdexcept>
