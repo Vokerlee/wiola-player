@@ -23,7 +23,6 @@
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/paths.hpp>

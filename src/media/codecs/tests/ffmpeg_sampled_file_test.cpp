@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -76,9 +75,9 @@ TEST(SampledFileQualification, LosslessVariantsMatchTheReferencePcmExactly)
     ASSERT_TRUE(expected);
     ASSERT_EQ(expected->size(), 11025U * 2U);
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     for (const std::string_view name : sampled_files) {
-        auto asset{provider.open(
+        auto asset{provider->open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
         )};
         ASSERT_TRUE(asset) << name;

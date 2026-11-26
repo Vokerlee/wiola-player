@@ -18,16 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "provider.hpp"
+#include "composition.hpp"
 
-#include <media/codecs/ffmpeg/metadata.hpp>
-#include <media/codecs/ffmpeg/metadata_writer.hpp>
+#include "metadata.hpp"
+#include "metadata_writer.hpp"
 #include <media/local/file_stream.hpp>
 #include <media/local/resource.hpp>
 
 #include <utility>
 
-namespace wiola::codec {
+namespace wiola::codec::ffmpeg {
 
 namespace {
 
@@ -101,7 +101,18 @@ private:
     MediaBackendRegistry registry_;
 };
 
-} // namespace
+class LocalMediaProvider final : public media::MediaProvider {
+public:
+    explicit LocalMediaProvider(MediaBackendRegistry registry);
+
+    media::Result<std::unique_ptr<media::MediaAsset>> open(const media::ResourceReference& resource,
+        const media::OperationContext& context = {}) override;
+
+    [[nodiscard]] std::vector<std::string> playback_extensions() const override;
+
+private:
+    MediaBackendRegistry registry_;
+};
 
 LocalMediaProvider::LocalMediaProvider(MediaBackendRegistry registry)
     : registry_{std::move(registry)}
@@ -132,4 +143,11 @@ std::vector<std::string> LocalMediaProvider::playback_extensions() const
     return registry_.playback_extensions();
 }
 
-} // namespace wiola::codec
+} // namespace
+
+std::shared_ptr<media::MediaProvider> make_provider()
+{
+    return std::make_shared<LocalMediaProvider>(make_registry());
+}
+
+} // namespace wiola::codec::ffmpeg

@@ -26,7 +26,6 @@
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
 #include <media/local/fingerprint.hpp>
-#include <media/local/provider.hpp>
 #include <wiola/media/audio_decoder.hpp>
 
 #include <gtest/gtest.h>
@@ -87,10 +86,10 @@ TEST(MediaReplacement, ValidatesAndCommitsWhileRetainingTheOriginal)
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto outcome =
-        wiola::app::commit_media_replacement(source, output, provider, *replacement, *expected);
+        wiola::app::commit_media_replacement(source, output, *provider, *replacement, *expected);
 
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
     EXPECT_TRUE(outcome.source_modified);
@@ -119,10 +118,10 @@ TEST(MediaReplacement, RejectsInvalidOutputWithoutChangingTheSource)
         invalid << "invalid media";
     }
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto outcome =
-        wiola::app::commit_media_replacement(source, output, provider, *replacement);
+        wiola::app::commit_media_replacement(source, output, *provider, *replacement);
 
     EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::invalid_output);
@@ -154,10 +153,10 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
     }
     const auto changed = bytes(source);
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto outcome =
-        wiola::app::commit_media_replacement(source, output, provider, *replacement, *expected);
+        wiola::app::commit_media_replacement(source, output, *provider, *replacement, *expected);
 
     EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::conflicted);
@@ -183,15 +182,15 @@ TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MediaReplacementHooks hooks;
     hooks.before_commit = [] {
         return false;
     };
 
-    const auto outcome =
-        wiola::app::commit_media_replacement(source, output, provider, *replacement, {}, {}, hooks);
+    const auto outcome = wiola::app::commit_media_replacement(source, output, *provider,
+        *replacement, {}, {}, hooks);
 
     EXPECT_EQ(outcome.state, wiola::media::MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, wiola::media::MetadataWriteError::io);

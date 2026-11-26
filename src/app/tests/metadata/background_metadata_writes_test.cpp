@@ -24,7 +24,6 @@
 #include <future>
 #include <iterator>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 #include <stdexcept>
 #include <wiola/library/in_memory_repository.hpp>
 

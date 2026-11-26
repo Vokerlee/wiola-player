@@ -18,7 +18,6 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/format.hpp>
 #include <media/codecs/registry.hpp>
 
@@ -131,33 +130,6 @@ TEST(FileHead, ComparesBytesRatherThanCharacters)
 
     EXPECT_TRUE(head.carries(Marker{0, "\xFF\xFB"}));
     EXPECT_FALSE(head.carries(Marker{0, "\x7F\x7B"}));
-}
-
-TEST(FormatWriteCapabilities, OnlyQualifiedFormatsExposeWritableFields)
-{
-    const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
-    std::size_t formats = 0;
-
-    for (const wiola::codec::Backend& backend : registry.backends()) {
-        for (const wiola::codec::Format& format : backend.formats) {
-            ++formats;
-            const bool qualified = format.name == "MPEG audio Layer III" || format.name == "FLAC" ||
-                format.name == "MP4/M4A AAC-LC/ALAC" || format.name == "Ogg Vorbis/Opus";
-            EXPECT_EQ(format.metadata_writes.any(), qualified) << format.name;
-        }
-    }
-
-    EXPECT_GE(formats, 17U);
-
-    for (const char* name :
-        {"track.MP3", "track.FLAC", "track.M4A", "track.MP4", "track.OGG", "track.OPUS"}) {
-        const auto capabilities = registry.metadata_write_capabilities(name);
-        EXPECT_TRUE(capabilities.title && capabilities.artist && capabilities.album &&
-            capabilities.genre && capabilities.year && capabilities.comment &&
-            capabilities.composer && capabilities.track_number && capabilities.disc_number);
-    }
-
-    EXPECT_FALSE(registry.metadata_write_capabilities("track.mp2").any());
 }
 
 } // namespace

@@ -371,7 +371,7 @@ and long operations without trying to kill a thread inside third-party code.
 
 Follow the codec in the same order as the data:
 
-1. [`provider.cpp`](../local/provider.cpp) — assets, inspection, metadata, and decoder creation.
+1. [`provider.cpp`](ffmpeg/provider.cpp) — assets, inspection, metadata, and decoder creation.
 2. [`input.cpp`](ffmpeg/input.cpp) — custom I/O, stream selection, and duration.
 3. [`qualification.cpp`](ffmpeg/qualification.cpp) — the exact container/codec/profile
    admission set.

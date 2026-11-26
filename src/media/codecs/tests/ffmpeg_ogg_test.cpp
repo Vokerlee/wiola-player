@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -61,13 +60,13 @@ wiola::media::DecoderOpenResult open_ogg(const char* name)
 
 TEST(OggQualification, VorbisAndOpusDecodeThroughOneProviderWithCorrectRates)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     for (const auto& [name, rate, frames] : {
              // Lossy qualification follows FFmpeg's independent decoded timeline.
              std::tuple{"tone-vorbis.ogg", 44100, 10897},
              std::tuple{"tone.opus",       48000, 12000},
     }) {
-        auto asset{provider.open(
+        auto asset{provider->open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
         )};
         ASSERT_TRUE(asset) << name;

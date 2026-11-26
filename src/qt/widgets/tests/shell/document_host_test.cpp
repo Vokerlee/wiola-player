@@ -26,7 +26,6 @@
 #include <QTemporaryDir>
 #include <fakes/output.hpp>
 #include <gtest/gtest.h>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <memory>
 #include <qt/widgets/documents/saved_playlist_document.hpp>

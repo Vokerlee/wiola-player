@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>

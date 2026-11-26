@@ -7,7 +7,6 @@
 #include <fixtures/gated_media_provider.hpp>
 #include <gtest/gtest.h>
 #include <media/local/fingerprint.hpp>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/paths.hpp>
@@ -32,8 +31,8 @@ protected:
         std::filesystem::copy_file(path, barrier);
         std::filesystem::path staged;
         {
-            codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-            auto asset = provider.open(wiola::media::local_resource(path));
+            auto provider{wiola::codec::ffmpeg::make_provider()};
+            auto asset = provider->open(wiola::media::local_resource(path));
             ASSERT_TRUE(asset);
             media::MetadataWriteRequest request;
             request.overrides.title = "Original physical metadata";

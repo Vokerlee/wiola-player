@@ -28,7 +28,6 @@
 #include <gtest/gtest.h>
 #include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/fingerprint.hpp>
-#include <media/local/provider.hpp>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <qt/paths.hpp>
 #include <stdexcept>

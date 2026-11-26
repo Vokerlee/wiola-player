@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
 
@@ -42,10 +41,10 @@ std::filesystem::path fixture(const char* name)
 
 TEST(MediaProvider, OpensEverySupportedFormatThroughOneFacade)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
 
     for (const char* name : {"tone.wav", "tone.flac", "tone.mp3"}) {
-        auto asset{provider.open(wiola::media::local_resource(fixture(name)))};
+        auto asset{provider->open(wiola::media::local_resource(fixture(name)))};
         ASSERT_TRUE(asset) << name;
 
         auto info{(*asset)->inspect()};
@@ -69,30 +68,30 @@ TEST(MediaProvider, OpensEverySupportedFormatThroughOneFacade)
 
 TEST(MediaProvider, DistinguishesCancellationFromDeadlineExpiry)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     std::stop_source stop;
     stop.request_stop();
 
     const wiola::media::OperationContext cancelled_context{.stop = stop.get_token(),
         .deadline = {}};
     auto cancelled{
-        provider.open(wiola::media::local_resource("not-a-real-file.wav"), cancelled_context)};
+        provider->open(wiola::media::local_resource("not-a-real-file.wav"), cancelled_context)};
     ASSERT_FALSE(cancelled);
     EXPECT_EQ(cancelled.error().category, wiola::media::ErrorCategory::cancelled);
 
     const wiola::media::OperationContext expired{.stop = {},
         .deadline = wiola::media::OperationContext::Clock::now() - std::chrono::seconds{1}};
-    auto timed_out{provider.open(wiola::media::local_resource("not-a-real-file.wav"), expired)};
+    auto timed_out{provider->open(wiola::media::local_resource("not-a-real-file.wav"), expired)};
     ASSERT_FALSE(timed_out);
     EXPECT_EQ(timed_out.error().category, wiola::media::ErrorCategory::timed_out);
 }
 
 TEST(MediaProvider, StopsAnOpenedDecoderAtItsNextWorkBoundary)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     std::stop_source stop;
     const wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
-    auto asset{provider.open(wiola::media::local_resource(fixture("tone.wav")), context)};
+    auto asset{provider->open(wiola::media::local_resource(fixture("tone.wav")), context)};
     ASSERT_TRUE(asset);
     auto decoder{(*asset)->create_decoder(context)};
     ASSERT_TRUE(decoder);
@@ -107,8 +106,8 @@ TEST(MediaProvider, StopsAnOpenedDecoderAtItsNextWorkBoundary)
 
 TEST(MediaProvider, CreatesIndependentDecodersForOneAsset)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset{provider.open(wiola::media::local_resource(fixture("tone.wav")))};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset{provider->open(wiola::media::local_resource(fixture("tone.wav")))};
     ASSERT_TRUE(asset);
 
     auto first{(*asset)->create_decoder()};
@@ -124,8 +123,8 @@ TEST(MediaProvider, CreatesIndependentDecodersForOneAsset)
 TEST(MediaProvider, RejectsAnUnavailableResourceBeforeCreatingAnAsset)
 {
     wiola::testing::TemporaryDirectory directory;
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset{provider.open(wiola::media::local_resource(directory.path() / "wiola.wav"))};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset{provider->open(wiola::media::local_resource(directory.path() / "wiola.wav"))};
 
     ASSERT_FALSE(asset);
     EXPECT_EQ(asset.error().category, wiola::media::ErrorCategory::unreadable);
@@ -137,8 +136,8 @@ TEST(MediaProvider, PropagatesInspectionFailureFromTheDecoderRegistry)
     const std::filesystem::path path{directory.path() / "wiola_provider_not_audio.bin"};
     std::ofstream{path} << "not audio";
 
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
-    auto asset{provider.open(wiola::media::local_resource(path))};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
+    auto asset{provider->open(wiola::media::local_resource(path))};
     ASSERT_TRUE(asset);
 
     auto info{(*asset)->inspect()};
@@ -150,26 +149,26 @@ TEST(MediaProvider, PropagatesInspectionFailureFromTheDecoderRegistry)
 TEST(MediaProvider, ExposesItsConfiguredPlaybackCapabilities)
 {
     const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
-    const wiola::codec::LocalMediaProvider provider{registry};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
 
-    EXPECT_EQ(provider.playback_extensions(), registry.playback_extensions());
+    EXPECT_EQ(provider->playback_extensions(), registry.playback_extensions());
 }
 
 TEST(MediaProvider, NeverTreatsAnotherSourcesKeyAsALocalFile)
 {
-    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
+    auto provider{wiola::codec::ffmpeg::make_provider()};
     const auto local{wiola::media::local_resource(fixture("tone.wav"))};
     const wiola::media::ResourceReference other{"different driver", local.key(), local.label()};
-    const auto result{provider.open(other)};
+    const auto result{provider->open(other)};
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().category, wiola::media::ErrorCategory::unsupported);
 
     std::stop_source stop;
     stop.request_stop();
-    const auto cancelled{provider.open(other, {.stop = stop.get_token(), .deadline = {}})};
+    const auto cancelled{provider->open(other, {.stop = stop.get_token(), .deadline = {}})};
     ASSERT_FALSE(cancelled);
     EXPECT_EQ(cancelled.error().category, wiola::media::ErrorCategory::cancelled);
-    const auto expired{provider.open(other,
+    const auto expired{provider->open(other,
         {.stop = {},
             .deadline = wiola::media::OperationContext::Clock::now() - std::chrono::seconds{1}})};
     ASSERT_FALSE(expired);

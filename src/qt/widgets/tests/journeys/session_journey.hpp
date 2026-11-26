@@ -8,7 +8,6 @@
 #include <fixtures/wav.hpp>
 #include <gtest/gtest.h>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/player_application.hpp>
 #include <qt/paths.hpp>

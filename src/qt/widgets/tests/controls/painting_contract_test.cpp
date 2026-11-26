@@ -11,7 +11,6 @@
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <limits>
-#include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/paths.hpp>
 #include <qt/settings.hpp>

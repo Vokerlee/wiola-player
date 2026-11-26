@@ -28,7 +28,6 @@
 
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
-#include <media/local/provider.hpp>
 
 #include <QSettings>
 #include <QString>
