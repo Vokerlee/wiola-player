@@ -92,10 +92,13 @@ target_link_libraries(
 wiola_add_library(
     wiola_playback_preferences
     SOURCES playback/playback_preferences.cpp
-    LIBS wiola_qt_settings wiola_session_preferences wiola::local_media
+    LIBS wiola_session_preferences wiola::local_media
 )
 
-target_link_libraries(wiola_playback_preferences PUBLIC Qt6::Core wiola_app)
+target_link_libraries(
+    wiola_playback_preferences
+    PUBLIC Qt6::Core wiola_app wiola::qt_settings
+)
 
 wiola_add_library(
     wiola_session_preferences

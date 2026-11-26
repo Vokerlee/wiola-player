@@ -63,7 +63,6 @@
 #include <qt/widgets/metadata/metadata_inspector_binding.hpp>
 
 #include <qt/paths.hpp>
-#include <qt/settings.hpp>
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/appearance/theme_editor.hpp>
@@ -71,6 +70,7 @@
 #include <qt/widgets/layout/editor/layout_editor_dialog.hpp>
 #include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/layout/layout_builder.hpp>
+#include <wiola/qt/storage/settings.hpp>
 
 #include <wiola/library/metadata.hpp>
 #include <wiola/library/records.hpp>

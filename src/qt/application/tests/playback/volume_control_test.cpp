@@ -20,9 +20,9 @@
 
 #include <fakes/output.hpp>
 #include <media/codecs/ffmpeg/composition.hpp>
-#include <qt/settings.hpp>
 #include <wiola/app/playback/volume_control.hpp>
 #include <wiola/app/playback/volume_scale.hpp>
+#include <wiola/qt/storage/settings.hpp>
 
 #include <QSettings>
 #include <QTemporaryDir>

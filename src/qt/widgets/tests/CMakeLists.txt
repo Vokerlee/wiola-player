@@ -79,7 +79,7 @@ wiola_add_test(
 wiola_add_test(
     gui_main_window_test
     SOURCES shell/main_window_test.cpp
-    LIBS wiola::qt_widgets
+    LIBS wiola::qt_widgets wiola_playback_preferences
 )
 
 if(ENABLE_TSAN)
@@ -269,7 +269,7 @@ wiola_add_test(
 wiola_add_test(
     gui_painting_contract_test
     SOURCES controls/painting_contract_test.cpp
-    LIBS wiola::qt_widgets Qt6::Test
+    LIBS wiola::qt_widgets wiola::qt_settings Qt6::Test
 )
 
 if(ENABLE_COVERAGE)

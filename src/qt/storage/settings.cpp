@@ -21,7 +21,7 @@
 #include "settings.hpp"
 #include <set>
 
-#include "paths.hpp"
+#include <qt/paths.hpp>
 
 #include <QString>
 #include <QStringList>

@@ -21,9 +21,9 @@
 #pragma once
 #include <app/playback/queue_settings.hpp>
 #include <qt/application/session/session_preferences.hpp>
-#include <qt/settings.hpp>
 #include <wiola/app/playback/equalizer_control.hpp>
 #include <wiola/app/playback/volume_control.hpp>
+#include <wiola/qt/storage/settings.hpp>
 
 namespace wiola::app {
 

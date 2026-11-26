@@ -4,7 +4,7 @@
 #include <limits>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/paths.hpp>
-#include <qt/settings.hpp>
+#include <wiola/qt/storage/settings.hpp>
 
 namespace {
 

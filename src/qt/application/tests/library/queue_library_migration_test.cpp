@@ -22,8 +22,8 @@
 
 #include <app/library/local_identity.hpp>
 #include <qt/paths.hpp>
-#include <qt/settings.hpp>
 #include <qt/storage/library_store.hpp>
+#include <wiola/qt/storage/settings.hpp>
 
 #include <fixtures/wav.hpp>
 
