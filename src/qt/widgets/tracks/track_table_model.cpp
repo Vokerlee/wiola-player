@@ -68,22 +68,21 @@ std::shared_ptr<const TrackProjectionInput> TrackTableModel::projection_input()
 {
     if (snapshot_)
         return snapshot_;
-    auto input = std::make_shared<TrackProjectionInput>();
-    input->rows = source_rows_;
+    std::map<library::MediaId, library::SearchFields> search;
     for (const auto& row : source_rows_) {
-        if (input->search.contains(row.media))
+        if (search.contains(row.media))
             continue;
         if (search_)
             if (const auto* fields = search_->fields(row.media)) {
-                input->search.emplace(row.media, *fields);
+                search.emplace(row.media, *fields);
                 continue;
             }
         if (repository_)
             if (const auto* record = repository_->track(row.media))
-                input->search.emplace(row.media, library::search_fields_of(*record));
+                search.emplace(row.media, library::search_fields_of(*record));
     }
     ++statistics_.snapshots;
-    snapshot_ = std::move(input);
+    snapshot_ = std::make_shared<const TrackProjectionInput>(source_rows_, std::move(search));
     return snapshot_;
 }
 
@@ -126,10 +125,12 @@ void TrackTableModel::request_projection()
 {
     projection_timer_.stop();
     if (!projector_)
-        projector_ = std::make_unique<TrackProjection>(*this, [this](TrackProjectionResult result) {
+        projector_ = make_track_projection(*this, [this](TrackProjectionResult result) {
             if (result.generation != projection_generation_)
                 return;
             projection_pending_ = false;
+            if (result.failure)
+                return;
             struct Prepared {
                 std::vector<TrackRow> rows;
                 bool attached{};

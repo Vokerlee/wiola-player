@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief One presentation pipeline for filtering and sorting track rows.
+ * @brief Qt delivery composition for the portable track projection workflow.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *
@@ -19,66 +19,14 @@
  */
 
 #pragma once
-#include <condition_variable>
-#include <map>
-#include <mutex>
-#include <optional>
-#include <presentation/tracks/track_view_state.hpp>
-#include <qt/queued_delivery.hpp>
-#include <stop_token>
-#include <thread>
+
+#include <QObject>
+#include <memory>
+#include <presentation/tracks/track_projection.hpp>
 
 namespace wiola::gui {
 
-/// Contains no live repository, search-index or Qt-model references.
-struct TrackProjectionInput {
-    std::vector<TrackRow> rows;
-    std::map<library::MediaId, library::SearchFields> search;
-};
-
-struct TrackProjectionResult {
-    std::uint64_t generation;
-    std::vector<TrackRow> rows;
-};
-
-/// One active and one replaceable pending query; completed payloads also coalesce before delivery.
-class TrackProjection final {
-public:
-    using Observer = std::function<void(TrackProjectionResult)>;
-    using Before = std::function<void(std::uint64_t, std::stop_token)>;
-    TrackProjection(QObject& owner, Observer observer, Before before = {});
-    ~TrackProjection();
-    [[nodiscard]] std::uint64_t request(std::shared_ptr<const TrackProjectionInput> input,
-        TrackViewState state);
-    void cancel();
-    void stop();
-
-private:
-    struct Request {
-        std::uint64_t generation;
-        std::shared_ptr<const TrackProjectionInput> input;
-        TrackViewState state;
-        std::shared_ptr<std::stop_source> cancellation;
-    };
-
-    struct Lifetime {
-        TrackProjection* owner;
-    };
-
-    void run();
-    void deliver();
-    app::QueuedDelivery delivery_;
-    std::shared_ptr<Lifetime> lifetime_;
-    Observer observer_;
-    Before before_;
-    std::mutex mutex_;
-    std::condition_variable changed_;
-    std::optional<Request> pending_;
-    std::optional<TrackProjectionResult> completed_;
-    std::shared_ptr<std::stop_source> active_;
-    std::uint64_t generation_{};
-    bool stopping_{}, posted_{};
-    std::jthread worker_;
-};
+[[nodiscard]] std::unique_ptr<TrackProjection> make_track_projection(QObject& owner,
+    TrackProjection::Observer observer, TrackProjection::Before before = {});
 
 } // namespace wiola::gui

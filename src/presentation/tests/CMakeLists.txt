@@ -23,3 +23,9 @@ wiola_add_test(
     SOURCES session_documents_test.cpp
     LIBS wiola::presentation
 )
+
+wiola_add_test(
+    presentation_track_projection_test
+    SOURCES track_projection_test.cpp
+    LIBS wiola::presentation
+)
