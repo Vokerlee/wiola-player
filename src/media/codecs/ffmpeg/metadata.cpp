@@ -21,6 +21,7 @@
 #include "metadata.hpp"
 
 #include "input.hpp"
+#include "metadata_text.hpp"
 
 #include <wiola/media/local/file_stream.hpp>
 
@@ -37,31 +38,6 @@ extern "C" {
 namespace wiola::codec::ffmpeg {
 
 namespace {
-
-constexpr std::size_t max_text_bytes{64 * 1024};
-
-std::string field(AVDictionary* primary, AVDictionary* secondary, const char* name)
-{
-    const AVDictionaryEntry* entry{av_dict_get(primary, name, nullptr, 0)};
-    if (!entry && secondary)
-        entry = av_dict_get(secondary, name, nullptr, 0);
-    if (!entry || !entry->value)
-        return {};
-    const std::size_t size{std::strlen(entry->value)};
-    return size <= max_text_bytes ? std::string{entry->value, size} : std::string{};
-}
-
-std::string first_field(AVDictionary* primary, AVDictionary* secondary,
-    std::initializer_list<const char*> names)
-{
-    for (const char* name : names) {
-        std::string value = field(primary, secondary, name);
-        if (!value.empty())
-            return value;
-    }
-
-    return {};
-}
 
 std::optional<std::uint32_t> number(const std::string& text)
 {
@@ -123,16 +99,18 @@ media::Result<media::Metadata> read_metadata(const std::filesystem::path& path,
 
     AVFormatContext* format{(*input)->format()};
     AVDictionary* selected{format->streams[facts->stream_index]->metadata};
+    const MetadataText text{format->metadata, selected,
+        format->iformat && std::strcmp(format->iformat->name, "mp3") == 0};
     media::Metadata metadata;
-    metadata.track.title = field(format->metadata, selected, "title");
-    metadata.track.artist = field(format->metadata, selected, "artist");
-    metadata.track.album = field(format->metadata, selected, "album");
-    metadata.track.genre = first_field(format->metadata, selected, {"genre"});
-    metadata.track.comment = first_field(format->metadata, selected, {"comment", "description"});
-    metadata.track.composer = first_field(format->metadata, selected, {"composer"});
-    metadata.track.year = number(first_field(format->metadata, selected, {"date", "year"}));
-    metadata.track.track_number = number(first_field(format->metadata, selected, {"track"}));
-    metadata.track.disc_number = number(first_field(format->metadata, selected, {"disc"}));
+    metadata.track.title = text.field("title");
+    metadata.track.artist = text.field("artist");
+    metadata.track.album = text.field("album");
+    metadata.track.genre = text.first({"genre"});
+    metadata.track.comment = text.first({"comment", "description"});
+    metadata.track.composer = text.first({"composer"});
+    metadata.track.year = number(text.first({"date", "year"}));
+    metadata.track.track_number = number(text.first({"track"}));
+    metadata.track.disc_number = number(text.first({"disc"}));
 
     if (facts->output.length)
         metadata.track.duration = facts->output.spec.time_per(*facts->output.length);

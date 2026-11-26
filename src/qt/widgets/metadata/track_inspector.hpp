@@ -38,6 +38,7 @@ public:
     explicit TrackInspector(QWidget* parent = nullptr);
 
     void show_context(InspectorContext context);
+    void edit_details();
 
     void set_artwork_requester(std::function<void(const library::MediaId&)> request)
     {

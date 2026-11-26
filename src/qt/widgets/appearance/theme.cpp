@@ -23,6 +23,7 @@
 #include <QApplication>
 #include <QFont>
 #include <QPainter>
+#include <QStyleFactory>
 #include <QWidget>
 
 #include <algorithm>
@@ -201,6 +202,7 @@ QPalette theme_palette(const ThemeColors& colors)
         palette.setColor(group, QPalette::Base, colors.surface);
         palette.setColor(group, QPalette::AlternateBase, mix(colors.surface, colors.accent, 97));
         palette.setColor(group, QPalette::Button, colors.window);
+        palette.setColor(group, QPalette::PlaceholderText, colors.muted_text);
         palette.setColor(group, QPalette::ToolTipBase, colors.surface);
         palette.setColor(group, QPalette::Highlight, colors.accent);
         palette.setColor(group, QPalette::HighlightedText, colors.accent_text);
@@ -212,6 +214,7 @@ QPalette theme_palette(const ThemeColors& colors)
 
     palette.setColor(QPalette::Disabled, QPalette::Window, colors.window);
     palette.setColor(QPalette::Disabled, QPalette::Base, disabled_surface);
+    palette.setColor(QPalette::Disabled, QPalette::PlaceholderText, colors.disabled_text);
     palette.setColor(QPalette::Disabled, QPalette::AlternateBase, disabled_surface);
     palette.setColor(QPalette::Disabled, QPalette::Button, colors.window);
     palette.setColor(QPalette::Disabled, QPalette::ToolTipBase, colors.surface);
@@ -274,6 +277,8 @@ void apply_theme(Theme theme)
 
 void apply_theme(const ThemeColors& colors)
 {
+    // Native Windows styles draw controls with system colors, ignoring a custom dark palette.
+    QApplication::setStyle(QStyleFactory::create("Fusion"));
     QApplication::setPalette(theme_palette(colors));
 
     QFont font = QApplication::font();
@@ -282,7 +287,10 @@ void apply_theme(const ThemeColors& colors)
 
     constexpr int control_padding = 5;
     qApp->setStyleSheet(QString{
-        "QPushButton, QLineEdit, QComboBox, QSpinBox { padding: %1px; }\n"
+        "QPushButton, QLineEdit, QComboBox, QSpinBox { padding: %1px; min-height: 1.2em; }\n"
+        "QToolButton { padding: 4px; }\n"
+        "QTabBar::tab { padding: 7px 12px; }\n"
+        "QHeaderView::section { padding: 6px; }\n"
         "QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus,"
         " QTableView:focus, QTreeView:focus { border: 1px solid %2; }\n"
         "QLineEdit[error=\"true\"], QComboBox[error=\"true\"] { border: 1px solid %3; }\n"

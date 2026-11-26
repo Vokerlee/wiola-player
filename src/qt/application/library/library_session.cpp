@@ -334,8 +334,6 @@ void LibrarySession::publish_metadata(BackgroundMetadataResult result)
         metadata_pending_.erase(result.media);
         if (artwork_.fail(result.media))
             emit artwork_changed(result.media);
-        emit status_changed("Could not read metadata for " +
-            platform::qt::QtPathAdapter::to_qt(result.location.filename()));
         return;
     }
     library::RepositoryTransaction transaction{repository_, persist_};

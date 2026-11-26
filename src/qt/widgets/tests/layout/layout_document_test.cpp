@@ -125,7 +125,8 @@ TEST(LayoutDocument, FocusedPresetsRetainCompletePlayerControls)
 
     EXPECT_EQ(library.root.id, "libraryFocusRoot");
     EXPECT_EQ(queue.root.id, "queueFocusRoot");
-    EXPECT_GT(library.node_count, queue.node_count);
+    EXPECT_EQ(library.node_count, queue.node_count);
+    EXPECT_NE(library.root.children.front().id, queue.root.children.front().id);
     EXPECT_GT(queue.node_count, 20U);
 }
 

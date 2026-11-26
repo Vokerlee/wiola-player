@@ -61,6 +61,10 @@ public:
 
     [[nodiscard]] bool recovered_backup() const { return recovered_; }
 
+    /// Refresh built-in presentation without replacing custom layouts or reporting a recovery
+    /// error.
+    void update_preset(LayoutDocument document);
+
     /// Retain a usable in-memory fallback when saved view references are no longer available.
     void use_fallback(LayoutDocument document, LayoutChoice choice);
     [[nodiscard]] LayoutAcceptance accept(LayoutDocument candidate, LayoutChoice choice,

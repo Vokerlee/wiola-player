@@ -139,6 +139,16 @@ TrackTableView::TrackTableView(QWidget* parent)
             emit row_chosen(*id);
     });
 
+    auto* edit = new QAction{"Edit track details…", this};
+    edit->setObjectName("editTrackDetails");
+    edit->setShortcut(QKeySequence{"Alt+Return"});
+    edit->setShortcutContext(Qt::WidgetShortcut);
+    edit->setEnabled(false);
+    addAction(edit);
+    connect(selectionModel(), &QItemSelectionModel::selectionChanged, this,
+        [this, edit] { edit->setEnabled(!chosen_rows().empty()); });
+    connect(edit, &QAction::triggered, this, &TrackTableView::edit_asked);
+
     QAction* remove = new QAction{"Remove selected tracks", this};
     addAction(remove);
     connect(remove, &QAction::triggered, this, &TrackTableView::removal_asked);

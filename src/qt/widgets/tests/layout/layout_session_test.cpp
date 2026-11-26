@@ -61,6 +61,24 @@ void overwrite(const QTemporaryDir& directory, QByteArrayView bytes)
 
 using FaultOutput = wiola::testing::FaultAtomicOutput;
 
+TEST(LayoutSession, PresetRefreshDoesNotRewriteFilesReportRecoveryOrReplaceCustomLayouts)
+{
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    LayoutSession preset{path(directory), document("oldPreset"), LayoutChoice::classic};
+    preset.update_preset(document("currentPreset"));
+    EXPECT_EQ(preset.document().root.id, "currentPreset");
+    EXPECT_EQ(preset.restore_error(), LayoutSessionError::none);
+    EXPECT_FALSE(QFile::exists(directory.filePath("layout.json")));
+    auto invalid = document("invalid");
+    invalid.root.id.clear();
+    EXPECT_THROW(preset.update_preset(invalid), std::invalid_argument);
+    EXPECT_EQ(preset.document().root.id, "currentPreset");
+    LayoutSession custom{path(directory), document("userLayout"), LayoutChoice::custom};
+    custom.update_preset(document("currentPreset"));
+    EXPECT_EQ(custom.document().root.id, "userLayout");
+}
+
 TEST(LayoutSession, AcceptedCustomDocumentAndIdentitySurviveRestartExactly)
 {
     QTemporaryDir directory;

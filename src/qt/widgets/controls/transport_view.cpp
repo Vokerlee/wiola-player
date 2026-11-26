@@ -39,9 +39,11 @@ TransportView::TransportView(PlayerActions& actions, QWidget* parent)
     , actions_{actions}
 {
     const auto tokens = PresentationTokens{}.player;
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto* body = new QVBoxLayout{this};
     title_ = new QLabel{"no track", this};
     title_->setTextFormat(Qt::PlainText);
+    title_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     title_->setAccessibleName("Current track");
     auto font = title_->font();
     font.setPointSize(font.pointSize() + tokens.track_name_point_size_step);
@@ -63,7 +65,7 @@ TransportView::TransportView(PlayerActions& actions, QWidget* parent)
     body->addLayout(controls);
     for (const auto& descriptor : action_descriptors()) {
         auto* button = new QPushButton{this};
-        const bool icon = descriptor.icon.has_value();
+        const bool icon = descriptor.icon.has_value() && descriptor.id != PlayerAction::open;
         new ActionButtonBinding{*button, *actions_.action(descriptor.id),
             icon ? ActionButtonPresentation::icon_only : ActionButtonPresentation::text};
         if (icon)
@@ -73,6 +75,7 @@ TransportView::TransportView(PlayerActions& actions, QWidget* parent)
             button->setAccessibleName("Equalizer");
             button->setToolTip("Open equalizer");
         }
+        button->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
         buttons_[static_cast<std::size_t>(descriptor.id)] = button;
         if (descriptor.id == PlayerAction::previous || descriptor.id == PlayerAction::play ||
             descriptor.id == PlayerAction::next || descriptor.id == PlayerAction::stop)
@@ -126,6 +129,7 @@ void TransportView::present(const app::PlayerPresentation& state)
                      : QString::fromStdString(playback.track.label());
     }
     title_->setText(title);
+    title_->setToolTip(title);
     show_time();
 }
 

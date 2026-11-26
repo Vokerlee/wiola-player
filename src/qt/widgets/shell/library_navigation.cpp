@@ -19,6 +19,7 @@
  */
 
 #include "library_navigation.hpp"
+#include <qt/widgets/documents/playlist_name.hpp>
 
 #include <utility>
 
@@ -65,7 +66,7 @@ LibraryNavigation::LibraryNavigation(QWidget* parent)
     setSelectionMode(QAbstractItemView::SingleSelection);
 
     playlists_ = group(*this, "Playlists");
-    workspaces_ = group(*this, "Workspaces");
+    workspaces_ = group(*this, "Folders");
 
     connect(this, &QTreeWidget::currentItemChanged,
         [this](QTreeWidgetItem* current, QTreeWidgetItem*) {
@@ -129,7 +130,7 @@ void LibraryNavigation::show_repository(const library::LibraryRepository& reposi
         delete playlists_->takeChild(0);
 
     for (const library::PlaylistRecord& playlist : repository.playlists())
-        entry(*playlists_, QString::fromStdString(playlist.name), EntryKind::playlist_entry,
+        entry(*playlists_, playlist_name(playlist), EntryKind::playlist_entry,
             QString::fromStdString(playlist.id.value));
 }
 

@@ -43,83 +43,49 @@ LayoutNode leaf(const char* id, LayoutComponentKind kind, std::optional<PlayerAc
     node.action = action;
     return node;
 }
-enum class Section {
-    transport,
-    library_commands,
-    documents,
-    queue_commands,
-    status,
-};
 
-LayoutNode section(Section purpose, PlayerLayoutPreset preset)
+LayoutNode transport()
 {
     using K = LayoutComponentKind;
     using A = PlayerAction;
-    switch (purpose) {
-    case Section::transport:
-        return container("playbackGroup", K::group,
-            {leaf("trackLabel", K::status), leaf("positionBar", K::transport),
-                container("timeRow", K::row,
-                    {leaf("elapsedTime", K::status), leaf("totalDuration", K::status)}),
-                container("transportControls", K::row,
-                    {leaf("previousTrack", K::button, A::previous),
-                        leaf("playPause", K::button, A::play),
-                        leaf("nextTrack", K::button, A::next),
-                        leaf("stopPlayback", K::button, A::stop),
-                        container("volumeControls", K::row,
-                            {leaf("volumeSlider", K::volume), leaf("volumeValue", K::status),
-                                leaf("boostButton", K::button)},
-                            "", "volumeSection")})},
-            "Now playing", "transportSection");
-    case Section::library_commands:
-        return container("libraryCommands", K::row,
-            {leaf("openTracks", K::button, A::open), leaf("repeatQueue", K::button, A::repeat),
-                leaf("shuffleQueue", K::button, A::shuffle),
-                leaf("equalizer", K::button, A::equalizer)});
-    case Section::queue_commands:
-        return container("queueCommandsGroup", K::group,
-            {leaf("addTracks", K::button, A::add), leaf("removeTracks", K::button, A::remove),
-                leaf("clearQueue", K::button, A::clear)},
-            "Queue commands");
-    case Section::status:
-        return container("statusArea", K::column,
-            {leaf("visibleDocument", K::status), leaf("activeDestination", K::status),
-                leaf("playerStatus", K::status)},
-            "", "statusSection");
-    case Section::documents: {
-        auto tabs = leaf("documentTabs", K::document_host);
-        if (preset == PlayerLayoutPreset::queue_focus)
-            return tabs;
-        auto library = container(preset == PlayerLayoutPreset::classic ? "libraryPane"
-                                                                       : "libraryFocusNavigation",
-            K::column,
-            {leaf("libraryNavigation", K::inspector), leaf("savedPlaylistManager", K::inspector)},
-            "", preset == PlayerLayoutPreset::classic ? "libraryPane" : nullptr);
-        auto body =
-            container(preset == PlayerLayoutPreset::classic ? "documentArea" : "libraryFocusBody",
-                preset == PlayerLayoutPreset::classic ? K::splitter : K::row,
-                {std::move(library), std::move(tabs), leaf("trackInspector", K::inspector)}, "",
-                preset == PlayerLayoutPreset::classic ? "documentArea" : nullptr);
-        if (preset == PlayerLayoutPreset::classic)
-            body.sizes = {180, 620, 220};
-        return body;
-    }
-    }
-    return {};
+    return container("playbackGroup", K::group,
+        {leaf("trackLabel", K::status),
+            container("transportControls", K::row,
+                {leaf("previousTrack", K::button, A::previous),
+                    leaf("playPause", K::button, A::play), leaf("nextTrack", K::button, A::next),
+                    leaf("stopPlayback", K::button, A::stop),
+                    container("timeline", K::column,
+                        {leaf("positionBar", K::transport),
+                            container("timeRow", K::row,
+                                {leaf("elapsedTime", K::status),
+                                    leaf("totalDuration", K::status)})}),
+                    container("volumeControls", K::row,
+                        {leaf("volumeSlider", K::volume), leaf("volumeValue", K::status),
+                            leaf("boostButton", K::button)},
+                        "", "volumeSection")})},
+        "", "transportSection");
 }
 
 } // namespace
 
 LayoutDocument player_layout_document(PlayerLayoutPreset preset)
 {
+    using K = LayoutComponentKind;
+    using A = PlayerAction;
     LayoutDocument document;
     document.root = container(preset == PlayerLayoutPreset::classic ? "classicRoot"
             : preset == PlayerLayoutPreset::library_focus           ? "libraryFocusRoot"
                                                                     : "queueFocusRoot",
-        LayoutComponentKind::column, {});
-    for (const auto purpose : {Section::transport, Section::library_commands, Section::documents,
-             Section::queue_commands, Section::status})
-        document.root.children.push_back(section(purpose, preset));
+        K::column,
+        {container("libraryCommands", K::row,
+             {leaf("openTracks", K::button, A::open), leaf("addTracks", K::button, A::add),
+                 leaf("removeTracks", K::button, A::remove),
+                 leaf("clearQueue", K::button, A::clear), leaf("repeatQueue", K::button, A::repeat),
+                 leaf("shuffleQueue", K::button, A::shuffle),
+                 leaf("equalizer", K::button, A::equalizer)}),
+            leaf("documentTabs", K::document_host), transport(), leaf("playerStatus", K::status)});
+    if (preset == PlayerLayoutPreset::queue_focus)
+        std::swap(document.root.children[0], document.root.children[2]);
     document.node_count = layout_node_count(document.root);
     return document;
 }

@@ -68,12 +68,14 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
 
     QHBoxLayout* controls = new QHBoxLayout;
     controls->addWidget(recursive_);
+    controls->addStretch();
     controls->addWidget(rescan_);
     controls->addWidget(cancel_);
 
     QHBoxLayout* playback = new QHBoxLayout;
     playback->addWidget(play_);
     playback->addWidget(append_);
+    playback->addStretch();
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
@@ -240,6 +242,9 @@ void WorkspaceDocument::show_projection()
 
 void WorkspaceDocument::set_busy(bool busy)
 {
+    progress_->setVisible(busy);
+    cancel_->setVisible(busy);
+
     progress_->setRange(0, busy ? 0 : 1);
     rescan_->setEnabled(!busy);
     cancel_->setEnabled(busy);

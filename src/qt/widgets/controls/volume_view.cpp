@@ -39,11 +39,13 @@ VolumeView::VolumeView(QWidget* parent)
     slider_ = new QSlider{Qt::Horizontal, this};
     slider_->setToolTip("Volume");
     slider_->setAccessibleName("Volume");
-    slider_->setMinimumWidth(tokens.volume_slider_width);
+    slider_->setFixedWidth(tokens.volume_slider_width);
+    slider_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     value_ = new QLabel{this};
     value_->setMinimumWidth(fontMetrics().horizontalAdvance("300%"));
     boost_ = new QPushButton{"+", this};
     boost_->setCheckable(true);
+    boost_->setFixedWidth(tokens.boost_button_width);
     boost_->setFocusPolicy(Qt::StrongFocus);
     boost_->setAccessibleName("Boost volume above 100%");
     boost_->setToolTip("Allow volume above 100%");

@@ -25,6 +25,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QToolButton>
 #include <QWidget>
 
 #include <functional>
@@ -45,6 +46,8 @@ public:
 private:
     [[nodiscard]] library::SearchQuery query() const;
 
+    QWidget* advanced_{nullptr};
+    QToolButton* more_{nullptr};
     QLineEdit* title_{nullptr};
     QLineEdit* artist_{nullptr};
     QLineEdit* album_{nullptr};

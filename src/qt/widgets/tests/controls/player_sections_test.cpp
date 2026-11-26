@@ -141,7 +141,7 @@ TEST(PlayerSections, PresetsShareTypedSectionReferencesAndValidateAfterRoundTrip
         for (const auto& [id, key] : {
                  std::pair{"playbackGroup",  "transportSection"},
                  std::pair{"volumeControls", "volumeSection"   },
-                 std::pair{"statusArea",     "statusSection"   }
+                 std::pair{"playerStatus",   "playerStatus"    }
         }) {
             const auto found = locate_layout_node(document.root, id);
             ASSERT_NE(found.node, nullptr);

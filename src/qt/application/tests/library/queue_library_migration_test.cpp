@@ -124,7 +124,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
 
     ASSERT_EQ(restored.tracks.size(), 2U);
     ASSERT_EQ(restored.playlists.size(), 1U);
-    EXPECT_EQ(restored.playlists.front().name, "Migrated queue");
+    EXPECT_EQ(restored.playlists.front().name, "My playlist");
     ASSERT_EQ(restored.playlists.front().entries.size(), 3U);
 
     const auto& entries = restored.playlists.front().entries;

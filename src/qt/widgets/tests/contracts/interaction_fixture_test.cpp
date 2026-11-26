@@ -21,7 +21,11 @@ TEST_F(GuiInteraction, KeyboardSearchAndResetReachTheActualQueryObserver)
     auto* artist = panel.findChild<QLineEdit*>("searchArtist");
     title->setFocus();
     QTest::keyClicks(title, "Song");
-    QTest::keyClick(title, Qt::Key_Tab);
+    auto* more = panel.findChild<QToolButton*>("advancedTrackSearch");
+    ASSERT_NE(more, nullptr);
+    more->setFocus();
+    QTest::keyClick(more, Qt::Key_Space);
+    artist->setFocus();
     ASSERT_TRUE(wiola::testing::await_gui([&] { return artist->hasFocus(); }));
     QTest::keyClicks(artist, "Artist");
     ASSERT_TRUE(query);

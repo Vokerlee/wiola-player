@@ -124,6 +124,15 @@ LayoutSession::LayoutSession(std::filesystem::path file, LayoutDocument fallback
     }
 }
 
+void LayoutSession::update_preset(LayoutDocument document)
+{
+    if (choice_ == LayoutChoice::custom)
+        return;
+    if (encode(document, choice_).isEmpty())
+        throw std::invalid_argument{"invalid layout preset"};
+    accepted_ = std::move(document);
+}
+
 void LayoutSession::use_fallback(LayoutDocument document, LayoutChoice choice)
 {
     if (encode(document, choice).isEmpty())

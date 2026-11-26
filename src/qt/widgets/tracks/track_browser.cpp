@@ -63,10 +63,20 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
     auto* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(search_);
-    layout->addWidget(filters_);
+    auto* tools = new QHBoxLayout;
+    tools->addWidget(filters_, 1);
+    auto* edit = new QPushButton{"Edit track…", this};
+    edit->setObjectName("editSelectedTrack");
+    edit->setEnabled(false);
+    tools->addWidget(edit);
+    layout->addLayout(tools);
+    connect(edit, &QPushButton::clicked, this, &TrackBrowser::edit_requested);
+    connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+        [this, edit] { edit->setEnabled(!table_->chosen_rows().empty()); });
     layout->addWidget(table_);
     connect(table_.data(), &TrackTableView::row_chosen, &lifetime_,
         [this](TrackRowId id) { emit row_activated(std::move(id)); });
+    connect(table_.data(), &TrackTableView::edit_asked, this, &TrackBrowser::edit_requested);
     connect(table_.data(), &TrackTableView::removal_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::remove); });
     connect(table_.data(), &TrackTableView::transfer_active_asked, &lifetime_,
