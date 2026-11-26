@@ -22,6 +22,7 @@
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 
 #include <QEvent>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <fakes/output.hpp>
@@ -30,6 +31,8 @@
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/shell/document_host.hpp>
+#include <qt/widgets/tracks/track_browser.hpp>
+#include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/media/local/resource.hpp>
 
 namespace {
@@ -89,7 +92,10 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
     EXPECT_TRUE(host.open_playlist(playlist));
     EXPECT_EQ(host.registry().playlist(playlist), original);
     EXPECT_EQ(host.tabs().count(), 2);
-    EXPECT_FALSE(host.close(gui::DocumentId::queue()));
+    EXPECT_TRUE(host.close(gui::DocumentId::queue()));
+    EXPECT_EQ(host.indexOf(&host.queue()), -1);
+    ASSERT_TRUE(host.activate(gui::DocumentId::queue()));
+    EXPECT_EQ(host.count(), 2);
     ASSERT_TRUE(host.close(gui::DocumentId::playlist(playlist)));
     EXPECT_EQ(host.registry().playlist(playlist), nullptr);
     EXPECT_NE(library->repository().playlist(playlist), nullptr);
@@ -99,6 +105,38 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     EXPECT_EQ(host.registry().playlist(playlist), replacement);
     EXPECT_EQ(host.tabs().count(), 2);
+}
+
+TEST_F(DocumentHostTest, ClosingTheLastTabPreservesQueueRowsSelectionAndFiltersUntilReopened)
+{
+    playback.add({media::local_resource("queued.wav"), media::local_resource("queued.wav")});
+    const auto entry = playback.playlist().tracks()[1].id();
+    gui::DocumentHost host{*library, playback, *preferences, {}};
+    auto& queue = host.queue();
+    ASSERT_TRUE(queue.show_playlist(playback.playlist()));
+    auto* search = queue.findChild<QLineEdit*>("searchTitle");
+    ASSERT_NE(search, nullptr);
+    search->setText("queued");
+    queue.browser().table().selectRow(1);
+    ASSERT_EQ(queue.chosen_tracks(), (std::vector<engine::QueueEntryId>{entry}));
+    ASSERT_TRUE(host.close(gui::DocumentId::queue()));
+    EXPECT_EQ(host.count(), 0);
+    EXPECT_EQ(host.currentWidget(), nullptr);
+    EXPECT_FALSE(host.registry().active());
+    EXPECT_EQ(host.registry().view(gui::DocumentId::queue()), &queue);
+    EXPECT_TRUE(queue.isHidden());
+    EXPECT_FALSE(host.close(gui::DocumentId::queue()));
+    host.refresh_playback();
+    EXPECT_EQ(host.count(), 0);
+    ASSERT_EQ(playback.playlist().tracks().size(), 2);
+    EXPECT_EQ(playback.playlist().tracks()[1].id(), entry);
+    ASSERT_TRUE(host.activate(gui::DocumentId::queue()));
+    EXPECT_EQ(host.currentWidget(), &queue);
+    EXPECT_EQ(host.count(), 1);
+    EXPECT_EQ(search->text(), "queued");
+    EXPECT_EQ(queue.chosen_tracks(), (std::vector<engine::QueueEntryId>{entry}));
+    ASSERT_TRUE(host.activate(gui::DocumentId::queue()));
+    EXPECT_EQ(host.count(), 1);
 }
 
 TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)

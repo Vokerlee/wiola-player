@@ -43,6 +43,7 @@
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/qt/paths.hpp>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QDir>
 #include <QDockWidget>
@@ -62,6 +63,7 @@
 #include <QSlider>
 #include <QSplitter>
 #include <QStatusBar>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTest>
@@ -1389,6 +1391,27 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     EXPECT_TRUE(host->isTabVisible(host->indexOf(&host->queue())));
     EXPECT_EQ(host->active_playlist(), first);
     EXPECT_EQ(host->capture(gui::DocumentId::queue()).active_playlist, first);
+    const auto playing_before_close = playback.playlist().current()->id();
+    auto* tab_bar = host->findChild<QTabBar*>();
+    ASSERT_NE(tab_bar, nullptr);
+    const int queue_index = host->indexOf(&host->queue());
+    auto* close_queue =
+        qobject_cast<QAbstractButton*>(tab_bar->tabButton(queue_index, QTabBar::RightSide));
+    if (!close_queue)
+        close_queue =
+            qobject_cast<QAbstractButton*>(tab_bar->tabButton(queue_index, QTabBar::LeftSide));
+    ASSERT_NE(close_queue, nullptr);
+    QTest::mouseClick(close_queue, Qt::LeftButton);
+    EXPECT_EQ(host->indexOf(&host->queue()), -1);
+    EXPECT_EQ(host->currentWidget(), first_view);
+    window.refresh();
+    EXPECT_EQ(host->indexOf(&host->queue()), -1);
+    ASSERT_NE(playback.playlist().current(), nullptr);
+    EXPECT_EQ(playback.playlist().current()->id(), playing_before_close);
+    EXPECT_EQ(host->active_playlist(), first);
+    open_queue_from_sidebar();
+    EXPECT_EQ(host->currentWidget(), &host->queue());
+    EXPECT_TRUE(host->isTabVisible(host->indexOf(&host->queue())));
     ASSERT_TRUE(host->activate(gui::DocumentId::playlist(first)));
     EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
     open_queue_from_sidebar();
