@@ -28,6 +28,7 @@ LayoutPreviewHost::LayoutPreviewHost(QWidget* parent)
     , layout_{new QVBoxLayout{this}}
 {
     setObjectName("isolatedLayoutPreview");
+    layout_->setSizeConstraint(QLayout::SetMinAndMaxSize);
 }
 
 bool LayoutPreviewHost::show_document(const LayoutDocument& document)
@@ -43,6 +44,7 @@ bool LayoutPreviewHost::show_document(const LayoutDocument& document)
     if (!built)
         return false;
     auto* layout = new QVBoxLayout{candidate.get()};
+    layout->setSizeConstraint(QLayout::SetMinAndMaxSize);
     layout->addWidget(built);
     delete preview_.data();
     preview_ = candidate.release();

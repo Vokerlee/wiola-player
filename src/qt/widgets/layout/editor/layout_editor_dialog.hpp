@@ -57,7 +57,7 @@ private:
     void move_selected(int offset);
     void drop_component(LayoutDrop request);
     void insert_action(PlayerAction action, const QString& parent, std::size_t index);
-    void configure_selected();
+    bool configure_selected();
     void rebuild(const QString& selected = {});
     void update_inspector();
     void update_preview();

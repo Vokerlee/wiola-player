@@ -55,6 +55,8 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
     error_->setWordWrap(true);
     error_->setAccessibleName("Layout property error");
     auto* form = new QFormLayout{this};
+    form->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     form->addRow("Title", title_);
     form->addRow("Fixed width", width_);
     form->addRow("Action", action_);
@@ -81,7 +83,16 @@ void LayoutPropertyInspector::show_node(const LayoutNode* node)
     title_->setEnabled(node);
     width_->setEnabled(node);
     action_->setEnabled(node && node->kind == LayoutComponentKind::button && !node->view);
+    const auto show_field = [this](QWidget* field, bool visible) {
+        auto* form = qobject_cast<QFormLayout*>(layout());
+        form->labelForField(field)->setVisible(visible);
+        field->setVisible(visible);
+    };
+    show_field(action_, node && node->kind == LayoutComponentKind::button);
     const bool splitter = node && node->kind == LayoutComponentKind::splitter;
+    show_field(orientation_, splitter);
+    show_field(sizes_, splitter);
+    show_field(columns_, node && node->kind == LayoutComponentKind::grid);
     orientation_->setEnabled(splitter);
     sizes_->setEnabled(splitter);
     columns_->setEnabled(node && node->kind == LayoutComponentKind::grid);
