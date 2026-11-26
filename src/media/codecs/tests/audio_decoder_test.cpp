@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/registry.hpp>
 
 #include <gtest/gtest.h>
@@ -30,7 +31,7 @@ namespace {
 TEST(AudioDecoder, EveryBackendReportsWholeFrameProgressAndExplicitEnd)
 {
     for (const char* name : {"tone.wav", "tone.flac", "tone.mp3"}) {
-        auto decoder{wiola::codec::MediaBackendRegistry{}.open(
+        auto decoder{wiola::codec::ffmpeg::make_registry().open(
             std::filesystem::path{WIOLA_TEST_DATA_DIR} / name
         )};
         ASSERT_TRUE(decoder) << name;

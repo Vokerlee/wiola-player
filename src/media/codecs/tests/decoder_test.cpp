@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/registry.hpp>
 
 #include <fixtures/temporary_directory.hpp>
@@ -61,7 +62,7 @@ TEST(OpenFile, OpensEveryFormatItSupports)
 {
     for (const char* name : {"tone.wav", "tone.flac", "tone.mp3"}) {
         const auto decoder =
-            std::move(wiola::codec::MediaBackendRegistry{}.open(fixture(name)).value());
+            std::move(wiola::codec::ffmpeg::make_registry().open(fixture(name)).value());
 
         ASSERT_NE(decoder, nullptr) << name;
         EXPECT_EQ(decoder->spec().sample_rate, wiola::units::Frequency{44100}) << name;
@@ -78,7 +79,7 @@ TEST(OpenFile, BelievesTheContentOverTheExtension)
     const std::filesystem::path misnamed{directory.path() / "wiola_lie.wav"};
     std::filesystem::copy_file(fixture("tone.flac"), misnamed);
 
-    const auto decoder = std::move(wiola::codec::MediaBackendRegistry{}.open(misnamed).value());
+    const auto decoder = std::move(wiola::codec::ffmpeg::make_registry().open(misnamed).value());
 
     ASSERT_NE(decoder, nullptr);
     EXPECT_EQ(decoder->spec().num_channels, 2u);
@@ -92,7 +93,7 @@ TEST(OpenFile, ReachesAFormatThatCannotAnnounceItself)
     const std::filesystem::path misnamed{directory.path() / "wiola_lie.flac"};
     std::filesystem::copy_file(fixture("tone.mp3"), misnamed);
 
-    const auto decoder = std::move(wiola::codec::MediaBackendRegistry{}.open(misnamed).value());
+    const auto decoder = std::move(wiola::codec::ffmpeg::make_registry().open(misnamed).value());
 
     ASSERT_NE(decoder, nullptr);
     EXPECT_GT(decoder->num_frames(), Frames{0});
@@ -104,7 +105,7 @@ TEST(OpenFile, GivesNothingWhenNoReaderAccepts)
     const std::filesystem::path junk{directory.path() / "wiola_junk.wav"};
     std::ofstream{junk, std::ios::binary} << "not audio at all, by any reader";
 
-    const wiola::media::DecoderOpenResult opened{wiola::codec::MediaBackendRegistry{}.open(junk)};
+    const wiola::media::DecoderOpenResult opened{wiola::codec::ffmpeg::make_registry().open(junk)};
 
     EXPECT_FALSE(opened);
     EXPECT_EQ(opened.error().category, wiola::media::ErrorCategory::unsupported);
@@ -117,7 +118,7 @@ TEST(OpenFile, SaysWhenNothingReadsTheFormat)
     const std::filesystem::path junk{directory.path() / "wiola_junk.wav"};
     std::ofstream{junk, std::ios::binary} << "not audio at all, by any reader";
 
-    EXPECT_EQ(wiola::codec::MediaBackendRegistry{}.open(junk).error().category,
+    EXPECT_EQ(wiola::codec::ffmpeg::make_registry().open(junk).error().category,
         wiola::media::ErrorCategory::unsupported);
 }
 
@@ -125,16 +126,16 @@ TEST(OpenFile, SaysWhenThereIsNothingToRead)
 {
     wiola::testing::TemporaryDirectory directory;
     EXPECT_EQ(
-        wiola::codec::MediaBackendRegistry{}.open(directory.path() / "wiola.ogg").error().category,
+        wiola::codec::ffmpeg::make_registry().open(directory.path() / "wiola.ogg").error().category,
         wiola::media::ErrorCategory::unreadable
     );
-    EXPECT_EQ(wiola::codec::MediaBackendRegistry{}.open(directory.path()).error().category,
+    EXPECT_EQ(wiola::codec::ffmpeg::make_registry().open(directory.path()).error().category,
         wiola::media::ErrorCategory::unreadable);
 
     const std::filesystem::path empty{directory.path() / "wiola_empty.wav"};
     std::ofstream{empty, std::ios::binary};
 
-    EXPECT_EQ(wiola::codec::MediaBackendRegistry{}.open(empty).error().category,
+    EXPECT_EQ(wiola::codec::ffmpeg::make_registry().open(empty).error().category,
         wiola::media::ErrorCategory::unreadable);
 }
 
@@ -146,7 +147,7 @@ TEST(OpenFile, SaysWhenAFileOfAKnownFormatIsDamaged)
     std::ofstream{broken, std::ios::binary} << std::string{"RIFF\x20\0\0\0WAVE", 12}
                                             << "not the chunks a wav needs";
 
-    EXPECT_EQ(wiola::codec::MediaBackendRegistry{}.open(broken).error().category,
+    EXPECT_EQ(wiola::codec::ffmpeg::make_registry().open(broken).error().category,
         wiola::media::ErrorCategory::damaged);
 }
 
@@ -154,14 +155,14 @@ TEST(OpenFile, SaysWhenAFileOfAKnownFormatIsDamaged)
 TEST(OpenFile, IsTrueOnlyWhenItGaveADecoder)
 {
     wiola::testing::TemporaryDirectory directory;
-    EXPECT_TRUE(wiola::codec::MediaBackendRegistry{}.open(fixture("tone.wav")));
-    EXPECT_FALSE(wiola::codec::MediaBackendRegistry{}.open(directory.path() / "wiola.ogg"));
+    EXPECT_TRUE(wiola::codec::ffmpeg::make_registry().open(fixture("tone.wav")));
+    EXPECT_FALSE(wiola::codec::ffmpeg::make_registry().open(directory.path() / "wiola.ogg"));
 }
 
 TEST(Decoder, PlaysThroughTheInterface)
 {
     const std::unique_ptr<AudioDecoder> decoder{
-        std::move(wiola::codec::MediaBackendRegistry{}.open(fixture("tone.flac")).value())};
+        std::move(wiola::codec::ffmpeg::make_registry().open(fixture("tone.flac")).value())};
 
     ASSERT_NE(decoder, nullptr);
 

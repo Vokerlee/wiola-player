@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <qt/application/player_application.hpp>
 #include <wiola/library/records.hpp>
 
@@ -213,7 +214,7 @@ TEST_F(PlayerApplication, ReentrantShutdownReportsBusyUntilTheOuterFlushComplete
 {
     QTemporaryDir directory;
     wiola::app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = wiola::testing::passive_output;
     config.library_file =
         wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
@@ -240,7 +241,7 @@ TEST_F(PlayerApplication, CompletionObserverFailureDoesNotPreventAnExplicitShutd
 {
     QTemporaryDir directory;
     wiola::app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = wiola::testing::passive_output;
     config.library_file =
         wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
@@ -268,7 +269,7 @@ TEST_F(PlayerApplication, ReportsFailedFlushAndAllowsAnExplicitRetry)
     ASSERT_TRUE(file.open(QIODevice::WriteOnly));
     file.close();
     wiola::app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = [](wiola::audio::Source&) {
         return std::unique_ptr<wiola::audio::Output>{};
     };
@@ -336,7 +337,7 @@ TEST_F(PlayerApplication, ExplicitGuiFileWriteReopensQualifiedMediaAndRestoresPl
     const auto original_fingerprint = wiola::media::fingerprint_media(path);
     ASSERT_TRUE(original_fingerprint);
     wiola::app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.library_file =
         wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
     config.output = [](wiola::audio::Source&) {
@@ -405,7 +406,7 @@ TEST_F(PlayerApplication, UnsupportedGuiFileWriteRetainsApplicationOverrideAndOr
     const auto before = wiola::media::fingerprint_media(source);
     ASSERT_TRUE(before);
     wiola::app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<wiola::codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = [](wiola::audio::Source&) {
         return std::make_unique<wiola::testing::FakeOutput>();
     };
@@ -452,7 +453,7 @@ TEST_F(PlayerApplication, LibraryReconcilesTwoIndependentWorkspaceGenerations)
     std::filesystem::copy_file(source, root / "first" / "one.wav");
     std::filesystem::copy_file(source, root / "second" / "two.wav");
     wiola::app::LibrarySession library{root / "library.json",
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     wiola::library::WorkspaceId first, second;
     {
         wiola::library::RepositoryTransaction transaction{library.repository(),
@@ -487,7 +488,7 @@ TEST_F(PlayerApplication, RecursiveWorkspaceRefreshContinuesWithoutAWindow)
     const auto source = track("wiola-background-watch.wav");
     std::filesystem::copy_file(source, root / "one.wav");
     wiola::app::LibrarySession library{base / "library.json",
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     QObject receiver;
     int completed = 0;
     QObject::connect(&library, &wiola::app::LibrarySession::scan_batch, &receiver,

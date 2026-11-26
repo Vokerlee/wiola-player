@@ -1,4 +1,5 @@
 #include <QAccessible>
+#include <media/codecs/ffmpeg/composition.hpp>
 
 #include <QAccessibleValueInterface>
 #include <QAction>
@@ -142,7 +143,7 @@ TEST_F(GuiInteraction, FocusIsVisibleAndMouseCommitDiffersFromCancelledOrDisplay
 TEST_F(GuiInteraction, LargeFontEqualizerRemainsScrollableAndKeyboardAdjustsTheLiveBand)
 {
     wiola::app::PlaybackService playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     const auto generated = wiola::testing::write_wav("wiola-equalizer-access.wav");
     const auto path = wiola::platform::qt::QtPathAdapter::from_qt(data_.filePath("equalizer.wav"));
     std::filesystem::copy_file(generated, path);

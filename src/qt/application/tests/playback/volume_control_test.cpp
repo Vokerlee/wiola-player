@@ -19,6 +19,7 @@
  */
 
 #include <fakes/output.hpp>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 #include <qt/settings.hpp>
 #include <wiola/app/playback/volume_control.hpp>
@@ -59,7 +60,7 @@ protected:
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
     wiola::platform::qt::QtSettingsAdapter writer{settings};
     wiola::app::PlaybackService volume{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 };
 
 TEST_F(VolumeControl, StartsAtFullVolume)
@@ -110,7 +111,7 @@ TEST_F(VolumeControl, GivesBackWhatTheLastRunLeft)
     Control{volume, writer}.set_position(70);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{next, writer};
 
@@ -124,7 +125,7 @@ TEST_F(VolumeControl, AppliesWhatItRestores)
     Control{volume, writer}.set_position(50);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     EXPECT_FLOAT_EQ(next.volume(), 1.0F);
 
@@ -222,7 +223,7 @@ TEST_F(VolumeControl, GivesBackWhetherItWasBoosted)
     first.set_position(120);
 
     wiola::app::PlaybackService next{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     Control later{next, writer};
 

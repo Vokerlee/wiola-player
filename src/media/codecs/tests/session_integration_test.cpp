@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <fakes/output.hpp>
@@ -53,7 +54,7 @@ protected:
             outputs.push_back(source.spec());
             return std::make_unique<wiola::testing::FakeOutput>();
         },
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
 
     template<class Predicate>
     bool pump_until(Predicate settled)

@@ -7,6 +7,7 @@
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <gtest/gtest.h>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 #include <media/local/resource.hpp>
 #include <qt/application/player_application.hpp>
@@ -42,7 +43,7 @@ inline void restore_session_journey()
     const library::MediaId unavailable{"unavailable"};
     const auto config = [&] {
         app::PlayerRuntimeConfig value;
-        value.provider = std::make_shared<codec::LocalMediaProvider>();
+        value.provider = wiola::codec::ffmpeg::make_provider();
         value.output = [](audio::Source&) {
             return std::make_unique<wiola::testing::FakeOutput>();
         };

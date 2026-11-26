@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -154,7 +155,7 @@ TEST(TrackInspector, ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAno
 {
     QTemporaryDir directory;
     wiola::app::LibrarySession library{temporary_path(directory, "library.json"),
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
     wiola::library::TrackRecord selected, playing;
     selected.id = {"selected"};
     selected.locations = {"selected.wav"};

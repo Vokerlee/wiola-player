@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/codecs/ffmpeg/qualification.hpp>
 #include <media/codecs/registry.hpp>
 
@@ -90,7 +91,7 @@ wiola::media::Result<wiola::pcm::Frames> read_all(wiola::media::AudioDecoder& de
 
 TEST(FfmpegQualification, EveryMatrixEntryHasOnePassingRealFixture)
 {
-    const wiola::codec::MediaBackendRegistry registry;
+    const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     for (const auto& qualification : wiola::codec::ffmpeg::qualifications()) {
         std::size_t matches_found{0};
         for (const auto& fixture : fixtures) {
@@ -116,7 +117,7 @@ TEST(FfmpegQualification, EveryMatrixEntryHasOnePassingRealFixture)
 
 TEST(FfmpegQualification, MatrixAndBackendDescriptorsCoverEachOtherExactly)
 {
-    const wiola::codec::MediaBackendRegistry registry;
+    const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     const auto backend{std::ranges::find_if(registry.backends(),
         [](const auto& candidate) { return candidate.name == "FFmpeg"; })};
     ASSERT_NE(backend, registry.backends().end());

@@ -273,3 +273,15 @@ TEST(MediaBackendRegistry, CapabilityViewDeduplicatesAndExcludesMetadataOnlyBack
 }
 
 } // namespace
+
+TEST(MediaBackendRegistry, EmptyCompositionAdvertisesAndOpensNothing)
+{
+    const wiola::codec::MediaBackendRegistry registry{{}};
+    EXPECT_TRUE(registry.backends().empty());
+    EXPECT_TRUE(registry.playback_extensions().empty());
+    EXPECT_FALSE(registry.metadata_write_capabilities("track.flac").any());
+    wiola::testing::TemporaryDirectory directory;
+    const auto opened = registry.open(fake_file(directory.path()));
+    ASSERT_FALSE(opened);
+    EXPECT_EQ(opened.error().category, wiola::media::ErrorCategory::unsupported);
+}

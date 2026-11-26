@@ -10,6 +10,7 @@
 #include <app/metadata/media_replacement.hpp>
 #include <cstdlib>
 #include <iostream>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/fingerprint.hpp>
 #include <media/local/resource.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
@@ -38,7 +39,7 @@ inline std::filesystem::path journey_fixture(const char* file)
 inline app::PlayerRuntimeConfig child_config(const QString& directory)
 {
     app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = [](audio::Source&) {
         return std::make_unique<FakeOutput>();
     };
@@ -189,7 +190,7 @@ inline app::PreparedMediaReplacement stage_process_replacement(const QString& di
         QDir{directory}.filePath(QString::fromUtf8("音楽.mp3"))
     );
     std::filesystem::copy_file(journey_fixture("tone.mp3"), source);
-    codec::LocalMediaProvider provider;
+    codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto asset = provider.open(media::local_resource(source));
     journey_require(static_cast<bool>(asset), "open real replacement source");
     media::MetadataWriteRequest request;

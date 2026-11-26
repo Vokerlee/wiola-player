@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <fakes/decoder.hpp>
@@ -207,8 +208,8 @@ protected:
 TEST_F(MainWindowTest, StartsWithOnlyCommandsThatCanRunEnabled)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
@@ -242,8 +243,8 @@ TEST_F(MainWindowTest, LoadsTracksAndUsesTransportCommandsWithoutOpeningOutput)
     const std::filesystem::path first = track("wiola_window_first.wav");
     const std::filesystem::path second = track("wiola_window_second.wav");
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
@@ -296,8 +297,8 @@ TEST_F(MainWindowTest, SeeksThroughTheBarAndUpdatesTheDisplayedTime)
 {
     const std::filesystem::path source = track("wiola_window_seek.wav");
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
@@ -330,9 +331,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
 {
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         MainWindow window{window_playback, window_library, window_preferences};
@@ -358,9 +358,8 @@ TEST_F(MainWindowTest, RestoresVolumeAndBoostFromThePreviousWindow)
     EXPECT_TRUE(stored("volume/boosted").toBool());
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession restored_library{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession restored_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     MainWindow restored{restored_playback, restored_library, restored_preferences};
@@ -379,9 +378,8 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
 {
     {
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
-        wiola::app::LibrarySession window_library{
-            std::make_shared<wiola::codec::LocalMediaProvider>()};
+            wiola::codec::ffmpeg::make_provider()};
+        wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         MainWindow window{window_playback, window_library, window_preferences};
@@ -410,9 +408,8 @@ TEST_F(MainWindowTest, RestoresEqualizerStateAndBandGainsFromThePreviousWindow)
     EXPECT_FLOAT_EQ(stored("equalizer/band/2").toFloat(), 6.0F);
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
-    wiola::app::LibrarySession restored_library{
-        std::make_shared<wiola::codec::LocalMediaProvider>()};
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession restored_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences restored_preferences{restored_playback};
     MainWindow restored{restored_playback, restored_library, restored_preferences};
@@ -445,7 +442,7 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
                 return wiola::media::Metadata{};
             }
         )};
-    wiola::app::LibrarySession window_library{std::make_shared<wiola::codec::LocalMediaProvider>()};
+    wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};

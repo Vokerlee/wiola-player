@@ -1,4 +1,5 @@
 #include <QSignalSpy>
+#include <media/codecs/ffmpeg/composition.hpp>
 
 #include <QToolButton>
 #include <app/library/local_identity.hpp>
@@ -21,7 +22,7 @@ using namespace wiola;
 
 std::vector<float> decoded_samples(const std::filesystem::path& path)
 {
-    codec::LocalMediaProvider provider;
+    codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto asset = provider.open(wiola::media::local_resource(path));
     if (!asset)
         throw std::runtime_error{asset.error().detail};
@@ -57,7 +58,7 @@ TEST_P(MetadataFileJourney, FileButtonWritesTheSelectedDuplicateAndPreservesDeco
     const auto before = decoded_samples(path);
     ASSERT_FALSE(before.empty());
     app::PlayerRuntimeConfig config;
-    config.provider = std::make_shared<codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = [](audio::Source&) {
         return std::make_unique<wiola::testing::FakeOutput>();
     };
@@ -126,7 +127,7 @@ TEST_P(MetadataFileJourney, FileButtonWritesTheSelectedDuplicateAndPreservesDeco
         }
         EXPECT_EQ(table.model()->rowCount(), 2);
         EXPECT_EQ(table.chosen_rows().size(), 1);
-        codec::LocalMediaProvider reader;
+        codec::LocalMediaProvider reader{wiola::codec::ffmpeg::make_registry()};
         auto reopened = reader.open(media::local_resource(path));
         ASSERT_TRUE(reopened);
         auto metadata = (*reopened)->read_metadata();

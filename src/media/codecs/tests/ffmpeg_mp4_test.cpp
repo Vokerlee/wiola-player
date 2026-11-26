@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -53,13 +54,13 @@ wiola::media::Result<std::vector<float>> read_all(wiola::media::AudioDecoder& de
 
 wiola::media::DecoderOpenResult open_mp4(const char* name)
 {
-    wiola::codec::MediaBackendRegistry registry;
+    wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     return registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name);
 }
 
 TEST(Mp4Qualification, AacLcAndAlacDecodeTheirCompleteAudibleTimelines)
 {
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     for (const char* name : {"multi-audio.m4a", "attached-art.m4a", "tone-alac.mp4"}) {
         auto asset{provider.open(
             wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)
@@ -105,7 +106,7 @@ TEST(Mp4Qualification, AacLcAndAlacSeeksMatchSequentialSamples)
 
 TEST(Mp4Qualification, AttachedArtworkAndUnicodeMetadataRemainAvailable)
 {
-    wiola::codec::LocalMediaProvider provider;
+    wiola::codec::LocalMediaProvider provider{wiola::codec::ffmpeg::make_registry()};
     auto asset{
         provider.open(wiola::media::local_resource(std::filesystem::path{WIOLA_TEST_DATA_DIR} /
             "attached-art.m4a"))};

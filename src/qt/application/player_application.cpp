@@ -22,6 +22,7 @@
 #include <QScopedValueRollback>
 #include <QThread>
 #include <audio/miniaudio/device.hpp>
+#include <media/codecs/ffmpeg/composition.hpp>
 #include <media/local/provider.hpp>
 
 #include <media/local/resource.hpp>
@@ -33,7 +34,7 @@ namespace {
 PlayerRuntimeConfig defaults()
 {
     PlayerRuntimeConfig config;
-    config.provider = std::make_shared<codec::LocalMediaProvider>();
+    config.provider = wiola::codec::ffmpeg::make_provider();
     config.output = [](audio::Source& source) {
         return std::make_unique<audio::Device>(source);
     };
