@@ -386,3 +386,42 @@ TEST(MetadataWriteService, TerminalObserverFailureStillDrainsOtherJobsAndFlushes
     EXPECT_NO_THROW(service.stop());
     EXPECT_EQ(flushed, 2);
 }
+
+TEST(MetadataWriteService, QueuedObserverCanReleaseTheServiceDuringSubmission)
+{
+    QObject context;
+    wiola::library::InMemoryRepository repository;
+    wiola::library::TrackRecord record;
+    record.id = {"queued-close"};
+    ASSERT_TRUE(repository.put_track(record));
+    auto edit = wiola::app::MetadataEditSession::capture({repository.track(record.id)});
+    wiola::library::StandardMetadataPatch patch;
+    patch.title = "Draft";
+    edit.set_draft(patch);
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    std::unique_ptr<wiola::app::MetadataWriteService> service;
+    service = std::make_unique<wiola::app::MetadataWriteService>(
+        context, wiola::codec::ffmpeg::make_provider(), repository, *replacement,
+        [](const auto&) { return true; },
+        [&](const auto& result) {
+            if (result.stage == wiola::app::MetadataWriteStage::queued)
+                service.reset();
+        }
+    );
+    const auto accepted = service->submit(edit);
+    EXPECT_EQ(accepted.size(), 1);
+    EXPECT_FALSE(service);
+}
+
+TEST(MetadataWriteService, MissingRequiredDriversAreRejectedBeforeStartingWorkers)
+{
+    QObject context;
+    wiola::library::InMemoryRepository repository;
+    auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+    EXPECT_THROW((wiola::app::MetadataWriteService{context, {}, repository, *replacement,
+                     [](const auto&) { return true; }, {}}),
+        std::invalid_argument);
+    EXPECT_THROW((wiola::app::MetadataWriteService{context, wiola::codec::ffmpeg::make_provider(),
+                     repository, *replacement, {}, {}}),
+        std::invalid_argument);
+}
