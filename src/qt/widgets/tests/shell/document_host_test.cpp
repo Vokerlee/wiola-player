@@ -54,6 +54,30 @@ protected:
     std::unique_ptr<app::SessionPreferences> preferences;
 };
 
+TEST_F(DocumentHostTest,
+    RestoresLastOpenedPlaylistIndependentlyOfTheVisibleQueueAndLegacyDestination)
+{
+    const auto first = library->playlists().create("First").id;
+    const auto second = library->playlists().create("Second").id;
+    ASSERT_TRUE(library->playlist_destination().set(second));
+    preferences->edit([&](auto& state) {
+        state.documents.open = {gui::DocumentId::queue(), gui::DocumentId::playlist(first),
+            gui::DocumentId::playlist(second)};
+        state.documents.visible = gui::DocumentId::queue();
+        state.documents.last_playlist = first;
+    });
+    gui::DocumentHost host{*library, playback, *preferences, {}};
+    EXPECT_EQ(preferences->state().documents.last_playlist, first);
+    EXPECT_FALSE(host.active_playlist());
+    EXPECT_EQ(library->playlist_destination().id(), second);
+    ASSERT_TRUE(host.open_playlist(second));
+    EXPECT_EQ(preferences->state().documents.last_playlist, second);
+    ASSERT_TRUE(host.activate(gui::DocumentId::queue()));
+    EXPECT_EQ(preferences->state().documents.last_playlist, second);
+    ASSERT_TRUE(host.close(gui::DocumentId::playlist(second)));
+    EXPECT_FALSE(preferences->state().documents.last_playlist);
+}
+
 TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeletingRecords)
 {
     const auto playlist = library->playlists().create("Favorites").id;

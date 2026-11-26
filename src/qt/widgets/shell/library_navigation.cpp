@@ -21,6 +21,7 @@
 #include "library_navigation.hpp"
 #include <qt/widgets/documents/playlist_name.hpp>
 
+#include <QSignalBlocker>
 #include <utility>
 
 namespace wiola::gui {
@@ -29,6 +30,7 @@ namespace {
 
 constexpr int kind_role = Qt::UserRole;
 constexpr int identity_role = Qt::UserRole + 1;
+constexpr int name_role = Qt::UserRole + 2;
 
 enum EntryKind {
     playlist_entry,
@@ -50,6 +52,7 @@ QTreeWidgetItem* entry(QTreeWidgetItem& group, const QString& label, EntryKind k
     QTreeWidgetItem* item = new QTreeWidgetItem{&group, {label}};
     item->setData(0, kind_role, kind);
     item->setData(0, identity_role, identity);
+    item->setData(0, name_role, label);
 
     return item;
 }
@@ -126,12 +129,39 @@ bool LibraryNavigation::select_playlist(const library::PlaylistId& id)
 
 void LibraryNavigation::show_repository(const library::LibraryRepository& repository)
 {
+    const auto selected = selected_playlist();
+    const QSignalBlocker blocked{this};
     while (playlists_->childCount() != 0)
         delete playlists_->takeChild(0);
 
     for (const library::PlaylistRecord& playlist : repository.playlists())
         entry(*playlists_, playlist_name(playlist), EntryKind::playlist_entry,
             QString::fromStdString(playlist.id.value));
+    show_activity();
+    if (selected)
+        static_cast<void>(select_playlist(*selected));
+}
+
+void LibraryNavigation::set_active_playlist(std::optional<library::PlaylistId> id)
+{
+    if (active_ == id)
+        return;
+    active_ = std::move(id);
+    show_activity();
+}
+
+void LibraryNavigation::show_activity()
+{
+    for (int row = 0; row < playlists_->childCount(); ++row) {
+        auto* item = playlists_->child(row);
+        const bool active =
+            active_ && active_->value == item->data(0, identity_role).toString().toStdString();
+        auto font = this->font();
+        font.setBold(active);
+        item->setFont(0, font);
+        item->setText(0, item->data(0, name_role).toString() + (active ? " — Active" : ""));
+        item->setToolTip(0, active ? "Active playlist: contains the current track" : "");
+    }
 }
 
 void LibraryNavigation::show_workspaces(const std::vector<WorkspaceNavigationEntry>& workspaces)

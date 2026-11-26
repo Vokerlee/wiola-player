@@ -57,7 +57,8 @@ public:
     bool activate(const DocumentId& id);
     bool close(const DocumentId& id);
     void begin_scan(const library::WorkspaceId& id);
-    void refresh_active_destination();
+    void refresh_playback();
+    [[nodiscard]] std::optional<library::PlaylistId> active_playlist() const;
 
     void dispatch(TrackCommand command, const DocumentId& id);
     [[nodiscard]] DocumentCommandContext capture(const DocumentId& id) const;
@@ -78,6 +79,7 @@ private:
     QWidget* empty_;
     NowPlayingDocument* queue_;
     bool restoring_{true};
+    std::optional<library::PlaylistId> last_playlist_;
     std::uint64_t catalog_revision_{};
     library::LibraryChanges::Subscription changes_;
     QObject lifetime_;

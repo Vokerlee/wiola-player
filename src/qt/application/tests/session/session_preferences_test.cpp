@@ -51,6 +51,29 @@ void write(const QString& path, QByteArrayView bytes)
 
 using FaultOutput = wiola::testing::FaultAtomicOutput;
 
+TEST(SessionState, LastOpenedPlaylistIsOptionalAndRoundTripsWithoutChangingLegacySessionFields)
+{
+    wiola::app::SessionState state;
+    const auto legacy = wiola::app::write_session_state(state);
+    EXPECT_FALSE(legacy.contains("lastPlaylist"));
+    wiola::app::SessionState restored;
+    ASSERT_EQ(wiola::app::read_session_state(legacy, restored),
+        wiola::app::SessionStateError::none);
+    EXPECT_FALSE(restored.documents.last_playlist);
+    state.documents.last_playlist = wiola::library::PlaylistId{"last-opened"};
+    const auto encoded = wiola::app::write_session_state(state);
+    ASSERT_EQ(wiola::app::read_session_state(encoded, restored),
+        wiola::app::SessionStateError::none);
+    EXPECT_EQ(restored, state);
+    for (const QByteArray invalid : {QByteArray{"true"}, QByteArray{"42"}, QByteArray{"\"\""}}) {
+        auto malformed = encoded;
+        malformed.replace("\"last-opened\"", invalid);
+        EXPECT_EQ(wiola::app::read_session_state(malformed, restored),
+            wiola::app::SessionStateError::invalid);
+        EXPECT_EQ(restored, state);
+    }
+}
+
 TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWithoutPrecisionLoss)
 {
     app::SessionState original;

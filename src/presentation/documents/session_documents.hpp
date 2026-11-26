@@ -32,6 +32,7 @@ struct SessionDocuments {
     std::vector<DocumentId> open{DocumentId::queue()};
     std::optional<DocumentId> visible{DocumentId::queue()};
     std::optional<library::PlaylistId> destination;
+    std::optional<library::PlaylistId> last_playlist;
     std::map<DocumentId, BrowserViewState> browsers;
 
     void remap_queue(const std::map<engine::QueueEntryId, engine::QueueEntryId>& mapping);

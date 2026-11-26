@@ -44,12 +44,17 @@ public:
         const library::MediaId& media);
     [[nodiscard]] std::vector<SelectedTrack> selection() const;
     void set_active(bool active);
+
+    [[nodiscard]] bool contains(const library::MediaId& media) const
+    {
+        return source_.contains(media);
+    }
+
     [[nodiscard]] std::vector<std::filesystem::path> displayed_paths() const;
     [[nodiscard]] std::vector<library::PlaylistEntryId> chosen_entries() const;
     void on_apply_order_requested(std::function<void()> observer);
     void on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer);
     void on_play_requested(std::function<void()> observer);
-    void on_active_requested(std::function<void()> observer);
     void on_transfer_active_requested(std::function<void()> observer);
     void on_transfer_destination_requested(std::function<void()> observer);
     void on_transfer_move_requested(std::function<void()> observer);
@@ -59,14 +64,12 @@ private:
 
     QLabel* heading_{nullptr};
     QPushButton* play_button_{nullptr};
-    QPushButton* active_button_{nullptr};
     TrackBrowser* browser_{nullptr};
     SavedPlaylistRows source_;
     QString name_;
-    bool active_destination_{false};
+    bool active_{false};
     std::function<void(library::PlaylistEntryId)> entry_observer_;
     std::function<void()> playback_observer_;
-    std::function<void()> active_observer_;
     std::function<void()> transfer_active_observer_;
     std::function<void()> transfer_destination_observer_;
     std::function<void()> transfer_move_observer_;
