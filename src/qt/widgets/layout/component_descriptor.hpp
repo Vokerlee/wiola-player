@@ -51,6 +51,7 @@ enum class ComponentProperty : unsigned {
     orientation = 8,
     weights = 16,
     columns = 32,
+    alignment = 64,
 };
 
 struct ComponentDescriptor {

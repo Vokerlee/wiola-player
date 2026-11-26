@@ -48,25 +48,31 @@ LayoutNode transport()
 {
     using K = LayoutComponentKind;
     using A = PlayerAction;
-    return container("playbackGroup", K::group,
-        {container("playbackHeading", K::row,
-             {leaf("trackLabel", K::status), leaf("repeatQueue", K::button, A::repeat),
-                 leaf("shuffleQueue", K::button, A::shuffle),
-                 leaf("equalizer", K::button, A::equalizer)}),
-            container("transportControls", K::row,
-                {leaf("previousTrack", K::button, A::previous),
-                    leaf("playPause", K::button, A::play), leaf("nextTrack", K::button, A::next),
-                    leaf("stopPlayback", K::button, A::stop),
+    auto controls = container("transportControls", K::row,
+        {leaf("previousTrack", K::button, A::previous), leaf("playPause", K::button, A::play),
+            leaf("nextTrack", K::button, A::next), leaf("stopPlayback", K::button, A::stop)});
+    controls.alignment = Qt::AlignHCenter;
+    auto options = container("playbackOptions", K::row,
+        {leaf("repeatQueue", K::button, A::repeat), leaf("shuffleQueue", K::button, A::shuffle),
+            leaf("equalizer", K::button, A::equalizer)});
+    options.alignment = Qt::AlignRight;
+    auto volume = container("volumeControls", K::row,
+        {leaf("volumeSlider", K::volume), leaf("volumeValue", K::status),
+            leaf("boostButton", K::button)},
+        "", "volumeSection");
+    volume.alignment = Qt::AlignRight;
+    auto regions = container("playbackRegions", K::grid,
+        {leaf("trackLabel", K::status),
+            container("playbackCenter", K::column,
+                {std::move(controls),
                     container("timeline", K::column,
                         {leaf("positionBar", K::transport),
                             container("timeRow", K::row,
                                 {leaf("elapsedTime", K::status),
-                                    leaf("totalDuration", K::status)})}),
-                    container("volumeControls", K::row,
-                        {leaf("volumeSlider", K::volume), leaf("volumeValue", K::status),
-                            leaf("boostButton", K::button)},
-                        "", "volumeSection")})},
-        "", "transportSection");
+                                    leaf("totalDuration", K::status)})})}),
+            container("playbackUtilities", K::column, {std::move(options), std::move(volume)})});
+    regions.columns = 3;
+    return container("playbackGroup", K::group, {std::move(regions)}, "", "transportSection");
 }
 
 } // namespace

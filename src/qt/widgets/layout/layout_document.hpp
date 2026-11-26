@@ -47,6 +47,8 @@ struct LayoutNode {
     std::vector<int> sizes;
     /// Grid children fill rows in document order; absent means one column.
     std::optional<int> columns;
+    /// Horizontal packing of a row; absent retains the component default.
+    std::optional<Qt::AlignmentFlag> alignment;
     std::vector<LayoutNode> children;
     std::optional<ViewReference> view;
 
@@ -73,6 +75,8 @@ enum class LayoutJsonError {
 [[nodiscard]] bool is_layout_container(LayoutComponentKind kind) noexcept;
 [[nodiscard]] QString layout_component_name(LayoutComponentKind kind);
 /// Returns an empty byte array for an invalid document.
+[[nodiscard]] QString layout_alignment_name(Qt::AlignmentFlag alignment);
+[[nodiscard]] std::optional<Qt::AlignmentFlag> parse_layout_alignment(const QString& name);
 [[nodiscard]] QByteArray write_layout_json(const LayoutDocument& document);
 
 } // namespace wiola::gui

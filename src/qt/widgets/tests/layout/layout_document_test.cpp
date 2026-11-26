@@ -111,6 +111,34 @@ TEST(LayoutDocument, RejectsMalformedVersionsAndExcessiveInputs)
     EXPECT_EQ(wiola::gui::read_layout_json(nested, document), LayoutJsonError::limit_exceeded);
 }
 
+TEST(LayoutDocument, RowAlignmentRoundTripsAndRejectsInvalidValuesTransactionally)
+{
+    using namespace wiola::gui;
+    for (const auto alignment : {Qt::AlignLeft, Qt::AlignHCenter, Qt::AlignRight}) {
+        LayoutDocument document{
+            .root = {.id = "row", .kind = LayoutComponentKind::row},
+            .node_count = 1
+        };
+        document.root.alignment = alignment;
+        LayoutDocument restored;
+        ASSERT_EQ(read_layout_json(write_layout_json(document), restored), LayoutJsonError::none);
+        EXPECT_EQ(restored.root.alignment, alignment);
+        EXPECT_EQ(parse_layout_alignment(layout_alignment_name(alignment)), alignment);
+    }
+    EXPECT_TRUE(layout_alignment_name(Qt::AlignTop).isEmpty());
+    EXPECT_FALSE(parse_layout_alignment("bottom"));
+    LayoutDocument untouched = wiola::gui::classic_layout_document();
+    for (const QByteArray json :
+        {R"({"version":2,"root":{"id":"bad","type":"row","alignment":true}})",
+            R"({"version":2,"root":{"id":"bad","type":"row","alignment":"bottom"}})",
+            R"({"version":2,"root":{"id":"bad","type":"column","alignment":"center"}})"}) {
+        EXPECT_EQ(read_layout_json(json, untouched), LayoutJsonError::invalid_component);
+        EXPECT_EQ(untouched.root.id, "classicRoot");
+    }
+    untouched.root.alignment = Qt::AlignTop;
+    EXPECT_EQ(validate_layout_document(untouched), LayoutJsonError::invalid_component);
+}
+
 TEST(LayoutDocument, ClassicPresetIsValidAndComplete)
 {
     const auto document = wiola::gui::classic_layout_document();

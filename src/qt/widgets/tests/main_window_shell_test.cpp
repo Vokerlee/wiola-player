@@ -1248,6 +1248,56 @@ TEST_F(MainWindowShell, PlaybackOnlyLayoutRemainsAFullWidthFooterAndCanRestoreDo
     EXPECT_TRUE(footer->isAncestorOf(transport));
 }
 
+TEST_F(MainWindowShell, PlaybackControlsAndTimelineRemainCenteredWithIndependentSideRegions)
+{
+    using namespace wiola;
+    app::PlaybackService playback{wiola::testing::passive_output, codec::ffmpeg::make_provider()};
+    app::LibrarySession library{codec::ffmpeg::make_provider()};
+    app::PlaybackPreferences preferences{playback};
+    gui::MainWindow window{playback, library, preferences};
+    window.show();
+    auto* title = window.findChild<QLabel*>("trackLabel");
+    auto* seek = window.findChild<QWidget*>("positionBar");
+    auto* volume = window.findChild<QSlider*>("volumeSlider");
+    auto* footer = window.findChild<QStatusBar*>("playbackFooter");
+    auto* details = window.findChild<QDockWidget*>("inspectorDock");
+    ASSERT_NE(title, nullptr);
+    ASSERT_NE(seek, nullptr);
+    ASSERT_NE(volume, nullptr);
+    ASSERT_NE(footer, nullptr);
+    ASSERT_NE(details, nullptr);
+    const auto bounds = [&window](const QWidget* widget) {
+        return QRect{widget->mapTo(&window, QPoint{}), widget->size()};
+    };
+    for (const auto theme : {"Light theme", "Dark theme"}) {
+        action(*menu(window, "&View"), theme)->trigger();
+        for (const int width : {820, 1100, 1600}) {
+            window.resize(width, 720);
+            for (const bool show_details : {false, true}) {
+                details->setVisible(show_details);
+                QApplication::processEvents();
+                QRect controls;
+                for (const auto* name :
+                    {"previousTrack", "playPause", "nextTrack", "stopPlayback"}) {
+                    auto* button = window.findChild<QPushButton*>(name);
+                    ASSERT_NE(button, nullptr);
+                    controls = controls.united(bounds(button));
+                }
+                EXPECT_NEAR(controls.center().x(), bounds(footer).center().x(), 2);
+                EXPECT_NEAR(bounds(seek).center().x(), bounds(footer).center().x(), 2);
+                EXPECT_LT(bounds(title).right(), bounds(seek).left());
+                EXPECT_GT(bounds(volume).left(), bounds(seek).right());
+                EXPECT_LT(controls.bottom(), bounds(seek).top());
+                for (const auto* name : {"repeatQueue", "shuffleQueue", "equalizer"}) {
+                    auto* option = window.findChild<QPushButton*>(name);
+                    ASSERT_NE(option, nullptr);
+                    EXPECT_GT(bounds(option).left(), bounds(seek).right());
+                }
+            }
+        }
+    }
+}
+
 TEST_F(MainWindowShell, FileDialogDescriptionsAreReadableAndInvalidChoicesNeverOpenAPicker)
 {
     using wiola::gui::PlayerFileChoice;

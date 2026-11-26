@@ -260,6 +260,13 @@ foreach(scale IN ITEMS 1 1.25 1.5 2)
             $<TARGET_FILE:gui_button_layout_editor_test>
             --gtest_filter=ButtonLayoutEditor.TextEditingShortcutsDoNotDeleteComponentsAndSmallWindowsCanScroll
     )
+    add_test(
+        NAME GuiScaling.CenteredPlayback.${scale}
+        COMMAND
+            ${CMAKE_COMMAND} -E env QT_SCALE_FACTOR=${scale}
+            $<TARGET_FILE:gui_main_window_shell_test>
+            --gtest_filter=MainWindowShell.PlaybackControlsAndTimelineRemainCenteredWithIndependentSideRegions
+    )
 endforeach()
 
 wiola_add_test(
