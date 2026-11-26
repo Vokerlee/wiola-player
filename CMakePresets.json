@@ -130,6 +130,13 @@
             }
         },
         {
+            "name": "linux-headless",
+            "configurePreset": "linux-headless",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
             "name": "linux-debug",
             "configurePreset": "linux-debug",
             "output": {

@@ -62,3 +62,12 @@ target_link_libraries(
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
+    set_target_properties(
+        wiola_model_boundary
+        PROPERTIES EXCLUDE_FROM_ALL FALSE
+    )
+
+    add_test(NAME presentation_consumer COMMAND wiola_model_boundary)
+endif()
