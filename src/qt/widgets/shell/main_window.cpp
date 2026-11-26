@@ -546,7 +546,7 @@ void MainWindow::save_window_state()
     const auto geometry = this->geometry();
     std::map<std::string, std::vector<int>> splitters;
     for (auto* splitter : findChildren<QSplitter*>())
-        if (!splitter->objectName().isEmpty()) {
+        if (!splitter->objectName().isEmpty() && !qobject_cast<QDialog*>(splitter->window())) {
             const auto sizes = splitter->sizes();
             splitters.emplace(splitter->objectName().toStdString(),
                 std::vector<int>{sizes.begin(), sizes.end()});
@@ -674,16 +674,18 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
     if (QLayout* layout = root->layout())
         layout->setSpacing(tokens.player.section_spacing);
 
-    // Built-in playback controls belong to the window chrome, outside the docked panels.
-    // Custom layouts retain their explicit placement of the same registered live views.
+    // The composite player always spans the window, including after editing its contents.
+    // Custom layouts may omit it or arrange its individual registered controls independently.
+    const bool has_playback_section = belongs_to_root(transport_);
     auto* footer = statusBar();
     footer->removeWidget(transport_);
-    if (choice != LayoutChoice::custom) {
+    if (has_playback_section) {
         footer->addPermanentWidget(transport_, 1);
         transport_->show();
-    } else if (belongs_to_root(transport_))
-        transport_->show();
-    footer->setVisible(choice != LayoutChoice::custom);
+        if (root == transport_)
+            root = new QWidget{this};
+    }
+    footer->setVisible(has_playback_section);
 
     setCentralWidget(root);
     if (isVisible()) {
