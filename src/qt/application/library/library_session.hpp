@@ -27,6 +27,7 @@
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/playback/active_playlist.hpp>
 #include <app/workspace/workspace_reconciliation.hpp>
+#include <optional>
 #include <qt/application/metadata/media_revision_publisher.hpp>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <qt/application/workspace/workspace_scan_publisher.hpp>
@@ -120,7 +121,7 @@ private:
     void index_changes(const library::LibraryChangeBatch& batch);
 
     bool accepting_{true};
-    SnapshotWriteResult shutdown_result_;
+    std::optional<SnapshotWriteResult> shutdown_result_;
     QSettings settings_;
     persistence::qt::LibraryStore store_;
     persistence::qt::SnapshotWriter snapshot_writer_{store_};
