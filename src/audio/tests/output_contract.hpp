@@ -27,24 +27,24 @@
 namespace wiola::testing {
 
 /// The supplied test output must be available and retain playback until explicitly stopped.
-inline void verify_output_contract(audio::Output& output)
+inline void verify_output_contract(core::Lease<audio::Output> output)
 {
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
     {
         audio::OutputConnection first{output};
         audio::OutputConnection candidate{output};
         ASSERT_TRUE(first.try_acquire());
         EXPECT_FALSE(candidate.try_acquire());
         ASSERT_TRUE(first.control().start());
-        EXPECT_TRUE(output.running());
+        EXPECT_TRUE(output->running());
         EXPECT_FALSE(candidate.control().start());
 
         first.stop();
-        EXPECT_FALSE(output.running());
+        EXPECT_FALSE(output->running());
         ASSERT_TRUE(first.control().start());
-        EXPECT_TRUE(output.running());
+        EXPECT_TRUE(output->running());
     }
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 
     audio::OutputConnection next{output};
     ASSERT_TRUE(next.try_acquire());

@@ -89,11 +89,11 @@ class ObservedOutput final : public wiola::audio::Output {
 public:
     ObservedOutput(wiola::audio::Source& source, Lifetime& lifetime)
         : lifetime_{lifetime}
-        , device_{source}
-        , control_{device_.control()}
+        , device_{wiola::core::Lease<wiola::testing::FakeOutput>::make(source)}
+        , control_{wiola::audio::Output::acquire(device_)}
     {
         lifetime_.bridge = &source;
-        lifetime_.device = &device_;
+        lifetime_.device = &device_.get();
     }
 
     ~ObservedOutput() override
@@ -102,9 +102,9 @@ public:
         lifetime_.output_destroyed = true;
     }
 
-    bool running() const noexcept override { return device_.running(); }
+    bool running() const noexcept override { return device_->running(); }
 
-    Frames frames_played() const noexcept override { return device_.frames_played(); }
+    Frames frames_played() const noexcept override { return device_->frames_played(); }
 
 private:
     bool start() noexcept override
@@ -119,7 +119,7 @@ private:
     void stop() noexcept override { control_.stop(); }
 
     Lifetime& lifetime_;
-    wiola::testing::FakeOutput device_;
+    wiola::core::Lease<wiola::testing::FakeOutput> device_;
     wiola::audio::Output::Control control_;
 };
 
@@ -227,7 +227,19 @@ TEST(OutputSession, OutputRetainsTheWholeProcessingGraphAfterItsHostAndCacheAreG
     EXPECT_EQ(lifetime.bridge->render(samples), samples.size());
     EXPECT_EQ(samples, (std::array{0.125F, 0.125F}));
 
-    retained.reset();
+    {
+        auto control = wiola::audio::Output::acquire(retained->output());
+        retained.reset();
+        EXPECT_FALSE(lifetime.output_destroyed);
+        EXPECT_TRUE(stage_observer.lock());
+        EXPECT_TRUE(gain_observer.lock());
+
+        // The device retains its bridge, but the released attachment no longer borrows source.
+        EXPECT_EQ(lifetime.bridge->render(samples), 0U);
+        ASSERT_TRUE(control.start());
+        control.stop();
+    }
+
     EXPECT_TRUE(lifetime.output_destroyed);
     EXPECT_FALSE(stage_observer.lock());
     EXPECT_FALSE(gain_observer.lock());
@@ -251,7 +263,9 @@ TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
 
     auto same{session.prepare(stereo)};
 
-    EXPECT_EQ(&same->output(), &first->output());
+    const auto same_output = same->output();
+    const auto first_output = first->output();
+    EXPECT_EQ(&same_output.get(), &first_output.get());
     EXPECT_EQ(num_outputs, 1U);
 
     auto different{session.prepare(mono)};
@@ -291,14 +305,15 @@ TEST(OutputSession, NullOrThrowingFactoryPreservesTheCommittedOutputAndSource)
     auto active{session.prepare(stereo)};
     session.activate(*active, source);
 
-    const auto* original{&active->output()};
+    const auto original = active->output();
 
     for (const auto fault : {Failure::no_output, Failure::exception}) {
         failure = fault;
         EXPECT_THROW(static_cast<void>(session.prepare(mono)), std::runtime_error);
         EXPECT_TRUE(session.open_for(stereo));
         EXPECT_FALSE(session.open_for(mono));
-        EXPECT_EQ(&active->output(), original);
+        const auto current = active->output();
+        EXPECT_EQ(&current.get(), &original.get());
 
         std::array<float, 2> samples{};
 
@@ -380,7 +395,7 @@ TEST(OutputSession, LeasePinsItsOutputAcrossCacheReplacementAndCacheDestruction)
     EXPECT_TRUE(new_stream.output_destroyed);
 
     {
-        auto control{old->output().control()};
+        auto control{wiola::audio::Output::acquire(old->output())};
 
         EXPECT_TRUE(control.start());
 

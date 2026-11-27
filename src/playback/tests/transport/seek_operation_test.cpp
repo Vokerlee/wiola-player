@@ -45,11 +45,11 @@ struct SeekRig {
         : queue{source.spec(), Frames{8}}
         , producer{queue.producer()}
         , consumer{queue.consumer()}
-        , control{output.control()}
+        , control{wiola::audio::Output::acquire(output)}
         , head{source.spec().num_channels}
         , applier{head.applier()}
         , block(source.spec().samples_per(Frames{4}))
-        , seek{source, producer, control, output, applier, started, block, playback}
+        , seek{source, producer, control, output.get(), applier, started, block, playback}
     {
         static_cast<void>(playback.begin());
     }
@@ -61,7 +61,7 @@ struct SeekRig {
     wiola::pcm::PcmQueue queue;
     wiola::pcm::PcmQueue::Producer producer;
     wiola::pcm::PcmQueue::Consumer consumer;
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     wiola::audio::Output::Control control;
     Playback playback;
     Playhead head;
@@ -113,10 +113,10 @@ TEST(SeekTransaction, ReplayRewindsAndDiscardsPreviouslyBufferedAudio)
     ASSERT_GT(source.position_frames(), Frames{});
     ASSERT_TRUE(rig.start_output());
 
-    rig.output.play(Frames{3});
+    rig.output->play(Frames{3});
     EXPECT_EQ(rig.seek.begin(true), Outcome::applied);
     EXPECT_EQ(source.last_seek(), Frames{});
-    EXPECT_FALSE(rig.output.running());
+    EXPECT_FALSE(rig.output->running());
     EXPECT_FALSE(rig.started);
     EXPECT_EQ(rig.head.position(Frames{3}), Frames{});
     // The consumer owns the read cursor and applies the discard on its next callback.
@@ -139,7 +139,7 @@ TEST(SeekTransaction, NoPendingRequestLeavesOutputAndBufferedAudioAlone)
 
     ASSERT_EQ(rig.producer.push(samples), samples.size());
     EXPECT_EQ(rig.seek.apply(), Outcome::preserved);
-    EXPECT_TRUE(rig.output.running());
+    EXPECT_TRUE(rig.output->running());
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_EQ(source.num_seeks(), 0);
 
@@ -239,7 +239,7 @@ TEST(SeekTransaction, StopDuringSeekAcknowledgesTheActualCursorWithoutPriming)
     worker.join();
     EXPECT_EQ(result, Outcome::cancelled);
     EXPECT_EQ(source.num_reads(), 0);
-    EXPECT_FALSE(rig.output.running());
+    EXPECT_FALSE(rig.output->running());
     EXPECT_EQ(rig.head.position(Frames{}), Frames{12});
 }
 

@@ -44,9 +44,10 @@ namespace wiola::engine {
 class Player final {
 public:
     /// Takes the source it plays, which must not be null, the buffer it decodes into, and the
-    /// output that buffer is played through. Both outlive the player.
+    /// output that buffer is played through. The output is retained; the buffer owner outlives the
+    /// player.
     Player(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, TransportConfig config = {});
+        core::Lease<audio::Output> output, TransportConfig config = {});
 
     Player(const Player&) = delete;
     Player& operator=(const Player&) = delete;
@@ -94,7 +95,7 @@ public:
     [[nodiscard]] units::Time time_played() const noexcept;
 
 private:
-    audio::Output& output_;
+    core::Lease<audio::Output> output_;
     pcm::StreamSpec spec_;
     std::optional<pcm::Frames> length_;
     media::LengthAccuracy length_accuracy_;

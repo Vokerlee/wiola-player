@@ -147,7 +147,7 @@ private:
 TEST(TransportWorker, TypedDecodeFailureQuiescesOutput)
 {
     wiola::pcm::PcmQueue buffer{{}, Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     TransportWorker worker{std::make_unique<RejectingDecoder>(false), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
@@ -155,9 +155,9 @@ TEST(TransportWorker, TypedDecodeFailureQuiescesOutput)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 1);
-    EXPECT_EQ(output.num_stops(), 1);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 1);
+    EXPECT_EQ(output->num_stops(), 1);
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, TypedSeekPrimingFailureNeverRestartsOutput)
@@ -165,7 +165,7 @@ TEST(TransportWorker, TypedSeekPrimingFailureNeverRestartsOutput)
     Gate reading;
     wiola::pcm::PcmQueue buffer{{}, Frames{512}};
     auto consumer{buffer.consumer()};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     TransportWorker worker{std::make_unique<RejectingDecoder>(true, &reading), buffer.producer(),
         output};
 
@@ -179,22 +179,22 @@ TEST(TransportWorker, TypedSeekPrimingFailureNeverRestartsOutput)
 
     EXPECT_EQ(consumer.pop(played), played.size());
 
-    output.play(Frames{512});
+    output->play(Frames{512});
     worker.seek(Frames{8});
     reading.release();
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 1);
-    EXPECT_EQ(output.num_stops(), 1);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 1);
+    EXPECT_EQ(output->num_stops(), 1);
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, RestartJoinsThePreviousExecutionWithoutAnExplicitWait)
 {
     wiola::pcm::PcmQueue buffer{{}, Frames{512}};
-    FakeOutput output;
-    output.refuse_starts();
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
+    output->refuse_starts();
 
     TransportWorker worker{std::make_unique<FakeDecoder>(), buffer.producer(), output};
 
@@ -212,28 +212,28 @@ TEST(TransportWorker, RestartJoinsThePreviousExecutionWithoutAnExplicitWait)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 2);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 2);
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, RejectsDecodeSampleOverflowWithoutStartingOutput)
 {
     wiola::pcm::PcmQueue buffer{{}, Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     wiola::engine::TransportConfig config;
     config.decode_chunk = Frames{std::numeric_limits<std::size_t>::max()};
 
     EXPECT_THROW((TransportWorker{std::make_unique<FakeDecoder>(), buffer.producer(), output, {},
                      config}),
         std::invalid_argument);
-    EXPECT_EQ(output.num_starts(), 0);
-    EXPECT_TRUE(output.control());
+    EXPECT_EQ(output->num_starts(), 0);
+    EXPECT_TRUE(wiola::audio::Output::acquire(output));
 }
 
 TEST(TransportWorker, PrimingExceptionFaultsWithoutStartingOutput)
 {
-    FakeOutput output;
-    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::priming, output)};
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
+    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::priming, output.get())};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
@@ -242,14 +242,14 @@ TEST(TransportWorker, PrimingExceptionFaultsWithoutStartingOutput)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 0);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 0);
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, DecodeExceptionStopsOutputAndAllowsAnotherStart)
 {
-    FakeOutput output;
-    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::decoding, output)};
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
+    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::decoding, output.get())};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
@@ -258,24 +258,24 @@ TEST(TransportWorker, DecodeExceptionStopsOutputAndAllowsAnotherStart)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 1);
-    EXPECT_EQ(output.num_stops(), 1);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 1);
+    EXPECT_EQ(output->num_stops(), 1);
+    EXPECT_FALSE(output->running());
 
     EXPECT_TRUE(worker.start());
 
     worker.stop();
     worker.wait();
     EXPECT_EQ(worker.state(), State::stopped);
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, AcceptedStopWinsOverALaterDecoderException)
 {
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     Gate reading;
-    auto source{
-        std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::decoding, output, &reading)};
+    auto source{std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::decoding, output.get(),
+        &reading)};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
@@ -287,15 +287,15 @@ TEST(TransportWorker, AcceptedStopWinsOverALaterDecoderException)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::stopped);
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, SeekExceptionAfterOutputStartedLeavesItStopped)
 {
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     Gate reading;
     auto source{
-        std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::seeking, output, &reading)};
+        std::make_unique<ThrowingDecoder>(ThrowingDecoder::Phase::seeking, output.get(), &reading)};
     const auto* decoder{source.get()};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     TransportWorker worker{std::move(source), buffer.producer(), output};
@@ -309,8 +309,8 @@ TEST(TransportWorker, SeekExceptionAfterOutputStartedLeavesItStopped)
 
     EXPECT_TRUE(decoder->failed());
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 1);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 1);
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
@@ -320,7 +320,7 @@ TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
     source->block_reads_on(reading);
 
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
@@ -334,7 +334,7 @@ TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::stopped);
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, StopDuringInitialSeekNeverStartsOutputOrPrimes)
@@ -345,7 +345,7 @@ TEST(TransportWorker, StopDuringInitialSeekNeverStartsOutputOrPrimes)
     source->block_seeks_on(seeking);
 
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     TransportWorker worker{std::move(source), buffer.producer(), output};
     worker.seek(Frames{8});
     ASSERT_TRUE(worker.start());
@@ -356,17 +356,17 @@ TEST(TransportWorker, StopDuringInitialSeekNeverStartsOutputOrPrimes)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::stopped);
-    EXPECT_EQ(output.num_starts(), 0);
+    EXPECT_EQ(output->num_starts(), 0);
     EXPECT_EQ(decoder->num_reads(), 0);
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, OutputStartFailureIsEventualRatherThanRequestRefusal)
 {
     auto source{std::make_unique<FakeDecoder>()};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-    FakeOutput output;
-    output.refuse_starts();
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
+    output->refuse_starts();
 
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
@@ -375,14 +375,14 @@ TEST(TransportWorker, OutputStartFailureIsEventualRatherThanRequestRefusal)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWorker, ThreadLaunchFailureLeavesNoRunningOutput)
 {
     auto source{std::make_unique<FakeDecoder>()};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     const TransportWorker::ThreadFactory fail{
         [](std::function<void()>) -> std::jthread { throw std::runtime_error{"no thread"}; }};
     TransportWorker worker{std::move(source), buffer.producer(), output, fail};
@@ -392,8 +392,8 @@ TEST(TransportWorker, ThreadLaunchFailureLeavesNoRunningOutput)
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 0);
-    EXPECT_FALSE(output.running());
+    EXPECT_EQ(output->num_starts(), 0);
+    EXPECT_FALSE(output->running());
 }
 
 TEST(TransportWait, NotificationBeforeWaitingIsNotLost)
@@ -412,7 +412,7 @@ TEST(TransportWorker, StopInterruptsALongOutputProgressPoll)
 {
     auto source{std::make_unique<FakeDecoder>()};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     wiola::engine::TransportConfig config;
     config.poll_interval = std::chrono::milliseconds{5000};
 
@@ -422,7 +422,7 @@ TEST(TransportWorker, StopInterruptsALongOutputProgressPoll)
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
 
-    while (!output.running()) {
+    while (!output->running()) {
         ASSERT_LT(std::chrono::steady_clock::now(), deadline);
         std::this_thread::yield();
     }
@@ -442,7 +442,7 @@ TEST(TransportWorker, UsesItsOwnDecodeChunkConfiguration)
         auto source{std::make_unique<FakeDecoder>()};
         FakeDecoder* played{source.get()};
         wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-        FakeOutput output;
+        wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
         wiola::engine::TransportConfig config;
         config.decode_chunk = Frames{chunk_frames};
 
@@ -467,28 +467,28 @@ TEST(TransportWorker, RejectsAnInvalidConfigurationBeforeStarting)
 {
     auto source{std::make_unique<FakeDecoder>()};
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     wiola::engine::TransportConfig config;
     config.decode_chunk = Frames{};
 
     EXPECT_THROW((TransportWorker{std::move(source), buffer.producer(), output, {}, config}),
         std::invalid_argument);
-    EXPECT_EQ(output.num_starts(), 0);
+    EXPECT_EQ(output->num_starts(), 0);
 }
 
 } // namespace
 
 TEST(TransportWorker, PreparedCandidateClaimsOutputAfterThePreviousOwnerIsReleased)
 {
-    FakeOutput output;
-    output.refuse_starts();
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
+    output->refuse_starts();
 
     auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
     wiola::pcm::PcmQueue queue{{}, Frames{64}};
     bool claimed_before_launch{false};
     TransportWorker worker{std::make_unique<FakeDecoder>(Frames{64}), queue.producer(), output,
         [&](std::function<void()> work) {
-            claimed_before_launch = !static_cast<bool>(output.control());
+            claimed_before_launch = !static_cast<bool>(wiola::audio::Output::acquire(output));
             return std::jthread{std::move(work)};
         }};
 
@@ -499,14 +499,14 @@ TEST(TransportWorker, PreparedCandidateClaimsOutputAfterThePreviousOwnerIsReleas
     worker.wait();
 
     EXPECT_TRUE(claimed_before_launch);
-    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(output->num_starts(), 1);
     EXPECT_EQ(worker.state(), State::faulted);
 }
 
 TEST(TransportWorker, OutputContentionFaultsWithoutTouchingTheOwnerAndCanBeRetried)
 {
-    FakeOutput output;
-    output.refuse_starts();
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
+    output->refuse_starts();
 
     auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
     wiola::pcm::PcmQueue queue{{}, Frames{64}};
@@ -516,14 +516,14 @@ TEST(TransportWorker, OutputContentionFaultsWithoutTouchingTheOwnerAndCanBeRetri
 
     worker.wait();
     EXPECT_EQ(worker.state(), State::faulted);
-    EXPECT_EQ(output.num_starts(), 0);
-    EXPECT_EQ(output.num_stops(), 0);
+    EXPECT_EQ(output->num_starts(), 0);
+    EXPECT_EQ(output->num_stops(), 0);
 
     previous.reset();
 
     ASSERT_TRUE(worker.start());
 
     worker.wait();
-    EXPECT_EQ(output.num_starts(), 1);
+    EXPECT_EQ(output->num_starts(), 1);
     EXPECT_EQ(worker.state(), State::faulted);
 }

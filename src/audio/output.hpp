@@ -21,6 +21,7 @@
 #pragma once
 
 #include <wiola/foundation/handle.hpp>
+#include <wiola/foundation/lease_handle.hpp>
 #include <wiola/media/stream_spec.hpp>
 
 #include <cstddef>
@@ -39,6 +40,7 @@ public:
      * doing so leaves the device in a state neither of them asked for, and a device is not a
      * thing that can be asked which it is in.
      *
+     * A held control retains the complete output ownership node and its declared dependencies.
      * Moving it hands the device to another thread. What is moved from, and any control taken
      * while another is still held, does nothing at all.
      *
@@ -46,7 +48,7 @@ public:
      * outlives the tracks played through it, and each of them drives it in turn. Taking and
      * giving back are for whoever owns the device, never for the thread that plays.
      */
-    class Control final : public core::Handle<Output> {
+    class Control final : public core::LeaseHandle<Output> {
     public:
         Control(Control&& other) noexcept = default;
 
@@ -54,7 +56,7 @@ public:
         {
             if (this != &other) {
                 release();
-                Handle::operator=(std::move(other));
+                LeaseHandle::operator=(std::move(other));
             }
 
             return *this;
@@ -74,15 +76,16 @@ public:
     private:
         friend class Output;
 
-        using Handle::Handle;
+        using LeaseHandle::LeaseHandle;
 
         /// Gives back whatever it holds, and holds nothing afterwards.
         void release() noexcept
         {
-            if (owner())
-                owner()->control_taken_.release();
-
+            const auto retained = retain_owner();
             clear();
+
+            if (retained)
+                (*retained)->control_taken_.release();
         }
     };
 
@@ -96,7 +99,7 @@ public:
     /// The end that drives it. There is one at a time: while a control is held, another taken is
     /// inert, so a second driver is a device that will not start rather than two threads starting
     /// one. Letting the held one go frees the device for the next.
-    [[nodiscard]] Control control() noexcept;
+    [[nodiscard]] static Control acquire(core::Lease<Output> output) noexcept;
 
     [[nodiscard]] virtual bool running() const noexcept = 0;
 
@@ -118,18 +121,20 @@ private:
 
 inline bool Output::Control::start() noexcept
 {
-    return owner() && owner()->start();
+    const auto retained = retain_owner();
+    return retained && (*retained)->start();
 }
 
 inline void Output::Control::stop() noexcept
 {
-    if (owner())
-        owner()->stop();
+    const auto retained = retain_owner();
+    if (retained)
+        (*retained)->stop();
 }
 
-inline Output::Control Output::control() noexcept
+inline Output::Control Output::acquire(core::Lease<Output> output) noexcept
 {
-    return control_taken_.claim() ? Control{*this} : Control{};
+    return output->control_taken_.claim() ? Control{output} : Control{};
 }
 
 } // namespace wiola::audio

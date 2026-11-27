@@ -74,23 +74,25 @@ static_assert(!std::is_move_constructible_v<wiola::audio::OutputConnection>);
 
 int main()
 {
-    ConstantSource source;
-    ControlledOutput output{source};
+    const auto source = wiola::core::Lease<ConstantSource>::make();
+    auto output = wiola::core::Lease<ControlledOutput>::dependent(
+        [](ConstantSource& source) { return std::make_unique<ControlledOutput>(source); }, source
+    );
     {
         wiola::audio::OutputConnection connection{output};
 
         if (!connection.try_acquire())
             return 4;
 
-        if (!connection.control().start() || output.frames_played() != wiola::pcm::Frames{1})
+        if (!connection.control().start() || output->frames_played() != wiola::pcm::Frames{1})
             return 1;
 
-        if (output.control().start())
+        if (wiola::audio::Output::acquire(output).start())
             return 2;
     }
 
-    if (output.running())
+    if (output->running())
         return 3;
 
-    return !output.control().start();
+    return !wiola::audio::Output::acquire(output).start();
 }

@@ -50,11 +50,11 @@ namespace wiola::engine {
 class DecodeLoop {
 public:
     /// Takes the source it plays, the ends of the buffer, output and playhead it works through,
-    /// the output it reads what has been heard from, and the playback it follows. All of them
+    /// the retained output it observes, and the playback it follows. The buffer/playback owners
     /// outlive it. Decode storage is allocated from the owned configuration at construction.
     DecodeLoop(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, Playback& playback, Playhead::Applier applier, TransportWait& wait,
-        const TransportConfig& config);
+        core::Lease<audio::Output> output, Playback& playback, Playhead::Applier applier,
+        TransportWait& wait, const TransportConfig& config);
 
     DecodeLoop(const DecodeLoop&) = delete;
     DecodeLoop& operator=(const DecodeLoop&) = delete;
@@ -90,6 +90,7 @@ private:
     std::unique_ptr<media::AudioDecoder> source_;
     pcm::PcmQueue::Producer buffer_;
     audio::OutputConnection connection_;
+    /// Direct observation is backed by connection_'s retained output node.
     const audio::Output& output_;
     Playback& playback_;
     Playhead::Applier applier_;

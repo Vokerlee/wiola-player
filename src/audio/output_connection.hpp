@@ -33,9 +33,9 @@ namespace wiola::audio {
  */
 class OutputConnection {
 public:
-    explicit OutputConnection(Output& output) noexcept
+    explicit OutputConnection(core::Lease<Output> output) noexcept
         : output_{output}
-        , control_{output.control()}
+        , control_{Output::acquire(output)}
     {
     }
 
@@ -53,7 +53,7 @@ public:
     [[nodiscard]] bool try_acquire() noexcept
     {
         if (!control_)
-            control_ = output_.control();
+            control_ = Output::acquire(output_);
         return static_cast<bool>(control_);
     }
 
@@ -61,7 +61,7 @@ public:
     void stop() noexcept { control_.stop(); }
 
 private:
-    Output& output_;
+    core::Lease<Output> output_;
     Output::Control control_;
 };
 

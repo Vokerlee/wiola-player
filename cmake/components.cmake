@@ -57,7 +57,7 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
     endif()
 
     if(audio IN_LIST WIOLA_SELECTED_COMPONENTS)
-        list(APPEND WIOLA_SELECTED_COMPONENTS borrowed_reference media)
+        list(APPEND WIOLA_SELECTED_COMPONENTS borrowed_reference lifetime media)
     endif()
 
     if(library_persistence IN_LIST WIOLA_SELECTED_COMPONENTS)
