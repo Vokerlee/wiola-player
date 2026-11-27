@@ -30,15 +30,10 @@
 
 namespace wiola::gui {
 
-enum class ThemeChoice {
-    light,
-    dark,
-    custom,
-};
-
 struct ThemeState {
     ThemeChoice selected{ThemeChoice::light};
     ThemeColors custom{theme_colors(Theme::light)};
+    ThemeStyle custom_style;
     bool operator==(const ThemeState&) const = default;
 };
 enum class ThemeError {
@@ -65,6 +60,7 @@ public:
     }
 
     [[nodiscard]] ThemeColors colors() const;
+    [[nodiscard]] ThemeStyle style() const;
 
     [[nodiscard]] std::uint64_t generation() const
     {
@@ -80,6 +76,7 @@ public:
 
     [[nodiscard]] ThemeError select(ThemeChoice choice);
     [[nodiscard]] ThemeError set_custom(const ThemeColors& colors);
+    [[nodiscard]] ThemeError set_custom(const ThemeColors& colors, const ThemeStyle& style);
     [[nodiscard]] ThemeError import_json(QByteArrayView bytes);
 
     [[nodiscard]] QByteArray export_json() const

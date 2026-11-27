@@ -406,34 +406,30 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         [choose_layout] { choose_layout("library-focus"); });
 
     view->addSeparator();
-    QAction* light = view->addAction("Light theme");
-    QAction* dark = view->addAction("Dark theme");
-    QAction* custom = view->addAction("Custom theme");
     auto* themes = new QActionGroup{this};
     themes->setExclusive(true);
-    for (auto* action : {light, dark, custom}) {
-        action->setCheckable(true);
-        themes->addAction(action);
+    for (const auto& preset : theme_presets()) {
+        auto* item = themes->addAction(view->addAction(QString::fromLatin1(preset.label)));
+        item->setCheckable(true);
+        item->setData(static_cast<int>(preset.choice));
     }
-    const auto reflect_theme = [this, light, dark, custom] {
+    auto* custom = themes->addAction(view->addAction("Custom theme"));
+    custom->setCheckable(true);
+    custom->setData(static_cast<int>(ThemeChoice::custom));
+    const auto reflect_theme = [this, themes] {
         actions_.reload_icons(*this);
-        light->setChecked(theme_->state().selected == ThemeChoice::light);
-        dark->setChecked(theme_->state().selected == ThemeChoice::dark);
-        custom->setChecked(theme_->state().selected == ThemeChoice::custom);
+        for (auto* item : themes->actions())
+            item->setChecked(item->data().toInt() == static_cast<int>(theme_->state().selected));
     };
     reflect_theme();
     connect(theme_.get(), &ThemeManager::theme_changed, this,
         [reflect_theme](auto) { reflect_theme(); });
-    const auto choose_theme = [this, reflect_theme](ThemeChoice choice) {
-        const auto error = theme_->select(choice);
+    connect(themes, &QActionGroup::triggered, this, [this, reflect_theme](QAction* item) {
+        const auto error = theme_->select(static_cast<ThemeChoice>(item->data().toInt()));
         if (error != ThemeError::none)
             show_status("Could not save the theme; the current theme was retained");
         reflect_theme();
-    };
-    connect(light, &QAction::triggered, this, [choose_theme] { choose_theme(ThemeChoice::light); });
-    connect(dark, &QAction::triggered, this, [choose_theme] { choose_theme(ThemeChoice::dark); });
-    connect(custom, &QAction::triggered, this,
-        [choose_theme] { choose_theme(ThemeChoice::custom); });
+    });
 
     auto* tools = menus.tools;
     QAction* edit_layout = tools->addAction("Edit button layout...");
@@ -477,8 +473,10 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(edit_theme, &QAction::triggered, this, [this] {
         auto* editor = new ThemeEditor{theme_->colors(), this};
         editor->setAttribute(Qt::WA_DeleteOnClose);
-        editor->on_apply([manager = theme_](const ThemeColors& colors) {
-            return manager->set_custom(colors) == ThemeError::none;
+        editor->set_style(theme_->style());
+        editor->on_apply([manager = theme_,
+                             draft = QPointer<ThemeEditor>{editor}](const ThemeColors& colors) {
+            return draft && manager->set_custom(colors, draft->style()) == ThemeError::none;
         });
         editor->show();
     });

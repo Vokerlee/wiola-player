@@ -19,14 +19,16 @@
  */
 
 #include "theme_editor.hpp"
+#include <QComboBox>
 
 #include <QColorDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
+#include <QScreen>
+#include <QScrollArea>
 #include <QVBoxLayout>
-
-#include <array>
 
 namespace wiola::gui {
 
@@ -38,6 +40,20 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     setWindowTitle("Edit theme");
 
     auto* fields = new QFormLayout;
+    for (const auto& metric : theme_style_metrics()) {
+        auto* field = new QSpinBox{this};
+        field->setObjectName("themeStyle:" + QString::fromLatin1(metric.key));
+        field->setRange(metric.minimum, metric.maximum);
+        field->setSuffix(QString::fromLatin1(metric.suffix));
+        field->setValue(style_.*metric.value);
+        field->setAccessibleName(QString::fromLatin1(metric.label));
+        fields->addRow(QString::fromLatin1(metric.label), field);
+        metrics_.emplace_back(metric.value, field);
+        connect(field, &QSpinBox::valueChanged, this, [this, member = metric.value](int value) {
+            style_.*member = value;
+            refresh_preview();
+        });
+    }
     for (const auto& descriptor : theme_color_descriptors()) {
         const auto role = descriptor.role;
         const auto label = descriptor.label;
@@ -55,13 +71,16 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
         });
     }
 
-    auto* light = new QPushButton{"Copy light theme", this};
-    light->setObjectName("copyLightTheme");
-    auto* dark = new QPushButton{"Copy dark theme", this};
-    dark->setObjectName("copyDarkTheme");
+    auto* presets = new QComboBox{this};
+    presets->setObjectName("themePresetSource");
+    presets->setAccessibleName("Preset to customize");
+    for (const auto& preset : theme_presets())
+        presets->addItem(QString::fromLatin1(preset.label));
+    auto* copy = new QPushButton{"Use preset as starting point", this};
+    copy->setObjectName("copyThemePreset");
     auto* copies = new QHBoxLayout;
-    copies->addWidget(light);
-    copies->addWidget(dark);
+    copies->addWidget(presets);
+    copies->addWidget(copy);
 
     status_ = new QLabel{this};
     status_->setObjectName("themeContrastStatus");
@@ -72,14 +91,40 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     apply_ = buttons->button(QDialogButtonBox::Apply);
     apply_->setObjectName("applyThemeEdit");
 
+    preview_ = new QGroupBox{"Preview", this};
+    preview_->setObjectName("themePreview");
+    auto* preview_layout = new QHBoxLayout{preview_};
+    preview_layout->addWidget(new QPushButton{"Previous", preview_});
+    auto* play = new QPushButton{"Play", preview_};
+    play->setProperty("appearanceRole", "primary");
+    preview_layout->addWidget(play);
+    auto* shuffle = new QPushButton{"Shuffle", preview_};
+    shuffle->setCheckable(true);
+    shuffle->setChecked(true);
+    preview_layout->addWidget(shuffle);
+
+    auto* content = new QWidget{this};
+    content->setLayout(fields);
+    auto* scroll = new QScrollArea{this};
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidget(content);
+
     auto* layout = new QVBoxLayout{this};
     layout->addLayout(copies);
-    layout->addLayout(fields);
+    layout->addWidget(preview_);
+    layout->addWidget(scroll, 1);
     layout->addWidget(status_);
     layout->addWidget(buttons);
 
-    connect(light, &QPushButton::clicked, this, [this] { set_colors(theme_colors(Theme::light)); });
-    connect(dark, &QPushButton::clicked, this, [this] { set_colors(theme_colors(Theme::dark)); });
+    connect(copy, &QPushButton::clicked, this, [this, presets] {
+        const int selected = presets->currentIndex();
+        if (selected < 0 || static_cast<std::size_t>(selected) >= theme_presets().size())
+            return;
+        const auto& preset = theme_presets()[selected];
+        set_colors(theme_colors(preset.palette));
+        set_style(preset.style);
+    });
     connect(apply_, &QPushButton::clicked, this, [this] {
         if (!theme_contrast_error(colors_).isEmpty())
             return;
@@ -91,6 +136,9 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     set_colors(initial);
+    const auto available = screen()->availableGeometry().size() * 0.9;
+    resize(QSize{fontMetrics().horizontalAdvance(QString(52, 'M')), fontMetrics().height() * 36}
+            .boundedTo(available));
 }
 
 void ThemeEditor::set_color(ThemeColorRole role, const QColor& color)
@@ -111,6 +159,16 @@ void ThemeEditor::set_colors(const ThemeColors& colors)
         update_color(role);
 
     validate();
+}
+
+void ThemeEditor::set_style(const ThemeStyle& style)
+{
+    if (!valid_theme_style(style))
+        return;
+    style_ = style;
+    for (const auto& [member, field] : metrics_)
+        field->setValue(style.*member);
+    refresh_preview();
 }
 
 void ThemeEditor::on_apply(ApplyObserver observer)
@@ -135,6 +193,16 @@ void ThemeEditor::validate()
     status_->setText(error.isEmpty() ? "Contrast checks passed" : error);
     status_->setProperty("status", error.isEmpty() ? "ready" : "error");
     apply_->setEnabled(error.isEmpty());
+    refresh_preview();
+}
+
+void ThemeEditor::refresh_preview()
+{
+    if (!preview_)
+        return;
+    preview_->setPalette(theme_palette(colors_));
+    preview_->setFont(theme_font(style_));
+    preview_->setStyleSheet(theme_stylesheet(colors_, style_));
 }
 
 } // namespace wiola::gui

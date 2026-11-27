@@ -37,22 +37,21 @@ namespace {
 
 QString choice_name(ThemeChoice choice)
 {
-    switch (choice) {
-    case ThemeChoice::light:
-        return "light";
-    case ThemeChoice::dark:
-        return "dark";
-    case ThemeChoice::custom:
+    if (choice == ThemeChoice::custom)
         return "custom";
-    }
+    for (const auto& preset : theme_presets())
+        if (preset.choice == choice)
+            return QString::fromLatin1(preset.key);
     return {};
 }
 
 std::optional<ThemeChoice> choice(const QString& key)
 {
-    for (const auto value : {ThemeChoice::light, ThemeChoice::dark, ThemeChoice::custom})
-        if (choice_name(value) == key)
-            return value;
+    if (key == "custom")
+        return ThemeChoice::custom;
+    for (const auto& preset : theme_presets())
+        if (QString::fromLatin1(preset.key) == key)
+            return preset.choice;
     return {};
 }
 
@@ -75,14 +74,19 @@ ThemeState legacy_state(const QSettings& settings)
 
 QByteArray write_theme_json(const ThemeState& state)
 {
-    if (choice_name(state.selected).isEmpty() || !theme_contrast_error(state.custom).isEmpty())
+    if (choice_name(state.selected).isEmpty() || !theme_contrast_error(state.custom).isEmpty() ||
+        !valid_theme_style(state.custom_style))
         return {};
     QJsonObject colors;
     for (const auto& descriptor : theme_color_descriptors())
         colors.insert(descriptor.key,
             theme_color(state.custom, descriptor.role).name(QColor::HexRgb));
+    QJsonObject style;
+    for (const auto& metric : theme_style_metrics())
+        style.insert(metric.key, state.custom_style.*metric.value);
     return QJsonDocument{
-        QJsonObject{{"version", 1}, {"selected", choice_name(state.selected)}, {"custom", colors}}
+        QJsonObject{{"version", 2}, {"selected", choice_name(state.selected)}, {"custom", colors},
+                    {"style", style}}
     }
         .toJson(QJsonDocument::Compact);
 }
@@ -99,16 +103,32 @@ ThemeError read_theme_json(QByteArrayView bytes, ThemeState& output)
     if (!object.value("version").isDouble() || !std::isfinite(object.value("version").toDouble()) ||
         std::floor(object.value("version").toDouble()) != object.value("version").toDouble())
         return ThemeError::invalid;
-    if (object.value("version").toDouble() != 1)
+    const double version = object.value("version").toDouble();
+    if (version != 1 && version != 2)
         return ThemeError::unsupported_version;
     const auto selected = choice(object.value("selected").toString());
-    if (object.size() != 3 || !selected || !object.value("custom").isObject())
+    if (object.size() != (version == 1 ? 3 : 4) || !selected || !object.value("custom").isObject())
         return ThemeError::invalid;
     const auto colors = object.value("custom").toObject();
     if (colors.size() != static_cast<qsizetype>(theme_color_descriptors().size()))
         return ThemeError::invalid;
     ThemeState candidate;
     candidate.selected = *selected;
+    if (version == 2) {
+        if (!object.value("style").isObject())
+            return ThemeError::invalid;
+        const auto style = object.value("style").toObject();
+        if (style.size() != static_cast<qsizetype>(theme_style_metrics().size()))
+            return ThemeError::invalid;
+        for (const auto& metric : theme_style_metrics()) {
+            const auto value = style.value(metric.key);
+            if (!value.isDouble() || !std::isfinite(value.toDouble()) ||
+                std::floor(value.toDouble()) != value.toDouble() ||
+                value.toDouble() < metric.minimum || value.toDouble() > metric.maximum)
+                return ThemeError::invalid;
+            candidate.custom_style.*metric.value = value.toInt();
+        }
+    }
     for (const auto& descriptor : theme_color_descriptors()) {
         const auto value = colors.value(descriptor.key);
         if (!value.isString())
@@ -156,7 +176,7 @@ ThemeManager::ThemeManager(const QSettings& legacy,
         if (restore_error_ == ThemeError::none || error == ThemeError::unsupported_version)
             restore_error_ = error;
     }
-    apply_theme(colors());
+    apply_theme(colors(), style());
 }
 
 std::shared_ptr<ThemeManager> ThemeManager::acquire(const QSettings& settings)
@@ -182,9 +202,23 @@ void ThemeManager::check_owner() const
 ThemeColors ThemeManager::colors() const
 {
     check_owner();
-    return accepted_.selected == ThemeChoice::custom
-        ? accepted_.custom
-        : theme_colors(accepted_.selected == ThemeChoice::dark ? Theme::dark : Theme::light);
+    if (accepted_.selected == ThemeChoice::custom)
+        return accepted_.custom;
+    for (const auto& preset : theme_presets())
+        if (preset.choice == accepted_.selected)
+            return theme_colors(preset.palette);
+    return theme_colors(Theme::light);
+}
+
+ThemeStyle ThemeManager::style() const
+{
+    check_owner();
+    if (accepted_.selected == ThemeChoice::custom)
+        return accepted_.custom_style;
+    for (const auto& preset : theme_presets())
+        if (preset.choice == accepted_.selected)
+            return preset.style;
+    return {};
 }
 
 ThemeError ThemeManager::select(ThemeChoice choice)
@@ -197,9 +231,15 @@ ThemeError ThemeManager::select(ThemeChoice choice)
 
 ThemeError ThemeManager::set_custom(const ThemeColors& colors)
 {
+    return set_custom(colors, style());
+}
+
+ThemeError ThemeManager::set_custom(const ThemeColors& colors, const ThemeStyle& style)
+{
     check_owner();
     auto candidate = accepted_;
     candidate.custom = colors;
+    candidate.custom_style = style;
     candidate.selected = ThemeChoice::custom;
     return accept(std::move(candidate));
 }
@@ -239,10 +279,11 @@ ThemeError ThemeManager::accept(ThemeState candidate)
     accepted_ = std::move(candidate);
     last_good_ = encoded;
     const auto palette = colors();
+    const auto metrics = style();
     const auto generation = ++generation_;
     legacy_.remove("theme");
     legacy_.sync();
-    apply_theme(palette);
+    apply_theme(palette, metrics);
     if (owner)
         emit theme_changed(generation);
     return ThemeError::none;

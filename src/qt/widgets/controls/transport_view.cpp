@@ -38,6 +38,7 @@ TransportView::TransportView(PlayerActions& actions, QWidget* parent)
     : QGroupBox{"Now playing", parent}
     , actions_{actions}
 {
+    setProperty("appearanceRole", "transport");
     const auto tokens = PresentationTokens{}.player;
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto* body = new QVBoxLayout{this};

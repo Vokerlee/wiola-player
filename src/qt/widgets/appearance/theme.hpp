@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "theme_style.hpp"
 #include <span>
 
 #include <QColor>
@@ -32,7 +33,27 @@ namespace wiola::gui {
 enum class Theme {
     light,
     dark,
+    midnight,
+    studio,
 };
+
+enum class ThemeChoice {
+    light,
+    dark,
+    midnight,
+    studio,
+    custom,
+};
+
+struct ThemePreset {
+    ThemeChoice choice;
+    Theme palette;
+    const char* key;
+    const char* label;
+    ThemeStyle style;
+};
+
+[[nodiscard]] std::span<const ThemePreset> theme_presets();
 
 enum class ThemeColorRole {
     window,
@@ -74,10 +95,12 @@ struct ThemeColors {
 [[nodiscard]] double contrast_ratio(const QColor& first, const QColor& second);
 [[nodiscard]] QString theme_contrast_error(const ThemeColors& colors);
 [[nodiscard]] QPalette theme_palette(const ThemeColors& colors);
+[[nodiscard]] QIcon tinted_icon(const QIcon& source, const QPalette& palette,
+    QPalette::ColorRole color);
 [[nodiscard]] QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
     QPalette::ColorRole color = QPalette::ButtonText);
 [[nodiscard]] QPixmap themed_artwork_placeholder(const QWidget& styled, int size);
 void apply_theme(Theme theme);
-void apply_theme(const ThemeColors& colors);
+void apply_theme(const ThemeColors& colors, const ThemeStyle& style = {});
 
 } // namespace wiola::gui
