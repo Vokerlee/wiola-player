@@ -22,6 +22,8 @@
 
 #include <gtest/gtest.h>
 
+#include <set>
+
 namespace {
 
 using namespace wiola;
@@ -103,6 +105,58 @@ TEST(SessionDocuments, EmptyOptionalSelectionsRemainEmptyInAnOwnedSnapshot)
     });
 
     EXPECT_EQ(state, before);
+}
+
+TEST(SessionDocuments, DocumentIdentitySeparatesKindsAndRejectsEmptyPersistentIds)
+{
+    const library::PlaylistId playlist_id{"same"};
+    const library::WorkspaceId workspace_id{"same"};
+    const auto queue = gui::DocumentId::queue();
+    const auto playlist = gui::DocumentId::playlist(playlist_id);
+    const auto workspace = gui::DocumentId::workspace(workspace_id);
+
+    EXPECT_TRUE(queue.valid());
+    EXPECT_TRUE(queue.is_queue());
+    EXPECT_EQ(queue.playlist(), nullptr);
+    EXPECT_EQ(queue.workspace(), nullptr);
+    EXPECT_TRUE(playlist.valid());
+    EXPECT_FALSE(playlist.is_queue());
+    ASSERT_NE(playlist.playlist(), nullptr);
+    EXPECT_EQ(*playlist.playlist(), playlist_id);
+    EXPECT_EQ(playlist.workspace(), nullptr);
+    EXPECT_TRUE(workspace.valid());
+    EXPECT_FALSE(workspace.is_queue());
+    ASSERT_NE(workspace.workspace(), nullptr);
+    EXPECT_EQ(*workspace.workspace(), workspace_id);
+    EXPECT_EQ(workspace.playlist(), nullptr);
+    EXPECT_FALSE(gui::DocumentId::playlist({}).valid());
+    EXPECT_FALSE(gui::DocumentId::workspace({}).valid());
+
+    const std::set documents{queue, playlist, workspace, gui::DocumentId::playlist(playlist_id)};
+    EXPECT_EQ(documents.size(), 3);
+}
+
+TEST(SessionDocuments, ColumnLayoutsAndWorkspaceSelectionsRemainIndependentInSnapshots)
+{
+    gui::SessionDocuments session;
+    const auto document = gui::DocumentId::workspace(library::WorkspaceId{"folder"});
+    auto& browser = session.browsers[document];
+    const gui::WorkspaceTrackId first{{"folder"}, {"a"}};
+    const gui::WorkspaceTrackId second{{"folder"}, {"b"}};
+    browser.selected = {second, first};
+    browser.current = first;
+    browser.anchor = second;
+    browser.columns[gui::CustomTagColumn{"mood"}] = {.width = 150, .order = 2, .visible = false};
+    const auto snapshot = session;
+
+    session.remap_queue({});
+    EXPECT_EQ(session, snapshot);
+    EXPECT_NE(first, second);
+    EXPECT_LT(first, second);
+
+    browser.columns[gui::CustomTagColumn{"mood"}].visible = true;
+    EXPECT_NE(session, snapshot);
+    EXPECT_FALSE(snapshot.browsers.at(document).columns.at(gui::CustomTagColumn{"mood"}).visible);
 }
 
 } // namespace

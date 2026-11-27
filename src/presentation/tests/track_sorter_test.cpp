@@ -27,6 +27,10 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
+#include <string>
+#include <vector>
+
 namespace {
 
 using wiola::gui::TrackSortDirection;
@@ -133,6 +137,53 @@ TEST(TrackSorter, PreparesEachSortValueOncePerRowInsteadOfOncePerComparison)
     EXPECT_TRUE(gui::sorted_rows(rows, nullptr, {key(TrackSortField::title)}, nullptr,
         cancelled.get_token())
             .empty());
+}
+
+TEST(TrackSorter, UsesTitleAndOccurrenceIdentityWhenPathsAndSortValuesTie)
+{
+    using namespace wiola;
+
+    gui::TrackRow first;
+    first.id = library::PlaylistEntryId{"a"};
+    first.location = "same.flac";
+    first.metadata.title = "Alpha";
+    auto second = first;
+    second.id = library::PlaylistEntryId{"b"};
+    auto later_title = first;
+    later_title.id = library::PlaylistEntryId{"c"};
+    later_title.metadata.title = "Zulu";
+    const std::vector source{second, later_title, first};
+
+    EXPECT_EQ(gui::sorted_rows(source, nullptr, {key(TrackSortField::artist)}),
+        (std::vector{first, second, later_title}));
+    EXPECT_EQ(gui::sorted_rows(source, nullptr, {TrackSortKey::for_tag("")}),
+        (std::vector{first, second, later_title}));
+    EXPECT_EQ(gui::sorted_rows({second, first, second}, nullptr, {}),
+        (std::vector{first, second, second}));
+    EXPECT_EQ(source, (std::vector{second, later_title, first}));
+}
+
+TEST(TrackSorter, RetainsRowsWithEqualOrAbsentDurationsInDeterministicOrder)
+{
+    using namespace wiola;
+
+    gui::TrackRow first;
+    first.id = engine::QueueEntryId{1};
+    first.location_key = "a";
+    auto second = first;
+    second.id = engine::QueueEntryId{2};
+    second.location_key = "b";
+
+    for (const auto duration : {std::optional<units::Time>{}, std::optional{units::Time{3}}}) {
+        first.metadata.duration = duration;
+        second.metadata.duration = duration;
+        for (const auto direction :
+            {TrackSortDirection::ascending, TrackSortDirection::descending}) {
+            EXPECT_EQ(gui::sorted_rows({second, first}, nullptr,
+                          {key(TrackSortField::duration, direction)}),
+                (std::vector{first, second}));
+        }
+    }
 }
 
 } // namespace
