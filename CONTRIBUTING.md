@@ -8,13 +8,13 @@
 | Compiler | GCC 13 or Clang 17 | `g++`, C++23 |
 | Qt | 6, Widgets | `qt6-base-dev` |
 
-The ordinary GUI build needs an installed Qt. Portable component builds below do not.
+The ordinary GUI build uses an installed Qt and standard CMake commands; it does not build a Qt SDK or require Python. Python is used for optional developer formatting/coverage tools and the special Windows/TSan SDK recipes. Portable component builds below need no Qt.
 FFmpeg configuration lives in cmake/ffmpeg.cmake; miniaudio and test-only GoogleTest are fetched at the versions pinned in cmake/dependencies.cmake.
 
 ### Linux
 
 ```bash
-sudo apt install cmake g++ qt6-base-dev
+sudo apt install cmake g++ make git qt6-base-dev qt6-qpa-plugins
 
 cmake --preset linux                   # configure into build/
 cmake --build --preset linux           # build/bin/wiola-player
@@ -30,14 +30,24 @@ so configure from the repository root as above.
 
 ### Portable components
 
-Configure only an existing foundation/media component when working without player SDKs:
+Configure the component you are changing without preparing player SDKs:
 
 ```bash
 cmake -S . -B build-components -DWIOLA_COMPONENTS=media -DBUILD_TESTING=OFF
 cmake --build build-components
 ```
 
-Supported selections are borrowed_reference, quantities, media, audio and playback; semicolon-separated combinations are accepted. The component build skips Qt, FFmpeg and miniaudio preparation. With tests enabled, the selected component suites use the existing pinned GoogleTest dependency. Empty WIOLA_COMPONENTS retains the ordinary presets. [CMake component selection](cmake/components.cmake) defines scope; each public component has a relocated installed-consumer test. The playback selection currently owns its public values and private buffering; Session orchestration remains under engine.
+Selections are `borrowed_reference`, `quantities`, `media`, `audio`, `playback`, `library`, `library_persistence`, `playlist_commands`, `metadata_edits`, `workspace`, and `playback_service`. Semicolon-separated combinations are accepted; CMake includes their required dependencies automatically. These builds skip Qt, FFmpeg and miniaudio preparation. With tests enabled, selected suites use the pinned GoogleTest dependency (or an installed GTest package). Empty `WIOLA_COMPONENTS` selects the full player.
+
+For example, to test playback without frontend SDKs:
+
+```bash
+cmake -S . -B build-playback -DWIOLA_COMPONENTS=playback
+cmake --build build-playback --parallel 4
+ctest --test-dir build-playback --output-on-failure
+```
+
+[Component selection](cmake/components.cmake) defines the supported names and dependency closure. Use `cmake --list-presets` to inspect the ordinary full-player configurations. CMake GUI/IDE users can set the same cache options directly; presets are optional.
 
 ### Windows
 
@@ -92,8 +102,9 @@ skips fetching GoogleTest.
 `Could not find a package configuration file provided by "Qt6"` means Qt is missing: install
 `qt6-base-dev` for the linux preset, or set `QT_MINGW_ROOT` for the windows one.
 
-Changing the compiler or `QT_MINGW_ROOT` after a successful configure does nothing, because both
-are already recorded in the cache. Delete the build directory and configure again.
+Choose the compiler before first configuration (`CXX=clang++-18 cmake ...`). When changing a compiler, toolchain, or Qt SDK, use a new build directory or `cmake --fresh` with the desired options; cached settings belong to the previous configuration.
+
+Configuration fetches miniaudio and, when needed, GoogleTest; building the full player also downloads and compiles the pinned FFmpeg source. Those first builds need network access. Portable components configured with `-DBUILD_TESTING=OFF` need no fetched SDKs. Existing dependency sources can be supplied with standard `FETCHCONTENT_SOURCE_DIR_MINIAUDIO` / `FETCHCONTENT_SOURCE_DIR_GOOGLETEST` cache options for offline development.
 
 ## Source file headers
 

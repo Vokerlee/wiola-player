@@ -10,7 +10,17 @@ if(NOT WIOLA_COMPONENT_BUILD)
     include(ffmpeg)
 
     if(WIOLA_BUILD_GUI)
-        find_package(Qt6 REQUIRED COMPONENTS Widgets)
+        find_package(Qt6 QUIET COMPONENTS Widgets)
+
+        if(NOT Qt6_FOUND)
+            message(
+                FATAL_ERROR
+                "Qt6 Widgets was not found. Install qt6-base-dev for a native Linux build, "
+                "set QT_MINGW_ROOT for the Windows preset, or select a portable component "
+                "with -DWIOLA_COMPONENTS=media to work without Qt. "
+                "For another Qt installation, set CMAKE_PREFIX_PATH to its prefix."
+            )
+        endif()
     endif()
 
     set(MINIAUDIO_NO_LIBVORBIS ON)

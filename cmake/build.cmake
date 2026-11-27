@@ -1,6 +1,25 @@
 # Shared compiler controls and thin declarations for internal implementations and tests.
 # Each source owner declares its API headers and actual dependencies.
 
+# Diagnose unsupported compilers before fetching or configuring external SDKs.
+if(
+    CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13
+)
+    message(
+        FATAL_ERROR
+        "Wiola needs GCC 13 or newer. Select it with CXX before configuring a fresh build directory."
+    )
+elseif(
+    CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 17
+)
+    message(
+        FATAL_ERROR
+        "Wiola needs Clang 17 or newer. Select it with CXX before configuring a fresh build directory."
+    )
+endif()
+
 # A build with no type gets no optimisation at all. That is not a neutral default here: the
 # decoder feeds a callback that must answer within a device period, and unoptimised it runs
 # several times slower. Anyone who names a type still gets what they asked for.
