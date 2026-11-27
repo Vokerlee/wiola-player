@@ -4,7 +4,10 @@ wiola_add_library(
     LIBS wiola::qt_delivery
 )
 
-target_link_libraries(wiola_workspace_scans PUBLIC Qt6::Core wiola_app)
+target_link_libraries(
+    wiola_workspace_scans
+    PUBLIC Qt6::Core wiola_app wiola::shared_callback
+)
 
 wiola_add_library(
     wiola_media_revisions
@@ -63,7 +66,10 @@ wiola_add_library(
 
 target_link_libraries(wiola_metadata_writes PRIVATE wiola::local_media)
 
-target_link_libraries(wiola_metadata_writes PUBLIC Qt6::Core wiola_app)
+target_link_libraries(
+    wiola_metadata_writes
+    PUBLIC Qt6::Core wiola_app wiola::shared_callback
+)
 
 wiola_add_library(
     wiola_library_session
@@ -72,8 +78,6 @@ wiola_add_library(
         wiola_library_persistence
         wiola::file_fingerprint
         wiola_media_revisions
-        wiola_metadata_writes
-        wiola_workspace_scans
         wiola_workspace_watcher
         wiola::qt_paths
 )
@@ -88,6 +92,8 @@ target_link_libraries(
         wiola::qt_library_store
         wiola::qt_delivery
         wiola::playlist_commands
+        wiola_metadata_writes
+        wiola_workspace_scans
 )
 
 wiola_add_library(

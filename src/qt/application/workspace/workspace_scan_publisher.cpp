@@ -31,11 +31,11 @@ WorkspaceScanPublisher::WorkspaceScanPublisher(QObject& context, Observer observ
     WorkspaceScanScheduling policy)
     : delivery_{context}
     , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
-    , observer_{std::make_shared<Observer>(std::move(observer))}
+    , observer_{std::move(observer)}
     , policy_{std::move(policy)}
 {
     WorkspaceScanner validate{policy_.scan};
-    if (!*observer_ || policy_.max_active == 0 || policy_.max_active > 8 ||
+    if (!observer_ || policy_.max_active == 0 || policy_.max_active > 8 ||
         policy_.max_pending == 0 || policy_.max_pending > 64)
         throw std::invalid_argument{"invalid scan scheduling policy"};
 }
@@ -198,11 +198,10 @@ void WorkspaceScanPublisher::receive(WorkspaceScanBatch batch)
     }
 
     const auto lifetime = lifetime_;
-    const auto observer = observer_;
 
     if (const auto latest = generations_.find(batch.workspace);
         latest != generations_.end() && latest->second == batch.generation)
-        (*observer)(std::move(batch));
+        observer_(std::move(batch));
 
     if (finished && lifetime->owner)
         lifetime->owner->pump();
