@@ -65,8 +65,8 @@ TEST(NowPlayingDocument, PresentsTheActualEngineQueueAndCurrentTrack)
     ASSERT_NE(table, nullptr);
     ASSERT_EQ(table->model()->rowCount(), 2);
 
-    EXPECT_EQ(heading->text(), "Now Playing");
-    EXPECT_EQ(table->accessibleName(), "Now Playing tracks");
+    EXPECT_EQ(heading->text(), "Play queue");
+    EXPECT_EQ(table->accessibleName(), "Play queue tracks");
     EXPECT_FALSE(
         table->model()->data(table->model()->index(0, 1), Qt::FontRole).value<QFont>().bold()
     );

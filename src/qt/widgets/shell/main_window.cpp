@@ -329,7 +329,6 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         show_status(ui_preferences_.restore_error() == app::SessionStateError::unsupported_version
                 ? "View preferences use a newer version; the saved file was retained"
                 : "Could not restore all view preferences; a usable session was retained");
-    const auto selected_layout = layout_choice_name(layout_session_->choice());
     if (layout_session_->restore_error() != LayoutSessionError::none)
         show_status("Could not restore the saved layout; a usable layout was retained");
 
@@ -379,41 +378,16 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         [host = document_host_] { static_cast<void>(host->activate(DocumentId::queue())); });
     view->addSeparator();
     panels_->add_menu_actions(*view);
-    QAction* classic = view->addAction("Classic");
-    QAction* library = view->addAction("Library Focus");
-    auto* presets = new QActionGroup{this};
-    layout_presets_ = presets;
-    classic->setData("classic");
-    library->setData("library-focus");
-    presets->setExclusive(true);
-
-    for (QAction* preset : {classic, library}) {
-        preset->setCheckable(true);
-        presets->addAction(preset);
-    }
-
-    classic->setChecked(selected_layout == "classic");
-    library->setChecked(selected_layout == "library-focus");
-
-    const auto choose_layout = [this](const QString& choice) {
-        static_cast<void>(install_layout(layout_for(choice),
-            parse_layout_choice(choice).value_or(LayoutChoice::classic), true));
-        show_layout_choice();
-    };
-
-    connect(classic, &QAction::triggered, this, [choose_layout] { choose_layout("classic"); });
-    connect(library, &QAction::triggered, this,
-        [choose_layout] { choose_layout("library-focus"); });
-
     view->addSeparator();
+    auto* theme_menu = view->addMenu("Theme");
     auto* themes = new QActionGroup{this};
     themes->setExclusive(true);
     for (const auto& preset : theme_presets()) {
-        auto* item = themes->addAction(view->addAction(QString::fromLatin1(preset.label)));
+        auto* item = themes->addAction(theme_menu->addAction(QString::fromLatin1(preset.label)));
         item->setCheckable(true);
         item->setData(static_cast<int>(preset.choice));
     }
-    auto* custom = themes->addAction(view->addAction("Custom theme"));
+    auto* custom = themes->addAction(theme_menu->addAction("Use saved custom theme"));
     custom->setCheckable(true);
     custom->setData(static_cast<int>(ThemeChoice::custom));
     const auto reflect_theme = [this, themes] {
@@ -469,7 +443,8 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
                 : "Could not export the layout");
     });
 
-    QAction* edit_theme = tools->addAction("Edit theme...");
+    theme_menu->addSeparator();
+    QAction* edit_theme = theme_menu->addAction("Customize theme...");
     connect(edit_theme, &QAction::triggered, this, [this] {
         auto* editor = new ThemeEditor{theme_->colors(), this};
         editor->setAttribute(Qt::WA_DeleteOnClose);
@@ -480,7 +455,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         });
         editor->show();
     });
-    auto* import_theme = tools->addAction("Import theme...");
+    auto* import_theme = theme_menu->addAction("Import theme...");
     connect(import_theme, &QAction::triggered, this, [this] {
         const QPointer<MainWindow> alive{this};
         const auto path = dialogs_->file(PlayerFileChoice::import_theme);
@@ -492,7 +467,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
             theme_->import_json(read.bytes) != ThemeError::none)
             show_status("Could not import the theme; the current theme was retained");
     });
-    auto* export_theme = tools->addAction("Export theme...");
+    auto* export_theme = theme_menu->addAction("Export theme...");
     connect(export_theme, &QAction::triggered, this, [this] {
         const QPointer<MainWindow> alive{this};
         const auto definition = theme_->export_json();
@@ -559,15 +534,6 @@ void MainWindow::save_window_state()
         state.splitters = std::move(splitters);
         state.layout_identity = layout_choice_name(layout_session_->choice());
     });
-}
-
-void MainWindow::show_layout_choice()
-{
-    if (!layout_presets_ || !layout_session_)
-        return;
-    const auto key = layout_choice_name(layout_session_->choice());
-    for (auto* action : layout_presets_->actions())
-        action->setChecked(action->data().toString() == key);
 }
 
 bool MainWindow::switch_layout(const LayoutDocument& document)
@@ -697,7 +663,6 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
             (belongs_to_root(previous_focus) || footer->isAncestorOf(previous_focus)))
             previous_focus->setFocus(Qt::OtherFocusReason);
     }
-    show_layout_choice();
     if (persist)
         save_window_state();
     return true;

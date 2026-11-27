@@ -43,7 +43,6 @@
 class QSplitter;
 class QTabWidget;
 class QCloseEvent;
-class QActionGroup;
 
 namespace wiola::app {
 
@@ -120,7 +119,6 @@ protected:
 
 private:
     void save_window_state();
-    void show_layout_choice();
     bool install_layout(const LayoutDocument& document, LayoutChoice choice, bool persist);
     void show_workspace_navigation();
     void apply_library_changes(const library::LibraryChangeBatch& batch);
@@ -184,7 +182,6 @@ private:
     PlayerActions actions_;
     ViewRegistry views_;
     std::unique_ptr<LayoutSession> layout_session_;
-    QActionGroup* layout_presets_{nullptr};
 
     /// The file a run leaves things in.
     QSettings settings_;

@@ -39,6 +39,7 @@
 #include <qt/widgets/appearance/theme_editor.hpp>
 #include <qt/widgets/layout/classic_layout.hpp>
 #include <qt/widgets/layout/editor/layout_editor_dialog.hpp>
+#include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/tracks/tag_filter_panel.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/qt/paths.hpp>
@@ -102,7 +103,13 @@ QAction* action(QMenu& menu, const QString& text)
     const auto found = std::ranges::find_if(actions,
         [&text](const QAction* candidate) { return candidate->text() == text; });
 
-    return found == actions.end() ? nullptr : *found;
+    if (found != actions.end())
+        return *found;
+    for (auto* candidate : actions)
+        if (candidate->menu())
+            if (auto* nested = action(*candidate->menu(), text))
+                return nested;
+    return nullptr;
 }
 
 QPushButton* button(QMainWindow& window, const QString& text)
@@ -213,7 +220,7 @@ TEST_F(MainWindowShell, DocumentTabsKeepNowPlayingIndependentOfTheVisibleDocumen
     ASSERT_NE(play_button, nullptr);
     ASSERT_EQ(documents->count(), 1);
 
-    EXPECT_EQ(documents->tabText(0), "Now Playing");
+    EXPECT_EQ(documents->tabText(0), "Play queue");
     EXPECT_EQ(documents->indexOf(now_playing), 0);
     EXPECT_EQ(documents->currentWidget(), now_playing);
     EXPECT_FALSE(play_button->isEnabled());
@@ -512,7 +519,7 @@ TEST_F(MainWindowShell, RejectedLayoutKeepsTheCurrentHierarchyAndDocuments)
     EXPECT_EQ(documents->currentWidget(), active);
 }
 
-TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
+TEST_F(MainWindowShell, ViewGroupsThemesAndKeepsCustomLayoutsWithoutPresetSelectors)
 {
     wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
         wiola::codec::ffmpeg::make_provider()};
@@ -538,19 +545,28 @@ TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
     QMenu* view = menu(window, "&View");
     ASSERT_NE(view, nullptr);
     EXPECT_EQ(action(*view, "Queue Focus"), nullptr);
-    QAction* library = action(*view, "Library Focus");
-    QAction* classic = action(*view, "Classic");
-    ASSERT_NE(library, nullptr);
-    ASSERT_NE(classic, nullptr);
-
-    library->trigger();
+    EXPECT_EQ(action(*view, "Library Focus"), nullptr);
+    EXPECT_EQ(action(*view, "Classic"), nullptr);
+    auto* theme = action(*view, "Theme");
+    ASSERT_NE(theme, nullptr);
+    ASSERT_NE(theme->menu(), nullptr);
+    for (const auto* command :
+        {"Use saved custom theme", "Customize theme...", "Import theme...", "Export theme..."})
+        EXPECT_NE(action(*theme->menu(), command), nullptr);
+    for (const auto& preset : wiola::gui::theme_presets()) {
+        EXPECT_NE(action(*theme->menu(), preset.label), nullptr);
+        for (auto* top : view->actions())
+            EXPECT_NE(top->text(), preset.label);
+    }
+    EXPECT_NE(action(*menu(window, "&Tools"), "Edit button layout..."), nullptr);
+    ASSERT_TRUE(window.switch_layout(wiola::gui::library_focus_layout_document()));
 
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_FALSE(navigation->isHidden());
     EXPECT_TRUE(window.findChild<QDockWidget*>("inspectorDock")->isHidden());
     EXPECT_TRUE(area->isHidden());
 
-    classic->trigger();
+    ASSERT_TRUE(window.switch_layout(wiola::gui::classic_layout_document()));
 
     EXPECT_EQ(documents->currentWidget(), active);
     EXPECT_FALSE(navigation->isHidden());
@@ -560,9 +576,11 @@ TEST_F(MainWindowShell, FocusedLayoutsCanRoundTripWithoutReplacingDocuments)
     EXPECT_EQ(window.findChild<QDockWidget*>("inspectorDock")->widget(), inspector);
 }
 
-TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
+TEST_F(MainWindowShell, RestoresLegacyLayoutChoiceIndependentlyOfLibraryDocuments)
 {
     {
+        QSettings legacy{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+        legacy.setValue("layout/preset", "library-focus");
         wiola::app::PlaybackService window_playback{wiola::testing::passive_output,
             wiola::codec::ffmpeg::make_provider()};
         wiola::app::LibrarySession window_library{wiola::codec::ffmpeg::make_provider()};
@@ -575,10 +593,7 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         ASSERT_NE(manager, nullptr);
         ASSERT_TRUE(manager->create("Persistent"));
 
-        action(*menu(window, "&View"), "Library Focus")->trigger();
-
-        QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
-        EXPECT_FALSE(settings.contains("layout/preset"));
+        EXPECT_EQ(action(*menu(window, "&View"), "Library Focus"), nullptr);
     }
 
     {
@@ -594,7 +609,7 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
         EXPECT_EQ(documents->tabText(1), "Persistent");
         EXPECT_NE(window.findChild<QWidget*>("libraryFocusRoot"), nullptr);
         EXPECT_FALSE(window.findChild<QDockWidget*>("libraryDock")->isHidden());
-        EXPECT_TRUE(action(*menu(window, "&View"), "Library Focus")->isChecked());
+        EXPECT_EQ(action(*menu(window, "&View"), "Library Focus"), nullptr);
     }
 
     wiola::app::PlaybackService restored_playback{wiola::testing::passive_output,
@@ -609,7 +624,7 @@ TEST_F(MainWindowShell, RestoresLayoutChoiceIndependentlyOfLibraryDocuments)
     EXPECT_EQ(documents->tabText(1), "Persistent");
     EXPECT_NE(restored.findChild<QWidget*>("libraryFocusRoot"), nullptr);
     EXPECT_FALSE(restored.findChild<QWidget*>("libraryNavigation")->isHidden());
-    EXPECT_TRUE(action(*menu(restored, "&View"), "Library Focus")->isChecked());
+    EXPECT_EQ(action(*menu(restored, "&View"), "Library Focus"), nullptr);
 }
 
 TEST_F(MainWindowShell, RetiredQueueFocusSettingsOpenClassicWithBottomTransport)
@@ -625,7 +640,7 @@ TEST_F(MainWindowShell, RetiredQueueFocusSettingsOpenClassicWithBottomTransport)
         wiola::gui::MainWindow window{playback, library, preferences};
         EXPECT_NE(window.findChild<QWidget*>("classicRoot"), nullptr);
         EXPECT_EQ(action(*menu(window, "&View"), "Queue Focus"), nullptr);
-        EXPECT_TRUE(action(*menu(window, "&View"), "Classic")->isChecked());
+        EXPECT_EQ(action(*menu(window, "&View"), "Classic"), nullptr);
     }
 
     auto legacy = wiola::gui::classic_layout_document();
@@ -652,7 +667,7 @@ TEST_F(MainWindowShell, RetiredQueueFocusSettingsOpenClassicWithBottomTransport)
     ASSERT_NE(transport, nullptr);
     ASSERT_NE(tabs, nullptr);
     EXPECT_GT(transport->mapTo(&restored, QPoint{}).y(), tabs->mapTo(&restored, QPoint{}).y());
-    EXPECT_TRUE(action(*menu(restored, "&View"), "Classic")->isChecked());
+    EXPECT_EQ(action(*menu(restored, "&View"), "Classic"), nullptr);
     EXPECT_EQ(action(*menu(restored, "&View"), "Queue Focus"), nullptr);
 }
 
@@ -688,7 +703,7 @@ TEST_F(MainWindowShell, AppliesAndRestoresAValidatedCustomTheme)
 
         wiola::app::PlaybackPreferences window_preferences{window_playback};
         wiola::gui::MainWindow window{window_playback, window_library, window_preferences};
-        action(*menu(window, "&Tools"), "Edit theme...")->trigger();
+        action(*menu(window, "Theme"), "Customize theme...")->trigger();
 
         auto* dialog = window.findChild<QDialog*>("themeEditor");
         ASSERT_NE(dialog, nullptr);
@@ -932,7 +947,7 @@ TEST_F(MainWindowShell,
     wiola::app::PlaybackPreferences preferences{playback};
     wiola::gui::MainWindow window{playback, library, preferences};
     for (const auto& color : {QColor{"#f0f0f0"}, QColor{"#eeeeee"}}) {
-        action(*menu(window, "&Tools"), "Edit theme...")->trigger();
+        action(*menu(window, "Theme"), "Customize theme...")->trigger();
         auto* dialog = window.findChild<QDialog*>("themeEditor");
         ASSERT_NE(dialog, nullptr);
         auto* editor = static_cast<wiola::gui::ThemeEditor*>(dialog);
@@ -956,9 +971,9 @@ TEST_F(MainWindowShell,
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     }
     action(*menu(window, "&View"), "Dark theme")->trigger();
-    action(*menu(window, "&View"), "Custom theme")->trigger();
+    action(*menu(window, "&View"), "Use saved custom theme")->trigger();
     EXPECT_EQ(window.palette().color(QPalette::Window), QColor{"#eeeeee"});
-    EXPECT_TRUE(action(*menu(window, "&View"), "Custom theme")->isChecked());
+    EXPECT_TRUE(action(*menu(window, "&View"), "Use saved custom theme")->isChecked());
 }
 
 TEST_F(MainWindowShell, AppearancePresetsPreserveCustomLayoutAndReadableMovablePanels)
@@ -1254,7 +1269,8 @@ TEST_F(MainWindowShell, PlaybackFooterSurvivesCustomPlacementOmissionAndReturnTo
     ASSERT_NE(seek, nullptr);
     EXPECT_FALSE(window.import_layout("invalid"));
     EXPECT_TRUE(footer->isAncestorOf(transport));
-    for (const auto* preset : {"Library Focus", "Classic"}) {
+    for (const auto& preset :
+        {wiola::gui::library_focus_layout_document(), wiola::gui::classic_layout_document()}) {
         auto custom = wiola::gui::classic_layout_document();
         custom.root.id = "customPlaybackRoot";
         ASSERT_TRUE(window.switch_layout(custom));
@@ -1270,7 +1286,7 @@ TEST_F(MainWindowShell, PlaybackFooterSurvivesCustomPlacementOmissionAndReturnTo
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         ASSERT_NE(transport, nullptr);
         EXPECT_TRUE(transport->isHidden());
-        action(*menu(window, "&View"), preset)->trigger();
+        ASSERT_TRUE(window.switch_layout(preset));
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         QApplication::processEvents();
         ASSERT_NE(transport, nullptr);
@@ -1312,7 +1328,7 @@ TEST_F(MainWindowShell, PlaybackOnlyLayoutRemainsAFullWidthFooterAndCanRestoreDo
     EXPECT_NE(window.centralWidget(), transport);
     EXPECT_TRUE(footer->isAncestorOf(transport));
     EXPECT_TRUE(footer->isVisible());
-    action(*menu(window, "&View"), "Classic")->trigger();
+    ASSERT_TRUE(window.switch_layout(wiola::gui::classic_layout_document()));
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     EXPECT_EQ(window.findChild<QWidget*>("documentTabs"), tabs);
     EXPECT_TRUE(tabs->isVisible());
@@ -1478,6 +1494,13 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     auto* second_view = host->registry().playlist(second);
     ASSERT_NE(second_view, nullptr);
     EXPECT_FALSE(host->active_playlist());
+    EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
+    window.refresh();
+    EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
+    ASSERT_TRUE(host->activate(gui::DocumentId::playlist(first)));
+    EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
+    ASSERT_TRUE(host->activate(gui::DocumentId::playlist(second)));
+    EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
     EXPECT_EQ(heading(first_view), "First list");
     EXPECT_EQ(heading(second_view), "Second list");
     EXPECT_FALSE(navigation->currentItem()->font(0).bold());
@@ -1563,8 +1586,9 @@ TEST_F(MainWindowShell, OptionalStopControlCanBeAddedToACustomLayoutAndRetiredOn
     custom.node_count = wiola::gui::layout_node_count(custom.root);
     ASSERT_TRUE(window.switch_layout(custom));
     EXPECT_FALSE(stop->isHidden());
-    for (const auto* preset : {"Classic", "Library Focus"}) {
-        action(*menu(window, "&View"), preset)->trigger();
+    for (const auto& preset :
+        {wiola::gui::classic_layout_document(), wiola::gui::library_focus_layout_document()}) {
+        ASSERT_TRUE(window.switch_layout(preset));
         QApplication::processEvents();
         EXPECT_TRUE(stop->isHidden());
         EXPECT_NE(action(*menu(window, "&Playback"), "Stop"), nullptr);

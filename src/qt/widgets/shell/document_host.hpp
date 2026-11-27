@@ -78,7 +78,6 @@ private:
     DocumentRegistry registry_;
     NowPlayingDocument* queue_;
     bool restoring_{true};
-    bool queue_requested_{};
     bool updating_activity_{};
     QIcon activity_icon_;
     qint64 activity_palette_{};
