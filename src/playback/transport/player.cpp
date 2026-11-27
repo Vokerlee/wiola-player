@@ -27,7 +27,7 @@
 namespace wiola::engine {
 
 Player::Player(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
-    audio::Output& output, TransportConfig config)
+    core::Lease<audio::Output> output, TransportConfig config)
     : output_{output}
     , spec_{source->spec()}
     , length_{source->duration_frames()}
@@ -76,7 +76,7 @@ std::optional<units::Time> Player::total_time() const noexcept
 
 units::Time Player::time_played() const noexcept
 {
-    return spec_.time_per(worker_.position(output_.frames_played()));
+    return spec_.time_per(worker_.position(output_->frames_played()));
 }
 
 bool Player::playing() const noexcept

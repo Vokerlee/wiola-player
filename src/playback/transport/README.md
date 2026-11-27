@@ -18,7 +18,7 @@ Start/restart and joining belong to one lifecycle owner. Pause/resume/stop/seek 
 
 The worker validates scheduling and chunk policy once at construction; decode storage separately checks conversion from frames to samples before allocating. The lifecycle caller alone begins a new execution. Once it has checked for an inactive state, pause/resume cannot make that state active so a second active-state refusal would be redundant. Restart joins the previous execution even when the caller did not explicitly wait for it.
 
-Only the worker seeks, reads, primes or starts/stops output. `DecodeLoop::run` catches unexpected collaborator exceptions, settles `faulted`, and quiesces output on every exit. Already accepted terminal reasons remain authoritative. The worker joins before decoder/connection destruction; the borrowed output and queue outlive the player.
+Only the worker seeks, reads, primes or starts/stops output. `DecodeLoop::run` catches unexpected collaborator exceptions, settles `faulted`, and quiesces output on every exit. Already accepted terminal reasons remain authoritative. The worker joins before decoder/connection destruction; the connection and Player retain the output node, while the containing pipeline keeps queue storage alive until the worker has joined.
 
 `Playhead` has one movable applier. Its mailbox serializes requests, claims and position/epoch observations; submitted frames are worker-owned. `SeekOperation` quiesces output, changes the decoder, acknowledges an achieved position and primes the new epoch. Failures retain the actual decoder position rather than publishing an unachieved request.
 

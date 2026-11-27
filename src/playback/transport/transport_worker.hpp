@@ -49,7 +49,7 @@ public:
     using ThreadFactory = std::function<std::jthread(std::function<void()>)>;
 
     TransportWorker(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueue::Producer buffer,
-        audio::Output& output, ThreadFactory launch = {}, TransportConfig config = {});
+        core::Lease<audio::Output> output, ThreadFactory launch = {}, TransportConfig config = {});
 
     TransportWorker(const TransportWorker&) = delete;
     TransportWorker& operator=(const TransportWorker&) = delete;

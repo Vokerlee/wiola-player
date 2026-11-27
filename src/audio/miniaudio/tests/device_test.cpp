@@ -82,62 +82,62 @@ private:
 TEST(Device, ReportsItsSpecBeforeStarting)
 {
     SineSource tone{stereo, 440_Hz};
-    Device device{tone};
+    auto device = wiola::core::Lease<Device>::make(tone);
 
-    EXPECT_EQ(device.spec(), stereo);
-    EXPECT_EQ(device.state(), DeviceState::closed);
-    EXPECT_FALSE(device.running());
-    EXPECT_EQ(device.num_underruns(), 0u);
+    EXPECT_EQ(device->spec(), stereo);
+    EXPECT_EQ(device->state(), DeviceState::closed);
+    EXPECT_FALSE(device->running());
+    EXPECT_EQ(device->num_underruns(), 0u);
 }
 
 /// Stopping gives back the callback, not the output, so starting again does not reopen anything.
 TEST(Device, KeepsTheOutputBetweenStops)
 {
     SineSource tone{stereo, 440_Hz};
-    Device device{tone};
-    auto control{device.control()};
+    auto device = wiola::core::Lease<Device>::make(tone);
+    auto control{wiola::audio::Output::acquire(device)};
 
     if (!control.start())
         GTEST_SKIP() << "no playback device on this machine";
 
-    EXPECT_EQ(device.state(), DeviceState::running);
+    EXPECT_EQ(device->state(), DeviceState::running);
 
     control.stop();
-    EXPECT_EQ(device.state(), DeviceState::stopped);
+    EXPECT_EQ(device->state(), DeviceState::stopped);
 
     ASSERT_TRUE(control.start());
-    EXPECT_EQ(device.state(), DeviceState::running);
+    EXPECT_EQ(device->state(), DeviceState::running);
 
     control.stop();
     control.stop();
-    EXPECT_EQ(device.state(), DeviceState::stopped);
+    EXPECT_EQ(device->state(), DeviceState::stopped);
 }
 
 TEST(Device, AsksItsSourceForFramesWhileRunning)
 {
     CountingSource source{stereo, 1.0};
-    Device device{source};
-    auto control{device.control()};
+    auto device = wiola::core::Lease<Device>::make(source);
+    auto control{wiola::audio::Output::acquire(device)};
 
     if (!control.start())
         GTEST_SKIP() << "no playback device on this machine";
 
-    EXPECT_TRUE(device.running());
+    EXPECT_TRUE(device->running());
 
     std::this_thread::sleep_for(std::chrono::milliseconds{120});
     control.stop();
 
-    EXPECT_FALSE(device.running());
+    EXPECT_FALSE(device->running());
     EXPECT_GT(source.num_asked(), 0u);
-    EXPECT_GT(device.frames_played(), wiola::pcm::Frames{});
-    EXPECT_EQ(device.num_underruns(), 0u);
+    EXPECT_GT(device->frames_played(), wiola::pcm::Frames{});
+    EXPECT_EQ(device->num_underruns(), 0u);
 }
 
 TEST(Device, CountsACallbackTheSourceCouldNotFill)
 {
     CountingSource source{stereo, 0.5};
-    Device device{source};
-    auto control{device.control()};
+    auto device = wiola::core::Lease<Device>::make(source);
+    auto control{wiola::audio::Output::acquire(device)};
 
     if (!control.start())
         GTEST_SKIP() << "no playback device on this machine";
@@ -145,8 +145,8 @@ TEST(Device, CountsACallbackTheSourceCouldNotFill)
     std::this_thread::sleep_for(std::chrono::milliseconds{120});
     control.stop();
 
-    EXPECT_GT(device.num_underruns(), 0u);
-    EXPECT_LT(device.frames_played(), stereo.frames_per(source.num_asked()));
+    EXPECT_GT(device->num_underruns(), 0u);
+    EXPECT_LT(device->frames_played(), stereo.frames_per(source.num_asked()));
 }
 
 } // namespace

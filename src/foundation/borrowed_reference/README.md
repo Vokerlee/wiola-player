@@ -12,7 +12,7 @@ stateDiagram-v2
 
 Moving clears the source; copying is forbidden. Dereference requires a nonempty handle and a live external owner. Destruction never destroys the referent. This value has no synchronization and does not extend object lifetime; cross-thread transfer requires the containing protocol's synchronization.
 
-Claim/release operations belong to the setup/owner thread and are not atomic. Moving a handle clears its previous holder; claiming again while it is held returns an inert capability. A concrete handle defines its own forwarding and release behavior. The referent must outlive every handle; no operation acquires shared lifetime or provides worker synchronization.
+Claim/release operations belong to the setup/owner thread and are not atomic. Moving a handle clears its previous holder; claiming again while it is held returns an inert capability. A concrete handle defines its own forwarding and release behavior. The referent must outlive every handle; no operation acquires shared lifetime or provides worker synchronization. Use these borrowed handles inside a structurally owned, nonmoving aggregate that enforces that nesting. Independently retained ports instead use [lifetime leases and lease-backed handles](../lifetime/README.md), as Output control does; wrapping a reference in Borrowed does not solve dangling ownership.
 
 Link `wiola::borrowed_reference` and include `<wiola/foundation/borrowed.hpp>` or `<wiola/foundation/handle.hpp>`. The authored headers are [borrowed.hpp](borrowed.hpp) and [handle.hpp](handle.hpp), beside the component's build definition and tests. Both are self-contained and require only standard C++23. The target provides those qualified includes without exposing the source root.
 

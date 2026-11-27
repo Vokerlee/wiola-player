@@ -108,9 +108,9 @@ OutputSession::Lease::~Lease()
     }
 }
 
-audio::Output& OutputSession::Lease::output() const noexcept
+core::Lease<audio::Output> OutputSession::Lease::output() const noexcept
 {
-    return *stream_->output;
+    return stream_->output;
 }
 
 std::unique_ptr<OutputSession::Lease> OutputSession::prepare(pcm::StreamSpec spec)

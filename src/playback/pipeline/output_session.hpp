@@ -60,7 +60,7 @@ public:
         Lease& operator=(Lease&&) = delete;
         ~Lease();
 
-        [[nodiscard]] audio::Output& output() const noexcept;
+        [[nodiscard]] core::Lease<audio::Output> output() const noexcept;
 
     private:
         friend class OutputSession;

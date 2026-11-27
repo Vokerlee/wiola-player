@@ -14,7 +14,7 @@ wiola_target_headers(
 
 target_link_libraries(
     wiola_audio_output
-    INTERFACE wiola::borrowed_reference wiola::media
+    INTERFACE wiola::borrowed_reference wiola::lifetime wiola::media
 )
 
 add_library(

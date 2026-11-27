@@ -1,6 +1,6 @@
 # Foundation
 
-This grouping contains standard C++ primitives with independent header-only targets. Each owner contains its complete headers, tests and export definition. Borrowed capabilities, dimensional quantities and shared callback identity are separate contracts; neither depends on player policy, a toolkit or a backend. Source headers sit directly in their owning directory. CMake preserves namespaced SDK includes without repeating that namespace as source directories.
+This grouping contains standard C++ primitives with independent header-only targets. Each owner contains its complete headers, tests and export definition. Borrowed capabilities, dimensional quantities, shared callback identity and retained ownership are separate contracts; none depends on player policy, a toolkit or a backend. Source headers sit directly in their owning directory. CMake preserves namespaced SDK includes without repeating that namespace as source directories.
 
 ```mermaid
 flowchart LR
@@ -9,6 +9,7 @@ flowchart LR
   Quantities --> Standard[C++ standard library]
   Borrowed --> Standard[C++ standard library]
   Callback[Shared callback identity] --> Standard
+  Lifetime[Typed lifetime graph] --> Standard
 ```
 
 [Borrowed references and handles](borrowed_reference/README.md) own borrowed storage, exclusive capability transfer, focused tests and one export definition. No foundation implementation selects a GUI, media backend or application policy.

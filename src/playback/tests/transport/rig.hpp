@@ -66,7 +66,7 @@ public:
               *source->spec().checked_frames_at(units::Time{std::chrono::milliseconds{250}})}
         , decoded_{source->spec(), buffer_.consumer()}
         , progress_{decoded_}
-        , output{progress_}
+        , output{wiola::core::Lease<FakeOutput>::make(progress_)}
         , player{std::move(source), buffer_.producer(), output}
     {
     }
@@ -81,7 +81,7 @@ private:
     PlaybackGate progress_;
 
 public:
-    FakeOutput output;
+    wiola::core::Lease<FakeOutput> output = wiola::core::Lease<FakeOutput>::make();
     engine::Player player;
 };
 
