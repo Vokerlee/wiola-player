@@ -37,7 +37,7 @@ cmake -S . -B build-components -DWIOLA_COMPONENTS=media -DBUILD_TESTING=OFF
 cmake --build build-components
 ```
 
-Selections are `borrowed_reference`, `quantities`, `shared_callback`, `media`, `audio`, `playback`, `library`, `library_persistence`, `playlist_commands`, `metadata_edits`, `workspace`, and `playback_service`. Semicolon-separated combinations are accepted; CMake includes their required dependencies automatically. These builds skip Qt, FFmpeg and miniaudio preparation. With tests enabled, selected suites use the pinned GoogleTest dependency (or an installed GTest package). Empty `WIOLA_COMPONENTS` selects the full player.
+Selections are `borrowed_reference`, `quantities`, `shared_callback`, `lifetime`, `media`, `audio`, `playback`, `library`, `library_persistence`, `playlist_commands`, `metadata_edits`, `workspace`, and `playback_service`. Semicolon-separated combinations are accepted; CMake includes their required dependencies automatically. These builds skip Qt, FFmpeg and miniaudio preparation. With tests enabled, selected suites use the pinned GoogleTest dependency (or an installed GTest package). Empty `WIOLA_COMPONENTS` selects the full player.
 
 For example, to test playback without frontend SDKs:
 
