@@ -1,0 +1,73 @@
+name: Thread sanitizer
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    name: test (linux-tsan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CXX: clang++-18
+      WIOLA_GUI_FAILURE_ARTIFACTS: ${{ github.workspace }}/.ci-artifacts/gui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: linux-tsan
+          packages: libglib2.0-dev
+      - name: Identify the instrumented Qt build context
+        id: tsan-qt-context
+        run: |
+          identity="$(python3 -m scripts.qt.tsan --identity)"
+          [[ "$identity" =~ ^[[:xdigit:]]{64}$ ]]
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "workspace=$RUNNER_TEMP/qt-core-tsan" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: tsan-qt
+        with:
+          path: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+          key: qt-core-tsan-${{ runner.os }}-${{ runner.arch }}-${{ steps.tsan-qt-context.outputs.identity }}
+      - name: Build the matching instrumented Qt event dispatcher
+        run: |
+          python3 -m scripts.qt.tsan "$WIOLA_QT_TSAN_WORKSPACE"
+          echo "WIOLA_QT_PLUGIN_PATH=$(qtpaths6 --plugin-dir)" >> "$GITHUB_ENV"
+        env:
+          WIOLA_QT_TSAN_WORKSPACE: ${{ steps.tsan-qt-context.outputs.workspace }}
+      - name: Save the qualified Core before testing
+        if: steps.tsan-qt.outputs.cache-hit != 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+          key: ${{ steps.tsan-qt.outputs.cache-primary-key }}
+      - run: cmake --preset linux-tsan
+      - run: cmake --build --preset linux-tsan -j
+      - run: cmake --build --preset linux-tsan --target wiola_core_adapter_boundary
+      - name: Record the instrumented Qt runtime
+        run: cmake --build --preset linux-tsan --target wiola_verify_tsan_runtime
+        env:
+          WIOLA_QT_CORE_RUNTIME: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+      - name: Run offscreen GUI command journeys
+        run: ctest --preset linux-tsan --no-tests=error --timeout 120 --output-on-failure -R '^(MainWindowTest|DesktopJourney)\.' --repeat until-fail:3
+        env:
+          QT_QPA_PLATFORM: offscreen
+          LD_LIBRARY_PATH: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+          QT_PLUGIN_PATH: ${{ env.WIOLA_QT_PLUGIN_PATH }}
+      - run: ctest --preset linux-tsan --no-tests=error --timeout 120 --repeat until-fail:3
+        env:
+          LD_LIBRARY_PATH: ${{ steps.tsan-qt-context.outputs.workspace }}/runtime
+          QT_PLUGIN_PATH: ${{ env.WIOLA_QT_PLUGIN_PATH }}
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics-linux-tsan
+          path: |
+            build-*/Testing/Temporary
+            build-*/Testing/qt-runtime.txt
+            ${{ env.WIOLA_GUI_FAILURE_ARTIFACTS }}
+            ${{ steps.tsan-qt-context.outputs.workspace }}/runtime/receipt.json
+            ${{ steps.tsan-qt-context.outputs.workspace }}/*.log
+          if-no-files-found: ignore
+          retention-days: 7

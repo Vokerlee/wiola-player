@@ -1,0 +1,21 @@
+name: Repository checks
+
+on:
+  workflow_call:
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python3 -m scripts.formatting format cpp --check
+      - run: python3 -m scripts.formatting format cmake --check
+      - run: python3 -m unittest discover -s scripts -t . -p 'test_*.py'

@@ -1,0 +1,68 @@
+name: Linux
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    name: test (${{ matrix.preset }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      # One sanitizer failing is not a reason to stop hearing from the others.
+      fail-fast: false
+      matrix:
+        preset: [linux-debug, linux-asan]
+    env:
+      CXX: clang++-18
+      WIOLA_GUI_FAILURE_ARTIFACTS: ${{ github.workspace }}/.ci-artifacts/gui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: ${{ matrix.preset }}
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }} -j
+      - run: cmake --build --preset ${{ matrix.preset }} --target wiola_core_adapter_boundary
+      - name: Run offscreen GUI command journeys
+        run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120 --output-on-failure -R '^(MainWindowTest|DesktopJourney)\.'
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - run: ctest --preset ${{ matrix.preset }} --no-tests=error --timeout 120
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics-${{ matrix.preset }}
+          path: |
+            build-*/Testing/Temporary
+            build-*/Testing/qt-runtime.txt
+            ${{ env.WIOLA_GUI_FAILURE_ARTIFACTS }}
+          if-no-files-found: ignore
+          retention-days: 7
+
+  headless:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: headless
+          qt: "false"
+          build-dir: build-headless
+      - run: cmake --preset linux-headless
+      - run: cmake --build --preset linux-headless -j
+      - run: ctest --preset linux-headless --no-tests=error
+
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: linux-release
+          build-dir: build-release
+      - run: cmake --preset linux-release
+      - run: cmake --build --preset linux-release -j

@@ -1,0 +1,94 @@
+name: Windows x64
+
+on:
+  workflow_call:
+
+jobs:
+  windows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      QT_MINGW_ROOT: ${{ github.workspace }}/.qt-mingw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: windows
+          build-dir: build-win-release
+          packages: g++-mingw-w64-x86-64-posix llvm ninja-build curl
+      - name: Identify the Qt SDK toolchain
+        id: qt-context
+        run: |
+          identity="$(cmake -P scripts/qt/windows/context.cmake)"
+          [[ "$identity" =~ ^[[:xdigit:]]{64}$ ]]
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: qt-mingw
+        with:
+          path: ${{ env.QT_MINGW_ROOT }}
+          key: qt-mingw-${{ runner.os }}-${{ runner.arch }}-${{ steps.qt-context.outputs.identity }}-${{ hashFiles('scripts/qt/windows/build.sh', 'scripts/qt/windows/context.cmake', 'cmake/mingw-w64.cmake') }}
+      - name: Build the static Qt SDK outside its install tree
+        if: steps.qt-mingw.outputs.cache-hit != 'true'
+        run: ./scripts/qt/windows/build.sh "$QT_MINGW_ROOT" "$RUNNER_TEMP/qt-mingw-build"
+      - name: Save the installed SDK before building the player
+        if: steps.qt-mingw.outputs.cache-hit != 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.QT_MINGW_ROOT }}
+          key: ${{ steps.qt-mingw.outputs.cache-primary-key }}
+      - run: cmake --preset windows-release -DENABLE_UNIT_TESTS=ON -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST
+      - run: cmake --build --preset windows-release --parallel 4 --target wiola-player gui_desktop_journey_test gui_metadata_file_journey_test
+      - name: Install the native test package
+        run: cmake --install build-win-release --component wiola_desktop_tests --prefix windows-test-package
+      - name: Check static Windows imports
+        run: |
+          imports="$(llvm-objdump -p windows-test-package/bin/wiola-player.exe)"
+          if grep -Eiq 'Qt6.*\.dll|libgcc.*\.dll|libstdc\+\+.*\.dll|libwinpthread.*\.dll|libav.*\.dll|libswresample.*\.dll' <<< "$imports"; then
+            echo "Unexpected non-system runtime import" >&2
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-journeys
+          path: windows-test-package/
+
+  windows-native:
+    needs: windows
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-desktop-journeys
+          path: native-journey
+      - name: Run the packaged C++ tests
+        timeout-minutes: 5
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: windows
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = (Resolve-Path native-journey).Path
+          $env:WIOLA_JOURNEY_MEDIA_DIR = Join-Path $package 'media'
+          $env:WIOLA_TEST_PLAYER = Join-Path $package 'bin/wiola-player.exe'
+          function Run-Contracts($binary, $filter, $name) {
+            $directory = Join-Path $package "results/$name"
+            New-Item -ItemType Directory -Force $directory | Out-Null
+            $env:WIOLA_GUI_FAILURE_ARTIFACTS = $directory
+            $xml = Join-Path $directory 'tests.xml'
+            & (Join-Path $package "bin/$binary.exe") "--gtest_filter=$filter" "--gtest_output=xml:$xml"
+            if ($LASTEXITCODE -ne 0) { throw "$binary failed: $LASTEXITCODE" }
+            [xml]$report = Get-Content -Raw $xml
+            if ($report.SelectNodes('//testcase').Count -eq 0 -or
+                $report.SelectNodes('//skipped | //failure | //error | //testcase[@status="notrun"]').Count -ne 0) {
+              throw "$binary produced empty, skipped or failing test results"
+            }
+          }
+          Run-Contracts 'gui_desktop_journey_test' 'DesktopJourney.*' 'state'
+          Run-Contracts 'gui_metadata_file_journey_test' 'QualifiedFormats/*' 'metadata'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-native-journey-results
+          path: native-journey/results
