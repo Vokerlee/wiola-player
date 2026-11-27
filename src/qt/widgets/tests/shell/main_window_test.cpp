@@ -29,6 +29,7 @@
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
+#include <qt/widgets/layout/classic_layout.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/shell/main_window.hpp>
@@ -45,6 +46,8 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
@@ -209,6 +212,15 @@ protected:
         tracks.push_back(wiola::testing::write_wav(name));
 
         return tracks.back();
+    }
+
+    void write_settings_file(const QString& name, QByteArrayView bytes)
+    {
+        const auto parent = QFileInfo{player_settings().fileName()}.dir();
+        ASSERT_TRUE(parent.mkpath("."));
+        QFile file{parent.filePath(name)};
+        ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+        ASSERT_EQ(file.write(bytes.data(), bytes.size()), bytes.size());
     }
 
     inline static std::unique_ptr<QTemporaryDir> settings_directory;
@@ -463,6 +475,136 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
     }));
     EXPECT_NE(with_text<QLabel>(window, "audio output is unavailable"), nullptr);
     EXPECT_FALSE(window_playback.loaded());
+}
+
+TEST_F(MainWindowTest, FooterPlayAndPauseKeepTheLoadedTrackAndRestoreThePlayAction)
+{
+    const auto path = track("wiola_toggle.wav");
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    MainWindow window{playback, library, preferences};
+    window.open({path});
+    ASSERT_TRUE(loaded(window, playback, path));
+    auto* play = command(window, "Play");
+    ASSERT_NE(play, nullptr);
+    play->click();
+    window.refresh();
+    EXPECT_EQ(play->accessibleName(), "Pause");
+    play->click();
+    window.refresh();
+    EXPECT_EQ(play->accessibleName(), "Play");
+    EXPECT_EQ(window.windowTitle(), QString::fromStdString(path.filename().string()));
+}
+
+TEST_F(MainWindowTest, PlaybackFailurePresentationExplainsTheCauseAndReportsDeviceLoss)
+{
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    MainWindow window{playback, library, preferences};
+    wiola::app::PlayerPresentation presentation;
+    for (const auto& [result, text] : std::vector<std::pair<wiola::engine::OpenResult, QString>>{
+             {wiola::engine::OpenResult::unsupported, "unsupported format"   },
+             {wiola::engine::OpenResult::damaged,     "that file is damaged" },
+             {wiola::engine::OpenResult::unreadable,  "cannot read that file"}
+    }) {
+        presentation.playback.open_result = result;
+        window.update_after_pump(presentation);
+        EXPECT_NE(with_text<QLabel>(window, text), nullptr);
+    }
+    presentation.playback.state = wiola::engine::PlaybackState::faulted;
+    window.update_after_pump(presentation);
+    EXPECT_NE(with_text<QLabel>(window, "lost the playback device"), nullptr);
+}
+
+TEST_F(MainWindowTest, UnavailableSavedPluginViewFallsBackToAUsableLayout)
+{
+    wiola::gui::LayoutDocument document;
+    document.root.id = "removedPlugin";
+    document.root.kind = wiola::gui::LayoutComponentKind::status;
+    document.root.view = wiola::gui::component_view("removedPlugin");
+    document.node_count = 1;
+    const auto payload =
+        QJsonDocument{
+            QJsonObject{{"schema", 1}, {"choice", "custom"},
+                        {"layout",
+                    QJsonDocument::fromJson(wiola::gui::write_layout_json(document)).object()}}
+    }
+            .toJson();
+    QSettings settings = player_settings();
+    ASSERT_TRUE(QFileInfo{settings.fileName()}.dir().mkpath("."));
+    QFile file{QFileInfo{settings.fileName()}.dir().filePath("layout.json")};
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write(payload);
+    file.close();
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    MainWindow window{playback, library, preferences};
+    EXPECT_NE(command(window, "Play"), nullptr);
+    EXPECT_NE(with_text<QLabel>(window,
+                  "Could not restore the saved layout; a usable layout was retained"),
+        nullptr);
+    EXPECT_FALSE(window.layout_json().contains("removedPlugin"));
+}
+
+TEST_F(MainWindowTest, FutureSessionPreferencesArePreservedAndExplainedToTheListener)
+{
+    const QByteArray future{"{\"version\":99}"};
+    write_settings_file("session.json", future);
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    MainWindow window{playback, library, preferences};
+    EXPECT_NE(with_text<QLabel>(window,
+                  "View preferences use a newer version; the saved file was retained"),
+        nullptr);
+    EXPECT_NE(command(window, "Play"), nullptr);
+}
+
+TEST_F(MainWindowTest, InvalidThemeAndSessionFilesKeepAUsableWindowAndExplainRecovery)
+{
+    write_settings_file("theme.json", "not json");
+    write_settings_file("session.json", "not json");
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    MainWindow window{playback, library, preferences};
+    EXPECT_EQ(preferences.ui_session().restore_error(), wiola::app::SessionStateError::invalid);
+    EXPECT_NE(with_text<QLabel>(window,
+                  "Could not restore the saved theme; a usable theme was retained"),
+        nullptr);
+    EXPECT_NE(command(window, "Play"), nullptr);
+}
+
+TEST_F(MainWindowTest, FutureLayoutsAndEmptyReplacementsRetainTheUsableCurrentView)
+{
+    const auto layout = QJsonDocument::fromJson(
+        wiola::gui::write_layout_json(wiola::gui::classic_layout_document())
+    )
+                            .object();
+    write_settings_file("layout.json",
+        QJsonDocument{
+            QJsonObject{{"schema", 99}, {"choice", "custom"}, {"layout", layout}}
+    }
+            .toJson());
+    wiola::app::PlaybackService playback{wiola::testing::passive_output,
+        wiola::codec::ffmpeg::make_provider()};
+    wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
+    wiola::app::PlaybackPreferences preferences{playback};
+    MainWindow window{playback, library, preferences};
+    const auto before = window.layout_json();
+    EXPECT_FALSE(window.switch_layout({}));
+    EXPECT_EQ(window.layout_json(), before);
+    EXPECT_FALSE(window.switch_layout(wiola::gui::classic_layout_document()));
+    EXPECT_EQ(window.layout_json(), before);
+    EXPECT_NE(with_text<QLabel>(window, "Saved layout uses a newer version"), nullptr);
 }
 
 } // namespace

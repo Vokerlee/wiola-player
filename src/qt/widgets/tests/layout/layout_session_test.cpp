@@ -268,6 +268,49 @@ TEST(LayoutSession, RejectsMismatchedPreparedTreesBeforeWritingAndRecoversALostV
     EXPECT_EQ(restored.document().root.id, "fallback");
 }
 
+TEST(LayoutSession, InvalidEnvelopesAndNestedFutureSchemasPreserveTheFallbackAndStoredBytes)
+{
+    QTemporaryDir directory;
+    const auto layout = QJsonDocument::fromJson(write_layout_json(document("stored"))).object();
+    for (const auto& envelope : std::vector<QJsonObject>{
+             {{"schema", "1"}, {"choice", "custom"},  {"layout", layout}       },
+             {{"schema", 1},   {"choice", "unknown"}, {"layout", layout}       },
+             {{"schema", 1},   {"choice", "custom"},  {"layout", false}        },
+             {{"schema", 1},   {"choice", "custom"},  {"layout", QJsonObject{}}}
+    }) {
+        const auto malformed = QJsonDocument{envelope}.toJson();
+        overwrite(directory, malformed);
+        LayoutSession session{path(directory), document("fallback"), LayoutChoice::classic};
+        EXPECT_EQ(session.document().root.id, "fallback");
+        EXPECT_EQ(session.restore_error(), LayoutSessionError::invalid);
+        EXPECT_EQ(bytes(directory), malformed);
+    }
+    auto future = layout;
+    future["version"] = 999;
+    overwrite(directory,
+        QJsonDocument{
+            QJsonObject{{"schema", 1}, {"choice", "custom"}, {"layout", future}}
+    }
+            .toJson());
+    LayoutSession session{path(directory), document("fallback"), LayoutChoice::classic};
+    EXPECT_EQ(session.restore_error(), LayoutSessionError::unsupported_version);
+
+    EXPECT_FALSE(parse_layout_choice("unknown"));
+    auto invalid = document("invalid");
+    invalid.root.id.clear();
+    EXPECT_THROW((LayoutSession{path(directory), invalid, LayoutChoice::classic}),
+        std::invalid_argument);
+    EXPECT_THROW(session.use_fallback(invalid, LayoutChoice::classic), std::invalid_argument);
+    session.use_fallback(document("usable"), LayoutChoice::classic);
+    EXPECT_EQ(session.document().root.id, "usable");
+    EXPECT_EQ(session.restore_error(), LayoutSessionError::unsupported_version);
+
+    QTemporaryDir clean;
+    LayoutSession fresh{path(clean), document("fallback"), LayoutChoice::classic};
+    fresh.use_fallback(document("usable"), LayoutChoice::classic);
+    EXPECT_EQ(fresh.restore_error(), LayoutSessionError::unavailable_views);
+}
+
 } // namespace
 
 int main(int argc, char** argv)

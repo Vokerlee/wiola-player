@@ -440,6 +440,71 @@ TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProje
     EXPECT_EQ(document.selection()[0].media, wanted);
 }
 
+TEST(WorkspaceDocument, TerminalFailuresExplainTheCauseAndRetainUsefulTracks)
+{
+    using namespace wiola;
+    const library::WorkspaceRecord workspace{library::WorkspaceId{"workspace"}, "music", true};
+    const std::vector<std::pair<app::WorkspaceScanError, QString>> failures{
+        {app::WorkspaceScanError::permission_denied,   "access denied"          },
+        {app::WorkspaceScanError::unsupported_formats, "supported audio formats"},
+        {app::WorkspaceScanError::rejected,            "queue is full"          },
+        {app::WorkspaceScanError::unreadable_root,     "unavailable"            },
+        {app::WorkspaceScanError::io,                  "failed"                 }
+    };
+    gui::WorkspaceDocument document;
+    std::uint64_t generation = 0;
+    for (const auto& [error, reason] : failures) {
+        document.begin(workspace, ++generation);
+        app::WorkspaceScanBatch batch;
+        batch.workspace = workspace.id;
+        batch.generation = generation;
+        batch.entries = entries({"music/song.wav"});
+        batch.status = app::WorkspaceScanStatus::failed;
+        batch.error = error;
+        ASSERT_TRUE(document.show_batch(batch));
+        EXPECT_EQ(document.browser().table().model()->rowCount(), 1);
+        EXPECT_TRUE(document.findChild<QLabel*>("workspaceStatus")->text().contains(reason));
+    }
+    document.begin(workspace, ++generation);
+    app::WorkspaceScanBatch cancelled;
+    cancelled.workspace = workspace.id;
+    cancelled.generation = generation;
+    cancelled.status = app::WorkspaceScanStatus::cancelled;
+    ASSERT_TRUE(document.show_batch(cancelled));
+    EXPECT_TRUE(document.findChild<QLabel*>("workspaceStatus")->text().contains("cancelled"));
+    document.begin(workspace, generation - 1);
+    EXPECT_EQ(document.browser().table().model()->rowCount(), 1);
+}
+
+TEST(WorkspaceDocument, DisplayedPathsAndActivationFollowTheVisibleRows)
+{
+    using namespace wiola;
+    const library::WorkspaceRecord workspace{library::WorkspaceId{"workspace"}, "music", true};
+    gui::WorkspaceDocument document;
+    document.begin(workspace, 1);
+    app::WorkspaceScanBatch batch;
+    batch.workspace = workspace.id;
+    batch.generation = 1;
+    batch.entries = entries({"b.wav", "a.wav"});
+    batch.status = app::WorkspaceScanStatus::complete;
+    ASSERT_TRUE(document.show_batch(batch));
+    library::InMemoryRepository repository;
+    document.show_library(repository);
+    EXPECT_EQ(document.displayed_paths(), (std::vector<std::filesystem::path>{"a.wav", "b.wav"}));
+
+    int played = 0, ordered = 0;
+    document.on_play_requested([&] { ++played; });
+    document.on_apply_order_requested([&] { ++ordered; });
+    auto& table = document.browser().table();
+    table.selectRow(0);
+    table.activated(table.model()->index(0, 0));
+    for (auto* action : table.actions())
+        if (action->text() == "Apply displayed order to playback")
+            action->trigger();
+    EXPECT_EQ(played, 1);
+    EXPECT_EQ(ordered, 1);
+}
+
 } // namespace
 
 int main(int argc, char** argv)

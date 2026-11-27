@@ -2,6 +2,7 @@
 #include <fakes/provider.hpp>
 #include <fixtures/gated_media_provider.hpp>
 #include <qt/application/library/library_session.hpp>
+#include <qt/tests/support/atomic_output.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
 #include <wiola/media/local/resource.hpp>
@@ -11,6 +12,8 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <gtest/gtest.h>
+
+#include <utility>
 
 namespace {
 
@@ -180,6 +183,69 @@ TEST(LibraryMetadata, UnavailableBackgroundTagsDoNotPublishGlobalErrorMessages)
     EXPECT_TRUE(notices.empty());
     EXPECT_EQ(session.repository().track(media), nullptr);
     EXPECT_TRUE(session.shutdown().succeeded());
+}
+
+TEST_F(LibraryLifetime, LearningASecondLocationRestoresAvailabilityWithoutChangingMediaIdentity)
+{
+    app::LibrarySession session{
+        platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json")),
+        codec::ffmpeg::make_provider()};
+    library::TrackRecord record;
+    record.id = media;
+    record.locations = {path};
+    record.missing = true;
+    {
+        library::RepositoryTransaction transaction{session.repository(), session.persistence()};
+        ASSERT_TRUE(session.repository().put_track(record));
+        ASSERT_TRUE(transaction.commit());
+    }
+    session.request_metadata(media, barrier);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return session.artwork(media).known(); }));
+    const auto& view = std::as_const(session).repository();
+    ASSERT_NE(view.track(media), nullptr);
+    EXPECT_FALSE(view.track(media)->missing);
+    EXPECT_EQ(view.track(media)->locations, (std::vector<std::filesystem::path>{path, barrier}));
+    EXPECT_TRUE(view.track(media)->embedded.duration.has_value());
+    session.request_metadata({}, {});
+    EXPECT_EQ(session.scan_workspace(library::WorkspaceId{"absent"}, {".mp3"}), 0);
+    ASSERT_TRUE(session.shutdown().succeeded());
+    session.request_metadata(media, path);
+    EXPECT_EQ(session.scan_workspace(library::WorkspaceId{"absent"}, {".mp3"}), 0);
+}
+
+TEST(LibrarySessionPersistence, FailedSaveCanRetryAndRestoreTheAcceptedPlaylistDestination)
+{
+    using namespace wiola;
+    QTemporaryDir directory;
+    const auto file = platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
+    bool fail = true;
+    library::PlaylistId saved;
+    {
+        app::LibrarySession session{file, codec::ffmpeg::make_provider(), nullptr,
+            [&](const auto& path) {
+                return std::make_unique<wiola::testing::FaultAtomicOutput>(path, fail);
+            }};
+        QStringList notices;
+        QObject::connect(&session, &app::LibrarySession::status_changed, &session,
+            [&](const QString& text) { notices.push_back(text); });
+        saved = session.playlists().create("Retained").id;
+        ASSERT_TRUE(saved.valid());
+        ASSERT_TRUE(QTest::qWaitFor([&] { return notices.join(' ').contains("saving failed"); }));
+        EXPECT_NE(session.repository().playlist(saved), nullptr);
+        fail = false;
+        session.retry_save();
+        ASSERT_TRUE(QTest::qWaitFor([&] {
+            return notices.contains("Pending library changes saved");
+        }));
+        ASSERT_TRUE(session.playlist_destination().set(saved));
+        ASSERT_TRUE(session.flush().succeeded());
+    }
+    QSettings legacy{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
+    legacy.setValue("playlists/active", QString::fromStdString(saved.value));
+    legacy.sync();
+    app::LibrarySession restored{file, codec::ffmpeg::make_provider()};
+    EXPECT_NE(std::as_const(restored).repository().playlist(saved), nullptr);
+    EXPECT_EQ(restored.playlist_destination().id(), saved);
 }
 
 int main(int argc, char** argv)

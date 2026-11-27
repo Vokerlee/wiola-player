@@ -26,6 +26,9 @@
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 
@@ -279,6 +282,209 @@ TEST(SessionPreferences, QueueRestorationUsesTheExplicitOccurrenceMapAndDropsUnk
         (std::vector<gui::TrackRowId>{engine::QueueEntryId{91}, engine::QueueEntryId{92}}));
     EXPECT_EQ(browser.current, gui::TrackRowId{engine::QueueEntryId{92}});
     EXPECT_FALSE(browser.anchor);
+}
+
+TEST(SessionState, MalformedPersistedValuesNeverPartiallyReplaceTheUsableSession)
+{
+    app::SessionState original;
+    original.window = QRect{10, 20, 900, 600};
+    original.layout_identity = "custom";
+    original.splitters = {
+        {"panes", {100, 200}}
+    };
+    auto& browser = original.documents.browsers[gui::DocumentId::queue()];
+    browser.selected = {engine::QueueEntryId{1}};
+    browser.current = browser.selected.front();
+    const auto valid = QJsonDocument::fromJson(app::write_session_state(original)).object();
+
+    const auto reject = [&](QJsonObject candidate) {
+        auto restored = original;
+        EXPECT_EQ(app::read_session_state(QJsonDocument{candidate}.toJson(), restored),
+            app::SessionStateError::invalid);
+        EXPECT_EQ(restored, original);
+    };
+    const auto root_value = [&](const QString& key, QJsonValue value) {
+        auto candidate = valid;
+        candidate[key] = value;
+        reject(candidate);
+    };
+    const QJsonObject queue{
+        {"queue", true}
+    };
+    for (const auto& [key, value] : std::vector<std::pair<QString, QJsonValue>>{
+             {"version", "1"},
+             {"version", 1.5},
+             {"unknown", true},
+             {"open", false},
+             {"open", QJsonArray{false}},
+             {"open", QJsonArray{QJsonObject{}}},
+             {"open", QJsonArray{QJsonObject{{"queue", true}, {"playlist", "saved"}}}},
+             {"open", QJsonArray{QJsonObject{{"queue", false}}}},
+             {"visible", QJsonObject{{"unknown", "id"}}},
+             {"destination", ""},
+             {"destination", QString(129, 'a')},
+             {"browsers", QJsonArray{false}},
+             {"window", false},
+             {"window", QJsonArray{1, 2}},
+             {"window", QJsonArray{0, 0, -1, 300}},
+             {"window", QJsonArray{0, 0, "wide", 300}},
+             {"window", QJsonArray{0, 0, 1.5, 300}},
+             {"splitters", QJsonArray{false}},
+             {"splitters", QJsonArray{QJsonObject{{"id", "panes"}, {"sizes", false}}}},
+             {"splitters", QJsonArray{QJsonObject{{"id", "panes"}, {"sizes", QJsonArray{-1}}}}},
+             {"splitters",
+              QJsonArray{QJsonObject{{"id", "panes"}, {"sizes", QJsonArray{1}}},
+                     QJsonObject{{"id", "panes"}, {"sizes", QJsonArray{2}}}}},
+             {"layout", QString(65, 'a')},
+             {"layout", QString(QChar{0})}
+    }) {
+        SCOPED_TRACE(key.toStdString());
+        root_value(key, value);
+    }
+
+    const auto held = valid["browsers"].toArray().first().toObject()["state"].toObject();
+    const auto browser_value = [&](QJsonValue state) {
+        root_value("browsers",
+            QJsonArray{
+                QJsonObject{{"document", queue}, {"state", state}}
+        });
+    };
+    browser_value(false);
+    for (const auto& [key, value] : std::vector<std::pair<QString, QJsonValue>>{
+             {"query",    false                                                                   },
+             {"unknown",  true                                                                    },
+             {"selected", false                                                                   },
+             {"selected", QJsonArray{false}                                                       },
+             {"selected", QJsonArray{QJsonObject{{"queue", "0"}}}                                 },
+             {"selected", QJsonArray{QJsonObject{{"queue", "01"}}}                                },
+             {"selected", QJsonArray{QJsonObject{{"queue", "18446744073709551616"}}}              },
+             {"selected", QJsonArray{QJsonObject{{"workspace", ""}, {"media", "song"}}}           },
+             {"current",  QJsonObject{{"entry", ""}}                                              },
+             {"anchor",   QJsonArray{}                                                            },
+             {"sort",     QJsonArray{false}                                                       },
+             {"sort",     QJsonArray{QJsonObject{{"unknown", true}}}                              },
+             {"sort",
+              QJsonArray{
+                     QJsonObject{{"field", "title"}, {"direction", "sideways"}, {"tag", ""}}}     },
+             {"sort",
+              QJsonArray{
+                     QJsonObject{{"field", "title"}, {"direction", "ascending"}, {"tag", "mood"}}}},
+             {"columns",  QJsonArray{false}                                                       },
+             {"columns",  QJsonArray{QJsonObject{{"id", false}}}                                  },
+             {"columns",  QJsonArray{QJsonObject{{"id", QJsonObject{}}}}                          },
+             {"columns",  QJsonArray{QJsonObject{{"id", QJsonObject{{"standard", "unknown"}}}}}   },
+             {"offset",   "zero"                                                                  },
+             {"offset",   1000001                                                                 }
+    }) {
+        SCOPED_TRACE(key.toStdString());
+        auto candidate = held;
+        candidate[key] = value;
+        browser_value(candidate);
+    }
+
+    for (const auto& [key, value] :
+        std::vector<std::pair<QString, QJsonValue>>{
+            {"unknown", "value"                                                            },
+            {"title",   12                                                                 },
+            {"filters", false                                                              },
+            {"filters", QJsonArray{false}                                                  },
+            {"filters",
+             QJsonArray{QJsonObject{{"key", ""}, {"value", "calm"}, {"mode", "include"}}}  },
+            {"filters",
+             QJsonArray{QJsonObject{{"key", "mood"}, {"value", "calm"}, {"mode", "other"}}}}
+    }) {
+        auto query = held["query"].toObject();
+        query[key] = value;
+        auto candidate = held;
+        candidate["query"] = query;
+        browser_value(candidate);
+    }
+
+    const QJsonObject column{
+        {"id",      QJsonObject{{"standard", "title"}}},
+        {"width",   100                               },
+        {"order",   0                                 },
+        {"visible", true                              }
+    };
+    auto same_id = column;
+    same_id["order"] = 1;
+    auto same_order = column;
+    same_order["id"] = QJsonObject{
+        {"standard", "artist"}
+    };
+    for (const auto& columns : {
+             QJsonArray{column, same_id   },
+             QJsonArray{column, same_order}
+    }) {
+        auto candidate = held;
+        candidate["columns"] = columns;
+        browser_value(candidate);
+    }
+}
+
+TEST(SessionState, WriterRejectsOversizedCollectionsWithoutProducingPartialJson)
+{
+    app::SessionState state;
+    state.documents.open.assign(129, gui::DocumentId::queue());
+    EXPECT_TRUE(app::write_session_state(state).isEmpty());
+
+    state.documents.open.clear();
+    auto& browser = state.documents.browsers[gui::DocumentId::queue()];
+    browser.view.query.filters.resize(129);
+    EXPECT_TRUE(app::write_session_state(state).isEmpty());
+}
+
+TEST(SessionPreferences, LegacyWorkspaceAndEmptyNavigationMigrateWithoutInventingAnActiveDocument)
+{
+    for (const auto& kind : {QString{"workspace"}, QString{"empty"}, QString{"legacy-workspace"},
+             QString{"legacy-playlist"}}) {
+        QTemporaryDir directory;
+        QSettings legacy{directory.filePath("settings.ini"), QSettings::IniFormat};
+        legacy.setValue("documents/open_workspaces", QStringList{"", "folder"});
+        if (kind == "workspace" || kind == "empty") {
+            legacy.setValue("documents/current_kind", kind);
+            legacy.setValue("documents/current_id", "folder");
+        } else
+            legacy.setValue(kind == "legacy-workspace" ? "documents/current_workspace"
+                                                       : "documents/current_playlist",
+                "folder");
+        app::SessionPreferences preferences{legacy};
+        if (kind == "empty")
+            EXPECT_FALSE(preferences.state().documents.visible);
+        else if (kind == "legacy-playlist")
+            EXPECT_EQ(preferences.state().documents.visible,
+                gui::DocumentId::playlist(library::PlaylistId{"folder"}));
+        else
+            EXPECT_EQ(preferences.state().documents.visible,
+                gui::DocumentId::workspace(library::WorkspaceId{"folder"}));
+        EXPECT_EQ(preferences.state().documents.open.back(),
+            gui::DocumentId::workspace(library::WorkspaceId{"folder"}));
+        EXPECT_EQ(preferences.flush(), app::SessionStateError::none);
+    }
+}
+
+TEST(SessionPreferences, InvalidPendingStateAndConflictingLibraryOwnershipAreReported)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    app::SessionPreferences preferences{settings};
+    app::LibrarySession first{platform::qt::QtPathAdapter::from_qt(directory.filePath("one.json")),
+        codec::ffmpeg::make_provider()};
+    app::LibrarySession second{platform::qt::QtPathAdapter::from_qt(directory.filePath("two.json")),
+        codec::ffmpeg::make_provider()};
+    const auto destination = first.playlists().create("Destination").id;
+    ASSERT_TRUE(first.playlist_destination().set(destination));
+    preferences.edit([](auto& state) {
+        state.documents.destination = library::PlaylistId{"removed"};
+    });
+    preferences.bind_library(first);
+    EXPECT_FALSE(first.playlist_destination().id());
+    EXPECT_FALSE(preferences.state().documents.destination);
+    EXPECT_THROW(preferences.bind_library(second), std::logic_error);
+    preferences.edit([](auto& state) {
+        state.documents.open.assign(129, gui::DocumentId::queue());
+    });
+    EXPECT_EQ(preferences.flush(), app::SessionStateError::invalid);
 }
 
 } // namespace

@@ -25,6 +25,9 @@
 #include <gtest/gtest.h>
 
 #include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <stdexcept>
 
 namespace {
 
@@ -169,6 +172,74 @@ TEST(FileReplacement, OversizedRecoveryRecordIsRejectedWithoutChangingAnyFile)
     EXPECT_EQ(port->recover(files.source).error, FileReplacementError::recovery_required);
     EXPECT_EQ(wiola::media::fingerprint_media(files.source), request.original_digest);
     EXPECT_EQ(wiola::media::fingerprint_media(files.output), request.output_digest);
+}
+
+TEST(FileReplacement, InvalidRequestsAndChangedOutputsNeverModifyTheOriginal)
+{
+    Files files;
+    auto port = native_file_replacement(wiola::media::fingerprint_media);
+    EXPECT_THROW(native_file_replacement({}), std::invalid_argument);
+    const auto original = files.request();
+    auto invalid = original;
+    invalid.output = invalid.source;
+    EXPECT_EQ(port->replace(invalid).error, FileReplacementError::conflict);
+    invalid = original;
+    invalid.original_digest.clear();
+    EXPECT_EQ(port->replace(invalid).error, FileReplacementError::conflict);
+
+    std::ofstream{files.output, std::ios::app} << "external edit";
+    EXPECT_EQ(port->replace(original).error, FileReplacementError::conflict);
+    EXPECT_EQ(wiola::media::fingerprint_media(files.source), original.original_digest);
+    EXPECT_EQ(port->recover(files.source).error, FileReplacementError::none);
+}
+
+TEST(FileReplacement, ExistingJournalAndRefusedCommitRetainRecoverableSourceBytes)
+{
+    Files files;
+    auto port = native_file_replacement(wiola::media::fingerprint_media);
+    const auto request = files.request();
+    auto journal = files.source;
+    journal += ".wiola-replacement";
+    std::ofstream{journal} << "unfinished operation";
+    EXPECT_EQ(port->replace(request).error, FileReplacementError::recovery_required);
+    std::filesystem::remove(journal);
+
+    const auto result = port->replace(request, [] { return false; });
+    EXPECT_EQ(result.error, FileReplacementError::cancelled);
+    EXPECT_FALSE(result.source_modified);
+    EXPECT_EQ(wiola::media::fingerprint_media(files.source), request.original_digest);
+    EXPECT_EQ(port->recover(files.source).error, FileReplacementError::none);
+}
+
+TEST(FileReplacement, TruncatedTrailingAndAliasedRecoveryRecordsRemainUntouched)
+{
+    Files files;
+    auto port = native_file_replacement(wiola::media::fingerprint_media);
+    const auto request = files.request();
+    auto journal = files.source;
+    journal += ".wiola-replacement";
+    const auto utf8 = [](const auto& path) {
+        const auto bytes = std::filesystem::absolute(path).u8string();
+        return std::string(bytes.begin(), bytes.end());
+    };
+    std::ostringstream encoded;
+    encoded << "wiola-replacement 1\n"
+            << std::quoted(utf8(request.source)) << '\n'
+            << std::quoted(utf8(request.output)) << '\n'
+            << std::quoted(utf8(request.backup)) << '\n'
+            << std::quoted(request.original_digest) << '\n'
+            << std::quoted(request.output_digest) << '\n';
+    auto aliased = encoded.str();
+    const auto output = utf8(request.output);
+    aliased.replace(aliased.find(output), output.size(), utf8(request.source));
+    for (const auto& malformed : {std::string{"wiola-replacement 1\n\"truncated\""},
+             encoded.str() + "unexpected trailing data", aliased}) {
+        std::ofstream{journal} << malformed;
+        EXPECT_EQ(port->recover(files.source).error, FileReplacementError::recovery_required);
+        EXPECT_EQ(wiola::media::fingerprint_media(files.source), request.original_digest);
+        EXPECT_EQ(wiola::media::fingerprint_media(files.output), request.output_digest);
+        EXPECT_TRUE(std::filesystem::exists(journal));
+    }
 }
 
 } // namespace

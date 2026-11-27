@@ -388,4 +388,37 @@ TEST(WorkspaceScanner, EmptyQualificationNeverClaimsAllKnownMediaAreMissing)
     std::filesystem::remove_all(root);
 }
 
+TEST(WorkspaceScanner, InvalidLimitsAndObserverFailuresCannotClaimSuccessfulCompletion)
+{
+    using namespace wiola;
+    EXPECT_THROW((app::WorkspaceScanner{{.batch_size = 0}}), std::invalid_argument);
+    wiola::testing::TemporaryDirectory directory;
+    file(directory.path() / "sub" / "song.wav");
+    const library::WorkspaceRecord workspace{library::WorkspaceId{"folder"}, directory.path(),
+        true};
+    for (const bool limit_directories : {false, true}) {
+        app::WorkspaceScanPolicy policy;
+        policy.max_entries = limit_directories ? 100 : 1;
+        policy.max_directories = limit_directories ? 1 : 100;
+        policy.batch_size = 1;
+        app::WorkspaceScanner scanner{policy};
+        ScanCapture capture;
+        scanner.start(workspace, {".wav"}, [&](auto batch) { capture.accept(std::move(batch)); });
+        ASSERT_TRUE(capture.wait());
+        scanner.stop();
+        EXPECT_EQ(capture.batches.back().status, app::WorkspaceScanStatus::failed);
+        EXPECT_EQ(capture.batches.back().error, app::WorkspaceScanError::limit_exceeded);
+        EXPECT_EQ(scanner.start(workspace, {".wav"}, [](auto) { }), 0);
+    }
+    ScanCapture captured;
+    app::WorkspaceScanPolicy policy;
+    policy.after_entry = [](const auto&, auto, auto) {
+        throw std::runtime_error{"enumeration failed"};
+    };
+    app::WorkspaceScanner scanner{policy};
+    scanner.start(workspace, {".wav"}, [&](auto batch) { captured.accept(std::move(batch)); });
+    ASSERT_TRUE(captured.wait());
+    EXPECT_EQ(captured.batches.back().error, app::WorkspaceScanError::io);
+}
+
 } // namespace

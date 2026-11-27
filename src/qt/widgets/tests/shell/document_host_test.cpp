@@ -21,6 +21,7 @@
 #include <fakes/output.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
+#include <qt/widgets/documents/workspace_document.hpp>
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
@@ -205,6 +206,127 @@ TEST_F(DocumentHostTest, NoPermanentOpenFolderTabIsCreated)
     EXPECT_EQ(host.currentWidget(), &host.queue());
     EXPECT_EQ(host.findChild<QPushButton*>("openFolderFromDocuments"), nullptr);
     EXPECT_TRUE(library->repository().workspaces().empty());
+}
+
+TEST_F(DocumentHostTest, WorkspaceAndPlaylistControlsCaptureCommandsFromTheirOwnDocument)
+{
+    library::MediaId media{"track"};
+    library::WorkspaceId folder;
+    library::PlaylistId playlist;
+    {
+        library::RepositoryTransaction transaction{library->repository(), library->persistence()};
+        library::TrackRecord track;
+        track.id = media;
+        track.locations = {"song.wav"};
+        ASSERT_TRUE(library->repository().put_track(track));
+        folder = library->repository().create_workspace(directory.path().toStdString());
+        playlist = library->repository().create_playlist("Saved");
+        ASSERT_TRUE(library->repository().append_track(playlist, media));
+        ASSERT_TRUE(transaction.commit());
+    }
+    std::vector<std::pair<gui::TrackCommand, gui::DocumentCommandContext>> commands;
+    std::vector<bool> rescans;
+    gui::DocumentCommands callbacks;
+    callbacks.execute = [&](auto command, auto context) {
+        commands.emplace_back(command, std::move(context));
+    };
+    callbacks.rescan = [&](const auto& id, bool recursive) {
+        EXPECT_EQ(id, folder);
+        rescans.push_back(recursive);
+    };
+    gui::DocumentHost host{*library, playback, *preferences, callbacks};
+    EXPECT_FALSE(host.open_workspace(library::WorkspaceId{"absent"}));
+    EXPECT_FALSE(host.activate(gui::DocumentId::playlist(library::PlaylistId{"absent"})));
+    EXPECT_FALSE(host.close(gui::DocumentId::workspace(library::WorkspaceId{"absent"})));
+    host.begin_scan(library::WorkspaceId{"absent"});
+    ASSERT_TRUE(host.open_workspace(folder));
+    auto* workspace = host.registry().workspace(folder);
+    ASSERT_NE(workspace, nullptr);
+    ASSERT_TRUE(host.open_workspace(folder));
+    EXPECT_EQ(host.registry().workspace(folder), workspace);
+    library->cancel_workspace_scan(folder);
+    workspace->begin(*library->repository().workspace(folder), 99);
+    app::WorkspaceScanBatch batch;
+    batch.workspace = folder;
+    batch.generation = 99;
+    app::WorkspaceScanEntry entry;
+    entry.media = media;
+    entry.location = "song.wav";
+    batch.entries = {entry};
+    batch.status = app::WorkspaceScanStatus::complete;
+    ASSERT_TRUE(workspace->show_batch(batch, &library->repository()));
+    workspace->browser().table().selectRow(0);
+    EXPECT_EQ(host.capture(gui::DocumentId::workspace(folder)).displayed_paths,
+        (std::vector<std::filesystem::path>{"song.wav"}));
+
+    workspace->findChild<QPushButton*>("rescanWorkspace")->click();
+    EXPECT_EQ(rescans.size(), 1);
+    workspace->findChild<QPushButton*>("playWorkspaceSelection")->click();
+    workspace->findChild<QPushButton*>("appendWorkspaceSelection")->click();
+    for (const auto command : {gui::TrackCommand::apply_order, gui::TrackCommand::transfer,
+             gui::TrackCommand::transfer_destination})
+        workspace->browser().command_requested(command);
+    ASSERT_EQ(commands.size(), 5);
+    for (const auto& [command, context] : commands)
+        EXPECT_EQ(context.document, gui::DocumentId::workspace(folder));
+
+    ASSERT_TRUE(host.open_playlist(playlist));
+    auto* saved = host.registry().playlist(playlist);
+    saved->browser().table().selectRow(0);
+    for (const auto command : {gui::TrackCommand::apply_order, gui::TrackCommand::transfer,
+             gui::TrackCommand::transfer_destination, gui::TrackCommand::move})
+        saved->browser().command_requested(command);
+    ASSERT_EQ(commands.size(), 9);
+    for (std::size_t index = 5; index < commands.size(); ++index)
+        EXPECT_EQ(commands[index].second.document, gui::DocumentId::playlist(playlist));
+
+    playback.add({media::local_resource("queued.wav")});
+    ASSERT_TRUE(host.queue().show_playlist(playback.playlist()));
+    auto& queued = host.queue().browser().table();
+    queued.selectRow(0);
+    queued.activated(queued.model()->index(0, 0));
+    EXPECT_EQ(commands.back().first, gui::TrackCommand::play);
+    EXPECT_EQ(commands.back().second.document, gui::DocumentId::queue());
+
+    workspace->begin(*library->repository().workspace(folder), 100);
+    workspace->findChild<QPushButton*>("cancelWorkspaceScan")->click();
+    EXPECT_FALSE(workspace->findChild<QPushButton*>("cancelWorkspaceScan")->isEnabled());
+
+    {
+        library::RepositoryTransaction transaction{library->repository(), library->persistence()};
+        ASSERT_TRUE(library->repository().add_tag(media, "Mood", "Calm").valid());
+        ASSERT_TRUE(library->repository().delete_workspace(folder));
+        ASSERT_TRUE(transaction.commit());
+    }
+    EXPECT_EQ(host.registry().workspace(folder), nullptr);
+}
+
+TEST_F(DocumentHostTest, MissingVisibleDocumentFallsBackToQueueAndClosedBrowserHistoryIsBounded)
+{
+    preferences->edit([&](auto& state) {
+        state.documents.visible = gui::DocumentId::workspace(library::WorkspaceId{"removed"});
+        state.documents.last_playlist = library::PlaylistId{"removed"};
+    });
+    gui::DocumentHost host{*library, playback, *preferences, {}};
+    EXPECT_EQ(host.registry().active(), gui::DocumentId::queue());
+    EXPECT_FALSE(preferences->state().documents.last_playlist);
+    preferences->edit([&](auto& state) {
+        for (int i = 0; i < 130; ++i)
+            state.documents.browsers.emplace(gui::DocumentId::playlist(library::PlaylistId{
+                                                 std::to_string(i)}),
+                gui::BrowserViewState{});
+    });
+    host.capture_preferences();
+    EXPECT_EQ(preferences->state().documents.browsers.size(), 128);
+    EXPECT_TRUE(preferences->state().documents.browsers.contains(gui::DocumentId::queue()));
+}
+
+TEST_F(DocumentHostTest, AnExplicitlyEmptyVisiblePreferenceRestoresTheTemporaryQueue)
+{
+    preferences->edit([](auto& state) { state.documents.visible.reset(); });
+    gui::DocumentHost host{*library, playback, *preferences, {}};
+    EXPECT_EQ(host.registry().active(), gui::DocumentId::queue());
+    EXPECT_NE(host.indexOf(&host.queue()), -1);
 }
 
 } // namespace

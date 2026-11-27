@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <exception>
@@ -75,16 +76,22 @@ public:
         return std::unique_ptr<wiola::media::AudioDecoder>{};
     }
 
-    wiola::media::MetadataWriteOutcome write_metadata(
-        const wiola::media::MetadataWriteRequest& request, const wiola::media::OperationContext&
-    ) override
+    wiola::media::MetadataWriteOutcome
+    write_metadata(const wiola::media::MetadataWriteRequest& request,
+        const wiola::media::OperationContext& context) override
     {
+        std::stop_callback wake{context.stop, [this] {
+                                    std::lock_guard lock{state_->mutex};
+                                    state_->changed.notify_all();
+                                }};
         std::unique_lock lock{state_->mutex};
 
         state_->writes.push_back(request);
 
         if (state_->writes.size() == 1)
-            state_->changed.wait(lock, [this] { return state_->release_first; });
+            state_->changed.wait(lock, [this, &context] {
+                return state_->release_first || context.stop.stop_requested();
+            });
 
         state_->changed.notify_all();
 
@@ -372,6 +379,37 @@ TEST(BackgroundMetadataWrites, DriverExceptionsProduceTerminalOutcomesAndTheWork
 
         writes.stop();
     }
+}
+
+TEST(BackgroundMetadataWrites, ShutdownCancelsEveryPendingJobEvenWhenOneObserverThrows)
+{
+    using namespace wiola;
+    auto state = std::make_shared<WriteState>();
+    app::BackgroundMetadataWrites worker{std::make_shared<FakeProvider>(state)};
+    std::atomic<int> terminal{};
+    auto active = edit("Active");
+    active.media = {"active"};
+    ASSERT_TRUE(worker.enqueue(active, [&](auto) { ++terminal; }));
+    ASSERT_TRUE(eventually([&] {
+        std::lock_guard lock{state->mutex};
+        return state->writes.size() == 1;
+    }));
+    auto first = edit("Pending one"), second = edit("Pending two");
+    first.media = {"first"};
+    second.media = {"second"};
+    ASSERT_TRUE(worker.enqueue(first, [&](auto result) {
+        EXPECT_EQ(result.stage, app::MetadataWriteStage::cancelled);
+        ++terminal;
+        throw std::runtime_error{"observer failed"};
+    }));
+    ASSERT_TRUE(worker.enqueue(second, [&](auto result) {
+        EXPECT_EQ(result.stage, app::MetadataWriteStage::cancelled);
+        ++terminal;
+    }));
+    EXPECT_THROW(worker.stop(), std::runtime_error);
+    EXPECT_EQ(terminal.load(), 3);
+    EXPECT_FALSE(worker.enqueue(edit("Closed"), [](auto) { }));
+    EXPECT_FALSE(worker.enqueue({}, {}));
 }
 
 } // namespace

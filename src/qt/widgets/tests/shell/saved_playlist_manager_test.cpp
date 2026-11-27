@@ -20,12 +20,14 @@
 
 #include <qt/storage/library_store.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
+#include <qt/widgets/tests/support/modal_answer.hpp>
 #include <wiola/app/library/saved_playlist_commands.hpp>
 
 #include <QApplication>
 #include <QDir>
 #include <QInputDialog>
 #include <QLabel>
+#include <QMessageBox>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <gtest/gtest.h>
@@ -177,6 +179,36 @@ TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlde
 
     manager.reset();
     receipts.back()->notify(true);
+}
+
+TEST_F(SavedPlaylistManager, CreateAndDeletePromptsRespectCancellationAndSelection)
+{
+    wiola::app::SavedPlaylistCommands commands{repository, [](const auto&) { return true; }};
+    wiola::gui::SavedPlaylistManager manager{repository, commands, navigation};
+    EXPECT_FALSE(manager.rename_selected("Name"));
+    EXPECT_FALSE(manager.remove_selected());
+    {
+        wiola::testing::ModalAnswer<QInputDialog> answer{[](auto& dialog) { dialog.reject(); }};
+        manager.findChild<QPushButton*>("createPlaylist")->click();
+    }
+    EXPECT_TRUE(repository.playlists().empty());
+    {
+        wiola::testing::ModalAnswer<QInputDialog> answer{[](auto& dialog) {
+            dialog.setTextValue("New list");
+            dialog.accept();
+        }};
+        manager.findChild<QPushButton*>("createPlaylist")->click();
+    }
+    ASSERT_TRUE(navigation.selected_playlist());
+    const auto saved = *navigation.selected_playlist();
+    EXPECT_FALSE(manager.rename_selected("   "));
+    EXPECT_EQ(repository.playlist(saved)->name, "New list");
+    for (const auto answer : {QMessageBox::No, QMessageBox::Yes}) {
+        wiola::testing::ModalAnswer<QMessageBox> response{
+            [&](auto& dialog) { dialog.button(answer)->click(); }};
+        manager.findChild<QPushButton*>("deletePlaylist")->click();
+        EXPECT_EQ(repository.playlist(saved) == nullptr, answer == QMessageBox::Yes);
+    }
 }
 
 } // namespace

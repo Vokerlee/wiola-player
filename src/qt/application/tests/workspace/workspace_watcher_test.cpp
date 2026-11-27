@@ -289,6 +289,42 @@ TEST(WorkspaceWatcher, NewSubdirectoriesAreSubscribedOnlyFromWorkerDiscoveryFact
     EXPECT_FALSE(watcher.coverage(id)->partial);
 }
 
+TEST(WorkspaceWatcher, InvalidPoliciesClosedSubscriptionsAndDroppedNativeWatchesRemainSafe)
+{
+    using namespace wiola;
+    EXPECT_THROW((app::WorkspaceWatcher{nullptr, {}}), std::invalid_argument);
+    EXPECT_THROW((app::WorkspaceWatcher{std::make_unique<FakeWatchBackend>(),
+                     {.debounce = std::chrono::milliseconds{-1}}}),
+        std::invalid_argument);
+    EXPECT_THROW((app::WorkspaceWatcher{std::make_unique<FakeWatchBackend>(), {.max_paths = 0}}),
+        std::invalid_argument);
+    QTemporaryDir directory;
+    const auto root = platform::qt::QtPathAdapter::from_qt(directory.path());
+    const library::WorkspaceId id{"workspace"}, absent{"absent"};
+    auto backend = std::make_unique<FakeWatchBackend>();
+    auto* native = backend.get();
+    app::WorkspaceWatcher watcher{std::move(backend), {.debounce = std::chrono::milliseconds{0}}};
+    EXPECT_FALSE(watcher.watch({}));
+    EXPECT_FALSE(watcher.coverage(absent));
+    watcher.unwatch(absent);
+    watcher.scan_started(absent);
+    watcher.directories_discovered(absent, {root}, true, true);
+    ASSERT_TRUE(watcher.watch({.id = id, .root = root, .recursive = true}));
+    watcher.directories_discovered(id, {root.parent_path()}, true, true);
+    EXPECT_FALSE(native->contains(root.parent_path()));
+    native->change(root / "unregistered");
+    native->installed.erase(root);
+    native->change(root);
+    watcher.scan_started(id);
+    watcher.directories_discovered(id, {root}, true, true);
+    EXPECT_TRUE(native->contains(root));
+    EXPECT_GE(native->adds[root], 2);
+    watcher.stop();
+    native->change(root);
+    watcher.directories_discovered(id, {root}, true, true);
+    EXPECT_FALSE(watcher.watch({.id = id, .root = root, .recursive = true}));
+}
+
 } // namespace
 
 int main(int argc, char** argv)

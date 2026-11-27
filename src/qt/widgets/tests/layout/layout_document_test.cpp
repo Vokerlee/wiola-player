@@ -21,8 +21,11 @@
 #include <qt/widgets/layout/classic_layout.hpp>
 #include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/layout/layout_document.hpp>
+#include <qt/widgets/layout/view_reference.hpp>
 
 #include <QByteArray>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <gtest/gtest.h>
 
 namespace {
@@ -293,6 +296,74 @@ TEST(LayoutDocument, MigratesOnlyWellKnownVersionOneViewsToVersionTwoReferences)
         LayoutJsonError::invalid_component
     );
     EXPECT_EQ(write_layout_json(document), before);
+}
+
+TEST(LayoutViewReference, EveryDocumentPartRoundTripsWithoutLosingItsOwner)
+{
+    using namespace wiola;
+    for (const auto& document :
+        {gui::DocumentId::queue(), gui::DocumentId::playlist(library::PlaylistId{"same"}),
+            gui::DocumentId::workspace(library::WorkspaceId{"same"})}) {
+        for (const auto part : {gui::DocumentViewPart::whole, gui::DocumentViewPart::search,
+                 gui::DocumentViewPart::tags}) {
+            const gui::ViewReference reference = gui::DocumentViewReference{document, part};
+            EXPECT_EQ(gui::read_view_reference(gui::write_view_reference(reference)), reference);
+        }
+    }
+    EXPECT_TRUE(gui::write_view_reference(gui::component_view("")).isEmpty());
+    EXPECT_TRUE(gui::write_view_reference(gui::DocumentViewReference{gui::DocumentId::playlist({})})
+            .isEmpty());
+    for (const auto& [key, part] : std::vector<std::pair<QString, gui::DocumentViewPart>>{
+             {"nowPlayingDocument", gui::DocumentViewPart::whole },
+             {"nowPlayingSearch",   gui::DocumentViewPart::search},
+             {"nowPlayingFilters",  gui::DocumentViewPart::tags  }
+    }) {
+        const gui::ViewReference expected =
+            gui::DocumentViewReference{gui::DocumentId::queue(), part};
+        EXPECT_EQ(gui::legacy_view_reference(key), expected);
+    }
+}
+
+TEST(LayoutDocument, MalformedNodePropertiesAreRejectedWithoutReplacingTheAcceptedLayout)
+{
+    using namespace wiola::gui;
+    const auto accepted = classic_layout_document();
+    const auto envelope = QJsonDocument::fromJson(write_layout_json(accepted)).object();
+    for (const auto& [key, value] : std::vector<std::pair<QString, QJsonValue>>{
+             {"type", "unknown"},
+             {"alignment", "diagonal"},
+             {"orientation", false},
+             {"columns", 1.5},
+             {"sizes", false},
+             {"sizes", QJsonArray{-1}},
+             {"title", false},
+             {"title", QString(129, 'a')},
+             {"action", false},
+             {"size", false},
+             {"children", QJsonArray{false}}
+    }) {
+        SCOPED_TRACE(key.toStdString());
+        auto root = envelope["root"].toObject();
+        root[key] = value;
+        auto bad = envelope;
+        bad["root"] = root;
+        auto restored = accepted;
+        EXPECT_NE(read_layout_json(QJsonDocument{bad}.toJson(), restored), LayoutJsonError::none);
+        EXPECT_EQ(write_layout_json(restored), write_layout_json(accepted));
+    }
+    auto invalid = accepted;
+    invalid.version = 99;
+    EXPECT_EQ(validate_layout_document(invalid), LayoutJsonError::unsupported_version);
+    invalid = accepted;
+    invalid.root.kind = static_cast<LayoutComponentKind>(999);
+    EXPECT_EQ(validate_layout_document(invalid), LayoutJsonError::invalid_component);
+    invalid = accepted;
+    invalid.root.width = 10;
+    invalid.root.min_width = 20;
+    EXPECT_EQ(validate_layout_document(invalid), LayoutJsonError::invalid_component);
+    invalid = accepted;
+    invalid.root.orientation = static_cast<Qt::Orientation>(999);
+    EXPECT_EQ(validate_layout_document(invalid), LayoutJsonError::invalid_component);
 }
 
 } // namespace

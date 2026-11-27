@@ -19,6 +19,7 @@
  */
 
 #include <app/library/local_identity.hpp>
+#include <app/library/search_index.hpp>
 #include <fixtures/track_view.hpp>
 #include <qt/widgets/tracks/track_table_model.hpp>
 #include <queue/playlist.hpp>
@@ -35,6 +36,7 @@
 #include <QPersistentModelIndex>
 #include <QPixmap>
 #include <QSignalSpy>
+#include <QTest>
 #include <QTimer>
 #include <gtest/gtest.h>
 
@@ -581,6 +583,74 @@ TEST_F(TrackTableModelTest, BoundedGeneratedMutationsMatchAnIndependentIdentityO
     }
 
     EXPECT_EQ(resets, 0);
+}
+
+TEST_F(TrackTableModelTest, AsyncSearchUsesCatalogSnapshotsAndIndexedFieldsForDuplicateMedia)
+{
+    using namespace wiola;
+    library::InMemoryRepository repository;
+    app::SearchIndex search;
+    library::TrackRecord indexed, stored;
+    indexed.id = library::MediaId{"indexed"};
+    indexed.embedded.title = "Resolved indexed";
+    stored.id = library::MediaId{"stored"};
+    stored.embedded.title = "Resolved stored";
+    ASSERT_TRUE(search.upsert(indexed));
+    ASSERT_TRUE(repository.put_track(stored));
+    std::vector<gui::TrackRow> rows;
+    for (std::size_t i = 0; i < gui::TrackTableModel::asynchronous_projection_threshold; ++i) {
+        gui::TrackRow row;
+        row.id = engine::QueueEntryId{i + 1};
+        row.media = i % 2 ? indexed.id : stored.id;
+        row.metadata.title = "Stale row";
+        rows.push_back(std::move(row));
+    }
+    gui::TrackTableModel model{styled};
+    model.bind_library(repository);
+    model.set_search_index(&search);
+    model.show_rows(rows);
+    gui::TrackViewState query;
+    query.query.title = "resolved";
+    ASSERT_TRUE(model.set_view_state(query));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return !model.projection_pending(); }));
+    EXPECT_EQ(model.rowCount(), rows.size());
+
+    model.show_rows({rows.front()});
+    EXPECT_EQ(model.rowCount(), 1);
+    query.query.title = "other";
+    EXPECT_TRUE(model.set_view_state(query));
+    EXPECT_EQ(model.rowCount(), 0);
+}
+
+TEST_F(TrackTableModelTest, IdentityChangingPatchesUpdateIndexesWithoutTouchingUnrelatedOccurrences)
+{
+    using namespace wiola;
+    gui::TrackRow row;
+    row.id = library::PlaylistEntryId{"entry"};
+    row.media = library::MediaId{"before"};
+    row.metadata.title = "Original";
+    auto duplicate = row;
+    duplicate.id = library::PlaylistEntryId{"duplicate"};
+    gui::TrackTableModel model{styled};
+    model.show_rows({row, duplicate});
+    auto absent = row;
+    absent.id = library::PlaylistEntryId{"absent"};
+    model.update_rows({row, absent});
+    EXPECT_EQ(model.projection_statistics().updated_rows, 0);
+    row.media = library::MediaId{"after"};
+    row.metadata.title = "Changed";
+    model.update_rows({row});
+    EXPECT_EQ(model.media_ids(), (std::vector{row.media, duplicate.media}));
+    EXPECT_EQ(model.index_of(duplicate.id, 1).data().toString(), "Original");
+    model.show_tag_keys({"", "Mood"});
+    EXPECT_EQ(model.columnCount(), gui::TrackTableModel::standard_columns + 1);
+
+    gui::TrackViewState query;
+    query.query.title = "not present";
+    ASSERT_TRUE(model.set_view_state(query));
+    row.metadata.title = "Still hidden";
+    model.update_rows({row});
+    EXPECT_EQ(model.rowCount(), 0);
 }
 
 } // namespace

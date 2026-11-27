@@ -356,3 +356,24 @@ target_include_directories(
     gui_projection_benchmark
     PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests"
 )
+
+wiola_add_test(
+    gui_file_commands_test
+    SOURCES shell/file_commands_test.cpp
+    LIBS
+        wiola::qt_widgets
+        wiola_playback_preferences
+        wiola::ffmpeg
+        wiola::qt_paths
+        Qt6::Test
+)
+
+wiola_add_test(
+    gui_metadata_inspector_binding_test
+    SOURCES metadata/metadata_inspector_binding_test.cpp
+    LIBS wiola::qt_widgets wiola::ffmpeg wiola::qt_paths
+)
+
+if(ENABLE_TSAN)
+    target_compile_definitions(gui_file_commands_test PRIVATE WIOLA_TEST_TSAN)
+endif()
