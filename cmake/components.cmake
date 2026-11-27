@@ -1,5 +1,10 @@
 # Canonical portable component names and their currently required closure.
-set(WIOLA_FOUNDATION_COMPONENTS borrowed_reference quantities shared_callback)
+set(WIOLA_FOUNDATION_COMPONENTS
+    borrowed_reference
+    quantities
+    shared_callback
+    lifetime
+)
 
 set(WIOLA_PORTABLE_COMPONENTS
     ${WIOLA_FOUNDATION_COMPONENTS}

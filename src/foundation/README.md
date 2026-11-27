@@ -16,3 +16,5 @@ flowchart LR
 [Quantities](quantities/README.md) owns time/frequency values and a standard-only public target. Related values stay together; no unit tag is an independent component.
 
 [Shared callback](shared_callback/README.md) retains a notification target through replacement or owner disposal while preserving mutable callable identity. Its standard-only consumer configures without frontend/media SDKs.
+
+[Lifetime graph](lifetime/README.md) owns non-null leases, typed dependency retention, weak acquisition and lifetime-backed capability handles. It is a standard-only component with an independent consumer.
