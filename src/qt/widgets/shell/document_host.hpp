@@ -33,6 +33,7 @@
 namespace wiola::gui {
 
 class TrackBrowser;
+class ViewRegistry;
 
 struct DocumentCommands {
     std::function<void()> selection_changed;
@@ -60,6 +61,8 @@ public:
     bool close(const DocumentId& id);
     void begin_scan(const library::WorkspaceId& id);
     void refresh_playback();
+    /// Register the currently owned documents and their layout-visible browser parts.
+    void register_views(ViewRegistry& views) const;
     [[nodiscard]] std::optional<library::PlaylistId> active_playlist() const;
 
     void dispatch(TrackCommand command, const DocumentId& id);

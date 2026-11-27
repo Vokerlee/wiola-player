@@ -21,6 +21,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include <QString>
 
 #include <utility>
@@ -33,12 +34,18 @@ class QWidget;
 
 namespace wiola::gui {
 
-/// Owns desktop docking; custom central layouts may temporarily borrow the same live views.
+class ViewRegistry;
+
+/// Owns desktop central/footer attachment and docking; custom central layouts may temporarily
+/// borrow the same live views.
 class WindowPanels final : public QObject {
 public:
     WindowPanels(QMainWindow& window, QWidget& library, QWidget& inspector,
         std::vector<QWidget*> library_views);
     void reconcile(QWidget& central);
+    /// Attach the prepared layout while retaining live views, playback and keyboard focus.
+    void install(QWidget& root, const ViewRegistry& views, QWidget& playback,
+        QPointer<QWidget> previous_focus);
     [[nodiscard]] bool contains(const QWidget& widget) const;
     void add_menu_actions(QMenu& menu);
     void show_inspector();

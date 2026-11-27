@@ -7,3 +7,5 @@ The [widget tests](tests) exercise binding, selection, accessibility, painting, 
 SavedPlaylistManager presents an already accepted command outcome. Its binding guards widget lifetime after command completion, navigation changes and receipt observation. Closing the view during those callbacks preserves the command result and stops further presentation. An active changed observer retains its callable state until it returns, including when it closes the manager itself.
 
 Theme acceptance owns its canonical palette and generation before publishing application palette events. Both palette delivery and theme-change observers may close the manager. The transaction guard checks QObject lifetime before releasing the busy state; reentrant theme requests remain busy while publication is active. Persistence and generation acceptance are complete before those public callbacks run.
+
+`DocumentHost::register_views` owns discovery of its live document/browser views. `WindowPanels::install` owns central/dock/footer attachment, retention of omitted registered widgets and focus restoration. MainWindow coordinates layout preparation and persistence through these existing owners.

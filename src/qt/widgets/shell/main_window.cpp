@@ -634,28 +634,7 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
 
     const QPointer<QWidget> previous_focus = QApplication::focusWidget();
     ViewRegistry live = views_;
-    const auto register_document = [&](DocumentId id, QWidget* widget) {
-        static_cast<void>(live.add(DocumentViewReference{id}, widget,
-            LayoutComponentKind::track_table));
-        static_cast<void>(live.add(DocumentViewReference{id, DocumentViewPart::search},
-            widget->findChild<QWidget*>("trackSearchPanel"), LayoutComponentKind::search));
-        static_cast<void>(live.add(DocumentViewReference{id, DocumentViewPart::tags},
-            widget->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
-    };
-
-    // Queue whole is already a singleton registration; its nested browser parts are separate views.
-    static_cast<void>(live.add(DocumentViewReference{DocumentId::queue(), DocumentViewPart::search},
-        now_playing_->findChild<QWidget*>("trackSearchPanel"), LayoutComponentKind::search));
-    static_cast<void>(live.add(DocumentViewReference{DocumentId::queue(), DocumentViewPart::tags},
-        now_playing_->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
-
-    for (const auto& [id, view] : document_host_->registry().playlists())
-        if (view)
-            register_document(DocumentId::playlist(id), view);
-
-    for (const auto& [id, view] : document_host_->registry().workspaces())
-        if (view)
-            register_document(DocumentId::workspace(id), view);
+    document_host_->register_views(live);
 
     LayoutBuilder builder{live};
 
@@ -686,68 +665,10 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
         return false;
     }
 
-    const auto belongs_to_root = [root](QWidget* widget) {
-        for (QWidget* current = widget; current != nullptr; current = current->parentWidget()) {
-            if (current == root)
-                return true;
-        }
-
-        return false;
-    };
-
-    panels_->reconcile(*root);
-
-    for (const auto& [id, registration] : live.entries()) {
-        QWidget* widget = registration.widget.data();
-
-        if (!widget || panels_->contains(*widget))
-            continue;
-
-        bool registered_ancestor = false;
-
-        for (QWidget* ancestor = widget->parentWidget(); ancestor && ancestor != this;
-            ancestor = ancestor->parentWidget())
-            if (std::ranges::any_of(live.entries(),
-                    [ancestor](const auto& entry) { return entry.second.widget == ancestor; })) {
-                registered_ancestor = true;
-                break;
-            }
-
-        if (!belongs_to_root(widget)) {
-            if (!registered_ancestor)
-                widget->setParent(this);
-            if (!registered_ancestor || std::holds_alternative<ComponentViewId>(id))
-                widget->hide();
-        }
-    }
-
     if (QLayout* layout = root->layout())
         layout->setSpacing(tokens.player.section_spacing);
 
-    // The composite player always spans the window, including after editing its contents.
-    // Custom layouts may omit it or arrange its individual registered controls independently.
-    const bool has_playback_section = belongs_to_root(transport_);
-    auto* footer = statusBar();
-    footer->removeWidget(transport_);
-
-    if (has_playback_section) {
-        footer->addPermanentWidget(transport_, 1);
-        transport_->show();
-
-        if (root == transport_)
-            root = new QWidget{this};
-    }
-
-    footer->setVisible(has_playback_section);
-
-    setCentralWidget(root);
-
-    if (isVisible()) {
-        root->show();
-        if (previous_focus &&
-            (belongs_to_root(previous_focus) || footer->isAncestorOf(previous_focus)))
-            previous_focus->setFocus(Qt::OtherFocusReason);
-    }
+    panels_->install(*root, live, *transport_, previous_focus);
 
     if (persist)
         save_window_state();

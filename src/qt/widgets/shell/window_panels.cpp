@@ -20,13 +20,17 @@
 
 #include "window_panels.hpp"
 
+#include <qt/widgets/layout/view_registry.hpp>
+
 #include <QAction>
 #include <QDockWidget>
 #include <QLayout>
 #include <QMainWindow>
 #include <QMenu>
+#include <QStatusBar>
 
 #include <algorithm>
+#include <variant>
 
 namespace wiola::gui {
 
@@ -141,6 +145,71 @@ void WindowPanels::reset()
     library_dock_->setVisible(!library_embedded_);
     inspector_dock_->hide();
     window_.resizeDocks({library_dock_, inspector_dock_}, {220, 320}, Qt::Horizontal);
+}
+
+void WindowPanels::install(QWidget& central, const ViewRegistry& views, QWidget& playback,
+    QPointer<QWidget> previous_focus)
+{
+    QWidget* root = &central;
+    const auto belongs_to_root = [root](QWidget* widget) {
+        for (QWidget* current = widget; current != nullptr; current = current->parentWidget()) {
+            if (current == root)
+                return true;
+        }
+
+        return false;
+    };
+
+    reconcile(*root);
+
+    for (const auto& [id, registration] : views.entries()) {
+        QWidget* widget = registration.widget.data();
+
+        if (!widget || contains(*widget))
+            continue;
+
+        bool registered_ancestor = false;
+
+        for (QWidget* ancestor = widget->parentWidget(); ancestor && ancestor != &window_;
+            ancestor = ancestor->parentWidget())
+            if (std::ranges::any_of(views.entries(),
+                    [ancestor](const auto& entry) { return entry.second.widget == ancestor; })) {
+                registered_ancestor = true;
+                break;
+            }
+
+        if (!belongs_to_root(widget)) {
+            if (!registered_ancestor)
+                widget->setParent(&window_);
+            if (!registered_ancestor || std::holds_alternative<ComponentViewId>(id))
+                widget->hide();
+        }
+    }
+
+    // The composite player always spans the window, including after editing its contents.
+    // Custom layouts may omit it or arrange its individual registered controls independently.
+    const bool has_playback_section = belongs_to_root(&playback);
+    auto* footer = window_.statusBar();
+    footer->removeWidget(&playback);
+
+    if (has_playback_section) {
+        footer->addPermanentWidget(&playback, 1);
+        playback.show();
+
+        if (root == &playback)
+            root = new QWidget{&window_};
+    }
+
+    footer->setVisible(has_playback_section);
+
+    window_.setCentralWidget(root);
+
+    if (window_.isVisible()) {
+        root->show();
+        if (previous_focus &&
+            (belongs_to_root(previous_focus) || footer->isAncestorOf(previous_focus)))
+            previous_focus->setFocus(Qt::OtherFocusReason);
+    }
 }
 
 } // namespace wiola::gui

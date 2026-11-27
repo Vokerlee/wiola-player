@@ -176,7 +176,10 @@ wiola_add_test(
     LIBS wiola::qt_widgets wiola::ffmpeg
 )
 
-target_link_libraries(gui_document_host_test PRIVATE wiola::local_media)
+target_link_libraries(
+    gui_document_host_test
+    PRIVATE wiola::local_media wiola::qt_paths
+)
 
 wiola_add_test(
     gui_track_row_test
