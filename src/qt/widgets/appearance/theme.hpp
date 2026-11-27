@@ -101,6 +101,7 @@ struct ThemeColors {
     QPalette::ColorRole color);
 [[nodiscard]] QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
     QPalette::ColorRole color = QPalette::ButtonText);
+[[nodiscard]] QIcon playlist_activity_icon(const QWidget& styled);
 [[nodiscard]] QPixmap themed_artwork_placeholder(const QWidget& styled, int size);
 void apply_theme(Theme theme);
 void apply_theme(const ThemeColors& colors, const ThemeStyle& style = {});

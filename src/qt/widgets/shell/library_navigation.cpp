@@ -20,7 +20,6 @@
 
 #include "library_navigation.hpp"
 
-#include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/playlist_name.hpp>
 
@@ -181,10 +180,7 @@ void LibraryNavigation::set_active_playlist(std::optional<library::PlaylistId> i
 
 void LibraryNavigation::show_activity()
 {
-    const auto icon = active_
-        ? themed_standard_icon(*this, PresentationTokens{}.playlist.activity_icon,
-              QPalette::Highlight)
-        : QIcon{};
+    const auto icon = active_ ? playlist_activity_icon(*this) : QIcon{};
     for (int row = 0; row < playlists_->childCount(); ++row) {
         auto* item = playlists_->child(row);
         const bool active =

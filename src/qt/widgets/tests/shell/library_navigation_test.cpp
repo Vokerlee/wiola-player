@@ -18,10 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/shell/library_navigation.hpp>
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <QApplication>
+#include <QImage>
 #include <QTest>
 #include <gtest/gtest.h>
 
@@ -144,6 +146,9 @@ TEST(LibraryNavigation, ActiveMarkerIsIndependentOfSelectionAndSurvivesRepositor
     const auto first = repository.create_playlist("First");
     const auto second = repository.create_playlist("Second");
     wiola::gui::LibraryNavigation navigation;
+    navigation.setPalette(
+        wiola::gui::theme_palette(wiola::gui::theme_colors(wiola::gui::Theme::light))
+    );
     navigation.show_repository(repository);
     ASSERT_TRUE(navigation.select_playlist(first));
 
@@ -160,6 +165,16 @@ TEST(LibraryNavigation, ActiveMarkerIsIndependentOfSelectionAndSurvivesRepositor
     EXPECT_TRUE(entries->child(1)->font(0).bold());
     EXPECT_FALSE(entries->child(1)->icon(0).isNull());
     EXPECT_EQ(navigation.selected_playlist(), first);
+
+    const auto previous = entries->child(1)->icon(0).pixmap(24, 24).toImage();
+    navigation.setPalette(
+        wiola::gui::theme_palette(wiola::gui::theme_colors(wiola::gui::Theme::dark))
+    );
+    navigation.set_active_playlist(second);
+
+    EXPECT_NE(entries->child(1)->icon(0).pixmap(24, 24).toImage(), previous);
+    EXPECT_EQ(navigation.selected_playlist(), first);
+
     ASSERT_TRUE(repository.rename_playlist(second, "Renamed"));
 
     navigation.show_repository(repository);

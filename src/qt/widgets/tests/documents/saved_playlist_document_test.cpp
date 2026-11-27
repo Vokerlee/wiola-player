@@ -20,6 +20,7 @@
 
 #include <app/library/local_identity.hpp>
 #include <fixtures/track_view.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/library/in_memory_repository.hpp>
@@ -99,12 +100,35 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
 
     EXPECT_EQ(document.findChild<QPushButton*>("useActivePlaylist"), nullptr);
 
+    auto* activity = document.findChild<QLabel*>("playlistActivityIndicator");
+
+    ASSERT_NE(activity, nullptr);
+    EXPECT_TRUE(activity->isHidden());
+
     document.set_active(true);
+    EXPECT_FALSE(activity->isHidden());
+    EXPECT_FALSE(activity->pixmap().isNull());
+    EXPECT_EQ(activity->accessibleName(), "Active playlist");
     EXPECT_EQ(heading->text(), "Favorites");
     EXPECT_TRUE(document.active());
     EXPECT_EQ(heading->accessibleDescription(), "Active playlist");
 
+    for (const auto& preset : wiola::gui::theme_presets()) {
+        document.setPalette(wiola::gui::theme_palette(wiola::gui::theme_colors(preset.palette)));
+
+        EXPECT_FALSE(activity->isHidden());
+        EXPECT_FALSE(activity->pixmap().isNull());
+        EXPECT_EQ(heading->text(), "Favorites");
+    }
+
+    auto font = document.font();
+    font.setPointSize(font.pointSize() + 2);
+    document.setFont(font);
+    document.setStyleSheet("QLabel { margin: 1px; }");
+    EXPECT_FALSE(activity->isHidden());
+
     document.set_active(false);
+    EXPECT_TRUE(activity->isHidden());
     EXPECT_EQ(heading->text(), "Favorites");
 
     int moves{0};

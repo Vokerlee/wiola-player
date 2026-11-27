@@ -22,6 +22,7 @@
 
 #include <QApplication>
 #include <QPainter>
+#include <QPainterPath>
 #include <QWidget>
 
 #include <algorithm>
@@ -278,6 +279,39 @@ QIcon tinted_icon(const QIcon& icon, const QPalette& palette, QPalette::ColorRol
     result.addPixmap(tinted(palette.color(QPalette::Disabled, color)), QIcon::Disabled);
 
     return result;
+}
+
+QIcon playlist_activity_icon(const QWidget& styled)
+{
+    // A shared passive badge, independent of the native platform's icon collection.
+    QPixmap image{64, 64};
+    image.fill(Qt::transparent);
+
+    QPainter painter{&image};
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.scale(image.width() / 24.0, image.height() / 24.0);
+
+    const auto& palette = styled.palette();
+    painter.setBrush(palette.color(QPalette::Highlight));
+    painter.setPen(QPen{palette.color(QPalette::HighlightedText), 1.0});
+    painter.drawEllipse(QPointF{12.0, 12.0}, 9.0, 9.0);
+
+    QPainterPath check;
+    check.moveTo(7.5, 12.0);
+    check.lineTo(10.5, 15.0);
+    check.lineTo(16.5, 9.0);
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen{palette.color(QPalette::HighlightedText), 2.0, Qt::SolidLine, Qt::RoundCap,
+        Qt::RoundJoin});
+    painter.drawPath(check);
+    painter.end();
+
+    QIcon icon;
+
+    for (const auto mode : {QIcon::Normal, QIcon::Active, QIcon::Selected})
+        icon.addPixmap(image, mode);
+
+    return icon;
 }
 
 QPixmap themed_artwork_placeholder(const QWidget& styled, int size)
