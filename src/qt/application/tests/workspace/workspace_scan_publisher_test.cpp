@@ -30,6 +30,7 @@
 #include <condition_variable>
 #include <fstream>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <set>
 
@@ -253,6 +254,88 @@ TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverf
     }));
 
     publisher.stop();
+}
+
+TEST(WorkspaceScanPublisher, ObserverMayDisposeThePublisherDuringRunningOrTerminalDelivery)
+{
+    for (const auto terminal : {false, true}) {
+        SCOPED_TRACE(terminal);
+        const wiola::testing::TemporaryDirectory directory;
+        file(directory.path() / "track.wav");
+        wiola::app::WorkspaceScanScheduling policy;
+        policy.scan.batch_size = 1;
+        auto token = std::make_shared<int>(42);
+        const std::weak_ptr<int> observer_lifetime = token;
+        std::unique_ptr<wiola::app::WorkspaceScanPublisher> publisher;
+        int calls = 0;
+        publisher = std::make_unique<wiola::app::WorkspaceScanPublisher>(
+            *QCoreApplication::instance(),
+            [&, keep = std::move(token)](wiola::app::WorkspaceScanBatch batch) {
+                if ((batch.status != wiola::app::WorkspaceScanStatus::running) != terminal)
+                    return;
+                ++calls;
+                publisher.reset();
+                EXPECT_FALSE(observer_lifetime.expired());
+                EXPECT_EQ(*keep, 42);
+            },
+            policy
+        );
+
+        publisher->start({.id = {"workspace"}, .root = directory.path()}, {".wav"});
+        ASSERT_TRUE(pump_until([&] { return calls != 0; }));
+        EXPECT_EQ(publisher, nullptr);
+        EXPECT_EQ(calls, 1);
+        EXPECT_TRUE(observer_lifetime.expired());
+        QCoreApplication::processEvents();
+        EXPECT_EQ(calls, 1);
+    }
+}
+
+TEST(WorkspaceScanPublisher, RetainsMutableObserverStateAcrossBatches)
+{
+    const wiola::testing::TemporaryDirectory directory;
+    file(directory.path() / "first.wav");
+    file(directory.path() / "second.wav");
+    wiola::app::WorkspaceScanScheduling policy;
+    policy.scan.batch_size = 1;
+    std::vector<int> sequence;
+    bool complete = false;
+    wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
+        [&, next = 0](wiola::app::WorkspaceScanBatch batch) mutable {
+            sequence.push_back(++next);
+            complete = batch.status != wiola::app::WorkspaceScanStatus::running;
+        },
+        policy};
+
+    publisher.start({.id = {"workspace"}, .root = directory.path()}, {".wav"});
+    ASSERT_TRUE(pump_until([&] { return complete; }));
+    ASSERT_GE(sequence.size(), 3U);
+    for (std::size_t index = 0; index < sequence.size(); ++index)
+        EXPECT_EQ(sequence[index], static_cast<int>(index + 1));
+}
+
+TEST(WorkspaceScanPublisher, StopCancelsBlockedAndPendingScansAndClosesPublication)
+{
+    const wiola::testing::TemporaryDirectory directory;
+    file(directory.path() / "track.wav");
+    ScanGate gate;
+    wiola::app::WorkspaceScanScheduling policy;
+    policy.max_active = 1;
+    policy.scan.after_entry = [&](const auto&, std::size_t, std::stop_token stop) {
+        gate.wait(stop);
+    };
+    int calls = 0;
+    wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
+        [&](auto) { ++calls; }, policy};
+    publisher.start({.id = {"first"}, .root = directory.path()}, {".wav"});
+    ASSERT_TRUE(pump_until([&] { return gate.started(); }));
+    publisher.start({.id = {"pending"}, .root = directory.path()}, {".wav"});
+
+    publisher.stop();
+    publisher.stop();
+    QCoreApplication::processEvents();
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(publisher.start({.id = {"closed"}, .root = directory.path()}, {".wav"}), 0U);
 }
 
 } // namespace
