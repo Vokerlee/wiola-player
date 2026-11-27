@@ -18,11 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/temporary_directory.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
-
-#include <fixtures/temporary_directory.hpp>
 
 #include <gtest/gtest.h>
 
@@ -58,6 +57,7 @@ wiola::media::MetadataWriteRequest title_request()
 {
     wiola::media::MetadataWriteRequest request;
     request.overrides.title = "Changed";
+
     return request;
 }
 
@@ -80,6 +80,7 @@ TEST(MetadataRemux, WritesRequestedFieldsWithoutChangingTheSource)
     EXPECT_EQ(bytes(fixture("tone.mp3")), original);
 
     const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+
     ASSERT_TRUE(metadata) << metadata.error().detail;
     EXPECT_EQ(metadata->track.title, "Remuxed");
     EXPECT_EQ(metadata->track.artist, "Artist");
@@ -99,12 +100,16 @@ TEST(MetadataRemux, NeverOverwritesExistingOutputOrTheSource)
     request.overrides.title = "Changed";
 
     auto outcome = wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), output, request);
+
     EXPECT_EQ(outcome.state, MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, MetadataWriteError::invalid_output);
+
     const std::vector<char> expected{'k', 'e', 'e', 'p'};
+
     EXPECT_EQ(bytes(output), expected);
 
     const auto original = bytes(fixture("tone.mp3"));
+
     outcome =
         wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), fixture("tone.mp3"), request);
     EXPECT_EQ(outcome.error, MetadataWriteError::invalid_edit);
@@ -117,11 +122,13 @@ TEST(MetadataRemux, EmptyAndCancelledRequestsLeaveNoPartialOutput)
     const auto output = directory.path() / "wiola-remux-empty.mp3";
 
     auto outcome = wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), output, {});
+
     EXPECT_EQ(outcome.state, MetadataWriteState::unchanged);
     EXPECT_FALSE(std::filesystem::exists(output));
 
     std::stop_source stop;
     stop.request_stop();
+
     wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
 
     wiola::media::MetadataWriteRequest request;
@@ -146,6 +153,7 @@ TEST(MetadataRemux, RejectsMalformedMp3WithoutLeavingOutput)
     const auto original = bytes(input);
     wiola::media::MetadataWriteRequest request;
     request.overrides.title = "Changed";
+
     const auto outcome = wiola::codec::ffmpeg::remux_metadata(input, output, request);
 
     EXPECT_EQ(outcome.state, MetadataWriteState::failed);
@@ -172,6 +180,7 @@ TEST(MetadataRemux, InterruptedAndDiskFullWritesRemovePartialOutput)
 
     auto outcome = wiola::codec::ffmpeg::remux_metadata(fixture("tone.mp3"), cancelled_output,
         title_request(), context, interruption);
+
     EXPECT_EQ(outcome.state, MetadataWriteState::failed);
     EXPECT_EQ(outcome.error, MetadataWriteError::cancelled);
     EXPECT_FALSE(std::filesystem::exists(cancelled_output));
@@ -197,8 +206,10 @@ TEST(FormatWriteCapabilities, OnlyQualifiedFormatsExposeWritableFields)
     for (const wiola::codec::Backend& backend : registry.backends()) {
         for (const wiola::codec::Format& format : backend.formats) {
             ++formats;
+
             const bool qualified = format.name == "MPEG audio Layer III" || format.name == "FLAC" ||
                 format.name == "MP4/M4A AAC-LC/ALAC" || format.name == "Ogg Vorbis/Opus";
+
             EXPECT_EQ(format.metadata_writes.any(), qualified) << format.name;
         }
     }

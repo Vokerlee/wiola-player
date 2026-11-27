@@ -18,15 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QPushButton>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/shell/action_button_binding.hpp>
 #include <qt/widgets/shell/player_actions.hpp>
-
-#include <QApplication>
-#include <QWidget>
 #include <qt/widgets/tests/support/gui_interaction.hpp>
 
+#include <QApplication>
+#include <QPushButton>
+#include <QWidget>
 #include <gtest/gtest.h>
 
 namespace {
@@ -59,20 +58,26 @@ TEST_F(PlayerActions, RegistersEveryCommandWithALabelAndShortcut)
 TEST_F(PlayerActions, SpaceActivatesTheFocusedButtonAndRemainsAPlayerShortcutElsewhere)
 {
     QPushButton reset{"Reset", &styled};
+
     styled.setFocusPolicy(Qt::StrongFocus);
     styled.addAction(actions.action(PlayerAction::play));
+
     int resets{}, plays{};
     QObject::connect(&reset, &QPushButton::clicked, [&] { ++resets; });
     QObject::connect(actions.action(PlayerAction::play), &QAction::triggered, [&] { ++plays; });
+
     styled.show();
     styled.activateWindow();
     reset.setFocus();
     ASSERT_TRUE(wiola::testing::await_gui([&] { return reset.hasFocus(); }));
+
     QTest::keyClick(&reset, Qt::Key_Space);
     EXPECT_EQ(resets, 1);
     EXPECT_EQ(plays, 0);
+
     styled.setFocus();
     ASSERT_TRUE(wiola::testing::await_gui([&] { return styled.hasFocus(); }));
+
     QTest::keyClick(&styled, Qt::Key_Space);
     EXPECT_EQ(plays, 1);
 }
@@ -144,16 +149,20 @@ TEST_F(PlayerActions, EveryButtonTracksSharedStateAndDisconnectsWithItsLifetime)
     auto* command = actions.action(wiola::gui::PlayerAction::shuffle);
     new wiola::gui::ActionButtonBinding{first, *command};
     new wiola::gui::ActionButtonBinding{second, *command};
+
     int triggered{};
     QObject::connect(command, &QAction::triggered, [&] { ++triggered; });
+
     actions.set_shuffled(true);
     EXPECT_TRUE(first.isChecked());
     EXPECT_TRUE(second.isChecked());
     EXPECT_EQ(triggered, 0);
+
     first.click();
     EXPECT_EQ(triggered, 1);
     EXPECT_FALSE(first.isChecked());
     EXPECT_FALSE(second.isChecked());
+
     command->setText("A shared label");
     command->setToolTip("Shared help");
     command->setEnabled(false);
@@ -161,10 +170,12 @@ TEST_F(PlayerActions, EveryButtonTracksSharedStateAndDisconnectsWithItsLifetime)
     EXPECT_EQ(first.accessibleName(), "A shared label");
     EXPECT_EQ(second.toolTip(), "Shared help");
     EXPECT_FALSE(first.isEnabled());
+
     for (int i = 0; i < 10; ++i) {
         QPushButton temporary;
         new wiola::gui::ActionButtonBinding{temporary, *command};
     }
+
     command->setEnabled(true);
     second.click();
     EXPECT_EQ(triggered, 2);
@@ -173,24 +184,30 @@ TEST_F(PlayerActions, EveryButtonTracksSharedStateAndDisconnectsWithItsLifetime)
 TEST_F(PlayerActions, PrimaryPlayButtonsKeepContrastingIconsWhenPresetsAndPlaybackStateChange)
 {
     using namespace wiola::gui;
+
     QPushButton button;
     new ActionButtonBinding{button, *actions.action(PlayerAction::play),
         ActionButtonPresentation::icon_only};
+
     for (const auto& preset : theme_presets()) {
         const auto colors = theme_colors(preset.palette);
         apply_theme(colors, preset.style);
         QApplication::processEvents();
         actions.reload_icons(styled);
+
         for (const bool playing : {false, true}) {
             actions.set_playing(playing);
+
             const auto image = button.icon().pixmap(24, 24).toImage();
             int opaque{};
+
             for (int y = 0; y < image.height(); ++y)
                 for (int x = 0; x < image.width(); ++x)
                     if (const auto pixel = image.pixelColor(x, y); pixel.alpha() == 255) {
                         EXPECT_EQ(pixel, colors.accent_text);
                         ++opaque;
                     }
+
             EXPECT_GT(opaque, 0);
         }
     }
@@ -204,8 +221,10 @@ TEST_F(PlayerActions, BindingSafelyDisablesWhenTheActionDies)
         wiola::gui::ActionButtonPresentation::icon_only};
     EXPECT_TRUE(button.text().isEmpty());
     EXPECT_EQ(button.accessibleName(), "Temporary");
+
     delete command;
     EXPECT_FALSE(button.isEnabled());
+
     button.click();
 }
 
@@ -215,6 +234,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

@@ -21,6 +21,7 @@
 #pragma once
 
 #include "volume_policy.hpp"
+
 #include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 

@@ -8,15 +8,18 @@ Result<std::size_t> ByteStream::read(std::span<std::byte> out, const OperationCo
 {
     if (context.stop_reason() != StopReason::none)
         return unexpected{context.error()};
+
     if (out.empty())
         return std::size_t{};
 
     auto count{read_impl(out, context)};
+
     if (count && *count > out.size())
         return unexpected{
             Error{.category = ErrorCategory::damaged,
                   .detail = "byte stream reported more bytes than requested"}
         };
+
     return count;
 }
 

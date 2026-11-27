@@ -24,6 +24,7 @@
 #include "inspector_context.hpp"
 #include "metadata_conflict_panel.hpp"
 #include "standard_metadata_editor.hpp"
+
 #include <qt/widgets/appearance/artwork_presentation.hpp>
 
 #include <QLabel>

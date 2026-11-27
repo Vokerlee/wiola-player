@@ -19,6 +19,7 @@
  */
 
 #include "metadata_coordinator.hpp"
+
 #include <metadata/tag_reader.hpp>
 
 #include <memory>
@@ -44,6 +45,7 @@ MetadataCoordinator::MetadataCoordinator(std::unique_ptr<MetadataWorker> worker)
 void MetadataCoordinator::replace(std::span<const QueueEntry> tracks)
 {
     Groups groups{group(tracks)};
+
     ++generation_;
     reader_->cancel_before(generation_);
 
@@ -91,6 +93,7 @@ std::vector<MetadataCoordinator::Reading> MetadataCoordinator::take()
     for (MetadataWorker::Reading& read : reader_->take()) {
         if (read.generation != generation_)
             continue;
+
         const auto entries{entries_.find(read.resource)};
 
         if (entries == entries_.end() || entries->second.front() != read.id)

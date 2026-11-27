@@ -18,13 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fakes/resource.hpp>
-#include <wiola/app/playback/playback_service.hpp>
-
-#include <fakes/provider.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 #include <gtest/gtest.h>
 
@@ -67,6 +65,7 @@ protected:
 
         while (std::chrono::steady_clock::now() < deadline) {
             static_cast<void>(presenter.pump());
+
             const PlayerPresentation state{wiola::app::present_playback(presenter)};
 
             if (state.playback.loaded && state.playback.track == track)
@@ -136,6 +135,7 @@ TEST_F(PlaybackPresentation, TogglesBetweenPlayingPausedAndStopped)
     presenter->stop();
 
     const PlayerPresentation stopped{wiola::app::present_playback(*presenter)};
+
     EXPECT_EQ(stopped.playback.state, PlaybackState::stopped);
     EXPECT_FALSE(stopped.playback.playing);
     EXPECT_EQ(stopped.playback.time_played, wiola::units::Time{});
@@ -169,6 +169,7 @@ TEST_F(PlaybackPresentation, RoutesQueueCommandsAndPresentsPlaybackPolicy)
     presenter->shuffle(true);
 
     const PlayerPresentation shuffled{wiola::app::present_playback(*presenter)};
+
     EXPECT_TRUE(shuffled.shuffled);
     EXPECT_EQ(shuffled.playback.queue_position, 1U);
 
@@ -191,11 +192,13 @@ TEST_F(PlaybackPresentation, SeeksByFractionOfThePresentedDuration)
     ASSERT_TRUE(wait_for_track(*presenter, wiola::testing::resource("track.wav", "Track")));
 
     const auto total{wiola::app::present_playback(*presenter).playback.total_time};
+
     ASSERT_TRUE(total.has_value());
 
     presenter->seek_to(0.5);
 
     const wiola::units::Time elapsed{wiola::app::present_playback(*presenter).playback.time_played};
+
     EXPECT_NEAR(elapsed.get<wiola::units::Sec>(), total->get<wiola::units::Sec>() * 0.5, 0.001);
 }
 
@@ -204,6 +207,7 @@ TEST_F(PlaybackPresentation, RoutesVolumeAndEqualizerValues)
     presenter->set_volume(0.25F);
     presenter->set_equalizer_enabled(false);
     ASSERT_GT(presenter->num_equalizer_bands(), 2U);
+
     presenter->set_equalizer_band(2, 4.0F);
 
     EXPECT_FLOAT_EQ(presenter->volume(), 0.25F);

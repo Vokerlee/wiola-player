@@ -20,12 +20,10 @@
 
 #include "session_impl.hpp"
 
-#include <wiola/audio/stage.hpp>
-
+#include <buffering/pcm_queue.hpp>
 #include <loading/loader.hpp>
 #include <transport/player.hpp>
-
-#include <buffering/pcm_queue.hpp>
+#include <wiola/audio/stage.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
 
@@ -48,8 +46,10 @@ std::shared_ptr<media::MediaProvider> validated(std::shared_ptr<media::MediaProv
 {
     if (!provider)
         throw std::invalid_argument{"playback requires a media provider"};
+
     if (!transport.valid() || !buffering.valid())
         throw std::invalid_argument{"invalid playback configuration"};
+
     return provider;
 }
 
@@ -80,6 +80,7 @@ OpenResult Session::Impl::open(std::vector<media::ResourceReference> tracks)
     if (playlist_.empty()) {
         loads_.invalidate();
         loader_.cancel();
+
         return last_result_;
     }
 
@@ -115,6 +116,7 @@ void Session::Impl::add(std::vector<media::ResourceReference> tracks)
 {
     const bool was_empty{playlist_.empty()};
     const std::size_t first_new{playlist_.tracks().size()};
+
     playlist_.add(std::move(tracks));
 
     metadata_.append(playlist_.tracks().subspan(first_new));
@@ -131,12 +133,14 @@ bool Session::Impl::remove(std::size_t index)
         return false;
 
     const QueueEntryId entry{playlist_.tracks()[index].id()};
+
     if (loads_.invalidate_if(entry))
         loader_.cancel();
 
     if (replacement_ && entry == replacement_->intent.entry) {
         replacement_.reset();
     }
+
     return playlist_.remove(index);
 }
 
@@ -232,6 +236,7 @@ void Session::Impl::record_outcome(OperationKind operation, OperationId id,
     outcomes_.push_back(
         OperationOutcome{.id = id, .operation = operation, .error = std::move(error)}
     );
+
     if (outcomes_.size() > max_retained_outcomes) {
         outcomes_.pop_front();
         outcomes_overflowed_ = true;
@@ -258,8 +263,10 @@ void Session::Impl::take_up_finished_tags()
 {
     for (MetadataCoordinator::Reading& reading : metadata_.take()) {
         std::optional<OperationError> error;
+
         if (!reading.result)
             error = reading.result.error();
+
         record_outcome(OperationKind::metadata, reading.entries.front().value, std::move(error));
 
         media::Metadata tags =
@@ -284,6 +291,7 @@ void Session::Impl::take_up_finished_read()
         // Nothing is torn down: a file that would not open is no reason to silence the one that
         // did.
         last_result_ = open_failed(opened.error().category);
+
         return;
     }
 
@@ -323,17 +331,23 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
 {
     const auto reject{[this, request](OperationError error) {
         const auto status{open_failed(error)};
+
         record_outcome(OperationKind::open, request, std::move(error));
         last_result_ = status;
+
         return false;
     }};
+
     if (!source)
         return reject(media::Error{media::ErrorCategory::damaged,
             "decoder opener returned no source"});
+
     if (const auto valid{source->stream_info().validate()}; !valid)
         return reject(valid.error());
+
     const pcm::StreamSpec spec{source->spec()};
     const std::optional<pcm::Frames> buffer_frames{spec.checked_frames_at(buffering_.duration)};
+
     if (!buffer_frames || *buffer_frames == pcm::Frames{} ||
         !pcm::PcmQueue::checked_capacity(spec, *buffer_frames))
         return reject(media::Error{media::ErrorCategory::damaged,
@@ -349,8 +363,10 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
         // after this function returns; the following commit cannot fail or allocate.
         record_outcome(OperationKind::open, request);
         pipeline_.reset();
+
         if (processing)
             processing->commit();
+
         pipeline->activate(out_);
         pipeline_.swap(pipeline);
         static_assert(std::is_nothrow_move_assignable_v<media::ResourceReference>);
@@ -358,6 +374,7 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
         installed_entry_ = entry;
         replacement_.reset();
         last_result_ = OpenResult::opened;
+
         return true;
     } catch (const OutputSession::Unavailable& failure) {
         return reject(OutputSetupError{failure.what()});
@@ -417,6 +434,7 @@ void Session::Impl::stop() noexcept
         replacement_->intent.play = false;
         replacement_->intent.position = units::Time{};
     }
+
     loads_.invalidate();
     loader_.cancel();
 
@@ -434,13 +452,16 @@ Session::Impl::release_media(const media::ResourceReference& resource)
 {
     if (resource != track_)
         return {};
+
     if (replacement_)
         return replacement_->intent;
+
     if (!loaded())
         return {};
 
     MediaReplacementState state{installed_entry_, playing(), time_played(),
         ++replacement_generation_};
+
     if (const auto pending{loads_.invalidate_resource(resource)}) {
         // A newer occurrence of the same physical resource must close its pending open too.
         // Preserve that occurrence's new-track intent instead of the old decoder's position.
@@ -449,8 +470,10 @@ Session::Impl::release_media(const media::ResourceReference& resource)
         state.position = pending->position.value_or(units::Time{});
         loader_.cancel();
     }
+
     pipeline_.reset();
     replacement_ = Handoff{.intent = state};
+
     return state;
 }
 
@@ -462,6 +485,7 @@ OpenResult Session::Impl::restore_media(const MediaReplacementState& state)
 
     replacement_->restore_requested = true;
     restore_when_ready();
+
     return last_result_;
 }
 

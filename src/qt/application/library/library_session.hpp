@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #ifndef Q_MOC_RUN
 #include <app/library/artwork_store.hpp>
 #include <app/library/location_index.hpp>
@@ -26,7 +27,6 @@
 #include <app/library/tag_key_catalog.hpp>
 #include <app/metadata/custom_tag_commands.hpp>
 #include <app/workspace/workspace_reconciliation.hpp>
-#include <optional>
 #include <qt/application/metadata/media_revision_publisher.hpp>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <qt/application/workspace/workspace_scan_publisher.hpp>
@@ -38,6 +38,8 @@
 #include <wiola/app/library/saved_playlist_commands.hpp>
 #include <wiola/app/metadata/metadata_edit_service.hpp>
 #include <wiola/app/metadata/metadata_merge.hpp>
+
+#include <optional>
 #endif
 #include <QObject>
 #include <QSettings>

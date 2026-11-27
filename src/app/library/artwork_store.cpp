@@ -19,6 +19,7 @@
  */
 
 #include "artwork_store.hpp"
+
 #include <stdexcept>
 
 namespace wiola::app {
@@ -34,10 +35,13 @@ ArtworkStore::ArtworkStore(std::size_t bytes, std::size_t entries)
 void ArtworkStore::remove(const library::MediaId& media)
 {
     const auto found = entries_.find(media);
+
     if (found == entries_.end())
         return;
+
     if (found->second.bytes)
         bytes_ -= found->second.bytes->data.size();
+
     order_.erase(found->second.order);
     entries_.erase(found);
 }
@@ -45,9 +49,12 @@ void ArtworkStore::remove(const library::MediaId& media)
 media::ArtworkReference ArtworkStore::get(const library::MediaId& media)
 {
     const auto found = entries_.find(media);
+
     if (found == entries_.end())
         return {};
+
     order_.splice(order_.end(), order_, found->second.order);
+
     return found->second.reference;
 }
 
@@ -70,18 +77,24 @@ bool ArtworkStore::store(const library::MediaId& media,
 {
     if (!media.valid())
         return false;
+
     if (const auto found = entries_.find(media);
         found != entries_.end() && found->second.reference == reference) {
         order_.splice(order_.end(), order_, found->second.order);
         return false;
     }
+
     remove(media);
+
     const auto incoming = artwork ? artwork->data.size() : 0;
+
     while (!entries_.empty() && (entries_.size() >= max_entries_ || bytes_ + incoming > limit_))
         remove(order_.front());
+
     order_.push_back(media);
     entries_.emplace(media, Entry{std::move(artwork), reference, std::prev(order_.end())});
     bytes_ += incoming;
+
     return true;
 }
 

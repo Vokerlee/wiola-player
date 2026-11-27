@@ -19,9 +19,11 @@
  */
 
 #pragma once
+
+#include <wiola/library/records.hpp>
+
 #include <cstddef>
 #include <utility>
-#include <wiola/library/records.hpp>
 
 namespace wiola::library {
 
@@ -89,6 +91,7 @@ struct StandardMetadataPatch {
     FieldEdit<std::uint32_t> disc_number;
     bool operator==(const StandardMetadataPatch&) const = default;
 };
+
 enum class MetadataPatchResult {
     unchanged,
     changed,

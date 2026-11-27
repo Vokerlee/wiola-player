@@ -40,11 +40,13 @@ TEST(MediaRelocation, MatchesOnlyOneUnambiguousStoredRecord)
     TrackRecord second;
     second.id = {.value = "media-2"};
     second.fingerprint = "observed-content";
+
     const std::array tracks{first, second};
 
     EXPECT_FALSE(match_relocation(tracks, "observed-content"));
 
     second.fingerprint = "different";
+
     const std::array distinct{first, second};
     const auto match = match_relocation(distinct, "observed-content");
 
@@ -56,6 +58,7 @@ TEST(MediaRelocation, EmptyAndUnknownObservationsNeverMatch)
 {
     TrackRecord track;
     track.id = {.value = "media-1"};
+
     const std::array tracks{track};
 
     EXPECT_FALSE(match_relocation(tracks, ""));
@@ -76,11 +79,13 @@ TEST(MediaRelocation, ReconcilesMovesAndEmbeddedEditsWithoutLosingUserMetadata)
     track.tags = {
         {.id = {.value = "tag-1"}, .key = "genre", .value = "Jazz"}
     };
+
     const auto identity = track.id;
     const auto overrides = track.overrides;
     const auto tags = track.tags;
 
     const auto move = reconcile_location(track, moved, "original-content");
+
     ASSERT_TRUE(move);
     EXPECT_EQ(move->media, identity);
     EXPECT_EQ(move->location, moved);
@@ -90,6 +95,7 @@ TEST(MediaRelocation, ReconcilesMovesAndEmbeddedEditsWithoutLosingUserMetadata)
     EXPECT_FALSE(track.missing);
 
     const auto edit = reconcile_location(track, moved, "embedded metadata changed");
+
     ASSERT_TRUE(edit);
     EXPECT_EQ(edit->kind, RelocationKind::edited);
     EXPECT_EQ(track.content_revision, 1U);
@@ -122,6 +128,7 @@ TEST(MediaRelocation, RepeatedObservationDoesNotAddLocationsOrAdvanceRevisions)
     track.content_revision = 7;
     track.metadata_revision = 11;
     track.locations = {"missing/track.wav"};
+
     const auto before = track;
 
     const auto unchanged = reconcile_location(track, track.locations.front(), "observed-content");
@@ -136,13 +143,16 @@ TEST(MediaRelocation, InvalidIdentityOrMissingFactsLeaveTheRecordUnchanged)
     TrackRecord track;
     track.fingerprint = "known";
     track.missing = true;
+
     const auto invalid = track;
 
     EXPECT_FALSE(reconcile_location(track, "track.wav", "observed-content"));
     EXPECT_EQ(track, invalid);
 
     track.id = {.value = "media-1"};
+
     const auto missing = track;
+
     EXPECT_FALSE(reconcile_location(track, "track.wav", ""));
     EXPECT_EQ(track, missing);
 }

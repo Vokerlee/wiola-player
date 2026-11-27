@@ -19,9 +19,11 @@
  */
 
 #pragma once
+
+#include <wiola/library/identity.hpp>
+
 #include <utility>
 #include <variant>
-#include <wiola/library/identity.hpp>
 
 namespace wiola::gui {
 

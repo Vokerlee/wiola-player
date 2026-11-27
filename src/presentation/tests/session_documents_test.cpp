@@ -18,8 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include <wiola/presentation/documents/session_documents.hpp>
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -52,16 +53,19 @@ TEST(SessionDocuments, RemappingPreservesOtherDocumentIdentitiesAndNavigation)
     state.open = {gui::DocumentId::queue(), playlist, workspace};
     state.visible = workspace;
     state.destination = library::PlaylistId{"destination"};
+
     const gui::TrackRowId saved = library::PlaylistEntryId{"saved-occurrence"};
     const gui::TrackRowId scanned = gui::WorkspaceTrackId{{"folder"}, {"media"}};
     auto& saved_browser = state.browsers[playlist];
     saved_browser.selected = {saved};
     saved_browser.current = saved;
     saved_browser.anchor = saved;
+
     auto& scanned_browser = state.browsers[workspace];
     scanned_browser.selected = {scanned};
     scanned_browser.current = scanned;
     scanned_browser.anchor = scanned;
+
     const auto before = state;
 
     state.remap_queue({
@@ -91,6 +95,7 @@ TEST(SessionDocuments, EmptyOptionalSelectionsRemainEmptyInAnOwnedSnapshot)
 {
     gui::SessionDocuments state;
     state.browsers.emplace(gui::DocumentId::queue(), gui::BrowserViewState{});
+
     const auto before = state;
 
     state.remap_queue({

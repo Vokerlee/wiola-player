@@ -35,8 +35,10 @@ const T& resolve(const std::optional<T>& override, const T& embedded)
 std::string resolve_title(const TrackRecord& track)
 {
     const auto& title = track.display_title();
+
     if (!track.overrides.title && title.empty() && !track.locations.empty())
         return track.locations.front().stem().string();
+
     return title;
 }
 

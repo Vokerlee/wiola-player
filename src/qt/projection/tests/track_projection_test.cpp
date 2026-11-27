@@ -18,14 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <qt/projection/track_projection.hpp>
+
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QTimer>
+#include <gtest/gtest.h>
+
 #include <chrono>
 #include <condition_variable>
-#include <gtest/gtest.h>
 #include <mutex>
-#include <qt/projection/track_projection.hpp>
 #include <stdexcept>
 #include <stop_token>
 #include <thread>
@@ -44,6 +46,7 @@ struct Gate {
     {
         std::stop_callback wake{stop, [this] { changed.notify_all(); }};
         std::unique_lock lock{mutex};
+
         entered = true;
         changed.notify_all();
         changed.wait(lock, [&] { return stop.stop_requested(); });
@@ -59,6 +62,7 @@ struct Gate {
 std::shared_ptr<const gui::TrackProjectionInput> input()
 {
     std::vector<gui::TrackRow> rows;
+
     for (int i = 0; i < 3; ++i) {
         gui::TrackRow row;
         row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
@@ -66,6 +70,7 @@ std::shared_ptr<const gui::TrackProjectionInput> input()
         row.metadata.title = i == 2 ? "Latest" : "Obsolete";
         rows.push_back(row);
     }
+
     return std::make_shared<const gui::TrackProjectionInput>(std::move(rows));
 }
 
@@ -77,6 +82,7 @@ TEST(TrackProjection, LatestQueryReplacesBlockedWorkAndOwnsItsSearchFacts)
     QTimer timeout;
     timeout.setSingleShot(true);
     QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+
     std::vector<gui::TrackProjectionResult> results;
     auto projection = gui::make_track_projection(
         owner,
@@ -92,11 +98,16 @@ TEST(TrackProjection, LatestQueryReplacesBlockedWorkAndOwnsItsSearchFacts)
     auto source = input();
     gui::TrackViewState old;
     old.query.title = "Obsolete";
+
     const auto first = projection->request(source, old);
+
     ASSERT_TRUE(gate.wait());
+
     gui::TrackViewState current;
     current.query.title = "Latest";
+
     const auto last = projection->request(source, current);
+
     source.reset();
     timeout.start(10000);
     loop.exec();
@@ -117,9 +128,11 @@ TEST(TrackProjection, ShutdownCancelsBlockedWorkAndNoPostedResultCanRetainTheRec
     );
     auto source = input();
     std::weak_ptr<const gui::TrackProjectionInput> released = source;
+
     static_cast<void>(projection->request(source, {}));
     source.reset();
     ASSERT_TRUE(gate.wait());
+
     projection.reset();
     QCoreApplication::processEvents();
     EXPECT_EQ(deliveries, 0);
@@ -132,14 +145,19 @@ TEST(TrackProjection, RetainsTheMutableObserverIdentityAcrossDeliveredRequests)
     std::vector<int> calls;
     auto projection = gui::make_track_projection(owner,
         [&, count = 0](auto) mutable { calls.push_back(++count); });
+
     for (int expected = 1; expected <= 2; ++expected) {
         static_cast<void>(projection->request(input(), {}));
+
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
         while (calls.size() < static_cast<std::size_t>(expected) &&
             std::chrono::steady_clock::now() < deadline)
             QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
         ASSERT_EQ(calls.size(), static_cast<std::size_t>(expected));
     }
+
     EXPECT_EQ(calls, (std::vector{1, 2}));
 }
 
@@ -168,9 +186,11 @@ TEST(TrackProjection, AClosedQtContextCannotReceiveAResultFromTheRemainingWorker
     );
     auto source = input();
     const std::weak_ptr<const gui::TrackProjectionInput> released = source;
+
     static_cast<void>(projection->request(source, {}));
     source.reset();
     ASSERT_TRUE(gate.wait());
+
     owner.reset();
     projection->stop();
     QCoreApplication::processEvents();
@@ -183,6 +203,8 @@ TEST(TrackProjection, AClosedQtContextCannotReceiveAResultFromTheRemainingWorker
 int main(int argc, char** argv)
 {
     QCoreApplication app{argc, argv};
+
     ::testing::InitGoogleTest(&argc, argv);
+
     return RUN_ALL_TESTS();
 }

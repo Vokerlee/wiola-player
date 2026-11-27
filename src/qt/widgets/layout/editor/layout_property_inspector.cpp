@@ -19,6 +19,7 @@
  */
 
 #include "layout_property_inspector.hpp"
+
 #include <QFormLayout>
 #include <QStringList>
 
@@ -30,36 +31,45 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
     title_ = new QLineEdit{this};
     title_->setObjectName("layoutComponentTitle");
     title_->setAccessibleName("Layout component title");
+
     width_ = new QSpinBox{this};
     width_->setObjectName("layoutComponentWidth");
     width_->setRange(0, 4096);
     width_->setSpecialValueText("Automatic");
+
     action_ = new QComboBox{this};
     action_->setObjectName("layoutComponentAction");
+
     for (const auto& entry : action_descriptors())
         action_->addItem(entry.label, entry.key);
+
     orientation_ = new QComboBox{this};
     orientation_->setObjectName("layoutComponentOrientation");
     orientation_->addItem("Horizontal", static_cast<int>(Qt::Horizontal));
     orientation_->addItem("Vertical", static_cast<int>(Qt::Vertical));
     orientation_->addItem("Automatic", 0);
+
     alignment_ = new QComboBox{this};
     alignment_->setObjectName("layoutRowAlignment");
     alignment_->addItem("Automatic", 0);
     alignment_->addItem("Left", static_cast<int>(Qt::AlignLeft));
     alignment_->addItem("Center", static_cast<int>(Qt::AlignHCenter));
     alignment_->addItem("Right", static_cast<int>(Qt::AlignRight));
+
     columns_ = new QSpinBox{this};
     columns_->setObjectName("layoutGridColumns");
     columns_->setRange(1, 32);
+
     sizes_ = new QLineEdit{this};
     sizes_->setObjectName("layoutSplitterSizes");
     sizes_->setPlaceholderText("Automatic, or one positive weight per pane");
     sizes_->setMaxLength(256);
+
     error_ = new QLabel{this};
     error_->setObjectName("layoutPropertyError");
     error_->setWordWrap(true);
     error_->setAccessibleName("Layout property error");
+
     auto* form = new QFormLayout{this};
     form->setRowWrapPolicy(QFormLayout::WrapAllRows);
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
@@ -71,6 +81,7 @@ LayoutPropertyInspector::LayoutPropertyInspector(QWidget* parent)
     form->addRow("Grid columns", columns_);
     form->addRow("Splitter weights", sizes_);
     form->addRow(error_);
+
     const auto changed = [this] {
         if (!updating_ && observer_)
             observer_();
@@ -91,12 +102,14 @@ void LayoutPropertyInspector::show_node(const LayoutNode* node)
     title_->setEnabled(node);
     width_->setEnabled(node);
     action_->setEnabled(node && node->kind == LayoutComponentKind::button && !node->view);
+
     const auto show_field = [this](QWidget* field, bool visible) {
         auto* form = qobject_cast<QFormLayout*>(layout());
         form->labelForField(field)->setVisible(visible);
         field->setVisible(visible);
     };
     show_field(action_, node && node->kind == LayoutComponentKind::button);
+
     const bool splitter = node && node->kind == LayoutComponentKind::splitter;
     show_field(orientation_, splitter);
     show_field(sizes_, splitter);
@@ -118,10 +131,13 @@ void LayoutPropertyInspector::show_node(const LayoutNode* node)
         orientation_->findData(node && node->orientation ? static_cast<int>(*node->orientation) : 0)
     );
     columns_->setValue(node ? node->columns.value_or(1) : 1);
+
     QStringList weights;
+
     if (node)
         for (const auto value : node->sizes)
             weights.append(QString::number(value));
+
     sizes_->setText(weights.join(", "));
     updating_ = false;
 }
@@ -132,43 +148,55 @@ std::optional<LayoutNode> LayoutPropertyInspector::configuration(const LayoutNod
     result.title = title_->text();
     result.width =
         width_->value() == 0 ? std::optional<int>{} : std::optional<int>{width_->value()};
+
     if (result.kind == LayoutComponentKind::button && !result.view)
         result.action = parse_action(action_->currentData().toString());
+
     if (result.kind == LayoutComponentKind::row) {
         const int alignment = alignment_->currentData().toInt();
         result.alignment = alignment == 0
             ? std::optional<Qt::AlignmentFlag>{}
             : std::optional<Qt::AlignmentFlag>{static_cast<Qt::AlignmentFlag>(alignment)};
     }
+
     if (result.kind == LayoutComponentKind::splitter) {
         const auto orientation = orientation_->currentData().toInt();
         result.orientation = orientation == 0
             ? std::optional<Qt::Orientation>{}
             : std::optional<Qt::Orientation>{static_cast<Qt::Orientation>(orientation)};
         result.sizes.clear();
+
         if (!sizes_->text().trimmed().isEmpty())
             for (const auto& part : sizes_->text().split(',')) {
                 bool valid = false;
                 const auto value = part.trimmed().toInt(&valid);
+
                 if (!valid || value < 1 || value > 4096) {
                     error_->setText(
                         "Use positive splitter weights from 1 to 4096, separated by commas"
                     );
                     sizes_->setAccessibleDescription(error_->text());
+
                     return {};
                 }
+
                 result.sizes.push_back(value);
             }
+
         if (!result.sizes.empty() && result.sizes.size() != result.children.size()) {
             error_->setText("Provide exactly one splitter weight per pane");
             sizes_->setAccessibleDescription(error_->text());
+
             return {};
         }
     }
+
     if (result.kind == LayoutComponentKind::grid)
         result.columns = columns_->value();
+
     error_->clear();
     sizes_->setAccessibleDescription({});
+
     return result;
 }
 

@@ -23,9 +23,11 @@
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
 #include <fakes/resource.hpp>
-#include <gtest/gtest.h>
-#include <stdexcept>
 #include <wiola/media/local/resource.hpp>
+
+#include <gtest/gtest.h>
+
+#include <stdexcept>
 
 namespace {
 
@@ -65,11 +67,13 @@ TEST_F(QueueRestoration, RequiresAnExplicitAvailabilityMechanism)
 TEST_F(QueueRestoration, FiltersMissingTracksAndRemapsTheExactDuplicateOccurrenceAfterExistingRows)
 {
     playback.add({wiola::testing::resource("prefix", "Existing")});
+
     const auto missing = root / "missing.flac";
     store.snapshot.tracks = {first, missing, first};
     store.snapshot.occurrence_ids = {11, 22, 33};
     store.snapshot.selected_occurrence = 33;
     store.snapshot.has_occurrence_ids = true;
+
     app::QueueSettings settings{playback, store, [&](const auto& path) { return path != missing; }};
 
     EXPECT_EQ(settings.restore(), 1U);
@@ -89,6 +93,7 @@ TEST_F(QueueRestoration, LegacySelectionBelongsToTheAppendedQueueRatherThanItsEx
     playback.add({wiola::testing::resource("prefix", "Existing")});
     store.snapshot.tracks = {first, second};
     store.snapshot.selected = second;
+
     app::QueueSettings settings{playback, store, [](const auto&) { return true; }};
 
     EXPECT_EQ(settings.restore(), 0U);
@@ -103,6 +108,7 @@ TEST_F(QueueRestoration, InvalidOccurrenceMetadataNeverFallsBackToAnAmbiguousFil
     store.snapshot.tracks = {first, second, second};
     store.snapshot.selected = second;
     store.snapshot.has_occurrence_ids = true;
+
     app::QueueSettings settings{playback, store, [](const auto&) { return true; }};
 
     EXPECT_EQ(settings.restore(), 0U);
@@ -115,11 +121,15 @@ TEST_F(QueueRestoration, NoSurvivingTracksLeaveExistingQueueContentsAndClearPrev
     store.snapshot.tracks = {first};
     store.snapshot.occurrence_ids = {11};
     store.snapshot.has_occurrence_ids = true;
+
     bool available = true;
     app::QueueSettings settings{playback, store, [&](const auto&) { return available; }};
+
     ASSERT_EQ(settings.restore(), 0U);
     ASSERT_EQ(settings.restore_mapping().size(), 1U);
+
     const auto existing_id = playback.playlist().tracks().front().id();
+
     available = false;
 
     EXPECT_EQ(settings.restore(), 1U);
@@ -134,6 +144,7 @@ TEST_F(QueueRestoration, SaveKeepsLocalOccurrencesAndNeverInventsPathsForAnother
         media::local_resource(first)});
     playback.set_repeat(engine::RepeatMode::all);
     playback.shuffle(true);
+
     app::QueueSettings settings{playback, store, [](const auto&) { return true; }};
 
     settings.save();
@@ -152,10 +163,12 @@ TEST_F(QueueRestoration, SaveKeepsLocalOccurrencesAndNeverInventsPathsForAnother
 TEST_F(QueueRestoration, RestorationOwnsItsSnapshotWhileConsultingTheSuppliedDriver)
 {
     store.snapshot.tracks = {first, second};
+
     app::QueueSettings settings{playback, store, [&](const auto&) {
                                     store.snapshot.tracks.clear();
                                     return true;
                                 }};
+
     EXPECT_EQ(settings.restore(), 0U);
     EXPECT_EQ(playback.playlist().tracks().size(), 2U);
 }
@@ -165,7 +178,9 @@ TEST_F(QueueRestoration, ClosedPlaybackCannotProduceInvalidOccurrenceMappings)
     store.snapshot.tracks = {first, second};
     store.snapshot.occurrence_ids = {11, 22};
     store.snapshot.has_occurrence_ids = true;
+
     app::QueueSettings settings{playback, store, [](const auto&) { return true; }};
+
     playback.stop_accepting();
 
     EXPECT_EQ(settings.restore(), store.snapshot.tracks.size());
@@ -177,7 +192,9 @@ TEST_F(QueueRestoration, AMissingLegacySelectionLeavesTheDefaultQueueEntrySelect
 {
     store.snapshot.tracks = {first};
     store.snapshot.selected = second;
+
     app::QueueSettings settings{playback, store, [](const auto&) { return true; }};
+
     EXPECT_EQ(settings.restore(), 0U);
     EXPECT_EQ(playback.playlist().position(), 0U);
 }
@@ -189,6 +206,7 @@ TEST_F(QueueRestoration, SavingAnEmptyQueueClearsThePreviousTracksAndSelection)
     store.snapshot.occurrence_ids = {11};
     store.snapshot.selected_occurrence = 11;
     store.snapshot.has_occurrence_ids = true;
+
     app::QueueSettings settings{playback, store, [](const auto&) { return true; }};
 
     settings.save();

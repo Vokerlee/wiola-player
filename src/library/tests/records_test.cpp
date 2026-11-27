@@ -92,9 +92,12 @@ TEST(PlaylistRecord, AllowsTwoEntriesForTheSameMediaWithoutSharingEntryIdentity)
 TEST(LibraryRecords, PreferredLocationUsesOnlyTheStoredOrder)
 {
     wiola::library::TrackRecord record;
+
     EXPECT_TRUE(wiola::library::preferred_location(record).empty());
+
     record.locations = {"missing/preferred.flac", "other/track.wav"};
     EXPECT_EQ(wiola::library::preferred_location(record), record.locations.front());
+
     std::swap(record.locations.front(), record.locations.back());
     EXPECT_EQ(wiola::library::preferred_location(record), record.locations.front());
 }

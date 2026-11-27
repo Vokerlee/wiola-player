@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -55,6 +56,7 @@ private:
     struct State;
     const std::shared_ptr<State> state_;
 };
+
 enum class CommitState {
     failed,
     accepted,
@@ -80,6 +82,7 @@ struct CommitResult {
         result.state = CommitState::accepted;
         result.revision = revision;
         result.receipt = std::move(receipt);
+
         return result;
     }
 

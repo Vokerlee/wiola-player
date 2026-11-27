@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include "action_descriptor.hpp"
 
 #include <wiola/playback/repeat_mode.hpp>

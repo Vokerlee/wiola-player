@@ -91,13 +91,18 @@ TEST(Metadata, UsesALocationOnlyWhenNoTitleLayerHasAValue)
 TEST(Metadata, NarrowTitleResolutionPreservesEveryTitleLayer)
 {
     wiola::library::TrackRecord record;
+
     EXPECT_TRUE(wiola::library::resolve_title(record).empty());
+
     record.locations = {"missing/file-title.flac"};
     EXPECT_EQ(wiola::library::resolve_title(record), "file-title");
+
     record.embedded.title = "Embedded";
     EXPECT_EQ(wiola::library::resolve_title(record), "Embedded");
+
     record.overrides.title = "";
     EXPECT_TRUE(wiola::library::resolve_title(record).empty());
+
     record.overrides.title = "Override";
     EXPECT_EQ(wiola::library::resolve_title(record), "Override");
     EXPECT_EQ(wiola::library::resolve_metadata(record).title, "Override");
@@ -107,6 +112,7 @@ TEST(Metadata, ResolvesNonTitleOverridesWithoutModifyingEmbeddedFacts)
 {
     auto record = track();
     const auto embedded = record.embedded;
+
     record.overrides.artist = "Application artist";
     record.overrides.album = "Application album";
     record.overrides.genre = "Fusion";
@@ -115,7 +121,9 @@ TEST(Metadata, ResolvesNonTitleOverridesWithoutModifyingEmbeddedFacts)
     record.overrides.composer = "Application composer";
     record.overrides.track_number = std::optional<std::uint32_t>{13};
     record.overrides.disc_number = std::optional<std::uint32_t>{8};
+
     const auto resolved = wiola::library::resolve_metadata(record);
+
     EXPECT_EQ(resolved.artist, "Application artist");
     EXPECT_EQ(resolved.album, "Application album");
     EXPECT_EQ(resolved.genre, "Fusion");

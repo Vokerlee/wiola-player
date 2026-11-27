@@ -19,12 +19,16 @@
  */
 
 #pragma once
+
 #ifndef Q_MOC_RUN
 #include "session_state.hpp"
+
+#include <qt/storage/atomic_file_store.hpp>
+
 #include <QPointer>
 #include <QSettings>
+
 #include <functional>
-#include <qt/storage/atomic_file_store.hpp>
 #endif
 #include <QObject>
 #include <QTimer>

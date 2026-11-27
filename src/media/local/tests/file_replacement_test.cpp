@@ -19,10 +19,12 @@
  */
 
 #include <fixtures/temporary_directory.hpp>
-#include <fstream>
-#include <gtest/gtest.h>
 #include <wiola/media/local/file_replacement.hpp>
 #include <wiola/media/local/fingerprint.hpp>
+
+#include <gtest/gtest.h>
+
+#include <fstream>
 
 namespace {
 
@@ -54,21 +56,30 @@ TEST(FileReplacement, EveryInterruptedBoundaryLeavesKnownSourceOrVerifiedRecover
              FileReplacementStep::before_backup, FileReplacementStep::backup_created,
              FileReplacementStep::before_replace, FileReplacementStep::replaced}) {
         SCOPED_TRACE(static_cast<int>(boundary));
+
         Files files;
         const auto request = files.request();
         auto port = native_file_replacement(wiola::media::fingerprint_media,
             [&](auto step) { return step != boundary; });
         const auto result = port->replace(request);
+
         EXPECT_NE(result.error, FileReplacementError::none);
+
         const auto source = wiola::media::fingerprint_media(files.source);
+
         EXPECT_TRUE(source == std::optional{request.original_digest} ||
             source == std::optional{request.output_digest});
+
         auto recovery = native_file_replacement(wiola::media::fingerprint_media);
         const auto recovered = recovery->recover(files.source);
+
         EXPECT_EQ(recovered.error, FileReplacementError::none);
+
         const auto after = wiola::media::fingerprint_media(files.source);
+
         EXPECT_TRUE(after == std::optional{request.original_digest} ||
             after == std::optional{request.output_digest});
+
         if (std::filesystem::exists(files.backup))
             EXPECT_EQ(wiola::media::fingerprint_media(files.backup), request.original_digest);
     }
@@ -84,9 +95,12 @@ TEST(FileReplacement, RechecksSourceAfterBackupAndNeverOverwritesAnExternalEdit)
         return true;
     });
     const auto result = port->replace(request);
+
     EXPECT_EQ(result.error, FileReplacementError::conflict);
     EXPECT_FALSE(result.source_modified);
+
     const auto external = wiola::media::fingerprint_media(files.source);
+
     EXPECT_NE(external, request.original_digest);
     EXPECT_NE(external, request.output_digest);
     EXPECT_EQ(port->recover(files.source).error, FileReplacementError::recovery_required);
@@ -97,11 +111,15 @@ TEST(FileReplacement, ExistingBackupsAndUnknownOperationRecordsRemainIntact)
 {
     Files files;
     const auto request = files.request();
+
     std::ofstream{files.backup} << "previous backup";
+
     const auto backup = wiola::media::fingerprint_media(files.backup);
     auto port = native_file_replacement(wiola::media::fingerprint_media);
+
     EXPECT_EQ(port->replace(request).error, FileReplacementError::recovery_required);
     EXPECT_EQ(wiola::media::fingerprint_media(files.backup), backup);
+
     auto journal = files.source;
     journal += ".wiola-replacement";
     std::ofstream{journal} << "wiola-replacement 999\n";
@@ -116,15 +134,20 @@ TEST(FileReplacement, MissingSourceRecoversOnlyFromVerifiedBackupAndPreservesPer
     const auto request = files.request();
     auto port = native_file_replacement(wiola::media::fingerprint_media,
         [](auto step) { return step != FileReplacementStep::backup_created; });
+
     EXPECT_NE(port->replace(request).error, FileReplacementError::none);
     ASSERT_TRUE(std::filesystem::exists(files.backup));
+
     std::filesystem::remove(files.source);
+
     auto recovery = native_file_replacement(wiola::media::fingerprint_media);
     const auto result = recovery->recover(files.source);
+
     EXPECT_TRUE(result.recovered);
     EXPECT_EQ(result.error, FileReplacementError::none);
     EXPECT_EQ(wiola::media::fingerprint_media(files.source), request.original_digest);
     EXPECT_TRUE(std::filesystem::exists(files.backup));
+
     Files committed;
     const auto permissions =
         std::filesystem::perms::owner_read | std::filesystem::perms::owner_write;
@@ -140,7 +163,9 @@ TEST(FileReplacement, OversizedRecoveryRecordIsRejectedWithoutChangingAnyFile)
     auto journal = files.source;
     journal += ".wiola-replacement";
     std::ofstream{journal} << std::string(64 * 1024 + 1, 'x');
+
     auto port = native_file_replacement(wiola::media::fingerprint_media);
+
     EXPECT_EQ(port->recover(files.source).error, FileReplacementError::recovery_required);
     EXPECT_EQ(wiola::media::fingerprint_media(files.source), request.original_digest);
     EXPECT_EQ(wiola::media::fingerprint_media(files.output), request.output_digest);

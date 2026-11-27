@@ -19,9 +19,12 @@
  */
 
 #include "status_view.hpp"
+
+#include <qt/widgets/layout/view_registry.hpp>
+
 #include <QLabel>
 #include <QVBoxLayout>
-#include <qt/widgets/layout/view_registry.hpp>
+
 #include <stdexcept>
 
 namespace wiola::gui {
@@ -31,14 +34,19 @@ StatusView::StatusView(QWidget* parent)
 {
     auto* body = new QVBoxLayout{this};
     body->setContentsMargins(0, 0, 0, 0);
+
     document_ = new QLabel{this};
+
     destination_ = new QLabel{this};
+
     message_ = new QLabel{this};
+
     for (auto* label : {document_.data(), destination_.data(), message_.data()}) {
         label->setTextFormat(Qt::PlainText);
         label->setWordWrap(true);
         label->hide();
     }
+
     body->addWidget(message_);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     message_->setAccessibleName("Player status");

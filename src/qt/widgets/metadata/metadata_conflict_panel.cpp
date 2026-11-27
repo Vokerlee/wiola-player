@@ -70,21 +70,26 @@ MetadataConflictPanel::MetadataConflictPanel(QWidget* parent)
         if (observer_)
             observer_(MetadataConflictAction::reload);
     });
+
     connect(keep_, &QPushButton::clicked, this, [this] {
         if (observer_)
             observer_(MetadataConflictAction::keep);
     });
+
     connect(merge_, &QPushButton::clicked, this, [this] {
         if (observer_)
             observer_(MetadataConflictAction::merge);
     });
+
     connect(review_, &QPushButton::clicked, this, [this] {
         overwrite_->setEnabled(true);
         description_->setText(description_->text() +
             "\nCurrent values reviewed. Overwrite is enabled.");
+
         if (observer_)
             observer_(MetadataConflictAction::review);
     });
+
     connect(overwrite_, &QPushButton::clicked, this, [this] {
         if (observer_)
             observer_(MetadataConflictAction::overwrite);

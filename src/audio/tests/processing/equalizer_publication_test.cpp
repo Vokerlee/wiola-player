@@ -40,8 +40,10 @@ EqualizerPublication::Bank prepared(std::size_t generation)
     bank.num_bands = generation % wiola::audio::BandLayout::max_count;
     bank.enabled = generation % 2 == 0;
     bank.shaping = generation % 3 == 0;
+
     for (auto& coefficient : bank.coefficients)
         coefficient = {.b0 = marker, .b1 = marker, .b2 = marker, .a1 = marker, .a2 = marker};
+
     return bank;
 }
 
@@ -65,6 +67,7 @@ TEST(EqualizerPublication, StartsWithAnEmptyFlatBank)
 {
     EqualizerPublication publication;
     const auto& bank = publication.acquire();
+
     EXPECT_EQ(bank.num_bands, 0U);
     EXPECT_FALSE(bank.shaping);
     EXPECT_TRUE(bank.enabled);
@@ -77,7 +80,9 @@ TEST(EqualizerPublication, CoalescesPendingBanksAndRetainsTheLastReadWithoutUpda
     publication.publish(prepared(1));
     publication.publish(prepared(2));
     publication.publish(prepared(3));
+
     const auto& latest = publication.acquire();
+
     EXPECT_FLOAT_EQ(latest.preamp, 3.0F);
     EXPECT_TRUE(coherent(latest));
     EXPECT_FLOAT_EQ(publication.acquire().preamp, 3.0F);
@@ -87,12 +92,17 @@ TEST(EqualizerPublication, HeldBankSurvivesPublicationsUntilTheNextAcquire)
 {
     EqualizerPublication publication;
     publication.publish(prepared(1));
+
     const auto& held = publication.acquire();
+
     for (std::size_t generation = 2; generation <= 16; ++generation)
         publication.publish(prepared(generation));
+
     EXPECT_FLOAT_EQ(held.preamp, 1.0F);
     EXPECT_TRUE(coherent(held));
+
     const auto& latest = publication.acquire();
+
     EXPECT_FLOAT_EQ(latest.preamp, 16.0F);
     EXPECT_TRUE(coherent(latest));
 }
@@ -103,25 +113,33 @@ TEST(EqualizerPublication, ConcurrentAcquisitionNeverTearsOrRegressesAndAdoptsTh
     EqualizerPublication publication;
     publication.publish(prepared(1));
     static_cast<void>(publication.acquire());
+
     std::atomic<bool> start{false};
     std::atomic<bool> done{false};
     std::jthread writer{[&] {
         start.wait(false, std::memory_order_acquire);
+
         for (std::size_t generation = 2; generation <= generations; ++generation)
             publication.publish(prepared(generation));
+
         done.store(true, std::memory_order_release);
     }};
     bool intact{true};
     float last{1.0F};
+
     start.store(true, std::memory_order_release);
     start.notify_one();
+
     do {
         const auto& bank = publication.acquire();
         intact = intact && coherent(bank) && bank.preamp >= last;
         last = bank.preamp;
     } while (!done.load(std::memory_order_acquire));
+
     writer.join();
+
     const auto& final = publication.acquire();
+
     EXPECT_TRUE(intact);
     EXPECT_TRUE(coherent(final));
     EXPECT_FLOAT_EQ(final.preamp, static_cast<float>(generations));

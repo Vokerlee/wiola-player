@@ -18,19 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QApplication>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
-#include <QFile>
-#include <QLineEdit>
-#include <QMenu>
-#include <QPointer>
-#include <QPushButton>
-#include <QTabBar>
-#include <QTemporaryDir>
-#include <QTest>
 #include <fakes/output.hpp>
-#include <gtest/gtest.h>
 #include <qt/application/playback/playback_preferences.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
@@ -40,7 +28,19 @@
 #include <qt/widgets/tests/support/gui_interaction.hpp>
 #include <qt/widgets/tests/support/player_dialogs.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
+
+#include <QApplication>
+#include <QFile>
+#include <QLineEdit>
+#include <QMenu>
+#include <QPointer>
+#include <QPushButton>
+#include <QTabBar>
+#include <QTemporaryDir>
+#include <QTest>
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -53,7 +53,9 @@ protected:
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.path());
         library = std::make_unique<app::LibrarySession>(wiola::codec::ffmpeg::make_provider());
         preferences = std::make_unique<app::PlaybackPreferences>(playback);
+
         library::RepositoryTransaction seed{library->repository(), library->persistence()};
+
         for (const auto& name : {"one", "two"}) {
             library::TrackRecord track;
             track.id = {name};
@@ -61,6 +63,7 @@ protected:
             track.embedded.title = name;
             ASSERT_TRUE(library->repository().put_track(track));
         }
+
         ASSERT_TRUE(seed.commit());
     }
 
@@ -86,45 +89,61 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
     ASSERT_TRUE(seed.commit());
     ASSERT_TRUE(library->playlist_destination().set(destination));
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_destination = destination;
+
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
     callbacks.execute = [&](auto command, auto context) {
         commands.execute(command, std::move(context));
     };
+
     gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
     host.setUpdatesEnabled(false);
     host.resize(650, 650);
     host.show();
+
     for (int opening = 0; opening < 2; ++opening) {
         ASSERT_TRUE(host.open_playlist(source));
+
         auto* document = host.registry().playlist(source);
         auto& table = document->browser().table();
         auto state = document->browser().capture_browser_state();
         state.selected = {*second};
         state.current = *second;
         document->browser().restore_browser_state(state);
+
         QAction* transfer = nullptr;
+
         for (auto* action : table.actions())
             if (action->text() == "Add to playlist")
                 transfer = action;
+
         ASSERT_NE(transfer, nullptr);
         ASSERT_TRUE(transfer->isEnabled());
+
         auto* menu = transfer->menu();
+
         ASSERT_NE(menu, nullptr);
+
         menu->setUpdatesEnabled(false);
         menu->popup(QPoint{10, 10});
         ASSERT_TRUE(wiola::testing::await_gui([&] { return menu->isVisible(); }));
+
         QAction* choice = nullptr;
+
         for (auto* item : menu->actions())
             if (item->data().toString().toStdString() == destination.value)
                 choice = item;
+
         ASSERT_NE(choice, nullptr);
+
         QTest::mouseClick(menu, Qt::LeftButton, Qt::NoModifier,
             menu->actionGeometry(choice).center());
         EXPECT_EQ(dialogs.prompts, 0);
@@ -133,11 +152,15 @@ TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneE
         EXPECT_EQ(library->playlist_destination().id(), destination);
         EXPECT_EQ(host.registry().active(), gui::DocumentId::playlist(source));
         EXPECT_EQ(table.chosen_rows(), (std::vector<gui::TrackRowId>{*second}));
+
         QPointer<QWidget> retired{document};
+
         ASSERT_TRUE(host.close(gui::DocumentId::playlist(source)));
+
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         EXPECT_TRUE(retired.isNull());
     }
+
     ASSERT_EQ(outcomes.size(), 2);
     EXPECT_EQ(playback.playlist().tracks().size(), 0);
 }
@@ -147,23 +170,32 @@ TEST_F(DocumentCommandRouterTest, DismissingDestinationSubmenuLeavesSelectionAnd
     const auto source = library->playlists().create("Source").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto occurrence = library->repository().append_track(source, library::MediaId{"one"});
+
     ASSERT_TRUE(occurrence);
     ASSERT_TRUE(seed.commit());
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
     callbacks.execute = [&](auto command, auto context) {
         commands.execute(command, std::move(context));
     };
+
     gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+
     ASSERT_TRUE(host.open_playlist(source));
+
     auto& table = host.registry().playlist(source)->browser().table();
     table.selectRow(0);
+
     QAction* transfer = nullptr;
+
     for (auto* action : table.actions())
         if (action->text().startsWith("Add to playlist"))
             transfer = action;
+
     ASSERT_NE(transfer, nullptr);
+
     QMenu menu;
     menu.setUpdatesEnabled(false);
     menu.addAction(transfer);
@@ -185,48 +217,69 @@ TEST_F(DocumentCommandRouterTest,
     const auto other = library->playlists().create("Other").id;
     const library::PlaylistId migrated{"playlist-migrated-queue"};
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
+
     ASSERT_TRUE(library->repository().put_playlist({.id = migrated, .name = "Migrated queue"}));
+
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto duplicate = library->repository().append_track(source, library::MediaId{"one"});
+
     ASSERT_TRUE(first && duplicate);
     ASSERT_TRUE(seed.commit());
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
     callbacks.execute = [&](auto command, auto context) {
         commands.execute(command, std::move(context));
     };
+
     gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+
     ASSERT_TRUE(host.open_playlist(source));
+
     auto& table = host.registry().playlist(source)->browser().table();
     table.selectRow(1);
+
     QAction* move = nullptr;
+
     for (auto* item : table.actions())
         if (item->text() == "Move to playlist")
             move = item;
+
     ASSERT_NE(move, nullptr);
+
     auto* destinations = move->menu();
+
     ASSERT_NE(destinations, nullptr);
+
     destinations->setUpdatesEnabled(false);
     destinations->popup(QPoint{10, 10});
     ASSERT_TRUE(wiola::testing::await_gui([&] { return destinations->isVisible(); }));
     ASSERT_EQ(destinations->actions().size(), 2);
+
     QAction* selected = nullptr;
+
     for (auto* item : destinations->actions()) {
         EXPECT_NE(item->data().toString().toStdString(), source.value);
         EXPECT_NE(item->text(), "Migrated queue");
+
         if (item->data().toString().toStdString() == migrated.value) {
             selected = item;
             EXPECT_EQ(item->text(), "My playlist");
         }
     }
+
     ASSERT_NE(selected, nullptr);
+
     table.selectRow(0);
     ASSERT_TRUE(host.open_playlist(other));
+
     selected->trigger();
     destinations->hide();
     EXPECT_EQ(dialogs.prompts, 0);
+
     const auto* remaining = library->repository().playlist(source);
+
     ASSERT_EQ(remaining->entries.size(), 1);
     EXPECT_EQ(remaining->entries.front().id, *first);
     EXPECT_EQ(library->repository().playlist(migrated)->entries.size(), 1);
@@ -242,16 +295,21 @@ TEST_F(DocumentCommandRouterTest,
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
     ASSERT_TRUE(seed.commit());
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_destination = destination;
+
     auto commands = router(dialogs);
     gui::DocumentHost host{*library, playback, preferences->ui_session(), {}};
+
     ASSERT_TRUE(host.open_playlist(source));
     ASSERT_TRUE(host.open_playlist(other));
     ASSERT_TRUE(host.activate(gui::DocumentId::playlist(source)));
+
     auto* document = host.registry().playlist(source);
     {
         auto state = document->browser().capture_browser_state();
@@ -259,8 +317,11 @@ TEST_F(DocumentCommandRouterTest,
         state.current = *second;
         document->browser().restore_browser_state(state);
     }
+
     const auto captured = host.capture(gui::DocumentId::playlist(source));
+
     ASSERT_EQ(captured.selection.size(), 1);
+
     dialogs.prompted = [&] {
         {
             auto state = document->browser().capture_browser_state();
@@ -269,13 +330,18 @@ TEST_F(DocumentCommandRouterTest,
             document->browser().restore_browser_state(state);
         }
         ASSERT_TRUE(host.activate(gui::DocumentId::playlist(other)));
+
         static_cast<void>(library->playlist_destination().set(other));
     };
     commands.execute(gui::TrackCommand::move, captured);
+
     const auto* remaining = library->repository().playlist(source);
+
     ASSERT_EQ(remaining->entries.size(), 1);
     EXPECT_EQ(remaining->entries[0].id, *first);
+
     const auto* target = library->repository().playlist(destination);
+
     ASSERT_EQ(target->entries.size(), 1);
     EXPECT_EQ(target->entries[0].media, library::MediaId{"one"});
     EXPECT_TRUE(library->repository().playlist(other)->entries.empty());
@@ -288,17 +354,22 @@ TEST_F(DocumentCommandRouterTest, SavedPlaylistKeyboardActivationRoutesTheExactD
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
     const auto first = library->repository().append_track(source, library::MediaId{"one"});
     const auto second = library->repository().append_track(source, library::MediaId{"one"});
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
     ASSERT_TRUE(seed.commit());
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommands callbacks;
     callbacks.play_playlist = [&](auto id, auto entry) {
         commands.play_saved(id, entry);
     };
+
     gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+
     ASSERT_TRUE(host.open_playlist(source));
+
     auto* document = host.registry().playlist(source);
     auto state = document->browser().capture_browser_state();
     state.selected = {*second};
@@ -320,6 +391,7 @@ TEST_F(DocumentCommandRouterTest, DisabledCapabilitiesAndCancelledPromptsNeverMu
         {{library::MediaId{"one"}, engine::QueueEntryId{9}, "one.wav"}}, {}};
     commands.execute(gui::TrackCommand::transfer_destination, context);
     EXPECT_EQ(dialogs.prompts, 0);
+
     context.capabilities = gui::TrackCapabilities::queue();
     commands.execute(gui::TrackCommand::transfer_destination, context);
     EXPECT_EQ(dialogs.prompts, 1);
@@ -331,12 +403,14 @@ TEST_F(DocumentCommandRouterTest, DestroyingRouterWhileAChoiceIsPendingCannotIss
 {
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_path = std::filesystem::path{directory.path().toStdString()};
+
     auto* commands = new gui::DocumentCommandRouter{*library, playback, preferences->queue(),
         dialogs, [this](const auto& outcome) { outcomes.push_back(outcome); }};
     dialogs.prompted = [&] {
         delete commands;
         commands = nullptr;
     };
+
     auto* invoking = commands;
     invoking->choose_folder();
     EXPECT_EQ(commands, nullptr);
@@ -349,7 +423,9 @@ TEST_F(DocumentCommandRouterTest,
 {
     const auto active = library->playlists().create("Active").id;
     const auto legacy = library->playlists().create("Legacy destination").id;
+
     ASSERT_TRUE(library->playlist_destination().set(legacy));
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     auto commands = router(dialogs);
     gui::DocumentCommandContext context{gui::DocumentId::queue(), gui::TrackCapabilities::queue(),
@@ -358,12 +434,14 @@ TEST_F(DocumentCommandRouterTest,
     commands.execute(gui::TrackCommand::transfer, context);
     ASSERT_EQ(library->repository().playlist(active)->entries.size(), 1);
     EXPECT_TRUE(library->repository().playlist(legacy)->entries.empty());
+
     context.active_playlist.reset();
     commands.execute(gui::TrackCommand::transfer, context);
     EXPECT_EQ(library->repository().playlist(active)->entries.size(), 1);
     EXPECT_TRUE(library->repository().playlist(legacy)->entries.empty());
     ASSERT_FALSE(outcomes.empty());
     EXPECT_TRUE(outcomes.back().message.contains("No active playlist"));
+
     commands.export_playlist({});
     EXPECT_EQ(dialogs.prompts, 0);
     EXPECT_TRUE(outcomes.back().message.contains("Open a saved playlist"));
@@ -374,20 +452,28 @@ TEST_F(DocumentCommandRouterTest, ExportCapturesPlaylistBeforePromptChangesTheDe
     const auto source = library->playlists().create("Source").id,
                other = library->playlists().create("Other").id;
     library::RepositoryTransaction seed{library->repository(), library->persistence()};
+
     ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"one"}));
     ASSERT_TRUE(library->repository().append_track(other, library::MediaId{"two"}));
     ASSERT_TRUE(seed.commit());
+
     static_cast<void>(library->playlist_destination().set(source));
+
     wiola::testing::ScriptedPlayerDialogs dialogs;
     dialogs.chosen_path = std::filesystem::path{directory.filePath("export.m3u8").toStdString()};
     dialogs.prompted = [&] {
         static_cast<void>(library->playlist_destination().set(other));
     };
+
     auto commands = router(dialogs);
     commands.export_playlist(source);
+
     QFile file{directory.filePath("export.m3u8")};
+
     ASSERT_TRUE(file.open(QIODevice::ReadOnly));
+
     const auto bytes = file.readAll();
+
     EXPECT_TRUE(bytes.contains("one.wav"));
     EXPECT_FALSE(bytes.contains("two.wav"));
 }
@@ -399,7 +485,9 @@ TEST_F(DocumentCommandRouterTest,
     auto window = std::make_unique<gui::MainWindow>(playback, *library, *preferences);
     auto* inspector =
         static_cast<gui::TrackInspector*>(window->findChild<QWidget*>("trackInspector"));
+
     ASSERT_NE(inspector, nullptr);
+
     gui::InspectorContext context;
     context.origin = gui::InspectorContext::Origin::selection;
     context.editable = {*library->repository().track(library::MediaId{"one"})};
@@ -407,11 +495,13 @@ TEST_F(DocumentCommandRouterTest,
     inspector->show_context(context);
     inspector->setParent(&survivor);
     window.reset();
+
     auto* title = inspector->findChild<QLineEdit*>("standardTitle");
     title->setText("After closing window");
     inspector->findChild<QPushButton*>("applyStandardMetadata")->click();
     EXPECT_EQ(library->repository().track(library::MediaId{"one"})->display_title(),
         "After closing window");
+
     library.reset();
     title->setText("Unaccepted draft");
     inspector->findChild<QPushButton*>("applyStandardMetadata")->click();
@@ -423,7 +513,10 @@ TEST_F(DocumentCommandRouterTest,
 int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "minimal");
+
     QApplication app{argc, argv};
+
     ::testing::InitGoogleTest(&argc, argv);
+
     return RUN_ALL_TESTS();
 }

@@ -19,10 +19,10 @@
  */
 
 #include "track_search_panel.hpp"
-#include <QSignalBlocker>
 
 #include <QFormLayout>
 #include <QHBoxLayout>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 namespace wiola::gui {
@@ -63,6 +63,7 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
     tags_->setObjectName("searchTags");
     tags_->setAccessibleName("Search custom tag keys and values");
     tags_->setPlaceholderText("Tag key or value");
+
     clear_tags_ = new QPushButton{"Clear", this};
     clear_tags_->setObjectName("clearSearchTags");
     clear_tags_->setAccessibleName("Clear tag search");
@@ -78,15 +79,19 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
     title_->setPlaceholderText("Search track titles…");
     title_->setClearButtonEnabled(true);
     clear_title_->hide();
+
     more_ = new QToolButton{this};
     more_->setObjectName("advancedTrackSearch");
     more_->setText("More filters");
     more_->setCheckable(true);
     more_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     more_->setArrowType(Qt::RightArrow);
+
     advanced_ = new QWidget{this};
+
     auto* fields = new QFormLayout{advanced_};
     fields->setContentsMargins(0, 0, 0, 0);
+
     const auto add_field = [fields](const QString& label, QLineEdit* input, QPushButton* clear) {
         input->setClearButtonEnabled(true);
         clear->hide();
@@ -100,10 +105,12 @@ TrackSearchPanel::TrackSearchPanel(QWidget* parent)
         advanced_->setVisible(expanded);
         more_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
     });
+
     auto* search = new QHBoxLayout;
     search->addWidget(title_, 1);
     search->addWidget(more_);
     search->addWidget(reset_);
+
     auto* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addLayout(search);

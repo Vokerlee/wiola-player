@@ -19,10 +19,13 @@
  */
 
 #pragma once
+
 #include "commit_receipt.hpp"
+
+#include <wiola/library/in_memory_repository.hpp>
+
 #include <array>
 #include <functional>
-#include <wiola/library/in_memory_repository.hpp>
 
 namespace wiola::library {
 

@@ -19,6 +19,7 @@
  */
 
 #include "fixture.hpp"
+
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
@@ -31,8 +32,11 @@ static_assert(!std::is_move_constructible_v<app::LibraryPersistence>);
 TEST_F(LibraryPersistenceCore, CleanupDuringDisposalRejectsReentrantAdmissionAndDurabilityWaiters)
 {
     start();
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
+
     bool destroyed = false, admitted = true;
     int calls = 0;
 
@@ -67,10 +71,14 @@ TEST_F(LibraryPersistenceCore, RetryAfterStopPreservesTheFinalWriteWithoutAnothe
 {
     int saved = 0;
     start({}, [&](auto, auto) { ++saved; });
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
     ASSERT_TRUE(writer->flush().succeeded());
+
     const auto snapshot = store.last_snapshot();
+
     writer->stop();
 
     writer->retry();
@@ -78,7 +86,9 @@ TEST_F(LibraryPersistenceCore, RetryAfterStopPreservesTheFinalWriteWithoutAnothe
     EXPECT_TRUE(writer->flush().succeeded());
     EXPECT_TRUE(accepted.receipt->durable());
     EXPECT_EQ(saved, 1);
+
     const auto saved_snapshot = store.last_snapshot();
+
     EXPECT_EQ(saved_snapshot.tracks, snapshot.tracks);
     EXPECT_EQ(saved_snapshot.playlists, snapshot.playlists);
     EXPECT_EQ(saved_snapshot.workspaces, snapshot.workspaces);
@@ -88,9 +98,12 @@ TEST_F(LibraryPersistenceCore, DestructionCancelsReceiptsAndDisarmsQueuedCallbac
 {
     store.block();
     start();
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
     ASSERT_TRUE(store.wait_entered());
+
     int calls = 0;
     accepted.receipt->observe([&](auto) { ++calls; });
     writer->when_durable(1, [&](bool) { ++calls; });
@@ -104,6 +117,7 @@ TEST_F(LibraryPersistenceCore, DestructionCancelsReceiptsAndDisarmsQueuedCallbac
 TEST_F(LibraryPersistenceCore, RejectsCrossThreadOwnerOperationsAndKeepsTheWorkflowUsable)
 {
     start();
+
     int rejected = 0;
     std::thread other{[&] {
         for (int operation = 0; operation < 4; ++operation) {
@@ -136,12 +150,18 @@ TEST_F(LibraryPersistenceCore, RejectsCrossThreadOwnerOperationsAndKeepsTheWorkf
 TEST_F(LibraryPersistenceCore, ReceiptCallbackCanDisposeTheWorkflowAndCancelRemainingDelivery)
 {
     start();
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
+
     int remaining = 0;
+
     accepted.receipt->observe([&](auto) { writer.reset(); });
     accepted.receipt->observe([&](auto) { ++remaining; });
+
     const auto result = writer->flush();
+
     EXPECT_TRUE(result.succeeded());
     EXPECT_FALSE(writer);
     EXPECT_EQ(remaining, 0);
@@ -153,11 +173,15 @@ TEST_F(LibraryPersistenceCore, DurabilityWaiterCanDisposeTheWorkflowAndCancelRem
     start();
     ASSERT_TRUE(writer->accept(revision(1)));
     ASSERT_TRUE(store.wait_entered());
+
     int remaining = 0;
+
     writer->when_durable(1, [&](bool) { writer.reset(); });
     writer->when_durable(1, [&](bool) { ++remaining; });
     store.release();
+
     const auto result = writer->flush();
+
     EXPECT_TRUE(result.succeeded());
     EXPECT_FALSE(writer);
     EXPECT_EQ(remaining, 0);
@@ -167,7 +191,9 @@ TEST_F(LibraryPersistenceCore, SaveObserverCanDisposeTheWorkflowDuringFlush)
 {
     start({}, [&](auto, auto) { writer.reset(); });
     ASSERT_TRUE(writer->accept(revision(1)));
+
     const auto result = writer->flush();
+
     EXPECT_TRUE(result.succeeded());
     EXPECT_FALSE(writer);
 }
@@ -175,22 +201,29 @@ TEST_F(LibraryPersistenceCore, SaveObserverCanDisposeTheWorkflowDuringFlush)
 TEST_F(LibraryPersistenceCore, DisposalReturnsTheFinalWriteOutcomeAfterACallbackAdmitsAnotherEdit)
 {
     start();
+
     const auto first = writer->accept(revision(1));
+
     ASSERT_TRUE(first);
+
     library::CommitResult second;
     first.receipt->observe([&](auto event) {
         if (!event.durable)
             return;
+
         store.release({app::SnapshotWriteError::io});
         second = writer->accept(revision(2));
         writer.reset();
     });
+
     const auto result = writer->flush();
+
     EXPECT_EQ(result.error, app::SnapshotWriteError::io);
     EXPECT_FALSE(writer);
     ASSERT_TRUE(second);
     EXPECT_TRUE(first.receipt->durable());
     EXPECT_FALSE(second.receipt->durable());
+
     int late = 0;
     second.receipt->observe([&](auto) { ++late; });
     EXPECT_EQ(late, 0);

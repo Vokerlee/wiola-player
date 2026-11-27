@@ -18,11 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/output.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/output_connection.hpp>
 #include <wiola/audio/source.hpp>
-
-#include <fakes/output.hpp>
 
 #include <gtest/gtest.h>
 
@@ -42,6 +41,7 @@ public:
     {
         entered.release();
         release.acquire();
+
         return 0;
     }
 
@@ -75,6 +75,7 @@ TEST(OutputConnection, StopWaitsForTheSourceCallbackToReturn)
     wiola::audio::OutputConnection connection{output};
 
     ASSERT_TRUE(connection.control().start());
+
     source.entered.acquire();
 
     std::binary_semaphore stopped{0};
@@ -84,6 +85,7 @@ TEST(OutputConnection, StopWaitsForTheSourceCallbackToReturn)
     }};
 
     EXPECT_FALSE(stopped.try_acquire()) << "stop returned while the source callback was blocked";
+
     source.release.release();
     stopped.acquire();
 
@@ -107,7 +109,9 @@ TEST(OutputConnection, InertConnectionDestructionDoesNotStopTheLiveOutput)
 {
     FakeOutput output;
     wiola::audio::OutputConnection active{output};
+
     ASSERT_TRUE(active.control().start());
+
     {
         const wiola::audio::OutputConnection inert{output};
     }
@@ -121,6 +125,7 @@ TEST(OutputControl, SaysWhenTheOutputWouldNotStart)
 {
     FakeOutput output;
     output.refuse_starts();
+
     Output::Control control{output.control()};
 
     EXPECT_FALSE(control.start());
@@ -214,6 +219,7 @@ TEST(Source, DestructionThroughThePortReleasesDerivedResources)
 
     bool destroyed{false};
     std::unique_ptr<wiola::audio::Source> source{std::make_unique<OwnedSource>(destroyed)};
+
     EXPECT_FALSE(destroyed);
 
     source.reset();
@@ -291,6 +297,7 @@ TEST(OutputConnection, RepeatedAcquisitionPreservesItsExistingClaim)
 {
     FakeOutput output;
     wiola::audio::OutputConnection connection{output};
+
     ASSERT_TRUE(connection.control().start());
 
     EXPECT_TRUE(connection.try_acquire());
@@ -306,11 +313,15 @@ TEST(OutputConnection, CandidateCanAcquireAfterThePreviousConnectionIsDestroyed)
 {
     FakeOutput output;
     auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
+
     ASSERT_TRUE(previous->control().start());
+
     wiola::audio::OutputConnection candidate{output};
+
     EXPECT_FALSE(candidate.try_acquire());
     EXPECT_TRUE(output.running());
     EXPECT_EQ(output.num_stops(), 0);
+
     previous.reset();
 
     ASSERT_TRUE(candidate.try_acquire());
@@ -326,6 +337,7 @@ TEST(OutputConnection, OnlyOnePreparedCandidateAcquiresTheReturnedClaim)
     auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
     wiola::audio::OutputConnection first{output};
     wiola::audio::OutputConnection second{output};
+
     previous.reset();
 
     EXPECT_TRUE(first.try_acquire());

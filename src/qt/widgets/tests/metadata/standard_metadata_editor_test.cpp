@@ -22,9 +22,9 @@
 #include <wiola/app/metadata/metadata_edit_service.hpp>
 
 #include <QApplication>
+#include <gtest/gtest.h>
 
 #include <algorithm>
-#include <gtest/gtest.h>
 
 namespace {
 
@@ -76,6 +76,7 @@ TEST_F(StandardMetadataEditor, ShowsResolvedValuesAndAppliesDirtyOverrides)
     field("standardTrackNumber")->setText("4");
     field("standardDiscNumber")->clear();
     EXPECT_TRUE(button("applyStandardMetadata")->isEnabled());
+
     button("applyStandardMetadata")->click();
 
     ASSERT_TRUE(applied.has_value());
@@ -89,24 +90,31 @@ TEST_F(StandardMetadataEditor, NumericBoundariesRejectOverflowAndKeepUntouchedFi
 {
     for (const auto* name : {"standardYear", "standardTrackNumber", "standardDiscNumber"}) {
         SCOPED_TRACE(name);
+
         for (const auto* invalid : {"-1", "4294967296", "1.5"}) {
             field(name)->setText(invalid);
             EXPECT_FALSE(button("applyStandardMetadata")->isEnabled()) << invalid;
             EXPECT_FALSE(field(name)->accessibleDescription().isEmpty());
+
             button("cancelStandardMetadata")->click();
         }
+
         std::optional<wiola::library::StandardMetadataPatch> applied;
         editor.on_apply([&](const auto& session) { applied = session.draft(); });
         field(name)->setText("4294967295");
         ASSERT_TRUE(button("applyStandardMetadata")->isEnabled());
+
         button("applyStandardMetadata")->click();
         ASSERT_TRUE(applied);
         EXPECT_EQ(applied->title.operation(), wiola::library::FieldEditOperation::unchanged);
+
         const auto* number = std::string_view{name} == "standardYear" ? applied->year.value()
             : std::string_view{name} == "standardTrackNumber" ? applied->track_number.value()
                                                               : applied->disc_number.value();
+
         ASSERT_NE(number, nullptr);
         EXPECT_EQ(*number, 4294967295U);
+
         button("cancelStandardMetadata")->click();
     }
 }
@@ -135,12 +143,14 @@ TEST_F(StandardMetadataEditor, PreservesDraftAndExpectedTargetAcrossRevisionsAnd
     ++track.metadata_revision;
     editor.show_track(&track);
     EXPECT_EQ(field("standardComment")->text(), "Unsaved");
+
     auto other = track;
     other.id = {"other"};
     editor.show_track(&other);
     EXPECT_EQ(field("standardComment")->text(), "Unsaved");
     EXPECT_EQ(editor.edit_session().media(), std::vector<wiola::library::MediaId>{track.id});
     EXPECT_EQ(editor.edit_session().expectations().at(track.id).metadata_revision, 1);
+
     button("cancelStandardMetadata")->click();
     EXPECT_EQ(editor.edit_session().media(), std::vector<wiola::library::MediaId>{other.id});
     EXPECT_EQ(field("standardComment")->text(), "Embedded comment");
@@ -184,14 +194,18 @@ TEST_F(StandardMetadataEditor, ApplyAfterExternalChangeChecksOriginalTargetAndEx
     other.id = {"other"};
     ASSERT_TRUE(repository.put_track(track));
     ASSERT_TRUE(repository.put_track(other));
+
     wiola::app::MetadataEditService commands{repository, [](const auto&) { return true; },
         [](const auto&) { }};
+
     field("standardComment")->setText("Draft");
     track.embedded.artist = "External";
     ++track.metadata_revision;
     ASSERT_TRUE(repository.put_track(track));
+
     editor.show_track(repository.track(track.id));
     editor.show_track(repository.track(other.id));
+
     std::optional<wiola::app::MetadataEditOutcome> outcome;
     editor.on_apply([&](const wiola::app::MetadataEditSession& session) {
         outcome = commands.apply(session.media(), session.draft(), session.expectations());
@@ -209,15 +223,20 @@ TEST_F(StandardMetadataEditor, SessionDeduplicatesOccurrencesAndRetainsOwnedOrig
     auto other = track;
     other.id = {"other"};
     other.embedded.artist = "Different";
+
     const auto session =
         wiola::app::MetadataEditSession::capture({&track, &other, &track, nullptr});
+
     ASSERT_EQ(session.targets().size(), 2);
     EXPECT_TRUE(session.mixed(wiola::app::StandardMetadataField::artist));
+
     track.embedded.artist = "Later";
     track.content_revision = 99;
     track.fingerprint = "later";
+
     const auto found = std::ranges::find(session.targets(), track.id,
         &wiola::app::MetadataEditSession::Target::media);
+
     ASSERT_NE(found, session.targets().end());
     EXPECT_EQ(found->original.artist, "Embedded artist");
     EXPECT_EQ(found->expected.content_revision, 0);
@@ -230,6 +249,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

@@ -56,6 +56,7 @@ private:
         std::array<float, 2> samples{};
         frames_ = source_.spec().frames_per(source_.render(samples));
         running_ = samples[0] == 0.5F;
+
         return running_;
     }
 
@@ -77,14 +78,19 @@ int main()
     ControlledOutput output{source};
     {
         wiola::audio::OutputConnection connection{output};
+
         if (!connection.try_acquire())
             return 4;
+
         if (!connection.control().start() || output.frames_played() != wiola::pcm::Frames{1})
             return 1;
+
         if (output.control().start())
             return 2;
     }
+
     if (output.running())
         return 3;
+
     return !output.control().start();
 }

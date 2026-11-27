@@ -78,6 +78,7 @@ TEST(BufferSource, GivesWhatWasPushedInOrder)
     BufferSource source{stereo, buffer.consumer()};
 
     const auto pushed{counted(8)};
+
     ASSERT_EQ(producer.push(pushed), pushed.size());
 
     std::array<float, 8> block{};
@@ -97,6 +98,7 @@ TEST(BufferSource, IsShortWhenTheBufferHoldsLess)
     BufferSource source{stereo, buffer.consumer()};
 
     const auto pushed{counted(4)};
+
     ASSERT_EQ(producer.push(pushed), pushed.size());
 
     std::array<float, 8> block{};
@@ -114,6 +116,7 @@ TEST(BufferSource, TakesOnlyWhatWasAskedFor)
     BufferSource source{stereo, buffer.consumer()};
 
     const auto pushed{counted(16)};
+
     ASSERT_EQ(producer.push(pushed), pushed.size());
 
     std::array<float, 4> block{};
@@ -130,6 +133,7 @@ TEST(BufferSource, AnswersAsASource)
     Source& source{buffered};
 
     const auto pushed{counted(4)};
+
     ASSERT_EQ(producer.push(pushed), pushed.size());
 
     std::array<float, 4> block{};
@@ -145,6 +149,7 @@ TEST(BufferSource, AcceptsNothingToFill)
     BufferSource source{stereo, buffer.consumer()};
 
     const auto pushed{counted(4)};
+
     ASSERT_EQ(producer.push(pushed), pushed.size());
 
     EXPECT_EQ(source.render(std::span<float>{}), 0U);
@@ -157,6 +162,7 @@ TEST(BufferSource, LeavesAnOddTrailingSampleUntouched)
     auto producer{buffer.producer()};
     BufferSource source{stereo, buffer.consumer()};
     const auto pushed{counted(8)};
+
     ASSERT_EQ(producer.push(pushed), pushed.size());
 
     std::array<float, 5> block{};

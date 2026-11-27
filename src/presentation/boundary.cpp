@@ -11,7 +11,9 @@ int main()
 {
     wiola::gui::SessionDocuments session;
     session.remap_queue({});
+
     if (session.open != std::vector{wiola::gui::DocumentId::queue()})
         return 1;
+
     return wiola::gui::apply_track_view({}, nullptr, {}, {}).empty() ? 0 : 1;
 }

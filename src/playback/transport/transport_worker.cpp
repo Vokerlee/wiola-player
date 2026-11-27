@@ -90,14 +90,18 @@ bool TransportWorker::start()
 bool TransportWorker::pause() noexcept
 {
     const bool accepted{playback_.pause()};
+
     wait_.notify();
+
     return accepted;
 }
 
 bool TransportWorker::resume() noexcept
 {
     const bool accepted{playback_.resume()};
+
     wait_.notify();
+
     return accepted;
 }
 

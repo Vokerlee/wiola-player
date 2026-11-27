@@ -18,17 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <limits>
+#include <qt/storage/library_store.hpp>
 #include <wiola/app/library/playlist_name.hpp>
 #include <wiola/app/library/saved_playlist_commands.hpp>
-
-#include <qt/storage/library_store.hpp>
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
+
+#include <limits>
 
 namespace {
 
@@ -38,7 +37,9 @@ void expect_compatible_name(const std::string& text)
     const bool valid = !expected.isEmpty() &&
         expected.size() <= static_cast<qsizetype>(wiola::app::PlaylistName::max_utf16_units);
     const auto actual = wiola::app::PlaylistName::parse(text);
+
     ASSERT_EQ(actual.has_value(), valid) << "input=" << text;
+
     if (actual)
         EXPECT_EQ(actual->value(), expected.toStdString()) << "input=" << text;
 }
@@ -96,6 +97,7 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
     ASSERT_TRUE(repository.put_track(track));
 
     const auto original = commands.create("  Road trip  ").id;
+
     ASSERT_TRUE(original.valid());
     ASSERT_EQ(repository.playlist(original)->name, "Road trip");
     ASSERT_TRUE(repository.append_track(original, media));
@@ -104,11 +106,14 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
         wiola::persistence::qt::LibraryStoreResult{});
 
     ASSERT_TRUE(commands.rename(original, "Evening"));
+
     const auto copy = commands.duplicate(original).id;
+
     ASSERT_TRUE(copy.valid());
     EXPECT_NE(copy, original);
 
     const wiola::library::PlaylistRecord* duplicated = repository.playlist(copy);
+
     ASSERT_NE(duplicated, nullptr);
     ASSERT_EQ(duplicated->entries.size(), 2);
     EXPECT_EQ(duplicated->name, "Evening copy");
@@ -117,12 +122,14 @@ TEST_F(SavedPlaylistCommands, CreatesRenamesDuplicatesAndDeletesPersistentPlayli
     EXPECT_NE(duplicated->entries[0].id, duplicated->entries[1].id);
 
     const auto original_first = repository.playlist(original)->entries.front().id;
+
     EXPECT_NE(duplicated->entries.front().id, original_first);
     EXPECT_TRUE(commands.remove(original));
     EXPECT_EQ(repository.playlist(original), nullptr);
     EXPECT_FALSE(commands.remove(original));
 
     wiola::library::InMemoryRepository restored;
+
     ASSERT_EQ(wiola::persistence::qt::restore_repository(storage, restored),
         wiola::persistence::qt::LibraryStoreResult{});
     EXPECT_EQ(restored.playlist(original), nullptr);
@@ -148,6 +155,7 @@ TEST_F(SavedPlaylistCommands, RejectsBlankNamesAndMissingPlaylists)
     EXPECT_FALSE(commands.duplicate(wiola::library::PlaylistId{"missing"}).id.valid());
 
     const auto id = commands.create("Valid").id;
+
     ASSERT_TRUE(id.valid());
     EXPECT_FALSE(commands.rename(id, "  "));
     EXPECT_EQ(repository.playlist(id)->name, "Valid");
@@ -168,6 +176,7 @@ TEST_F(SavedPlaylistCommands, RollsBackRepositoryChangesWhenPersistenceFails)
     EXPECT_TRUE(repository.playlists().empty());
 
     const auto retained = repository.create_playlist("Retained");
+
     EXPECT_FALSE(commands.remove(retained));
     ASSERT_NE(repository.playlist(retained), nullptr);
     EXPECT_EQ(repository.playlist(retained)->name, "Retained");
@@ -182,6 +191,7 @@ TEST_F(SavedPlaylistCommands, RollsBackRepositoryChangesWhenPersistenceFails)
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

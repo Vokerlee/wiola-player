@@ -21,6 +21,7 @@
 #pragma once
 
 #include "playback_presentation.hpp"
+
 #include <wiola/audio/equalizer_config.hpp>
 #include <wiola/audio/volume_policy.hpp>
 #include <wiola/playback/operation_outcome.hpp>

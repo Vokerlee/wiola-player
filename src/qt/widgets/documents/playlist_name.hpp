@@ -20,8 +20,9 @@
 
 #pragma once
 
-#include <QString>
 #include <wiola/library/records.hpp>
+
+#include <QString>
 
 namespace wiola::gui {
 

@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #ifndef Q_MOC_RUN
 #include <qt/widgets/shell/player_actions.hpp>
 #include <wiola/app/playback/playback_presentation.hpp>
@@ -26,6 +27,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QPointer>
+
 #include <array>
 class QPushButton;
 

@@ -19,10 +19,12 @@
  */
 
 #pragma once
-#include <filesystem>
-#include <variant>
+
 #include <wiola/library/identity.hpp>
 #include <wiola/playback/queue_entry_id.hpp>
+
+#include <filesystem>
+#include <variant>
 
 namespace wiola::gui {
 

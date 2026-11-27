@@ -22,9 +22,8 @@
 
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/controls/clock.hpp>
-#include <wiola/qt/paths.hpp>
-
 #include <wiola/library/records.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QEvent>
 #include <QFormLayout>
@@ -65,6 +64,7 @@ TrackInspector::TrackInspector(QWidget* parent)
     setMinimumWidth(fontMetrics().averageCharWidth() * 16);
 
     context_label_ = value(this, "inspectorContext");
+
     artwork_label_ = new QLabel{this};
     artwork_label_->setObjectName("inspectorArtwork");
     artwork_label_->setAlignment(Qt::AlignCenter);
@@ -91,17 +91,21 @@ TrackInspector::TrackInspector(QWidget* parent)
     fields->addRow("File", availability_);
 
     custom_tags_ = new CustomTagEditor{this};
+
     standard_metadata_ = new StandardMetadataEditor{this};
+
     conflicts_ = new MetadataConflictPanel{this};
 
     auto* root = new QVBoxLayout{this};
     const auto spacing = PresentationTokens{}.player.section_spacing;
     root->setContentsMargins(0, 0, spacing, spacing);
+
     auto* scroll = new QScrollArea{this};
     scroll->setObjectName("inspectorScroll");
     scroll->setAccessibleName("Scrollable track inspector");
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+
     auto* content = new QWidget;
     auto* layout = new QVBoxLayout{content};
     layout->setContentsMargins(spacing, spacing, spacing, spacing);
@@ -110,6 +114,7 @@ TrackInspector::TrackInspector(QWidget* parent)
     layout->addWidget(context_label_);
     layout->addWidget(artwork_label_);
     layout->addLayout(fields);
+
     const auto disclosure = [this, layout](const char* name, const QString& text,
                                 QWidget* content) {
         auto* toggle = new QToolButton{this};
@@ -127,6 +132,7 @@ TrackInspector::TrackInspector(QWidget* parent)
             content->setVisible(expanded);
             toggle->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
         });
+
         return toggle;
     };
     metadata_toggle_ = disclosure("metadataDisclosure", "Edit track details", standard_metadata_);
@@ -138,10 +144,12 @@ TrackInspector::TrackInspector(QWidget* parent)
         &QPushButton::clicked, this, [this] {
             if (pending_context_) {
                 auto next = std::move(*pending_context_);
+
                 pending_context_.reset();
                 show_context(std::move(next));
             }
         });
+
     show_context({});
 }
 
@@ -154,19 +162,25 @@ void TrackInspector::edit_details()
 void TrackInspector::show_context(InspectorContext next)
 {
     std::vector<const library::TrackRecord*> records;
+
     for (const auto& record : next.editable)
         records.push_back(&record);
+
     standard_metadata_->show_tracks(records);
+
     if (standard_metadata_->retains_draft()) {
         metadata_toggle_->setChecked(true);
         pending_context_ = std::move(next);
         context_label_->setText(
             "Editing original selection — draft retained. Cancel to inspect the current selection."
         );
+
         return;
     }
+
     context_ = std::move(next);
     pending_context_.reset();
+
     const bool single = context_.tracks.size() == 1;
     const auto* editable =
         single && context_.editable.size() == 1 ? &context_.editable.front() : nullptr;
@@ -176,6 +190,7 @@ void TrackInspector::show_context(InspectorContext next)
             : context_.origin == InspectorContext::Origin::selection
             ? QString{"Selection — %1 track(s)"}.arg(context_.tracks.size())
             : "No selection");
+
     if (!single) {
         artwork_label_->setPixmap(artwork_->cover(*this, {}, media::ArtworkReference{},
             {.cover_size = 96}));
@@ -188,8 +203,10 @@ void TrackInspector::show_context(InspectorContext next)
         duration_->clear();
         availability_->clear();
         availability_->setProperty("missing", false);
+
         return;
     }
+
     const auto& track = context_.tracks.front();
     show_artwork();
     title_->setText(fallback(track.metadata.title, "Unknown title"));
@@ -198,6 +215,7 @@ void TrackInspector::show_context(InspectorContext next)
     location_->setText(platform::qt::QtPathAdapter::display(track.location));
     duration_->setText(track.metadata.duration ? as_clock(*track.metadata.duration)
                                                : QString{"Unknown"});
+
     const bool known = editable != nullptr;
     availability_->setText(known ? (track.missing ? "Missing" : "Available") : "Not checked");
     availability_->setProperty("missing", known && track.missing);

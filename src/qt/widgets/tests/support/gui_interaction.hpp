@@ -1,4 +1,7 @@
 #pragma once
+
+#include <qt/widgets/tests/support/widget_diagnostics.hpp>
+
 #include <QApplication>
 #include <QFileInfo>
 #include <QPointer>
@@ -7,7 +10,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <gtest/gtest.h>
-#include <qt/widgets/tests/support/widget_diagnostics.hpp>
+
 #include <stdexcept>
 
 namespace wiola::testing {
@@ -18,6 +21,7 @@ public:
     {
         if (!directory_.isValid())
             throw std::runtime_error{"Cannot create isolated GUI settings"};
+
         const QSettings probe{QSettings::IniFormat, QSettings::UserScope, "wiola-path-probe",
             "probe"};
         auto parent = QFileInfo{probe.fileName()}.dir();
@@ -54,6 +58,7 @@ protected:
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         QApplication::setPalette(palette_);
         QApplication::setFont(font_);
+
         for (const auto& window : windows_)
             EXPECT_TRUE(window.isNull()) << "An interaction fixture retained a test window";
     }
@@ -76,11 +81,17 @@ inline int run_gui_tests(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
     }
+
     ::testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
+
     QStandardPaths::setTestModeEnabled(true);
+
     IsolatedSettings isolated;
+
     retain_widget_screenshots();
+
     return RUN_ALL_TESTS();
 }
 

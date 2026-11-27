@@ -18,8 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include <wiola/media/resource.hpp>
+
+#include <gtest/gtest.h>
 
 #include <map>
 #include <string>
@@ -38,6 +39,7 @@ TEST(ResourceReference, OwnsItsIdentityAndLabelWithoutInterpretingTheKey)
     std::string key{"opaque/key?x=1"};
     std::string label{"Human title"};
     const ResourceReference value{source, key, label};
+
     source.clear();
     key.clear();
     label.clear();
@@ -54,8 +56,10 @@ TEST(ResourceReference, LabelsDoNotChangeIdentityOrMetadataGrouping)
 {
     const ResourceReference first{"driver", "object", "First occurrence"};
     const ResourceReference second{"driver", "object", "Second occurrence"};
+
     EXPECT_EQ(first, second);
     EXPECT_EQ(first <=> second, std::strong_ordering::equal);
+
     std::map<ResourceReference, int> resources;
     resources[first] = 1;
     resources[second] += 1;
@@ -69,6 +73,7 @@ TEST(ResourceReference, SourceNamespacesKeepEqualKeysIndependent)
     const ResourceReference a{"a", "key", "Shared label"};
     const ResourceReference b{"b", "key", "Shared label"};
     const ResourceReference c{"a", "other", "Shared label"};
+
     EXPECT_NE(a, b);
     EXPECT_NE(a, c);
     EXPECT_LT(a, b);

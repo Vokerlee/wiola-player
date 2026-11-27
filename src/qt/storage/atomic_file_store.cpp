@@ -19,14 +19,17 @@
  */
 
 #include "atomic_file_store.hpp"
+
+#include <wiola/qt/paths.hpp>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+
 #include <limits>
 #include <stdexcept>
 #include <utility>
-#include <wiola/qt/paths.hpp>
 
 namespace wiola::persistence::qt {
 namespace {
@@ -70,8 +73,10 @@ AtomicFileStore::AtomicFileStore(std::filesystem::path file, qsizetype max_bytes
 std::filesystem::path AtomicFileStore::path(FileSlot slot) const
 {
     auto result = file_;
+
     if (slot == FileSlot::backup)
         result += ".bak";
+
     return result;
 }
 
@@ -80,23 +85,30 @@ FileReadResult AtomicFileStore::read(FileSlot slot) const
     QFile file{platform::qt::QtPathAdapter::to_qt(path(slot))};
     FileReadResult result;
     result.exists = file.exists();
+
     if (!result.exists)
         return result;
+
     if (!file.open(QIODevice::ReadOnly)) {
         result.error = FileStoreError::io;
         return result;
     }
+
     if (file.size() > max_bytes_) {
         result.error = FileStoreError::too_large;
         return result;
     }
+
     result.bytes = file.read(max_bytes_ + 1);
+
     if (file.error() != QFileDevice::NoError)
         result.error = FileStoreError::io;
     else if (result.bytes.size() > max_bytes_)
         result.error = FileStoreError::too_large;
+
     if (result.error != FileStoreError::none)
         result.bytes.clear();
+
     return result;
 }
 
@@ -104,12 +116,17 @@ FileStoreError AtomicFileStore::write(FileSlot slot, QByteArrayView bytes)
 {
     if (bytes.size() > max_bytes_)
         return FileStoreError::too_large;
+
     const auto target = path(slot);
+
     if (!QDir{}.mkpath(QFileInfo{platform::qt::QtPathAdapter::to_qt(target)}.absolutePath()))
         return FileStoreError::io;
+
     auto output = output_(target);
+
     if (!output || output->write(bytes) != bytes.size() || !output->commit())
         return FileStoreError::io;
+
     return FileStoreError::none;
 }
 

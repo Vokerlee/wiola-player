@@ -20,9 +20,11 @@
 
 #pragma once
 
-#include <QObject>
-#include <memory>
 #include <wiola/presentation/tracks/track_projection.hpp>
+
+#include <QObject>
+
+#include <memory>
 
 namespace wiola::gui {
 

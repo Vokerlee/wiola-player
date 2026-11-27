@@ -19,6 +19,7 @@
  */
 
 #include "metadata_patch.hpp"
+
 #include <tuple>
 #include <type_traits>
 
@@ -66,6 +67,7 @@ bool metadata_patch_empty(const StandardMetadataPatch& patch)
     visit(patch, [&](const auto& edit, auto, auto) {
         empty = empty && edit.operation() == FieldEditOperation::unchanged;
     });
+
     return empty;
 }
 
@@ -79,6 +81,7 @@ bool valid_metadata_patch(const StandardMetadataPatch& patch)
                     value->find('\0') == std::string::npos;
         }
     });
+
     return valid;
 }
 
@@ -87,10 +90,12 @@ MetadataPatchResult apply_metadata_patch(StandardFieldOverrides& overrides,
 {
     if (!valid_metadata_patch(patch))
         return MetadataPatchResult::invalid;
+
     auto updated = overrides;
     visit(patch, [&](const auto& edit, auto member, auto) {
         auto& target = updated.*member;
         using Stored = typename std::decay_t<decltype(target)>::value_type;
+
         switch (edit.operation()) {
         case FieldEditOperation::unchanged:
             break;
@@ -105,9 +110,12 @@ MetadataPatchResult apply_metadata_patch(StandardFieldOverrides& overrides,
             break;
         }
     });
+
     if (updated == overrides)
         return MetadataPatchResult::unchanged;
+
     overrides = std::move(updated);
+
     return MetadataPatchResult::changed;
 }
 
@@ -118,6 +126,7 @@ media::Result<media::MetadataOverrides> file_metadata_patch(const StandardMetada
             media::Error{.category = media::ErrorCategory::unsupported,
                          .detail = "invalid metadata patch text"}
         };
+
     media::MetadataOverrides result;
     bool unsupported_clear = false;
     visit(patch, [&](const auto& edit, auto, auto member) {
@@ -130,11 +139,13 @@ media::Result<media::MetadataOverrides> file_metadata_patch(const StandardMetada
                 unsupported_clear = true;
         }
     });
+
     if (unsupported_clear)
         return media::unexpected{
             media::Error{.category = media::ErrorCategory::unsupported,
                          .detail = "the file-write contract cannot represent clearing a numeric tag"}
         };
+
     return result;
 }
 

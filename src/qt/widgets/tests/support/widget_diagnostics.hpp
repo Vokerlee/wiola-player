@@ -28,7 +28,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QWidget>
-
 #include <gtest/gtest.h>
 
 namespace wiola::testing {
@@ -59,6 +58,7 @@ public:
         QDir{}.mkpath(directory);
 
         QJsonArray states;
+
         for (QWidget* widget : QApplication::allWidgets()) {
             if (widget->objectName().isEmpty())
                 continue;
@@ -74,10 +74,14 @@ public:
                 {"height",                widget->height()                 }
             });
         }
+
         QFile state{QDir{directory}.filePath(current_test + "-widgets.json")};
+
         if (state.open(QIODevice::WriteOnly))
             state.write(QJsonDocument{states}.toJson());
+
         int index{0};
+
         for (QWidget* widget : QApplication::topLevelWidgets()) {
             if (!widget->isVisible())
                 continue;

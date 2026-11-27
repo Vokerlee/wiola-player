@@ -6,6 +6,7 @@
 
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
+
 #include <limits>
 
 namespace {
@@ -17,10 +18,13 @@ using namespace persistence::qt;
 TEST(CompatibilityLibrary, ReadsAuthoredUnicodeLayeringAndDuplicateOccurrences)
 {
     library::LibrarySnapshot snapshot;
+
     ASSERT_EQ(read_library_json(fixture("library/current-v1.json"), snapshot),
         LibraryJsonError::none);
     ASSERT_EQ(snapshot.tracks.size(), 1U);
+
     const auto& track = snapshot.tracks.front();
+
     EXPECT_EQ(track.id.value, "media-楽曲");
     EXPECT_EQ(track.embedded.title, "Соната 楽曲");
     EXPECT_EQ(track.embedded.artist, "Бах");
@@ -37,7 +41,9 @@ TEST(CompatibilityLibrary, ReadsAuthoredUnicodeLayeringAndDuplicateOccurrences)
     EXPECT_EQ(platform::qt::QtPathAdapter::to_qt(track.locations[0]),
         QString::fromUtf8("Music/楽曲.flac"));
     ASSERT_EQ(snapshot.playlists.size(), 1U);
+
     const auto& entries = snapshot.playlists.front().entries;
+
     ASSERT_EQ(entries.size(), 2U);
     EXPECT_EQ(entries[0].id.value, "entry-a");
     EXPECT_EQ(entries[1].id.value, "entry-b");
@@ -49,6 +55,7 @@ TEST(CompatibilityLibrary, ReadsAuthoredUnicodeLayeringAndDuplicateOccurrences)
 TEST(CompatibilityLibrary, OldOptionalDefaultsDoNotDependOnCurrentWriter)
 {
     library::LibrarySnapshot snapshot;
+
     ASSERT_EQ(read_library_json(fixture("library/minimal-v1.json"), snapshot),
         LibraryJsonError::none);
     ASSERT_EQ(snapshot.tracks.size(), 1U);
@@ -64,9 +71,12 @@ TEST(CompatibilityLibrary, OldOptionalDefaultsDoNotDependOnCurrentWriter)
 TEST(CompatibilityLibrary, RejectedDocumentsRetainThePreviousSnapshot)
 {
     library::LibrarySnapshot snapshot;
+
     ASSERT_EQ(read_library_json(fixture("library/current-v1.json"), snapshot),
         LibraryJsonError::none);
+
     const auto original = snapshot;
+
     for (const auto& [path, error] : {
              std::pair{"library/invalid-reference-v1.json", LibraryJsonError::invalid_record     },
              std::pair{"library/future.json",               LibraryJsonError::unsupported_version},
@@ -82,13 +92,16 @@ TEST(CompatibilityLibrary, RejectedDocumentsRetainThePreviousSnapshot)
 TEST(CompatibilityLibrary, FutureFileSurvivesLoadSaveAndStoreDestructionByteForByte)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     const auto path = directory.filePath("library.json");
     const auto future = fixture("library/future.json");
     overwrite(path, future);
     {
         LibraryStore store{platform::qt::QtPathAdapter::from_qt(path)};
         library::LibrarySnapshot output;
+
         EXPECT_EQ(store.load(output).schema, LibraryJsonError::unsupported_version);
         EXPECT_EQ(store.save(output).schema, LibraryJsonError::unsupported_version);
     }

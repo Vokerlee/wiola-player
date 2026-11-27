@@ -20,11 +20,11 @@
 
 #include "playlist_transfer.hpp"
 
+#include <wiola/library/repository_transaction.hpp>
+
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-
-#include <wiola/library/repository_transaction.hpp>
 
 namespace wiola::app {
 
@@ -85,6 +85,7 @@ PlaylistTransferResult PlaylistTransfer::add_to(const library::PlaylistId& playl
         return result;
 
     result.commit = transaction.commit();
+
     if (!result.succeeded()) {
         result.added = 0;
     }
@@ -106,10 +107,12 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
         const library::PlaylistRecord* source_record = repository_.playlist(source);
         const auto entry =
             std::ranges::find(source_record->entries, id, &library::PlaylistEntryRecord::id);
+
         if (entry == source_record->entries.end())
             continue;
 
         const library::MediaId media = entry->media;
+
         if (!repository_.append_track(destination, media) ||
             !repository_.remove_entry(source, id)) {
             return {};
@@ -122,6 +125,7 @@ PlaylistTransferResult PlaylistTransfer::move_to(const library::PlaylistId& sour
         return result;
 
     result.commit = transaction.commit();
+
     if (!result.succeeded()) {
         result.added = 0;
     }

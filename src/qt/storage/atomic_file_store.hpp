@@ -19,8 +19,10 @@
  */
 
 #pragma once
+
 #include <QByteArray>
 #include <QByteArrayView>
+
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -32,6 +34,7 @@ enum class FileStoreError {
     io,
     too_large,
 };
+
 enum class FileSlot {
     primary,
     backup,

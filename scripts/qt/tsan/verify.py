@@ -18,8 +18,10 @@ def main(argv=None) -> int:
         "--runtime", type=Path, default=os.environ.get("WIOLA_QT_CORE_RUNTIME") or None
     )
     args = parser.parse_args(argv)
+
     if args.runtime is None:
         parser.error("pass --runtime or set WIOLA_QT_CORE_RUNTIME")
+
     try:
         context = QtCoreContext.discover()
         runtime = QtCoreRuntime(args.runtime)
@@ -34,6 +36,7 @@ def main(argv=None) -> int:
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print("Instrumented Qt verification failed: " + str(error), file=sys.stderr)
         return 1
+
     return 0
 
 

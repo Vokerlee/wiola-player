@@ -21,6 +21,7 @@
 #include <wiola/app/library/playlist_transfer.hpp>
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <stdexcept>
 
@@ -31,6 +32,7 @@ TEST(PlaylistTransfer, AddsSelectedMediaToTheDestinationWithDuplicateOccurrences
     wiola::library::InMemoryRepository repository;
     wiola::app::PlaylistDestination active;
     const auto destination = repository.create_playlist("Destination");
+
     ASSERT_TRUE(active.set(destination));
 
     const wiola::library::MediaId media{"media-1"};
@@ -46,6 +48,7 @@ TEST(PlaylistTransfer, AddsSelectedMediaToTheDestinationWithDuplicateOccurrences
     EXPECT_EQ(repository.track(media)->locations.front(), item.location);
 
     const auto* saved = repository.playlist(destination);
+
     ASSERT_NE(saved, nullptr);
     ASSERT_EQ(saved->entries.size(), 2);
     EXPECT_NE(saved->entries[0].id, saved->entries[1].id);
@@ -59,6 +62,7 @@ TEST(PlaylistTransfer, SupportsExplicitDestinationsAndRollsBackFailedBatches)
     wiola::app::PlaylistDestination active;
     const auto active_id = repository.create_playlist("Active");
     const auto other_id = repository.create_playlist("Other");
+
     ASSERT_TRUE(active.set(active_id));
 
     const wiola::library::MediaId media{"media-1"};
@@ -85,6 +89,7 @@ TEST(PlaylistTransfer, SupportsExplicitDestinationsAndRollsBackFailedBatches)
     EXPECT_EQ(repository.playlist(other_id)->entries.size(), 1);
 
     ASSERT_TRUE(transfer.add_to(active_id, {item, item}).succeeded());
+
     const auto selected = repository.playlist(active_id)->entries.front().id;
     const std::vector<wiola::library::PlaylistEntryId> selected_entries{selected};
     const auto moved = transfer.move_to(active_id, other_id, selected_entries);
@@ -101,13 +106,16 @@ TEST(PlaylistTransfer, PreservesTheMutablePersistenceIdentityAcrossTransfers)
     wiola::library::InMemoryRepository repository;
     wiola::app::PlaylistDestination active;
     const auto destination = repository.create_playlist("Destination");
+
     ASSERT_TRUE(active.set(destination));
+
     std::vector<int> calls;
     wiola::app::PlaylistTransfer transfer{repository, active, [&, count = 0](const auto&) mutable {
                                               calls.push_back(++count);
                                               return true;
                                           }};
     const wiola::app::MediaTransfer media{.media = {"media"}, .location = {}};
+
     ASSERT_TRUE(transfer.add_to_destination({media}).succeeded());
     ASSERT_TRUE(transfer.add_to_destination({media}).succeeded());
     EXPECT_EQ(calls, (std::vector{1, 2}));
@@ -116,10 +124,13 @@ TEST(PlaylistTransfer, PreservesTheMutablePersistenceIdentityAcrossTransfers)
 TEST(PlaylistTransfer, EachTransferOwnsItsAcceptedCommitAndDurabilityReceipt)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     app::PlaylistDestination destination;
     const auto playlist = repository.create_playlist("Destination");
+
     ASSERT_TRUE(destination.set(playlist));
+
     app::PlaylistTransfer transfer{repository, destination, [&](const auto&) {
                                        const auto revision =
                                            repository.staged_delta()->changes.revision;
@@ -129,6 +140,7 @@ TEST(PlaylistTransfer, EachTransferOwnsItsAcceptedCommitAndDurabilityReceipt)
     const app::MediaTransfer media{.media = {"media"}, .location = {}};
     const auto first = transfer.add_to_destination({media});
     const auto second = transfer.add_to_destination({media});
+
     ASSERT_TRUE(first.succeeded());
     ASSERT_TRUE(second.succeeded());
     ASSERT_TRUE(first.commit.receipt);
@@ -136,9 +148,11 @@ TEST(PlaylistTransfer, EachTransferOwnsItsAcceptedCommitAndDurabilityReceipt)
     EXPECT_NE(first.commit.revision, second.commit.revision);
     EXPECT_NE(first.commit.receipt, second.commit.receipt);
     EXPECT_FALSE(first.commit.durable());
+
     second.commit.receipt->notify(true);
     EXPECT_TRUE(second.commit.receipt->durable());
     EXPECT_FALSE(first.commit.receipt->durable());
+
     first.commit.receipt->notify(true);
     EXPECT_TRUE(first.commit.receipt->durable());
 }
@@ -146,18 +160,23 @@ TEST(PlaylistTransfer, EachTransferOwnsItsAcceptedCommitAndDurabilityReceipt)
 TEST(PlaylistTransfer, AnAdmittedTransferMayOutliveItsCommandFacade)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     app::PlaylistDestination destination;
     const auto playlist = repository.create_playlist("Destination");
+
     ASSERT_TRUE(destination.set(playlist));
+
     std::unique_ptr<app::PlaylistTransfer> transfer;
     transfer = std::make_unique<app::PlaylistTransfer>(repository, destination, [&](const auto&) {
         transfer.reset();
         return true;
     });
+
     const auto result = transfer->add_to_destination({
         {.media = {"media"}, .location = {}}
     });
+
     EXPECT_FALSE(transfer);
     EXPECT_TRUE(result.succeeded());
     EXPECT_EQ(result.added, 1U);
@@ -167,6 +186,7 @@ TEST(PlaylistTransfer, AnAdmittedTransferMayOutliveItsCommandFacade)
 TEST(PlaylistTransfer, MissingDestinationsAndInvalidMediaDoNotPersistOrInventRecords)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     app::PlaylistDestination destination;
     int writes{};
@@ -175,9 +195,12 @@ TEST(PlaylistTransfer, MissingDestinationsAndInvalidMediaDoNotPersistOrInventRec
                                        return true;
                                    }};
     const app::MediaTransfer media{.media = {"media"}, .location = {}};
+
     EXPECT_FALSE(transfer.add_to_destination({media}).succeeded());
     EXPECT_FALSE(transfer.add_to({"missing"}, {media}).succeeded());
+
     const auto playlist = repository.create_playlist("Destination");
+
     EXPECT_FALSE(transfer.add_to(playlist, {}).succeeded());
     EXPECT_FALSE(transfer
             .add_to(playlist,
@@ -192,11 +215,13 @@ TEST(PlaylistTransfer, MissingDestinationsAndInvalidMediaDoNotPersistOrInventRec
 TEST(PlaylistTransfer, MovesOnlyCapturedOccurrencesAndPreservesARejectedBatch)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     app::PlaylistDestination destination;
     const auto source = repository.create_playlist("Source");
     const auto target = repository.create_playlist("Target");
     app::PlaylistTransfer transfer{repository, destination, [](const auto&) { return true; }};
+
     ASSERT_TRUE(transfer
             .add_to(source,
                 {
@@ -204,18 +229,22 @@ TEST(PlaylistTransfer, MovesOnlyCapturedOccurrencesAndPreservesARejectedBatch)
                     {.media = {"media"}, .location = {}}
     })
             .succeeded());
+
     const auto first = repository.playlist(source)->entries.front().id;
     const auto second = repository.playlist(source)->entries.back().id;
     const std::vector captured{first, first, library::PlaylistEntryId{"gone"}};
     const auto moved = transfer.move_to(source, target, captured);
+
     EXPECT_TRUE(moved.succeeded());
     EXPECT_EQ(moved.added, 1U);
     EXPECT_EQ(repository.playlist(source)->entries.front().id, second);
+
     const auto before_source = *repository.playlist(source);
     const auto before_target = *repository.playlist(target);
     app::PlaylistTransfer reject{repository, destination, [](const auto&) { return false; }};
     const std::vector remaining{second};
     const auto refused = reject.move_to(source, target, remaining);
+
     EXPECT_FALSE(refused.succeeded());
     EXPECT_EQ(refused.added, 0U);
     EXPECT_EQ(*repository.playlist(source), before_source);
@@ -224,7 +253,9 @@ TEST(PlaylistTransfer, MovesOnlyCapturedOccurrencesAndPreservesARejectedBatch)
     EXPECT_FALSE(transfer.move_to(source, {"missing"}, remaining).succeeded());
     EXPECT_FALSE(transfer.move_to({"missing"}, target, remaining).succeeded());
     EXPECT_FALSE(transfer.move_to(source, target, {}).succeeded());
+
     const std::vector gone{library::PlaylistEntryId{"gone"}};
+
     EXPECT_FALSE(transfer.move_to(source, target, gone).succeeded());
 }
 
@@ -232,6 +263,7 @@ TEST(PlaylistTransfer, RequiresAnExplicitPersistencePolicyAtConstruction)
 {
     wiola::library::InMemoryRepository repository;
     wiola::app::PlaylistDestination destination;
+
     EXPECT_THROW((wiola::app::PlaylistTransfer{repository, destination, {}}),
         std::invalid_argument);
 }
@@ -239,11 +271,14 @@ TEST(PlaylistTransfer, RequiresAnExplicitPersistencePolicyAtConstruction)
 TEST(PlaylistTransfer, AChangedDestinationDoesNotRetargetAnAlreadyAdmittedTransfer)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     app::PlaylistDestination destination;
     const auto original = repository.create_playlist("Original");
     const auto replacement = repository.create_playlist("Replacement");
+
     ASSERT_TRUE(destination.set(original));
+
     app::PlaylistTransfer transfer{repository, destination, [&](const auto&) {
                                        static_cast<void>(destination.set(replacement));
                                        return true;
@@ -262,6 +297,7 @@ TEST(PlaylistTransfer, AChangedDestinationDoesNotRetargetAnAlreadyAdmittedTransf
 TEST(PlaylistTransfer, AnAcceptedMoveKeepsItsReceiptAfterDisposingTheCommandFacade)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     app::PlaylistDestination destination;
     const auto source = repository.create_playlist("Source");
@@ -269,15 +305,21 @@ TEST(PlaylistTransfer, AnAcceptedMoveKeepsItsReceiptAfterDisposingTheCommandFaca
     library::TrackRecord record;
     record.id = {"media"};
     ASSERT_TRUE(repository.put_track(record));
+
     const auto entry = repository.append_track(source, record.id);
+
     ASSERT_TRUE(entry);
+
     std::unique_ptr<app::PlaylistTransfer> transfer;
     transfer = std::make_unique<app::PlaylistTransfer>(repository, destination, [&](const auto&) {
         const auto revision = repository.staged_delta()->changes.revision;
+
         transfer.reset();
+
         return library::CommitResult::accepted(revision,
             std::make_shared<library::CommitReceipt>(revision));
     });
+
     const std::vector entries{*entry};
 
     const auto result = transfer->move_to(source, target, entries);
@@ -286,6 +328,7 @@ TEST(PlaylistTransfer, AnAcceptedMoveKeepsItsReceiptAfterDisposingTheCommandFaca
     EXPECT_TRUE(result.succeeded());
     ASSERT_TRUE(result.commit.receipt);
     EXPECT_FALSE(result.commit.receipt->durable());
+
     result.commit.receipt->notify(true);
     EXPECT_TRUE(result.commit.receipt->durable());
     EXPECT_TRUE(repository.playlist(source)->entries.empty());

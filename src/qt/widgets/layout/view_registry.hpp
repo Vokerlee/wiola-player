@@ -19,9 +19,12 @@
  */
 
 #pragma once
+
 #include "view_reference.hpp"
+
 #include <QPointer>
 #include <QWidget>
+
 #include <map>
 
 namespace wiola::gui {

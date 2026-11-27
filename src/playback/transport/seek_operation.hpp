@@ -22,6 +22,7 @@
 
 #include "playback.hpp"
 #include "playhead.hpp"
+
 #include <buffering/pcm_queue.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>

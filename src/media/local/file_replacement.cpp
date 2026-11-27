@@ -19,6 +19,7 @@
  */
 
 #include "file_replacement.hpp"
+
 #include <fstream>
 #include <iomanip>
 #include <stdexcept>
@@ -95,11 +96,13 @@ private:
 bool normalized(FileReplacementRequest& request)
 {
     std::error_code error;
+
     for (auto* path : {&request.source, &request.output, &request.backup}) {
         *path = std::filesystem::absolute(*path, error).lexically_normal();
         if (error)
             return false;
     }
+
     return request.source != request.output && request.source != request.backup &&
         request.output != request.backup &&
         request.source.parent_path() == request.output.parent_path() &&
@@ -118,6 +121,7 @@ bool record(const std::filesystem::path& journal, const FileReplacementRequest& 
              << std::quoted(request.original_digest) << '\n'
              << std::quoted(request.output_digest) << '\n';
         file.flush();
+
         if (!file)
             return false;
     }
@@ -128,25 +132,34 @@ std::optional<FileReplacementRequest> read_record(const std::filesystem::path& j
 {
     std::error_code error;
     const auto size = std::filesystem::file_size(journal, error);
+
     if (error || size > 64 * 1024)
         return {};
+
     std::ifstream file{journal, std::ios::binary};
     std::string magic, source, output, backup;
     int version{};
     FileReplacementRequest request;
+
     if (!(file >> magic >> version) || magic != "wiola-replacement" || version != 1)
         return {};
+
     if (!(file >> std::quoted(source) >> std::quoted(output) >> std::quoted(backup) >>
             std::quoted(request.original_digest) >> std::quoted(request.output_digest)))
         return {};
+
     file >> std::ws;
+
     if (!file.eof())
         return {};
+
     request.source = std::filesystem::u8path(source);
     request.output = std::filesystem::u8path(output);
     request.backup = std::filesystem::u8path(backup);
+
     if (!normalized(request))
         return {};
+
     return request;
 }
 
@@ -156,11 +169,14 @@ FileReplacementResult NativeReplacement::recover(const std::filesystem::path& so
     const auto path = std::filesystem::absolute(source, error).lexically_normal();
     FileReplacementResult result;
     result.journal = journal_for(path);
+
     if (error) {
         result.error = FileReplacementError::io;
         result.detail = error.message();
+
         return result;
     }
+
     if (!std::filesystem::exists(result.journal, error)) {
         if (error) {
             result.error = FileReplacementError::io;
@@ -168,42 +184,57 @@ FileReplacementResult NativeReplacement::recover(const std::filesystem::path& so
         }
         return result;
     }
+
     const auto record = read_record(result.journal);
+
     if (!record || record->source != path) {
         result.error = FileReplacementError::recovery_required;
         result.detail = "Invalid replacement record; all files retained";
+
         return result;
     }
+
     result.backup = record->backup;
+
     const bool old = matches(path, record->original_digest),
                updated = matches(path, record->output_digest);
+
     if (!old && !updated) {
         if (std::filesystem::exists(path, error) || error ||
             !matches(record->backup, record->original_digest)) {
             result.error = FileReplacementError::recovery_required;
             result.detail = "Source needs review; original backup and operation record retained";
+
             return result;
         }
+
         std::filesystem::copy_file(record->backup, path, std::filesystem::copy_options::none,
             error);
+
         if (error || !matches(path, record->original_digest)) {
             result.error = FileReplacementError::recovery_required;
             result.detail = "Original remains in backup; restore did not complete";
+
             return result;
         }
     }
+
     // Remove only the expected abandoned staged copy, after a known source is available.
     if (matches(record->output, record->output_digest))
         std::filesystem::remove(record->output, error);
+
     if (error) {
         result.error = FileReplacementError::io;
         result.detail = error.message();
+
         return result;
     }
+
     std::filesystem::remove(result.journal, error);
     result.error = error ? FileReplacementError::io : FileReplacementError::none;
     result.recovered = !error;
     result.source_modified = updated;
+
     return result;
 }
 
@@ -211,32 +242,43 @@ FileReplacementResult NativeReplacement::replace(FileReplacementRequest request,
     const std::function<bool()>& guard)
 {
     FileReplacementResult result;
+
     if (!normalized(request)) {
         result.error = FileReplacementError::conflict;
         result.detail = "replacement paths or digests are invalid";
+
         return result;
     }
+
     result.backup = request.backup;
     result.journal = journal_for(request.source);
+
     std::error_code error;
     const auto fail = [&](FileReplacementError kind, std::string detail) {
         result.error = kind;
         result.detail = std::move(detail);
+
         return result;
     };
+
     if (std::filesystem::exists(result.journal, error) || error)
         return fail(FileReplacementError::recovery_required,
             "An unfinished replacement record exists; recover before retrying");
+
     if (std::filesystem::exists(request.backup, error) || error)
         return fail(FileReplacementError::recovery_required,
             "A previous backup already exists; it was retained");
+
     if (!matches(request.source, request.original_digest) ||
         !matches(request.output, request.output_digest))
         return fail(FileReplacementError::conflict, "source or staged output changed");
+
     if (!sync_file(request.output))
         return fail(FileReplacementError::io, "could not flush staged output");
+
     if (!record(result.journal, request))
         return fail(FileReplacementError::io, "could not flush replacement record");
+
     if (!boundary(FileReplacementStep::journal_created) ||
         !boundary(FileReplacementStep::before_backup))
         return fail(FileReplacementError::io, "replacement interrupted before backup");
@@ -259,8 +301,10 @@ FileReplacementResult NativeReplacement::replace(FileReplacementRequest request,
 #endif
     if (!boundary(FileReplacementStep::before_replace))
         return fail(FileReplacementError::io, "replacement interrupted before commit");
+
     if (guard && !guard())
         return fail(FileReplacementError::cancelled, "replacement was cancelled or refused");
+
     // Validate again after the potentially lengthy backup and immediately before the native commit.
     if (!matches(request.source, request.original_digest) ||
         !matches(request.output, request.output_digest))
@@ -271,13 +315,16 @@ FileReplacementResult NativeReplacement::replace(FileReplacementRequest request,
         const auto native_error = GetLastError();
         result.detail = std::system_category().message(static_cast<int>(native_error));
         result.error = FileReplacementError::io;
+
         // Some native errors leave the original under the backup name. Recover by verified copy.
         const auto recovered = recover(request.source);
         result.recovered = recovered.recovered;
+
         if (recovered.error != FileReplacementError::none) {
             result.error = FileReplacementError::recovery_required;
             result.detail += "; original/recovery record retained";
         }
+
         return result;
     }
 #else
@@ -294,9 +341,12 @@ FileReplacementResult NativeReplacement::replace(FileReplacementRequest request,
     if (!boundary(FileReplacementStep::replaced))
         return fail(FileReplacementError::io,
             "replacement committed; operation record retained for recovery");
+
     std::filesystem::remove(result.journal, error);
+
     if (error)
         return fail(FileReplacementError::io, "file replaced; recovery record cleanup failed");
+
     return result;
 }
 

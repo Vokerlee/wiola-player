@@ -1,8 +1,10 @@
 #pragma once
+
+#include <wiola/media/provider.hpp>
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <wiola/media/provider.hpp>
 
 namespace wiola::testing {
 
@@ -22,6 +24,7 @@ struct MetadataReadGate {
     void release()
     {
         std::lock_guard lock{mutex};
+
         released = true;
         changed.notify_all();
     }
@@ -30,6 +33,7 @@ struct MetadataReadGate {
     {
         std::stop_callback wake{stop, [&] { changed.notify_all(); }};
         std::unique_lock lock{mutex};
+
         entered = true;
         changed.notify_all();
         changed.wait(lock, [&] { return released || stop.stop_requested(); });
@@ -54,9 +58,12 @@ public:
     media::Result<media::Metadata> read_metadata(const media::OperationContext& context) override
     {
         auto result = delegate_->read_metadata(context); // Capture the old bytes before the gate.
+
         if (!gate_.claimed.exchange(true))
             gate_.arrive(context.stop);
+
         ++gate_.returned;
+
         return result;
     }
 
@@ -94,8 +101,10 @@ public:
         const media::OperationContext& context) override
     {
         auto opened = delegate_->open(resource, context);
+
         if (!opened)
             return media::unexpected{opened.error()};
+
         return std::unique_ptr<media::MediaAsset>{
             std::make_unique<GatedMediaAsset>(std::move(*opened), gate_)};
     }

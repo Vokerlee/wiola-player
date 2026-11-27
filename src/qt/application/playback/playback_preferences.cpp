@@ -19,6 +19,7 @@
  */
 
 #include "playback_preferences.hpp"
+
 #include <wiola/qt/storage/settings.hpp>
 
 namespace wiola::app {
@@ -47,7 +48,9 @@ bool PlaybackPreferences::flush()
 {
     queue_.save();
     settings_.sync();
+
     const auto ui_saved = ui_session_.flush();
+
     return settings_.status() == QSettings::NoError && ui_saved == SessionStateError::none;
 }
 

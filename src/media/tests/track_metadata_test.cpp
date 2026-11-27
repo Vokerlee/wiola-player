@@ -36,6 +36,7 @@ TEST(TrackMetadata, ExistingReadersRemainCompatibleAndNewFieldsAffectEmptiness)
         .album = "Album",
         .duration = wiola::units::Time{1},
         .genre = {}};
+
     EXPECT_EQ(original, same);
 
     wiola::media::TrackMetadata extended = original;
@@ -48,7 +49,9 @@ TEST(TrackMetadata, ExistingReadersRemainCompatibleAndNewFieldsAffectEmptiness)
     EXPECT_NE(original, extended);
 
     wiola::media::Metadata metadata;
+
     EXPECT_TRUE(metadata.empty());
+
     metadata.track = extended;
     EXPECT_FALSE(metadata.empty());
 }

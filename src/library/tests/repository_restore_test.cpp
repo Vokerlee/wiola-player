@@ -18,10 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include <wiola/library/repository_transaction.hpp>
 #include <wiola/library/snapshot.hpp>
 #include <wiola/library/tags.hpp>
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -35,11 +36,14 @@ protected:
         track.id = media;
         track.embedded.title = "Retained";
         ASSERT_TRUE(repository.put_track(track));
+
         playlist = repository.create_playlist("Saved");
         ASSERT_TRUE(repository.append_track(playlist, media));
+
         workspace = repository.create_workspace("observed");
         tag = repository.add_tag(media, "Mood", "Calm");
         ASSERT_TRUE(tag.valid());
+
         original = snapshot_of(repository);
     }
 
@@ -81,6 +85,7 @@ TEST_F(RepositoryRestore, RejectsDuplicateOrInvalidRecordsBeforeReplacingAnyColl
     candidate = original;
     candidate.workspaces.front().root.clear();
     candidates.push_back(candidate);
+
     for (const auto& invalid : candidates) {
         EXPECT_FALSE(repository.replace_all(invalid.tracks, invalid.playlists, invalid.workspaces));
         expect_original();
@@ -93,17 +98,21 @@ TEST_F(RepositoryRestore, RejectsMalformedTrackTagsWithoutReplacingExistingMetad
     invalid.embedded.title = "Rejected";
     invalid.tags.resize(max_tags_per_track + 1);
     EXPECT_FALSE(repository.put_track(invalid));
+
     expect_original();
     invalid.tags = original.tracks.front().tags;
     invalid.tags.front().id = {};
     EXPECT_FALSE(repository.put_track(invalid));
+
     expect_original();
     invalid.tags = original.tracks.front().tags;
     invalid.tags.front().value.clear();
     EXPECT_FALSE(repository.put_track(invalid));
+
     expect_original();
     invalid.tags.front().value = " Calm ";
     EXPECT_FALSE(repository.put_track(invalid));
+
     expect_original();
 }
 
@@ -113,15 +122,19 @@ TEST_F(RepositoryRestore, RejectsUnidentifiedPlaylistsEntriesAndWorkspaces)
     invalid_playlist.id = {};
     EXPECT_FALSE(repository.put_playlist(invalid_playlist));
     EXPECT_EQ(repository.playlist({}), nullptr);
+
     invalid_playlist = original.playlists.front();
     invalid_playlist.entries.front().id = {};
     EXPECT_FALSE(repository.put_playlist(invalid_playlist));
+
     auto invalid_workspace = original.workspaces.front();
     invalid_workspace.id = {};
     EXPECT_FALSE(repository.put_workspace(invalid_workspace));
+
     invalid_workspace = original.workspaces.front();
     invalid_workspace.root.clear();
     EXPECT_FALSE(repository.put_workspace(invalid_workspace));
+
     expect_original();
 }
 
@@ -129,9 +142,11 @@ TEST_F(RepositoryRestore, MissingOccurrenceAndTagRemovalLeaveTheCatalogUntouched
 {
     EXPECT_FALSE(repository.remove_entry(PlaylistId{"missing"}, PlaylistEntryId{"missing"}));
     EXPECT_FALSE(repository.remove_tag(MediaId{"missing"}, tag));
+
     expect_original();
     {
         RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+
         EXPECT_FALSE(repository.remove_entry(playlist, PlaylistEntryId{"missing"}));
         EXPECT_FALSE(repository.remove_tag(media, TagId{"missing"}));
         EXPECT_FALSE(repository.delete_workspace(WorkspaceId{"missing"}));
@@ -165,7 +180,9 @@ TEST_F(RepositoryRestore, EntryAndWorkspaceAllocatorsSkipAllRestoredIdentities)
     restored.playlists.front().entries.push_back({.id = {"entry-2"}, .media = media});
     restored.workspaces.push_back({.id = {"workspace-2"}, .root = "another"});
     ASSERT_TRUE(repository.replace_all(restored.tracks, restored.playlists, restored.workspaces));
+
     const auto entry = repository.append_track(playlist, media);
+
     ASSERT_TRUE(entry);
     EXPECT_EQ(entry->value, "entry-3");
     EXPECT_EQ(repository.create_workspace("third").value, "workspace-3");

@@ -21,9 +21,9 @@
 #pragma once
 
 #include "playback_service.hpp"
-#include <wiola/units.hpp>
-
 #include "playback_settings.hpp"
+
+#include <wiola/units.hpp>
 
 #include <cstddef>
 #include <span>

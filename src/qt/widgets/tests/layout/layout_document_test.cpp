@@ -22,9 +22,8 @@
 #include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/layout/layout_document.hpp>
 
-#include <gtest/gtest.h>
-
 #include <QByteArray>
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -48,6 +47,7 @@ TEST(LayoutDocument, ReadsVersionedNestingDimensionsAndActionBindings)
     })";
 
     wiola::gui::LayoutDocument document;
+
     ASSERT_EQ(wiola::gui::read_layout_json(json, document), LayoutJsonError::none);
 
     EXPECT_EQ(document.version, 2);
@@ -59,6 +59,7 @@ TEST(LayoutDocument, ReadsVersionedNestingDimensionsAndActionBindings)
     EXPECT_EQ(document.root.children[1].kind, wiola::gui::LayoutComponentKind::track_table);
 
     const auto& play = document.root.children[0].children[0];
+
     ASSERT_TRUE(play.action);
     EXPECT_EQ(*play.action, wiola::gui::PlayerAction::play);
     EXPECT_EQ(play.width, 64);
@@ -71,6 +72,7 @@ TEST(LayoutDocument, RejectsInvalidComponentsWithoutChangingThePreviousDocument)
 
     const QByteArray duplicate = R"({"version":1,"root":{"id":"same","type":"group","children":[
         {"id":"same","type":"button","action":"play"}]}})";
+
     EXPECT_EQ(wiola::gui::read_layout_json(duplicate, document),
         LayoutJsonError::invalid_component);
     EXPECT_EQ(document.version, 99);
@@ -100,34 +102,44 @@ TEST(LayoutDocument, RejectsMalformedVersionsAndExcessiveInputs)
         LayoutJsonError::too_large);
 
     QByteArray deep;
+
     for (int depth = 0; depth < 18; ++depth)
         deep +=
             "{\"id\":\"node" + QByteArray::number(depth) + "\",\"type\":\"group\",\"children\":[";
+
     deep += "null";
+
     for (int depth = 0; depth < 18; ++depth)
         deep += "]}";
 
     const QByteArray nested = QByteArray{"{\"version\":1,\"root\":"} + deep + "}";
+
     EXPECT_EQ(wiola::gui::read_layout_json(nested, document), LayoutJsonError::limit_exceeded);
 }
 
 TEST(LayoutDocument, RowAlignmentRoundTripsAndRejectsInvalidValuesTransactionally)
 {
     using namespace wiola::gui;
+
     for (const auto alignment : {Qt::AlignLeft, Qt::AlignHCenter, Qt::AlignRight}) {
         LayoutDocument document{
             .root = {.id = "row", .kind = LayoutComponentKind::row},
             .node_count = 1
         };
         document.root.alignment = alignment;
+
         LayoutDocument restored;
+
         ASSERT_EQ(read_layout_json(write_layout_json(document), restored), LayoutJsonError::none);
         EXPECT_EQ(restored.root.alignment, alignment);
         EXPECT_EQ(parse_layout_alignment(layout_alignment_name(alignment)), alignment);
     }
+
     EXPECT_TRUE(layout_alignment_name(Qt::AlignTop).isEmpty());
     EXPECT_FALSE(parse_layout_alignment("bottom"));
+
     LayoutDocument untouched = wiola::gui::classic_layout_document();
+
     for (const QByteArray json :
         {R"({"version":2,"root":{"id":"bad","type":"row","alignment":true}})",
             R"({"version":2,"root":{"id":"bad","type":"row","alignment":"bottom"}})",
@@ -135,6 +147,7 @@ TEST(LayoutDocument, RowAlignmentRoundTripsAndRejectsInvalidValuesTransactionall
         EXPECT_EQ(read_layout_json(json, untouched), LayoutJsonError::invalid_component);
         EXPECT_EQ(untouched.root.id, "classicRoot");
     }
+
     untouched.root.alignment = Qt::AlignTop;
     EXPECT_EQ(validate_layout_document(untouched), LayoutJsonError::invalid_component);
 }
@@ -142,6 +155,7 @@ TEST(LayoutDocument, RowAlignmentRoundTripsAndRejectsInvalidValuesTransactionall
 TEST(LayoutDocument, ClassicPresetIsValidAndComplete)
 {
     const auto document = wiola::gui::classic_layout_document();
+
     EXPECT_GT(document.node_count, 20U);
     EXPECT_EQ(document.root.id, "classicRoot");
 }
@@ -168,14 +182,19 @@ TEST(LayoutDocument, RoundTripsNestedContainersWithTheirProperties)
             {"id":"first","type":"status","title":"First page"},
             {"id":"second","type":"status"}]}]}})";
     wiola::gui::LayoutDocument document;
+
     ASSERT_EQ(wiola::gui::read_layout_json(json, document), LayoutJsonError::none);
     ASSERT_EQ(wiola::gui::validate_layout_document(document), LayoutJsonError::none);
     EXPECT_EQ(document.root.orientation, Qt::Vertical);
     EXPECT_EQ(document.root.sizes, (std::vector<int>{2, 3}));
     EXPECT_EQ(document.root.children[0].columns, 2);
+
     const QByteArray serialized = wiola::gui::write_layout_json(document);
+
     ASSERT_FALSE(serialized.isEmpty());
+
     wiola::gui::LayoutDocument restored;
+
     ASSERT_EQ(wiola::gui::read_layout_json(serialized, restored), LayoutJsonError::none);
     EXPECT_EQ(wiola::gui::write_layout_json(restored), serialized);
 }
@@ -183,6 +202,7 @@ TEST(LayoutDocument, RoundTripsNestedContainersWithTheirProperties)
 TEST(LayoutDocument, RejectsInvalidContainerPropertiesTransactionally)
 {
     wiola::gui::LayoutDocument document = wiola::gui::classic_layout_document();
+
     for (const QByteArray json :
         {R"({"version":1,"root":{"id":"x","type":"splitter","orientation":"diagonal"}})",
             R"({"version":1,"root":{"id":"x","type":"splitter","sizes":[0]}})",
@@ -197,6 +217,7 @@ TEST(LayoutDocument, RejectsInvalidContainerPropertiesTransactionally)
             << json.constData();
         EXPECT_EQ(document.root.id, "classicRoot");
     }
+
     document.root.columns = 2;
     EXPECT_EQ(wiola::gui::validate_layout_document(document), LayoutJsonError::invalid_component);
     EXPECT_TRUE(wiola::gui::write_layout_json(document).isEmpty());
@@ -205,30 +226,39 @@ TEST(LayoutDocument, RejectsInvalidContainerPropertiesTransactionally)
 TEST(LayoutDocument, DescriptorsRoundTripEveryStableComponentAndActionKey)
 {
     using namespace wiola::gui;
+
     for (const auto& component : component_descriptors()) {
         LayoutDocument document{
             .root = {.id = "root", .kind = component.kind},
             .node_count = 1
         };
         auto encoded = write_layout_json(document);
+
         ASSERT_FALSE(encoded.isEmpty());
+
         LayoutDocument decoded;
+
         ASSERT_EQ(read_layout_json(encoded, decoded), LayoutJsonError::none);
         EXPECT_EQ(decoded.root.kind, component.kind);
         EXPECT_EQ(parse_component(component.key), component.kind);
     }
+
     for (const auto& action : action_descriptors()) {
         LayoutDocument document{
             .root = {.id = "button", .kind = LayoutComponentKind::button, .action = action.id},
             .node_count = 1
         };
         const auto encoded = write_layout_json(document);
+
         ASSERT_FALSE(encoded.isEmpty());
+
         LayoutDocument decoded;
+
         ASSERT_EQ(read_layout_json(encoded, decoded), LayoutJsonError::none);
         EXPECT_EQ(decoded.root.action, action.id);
         EXPECT_EQ(parse_action(action.key), action.id);
     }
+
     EXPECT_FALSE(parse_component("QWidget"));
     EXPECT_FALSE(parse_action("execute"));
     EXPECT_EQ(action_descriptors().size(), static_cast<std::size_t>(PlayerAction::count));
@@ -237,7 +267,9 @@ TEST(LayoutDocument, DescriptorsRoundTripEveryStableComponentAndActionKey)
 TEST(LayoutDocument, MigratesOnlyWellKnownVersionOneViewsToVersionTwoReferences)
 {
     using namespace wiola::gui;
+
     LayoutDocument document;
+
     ASSERT_EQ(read_layout_json(R"({"version":1,"root":{"id":"documentTabs","type":"stack"}})",
                   document),
         LayoutJsonError::none);
@@ -250,7 +282,9 @@ TEST(LayoutDocument, MigratesOnlyWellKnownVersionOneViewsToVersionTwoReferences)
         LayoutJsonError::none);
     EXPECT_FALSE(document.root.view);
     EXPECT_EQ(document.root.kind, LayoutComponentKind::stack);
+
     const auto before = write_layout_json(document);
+
     EXPECT_EQ(
         read_layout_json(
             R"({"version":2,"root":{"id":"view","type":"status","view":{"component":"x","document":{}}}})",

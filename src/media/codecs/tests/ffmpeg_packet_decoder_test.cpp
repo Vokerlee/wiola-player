@@ -19,7 +19,6 @@
  */
 
 #include <media/codecs/ffmpeg/packet_decoder.hpp>
-
 #include <wiola/media/local/file_stream.hpp>
 
 #include <gtest/gtest.h>
@@ -44,35 +43,51 @@ wiola::media::Result<wiola::pcm::Frames> decode_fixture(const char* name)
 {
     auto stream{
         wiola::media::LocalFileStream::open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+
     if (!stream)
         return wiola::media::unexpected{stream.error()};
+
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(*stream))};
+
     if (!input)
         return wiola::media::unexpected{input.error()};
+
     auto facts{(*input)->inspect()};
+
     if (!facts)
         return wiola::media::unexpected{facts.error()};
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(**input, *facts)};
+
     if (!decoder)
         return wiola::media::unexpected{decoder.error()};
 
     wiola::pcm::Frames total{};
+
     for (int calls{0}; calls < 10000; ++calls) {
         auto event{(*decoder)->next_frame()};
+
         if (!event)
             return wiola::media::unexpected{event.error()};
+
         if (event->end_of_stream) {
             auto again{(*decoder)->next_frame()};
+
             if (!again)
                 return wiola::media::unexpected{again.error()};
+
             EXPECT_TRUE(again->end_of_stream);
             EXPECT_EQ(again->frame, nullptr);
+
             return total;
         }
+
         EXPECT_NE(event->frame, nullptr);
         EXPECT_GT(event->frame->nb_samples, 0);
+
         total += wiola::pcm::Frames{static_cast<std::size_t>(event->frame->nb_samples)};
     }
+
     return wiola::media::unexpected{
         wiola::media::Error{.category = wiola::media::ErrorCategory::limit_exceeded,
                             .detail = "test did not finish"}
@@ -186,7 +201,9 @@ TEST(FfmpegPacketDecoder, ReportsFrameReceptionFailure)
     options.api.receive = [](AVCodecContext*, AVFrame*) {
         return AVERROR_INVALIDDATA;
     };
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
 
     auto event{(*decoder)->next_frame()};
@@ -210,7 +227,9 @@ TEST(FfmpegPacketDecoder, RejectsAStalledPacketPump)
     options.api.send = [](AVCodecContext*, const AVPacket*) {
         return AVERROR(EAGAIN);
     };
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
 
     auto event{(*decoder)->next_frame()};
@@ -234,7 +253,9 @@ TEST(FfmpegPacketDecoder, ReportsPacketSubmissionFailure)
     options.api.send = [](AVCodecContext*, const AVPacket*) {
         return AVERROR_INVALIDDATA;
     };
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
 
     auto event{(*decoder)->next_frame()};
@@ -253,7 +274,9 @@ TEST(FfmpegPacketDecoder, ReportsPacketDemuxingFailure)
     options.api.read = [](AVFormatContext*, AVPacket*) {
         return AVERROR_INVALIDDATA;
     };
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
 
     auto event{(*decoder)->next_frame()};
@@ -275,7 +298,9 @@ TEST(FfmpegPacketDecoder, ReportsDecoderDrainFailure)
     options.api.send = [](AVCodecContext*, const AVPacket*) {
         return AVERROR_INVALIDDATA;
     };
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
 
     auto event{(*decoder)->next_frame()};
@@ -298,7 +323,9 @@ TEST(FfmpegPacketDecoder, RetriesWhenDecoderDrainBackpressures)
     options.api.send = [](AVCodecContext*, const AVPacket*) {
         return AVERROR(EAGAIN);
     };
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
 
     auto event{(*decoder)->next_frame()};
@@ -312,7 +339,9 @@ TEST(FfmpegPacketDecoder, EnforcesItsPacketWorkBudget)
     auto fixture{open_input("tone.wav")};
     wiola::codec::ffmpeg::PacketDecoderOptions options;
     options.work_budget = 0;
+
     auto decoder{wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts, options)};
+
     ASSERT_TRUE(decoder);
     EXPECT_NE((*decoder)->codec(), nullptr);
 
@@ -329,12 +358,18 @@ TEST(FfmpegPacketDecoder, CancellationPrecedesBufferedFrameDelivery)
     std::stop_source cancellation;
     auto fixture = open_input("tone.wav", {.stop = cancellation.get_token()});
     auto decoder = wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts);
+
     ASSERT_TRUE(decoder);
+
     cancellation.request_stop();
+
     const auto reopened = wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, fixture.facts);
+
     ASSERT_FALSE(reopened);
     EXPECT_EQ(reopened.error().category, wiola::media::ErrorCategory::cancelled);
+
     const auto event = (*decoder)->next_frame();
+
     ASSERT_FALSE(event);
     EXPECT_EQ(event.error().category, wiola::media::ErrorCategory::cancelled);
 }
@@ -346,7 +381,9 @@ TEST(FfmpegPacketDecoder, RejectsStreamFactsOutsideItsOwnedInput)
              std::numeric_limits<std::size_t>::max()}) {
         auto facts = fixture.facts;
         facts.stream_index = index;
+
         const auto decoder = wiola::codec::ffmpeg::PacketDecoder::open(*fixture.input, facts);
+
         ASSERT_FALSE(decoder);
         EXPECT_EQ(decoder.error().category, wiola::media::ErrorCategory::damaged);
     }

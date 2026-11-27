@@ -21,8 +21,8 @@
 #include "layout_builder.hpp"
 #include "layout_tree.hpp"
 #include "layout_widget_operations.hpp"
-#include <qt/widgets/shell/action_button_binding.hpp>
 
+#include <qt/widgets/shell/action_button_binding.hpp>
 #include <qt/widgets/shell/player_actions.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 
@@ -55,12 +55,14 @@ LayoutBuilder::LayoutBuilder()
         auto* widget = new QWidget{parent};
         auto* layout = new QHBoxLayout{widget};
         layout->setContentsMargins(0, 0, 0, 0);
+
         return widget;
     });
     add(LayoutComponentKind::column, [](QWidget* parent, const auto&) {
         auto* widget = new QWidget{parent};
         auto* layout = new QVBoxLayout{widget};
         layout->setContentsMargins(0, 0, 0, 0);
+
         return widget;
     });
     add(LayoutComponentKind::stack,
@@ -72,17 +74,20 @@ LayoutBuilder::LayoutBuilder()
     add(LayoutComponentKind::grid, [](QWidget* parent, const auto&) {
         auto* widget = new QWidget{parent};
         new QGridLayout{widget};
+
         return widget;
     });
     add(LayoutComponentKind::group, [](QWidget* parent, const auto&) {
         auto* group = new QGroupBox{parent};
         new QVBoxLayout{group};
+
         return group;
     });
     add(LayoutComponentKind::button,
         [](QWidget* parent, const auto&) { return new QPushButton{parent}; });
     add(LayoutComponentKind::track_table,
         [](QWidget* parent, const auto&) { return new TrackTableView{parent}; });
+
     for (const LayoutComponentKind kind :
         {LayoutComponentKind::inspector, LayoutComponentKind::search, LayoutComponentKind::tags,
             LayoutComponentKind::transport, LayoutComponentKind::volume,
@@ -94,7 +99,9 @@ bool LayoutBuilder::register_component(LayoutComponentKind kind, Factory factory
 {
     if (!factory || !component_descriptor(kind) || factories_.contains(kind))
         return false;
+
     factories_.emplace(kind, std::move(factory));
+
     return true;
 }
 
@@ -103,33 +110,42 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
 {
     const auto* registration =
         node.view && !context.isolated_preview ? views_.find(*node.view) : nullptr;
+
     if (node.view && !context.isolated_preview &&
         (!registration || registration->kind != node.kind ||
             (!node.children.empty() && !registration->allow_structure)))
         return nullptr;
+
     QWidget* reused = registration ? registration->widget.data() : nullptr;
     QWidget* widget = nullptr;
+
     if (reused != nullptr && node.children.empty()) {
         // A borrowed leaf may be a composite application view whose contents must stay intact.
         widget = new QWidget{parent};
     } else {
         const auto factory = factories_.find(node.kind);
+
         if (factory == factories_.end() ||
             (reused != nullptr && !matches_container(reused, node.kind)))
             return nullptr;
+
         widget = factory->second(parent, context);
     }
+
     if (!widget)
         return nullptr;
+
     if (!reused && !accepts_dimensions(*widget, node)) {
         delete widget;
         return nullptr;
     }
+
     if (reused != nullptr && node.kind == LayoutComponentKind::splitter &&
         !qobject_cast<QSplitter*>(reused)) {
         delete widget;
         return nullptr;
     }
+
     if (reused != nullptr)
         attachments.push_back({.placeholder = widget,
             .widget = reused,
@@ -138,20 +154,25 @@ QWidget* LayoutBuilder::build_node(const LayoutNode& node, const LayoutBuildCont
     else if (node.kind == LayoutComponentKind::button && node.action && context.actions) {
         auto* button = qobject_cast<QPushButton*>(widget);
         QAction* action = context.actions->action(*node.action);
+
         if (button && action) {
             new ActionButtonBinding{*button, *action};
         }
     }
+
     for (std::size_t index = 0; index < node.children.size(); ++index) {
         const LayoutNode& child = node.children[index];
         QWidget* nested = build_node(child, context, widget, attachments);
+
         if (!nested || !append_child(widget, nested, node, child, index)) {
             delete widget;
             return nullptr;
         }
     }
+
     if (reused == nullptr)
         configure_widget(*widget, node);
+
     return widget;
 }
 
@@ -161,8 +182,10 @@ std::unique_ptr<PreparedLayout> LayoutBuilder::prepare(const LayoutNode& node,
     const LayoutDocument document{.version = 2,
         .root = node,
         .node_count = layout_node_count(node)};
+
     if (validate_layout_document(document) != LayoutJsonError::none)
         return nullptr;
+
     const auto preflight = [&](auto&& self, const LayoutNode& current) -> bool {
         if (current.view && !context.isolated_preview) {
             const auto* view = views_.find(*current.view);
@@ -175,10 +198,13 @@ std::unique_ptr<PreparedLayout> LayoutBuilder::prepare(const LayoutNode& node,
         return std::ranges::all_of(current.children,
             [&](const auto& child) { return self(self, child); });
     };
+
     if (!preflight(preflight, node))
         return nullptr;
+
     std::vector<LayoutAttachment> attachments;
     QWidget* root = build_node(node, context, nullptr, attachments);
+
     if (!root)
         return nullptr;
 

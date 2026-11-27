@@ -21,6 +21,7 @@
 #pragma once
 
 #include "equalizer_config.hpp"
+
 #include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

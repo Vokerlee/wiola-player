@@ -24,7 +24,6 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QSpinBox>
-
 #include <gtest/gtest.h>
 
 namespace {
@@ -43,6 +42,7 @@ TEST(ThemeEditor, RejectsLowContrastAndAppliesAnEditableCopy)
     wiola::gui::ThemeEditor editor{wiola::gui::theme_colors(wiola::gui::Theme::dark)};
     auto* apply = editor.findChild<QPushButton*>("applyThemeEdit");
     auto* status = editor.findChild<QLabel*>("themeContrastStatus");
+
     ASSERT_NE(apply, nullptr);
     ASSERT_NE(status, nullptr);
     EXPECT_TRUE(apply->isEnabled());
@@ -73,36 +73,48 @@ TEST(ThemeEditor, RejectsLowContrastAndAppliesAnEditableCopy)
 TEST(ThemeEditor, PresetsCopyShapeAndColorsAndMetricsPreviewRemainsLocalUntilApply)
 {
     using namespace wiola::gui;
+
     const auto global_sheet = qApp->styleSheet();
     const auto global_palette = QApplication::palette();
     ThemeEditor editor{theme_colors(Theme::light)};
     auto* presets = editor.findChild<QComboBox*>("themePresetSource");
     auto* copy = editor.findChild<QPushButton*>("copyThemePreset");
     auto* preview = editor.findChild<QWidget*>("themePreview");
+
     ASSERT_NE(presets, nullptr);
     ASSERT_NE(copy, nullptr);
     ASSERT_NE(preview, nullptr);
+
     for (std::size_t index = 0; index < theme_presets().size(); ++index) {
         presets->setCurrentIndex(static_cast<int>(index));
         copy->click();
+
         const auto& preset = theme_presets()[index];
+
         EXPECT_EQ(editor.colors(), theme_colors(preset.palette));
         EXPECT_EQ(editor.style(), preset.style);
     }
+
     const ThemeStyle personal{5, 9, 115};
+
     for (const auto& metric : theme_style_metrics()) {
         auto* field = editor.findChild<QSpinBox*>("themeStyle:" + QString::fromLatin1(metric.key));
+
         ASSERT_NE(field, nullptr);
+
         field->setValue(personal.*metric.value);
     }
+
     EXPECT_EQ(editor.style(), personal);
     EXPECT_TRUE(preview->styleSheet().contains("border-radius: 5px"));
     EXPECT_EQ(qApp->styleSheet(), global_sheet);
     EXPECT_EQ(QApplication::palette(), global_palette);
+
     bool applied{};
     editor.on_apply([&](const auto&) {
         applied = true;
         EXPECT_EQ(editor.style(), personal);
+
         return true;
     });
     editor.findChild<QPushButton*>("applyThemeEdit")->click();
@@ -114,12 +126,16 @@ TEST(ThemeEditor, FailedDurableAcceptanceRetainsTheDraftForRetry)
     wiola::gui::ThemeEditor editor{wiola::gui::theme_colors(wiola::gui::Theme::light)};
     editor.set_color(wiola::gui::ThemeColorRole::window, QColor{"#f0f0f0"});
     editor.on_apply([](const auto&) { return false; });
+
     auto* apply = editor.findChild<QPushButton*>("applyThemeEdit");
+
     ASSERT_NE(apply, nullptr);
+
     apply->click();
     EXPECT_NE(editor.result(), QDialog::Accepted);
     EXPECT_EQ(editor.colors().window, QColor{"#f0f0f0"});
     EXPECT_TRUE(editor.findChild<QLabel*>("themeContrastStatus")->text().contains("retained"));
+
     editor.on_apply([](const auto&) { return true; });
     apply->click();
     EXPECT_EQ(editor.result(), QDialog::Accepted);
@@ -131,6 +147,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

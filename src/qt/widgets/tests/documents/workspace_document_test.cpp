@@ -18,19 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <qt/widgets/tracks/track_table_view.hpp>
-
-#include <qt/widgets/documents/workspace_document.hpp>
-
 #include <app/library/local_identity.hpp>
+#include <qt/widgets/documents/workspace_document.hpp>
+#include <qt/widgets/tracks/track_browser.hpp>
+#include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <QApplication>
 #include <QEventLoop>
 #include <QLabel>
 #include <QTimer>
-#include <qt/widgets/tracks/track_browser.hpp>
-
 #include <gtest/gtest.h>
 
 namespace {
@@ -39,12 +36,14 @@ std::vector<wiola::app::WorkspaceScanEntry>
 entries(std::initializer_list<std::filesystem::path> paths)
 {
     std::vector<wiola::app::WorkspaceScanEntry> result;
+
     for (const auto& path : paths) {
         wiola::app::WorkspaceScanEntry entry;
         entry.media = wiola::app::media_id_for(path);
         entry.location = path;
         result.push_back(std::move(entry));
     }
+
     return result;
 }
 
@@ -58,6 +57,7 @@ TEST(WorkspaceDocument, AppendsCurrentBatchesAndRejectsStaleGenerations)
     document.begin(workspace, 7);
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
+
     ASSERT_NE(table, nullptr);
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 7,
@@ -105,6 +105,7 @@ TEST(WorkspaceDocument, RetainsUsefulRowsWhenANewScanStarts)
     document.begin(workspace, 2);
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
+
     EXPECT_EQ(table->model()->rowCount(), 1);
     EXPECT_EQ(document.findChild<QLabel*>("workspaceStatus")->text(), "Scanning...");
 }
@@ -121,6 +122,7 @@ TEST(WorkspaceDocument, ExposesRecursionRescanProgressAndCancellationControls)
     QPushButton* rescan = document.findChild<QPushButton*>("rescanWorkspace");
     QPushButton* cancel = document.findChild<QPushButton*>("cancelWorkspaceScan");
     QProgressBar* progress = document.findChild<QProgressBar*>("workspaceProgress");
+
     ASSERT_NE(recursive, nullptr);
     ASSERT_NE(rescan, nullptr);
     ASSERT_NE(cancel, nullptr);
@@ -167,6 +169,7 @@ TEST(WorkspaceDocument, RoutesSelectedPathsToPlaybackAndTransferCallbacks)
     int append = 0;
     int active = 0;
     int destination = 0;
+
     document.on_play_requested([&play] { ++play; });
     document.on_append_requested([&append] { ++append; });
     document.on_transfer_active_requested([&active] { ++active; });
@@ -204,6 +207,7 @@ TEST(WorkspaceDocument, AppliesMediaRevisionsByIdentityWithoutLosingSelection)
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
     table->selectionModel()->select(table->model()->index(1, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
+
     const std::vector<wiola::gui::TrackRowId> selected = document.chosen_rows();
 
     wiola::library::InMemoryRepository repository;
@@ -244,11 +248,15 @@ TEST(WorkspaceDocument, RescanAndKnownRelocationKeepTheSelectedMediaIdentity)
         .generation = 1,
         .entries = {entry},
         .status = wiola::app::WorkspaceScanStatus::complete}));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
     table->selectRow(0);
+
     const auto selected = document.chosen_rows();
+
     document.begin(workspace, 2);
     EXPECT_EQ(document.chosen_rows(), selected);
+
     entry.location = "/music/new.wav";
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 2,
@@ -278,9 +286,12 @@ TEST(WorkspaceDocument, CancellationKeepsUsefulRowsAndRejectsLateCompletion)
         .generation = 1,
         .entries = entries({"/music/old.wav"}),
         .status = wiola::app::WorkspaceScanStatus::complete}));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
     table->selectRow(0);
+
     const auto selected = document.chosen_rows();
+
     document.begin(workspace, 2);
     document.show_cancelled();
     EXPECT_EQ(document.chosen_rows(), selected);
@@ -302,9 +313,12 @@ TEST(WorkspaceDocument, RemovesAbsentRowsOnlyAfterTheReplacementGenerationComple
         .generation = 1,
         .entries = entries({"/music/old.wav"}),
         .status = wiola::app::WorkspaceScanStatus::complete}));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
     table->selectRow(0);
+
     const auto selected = document.chosen_rows();
+
     document.begin(workspace, 2);
     ASSERT_TRUE(document.show_batch({.workspace = workspace.id,
         .generation = 2,
@@ -327,9 +341,11 @@ TEST(WorkspaceDocument, ANewScanKeepsAnExplicitlyClearedTitle)
     record.locations = {"/music/cleared.wav"};
     record.overrides.title = "";
     ASSERT_TRUE(repository.put_track(record));
+
     wiola::app::WorkspaceScanEntry entry;
     entry.media = record.id;
     entry.location = record.locations.front();
+
     wiola::gui::WorkspaceDocument document;
     const wiola::library::WorkspaceId workspace{"workspace"};
     document.begin({.id = workspace, .root = "/music"}, 1);
@@ -338,7 +354,9 @@ TEST(WorkspaceDocument, ANewScanKeepsAnExplicitlyClearedTitle)
                                         .entries = {entry},
                                         .status = wiola::app::WorkspaceScanStatus::complete},
         &repository));
+
     const auto* table = document.findChild<wiola::gui::TrackTableView*>();
+
     EXPECT_TRUE(table->model()->index(0, 1).data().toString().isEmpty());
 }
 
@@ -350,7 +368,9 @@ TEST(WorkspaceDocument, StreamsInStablePathOrderAndReportsScanLimitsWithoutDropp
         .generation = 1,
         .entries = entries({"folder/z.wav", "folder/a.wav"}),
         .status = wiola::app::WorkspaceScanStatus::running}));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
+
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(table->model()->index(0, 1).data().toString(), "a");
     ASSERT_TRUE(document.show_batch({.workspace = {"workspace"},
@@ -367,32 +387,42 @@ TEST(WorkspaceDocument, StreamsInStablePathOrderAndReportsScanLimitsWithoutDropp
 TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProjection)
 {
     using namespace wiola;
+
     gui::WorkspaceDocument document;
     library::WorkspaceRecord workspace{.id = {"workspace"}, .root = "/music"};
     document.begin(workspace, 1);
+
     gui::BrowserViewState restore;
     restore.view.query.title = "track 4999";
+
     const auto wanted = app::media_id_for("/music/Track 4999.wav");
     restore.selected = {
         gui::WorkspaceTrackId{workspace.id, wanted}
     };
     restore.current = restore.selected[0];
     document.browser().restore_browser_state(restore);
+
     app::WorkspaceScanBatch batch;
     batch.workspace = workspace.id;
     batch.generation = 1;
+
     for (int i = 0; i < 5000; ++i) {
         app::WorkspaceScanEntry entry;
         entry.location = "/music/Track " + std::to_string(i) + ".wav";
         entry.media = app::media_id_for(entry.location);
         batch.entries.push_back(std::move(entry));
     }
+
     ASSERT_TRUE(document.show_batch(batch));
+
     batch.entries.clear();
     batch.status = app::WorkspaceScanStatus::complete;
     ASSERT_TRUE(document.show_batch(batch));
+
     auto& table = document.browser().table();
+
     ASSERT_TRUE(table.projection_pending());
+
     QEventLoop loop;
     QTimer deadline;
     deadline.setSingleShot(true);
@@ -401,6 +431,7 @@ TEST(WorkspaceDocument, RestoreWaitsForBothTheCompletedScanAndItsLargeQueryProje
         if (!table.projection_pending())
             loop.quit();
     });
+
     deadline.start(10000);
     loop.exec();
     EXPECT_FALSE(table.projection_pending());
@@ -415,6 +446,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

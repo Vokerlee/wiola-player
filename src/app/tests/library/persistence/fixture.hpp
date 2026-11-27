@@ -20,8 +20,12 @@
 
 #pragma once
 
-#include <algorithm>
 #include <allocation_failure.hpp>
+#include <wiola/app/library/library_persistence.hpp>
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
@@ -29,13 +33,11 @@
 #include <deque>
 #include <exception>
 #include <functional>
-#include <gtest/gtest.h>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <utility>
 #include <vector>
-#include <wiola/app/library/library_persistence.hpp>
 
 namespace wiola::app::test::persistence {
 
@@ -46,8 +48,10 @@ public:
         return {
             [this](std::function<void()> task) {
                 std::lock_guard lock{mutex_};
+
                 pending_.push_back(std::move(task));
                 changed_.notify_all();
+
                 return true;
             },
             [this] { drain(); },
@@ -73,8 +77,10 @@ public:
             std::function<void()> task;
             {
                 std::lock_guard lock{mutex_};
+
                 if (pending_.empty())
                     return;
+
                 task = std::move(pending_.front());
                 pending_.pop_front();
             }
@@ -94,14 +100,17 @@ inline app::LibraryPersistence::Delivery fail_after_first_delivery(ManualDeliver
     auto callbacks = delivery.callbacks();
     callbacks.post = [post = std::move(callbacks.post), first = true](auto task) mutable {
         const bool accepted = post(std::move(task));
+
         if (std::exchange(first, false)) {
             // Arm on the worker after the seed write and its completion have been published.
             // One failure permits reporting the error and retrying on this same worker.
             static thread_local std::optional<wiola::testing::AllocationFailure> failure;
             failure.emplace(0, wiola::testing::AllocationFailure::Mode::once);
         }
+
         return accepted;
     };
+
     return callbacks;
 }
 #endif
@@ -111,18 +120,22 @@ public:
     app::SnapshotWriteResult write(const library::LibrarySnapshot& snapshot) override
     {
         std::unique_lock lock{mutex_};
+
         snapshots_.push_back(snapshot);
         entered_ = true;
         changed_.notify_all();
         changed_.wait(lock, [this] { return !blocked_; });
+
         if (failure_)
             std::rethrow_exception(failure_);
+
         return result_;
     }
 
     void block()
     {
         std::lock_guard lock{mutex_};
+
         blocked_ = true;
         entered_ = false;
     }
@@ -130,6 +143,7 @@ public:
     void release(app::SnapshotWriteResult result = {}, std::exception_ptr failure = {})
     {
         std::lock_guard lock{mutex_};
+
         result_ = result;
         failure_ = std::move(failure);
         blocked_ = false;
@@ -162,10 +176,12 @@ inline std::shared_ptr<library::RevisionDelta> revision(std::uint64_t number,
 {
     auto delta = std::make_shared<library::RevisionDelta>();
     delta->changes.revision = number;
+
     library::TrackRecord track;
     track.id = {id};
     track.embedded.title = id;
     delta->tracks.push_back(std::move(track));
+
     return delta;
 }
 

@@ -60,6 +60,7 @@ class CMakeInventoryTest(unittest.TestCase):
                 "artifacts": [{"path": "bin/player"}],
             },
         )
+
         return source, model
 
     def test_resolves_actual_targets_sources_dependencies_and_artifacts(self):
@@ -82,6 +83,7 @@ class CMakeInventoryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             self.model(directory)
+
             for value in ("", 17):
                 self.write(
                     directory,
@@ -94,13 +96,16 @@ class CMakeInventoryTest(unittest.TestCase):
     def test_missing_reply_and_invalid_reference_fail_explicitly(self):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
+
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
+
             self.write(
                 directory,
                 "index-001.json",
                 {"reply": {"codemodel-v2": {"jsonFile": "../outside.json"}}},
             )
+
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
 
@@ -109,6 +114,7 @@ class CMakeInventoryTest(unittest.TestCase):
             directory = Path(name)
             self.model(directory)
             self.write(directory, "model.json", [])
+
             with self.assertRaisesRegex(BuildInventoryError, "must contain an object"):
                 CMakeInventory.read(directory)
 
@@ -148,6 +154,7 @@ class CMakeInventoryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             _, model = self.model(directory)
+
             for version, configurations in [
                 (3, model["configurations"]),
                 (2, []),
@@ -172,11 +179,14 @@ class CMakeInventoryTest(unittest.TestCase):
                 "player.json",
                 {"type": "EXECUTABLE", "dependencies": [{"id": "unknown-id"}]},
             )
+
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
+
             entries = model["configurations"][0]["targets"]
             entries[1]["id"] = entries[0]["id"]
             self.write(directory, "model.json", model)
+
             with self.assertRaises(BuildInventoryError):
                 CMakeInventory.read(directory)
 

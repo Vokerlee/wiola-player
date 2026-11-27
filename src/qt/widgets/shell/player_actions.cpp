@@ -112,13 +112,17 @@ void PlayerActions::set_shuffled(bool shuffled)
     QAction* command = action(PlayerAction::shuffle);
     const QString tip =
         shuffled ? "Shuffle on — random playback order" : "Shuffle off — playlist order";
+
     if (command->isChecked() == shuffled && command->toolTip() == tip)
         return;
+
     {
         const QSignalBlocker blocked{command};
+
         command->setChecked(shuffled);
         command->setToolTip(tip);
     }
+
     emit command->changed();
 }
 

@@ -18,9 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "decoder.hpp"
 #include "composition.hpp"
-
+#include "decoder.hpp"
 #include "input.hpp"
 #include "packet_decoder.hpp"
 #include "pcm_converter.hpp"
@@ -51,11 +50,13 @@ std::optional<std::int64_t> frame_position(const AVFrame& frame, const AVFormatC
 {
     if (frame.best_effort_timestamp == AV_NOPTS_VALUE)
         return std::nullopt;
+
     const AVStream* stream{input.streams[stream_index]};
     const AVRational frame_rate{1, sample_rate};
     std::int64_t position{av_rescale_q(frame.best_effort_timestamp, stream->time_base, frame_rate)};
     const std::int64_t encoded_origin{
         stream->start_time != AV_NOPTS_VALUE ? stream->start_time : input.start_time};
+
     if (encoded_origin != AV_NOPTS_VALUE) {
         const AVRational origin_base{
             input.start_time == encoded_origin && stream->start_time == AV_NOPTS_VALUE
@@ -63,6 +64,7 @@ std::optional<std::int64_t> frame_position(const AVFrame& frame, const AVFormatC
                 : stream->time_base};
         position -= av_rescale_q(encoded_origin, origin_base, frame_rate);
     }
+
     return position;
 }
 
@@ -169,12 +171,15 @@ Backend backend()
         Format{"MPEG audio Layer III", std::span<const Marker>{}, mp3_extensions, {}, {},
                qualified_writes}
     };
+
     return Backend{"FFmpeg", formats,
         [](const std::filesystem::path& path,
             const media::OperationContext& context) -> media::DecoderOpenResult {
             auto decoder{FfmpegDecoder::open(path, {}, context)};
+
             if (!decoder)
                 return media::unexpected{decoder.error()};
+
             return std::unique_ptr<media::AudioDecoder>{std::move(*decoder)};
         }};
 }

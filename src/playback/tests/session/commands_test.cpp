@@ -24,6 +24,7 @@
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
 #include <fakes/resource.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -483,12 +484,14 @@ TEST(Session, ShowsTheQueueInTheOrderItWasGiven)
     const wiola::media::ResourceReference next{fixture.track()};
 
     ASSERT_EQ(fixture.session.open({first, next}), OpenResult::loading);
+
     fixture.session.shuffle(true);
     EXPECT_TRUE(fixture.session.shuffled());
 
     ASSERT_EQ(fixture.session.playlist().tracks().size(), 2U);
     EXPECT_EQ(fixture.session.playlist().tracks().front().resource(), first);
     EXPECT_EQ(fixture.session.playlist().tracks().back().resource(), next);
+
     fixture.session.shuffle(false);
     EXPECT_FALSE(fixture.session.shuffled());
     EXPECT_EQ(fixture.session.playlist().tracks().front().resource(), first);
@@ -543,8 +546,10 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
             [&num_reads](const wiola::media::ResourceReference&,
                 const wiola::media::OperationContext&) {
                 ++num_reads;
+
                 wiola::media::Metadata metadata;
                 metadata.track.title = "read";
+
                 return metadata;
             }
         )};
@@ -560,6 +565,7 @@ TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
         [&session] { return session.playlist().metadata_revision() == 300U; }));
 
     EXPECT_EQ(num_reads, 300U);
+
     for (const auto& track : session.playlist().tracks())
         EXPECT_EQ(track.metadata().title, "read");
 }
@@ -579,6 +585,7 @@ TEST(Session, ForwardsCompleteMetadataValuesWithoutReinterpretingTheirFields)
         .disc_number = 2};
     observed.artwork.data = {std::byte{1}, std::byte{2}};
     observed.artwork.mime_type = "image/test";
+
     wiola::audio::ProcessingChain processing;
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
@@ -595,7 +602,9 @@ TEST(Session, ForwardsCompleteMetadataValuesWithoutReinterpretingTheirFields)
         OpenResult::loading);
     ASSERT_TRUE(poll_until(session,
         [&session] { return session.loaded() && session.playlist().metadata_revision() == 1U; }));
+
     const auto& entry{session.playlist().tracks().front()};
+
     EXPECT_EQ(entry.metadata(), observed.track);
     ASSERT_TRUE(entry.artwork());
     EXPECT_EQ(entry.artwork()->data, observed.artwork.data);
@@ -655,6 +664,7 @@ TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
     opening.release();
 
     ASSERT_TRUE(poll_until(session, [&session] { return !session.reading(); }));
+
     session.catch_up();
 
     EXPECT_FALSE(session.loaded());
@@ -685,11 +695,13 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
     ASSERT_TRUE(poll_until(session, [&session] { return session.loaded(); }));
     ASSERT_TRUE(session.play());
     ASSERT_TRUE(session.next_track());
+
     opening.wait_until_entered();
 
     session.stop();
     opening.release();
     ASSERT_TRUE(poll_until(session, [&session] { return !session.reading(); }));
+
     session.catch_up();
 
     EXPECT_EQ(session.track(), wiola::testing::resource("first.wav", "first"));
@@ -707,7 +719,9 @@ TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
             [&](const wiola::media::ResourceReference&,
                 const wiola::media::OperationContext& context) {
                 std::stop_callback callback{context.stop, [&] { cancelled = true; }};
+
                 opening.wait();
+
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
@@ -715,10 +729,13 @@ TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
                 return wiola::media::Metadata{};
             }
         )};
+
     ASSERT_EQ(session.open({wiola::testing::resource("late.wav", "late")}), OpenResult::loading);
+
     opening.wait_until_entered();
     session.stop();
     EXPECT_TRUE(cancelled);
+
     opening.release();
     ASSERT_TRUE(poll_until(session, [&] { return !session.reading(); }));
     EXPECT_FALSE(session.loaded());
@@ -734,7 +751,9 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
             [&](const wiola::media::ResourceReference&,
                 const wiola::media::OperationContext& context) {
                 std::stop_callback callback{context.stop, [&] { cancelled = true; }};
+
                 opening.wait();
+
                 return wiola::media::DecoderOpenResult{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
@@ -746,6 +765,7 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
     opening.wait_until_entered();
     session.open({});
     EXPECT_TRUE(cancelled);
+
     opening.release();
     ASSERT_TRUE(poll_until(session, [&] { return !session.reading(); }));
     EXPECT_FALSE(session.loaded());
@@ -772,15 +792,18 @@ TEST(Session, RemovingThePendingOccurrenceCancelsItsOpenWithoutReplacingActivePl
                 return wiola::media::Metadata{};
             }
         )};
+
     ASSERT_EQ(load_and_wait(session, wiola::testing::resource("active.media", "active")),
         OpenResult::opened);
     ASSERT_TRUE(session.play());
     ASSERT_EQ(session.open({wiola::testing::resource("pending.media", "pending")}),
         OpenResult::loading);
+
     opening.wait_until_entered();
 
     EXPECT_TRUE(session.remove(0));
     EXPECT_TRUE(cancelled);
+
     opening.release();
     ASSERT_TRUE(poll_until(session, [&] { return !session.reading(); }));
 

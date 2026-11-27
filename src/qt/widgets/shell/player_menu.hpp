@@ -19,8 +19,11 @@
  */
 
 #pragma once
+
 #include "player_actions.hpp"
+
 #include <QMenuBar>
+
 #include <functional>
 
 namespace wiola::gui {

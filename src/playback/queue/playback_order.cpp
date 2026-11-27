@@ -54,6 +54,7 @@ bool PlaybackOrder::remove(std::size_t index) noexcept
 
     // The validated index implies a nonempty order, which always has a selected place.
     const std::size_t standing{*position()};
+
     order_.erase(std::ranges::find(order_, index));
 
     for (std::size_t& entry : order_)
@@ -71,6 +72,7 @@ bool PlaybackOrder::remove(std::size_t index) noexcept
     }
 
     place_ = place_of(standing > index ? standing - 1 : standing);
+
     return true;
 }
 
@@ -95,6 +97,7 @@ bool PlaybackOrder::go_to(std::size_t index) noexcept
         return false;
 
     place_ = place_of(index);
+
     return true;
 }
 
@@ -115,6 +118,7 @@ bool PlaybackOrder::next() noexcept
         return false;
 
     place_ = 0;
+
     return true;
 }
 
@@ -135,6 +139,7 @@ bool PlaybackOrder::previous() noexcept
         return false;
 
     place_ = order_.size() - 1;
+
     return true;
 }
 
@@ -152,6 +157,7 @@ void PlaybackOrder::shuffle(std::uint_fast32_t seed)
 void PlaybackOrder::unshuffle() noexcept
 {
     const std::optional<std::size_t> standing{position()};
+
     std::iota(order_.begin(), order_.end(), std::size_t{0});
     shuffled_ = false;
 

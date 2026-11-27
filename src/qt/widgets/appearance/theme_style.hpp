@@ -22,6 +22,7 @@
 
 #include <QFont>
 #include <QString>
+
 #include <span>
 
 class QStyle;

@@ -19,15 +19,17 @@
  */
 
 #pragma once
-#include <functional>
-#include <map>
-#include <span>
-#include <unordered_map>
+
 #include <wiola/library/library_changes.hpp>
 #include <wiola/library/repository.hpp>
 #include <wiola/playback/queue_entry.hpp>
 #include <wiola/playback/queue_view.hpp>
 #include <wiola/presentation/tracks/track_row.hpp>
+
+#include <functional>
+#include <map>
+#include <span>
+#include <unordered_map>
 
 namespace wiola::gui {
 

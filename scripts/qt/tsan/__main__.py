@@ -21,12 +21,16 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--timeout", type=float, default=900)
     args = parser.parse_args(argv)
+
     if not args.identity and args.workspace is None:
         parser.error("workspace is required when building the runtime")
+
     try:
         if args.jobs is not None and args.jobs < 1:
             raise ValueError("Build parallelism must be positive")
+
         context = QtCoreContext.discover(args.cxx, args.cc)
+
         if args.identity:
             print(context.identity)
         else:
@@ -39,6 +43,7 @@ def main(argv=None) -> int:
             f"Qt Core SDK failed: {error}; workspace: {args.workspace}", file=sys.stderr
         )
         return 1
+
     return 0
 
 

@@ -18,8 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include <queue/playback_order.hpp>
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -32,9 +33,11 @@ TEST(PlaybackOrder, EmptyShuffleAndUnshufflePreserveTheUnselectedState)
     order.shuffle(0);
     EXPECT_TRUE(order.shuffled());
     EXPECT_FALSE(order.position());
+
     order.unshuffle();
     EXPECT_FALSE(order.shuffled());
     EXPECT_FALSE(order.position());
+
     order.add();
     EXPECT_EQ(order.position(), 0U);
 }
@@ -42,7 +45,9 @@ TEST(PlaybackOrder, EmptyShuffleAndUnshufflePreserveTheUnselectedState)
 TEST(PlaybackOrder, OutOfRangeRemovalPreservesTheSelectedOccurrence)
 {
     PlaybackOrder order;
+
     EXPECT_FALSE(order.remove(0));
+
     order.reset(3);
     ASSERT_TRUE(order.go_to(1));
     EXPECT_FALSE(order.remove(3));

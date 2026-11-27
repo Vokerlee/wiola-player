@@ -20,9 +20,10 @@
 
 #pragma once
 
+#include <wiola/media/resource.hpp>
+
 #include <string>
 #include <utility>
-#include <wiola/media/resource.hpp>
 
 namespace wiola::testing {
 

@@ -110,6 +110,7 @@ class QtSdkTest(unittest.TestCase):
         path = self.binary_directory / name
         path.write_text("#!/usr/bin/env python3\n" + textwrap.dedent(source))
         path.chmod(0o755)
+
         return path
 
     def sources(self, workspace):
@@ -161,6 +162,7 @@ class QtSdkTest(unittest.TestCase):
 
     def test_cache_identity_changes_with_host_qt_compiler_or_target(self):
         identities = []
+
         for changes in [
             {},
             {"TEST_QT_VERSION": "6.5.0"},
@@ -175,6 +177,7 @@ class QtSdkTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertRegex(result.stdout.strip(), "^[0-9a-f]{64}$")
             identities.append(result.stdout.strip())
+
         self.assertEqual(len(set(identities)), len(identities))
 
     def test_non_x64_toolchains_cannot_produce_a_cache_identity(self):

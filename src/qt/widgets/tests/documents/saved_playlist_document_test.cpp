@@ -18,27 +18,23 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QKeyEvent>
-#include <QPushButton>
-#include <fixtures/track_view.hpp>
-
-#include <qt/widgets/tracks/track_table_view.hpp>
-
-#include <qt/widgets/documents/saved_playlist_document.hpp>
-
 #include <app/library/local_identity.hpp>
+#include <fixtures/track_view.hpp>
+#include <qt/widgets/documents/saved_playlist_document.hpp>
+#include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <QAction>
 #include <QApplication>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPersistentModelIndex>
-#include <set>
-
+#include <QPushButton>
 #include <gtest/gtest.h>
 
 #include <optional>
+#include <set>
 
 namespace {
 
@@ -56,13 +52,16 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
     const auto playlist = repository.create_playlist("Favorites");
     const auto first = repository.append_track(playlist, media.id);
     const auto duplicate = repository.append_track(playlist, media.id);
+
     ASSERT_TRUE(first && duplicate);
 
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
     QLabel* heading = document.findChild<QLabel*>("savedPlaylistHeading");
+
     ASSERT_NE(table, nullptr);
     ASSERT_NE(heading, nullptr);
     ASSERT_EQ(table->model()->rowCount(), 2);
@@ -88,7 +87,9 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
     });
 
     const QList<QAction*> actions = table->actions();
+
     ASSERT_FALSE(actions.empty());
+
     QKeyEvent enter{QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier};
     QApplication::sendEvent(table, &enter);
 
@@ -97,18 +98,23 @@ TEST(SavedPlaylistDocument, PresentsSavedRowsAndReturnsPersistentEntryIdentities
     EXPECT_EQ(document.findChild<QPushButton*>("playSavedPlaylist"), nullptr);
 
     EXPECT_EQ(document.findChild<QPushButton*>("useActivePlaylist"), nullptr);
+
     document.set_active(true);
     EXPECT_EQ(heading->text(), "Favorites");
     EXPECT_TRUE(document.active());
     EXPECT_EQ(heading->accessibleDescription(), "Active playlist");
+
     document.set_active(false);
     EXPECT_EQ(heading->text(), "Favorites");
 
     int moves{0};
     document.on_transfer_move_requested([&moves] { ++moves; });
+
     const auto move = std::ranges::find_if(actions,
         [](QAction* candidate) { return candidate->text() == "Move to playlist"; });
+
     ASSERT_NE(move, actions.end());
+
     (*move)->trigger();
     EXPECT_EQ(moves, 1);
 }
@@ -123,9 +129,11 @@ TEST(SavedPlaylistDocument, RefreshesMetadataWithoutLosingPersistentSelection)
 
     const auto playlist = repository.create_playlist("Favorites");
     const auto entry = repository.append_track(playlist, media.id);
+
     ASSERT_TRUE(entry);
 
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
 
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
@@ -160,10 +168,13 @@ TEST(SavedPlaylistDocument, SortingPreservesPersistentEntrySelection)
     const auto playlist = repository.create_playlist("Favorites");
     const auto zulu = repository.append_track(playlist, later.id);
     const auto alpha = repository.append_track(playlist, earlier.id);
+
     ASSERT_TRUE(zulu && alpha);
 
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
+
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
     wiola::testing::set_track_sort(*table,
         {
@@ -174,6 +185,7 @@ TEST(SavedPlaylistDocument, SortingPreservesPersistentEntrySelection)
 
     ASSERT_EQ(table->model()->data(table->model()->index(0, 1), Qt::DisplayRole).toString(),
         "Alpha");
+
     table->selectionModel()->select(table->model()->index(0, 0),
         QItemSelectionModel::Select | QItemSelectionModel::Rows);
     EXPECT_EQ(document.chosen_entries(), std::vector<wiola::library::PlaylistEntryId>{*alpha});
@@ -211,12 +223,14 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
         record.tags = {
             {.id = wiola::library::TagId{name + "-tag"}, .key = "Genre", .value = "Jazz"}
         };
+
         return record;
     };
 
     const wiola::library::TrackRecord zulu = make("zulu", "Zulu", "Shared artist");
     const wiola::library::TrackRecord other = make("other", "Beta", "Other artist");
     const wiola::library::TrackRecord alpha = make("alpha", "Alpha", "Shared artist");
+
     ASSERT_TRUE(repository.put_track(zulu));
     ASSERT_TRUE(repository.put_track(other));
     ASSERT_TRUE(repository.put_track(alpha));
@@ -225,10 +239,13 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
     const auto zulu_entry = repository.append_track(playlist, zulu.id);
     const auto other_entry = repository.append_track(playlist, other.id);
     const auto alpha_entry = repository.append_track(playlist, alpha.id);
+
     ASSERT_TRUE(zulu_entry && other_entry && alpha_entry);
 
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
+
     wiola::gui::TrackTableView* table = document.findChild<wiola::gui::TrackTableView*>();
 
     document.findChild<QLineEdit*>("searchArtist")->setText("shared artist");
@@ -243,6 +260,7 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
     });
 
     QLabel* results = document.findChild<QLabel*>("trackSearchResults");
+
     ASSERT_NE(results, nullptr);
     EXPECT_EQ(results->text(), "2 of 3 tracks");
     ASSERT_EQ(table->model()->rowCount(), 2);
@@ -260,6 +278,7 @@ TEST(SavedPlaylistDocument, CombinesTextTagSortingCountsAndPersistentSelection)
         std::vector<wiola::library::PlaylistEntryId>{*alpha_entry});
 
     const auto& entries = repository.playlist(playlist)->entries;
+
     ASSERT_EQ(entries.size(), 3);
     EXPECT_EQ(entries[0].id, *zulu_entry);
     EXPECT_EQ(entries[1].id, *other_entry);
@@ -273,14 +292,21 @@ TEST(SavedPlaylistDocument, KeepsSelectedEntryIdentityAcrossMembershipChangesAnd
     track.id = {"opaque-media"};
     track.locations = {"/music/saved.flac"};
     ASSERT_TRUE(repository.put_track(track));
+
     const auto playlist = repository.create_playlist("Before");
     const auto first = repository.append_track(playlist, track.id);
     const auto selected = repository.append_track(playlist, track.id);
+
     ASSERT_TRUE(first && selected);
+
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
+
     ASSERT_NE(table, nullptr);
+
     table->selectRow(1);
     ASSERT_EQ(document.chosen_entries(), std::vector{*selected});
     ASSERT_TRUE(repository.append_track(playlist, track.id));
@@ -305,23 +331,32 @@ TEST(SavedPlaylistDocument, UpdatesEverySharedOccurrenceWithoutResettingUnrelate
     other.embedded.title = "Other";
     ASSERT_TRUE(repository.put_track(shared));
     ASSERT_TRUE(repository.put_track(other));
+
     const auto playlist = repository.create_playlist("Shared");
+
     ASSERT_TRUE(repository.append_track(playlist, shared.id));
     ASSERT_TRUE(repository.append_track(playlist, other.id));
     ASSERT_TRUE(repository.append_track(playlist, shared.id));
+
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
+
     ASSERT_NE(table, nullptr);
+
     QPersistentModelIndex untouched{table->model()->index(1, 1)};
     int resets = 0;
     std::set<int> changed;
+
     QObject::connect(table->model(), &QAbstractItemModel::modelReset, [&] { ++resets; });
     QObject::connect(table->model(), &QAbstractItemModel::dataChanged,
         [&](const QModelIndex& first, const QModelIndex& last) {
             for (int row = first.row(); row <= last.row(); ++row)
                 changed.insert(row);
         });
+
     shared.embedded.title = "After";
     ++shared.metadata_revision;
     ASSERT_TRUE(repository.put_track(shared));
@@ -345,18 +380,26 @@ TEST(SavedPlaylistDocument, SearchesTagsThroughTheCanonicalMediaIdentity)
         {wiola::library::TagId{"tag"}, "Mood", "Calm"}
     };
     ASSERT_TRUE(repository.put_track(track));
+
     const auto playlist = repository.create_playlist("Tagged");
+
     ASSERT_TRUE(repository.append_track(playlist, track.id));
     ASSERT_TRUE(repository.append_track(playlist, track.id));
+
     wiola::gui::SavedPlaylistDocument document;
+
     ASSERT_TRUE(document.show_playlist(repository, playlist));
+
     auto* table = document.findChild<wiola::gui::TrackTableView*>();
+
     ASSERT_NE(table, nullptr);
+
     wiola::library::SearchQuery query;
     query.artist = "Artist";
     query.tags = "calm";
     wiola::testing::set_track_query(*table, query);
     EXPECT_EQ(table->visible_count(), 2);
+
     query.tags = "brisk";
     wiola::testing::set_track_query(*table, query);
     EXPECT_EQ(table->visible_count(), 0);
@@ -368,6 +411,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

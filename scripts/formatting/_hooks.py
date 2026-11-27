@@ -21,11 +21,15 @@ def install_hook(repository: Path) -> Path:
     )
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / "pre-commit"
+
     if destination.exists() and not destination.is_symlink():
         raise ValueError("Refusing to overwrite existing hook: " + str(destination))
+
     source = Path(files(__package__).joinpath("pre_commit.sh")).resolve()
+
     with tempfile.TemporaryDirectory(prefix=".wiola-hook-", dir=directory) as temporary:
         link = Path(temporary) / "pre-commit"
         link.symlink_to(os.path.relpath(source, directory))
         os.replace(link, destination)
+
     return destination

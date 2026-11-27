@@ -19,7 +19,7 @@
  */
 
 #include "saved_playlist_manager.hpp"
-#include <QPointer>
+
 #include <qt/widgets/documents/playlist_name.hpp>
 #include <wiola/app/library/playlist_name.hpp>
 #include <wiola/app/library/saved_playlist_commands.hpp>
@@ -29,6 +29,7 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPointer>
 
 namespace wiola::gui {
 
@@ -42,8 +43,11 @@ SavedPlaylistManager::SavedPlaylistManager(const library::LibraryRepository& rep
     setObjectName("savedPlaylistManager");
 
     create_button_ = new QPushButton{"+ New playlist", this};
+
     rename_button_ = new QPushButton{"Rename", this};
+
     duplicate_button_ = new QPushButton{"Duplicate", this};
+
     remove_button_ = new QPushButton{"Delete", this};
     create_button_->setObjectName("createPlaylist");
     rename_button_->setObjectName("renamePlaylist");
@@ -57,18 +61,24 @@ SavedPlaylistManager::SavedPlaylistManager(const library::LibraryRepository& rep
 
     QGridLayout* buttons = new QGridLayout;
     buttons->addWidget(create_button_, 0, 0);
+
     for (auto* button : {rename_button_, duplicate_button_, remove_button_}) {
         button->hide();
+
         auto* action = new QAction{button->text() + " playlist", this};
         navigation_.addAction(action);
         connect(action, &QAction::triggered, button, &QPushButton::click);
+
         const auto update = [this, action] {
             action->setEnabled(selected().has_value());
         };
         connect(&navigation_, &QTreeWidget::currentItemChanged, this, update);
+
         update();
     }
+
     navigation_.setContextMenuPolicy(Qt::ActionsContextMenu);
+
     auto* create_action = new QAction{"New playlist…", this};
     create_action->setShortcut(QKeySequence{"Ctrl+Shift+N"});
     create_action->setShortcutContext(Qt::WindowShortcut);
@@ -93,6 +103,7 @@ SavedPlaylistManager::SavedPlaylistManager(const library::LibraryRepository& rep
 
     connect(rename_button_, &QPushButton::clicked, this, [this] {
         const auto id = selected();
+
         if (!id) {
             save_state_->setText("Select a playlist first");
             return;
@@ -124,14 +135,17 @@ bool SavedPlaylistManager::create(const std::string& name)
     }
 
     save_state_->show();
+
     const QPointer<SavedPlaylistManager> owner{this};
     const auto created = commands_.create(name);
+
     return owner ? finish(created.commit, created.id) : static_cast<bool>(created.commit);
 }
 
 bool SavedPlaylistManager::rename_selected(const std::string& name)
 {
     const auto id = selected();
+
     if (!id) {
         save_state_->setText("Select a playlist first");
         return false;
@@ -144,12 +158,14 @@ bool SavedPlaylistManager::rename_selected(const std::string& name)
 
     const QPointer<SavedPlaylistManager> owner{this};
     const auto committed = commands_.rename(*id, name);
+
     return owner ? finish(committed, *id) : static_cast<bool>(committed);
 }
 
 bool SavedPlaylistManager::duplicate_selected()
 {
     const auto id = selected();
+
     if (!id) {
         save_state_->setText("Select a playlist first");
         return false;
@@ -157,12 +173,14 @@ bool SavedPlaylistManager::duplicate_selected()
 
     const QPointer<SavedPlaylistManager> owner{this};
     const auto duplicate = commands_.duplicate(*id);
+
     return owner ? finish(duplicate.commit, duplicate.id) : static_cast<bool>(duplicate.commit);
 }
 
 bool SavedPlaylistManager::remove_selected()
 {
     const auto id = selected();
+
     if (!id) {
         save_state_->setText("Select a playlist first");
         return false;
@@ -170,6 +188,7 @@ bool SavedPlaylistManager::remove_selected()
 
     const QPointer<SavedPlaylistManager> owner{this};
     const auto committed = commands_.remove(*id);
+
     return owner ? finish(committed) : static_cast<bool>(committed);
 }
 
@@ -186,12 +205,15 @@ bool SavedPlaylistManager::finish(library::CommitResult committed, const library
     }
 
     const QPointer<SavedPlaylistManager> owner{this};
+
     navigation_.show_repository(repository_);
+
     if (!owner)
         return true;
 
     if (id.valid())
         navigation_.select_playlist(id);
+
     if (!owner)
         return true;
 
@@ -199,10 +221,13 @@ bool SavedPlaylistManager::finish(library::CommitResult committed, const library
         displayed_revision_ = committed.revision;
         save_state_->setText(committed.durable() ? "All changes saved"
                                                  : "Changes accepted; saving library");
+
         if (owner)
             save_state_->setVisible(!committed.durable());
+
         if (!owner)
             return true;
+
         if (committed.receipt)
             committed.receipt->observe([owner = QPointer<SavedPlaylistManager>{this}](auto event) {
                 if (owner && owner->displayed_revision_ == event.revision) {
@@ -217,7 +242,9 @@ bool SavedPlaylistManager::finish(library::CommitResult committed, const library
 
     if (!owner)
         return true;
+
     const auto observer = changed_observer_;
+
     if (observer)
         (*observer)();
 
@@ -229,6 +256,7 @@ void SavedPlaylistManager::on_changed(std::function<void()> observer)
     auto replacement =
         observer ? std::make_shared<std::function<void()>>(std::move(observer)) : nullptr;
     auto retired = std::move(changed_observer_);
+
     changed_observer_ = std::move(replacement);
 }
 

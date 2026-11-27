@@ -19,15 +19,18 @@
  */
 
 #pragma once
+
 #ifndef Q_MOC_RUN
-#include <functional>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
 #include <wiola/app/playback/playback_service.hpp>
 #include <wiola/playback/output_factory.hpp>
+
+#include <functional>
 #endif
 #include <QObject>
 #include <QTimer>
+
 #include <chrono>
 
 namespace wiola::app {

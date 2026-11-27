@@ -27,6 +27,7 @@ class ControlledSources:
         source = workspace / pin.directory
         source.mkdir(parents=True, exist_ok=True)
         (source / "CMakeLists.txt").write_text("# external source-port fixture\n")
+
         return source
 
 
@@ -56,6 +57,7 @@ class QtCoreSdkTest(unittest.TestCase):
         )
         self.environment.start()
         self.addCleanup(self.environment.stop)
+
         for name in ("clang++-fixture", "clang-fixture", "clang++", "clang"):
             self.tool(
                 name,
@@ -64,6 +66,7 @@ class QtCoreSdkTest(unittest.TestCase):
                 print('x86_64-linux-gnu' if '-dumpmachine' in sys.argv else os.environ['QT_SDK_COMPILER_VERSION'])
             """,
             )
+
         self.tool(
             "pkg-config",
             """
@@ -134,6 +137,7 @@ class QtCoreSdkTest(unittest.TestCase):
     def test_context_tracks_host_compiler_glib_and_declared_build_inputs(self):
         self.assertEqual(self.context.cxx, str(self.bin / "clang++-fixture"))
         self.assertEqual(self.context.cc, str(self.bin / "clang-fixture"))
+
         for changes in (
             {"QT_SDK_COMPILER_VERSION": "fixture compiler v2"},
             {"QT_SDK_GLIB_VERSION": "new glib"},
@@ -143,17 +147,22 @@ class QtCoreSdkTest(unittest.TestCase):
                 self.assertNotEqual(
                     QtCoreContext.discover().identity, self.context.identity
                 )
+
         self.host_core.write_bytes(b"different host ABI")
         self.assertNotEqual(QtCoreContext.discover().identity, self.context.identity)
+
         with patch.dict(os.environ, QT_SDK_HOST_VERSION="6.99.0"):
             with self.assertRaises(ValueError):
                 QtCoreContext.discover()
+
         with self.assertRaises(ValueError):
             QtCoreContext.discover(cxx=str(self.root / "missing compiler"))
+
         with patch.dict(os.environ, {"CC": ""}):
             self.assertEqual(
                 QtCoreContext.discover().cc, str(self.bin / "clang-fixture")
             )
+
         with patch.dict(os.environ, {"CXX": "", "CC": ""}):
             self.assertEqual(QtCoreContext.discover().cxx, str(self.bin / "clang++"))
 
@@ -161,8 +170,10 @@ class QtCoreSdkTest(unittest.TestCase):
         self,
     ):
         builder = self.builder()
+
         with patch.dict(os.environ, WIOLA_QT_SOURCE_CACHE=""):
             runtime = builder.prepare()
+
         artifact = QtCoreRuntime(runtime)
         self.assertTrue(artifact.qualified(self.context.identity))
         self.assertEqual(artifact.library.read_bytes(), b"instrumented Core image")
@@ -205,9 +216,11 @@ class QtCoreSdkTest(unittest.TestCase):
                     self.context.identity
                 )
             )
+
         with patch.dict(os.environ, QT_SDK_SLOW_CONFIGURE="1"):
             with self.assertRaises(subprocess.TimeoutExpired):
                 self.builder(timeout=0.1).prepare()
+
         with self.assertRaises(ValueError):
             self.builder(timeout=0)
 
@@ -215,16 +228,22 @@ class QtCoreSdkTest(unittest.TestCase):
         runtime = QtCoreRuntime(self.builder().prepare())
         log = self.root / "loader.log"
         program = self.root / "consumer"
+
         with patch.dict(os.environ, QT_SDK_LOADED_CORE=str(runtime.library)):
             runtime.verify_loaded(program, log, self.context.identity)
+
         self.assertIn(str(runtime.library), log.read_text())
+
         with self.assertRaises(ValueError):
             runtime.verify_loaded(program, log, self.context.identity)
+
         with patch.dict(os.environ, QT_SDK_BAD_LOADER="1"):
             with self.assertRaises(ValueError):
                 runtime.verify_loaded(program, log, self.context.identity)
+
         with self.assertRaises(ValueError):
             runtime.verify_loaded(program, log, "another-context")
+
         receipt = json.loads(runtime.receipt.read_text())
         receipt["schema_version"] = True
         runtime.receipt.write_text(json.dumps(receipt))
@@ -235,10 +254,13 @@ class QtCoreSdkTest(unittest.TestCase):
     def test_cli_identity_reuse_bounds_and_verification_use_public_recipe(self):
         runtime = QtCoreRuntime(self.builder().prepare())
         output = StringIO()
+
         with redirect_stdout(output):
             self.assertEqual(main(["--identity"]), 0)
             self.assertEqual(main([str(self.workspace)]), 0)
+
         self.assertIn(self.context.identity, output.getvalue())
+
         with patch.dict(
             os.environ,
             WIOLA_QT_CORE_RUNTIME=str(runtime.directory),
@@ -260,6 +282,7 @@ class QtCoreSdkTest(unittest.TestCase):
                 0,
             )
             self.assertEqual(os.environ["LD_LIBRARY_PATH"], str(self.host))
+
         with patch.dict(
             os.environ,
             LD_LIBRARY_PATH="",
@@ -280,7 +303,9 @@ class QtCoreSdkTest(unittest.TestCase):
                 0,
             )
             self.assertEqual(os.environ["LD_LIBRARY_PATH"], "")
+
         error = StringIO()
+
         with redirect_stderr(error):
             self.assertEqual(main([str(self.workspace), "--jobs", "0"]), 1)
             self.assertEqual(
@@ -296,8 +321,10 @@ class QtCoreSdkTest(unittest.TestCase):
                 ),
                 1,
             )
+
             with self.assertRaises(SystemExit):
                 main([])
+
             with patch.dict(os.environ, WIOLA_QT_CORE_RUNTIME=""):
                 with self.assertRaises(SystemExit):
                     verify(
@@ -308,4 +335,5 @@ class QtCoreSdkTest(unittest.TestCase):
                             str(self.root / "no-runtime.log"),
                         ]
                     )
+
         self.assertIn("Qt Core SDK failed", error.getvalue())

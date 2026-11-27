@@ -23,7 +23,6 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 #include <filesystem>
@@ -72,6 +71,7 @@ TEST_F(LibraryStorage, WritesAndReadsACompleteSnapshot)
     ASSERT_EQ(storage.save(snapshot("Stored")), LibraryStoreResult{});
 
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Stored");
@@ -86,11 +86,14 @@ TEST_F(LibraryStorage, RecoversTheLastValidBackupAfterPrimaryCorruption)
     ASSERT_TRUE(std::filesystem::exists(file("library.json.bak")));
 
     QFile damaged{QString::fromStdString(file().string())};
+
     ASSERT_TRUE(damaged.open(QIODevice::WriteOnly | QIODevice::Truncate));
     ASSERT_EQ(damaged.write("broken"), 6);
+
     damaged.close();
 
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "First");
@@ -99,6 +102,7 @@ TEST_F(LibraryStorage, RecoversTheLastValidBackupAfterPrimaryCorruption)
 TEST_F(LibraryStorage, InvalidSnapshotDoesNotReplaceThePreviousFile)
 {
     Storage storage{file()};
+
     ASSERT_EQ(storage.save(snapshot("Valid")), LibraryStoreResult{});
 
     wiola::library::LibrarySnapshot invalid{
@@ -110,6 +114,7 @@ TEST_F(LibraryStorage, InvalidSnapshotDoesNotReplaceThePreviousFile)
         LibraryStoreResult{.schema = LibraryJsonError::invalid_record});
 
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Valid");
@@ -118,15 +123,21 @@ TEST_F(LibraryStorage, InvalidSnapshotDoesNotReplaceThePreviousFile)
 TEST_F(LibraryStorage, FutureSchemaIsNotReplacedByAnOlderBackupOrNewSave)
 {
     Storage store{file()};
+
     ASSERT_TRUE(store.save(snapshot("Backup")).succeeded());
     ASSERT_TRUE(store.save(snapshot("Previous")).succeeded());
+
     const QByteArray future{"{\"version\":99}"};
     QFile output{directory.filePath("library.json")};
+
     ASSERT_TRUE(output.open(QIODevice::WriteOnly | QIODevice::Truncate));
     ASSERT_EQ(output.write(future), future.size());
+
     output.close();
+
     auto restored = snapshot("Retained");
     const LibraryStoreResult unsupported{.schema = LibraryJsonError::unsupported_version};
+
     EXPECT_EQ(store.load(restored), unsupported);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Retained");
     EXPECT_EQ(store.save(snapshot("Must not overwrite")), unsupported);
@@ -137,16 +148,23 @@ TEST_F(LibraryStorage, FutureSchemaIsNotReplacedByAnOlderBackupOrNewSave)
 TEST_F(LibraryStorage, FutureBackupIsPreservedWhenThePrimaryIsDamaged)
 {
     QFile primary{directory.filePath("library.json")};
+
     ASSERT_TRUE(primary.open(QIODevice::WriteOnly));
     ASSERT_GT(primary.write("broken"), 0);
+
     primary.close();
+
     QFile backup{directory.filePath("library.json.bak")};
+
     ASSERT_TRUE(backup.open(QIODevice::WriteOnly));
     ASSERT_GT(backup.write("{\"version\":99}"), 0);
+
     backup.close();
+
     Storage store{file()};
     wiola::library::LibrarySnapshot restored;
     const LibraryStoreResult unsupported{.schema = LibraryJsonError::unsupported_version};
+
     EXPECT_EQ(store.load(restored), unsupported);
     EXPECT_EQ(store.save(snapshot("Must not overwrite")), unsupported);
 }
@@ -154,15 +172,21 @@ TEST_F(LibraryStorage, FutureBackupIsPreservedWhenThePrimaryIsDamaged)
 TEST_F(LibraryStorage, RejectsOversizedFilesBeforeReadingTheirContents)
 {
     QFile oversized{directory.filePath("library.json")};
+
     ASSERT_TRUE(oversized.open(QIODevice::WriteOnly));
     ASSERT_TRUE(oversized.resize(max_library_document_bytes + 1));
+
     oversized.close();
+
     AtomicFileStore bytes{file(), max_library_document_bytes};
     const auto read = bytes.read(FileSlot::primary);
+
     EXPECT_EQ(read.error, FileStoreError::too_large);
     EXPECT_TRUE(read.bytes.isEmpty());
+
     Storage store{file()};
     auto restored = snapshot("Retained");
+
     EXPECT_EQ(store.load(restored), (LibraryStoreResult{.io = FileStoreError::too_large}));
     EXPECT_EQ(restored.tracks.front().embedded.title, "Retained");
 }
@@ -194,17 +218,24 @@ private:
 TEST_F(LibraryStorage, NativeOutputOpenFailurePreservesTheExistingDirectoryAndContents)
 {
     const auto target = file("existing-directory");
+
     ASSERT_TRUE(std::filesystem::create_directory(target));
+
     const auto sentinel = target / "keep.txt";
     {
         QFile file{QString::fromStdString(sentinel.string())};
+
         ASSERT_TRUE(file.open(QIODevice::WriteOnly));
         ASSERT_EQ(file.write("retained"), 8);
     }
+
     AtomicFileStore store{target, 100};
+
     EXPECT_EQ(store.write(FileSlot::primary, QByteArrayView{"replacement"}), FileStoreError::io);
     EXPECT_TRUE(std::filesystem::is_directory(target));
+
     QFile retained{QString::fromStdString(sentinel.string())};
+
     ASSERT_TRUE(retained.open(QIODevice::ReadOnly));
     EXPECT_EQ(retained.readAll(), "retained");
 }
@@ -214,6 +245,7 @@ TEST_F(LibraryStorage, ShortWritesAreNeverCommitted)
     int commits = 0;
     AtomicFileStore bytes{file(), 100,
         [&commits](const auto&) { return std::make_unique<FailingOutput>(true, commits); }};
+
     EXPECT_EQ(bytes.write(FileSlot::primary, QByteArrayView{"complete"}), FileStoreError::io);
     EXPECT_EQ(commits, 0);
     EXPECT_FALSE(std::filesystem::exists(file()));
@@ -222,18 +254,25 @@ TEST_F(LibraryStorage, ShortWritesAreNeverCommitted)
 TEST_F(LibraryStorage, BackupCommitFailureLeavesThePrimaryUnchanged)
 {
     Storage original{file()};
+
     ASSERT_TRUE(original.save(snapshot("Original")).succeeded());
+
     int commits = 0;
     int outputs = 0;
     Storage failing{file(), [&commits, &outputs](const std::filesystem::path& target) {
                         EXPECT_EQ(target.extension(), ".bak");
+
                         ++outputs;
+
                         return std::make_unique<FailingOutput>(false, commits);
                     }};
+
     EXPECT_EQ(failing.save(snapshot("Rejected")), (LibraryStoreResult{.io = FileStoreError::io}));
     EXPECT_EQ(outputs, 1);
     EXPECT_EQ(commits, 1);
+
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_TRUE(original.load(restored).succeeded());
     EXPECT_EQ(restored.tracks.front().embedded.title, "Original");
 }
@@ -243,6 +282,7 @@ TEST_F(LibraryStorage, BackupCommitFailureLeavesThePrimaryUnchanged)
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

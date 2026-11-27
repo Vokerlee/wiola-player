@@ -56,10 +56,12 @@ SeekOperation::Outcome SeekOperation::reposition(const Playhead::Claim& claim, b
         return Outcome::cancelled;
 
     quiesce();
+
     if (move)
         buffer_.mark_discard();
 
     Outcome settled{Outcome::preserved};
+
     if (move) {
         const auto target{claim.outstanding ? claim.target : pcm::Frames{}};
         // The decoder owns seek validation and preserves its cursor on failure.
@@ -70,6 +72,7 @@ SeekOperation::Outcome SeekOperation::reposition(const Playhead::Claim& claim, b
     // A blocking seek may have completed after a stop or replacement request. Its actual
     // decoder position is still acknowledged; only this claim is retired, never a newer one.
     applier_.begin_at(source_.position_frames(), output_.frames_played(), claim);
+
     return prime(settled);
 }
 
@@ -77,8 +80,10 @@ std::optional<SeekOperation::Outcome> SeekOperation::interruption() const noexce
 {
     if (playback_.finished())
         return Outcome::cancelled;
+
     if (applier_.seek_outstanding())
         return Outcome::superseded;
+
     return std::nullopt;
 }
 
@@ -96,14 +101,18 @@ SeekOperation::Outcome SeekOperation::prime(Outcome settled)
     while (true) {
         if (const auto pending{interruption()})
             return *pending;
+
         if (buffer_.space_approx() < block_.size())
             return settled;
 
         const auto decoded{source_.read(block_)};
+
         if (const auto after_read{interruption()})
             return *after_read;
+
         if (!decoded)
             return Outcome::read_failed;
+
         if (decoded->frames == pcm::Frames{})
             return settled;
 

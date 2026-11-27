@@ -18,8 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "theme_style.hpp"
 #include "theme.hpp"
+#include "theme_style.hpp"
+
 #include <QFontDatabase>
 #include <QPainter>
 #include <QProxyStyle>
@@ -46,12 +47,15 @@ public:
             QProxyStyle::drawPrimitive(element, option, painter, widget);
             return;
         }
+
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing);
+
         const auto group =
             option->state.testFlag(State_Enabled) ? QPalette::Active : QPalette::Disabled;
         painter->setPen(QPen{option->palette.color(group, QPalette::ButtonText), 1.5, Qt::SolidLine,
             Qt::RoundCap});
+
         const auto bounds = QRectF{option->rect};
         const auto inset = std::min(bounds.width(), bounds.height()) * 0.28;
         const auto cross = bounds.adjusted(inset, inset, -inset, -inset);
@@ -88,9 +92,12 @@ bool valid_theme_style(const ThemeStyle& style)
 QFont theme_font(const ThemeStyle& style)
 {
     QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
+
     if (font.pointSizeF() > 0)
         font.setPointSizeF(font.pointSizeF() * style.text_scale / 100.0);
+
     font.setStyleStrategy(QFont::PreferAntialias);
+
     return font;
 }
 
@@ -187,13 +194,17 @@ QLabel[status="error"] { color: @error@; }
 QLabel[status="ready"] { color: @muted-text@; }
 QToolTip { color: @text@; background: @surface@; border: 1px solid @border@; padding: 6px; }
 )"};
+
     for (const auto& metric : theme_style_metrics())
         sheet.replace('@' + QString::fromLatin1(metric.key) + '@',
             QString::number(style.*metric.value));
+
     sheet.replace("@wide-padding@", QString::number(style.control_padding * 2));
+
     for (const auto& descriptor : theme_color_descriptors())
         sheet.replace('@' + QString::fromLatin1(descriptor.key) + '@',
             theme_color(colors, descriptor.role).name());
+
     const auto blend = [&colors](int percent) {
         const int inverse = 100 - percent;
         return QColor{(colors.text.red() * percent + colors.surface.red() * inverse) / 100,
@@ -204,6 +215,7 @@ QToolTip { color: @text@; background: @surface@; border: 1px solid @border@; pad
     sheet.replace("@border@", blend(20));
     sheet.replace("@hover@", blend(8));
     sheet.replace("@pressed@", blend(14));
+
     return sheet;
 }
 

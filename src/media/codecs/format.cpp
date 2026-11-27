@@ -34,6 +34,7 @@ media::Result<FileHead> FileHead::read(media::ByteStream& stream,
         return media::unexpected{read.error()};
 
     head.size_ = *read;
+
     return head;
 }
 
@@ -71,13 +72,17 @@ Match match_of(const Format& format, const FileHead& head, std::string_view exte
 Match match_of(const Backend& backend, const FileHead& head, std::string_view extension)
 {
     Match best{Match::unlikely};
+
     for (const Format& format : backend.formats) {
         const Match match{match_of(format, head, extension)};
+
         if (match == Match::signature)
             return match;
+
         if (static_cast<int>(match) < static_cast<int>(best))
             best = match;
     }
+
     return best;
 }
 

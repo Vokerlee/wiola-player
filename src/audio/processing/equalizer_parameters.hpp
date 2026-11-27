@@ -22,6 +22,7 @@
 
 #include "equalizer_config.hpp"
 #include "equalizer_publication.hpp"
+
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 

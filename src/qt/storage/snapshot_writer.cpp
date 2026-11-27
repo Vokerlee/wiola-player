@@ -18,18 +18,21 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "snapshot_writer.hpp"
 #include "library_store.hpp"
+#include "snapshot_writer.hpp"
 
 namespace wiola::persistence::qt {
 
 app::SnapshotWriteResult snapshot_write_result(LibraryStoreResult result) noexcept
 {
     using Error = app::SnapshotWriteError;
+
     if (result.io == FileStoreError::too_large)
         return {Error::too_large};
+
     if (result.io != FileStoreError::none)
         return {Error::io};
+
     switch (result.schema) {
     case LibraryJsonError::none:
         return {};
@@ -42,6 +45,7 @@ app::SnapshotWriteResult snapshot_write_result(LibraryStoreResult result) noexce
     case LibraryJsonError::invalid_record:
         return {Error::invalid_snapshot};
     }
+
     return {Error::invalid_snapshot};
 }
 

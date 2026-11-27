@@ -19,9 +19,11 @@
  */
 
 #include "library_documents.hpp"
-#include <QFileInfo>
+
 #include <qt/storage/atomic_file_store.hpp>
 #include <wiola/qt/paths.hpp>
+
+#include <QFileInfo>
 
 namespace wiola::app {
 
@@ -36,31 +38,43 @@ WorkspaceCreation LibraryDocuments::open_folder(const std::filesystem::path& roo
 {
     if (root.empty())
         return {LibraryDocumentError::invalid, {}};
+
     std::error_code error;
     const auto absolute = std::filesystem::absolute(root, error);
+
     if (error)
         return {LibraryDocumentError::invalid, {}};
+
     library::RepositoryTransaction transaction{repository_, persist_};
     const auto id = repository_.create_workspace(absolute);
+
     if (!id.valid())
         return {LibraryDocumentError::invalid, {}};
+
     if (!transaction.commit())
         return {LibraryDocumentError::write_failed, {}};
+
     return {LibraryDocumentError::none, id};
 }
 
 LibraryDocumentError LibraryDocuments::set_recursive(const library::WorkspaceId& id, bool recursive)
 {
     const auto* current = repository_.workspace(id);
+
     if (!current)
         return LibraryDocumentError::missing;
+
     if (current->recursive == recursive)
         return LibraryDocumentError::none;
+
     auto next = *current;
     next.recursive = recursive;
+
     library::RepositoryTransaction transaction{repository_, persist_};
+
     if (!repository_.put_workspace(std::move(next)))
         return LibraryDocumentError::invalid;
+
     return transaction.commit() ? LibraryDocumentError::none : LibraryDocumentError::write_failed;
 }
 
@@ -68,16 +82,21 @@ PlaylistImport LibraryDocuments::import_m3u(const std::filesystem::path& path)
 {
     persistence::qt::AtomicFileStore store{path, 16 * 1024 * 1024};
     const auto input = store.read(persistence::qt::FileSlot::primary);
+
     if (input.error != persistence::qt::FileStoreError::none || !input.exists)
         return {LibraryDocumentError::read_failed, {}};
+
     const QFileInfo info{platform::qt::QtPathAdapter::to_qt(path)};
     library::RepositoryTransaction transaction{repository_, persist_};
     library::PlaylistId id;
+
     if (M3uPlaylist::import_playlist(repository_, path.parent_path(),
             info.completeBaseName().toStdString(), input.bytes, id) != M3uError::none)
         return {LibraryDocumentError::invalid, {}};
+
     if (!transaction.commit())
         return {LibraryDocumentError::write_failed, {}};
+
     return {LibraryDocumentError::none, id};
 }
 
@@ -85,9 +104,12 @@ LibraryDocumentError LibraryDocuments::export_m3u(const library::PlaylistId& id,
     const std::filesystem::path& path) const
 {
     QByteArray bytes;
+
     if (M3uPlaylist::export_playlist(repository_, id, path.parent_path(), bytes) != M3uError::none)
         return LibraryDocumentError::invalid;
+
     persistence::qt::AtomicFileStore store{path, 16 * 1024 * 1024};
+
     return store.write(persistence::qt::FileSlot::primary, bytes) ==
             persistence::qt::FileStoreError::none
         ? LibraryDocumentError::none

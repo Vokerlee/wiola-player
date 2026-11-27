@@ -128,13 +128,54 @@ pip install -r requirements.txt
 python3 -m scripts.formatting format cpp
 python3 -m scripts.formatting format cmake
 python3 -m scripts.formatting format all --check
-python3 -m scripts.formatting format cpp --check --files src/main.cpp
+python3 -m scripts.formatting format cpp --check --files src/qt/main.cpp
 python3 -m scripts.formatting install-hooks
 ```
 
 Default selection includes existing tracked files. `--files` selects only explicit tracked paths relative to the worktree root. Missing tools and formatter failures fail the hook as well as CI; installation preserves regular custom hook files. The hook checks working-tree files, not separately staged partial-file contents.
 
 `.clang-format` and `.gersemirc` decide style; requirements.txt pins the tool versions. Keep these facts in their owning files. [The formatting component](scripts/formatting/README.md) explains selection and hook invariants.
+
+### Logical blocks and include order
+
+Use a blank line between logical steps in every language: preparing values, performing an
+operation, checking its result, and starting another operation. Keep related assignments,
+arguments and assertions together. In tests, each action and its assertions form a readable
+paragraph. Separate fixture construction, selection/restoration, event wiring and cleanup.
+Do not compress an entire test or constructor into one uninterrupted block, and do not put
+an empty line between every statement. Short getters and closely related declarations may
+stay together. Follow the language's spacing rules between definitions.
+
+For example:
+
+```cpp
+browser.restore_browser_state(saved);
+browser.table().finish_browser_restore();
+EXPECT_TRUE(button->isEnabled());
+EXPECT_TRUE(context_edit->isEnabled());
+
+button->click();
+EXPECT_EQ(edits, 1);
+
+context_edit->trigger();
+EXPECT_EQ(edits, 2);
+```
+
+Keep a blank line before and after `#pragma once`, except at the beginning or end of a file.
+Group C/C++ includes in this order, with a blank line between groups:
+
+1. Local headers included with quotes.
+2. Project headers, including public `wiola/` headers and internal/test components.
+3. External libraries, such as Qt, GoogleTest, FFmpeg and miniaudio.
+4. System and C/C++ standard-library headers.
+
+Sort within each group. Keep conditional includes within their preprocessor conditions.
+Qt headers that hide C++23 collaborators from MOC keep those project includes inside their
+existing `Q_MOC_RUN` guard; include order must not act as an implicit parser workaround.
+The existing `python3 -m scripts.formatting format cpp` command applies the pragma spacing
+and the include groups; `--check` and the existing hook/CI command enforce them. The group
+categories live in `.clang-format`. Logical paragraphs require author and reviewer judgment;
+the formatter preserves their blank lines.
 
 ## Coverage
 

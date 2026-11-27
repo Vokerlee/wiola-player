@@ -235,6 +235,7 @@ TEST(Handle, DestroyingAnInertHandlePreservesTheLiveClaim)
 {
     Returning owner;
     const Returning::Ticket active{owner.ticket()};
+
     ASSERT_TRUE(static_cast<bool>(active));
 
     {

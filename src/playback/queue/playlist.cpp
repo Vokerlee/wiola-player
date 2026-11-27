@@ -41,11 +41,13 @@ make_entries(std::vector<media::ResourceReference> resources, QueueEntryId next)
 {
     std::vector<QueueEntry> entries;
     entries.reserve(resources.size());
+
     for (auto& resource : resources) {
         auto metadata{with_fallback_title(resource, {})};
         entries.emplace_back(next, std::move(resource), std::move(metadata));
         ++next.value;
     }
+
     return {std::move(entries), next};
 }
 
@@ -105,6 +107,7 @@ bool Playlist::remove(std::size_t index) noexcept
 
     const auto previous_position{position()};
     const QueueEntryId previous_id{current()->id()};
+
     indices_.erase(tracks_[index].id());
     tracks_.erase(tracks_.begin() + static_cast<std::ptrdiff_t>(index));
     static_cast<void>(order_.remove(index));
@@ -116,8 +119,10 @@ bool Playlist::remove(std::size_t index) noexcept
 
     ++revision_;
     ++structural_revision_;
+
     const QueueEntry* selected{current()};
     const QueueEntryId selected_id{selected ? selected->id() : QueueEntryId{}};
+
     if (previous_position != position() || previous_id != selected_id)
         ++selection_revision_;
 
@@ -128,8 +133,10 @@ void Playlist::clear() noexcept
 {
     ++revision_;
     ++structural_revision_;
+
     if (position())
         ++selection_revision_;
+
     tracks_.clear();
     indices_.clear();
     order_.clear();
@@ -162,6 +169,7 @@ bool Playlist::describe(QueueEntryId id, media::TrackMetadata metadata)
     ++metadata_revision_;
     ++tracks_[*index].revision_;
     tracks_[*index].metadata_ = std::move(metadata);
+
     return true;
 }
 
@@ -176,6 +184,7 @@ bool Playlist::illustrate(QueueEntryId id, std::shared_ptr<const media::Artwork>
     ++metadata_revision_;
     ++tracks_[*index].revision_;
     tracks_[*index].artwork_ = std::move(artwork);
+
     return true;
 }
 
@@ -183,8 +192,10 @@ void Playlist::apply_metadata(std::span<const QueueEntryId> entries,
     const media::TrackMetadata& metadata, std::shared_ptr<const media::Artwork> artwork)
 {
     std::vector<std::pair<std::size_t, media::TrackMetadata>> descriptions;
+
     for (const QueueEntryId id : entries) {
         const auto index{index_of(id)};
+
         if (!index)
             continue;
 
@@ -194,13 +205,16 @@ void Playlist::apply_metadata(std::span<const QueueEntryId> entries,
     // All allocation completes before changing any occurrence or revision.
     static_assert(std::is_nothrow_move_assignable_v<media::TrackMetadata>,
         "Prepared queue metadata must commit without allocation");
+
     for (auto& [index, description] : descriptions) {
         ++tracks_[index].revision_;
         tracks_[index].metadata_ = std::move(description);
         tracks_[index].artwork_ = artwork;
     }
+
     if (descriptions.empty())
         return;
+
     ++revision_;
     ++metadata_revision_;
 }
@@ -219,24 +233,30 @@ std::optional<std::size_t> Playlist::index_of(QueueEntryId id) const noexcept
 bool Playlist::go_to(std::size_t index) noexcept
 {
     const bool changed{order_.go_to(index)};
+
     if (changed)
         ++selection_revision_;
+
     return changed;
 }
 
 bool Playlist::next() noexcept
 {
     const bool changed{order_.next()};
+
     if (changed)
         ++selection_revision_;
+
     return changed;
 }
 
 bool Playlist::previous() noexcept
 {
     const bool changed{order_.previous()};
+
     if (changed)
         ++selection_revision_;
+
     return changed;
 }
 

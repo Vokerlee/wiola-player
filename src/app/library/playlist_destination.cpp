@@ -19,6 +19,7 @@
  */
 
 #include "playlist_destination.hpp"
+
 #include <utility>
 
 namespace wiola::app {
@@ -30,12 +31,16 @@ bool PlaylistDestination::set(const library::PlaylistId& id)
 
     if (id_ == id)
         return true;
+
     auto next = std::optional{id};
     const auto notify = observer_;
     auto event = notify ? next : std::optional<library::PlaylistId>{};
+
     id_.swap(next);
+
     if (notify)
         (*notify)(std::move(event));
+
     return true;
 }
 
@@ -45,9 +50,12 @@ bool PlaylistDestination::clear_if(const library::PlaylistId& id)
         return false;
 
     const auto notify = observer_;
+
     id_.reset();
+
     if (notify)
         (*notify)({});
+
     return true;
 }
 

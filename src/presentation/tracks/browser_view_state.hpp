@@ -23,6 +23,7 @@
 #include "track_column_identity.hpp"
 #include "track_identity.hpp"
 #include "track_view_state.hpp"
+
 #include <map>
 #include <optional>
 #include <vector>

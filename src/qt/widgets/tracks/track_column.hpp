@@ -19,11 +19,14 @@
  */
 
 #pragma once
-#include <QHeaderView>
-#include <array>
-#include <variant>
+
 #include <wiola/presentation/tracks/track_column_identity.hpp>
 #include <wiola/presentation/tracks/track_sort.hpp>
+
+#include <QHeaderView>
+
+#include <array>
+#include <variant>
 
 namespace wiola::gui {
 

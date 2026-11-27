@@ -19,14 +19,16 @@
  */
 
 #pragma once
+
 #include "theme_style.hpp"
-#include <span>
 
 #include <QColor>
 #include <QIcon>
 #include <QPalette>
 #include <QPixmap>
 #include <QStyle>
+
+#include <span>
 
 namespace wiola::gui {
 

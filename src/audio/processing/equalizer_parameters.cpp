@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "equalizer_parameters.hpp"
 #include "biquad.hpp"
+#include "equalizer_parameters.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -58,6 +58,7 @@ void EqualizerParameters::configure(pcm::StreamSpec spec) noexcept
     num_bands_ = 0;
 
     const units::Frequency highest{spec.sample_rate * config_.highest_band_share};
+
     while (num_bands_ < config_.layout.count && config_.layout.center(num_bands_) <= highest)
         ++num_bands_;
 
@@ -97,6 +98,7 @@ void EqualizerParameters::publish() noexcept
     prepared.enabled = enabled_;
 
     float lifted{0.0F};
+
     for (std::size_t index = 0; index < num_bands_; ++index) {
         const float gain{gains_[index]};
         prepared.coefficients[index] =

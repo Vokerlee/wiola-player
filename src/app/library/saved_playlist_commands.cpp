@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "saved_playlist_commands.hpp"
 #include "playlist_name.hpp"
+#include "saved_playlist_commands.hpp"
 
 #include <stdexcept>
 #include <utility>
@@ -45,6 +45,7 @@ SavedPlaylistCommands::Persist SavedPlaylistCommands::persistence() const
 PlaylistCreation SavedPlaylistCommands::create(const std::string& name)
 {
     const auto normalized = PlaylistName::parse(name);
+
     if (!normalized)
         return {};
 
@@ -52,6 +53,7 @@ PlaylistCreation SavedPlaylistCommands::create(const std::string& name)
     library::PlaylistId id = repository_.create_playlist(normalized->value());
 
     auto commit = transaction.commit();
+
     return {commit ? std::move(id) : library::PlaylistId{}, std::move(commit)};
 }
 
@@ -59,25 +61,31 @@ library::CommitResult SavedPlaylistCommands::rename(const library::PlaylistId& i
     const std::string& name)
 {
     const auto normalized = PlaylistName::parse(name);
+
     if (!normalized)
         return false;
 
     library::RepositoryTransaction transaction{repository_, persistence()};
+
     if (!repository_.rename_playlist(id, normalized->value()))
         return false;
+
     return transaction.commit();
 }
 
 PlaylistCreation SavedPlaylistCommands::duplicate(const library::PlaylistId& id)
 {
     const library::PlaylistRecord* source = repository_.playlist(id);
+
     if (source == nullptr)
         return {};
 
     const library::PlaylistRecord copied = *source;
     const auto name = PlaylistName::parse(copied.name + " copy");
+
     if (!name)
         return {};
+
     library::RepositoryTransaction transaction{repository_, persistence()};
     library::PlaylistId duplicate = repository_.create_playlist(name->value());
 
@@ -88,14 +96,17 @@ PlaylistCreation SavedPlaylistCommands::duplicate(const library::PlaylistId& id)
     }
 
     auto commit = transaction.commit();
+
     return {commit ? std::move(duplicate) : library::PlaylistId{}, std::move(commit)};
 }
 
 library::CommitResult SavedPlaylistCommands::remove(const library::PlaylistId& id)
 {
     library::RepositoryTransaction transaction{repository_, persistence()};
+
     if (!repository_.delete_playlist(id))
         return false;
+
     return transaction.commit();
 }
 

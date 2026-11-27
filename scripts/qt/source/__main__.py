@@ -15,8 +15,10 @@ def main(argv=None) -> int:
     parser.add_argument("workspace", type=Path, nargs="?")
     parser.add_argument("--identity", action="store_true")
     args = parser.parse_args(argv)
+
     if not args.identity and args.workspace is None:
         parser.error("workspace is required to materialize sources")
+
     try:
         pin = QtSourcePin.resolve(args.version)
         print(
@@ -27,6 +29,7 @@ def main(argv=None) -> int:
     except (OSError, ValueError, tarfile.TarError, subprocess.SubprocessError) as error:
         print("Qt source preparation failed: " + str(error), file=sys.stderr)
         return 1
+
     return 0
 
 

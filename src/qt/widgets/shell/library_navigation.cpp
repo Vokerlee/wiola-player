@@ -19,11 +19,13 @@
  */
 
 #include "library_navigation.hpp"
+
+#include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/playlist_name.hpp>
 
 #include <QSignalBlocker>
-#include <qt/widgets/appearance/presentation_tokens.hpp>
-#include <qt/widgets/appearance/theme.hpp>
+
 #include <utility>
 
 namespace wiola::gui {
@@ -73,6 +75,7 @@ LibraryNavigation::LibraryNavigation(QWidget* parent)
     queue_ = new QTreeWidgetItem{this, {"Play queue"}};
     queue_->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     queue_->setToolTip(0, "Tracks queued for playback");
+
     const auto open_queue = [this](QTreeWidgetItem* item, int) {
         if (item == queue_ && queue_observer_)
             queue_observer_();
@@ -89,6 +92,7 @@ LibraryNavigation::LibraryNavigation(QWidget* parent)
                 return;
 
             const QString identity = current->data(0, identity_role).toString();
+
             if (identity.isEmpty())
                 return;
 
@@ -124,6 +128,7 @@ void LibraryNavigation::on_workspace_chosen(std::function<void(library::Workspac
 std::optional<library::PlaylistId> LibraryNavigation::selected_playlist() const
 {
     const QTreeWidgetItem* current = currentItem();
+
     if (current == nullptr || current->parent() != playlists_)
         return {};
 
@@ -134,10 +139,12 @@ bool LibraryNavigation::select_playlist(const library::PlaylistId& id)
 {
     for (int row = 0; row < playlists_->childCount(); ++row) {
         QTreeWidgetItem* candidate = playlists_->child(row);
+
         if (candidate->data(0, identity_role).toString().toStdString() != id.value)
             continue;
 
         setCurrentItem(candidate);
+
         return true;
     }
 
@@ -148,13 +155,16 @@ void LibraryNavigation::show_repository(const library::LibraryRepository& reposi
 {
     const auto selected = selected_playlist();
     const QSignalBlocker blocked{this};
+
     while (playlists_->childCount() != 0)
         delete playlists_->takeChild(0);
 
     for (const library::PlaylistRecord& playlist : repository.playlists())
         entry(*playlists_, playlist_name(playlist), EntryKind::playlist_entry,
             QString::fromStdString(playlist.id.value));
+
     show_activity();
+
     if (selected)
         static_cast<void>(select_playlist(*selected));
 }
@@ -163,6 +173,7 @@ void LibraryNavigation::set_active_playlist(std::optional<library::PlaylistId> i
 {
     if (active_ == id && activity_palette_ == palette().cacheKey())
         return;
+
     activity_palette_ = palette().cacheKey();
     active_ = std::move(id);
     show_activity();

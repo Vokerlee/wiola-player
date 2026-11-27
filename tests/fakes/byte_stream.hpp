@@ -31,9 +31,11 @@ private:
             return media::unexpected{
                 media::Error{media::ErrorCategory::read_failed, "controlled byte read failed"}
             };
+
         const auto count{std::min(out.size(), bytes_.size() - cursor_)};
         std::copy_n(bytes_.begin() + static_cast<std::ptrdiff_t>(cursor_), count, out.begin());
         cursor_ += count;
+
         return count;
     }
 

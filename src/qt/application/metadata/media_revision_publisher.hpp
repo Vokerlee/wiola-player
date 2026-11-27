@@ -21,7 +21,6 @@
 #pragma once
 
 #include <app/metadata/background_metadata.hpp>
-
 #include <qt/queued_delivery.hpp>
 
 #include <map>

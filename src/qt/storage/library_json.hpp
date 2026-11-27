@@ -20,8 +20,9 @@
 
 #pragma once
 
-#include <QtGlobal>
 #include <wiola/library/snapshot.hpp>
+
+#include <QtGlobal>
 
 #include <vector>
 

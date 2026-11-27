@@ -19,7 +19,6 @@
  */
 
 #include <wiola/audio/volume.hpp>
-
 #include <wiola/audio/volume_policy.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -48,6 +47,7 @@ TEST(Volume, UsesItsOwnBoostPolicy)
 {
     wiola::audio::VolumePolicy policy;
     policy.max_boost = 2.0F;
+
     Volume volume{policy};
 
     volume.set_gain(4.0F);

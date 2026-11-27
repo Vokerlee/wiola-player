@@ -108,6 +108,7 @@ public:
     {
         const Frames frames{std::max(minimum_frames, Frames{1})};
         const std::optional<std::size_t> samples{spec.checked_samples_per(frames)};
+
         return samples ? Ring::checked_capacity(*samples) : std::nullopt;
     }
 

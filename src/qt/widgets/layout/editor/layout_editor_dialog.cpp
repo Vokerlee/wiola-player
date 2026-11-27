@@ -19,23 +19,23 @@
  */
 
 #include "layout_editor_dialog.hpp"
-#include <QGuiApplication>
-#include <QScreen>
-#include <QScrollArea>
-#include <QSplitter>
-#include <qt/widgets/layout/layout_tree.hpp>
 
 #include <qt/widgets/layout/layout_builder.hpp>
+#include <qt/widgets/layout/layout_tree.hpp>
 
 #include <QDialogButtonBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QMimeData>
+#include <QScreen>
+#include <QScrollArea>
 #include <QShortcut>
 #include <QSignalBlocker>
+#include <QSplitter>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -65,35 +65,45 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
 {
     setObjectName("buttonLayoutEditor");
     setWindowTitle("Edit button layout");
+
     const QSize preferred{fontMetrics().averageCharWidth() * 152, fontMetrics().height() * 46};
     const auto* screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
     resize(screen ? preferred.boundedTo(screen->availableGeometry().size() * 0.9) : preferred);
 
     palette_ = new ComponentPalette{this};
+
     hierarchy_ = new LayoutHierarchy{this};
+
     auto* add = new QPushButton{"Add action", this};
     add->setObjectName("addLayoutAction");
+
     auto* remove = new QPushButton{"Remove", this};
     remove->setObjectName("removeLayoutComponent");
+
     auto* palette_commands = new QHBoxLayout;
     palette_commands->addWidget(add);
     palette_commands->addWidget(remove);
 
     container_kind_ = new QComboBox{this};
     container_kind_->setObjectName("layoutContainerType");
+
     for (const auto& descriptor : component_descriptors())
         if (descriptor.container)
             container_kind_->addItem(QString::fromLatin1(descriptor.key),
                 static_cast<int>(descriptor.kind));
+
     auto* add_container_button = new QPushButton{"Add container", this};
     add_container_button->setObjectName("addLayoutContainer");
 
     inspector_ = new LayoutPropertyInspector{this};
     inspector_->on_changed([this] { configure_selected(); });
+
     undo_ = new QPushButton{"Undo", this};
     undo_->setObjectName("undoLayoutEdit");
+
     redo_ = new QPushButton{"Redo", this};
     redo_->setObjectName("redoLayoutEdit");
+
     status_ = new QLabel{this};
     status_->setObjectName("layoutEditorStatus");
     status_->setWordWrap(true);
@@ -120,6 +130,7 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     center->addLayout(history);
 
     preview_ = new LayoutPreviewHost{this};
+
     auto* right = new QVBoxLayout;
     right->addWidget(new QLabel{"Properties", this});
     right->addWidget(inspector_);
@@ -129,7 +140,9 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     columns->setObjectName("layoutEditorColumns");
     columns->setAccessibleName("Resizable layout editing panels");
     columns->setChildrenCollapsible(false);
+
     const int character = fontMetrics().averageCharWidth();
+
     for (const auto& [layout, characters] : {
              std::pair{left,   22},
              std::pair{center, 44},
@@ -140,6 +153,7 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
         panel->setMinimumWidth(character * characters);
         columns->addWidget(panel);
     }
+
     columns->setStretchFactor(1, 1);
     columns->setSizes({character * 26, character * 70, character * 40});
 
@@ -148,6 +162,7 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     preview_scroll->setAccessibleName("Scrollable isolated layout preview");
     preview_scroll->setWidgetResizable(true);
     preview_scroll->setWidget(preview_);
+
     auto* rows = new QSplitter{Qt::Vertical, this};
     rows->setObjectName("layoutEditorRows");
     rows->setChildrenCollapsible(false);
@@ -164,6 +179,7 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     scroll->setObjectName("layoutEditorScroll");
     scroll->setAccessibleName("Scrollable layout editing panels");
     scroll->setWidgetResizable(true);
+
     auto* panels = new QWidget;
     panels->setLayout(contents);
     scroll->setWidget(panels);
@@ -180,19 +196,25 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     connect(remove, &QPushButton::clicked, this, &LayoutEditorDialog::remove_selected);
     connect(undo_, &QPushButton::clicked, this,
         [this] { finish_edit(editor_.undo(), selected_id()); });
+
     connect(redo_, &QPushButton::clicked, this,
         [this] { finish_edit(editor_.redo(), selected_id()); });
+
     connect(hierarchy_, &QTreeWidget::itemSelectionChanged, this,
         &LayoutEditorDialog::update_inspector);
+
     connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this, [this] {
         if (!configure_selected())
             return;
+
         if (!apply_observer_ || apply_observer_(editor_.document()))
             accept();
         else
             status_->setText("Could not apply this layout");
+
         status_->setAccessibleDescription(status_->text());
     });
+
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     hierarchy_->on_drop([this](LayoutDrop request) { drop_component(std::move(request)); });
@@ -200,10 +222,12 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     auto* remove_shortcut = new QShortcut{QKeySequence::Delete, hierarchy_};
     remove_shortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(remove_shortcut, &QShortcut::activated, this, &LayoutEditorDialog::remove_selected);
+
     auto* undo_shortcut = new QShortcut{QKeySequence::Undo, hierarchy_};
     undo_shortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(undo_shortcut, &QShortcut::activated, this,
         [this] { finish_edit(editor_.undo(), selected_id()); });
+
     auto* redo_shortcut = new QShortcut{QKeySequence::Redo, hierarchy_};
     redo_shortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(redo_shortcut, &QShortcut::activated, this,
@@ -232,18 +256,22 @@ QString LayoutEditorDialog::selected_id() const
 void LayoutEditorDialog::add_from_palette()
 {
     QListWidgetItem* selected = palette_->currentItem();
+
     if (selected == nullptr)
         return;
 
     const auto action = parse_action(selected->data(action_role).toString());
+
     if (!action)
         return;
 
     QString id = selected_id();
+
     if (id.isEmpty())
         id = editor_.document().root.id;
 
     NodeLocation target = locate_layout_node(editor_.document().root, id);
+
     if (target.node == nullptr)
         return;
 
@@ -273,16 +301,21 @@ void LayoutEditorDialog::insert_action(PlayerAction action, const QString& paren
 void LayoutEditorDialog::add_container()
 {
     NodeLocation target = locate_layout_node(editor_.document().root, selected_id());
+
     if (!target.node)
         return;
+
     const auto kind = static_cast<LayoutComponentKind>(container_kind_->currentData().toInt());
     const QString base = layout_component_name(kind);
     QString id = base;
+
     for (int suffix = 2; locate_layout_node(editor_.document().root, id).node; ++suffix)
         id = base + "-" + QString::number(suffix);
+
     LayoutNode node;
     node.id = id;
     node.kind = kind;
+
     if (container(target.node->kind))
         finish_edit(editor_.insert(target.node->id, target.node->children.size(), node), id);
     else if (target.parent)
@@ -298,10 +331,12 @@ void LayoutEditorDialog::move_selected(int offset)
 {
     const QString id = selected_id();
     NodeLocation location = locate_layout_node(editor_.document().root, id);
+
     if (location.parent == nullptr)
         return;
 
     const auto destination = static_cast<std::ptrdiff_t>(location.index) + offset;
+
     if (destination < 0 ||
         destination >= static_cast<std::ptrdiff_t>(location.parent->children.size()))
         return;
@@ -315,6 +350,7 @@ void LayoutEditorDialog::drop_component(LayoutDrop request)
     const QString id =
         item != nullptr ? item->data(0, identity_role).toString() : editor_.document().root.id;
     NodeLocation target = locate_layout_node(editor_.document().root, id);
+
     if (target.node == nullptr)
         return;
 
@@ -340,18 +376,24 @@ void LayoutEditorDialog::drop_component(LayoutDrop request)
 bool LayoutEditorDialog::configure_selected()
 {
     const auto location = locate_layout_node(editor_.document().root, selected_id());
+
     if (!location.node)
         return true;
+
     const auto configured = inspector_->configuration(*location.node);
+
     if (!configured) {
         status_->setText(inspector_->error());
         return false;
     }
+
     if (*configured == *location.node)
         return true;
+
     const auto id = location.node->id;
     const bool succeeded = editor_.configure(id, *configured);
     finish_edit(succeeded, id);
+
     return succeeded;
 }
 

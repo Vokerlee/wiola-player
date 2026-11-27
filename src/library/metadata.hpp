@@ -20,8 +20,9 @@
 
 #pragma once
 
-#include <string>
 #include <wiola/library/records.hpp>
+
+#include <string>
 
 namespace wiola::library {
 

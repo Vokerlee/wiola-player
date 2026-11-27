@@ -19,11 +19,13 @@
  */
 
 #pragma once
+
+#include <wiola/library/identity.hpp>
+
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
-#include <wiola/library/identity.hpp>
 
 namespace wiola::library {
 

@@ -20,9 +20,10 @@
 
 #pragma once
 
+#include <wiola/library/records.hpp>
+
 #include <string>
 #include <utility>
-#include <wiola/library/records.hpp>
 
 namespace wiola::testing {
 

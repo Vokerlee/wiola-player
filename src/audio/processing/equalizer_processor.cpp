@@ -18,10 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "equalizer_processor.hpp"
-
 #include "biquad.hpp"
 #include "equalizer_parameters.hpp"
+#include "equalizer_processor.hpp"
 
 namespace wiola::audio {
 

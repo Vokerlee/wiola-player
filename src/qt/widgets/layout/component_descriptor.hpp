@@ -19,7 +19,9 @@
  */
 
 #pragma once
+
 #include <QString>
+
 #include <optional>
 #include <span>
 

@@ -32,6 +32,7 @@ EqualizerConfig config_for(BandLayout layout) noexcept
 {
     EqualizerConfig config;
     config.layout = layout;
+
     return config;
 }
 

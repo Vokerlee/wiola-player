@@ -22,6 +22,7 @@
 
 #include "biquad.hpp"
 #include "equalizer_config.hpp"
+
 #include <wiola/media/stream_spec.hpp>
 
 #include <array>

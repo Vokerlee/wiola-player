@@ -36,17 +36,22 @@ TEST(PlaybackContracts, PlaybackPoliciesRejectUnsafeDurationsAndDecodeBlocks)
 {
     using namespace wiola;
     EXPECT_TRUE(engine::BufferingConfig{}.valid());
+
     for (const double seconds : {0.0, -1.0, std::numeric_limits<double>::infinity(),
              std::numeric_limits<double>::quiet_NaN()})
         EXPECT_FALSE(engine::BufferingConfig{.duration = units::Time{seconds}}.valid());
 
     engine::TransportConfig transport;
+
     EXPECT_TRUE(transport.valid());
+
     transport.decode_chunk = pcm::Frames{};
     EXPECT_FALSE(transport.valid());
+
     transport.decode_chunk = pcm::Frames{1};
     transport.poll_interval = std::chrono::milliseconds{};
     EXPECT_FALSE(transport.valid());
+
     transport.poll_interval = std::chrono::milliseconds{-1};
     EXPECT_FALSE(transport.valid());
 }
@@ -55,6 +60,7 @@ TEST(PlaybackContracts, OpenStatusPreservesPortableFailureCategories)
 {
     using wiola::engine::OpenResult;
     using wiola::media::ErrorCategory;
+
     const std::array examples{
         std::pair{ErrorCategory::unsupported,    OpenResult::unsupported},
         std::pair{ErrorCategory::damaged,        OpenResult::damaged    },
@@ -67,6 +73,7 @@ TEST(PlaybackContracts, OpenStatusPreservesPortableFailureCategories)
         std::pair{ErrorCategory::timed_out,      OpenResult::unreadable },
         std::pair{ErrorCategory::limit_exceeded, OpenResult::unreadable },
     };
+
     for (const auto& [category, expected] : examples)
         EXPECT_EQ(wiola::engine::open_failed(category), expected);
 }
@@ -74,7 +81,9 @@ TEST(PlaybackContracts, OpenStatusPreservesPortableFailureCategories)
 TEST(PlaybackContracts, QueueIdentityReservesZeroAndOrdersDistinctOccurrences)
 {
     using wiola::engine::QueueEntryId;
+
     const std::array ids{QueueEntryId{}, QueueEntryId{1}, QueueEntryId{2}};
+
     EXPECT_FALSE(ids[0].valid());
     EXPECT_TRUE(ids[1].valid());
     EXPECT_TRUE(ids[2].valid());
@@ -87,19 +96,25 @@ TEST(PlaybackContracts, QueueIdentityReservesZeroAndOrdersDistinctOccurrences)
 TEST(PlaybackContracts, CompletionSeparatesOutputSetupFromMediaFailure)
 {
     using namespace wiola;
+
     const engine::OperationOutcome success;
+
     EXPECT_FALSE(success.error);
+
     const engine::OperationOutcome media_failure{
         .id = 1,
         .operation = engine::OperationKind::open,
         .error = media::Error{media::ErrorCategory::damaged, "damaged stream"}
     };
+
     ASSERT_TRUE(media_failure.error);
     EXPECT_EQ(engine::open_failed(*media_failure.error), engine::OpenResult::damaged);
     EXPECT_EQ(std::get<media::Error>(*media_failure.error).detail, "damaged stream");
+
     const engine::OperationOutcome device_failure{.id = 2,
         .operation = engine::OperationKind::open,
         .error = engine::OutputSetupError{"device unavailable"}};
+
     ASSERT_TRUE(device_failure.error);
     EXPECT_EQ(engine::open_failed(*device_failure.error), engine::OpenResult::output_unavailable);
     EXPECT_EQ(std::get<engine::OutputSetupError>(*device_failure.error).detail,
@@ -109,10 +124,12 @@ TEST(PlaybackContracts, CompletionSeparatesOutputSetupFromMediaFailure)
 TEST(PlaybackContracts, CompletionRetainsItsOwnFailureAfterTheOriginalChanges)
 {
     using namespace wiola;
+
     engine::OperationError failure{engine::OutputSetupError{"owned diagnostic"}};
     engine::OperationOutcome outcome{.id = 7,
         .operation = engine::OperationKind::open,
         .error = failure};
+
     std::get<engine::OutputSetupError>(failure).detail.clear();
     ASSERT_TRUE(outcome.error);
     EXPECT_EQ(std::get<engine::OutputSetupError>(*outcome.error).detail, "owned diagnostic");
@@ -122,13 +139,17 @@ TEST(PlaybackContracts, CompletionRetainsItsOwnFailureAfterTheOriginalChanges)
 TEST(PlaybackContracts, EntryObservationOwnsFactsAndSharesOnlyImmutableArtwork)
 {
     using namespace wiola;
+
     wiola::media::ResourceReference resource{wiola::testing::resource("original.wav", "original")};
     media::TrackMetadata metadata;
     metadata.title = "original title";
+
     const auto artwork{std::make_shared<const media::Artwork>()};
     const engine::QueueEntry entry{engine::QueueEntryId{7}, resource, metadata, artwork, 3};
+
     resource = {};
     metadata.title.clear();
+
     const auto retained{entry};
 
     EXPECT_EQ(retained.id(), engine::QueueEntryId{7});

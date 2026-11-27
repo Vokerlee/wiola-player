@@ -19,11 +19,14 @@
  */
 
 #pragma once
+
 #include "metadata_conflicts.hpp"
-#include <map>
-#include <set>
+
 #include <wiola/library/metadata.hpp>
 #include <wiola/library/metadata_patch.hpp>
+
+#include <map>
+#include <set>
 
 namespace wiola::app {
 

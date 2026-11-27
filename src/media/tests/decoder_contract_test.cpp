@@ -158,6 +158,7 @@ TEST(AudioDecoder, RejectsInvalidStreamSpecificationsBeforeBackendCalls)
 {
     using wiola::pcm::StreamSpec;
     using wiola::units::Frequency;
+
     const std::array invalid_specs{
         StreamSpec{.sample_rate = Frequency{}},
         StreamSpec{.sample_rate = Frequency{-1}},
@@ -165,9 +166,11 @@ TEST(AudioDecoder, RejectsInvalidStreamSpecificationsBeforeBackendCalls)
         StreamSpec{.sample_rate = Frequency{std::numeric_limits<double>::quiet_NaN()}},
         StreamSpec{.num_channels = 0},
     };
+
     for (const auto& spec : invalid_specs) {
         auto info{exact_stream(wiola::pcm::Frames{4})};
         info.spec = spec;
+
         int calls{0};
         CallbackDecoder decoder{info,
             [&calls](wiola::pcm::Frames wanted) {
@@ -181,13 +184,18 @@ TEST(AudioDecoder, RejectsInvalidStreamSpecificationsBeforeBackendCalls)
         std::array<float, 4> output{1, 2, 3, 4};
         const auto before{output};
         const auto read{decoder.read(output)};
+
         ASSERT_FALSE(read);
         EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
         EXPECT_FALSE(read.error().detail.empty());
+
         const auto rendered{decoder.render(std::span<float>{})};
+
         ASSERT_FALSE(rendered);
         EXPECT_EQ(rendered.error().category, wiola::media::ErrorCategory::damaged);
+
         const auto seek{decoder.seek(wiola::pcm::Frames{})};
+
         ASSERT_FALSE(seek);
         EXPECT_EQ(seek.error().category, wiola::media::ErrorCategory::damaged);
         EXPECT_EQ(output, before);
@@ -201,6 +209,7 @@ TEST(AudioDecoder, RejectsAnExactLengthWithoutAValue)
 {
     auto info{exact_stream(wiola::pcm::Frames{4})};
     info.length.reset();
+
     int calls{0};
     CallbackDecoder decoder{info,
         [&calls](wiola::pcm::Frames wanted) {
@@ -213,9 +222,12 @@ TEST(AudioDecoder, RejectsAnExactLengthWithoutAValue)
         }};
     std::array<float, 4> output{};
     const auto read{decoder.read(output)};
+
     ASSERT_FALSE(read);
     EXPECT_EQ(read.error().category, wiola::media::ErrorCategory::damaged);
+
     const auto seek{decoder.seek(wiola::pcm::Frames{})};
+
     ASSERT_FALSE(seek);
     EXPECT_EQ(seek.error().category, wiola::media::ErrorCategory::damaged);
     EXPECT_EQ(calls, 0);
@@ -250,10 +262,13 @@ TEST(AudioDecoder, EmptyOutputDoesNotExhaustAStreamWithFramesRemaining)
     for (const auto accuracy :
         std::array{LengthAccuracy::exact, LengthAccuracy::estimated, LengthAccuracy::unknown}) {
         SCOPED_TRACE(static_cast<int>(accuracy));
+
         auto info{exact_stream(wiola::pcm::Frames{2})};
         info.length_accuracy = accuracy;
+
         if (accuracy == LengthAccuracy::unknown)
             info.length.reset();
+
         int calls{0};
         CallbackDecoder decoder{info, [&calls](wiola::pcm::Frames wanted) {
                                     ++calls;
@@ -261,12 +276,15 @@ TEST(AudioDecoder, EmptyOutputDoesNotExhaustAStreamWithFramesRemaining)
                                 }};
 
         auto empty{decoder.read(std::span<float>{})};
+
         ASSERT_TRUE(empty);
         EXPECT_EQ(empty->frames, wiola::pcm::Frames{});
         EXPECT_FALSE(empty->end_of_stream);
         EXPECT_FALSE(decoder.exhausted());
         EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{});
+
         auto rendered{decoder.render(std::span<float>{})};
+
         ASSERT_TRUE(rendered);
         EXPECT_EQ(*rendered, 0);
         EXPECT_FALSE(decoder.exhausted());
@@ -274,6 +292,7 @@ TEST(AudioDecoder, EmptyOutputDoesNotExhaustAStreamWithFramesRemaining)
 
         std::array<float, 4> output{};
         auto next{decoder.read(output)};
+
         ASSERT_TRUE(next);
         EXPECT_EQ(next->frames, wiola::pcm::Frames{2});
         EXPECT_EQ(next->end_of_stream, accuracy == LengthAccuracy::exact);
@@ -289,12 +308,15 @@ TEST(AudioDecoder, EmptyOutputReportsAnAlreadyEmptyExactStream)
                                 return wiola::media::DecodeOutcome{};
                             }};
     auto empty{decoder.read(std::span<float>{})};
+
     ASSERT_TRUE(empty);
     EXPECT_EQ(empty->frames, wiola::pcm::Frames{});
     EXPECT_TRUE(empty->end_of_stream);
     EXPECT_TRUE(decoder.exhausted());
     EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{});
+
     auto repeated{decoder.render(std::span<float>{})};
+
     ASSERT_TRUE(repeated);
     EXPECT_EQ(*repeated, 0);
     EXPECT_FALSE(called);
@@ -421,10 +443,12 @@ TEST(AudioDecoder, RejectsInconsistentBackendSeekOutcomesWithoutChangingState)
 {
     using wiola::media::SeekOutcome;
     using wiola::pcm::Frames;
+
     const std::array invalid_outcomes{
         SeekOutcome{.target = Frames{1}, .achieved = Frames{2}, .exact = true },
         SeekOutcome{.target = Frames{1}, .achieved = Frames{5}, .exact = false},
     };
+
     for (const auto& outcome : invalid_outcomes) {
         for (const auto initial : std::array{Frames{2}, Frames{4}}) {
             int calls{0};
@@ -432,11 +456,15 @@ TEST(AudioDecoder, RejectsInconsistentBackendSeekOutcomesWithoutChangingState)
                 [](Frames) { return wiola::media::DecodeOutcome{}; },
                 [&calls, initial, outcome](Frames target) {
                     ++calls;
+
                     if (calls == 1)
                         return SeekOutcome{.target = target, .achieved = initial};
+
                     return outcome;
                 }};
+
             ASSERT_TRUE(decoder.seek(initial));
+
             const bool exhausted{decoder.exhausted()};
 
             const auto sought{decoder.seek(outcome.target)};
@@ -478,9 +506,11 @@ TEST(AudioDecoder, DoesNotBoundInexactSeeksByADurationHint)
 {
     using wiola::media::LengthAccuracy;
     using wiola::pcm::Frames;
+
     for (const auto accuracy : std::array{LengthAccuracy::estimated, LengthAccuracy::unknown}) {
         auto info{exact_stream(Frames{2})};
         info.length_accuracy = accuracy;
+
         CallbackDecoder decoder{info, [](Frames) { return wiola::media::DecodeOutcome{}; },
             [](Frames target) {
                 return wiola::media::SeekOutcome{.target = target,
@@ -503,16 +533,19 @@ TEST(AudioDecoder, AShortReadIsProgressRatherThanEndOfFile)
     std::array<float, 6> output{};
 
     auto first{decoder.read(output)};
+
     ASSERT_TRUE(first);
     EXPECT_EQ(first->frames, wiola::pcm::Frames{1});
     EXPECT_FALSE(first->end_of_stream);
 
     auto second{decoder.read(output)};
+
     ASSERT_TRUE(second);
     EXPECT_EQ(second->frames, wiola::pcm::Frames{1});
     EXPECT_FALSE(second->end_of_stream);
 
     auto third{decoder.read(output)};
+
     ASSERT_TRUE(third);
     EXPECT_EQ(third->frames, wiola::pcm::Frames{1});
     EXPECT_TRUE(third->end_of_stream);
@@ -524,6 +557,7 @@ TEST(AudioDecoder, ACorruptTailIsAFailureRatherThanEndOfFile)
     std::array<float, 4> output{};
 
     ASSERT_TRUE(decoder.read(output));
+
     auto tail{decoder.read(output)};
 
     ASSERT_FALSE(tail);
@@ -537,12 +571,14 @@ TEST(AudioDecoder, EstimatedLengthDoesNotClampOutputOrCauseFalseDamage)
     std::array<float, 4> output{};
 
     auto first{decoder.read(output)};
+
     ASSERT_TRUE(first);
     EXPECT_EQ(first->frames, wiola::pcm::Frames{2});
     EXPECT_FALSE(first->end_of_stream);
     EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{2});
 
     auto beyond_estimate{decoder.read(output)};
+
     ASSERT_TRUE(beyond_estimate);
     EXPECT_EQ(beyond_estimate->frames, wiola::pcm::Frames{2});
     EXPECT_FALSE(beyond_estimate->end_of_stream);
@@ -550,6 +586,7 @@ TEST(AudioDecoder, EstimatedLengthDoesNotClampOutputOrCauseFalseDamage)
     EXPECT_EQ(decoder.num_frames_left(), wiola::pcm::Frames{});
 
     auto end{decoder.read(output)};
+
     ASSERT_TRUE(end);
     EXPECT_EQ(end->frames, wiola::pcm::Frames{});
     EXPECT_TRUE(end->end_of_stream);
@@ -599,6 +636,7 @@ TEST(AudioDecoder, AllowsSeekBeyondEstimatedOrUnknownLength)
         auto info{exact_stream(wiola::pcm::Frames{1})};
         info.length_accuracy = estimated ? wiola::media::LengthAccuracy::estimated
                                          : wiola::media::LengthAccuracy::unknown;
+
         if (!estimated)
             info.length.reset();
 
@@ -608,7 +646,9 @@ TEST(AudioDecoder, AllowsSeekBeyondEstimatedOrUnknownLength)
         };
 
         EXPECT_EQ(decoder.duration_frames(), info.length);
+
         const auto sought{decoder.seek(wiola::pcm::Frames{8})};
+
         ASSERT_TRUE(sought);
         EXPECT_EQ(sought->achieved, wiola::pcm::Frames{8});
         EXPECT_EQ(decoder.position_frames(), wiola::pcm::Frames{8});
@@ -646,6 +686,7 @@ TEST(AudioDecoder, ARejectedBackendSeekPreservesTheCommittedPosition)
             return wiola::media::SeekOutcome{.target = target, .achieved = target};
         },
     };
+
     ASSERT_TRUE(decoder.seek(wiola::pcm::Frames{2}));
 
     const auto refused{decoder.seek(wiola::pcm::Frames{1})};

@@ -18,13 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "workspace_scanner.hpp"
 #include "native_workspace_files.hpp"
+#include "workspace_scanner.hpp"
+
 #include <app/library/local_identity.hpp>
-#include <set>
 
 #include <algorithm>
 #include <cctype>
+#include <set>
 #include <stdexcept>
 #include <utility>
 
@@ -35,8 +36,10 @@ namespace {
 bool supported(const std::filesystem::path& path, const std::vector<std::string>& extensions)
 {
     const auto stem = path.stem().u8string();
+
     if (stem.ends_with(u8".wiola-writing"))
         return false;
+
     std::string extension = path.extension().string();
     std::ranges::transform(extension, extension.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -63,6 +66,7 @@ void WorkspaceScanner::stop()
 {
     stopped_permanently_ = true;
     cancel();
+
     if (worker_.joinable())
         worker_.join();
 }
@@ -73,12 +77,14 @@ std::uint64_t WorkspaceScanner::start(const library::WorkspaceRecord& workspace,
 {
     if (stopped_permanently_)
         return 0;
+
     cancel();
 
     if (worker_.joinable())
         worker_.join();
 
     stopped_ = {};
+
     const std::uint64_t generation = ++generation_;
     const std::stop_token stopped = stopped_.get_token();
     worker_ = std::jthread{
@@ -109,6 +115,7 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
     std::uint64_t generation, const std::vector<library::TrackRecord>& known) const
 {
     std::error_code error;
+
     if (!std::filesystem::is_directory(workspace.root, error) || error) {
         observer({.workspace = workspace.id,
             .generation = generation,
@@ -118,6 +125,7 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
             .directories = {}});
         return;
     }
+
     if (supported_extensions.empty()) {
         observer({.workspace = workspace.id,
             .generation = generation,
@@ -127,14 +135,18 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
             .directories = {}});
         return;
     }
+
     for (auto& extension : supported_extensions)
         std::ranges::transform(extension, extension.begin(),
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
     // Format qualification governs imports, not whether an already known file still exists.
     std::set<std::string> known_locations;
+
     for (const auto& track : known)
         for (const auto& location : track.locations)
             known_locations.insert(app::media_id_for(location).value);
+
     NativeWorkspaceFiles files;
     WorkspaceDiscovery discovery{files, workspace.root, known, stopped};
     WorkspaceScanBatch batch{.workspace = workspace.id,
@@ -160,11 +172,14 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
     const auto accept = [&](const std::filesystem::directory_entry& entry) {
         if (stopped.stop_requested())
             return false;
+
         if (++visited > policy_.max_entries) {
             failure = WorkspaceScanError::limit_exceeded;
             return false;
         }
+
         std::error_code type_error;
+
         if (entry.is_directory(type_error) && workspace.recursive) {
             if (++directories > policy_.max_directories) {
                 failure = WorkspaceScanError::limit_exceeded;
@@ -180,17 +195,22 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
             }
             batch.entries.push_back(discovery.resolve(entry.path().lexically_normal()));
         }
+
         if (type_error) {
             failure = WorkspaceScanError::io;
             return false;
         }
+
         if (batch.entries.size() >= policy_.batch_size ||
             batch.directories.size() >= policy_.batch_size)
             flush(WorkspaceScanStatus::running);
+
         if (policy_.after_entry)
             policy_.after_entry(entry.path(), visited, stopped);
+
         return !stopped.stop_requested();
     };
+
     if (workspace.recursive) {
         std::filesystem::recursive_directory_iterator current{workspace.root, error}, end;
         while (!error && current != end) {
@@ -206,6 +226,7 @@ void WorkspaceScanner::scan(std::stop_token stopped, const library::WorkspaceRec
             current.increment(error);
         }
     }
+
     if (stopped.stop_requested())
         flush(WorkspaceScanStatus::cancelled);
     else if (error || failure != WorkspaceScanError::none)

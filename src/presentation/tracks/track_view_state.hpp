@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <wiola/library/search.hpp>
 #include <wiola/presentation/tracks/track_sort.hpp>
 

@@ -18,21 +18,23 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/decoder.hpp>
+#include <fakes/output.hpp>
+#include <fakes/provider.hpp>
+#include <wiola/app/playback/equalizer_control.hpp>
+#include <wiola/app/playback/volume_control.hpp>
+
+#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <fakes/decoder.hpp>
-#include <fakes/output.hpp>
-#include <fakes/provider.hpp>
-#include <gtest/gtest.h>
 #include <map>
 #include <mutex>
 #include <semaphore>
 #include <stdexcept>
 #include <thread>
-#include <wiola/app/playback/equalizer_control.hpp>
-#include <wiola/app/playback/volume_control.hpp>
 
 #if defined(QT_CORE_LIB) || defined(QT_GUI_LIB) || defined(QT_WIDGETS_LIB)
 #error Portable playback composition must not depend on Qt.
@@ -95,15 +97,19 @@ TEST_F(PlaybackPreferencesPolicy, StartupAppliesAllSettingsWithoutWritingThemBac
 {
     app::VolumeControl volume{playback, store};
     app::EqualizerControl equalizer{playback, store};
+
     volume.apply_restored(volume.scale().full_position / 2, true);
+
     const std::vector gains{3.0F};
     equalizer.apply_restored(false, gains);
     EXPECT_FLOAT_EQ(playback.volume(), 0.25F);
     EXPECT_TRUE(volume.boosted());
     EXPECT_FALSE(equalizer.enabled());
     EXPECT_FLOAT_EQ(equalizer.band_gain(0), gains.front());
+
     for (std::size_t index = 1; index < playback.equalizer_config().layout.count; ++index)
         EXPECT_FLOAT_EQ(equalizer.band_gain(index), 0.0F);
+
     EXPECT_EQ(store.writes, 0U);
 }
 
@@ -113,10 +119,12 @@ TEST_F(PlaybackPreferencesPolicy, TheStoreReceivesTheClampedVolumeAndBoostState)
     volume.set_boosted(true);
     volume.set_position(volume.max_position());
     EXPECT_GT(store.values.volume_position, volume.scale().full_position);
+
     volume.set_boosted(false);
     EXPECT_FALSE(store.values.boosted);
     EXPECT_EQ(store.values.volume_position, volume.scale().full_position);
     EXPECT_FLOAT_EQ(playback.volume(), 1.0F);
+
     volume.set_position(-1);
     EXPECT_EQ(store.values.volume_position, 0);
     EXPECT_FLOAT_EQ(playback.volume(), 0.0F);
@@ -127,6 +135,7 @@ TEST_F(PlaybackPreferencesPolicy, TheStoreReceivesTheGainAcceptedByTheAudioPolic
     app::EqualizerControl equalizer{playback, store};
     equalizer.set_enabled(false);
     EXPECT_FALSE(store.values.equalizer_enabled);
+
     equalizer.set_band_gain(0, equalizer.max_band_gain() * 2);
     ASSERT_EQ(store.bands.size(), 1U);
     EXPECT_FLOAT_EQ(store.bands.at(0), equalizer.max_band_gain());
@@ -145,11 +154,13 @@ TEST_F(PlaybackPreferencesPolicy, AStoreFailureDoesNotRollBackAlreadyAppliedAudi
 {
     app::VolumeControl volume{playback, store};
     app::EqualizerControl equalizer{playback, store};
+
     store.fail = true;
     EXPECT_THROW(volume.set_position(0), std::logic_error);
     EXPECT_FLOAT_EQ(playback.volume(), 0.0F);
     EXPECT_THROW(equalizer.set_enabled(false), std::logic_error);
     EXPECT_FALSE(playback.equalizer_enabled());
+
     store.fail = false;
     volume.set_position(volume.scale().full_position);
     equalizer.set_enabled(true);
@@ -162,6 +173,7 @@ TEST_F(PlaybackPreferencesPolicy, StartupClampsAnUnboundedRestoredPositionToTheA
     app::VolumeControl volume{playback, store};
     volume.apply_restored(volume.scale().full_position * 100, false);
     EXPECT_EQ(volume.position(), volume.max_position());
+
     volume.apply_restored(-1, true);
     EXPECT_EQ(volume.position(), 0);
     EXPECT_EQ(store.writes, 0U);
@@ -173,6 +185,7 @@ TEST_F(PlaybackPreferencesPolicy, FailedBoostStorageStillLeavesRuntimeVolumeWith
     volume.set_boosted(true);
     volume.set_position(volume.max_position());
     ASSERT_GT(volume.position(), volume.scale().full_position);
+
     store.fail = true;
 
     EXPECT_THROW(volume.set_boosted(false), std::logic_error);
@@ -186,8 +199,10 @@ template<typename Ready>
 bool wait_for(Ready ready)
 {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
     while (!ready() && std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
+
     return ready();
 }
 
@@ -195,7 +210,9 @@ bool complete_open(app::PlaybackService& playback)
 {
     if (!wait_for([&] { return !playback.reading(); }))
         return false;
+
     playback.pump();
+
     return true;
 }
 
@@ -212,34 +229,43 @@ TEST(PlaybackComposition, ProviderNamespacesRemainDistinctAcrossLoadsAndPersiste
             [&](const media::ResourceReference& resource,
                 const media::OperationContext&) -> media::DecoderOpenResult {
                 const std::lock_guard lock{decoded_mutex};
+
                 decoded.push_back(resource);
+
                 return std::unique_ptr<media::AudioDecoder>{
                     std::make_unique<wiola::testing::FakeDecoder>()};
             },
             [](const media::ResourceReference& resource, const media::OperationContext&) {
                 media::Metadata metadata;
                 metadata.track.title = resource.label();
+
                 return metadata;
             }
         );
         retained_provider = provider;
+
         wiola::testing::FakeOutput* device{};
         app::PlaybackService playback{[&](audio::Source&) {
                                           auto output =
                                               std::make_unique<wiola::testing::FakeOutput>();
                                           device = output.get();
+
                                           return output;
                                       },
             provider};
+
         provider.reset();
+
         app::VolumeControl volume{playback, store};
         app::EqualizerControl equalizer{playback, store};
         const std::vector restored_gains{2.0F};
+
         volume.apply_restored(volume.scale().full_position / 2, false);
         equalizer.apply_restored(false, restored_gains);
         EXPECT_EQ(store.writes, 0U);
 
         const auto accepted = playback.open({first, second});
+
         ASSERT_EQ(accepted.acceptance, engine::CommandResult::accepted);
         ASSERT_TRUE(complete_open(playback));
         ASSERT_TRUE(playback.loaded());
@@ -270,7 +296,9 @@ TEST(PlaybackComposition, ProviderNamespacesRemainDistinctAcrossLoadsAndPersiste
         EXPECT_EQ(playback.track(), second);
     }
     EXPECT_TRUE(retained_provider.expired());
+
     const std::lock_guard lock{decoded_mutex};
+
     ASSERT_EQ(decoded, (std::vector{first, second}));
     EXPECT_EQ(decoded.front().label(), first.label());
     EXPECT_EQ(decoded.back().label(), second.label());
@@ -292,7 +320,9 @@ TEST(PlaybackComposition, FailureDiagnosticsOutliveTheirProviderAndService)
             }
         );
         retained_provider = provider;
+
         app::PlaybackService playback{wiola::testing::passive_output, provider};
+
         provider.reset();
         accepted = playback.open({
             media::ResourceReference{"custom", "remote:42", "Remote"}
@@ -300,15 +330,20 @@ TEST(PlaybackComposition, FailureDiagnosticsOutliveTheirProviderAndService)
         ASSERT_EQ(accepted.acceptance, engine::CommandResult::accepted);
         ASSERT_TRUE(complete_open(playback));
         EXPECT_FALSE(playback.loaded());
+
         outcomes = playback.take_outcomes();
     }
     EXPECT_TRUE(retained_provider.expired());
+
     const auto failure = std::ranges::find_if(outcomes.values, [&](const auto& outcome) {
         return outcome.operation == engine::OperationKind::open && outcome.id == accepted.id;
     });
+
     ASSERT_NE(failure, outcomes.values.end());
     ASSERT_TRUE(failure->error);
+
     const auto* error = std::get_if<media::Error>(&*failure->error);
+
     ASSERT_NE(error, nullptr);
     EXPECT_EQ(error->category, media::ErrorCategory::unreadable);
     EXPECT_EQ(error->detail, diagnostic);
@@ -326,18 +361,24 @@ TEST(PlaybackComposition, DestructionCancelsAndJoinsASuppliedProviderBeforeRelea
             [&](const media::ResourceReference&,
                 const media::OperationContext& context) -> media::DecoderOpenResult {
                 std::unique_lock lock{mutex};
+
                 entered.release();
                 waiting.wait(lock, context.stop, [] { return false; });
                 cancelled.store(context.stop.stop_requested());
+
                 return media::unexpected{context.error()};
             }
         );
         retained_provider = provider;
+
         app::PlaybackService playback{wiola::testing::passive_output, provider};
+
         provider.reset();
+
         const auto accepted = playback.open({
             media::ResourceReference{"custom", "pending", "Pending"}
         });
+
         ASSERT_EQ(accepted.acceptance, engine::CommandResult::accepted);
         ASSERT_TRUE(entered.try_acquire_for(std::chrono::seconds{5}));
         EXPECT_FALSE(cancelled.load());

@@ -19,9 +19,11 @@
  */
 
 #pragma once
-#include <QSaveFile>
+
 #include <qt/storage/atomic_file_store.hpp>
 #include <wiola/qt/paths.hpp>
+
+#include <QSaveFile>
 
 namespace wiola::testing {
 

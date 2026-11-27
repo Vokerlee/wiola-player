@@ -18,10 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <allocation_failure.hpp>
 #include <wiola/app/library/playlist_destination.hpp>
 
-#include <allocation_failure.hpp>
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <new>
 #include <vector>
@@ -83,11 +84,15 @@ TEST(PlaylistDestination, FailedNotificationPreparationCannotPublishAnUnobserved
     const wiola::library::PlaylistId next{std::string(128, 'n')};
     bool reached_success{};
     constexpr std::size_t maximum_allocation_points = 32;
+
     for (std::size_t point = 0; point < maximum_allocation_points; ++point) {
         wiola::app::PlaylistDestination active;
+
         ASSERT_TRUE(active.set(previous));
+
         bool notified{};
         active.on_changed([&](auto) { notified = true; });
+
         bool failed{};
         {
             wiola::testing::AllocationFailure failure{point,
@@ -98,16 +103,19 @@ TEST(PlaylistDestination, FailedNotificationPreparationCannotPublishAnUnobserved
                 failed = true;
             }
         }
+
         if (failed) {
             EXPECT_EQ(active.id(), previous);
             EXPECT_FALSE(notified);
         } else {
             EXPECT_EQ(active.id(), next);
             EXPECT_TRUE(notified);
+
             reached_success = true;
             break;
         }
     }
+
     EXPECT_TRUE(reached_success);
 }
 #endif
@@ -124,6 +132,7 @@ TEST(PlaylistDestination, AnObserverMayReplaceItselfWithoutResettingTheActiveCal
     ASSERT_TRUE(destination.set({"second"}));
     ASSERT_TRUE(destination.clear_if({"second"}));
     EXPECT_EQ(calls, (std::vector{1, 11, 12}));
+
     destination.on_changed({});
     ASSERT_TRUE(destination.set({"third"}));
     EXPECT_EQ(calls.size(), 3U);

@@ -19,7 +19,6 @@
  */
 
 #include <processing/biquad.hpp>
-
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 

@@ -18,9 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/codecs/ffmpeg/input.hpp>
-
 #include <fixtures/temporary_directory.hpp>
+#include <media/codecs/ffmpeg/input.hpp>
 #include <support/allocation_failure.hpp>
 #include <wiola/media/local/file_stream.hpp>
 
@@ -174,6 +173,7 @@ std::vector<std::byte> fixture_bytes(const char* name = "tone.wav")
         std::istreambuf_iterator<char>{}};
     std::vector<std::byte> bytes(chars.size());
     std::memcpy(bytes.data(), chars.data(), chars.size());
+
     return bytes;
 }
 
@@ -183,7 +183,9 @@ TEST(FfmpegInput, OpensAUnicodeLocalPathThroughCustomIo)
     const auto path{directory.path() / std::filesystem::path{u8"музыка_файл.wav"}};
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.wav", path,
         std::filesystem::copy_options::overwrite_existing);
+
     auto stream{wiola::media::LocalFileStream::open(path)};
+
     ASSERT_TRUE(stream);
 
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(*stream))};
@@ -197,7 +199,9 @@ TEST(FfmpegInput, RejectsEverySecondaryOpen)
 {
     auto input{
         wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+
     ASSERT_TRUE(input);
+
     AVIOContext* nested{nullptr};
 
     const int result{(*input)->format()->io_open((*input)->format(), &nested,
@@ -255,11 +259,15 @@ wiola::media::Result<wiola::codec::ffmpeg::FfmpegStreamFacts> inspect_fixture(co
 {
     auto stream{
         wiola::media::LocalFileStream::open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / name)};
+
     if (!stream)
         return wiola::media::unexpected{stream.error()};
+
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(*stream))};
+
     if (!input)
         return wiola::media::unexpected{input.error()};
+
     return (*input)->inspect();
 }
 
@@ -309,24 +317,31 @@ TEST(FfmpegInspection, DoesNotScanLargeInputsDuringStartup)
 {
     auto bytes{fixture_bytes()};
     std::size_t data_marker{0};
+
     for (std::size_t index{0}; index + 4 <= bytes.size(); ++index) {
         if (std::memcmp(bytes.data() + index, "data", 4) == 0) {
             data_marker = index;
             break;
         }
     }
+
     ASSERT_NE(data_marker, 0U);
+
     const std::size_t payload_offset{data_marker + 8};
+
     bytes.resize(1024 * 1024);
+
     const auto write_size{[&](std::size_t offset, std::size_t value) {
         for (std::size_t byte{0}; byte < 4; ++byte)
             bytes[offset + byte] = static_cast<std::byte>(value >> (byte * 8));
     }};
     write_size(4, bytes.size() - 8);
     write_size(data_marker + 4, bytes.size() - payload_offset);
+
     auto stream{std::make_unique<FaultyStream>(std::move(bytes))};
     auto* observer{stream.get()};
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
 
     auto facts{(*input)->inspect()};
@@ -384,7 +399,9 @@ TEST(FfmpegInput, RejectsInvalidCallbackArguments)
 {
     auto input{
         wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+
     ASSERT_TRUE(input);
+
     auto* io{(*input)->format()->pb};
     std::uint8_t byte{0};
 
@@ -402,8 +419,11 @@ TEST(FfmpegInput, TurnsReadExceptionsIntoStableMediaErrors)
     auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
     auto* observer{stream.get()};
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
+
     observer->throw_reads();
+
     auto* io{(*input)->format()->pb};
     std::uint8_t byte{0};
 
@@ -419,8 +439,11 @@ TEST(FfmpegInput, PreservesSeekFailuresFromTheByteStream)
     auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
     auto* observer{stream.get()};
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
+
     observer->fail_seeks();
+
     auto* io{(*input)->format()->pb};
 
     const auto result{io->seek(io->opaque, 0, SEEK_SET)};
@@ -435,8 +458,11 @@ TEST(FfmpegInput, PreservesTellFailuresAfterASuccessfulSeek)
     auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
     auto* observer{stream.get()};
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
+
     observer->fail_tell(3);
+
     auto* io{(*input)->format()->pb};
 
     const auto result{io->seek(io->opaque, 0, SEEK_SET)};
@@ -451,8 +477,11 @@ TEST(FfmpegInput, RejectsCallbackPositionsOutsideFfmpegOffsets)
     auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
     auto* observer{stream.get()};
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
+
     observer->oversized_next_tell();
+
     auto* io{(*input)->format()->pb};
 
     const auto result{io->seek(io->opaque, 0, SEEK_SET)};
@@ -465,8 +494,11 @@ TEST(FfmpegInput, TurnsSeekExceptionsIntoStableMediaErrors)
     auto stream{std::make_unique<FaultyStream>(fixture_bytes())};
     auto* observer{stream.get()};
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
+
     observer->throw_seeks();
+
     auto* io{(*input)->format()->pb};
 
     const auto result{io->seek(io->opaque, 0, SEEK_SET)};
@@ -482,11 +514,14 @@ TEST(FfmpegInput, InspectionPreservesAnInjectedIoFailure)
     auto* observer{stream.get()};
 
     auto input{wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream))};
+
     ASSERT_TRUE(input);
 
     observer->fail_reads();
+
     auto* io{(*input)->format()->pb};
     std::uint8_t byte{0};
+
     ASSERT_EQ(io->read_packet(io->opaque, &byte, 1), AVERROR(EIO));
 
     auto facts{
@@ -500,6 +535,7 @@ TEST(FfmpegInput, InspectionReportsDamageWhenFfmpegFailsWithoutAnIoError)
 {
     auto input{
         wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()))};
+
     ASSERT_TRUE(input);
 
     auto facts{
@@ -513,6 +549,7 @@ TEST(FfmpegInput, RejectsAnAlreadyCancelledOpen)
 {
     std::stop_source stop;
     stop.request_stop();
+
     const wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
 
     auto input{
@@ -528,16 +565,20 @@ std::stop_source inspection_stop;
 TEST(FfmpegInput, HonorsTheFfmpegInterruptCallbackDuringInspection)
 {
     inspection_stop = std::stop_source{};
+
     const wiola::media::OperationContext context{.stop = inspection_stop.get_token(),
         .deadline = {}};
     auto input{
         wiola::codec::ffmpeg::FfmpegInput::open(std::make_unique<FaultyStream>(fixture_bytes()),
             context)};
+
     ASSERT_TRUE(input);
 
     auto facts{(*input)->inspect([](AVFormatContext* format, AVDictionary**) {
         inspection_stop.request_stop();
+
         const auto interrupt{format->interrupt_callback};
+
         return interrupt.callback(interrupt.opaque) ? AVERROR_EXIT : 0;
     })};
 
@@ -553,8 +594,11 @@ TEST(FfmpegInput, ReadExceptionTranslationSurvivesPersistentAllocationFailure)
     auto stream = std::make_unique<FaultyStream>(fixture_bytes());
     auto* observed = stream.get();
     auto input = wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream));
+
     ASSERT_TRUE(input);
+
     observed->throw_reads();
+
     auto* io = (*input)->format()->pb;
     std::uint8_t byte{};
     int result{};
@@ -572,8 +616,11 @@ TEST(FfmpegInput, SeekExceptionTranslationSurvivesPersistentAllocationFailure)
     auto stream = std::make_unique<FaultyStream>(fixture_bytes());
     auto* observed = stream.get();
     auto input = wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream));
+
     ASSERT_TRUE(input);
+
     observed->throw_seeks();
+
     auto* io = (*input)->format()->pb;
     std::int64_t result{};
     {
@@ -591,12 +638,19 @@ TEST(FfmpegInput, LaterSeekFailurePreservesTheFirstReadDiagnostic)
     auto stream = std::make_unique<FaultyStream>(fixture_bytes());
     auto* observed = stream.get();
     auto input = wiola::codec::ffmpeg::FfmpegInput::open(std::move(stream));
+
     ASSERT_TRUE(input);
+
     auto* io = (*input)->format()->pb;
+
     observed->fail_reads();
+
     std::uint8_t byte{};
+
     ASSERT_EQ(io->read_packet(io->opaque, &byte, 1), AVERROR(EIO));
+
     const auto first = *(*input)->io_error();
+
     observed->throw_seeks();
     EXPECT_EQ(io->seek(io->opaque, 0, SEEK_SET), AVERROR(EIO));
     ASSERT_TRUE((*input)->io_error());

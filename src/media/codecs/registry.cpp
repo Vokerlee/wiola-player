@@ -37,6 +37,7 @@ std::string lowercased_extension(const std::filesystem::path& path)
     std::string extension{path.extension().string()};
     std::ranges::transform(extension, extension.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
     return extension;
 }
 
@@ -68,6 +69,7 @@ MediaBackendRegistry::metadata_write_capabilities(const std::filesystem::path& p
 std::vector<std::string> MediaBackendRegistry::playback_extensions() const
 {
     std::vector<std::string> extensions;
+
     for (const Backend& backend : backends_) {
         if (!backend.capabilities.playback)
             continue;
@@ -75,8 +77,10 @@ std::vector<std::string> MediaBackendRegistry::playback_extensions() const
             for (const std::string& extension : format.extensions)
                 extensions.push_back(extension);
     }
+
     std::ranges::sort(extensions);
     extensions.erase(std::unique(extensions.begin(), extensions.end()), extensions.end());
+
     return extensions;
 }
 
@@ -122,6 +126,7 @@ media::DecoderOpenResult MediaBackendRegistry::open(const std::filesystem::path&
             claimed = claimed || reason == Match::signature;
 
             auto opened{backend.open(path, context)};
+
             if (opened)
                 return opened;
 

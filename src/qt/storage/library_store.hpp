@@ -19,8 +19,10 @@
  */
 
 #pragma once
+
 #include "atomic_file_store.hpp"
 #include "library_json.hpp"
+
 #include <wiola/library/in_memory_repository.hpp>
 
 namespace wiola::persistence::qt {

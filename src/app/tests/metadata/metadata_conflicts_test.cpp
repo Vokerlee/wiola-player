@@ -18,11 +18,13 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
-#include <stdexcept>
-#include <vector>
 #include <wiola/app/metadata/metadata_conflicts.hpp>
 #include <wiola/library/in_memory_repository.hpp>
+
+#include <gtest/gtest.h>
+
+#include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -32,6 +34,7 @@ protected:
     {
         expected = {.metadata_revision = 4, .content_revision = 2, .fingerprint = "captured"};
         observed = expected.fingerprint;
+
         wiola::library::TrackRecord track;
         track.id = media;
         track.locations = {location};
@@ -60,9 +63,12 @@ protected:
 TEST_F(MetadataConflicts, AcceptsMatchingExpectedState)
 {
     auto check = detector();
+
     EXPECT_EQ(check.check(repository, media, expected), wiola::app::MetadataConflictKind::none);
     EXPECT_EQ(requested, (std::vector<std::filesystem::path>{location}));
+
     const std::filesystem::path supplied{"explicit-location"};
+
     EXPECT_EQ(check.check(repository, media, expected, supplied),
         wiola::app::MetadataConflictKind::none);
     EXPECT_EQ(requested.back(), supplied);
@@ -76,6 +82,7 @@ TEST_F(MetadataConflicts, DetectsMetadataAndContentRevisionChangesWithoutReading
     ASSERT_TRUE(repository.put_track(updated));
     EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::metadata_changed);
+
     updated.metadata_revision = expected.metadata_revision;
     ++updated.content_revision;
     ASSERT_TRUE(repository.put_track(updated));
@@ -87,11 +94,13 @@ TEST_F(MetadataConflicts, DetectsMetadataAndContentRevisionChangesWithoutReading
 TEST_F(MetadataConflicts, DetectsChangedTokensMissingTracksAndUnavailableSources)
 {
     auto check = detector();
+
     observed = "changed";
     EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::content_changed);
     EXPECT_EQ(check.check(repository, wiola::library::MediaId{"missing"}, expected),
         wiola::app::MetadataConflictKind::missing_media);
+
     observed.reset();
     EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::unreadable);
@@ -100,14 +109,17 @@ TEST_F(MetadataConflicts, DetectsChangedTokensMissingTracksAndUnavailableSources
 TEST_F(MetadataConflicts, RequiresAReaderAndLocationOnlyWhenAFingerprintWasCaptured)
 {
     wiola::app::MetadataConflictDetector unavailable;
+
     EXPECT_EQ(unavailable.check(repository, media, expected),
         wiola::app::MetadataConflictKind::unreadable);
+
     auto check = detector();
     auto updated = *repository.track(media);
     updated.locations.clear();
     ASSERT_TRUE(repository.put_track(updated));
     EXPECT_EQ(check.check(repository, media, expected),
         wiola::app::MetadataConflictKind::unreadable);
+
     expected.fingerprint.clear();
     EXPECT_EQ(check.check(repository, media, expected), wiola::app::MetadataConflictKind::none);
     EXPECT_TRUE(requested.empty());

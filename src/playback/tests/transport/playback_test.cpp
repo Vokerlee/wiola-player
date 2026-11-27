@@ -70,6 +70,7 @@ TEST(Playback, BeginsAgainAfterPlaybackHasFinished)
     Playback playback;
 
     ASSERT_TRUE(playback.begin());
+
     playback.finish(TerminalReason::ended);
 
     EXPECT_TRUE(playback.begin());
@@ -139,6 +140,7 @@ TEST(Playback, RefusesToPauseOrResumeWhatHasFinished)
     Playback playback;
 
     ASSERT_TRUE(playback.begin());
+
     playback.finish(TerminalReason::ended);
 
     EXPECT_FALSE(playback.pause());
@@ -177,6 +179,7 @@ TEST(Playback, BeginsAgainAfterAFault)
     Playback playback;
 
     ASSERT_TRUE(playback.begin());
+
     playback.finish(TerminalReason::faulted);
 
     EXPECT_TRUE(playback.begin());
@@ -246,6 +249,7 @@ TEST(Playback, SettlesOnOneFinalStateWhenBothAreAskedAtOnce)
         playback.finish(TerminalReason::stopped);
 
         const State settled{playback.state()};
+
         ASSERT_TRUE(settled == State::ended || settled == State::stopped) << "at round " << round;
 
         // The other thread may still be inside its own finish; it may not take.

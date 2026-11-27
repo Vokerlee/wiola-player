@@ -23,9 +23,8 @@
 #include <wiola/foundation/handle.hpp>
 #include <wiola/media/stream_spec.hpp>
 
-#include <utility>
-
 #include <cstddef>
+#include <utility>
 
 namespace wiola::audio {
 

@@ -19,13 +19,16 @@
  */
 
 #pragma once
+
+#include <qt/storage/atomic_file_store.hpp>
+#include <wiola/qt/paths.hpp>
+
 #include <QSaveFile>
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <qt/storage/atomic_file_store.hpp>
 #include <thread>
-#include <wiola/qt/paths.hpp>
 
 namespace wiola::testing {
 
@@ -46,6 +49,7 @@ struct AtomicWriteGate {
     void release()
     {
         std::lock_guard lock{mutex};
+
         released = true;
         changed.notify_all();
     }
@@ -73,6 +77,7 @@ public:
     {
         if (primary_) {
             std::unique_lock lock{gate_.mutex};
+
             gate_.writer = std::this_thread::get_id();
             ++gate_.primary_writes;
             gate_.entered = true;

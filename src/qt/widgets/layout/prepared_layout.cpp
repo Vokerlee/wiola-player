@@ -18,14 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "prepared_layout.hpp"
 #include "layout_widget_operations.hpp"
+#include "prepared_layout.hpp"
+
 #include <QApplication>
 #include <QLayout>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
+
 #include <algorithm>
 
 namespace wiola::gui {
@@ -36,12 +38,14 @@ bool PreparedLayout::ready(QWidget* parent) const
 {
     if (!root_)
         return false;
+
     for (const auto& attachment : attachments_) {
         if (!attachment.widget || !accepts_dimensions(*attachment.widget, attachment.node) ||
             attachment.widget->parentWidget() != attachment.original_parent ||
             (parent && (attachment.widget == parent || attachment.widget->isAncestorOf(parent))))
             return false;
     }
+
     return true;
 }
 
@@ -49,15 +53,21 @@ QWidget* PreparedLayout::attach(QWidget* parent)
 {
     if (!ready(parent))
         return nullptr;
+
     QPointer<QWidget> focus = QApplication::focusWidget();
     std::vector<QSignalBlocker> blocked;
     blocked.reserve(attachments_.size());
+
     for (const auto& attachment : attachments_)
         blocked.emplace_back(attachment.widget.data());
+
     QWidget* root = root_.release();
+
     if (parent)
         root->setParent(parent);
+
     std::vector<std::pair<QWidget*, QWidget*>> selections;
+
     for (const LayoutAttachment& attachment : attachments_) {
         if (auto* tabs = qobject_cast<QTabWidget*>(attachment.widget.data()))
             selections.emplace_back(tabs, tabs->currentWidget());
@@ -76,10 +86,12 @@ QWidget* PreparedLayout::attach(QWidget* parent)
     // Registered descendants are recovered below before the retired hierarchy is destroyed.
     for (const auto& [id, registration] : views_.entries()) {
         auto* splitter = qobject_cast<QSplitter*>(registration.widget.data());
+
         if (!splitter || std::ranges::any_of(attachments_, [splitter](const auto& attachment) {
                 return attachment.widget == splitter;
             }))
             continue;
+
         while (splitter->count() != 0)
             retire(splitter->widget(0));
     }
@@ -88,35 +100,44 @@ QWidget* PreparedLayout::attach(QWidget* parent)
     for (auto attachment = attachments_.rbegin(); attachment != attachments_.rend(); ++attachment) {
         QWidget* placeholder = attachment->placeholder;
         QWidget* widget = attachment->widget.data();
+
         if (!attachment->node.children.empty()) {
             if (auto* target = qobject_cast<QSplitter*>(widget)) {
                 auto* source = qobject_cast<QSplitter*>(placeholder);
+
                 while (target->count() != 0) {
                     QWidget* child = target->widget(0);
                     retire(child);
                 }
+
                 while (source->count() != 0)
                     target->addWidget(source->widget(0));
             } else if (auto* target = qobject_cast<QTabWidget*>(widget)) {
                 auto* source = qobject_cast<QTabWidget*>(placeholder);
+
                 while (target->count() != 0) {
                     QWidget* child = target->widget(0);
+
                     target->removeTab(0);
                     retire(child);
                 }
+
                 while (source->count() != 0) {
                     QWidget* child = source->widget(0);
                     const QString title = source->tabText(0);
+
                     source->removeTab(0);
                     target->addTab(child, title);
                 }
             } else if (auto* target = qobject_cast<QStackedWidget*>(widget)) {
                 auto* source = qobject_cast<QStackedWidget*>(placeholder);
+
                 while (target->count() != 0) {
                     QWidget* child = target->widget(0);
                     target->removeWidget(child);
                     retire(child);
                 }
+
                 while (source->count() != 0) {
                     QWidget* child = source->widget(0);
                     source->removeWidget(child);
@@ -128,9 +149,12 @@ QWidget* PreparedLayout::attach(QWidget* parent)
                         retire(item->widget());
                     delete item;
                 }
+
                 std::size_t index = 0;
+
                 while (QLayoutItem* item = placeholder->layout()->takeAt(0)) {
                     QWidget* child = item->widget();
+
                     delete item;
                     // Reused children have already left their original parent during commit.
                     append_child(widget, child, attachment->node, attachment->node.children[index],
@@ -139,20 +163,28 @@ QWidget* PreparedLayout::attach(QWidget* parent)
                 }
             }
         }
+
         replace_placeholder(placeholder, widget, parent);
         configure_widget(*widget, attachment->node);
         widget->show();
+
         const bool is_root = placeholder == root;
+
         delete placeholder;
+
         if (is_root)
             root = widget;
     }
+
     for (const auto& [id, registration] : views_.entries()) {
         QWidget* widget = registration.widget.data();
+
         if (!widget)
             continue;
+
         if (retired.isAncestorOf(widget)) {
             bool covered = false;
+
             for (auto* ancestor = widget->parentWidget(); ancestor && ancestor != &retired;
                 ancestor = ancestor->parentWidget())
                 if (std::ranges::any_of(views_.entries(), [ancestor](const auto& entry) {
@@ -161,12 +193,14 @@ QWidget* PreparedLayout::attach(QWidget* parent)
                     covered = true;
                     break;
                 }
+
             if (!covered) {
                 widget->setParent(parent);
                 widget->hide();
             }
         }
     }
+
     for (const auto& [widget, selected] : selections) {
         if (auto* tabs = qobject_cast<QTabWidget*>(widget); tabs && tabs->indexOf(selected) >= 0)
             tabs->setCurrentWidget(selected);
@@ -174,9 +208,12 @@ QWidget* PreparedLayout::attach(QWidget* parent)
             stack && stack->indexOf(selected) >= 0)
             stack->setCurrentWidget(selected);
     }
+
     attachments_.clear();
+
     if (focus && (focus == root || root->isAncestorOf(focus)))
         focus->setFocus(Qt::OtherFocusReason);
+
     return root;
 }
 

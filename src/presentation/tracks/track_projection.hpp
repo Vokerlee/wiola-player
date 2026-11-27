@@ -22,6 +22,9 @@
 
 #include "track_row.hpp"
 #include "track_view_state.hpp"
+
+#include <wiola/library/search.hpp>
+
 #include <cstdint>
 #include <exception>
 #include <functional>
@@ -30,7 +33,6 @@
 #include <stop_token>
 #include <utility>
 #include <vector>
-#include <wiola/library/search.hpp>
 
 namespace wiola::gui {
 

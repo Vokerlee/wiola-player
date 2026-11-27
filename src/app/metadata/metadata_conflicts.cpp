@@ -34,6 +34,7 @@ MetadataConflictKind MetadataConflictDetector::check(const library::LibraryRepos
     const std::filesystem::path& location) const
 {
     const library::TrackRecord* track = repository.track(media);
+
     if (track == nullptr)
         return MetadataConflictKind::missing_media;
 
@@ -48,12 +49,16 @@ MetadataConflictKind MetadataConflictDetector::check(const library::LibraryRepos
 
     const std::filesystem::path candidate =
         location.empty() && !track->locations.empty() ? track->locations.front() : location;
+
     if (candidate.empty() || !read_)
         return MetadataConflictKind::unreadable;
+
     try {
         const auto fingerprint = read_(candidate);
+
         if (!fingerprint)
             return MetadataConflictKind::unreadable;
+
         return *fingerprint == expected.fingerprint ? MetadataConflictKind::none
                                                     : MetadataConflictKind::content_changed;
     } catch (...) {

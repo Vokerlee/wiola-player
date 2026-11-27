@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <qt/application/library/m3u_playlist.hpp>
 #include <wiola/library/repository_transaction.hpp>
 

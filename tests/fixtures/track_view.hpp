@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <wiola/presentation/tracks/track_view_state.hpp>
 
 namespace wiola::testing {

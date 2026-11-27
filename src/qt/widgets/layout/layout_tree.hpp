@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include "layout_document.hpp"
 
 namespace wiola::gui {
@@ -38,11 +39,14 @@ template<class Node>
                           int depth) -> LayoutNodeLocation<Node> {
         if (depth > 16)
             return {};
+
         if (node.id == id)
             return {parent, &node, index};
+
         for (std::size_t i = 0; i < node.children.size() && i < 32; ++i)
             if (auto found = self(self, node.children[i], &node, i, depth + 1); found.node)
                 return found;
+
         return {};
     };
     return walk(walk, root, nullptr, 0, 0);
@@ -52,12 +56,15 @@ template<class Node>
 {
     if (depth > 16)
         return 257;
+
     std::size_t count = 1;
+
     for (const auto& child : root.children) {
         count += layout_node_count(child, depth + 1);
         if (count > 256)
             return 257;
     }
+
     return count;
 }
 

@@ -19,13 +19,15 @@
  */
 
 #pragma once
+
+#include <wiola/app/library/snapshot_writer.hpp>
+#include <wiola/library/commit_receipt.hpp>
+#include <wiola/library/revision_delta.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <wiola/app/library/snapshot_writer.hpp>
-#include <wiola/library/commit_receipt.hpp>
-#include <wiola/library/revision_delta.hpp>
 
 namespace wiola::app {
 

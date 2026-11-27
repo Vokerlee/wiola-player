@@ -19,10 +19,12 @@
  */
 
 #include <app/metadata/background_metadata.hpp>
-#include <condition_variable>
-#include <gtest/gtest.h>
-#include <mutex>
 #include <wiola/app/metadata/metadata_merge.hpp>
+
+#include <gtest/gtest.h>
+
+#include <condition_variable>
+#include <mutex>
 
 namespace {
 
@@ -82,6 +84,7 @@ TEST(MetadataMerge, ReadsAndMergesMetadataThroughTheBackgroundWorker)
     ASSERT_TRUE(reader.enqueue(record.id, "track.wav",
         [&](wiola::app::BackgroundMetadataResult incoming) {
             std::lock_guard lock{mutex};
+
             result = std::move(incoming);
             received.notify_one();
         }));
@@ -97,6 +100,7 @@ TEST(MetadataMerge, ReadsAndMergesMetadataThroughTheBackgroundWorker)
     ASSERT_TRUE(result->metadata.has_value());
 
     wiola::app::MetadataMerge merge;
+
     EXPECT_TRUE(merge.merge(repository, record.id, *result->metadata));
     EXPECT_EQ(repository.track(record.id)->embedded.title, "Learned title");
     EXPECT_EQ(repository.track(record.id)->embedded.album, "Learned album");

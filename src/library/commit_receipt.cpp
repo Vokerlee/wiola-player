@@ -19,6 +19,7 @@
  */
 
 #include "commit_receipt.hpp"
+
 #include <exception>
 #include <stdexcept>
 #include <thread>
@@ -77,14 +78,18 @@ void CommitReceipt::observe(Observer observer)
 {
     const auto state = state_;
     state->check_owner("commit receipt accessed outside owner thread");
+
     if (!observer || state->cancelled)
         return;
+
     if (state->outcome == State::Outcome::durable) {
         observer({state->revision, true});
         return;
     }
+
     const auto retained = std::make_shared<Observer>(std::move(observer));
     state->observers.push_back(retained);
+
     if (state->outcome == State::Outcome::failed)
         (*retained)({state->revision, false});
 }
@@ -93,11 +98,15 @@ void CommitReceipt::notify(bool durable)
 {
     const auto state = state_;
     state->check_owner("commit receipt resolved outside owner thread");
+
     if (state->outcome == State::Outcome::durable || state->cancelled)
         return;
+
     state->outcome = durable ? State::Outcome::durable : State::Outcome::failed;
+
     auto observers = durable ? std::move(state->observers) : state->observers;
     std::exception_ptr failure;
+
     for (const auto& observer : observers) {
         if (state->cancelled || (!durable && state->outcome == State::Outcome::durable))
             break;
@@ -108,6 +117,7 @@ void CommitReceipt::notify(bool durable)
                 failure = std::current_exception();
         }
     }
+
     if (failure)
         std::rethrow_exception(failure);
 }

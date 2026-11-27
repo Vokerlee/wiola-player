@@ -60,6 +60,7 @@ PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(PlaybackService& 
     std::optional<library::PlaylistEntryId> selected) const
 {
     const library::PlaylistRecord* playlist = repository.playlist(id);
+
     if (playlist == nullptr)
         return {};
 
@@ -67,8 +68,10 @@ PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(PlaybackService& 
     std::vector<std::filesystem::path> tracks;
 
     std::optional<std::size_t> selected_position;
+
     for (const library::PlaylistEntryRecord& entry : playlist->entries) {
         const library::TrackRecord* media = repository.track(entry.media);
+
         if (media == nullptr || media->locations.empty()) {
             ++result.unavailable;
             continue;
@@ -76,6 +79,7 @@ PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(PlaybackService& 
 
         if (selected == entry.id)
             selected_position = tracks.size();
+
         tracks.push_back(library::preferred_location(*media));
     }
 
@@ -84,6 +88,7 @@ PlaybackQueueResult PlaybackQueue::replace_with_saved_playlist(PlaybackService& 
 
     PlaybackQueueResult playback = replace_with_paths(session, std::move(tracks));
     playback.unavailable = result.unavailable;
+
     if (selected_position) {
         static_cast<void>(session.play_track(*selected_position));
         playback.open_result = session.open_result();

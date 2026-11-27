@@ -18,9 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "metadata.hpp"
-
 #include "input.hpp"
+#include "metadata.hpp"
 #include "metadata_text.hpp"
 
 #include <wiola/media/local/file_stream.hpp>
@@ -58,9 +57,12 @@ void read_artwork(media::Metadata& metadata, AVFormatContext* format)
 {
     for (unsigned int index{0}; index < format->nb_streams; ++index) {
         media::Artwork artwork{wiola::codec::ffmpeg::read_artwork(*format->streams[index])};
+
         if (artwork.empty())
             continue;
+
         metadata.artwork = std::move(artwork);
+
         return;
     }
 }
@@ -70,17 +72,22 @@ void read_artwork(media::Metadata& metadata, AVFormatContext* format)
 media::Artwork read_artwork(const AVStream& stream)
 {
     media::Artwork artwork;
+
     if (!(stream.disposition & AV_DISPOSITION_ATTACHED_PIC))
         return artwork;
+
     const AVPacket& picture{stream.attached_pic};
+
     if (!picture.data || picture.size <= 0 ||
         static_cast<std::size_t>(picture.size) > media::max_encoded_artwork_bytes)
         return artwork;
+
     const auto* bytes{reinterpret_cast<const std::byte*>(picture.data)};
     artwork.data.assign(bytes, bytes + picture.size);
     artwork.mime_type = stream.codecpar->codec_id == AV_CODEC_ID_PNG ? "image/png"
         : stream.codecpar->codec_id == AV_CODEC_ID_MJPEG             ? "image/jpeg"
                                                                      : "";
+
     return artwork;
 }
 
@@ -88,12 +95,17 @@ media::Result<media::Metadata> read_metadata(const std::filesystem::path& path,
     const media::OperationContext& context)
 {
     auto stream{media::LocalFileStream::open(path, context)};
+
     if (!stream)
         return media::unexpected{stream.error()};
+
     auto input{FfmpegInput::open(std::move(*stream), context)};
+
     if (!input)
         return media::unexpected{input.error()};
+
     auto facts{(*input)->inspect()};
+
     if (!facts)
         return media::unexpected{facts.error()};
 
@@ -114,7 +126,9 @@ media::Result<media::Metadata> read_metadata(const std::filesystem::path& path,
 
     if (facts->output.length)
         metadata.track.duration = facts->output.spec.time_per(*facts->output.length);
+
     read_artwork(metadata, format);
+
     return metadata;
 }
 

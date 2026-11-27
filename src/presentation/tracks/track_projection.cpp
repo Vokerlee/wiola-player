@@ -20,6 +20,7 @@
 
 #include "track_projection.hpp"
 #include "track_view_pipeline.hpp"
+
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
@@ -55,11 +56,14 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
     void deliver()
     {
         check_owner();
+
         std::optional<TrackProjectionResult> result;
         {
             std::lock_guard lock{mutex_};
+
             posted_ = false;
             result = std::exchange(completed_, {});
+
             // Publication admits only the current generation; owner mutations clear this slot.
             if (!result)
                 return;
@@ -75,15 +79,19 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
             {
                 std::unique_lock lock{mutex_};
                 changed_.wait(lock, [this] { return stopping_ || pending_.has_value(); });
+
                 if (stopping_)
                     return;
+
                 request = std::exchange(pending_, {});
                 active_ = request->cancellation;
             }
+
             const auto stop = request->cancellation->get_token();
             TrackProjectionResult result{.generation = request->generation,
                 .rows = {},
                 .failure = {}};
+
             try {
                 if (before_)
                     before_(request->generation, stop);
@@ -94,21 +102,28 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
             } catch (...) {
                 result.failure = std::current_exception();
             }
+
             std::optional<TrackProjectionResult> previous;
             bool wake = false;
             {
                 std::lock_guard lock{mutex_};
+
                 active_.reset();
+
                 if (stopping_ || stop.stop_requested() || request->generation != generation_)
                     continue;
+
                 previous = std::exchange(completed_, std::move(result));
+
                 if (!posted_) {
                     posted_ = true;
                     wake = true;
                 }
             }
+
             if (wake) {
                 bool accepted = false;
+
                 try {
                     accepted = delivery_.post([weak] {
                         if (const auto state = weak.lock())
@@ -117,6 +132,7 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
                 } catch (...) {
                     // A closed/failing receiver cannot terminate the computation worker.
                 }
+
                 if (!accepted) {
                     std::lock_guard lock{mutex_};
                     posted_ = false;
@@ -129,6 +145,7 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
     {
         if (!active)
             return;
+
         ++cancellation_depth_;
         active->request_stop();
         --cancellation_depth_;
@@ -145,13 +162,16 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
     void close()
     {
         check_owner();
+
         std::optional<Request> pending;
         std::optional<TrackProjectionResult> completed;
         std::shared_ptr<std::stop_source> active;
         {
             std::lock_guard lock{mutex_};
+
             if (stopping_)
                 return;
+
             stopping_ = true;
             ++generation_;
             pending = std::exchange(pending_, {});
@@ -161,13 +181,17 @@ struct TrackProjection::State : std::enable_shared_from_this<State> {
         // stop callbacks and shared-payload destruction may reenter the owner.
         cancel_active(active);
         changed_.notify_all();
+
         std::exception_ptr failure;
+
         try {
             delivery_.discard();
         } catch (...) {
             failure = std::current_exception();
         }
+
         join_if_closed();
+
         if (failure)
             std::rethrow_exception(failure);
     }
@@ -208,8 +232,10 @@ std::uint64_t TrackProjection::request(std::shared_ptr<const TrackProjectionInpu
 {
     const auto state = state_;
     state->check_owner();
+
     if (!input)
         return 0;
+
     State::Request request{0, std::move(input), normalized_track_view_state(std::move(view)),
         std::make_shared<std::stop_source>()};
     std::optional<State::Request> previous;
@@ -218,8 +244,10 @@ std::uint64_t TrackProjection::request(std::shared_ptr<const TrackProjectionInpu
     std::uint64_t generation;
     {
         std::lock_guard lock{state->mutex_};
+
         if (state->stopping_)
             return 0;
+
         generation = request.generation = ++state->generation_;
         previous = std::exchange(state->pending_, std::move(request));
         completed = std::exchange(state->completed_, {});
@@ -228,6 +256,7 @@ std::uint64_t TrackProjection::request(std::shared_ptr<const TrackProjectionInpu
     state->cancel_active(active);
     state->changed_.notify_all();
     state->join_if_closed();
+
     return generation;
 }
 
@@ -235,13 +264,16 @@ void TrackProjection::cancel()
 {
     const auto state = state_;
     state->check_owner();
+
     std::optional<State::Request> pending;
     std::optional<TrackProjectionResult> completed;
     std::shared_ptr<std::stop_source> active;
     {
         std::lock_guard lock{state->mutex_};
+
         if (state->stopping_)
             return;
+
         ++state->generation_;
         pending = std::exchange(state->pending_, {});
         completed = std::exchange(state->completed_, {});

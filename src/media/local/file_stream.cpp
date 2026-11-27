@@ -41,6 +41,7 @@ Result<std::unique_ptr<LocalFileStream>> LocalFileStream::open(const std::filesy
         return unexpected{context.error()};
 
     std::error_code error;
+
     if (!std::filesystem::is_regular_file(path, error))
         return unexpected{failure(ErrorCategory::unreadable, "local file is not a regular file")};
 
@@ -59,6 +60,7 @@ Result<std::size_t> LocalFileStream::read_impl(std::span<std::byte> out, const O
         return unexpected{failure(ErrorCategory::read_failed, "read size exceeds stream range")};
 
     file_.read(reinterpret_cast<char*>(out.data()), static_cast<std::streamsize>(out.size()));
+
     const std::size_t count{static_cast<std::size_t>(file_.gcount())};
 
     if (file_.bad() || (file_.fail() && !file_.eof()))
@@ -74,9 +76,12 @@ Result<void> LocalFileStream::seek_impl(std::int64_t offset, SeekOrigin origin,
         return unexpected{failure(ErrorCategory::seek_failed, "seek offset exceeds stream range")};
 
     file_.clear();
+
     const auto original{file_.tellg()};
+
     if (original < 0)
         return unexpected{failure(ErrorCategory::seek_failed, "local file cursor is unavailable")};
+
     const std::ios::seekdir direction{origin == SeekOrigin::start ? std::ios::beg
             : origin == SeekOrigin::current                       ? std::ios::cur
                                                                   : std::ios::end};
@@ -85,9 +90,11 @@ Result<void> LocalFileStream::seek_impl(std::int64_t offset, SeekOrigin origin,
     if (!file_) {
         file_.clear();
         file_.seekg(original);
+
         if (!file_)
             return unexpected{
                 failure(ErrorCategory::unreadable, "local file cursor restoration failed")};
+
         return unexpected{failure(ErrorCategory::seek_failed, "local file seek failed")};
     }
 
@@ -97,6 +104,7 @@ Result<void> LocalFileStream::seek_impl(std::int64_t offset, SeekOrigin origin,
 Result<std::uint64_t> LocalFileStream::tell_impl(const OperationContext&)
 {
     file_.clear();
+
     const std::streampos position{file_.tellg()};
 
     if (position < 0)

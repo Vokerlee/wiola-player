@@ -43,8 +43,10 @@ std::vector<ResourceReference> local_resources(std::span<const std::filesystem::
 {
     std::vector<ResourceReference> resources;
     resources.reserve(paths.size());
+
     for (const auto& path : paths)
         resources.push_back(local_resource(path));
+
     return resources;
 }
 
@@ -55,6 +57,7 @@ Result<std::filesystem::path> local_path(const ResourceReference& resource)
             Error{.category = ErrorCategory::unsupported,
                   .detail = "resource does not belong to the local file provider"}
         };
+
     if (resource.key().find('\0') != std::string::npos)
         return unexpected{
             Error{.category = ErrorCategory::unreadable,
@@ -63,8 +66,10 @@ Result<std::filesystem::path> local_path(const ResourceReference& resource)
 
     std::u8string encoded;
     encoded.reserve(resource.key().size());
+
     for (const char value : resource.key())
         encoded.push_back(static_cast<char8_t>(static_cast<unsigned char>(value)));
+
     try {
         return std::filesystem::path{encoded};
     } catch (const std::filesystem::filesystem_error& failure) {

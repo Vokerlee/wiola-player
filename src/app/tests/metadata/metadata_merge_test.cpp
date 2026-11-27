@@ -18,8 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include <wiola/app/metadata/metadata_merge.hpp>
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -50,9 +51,11 @@ TEST(MetadataMerge, LearnsOnlyChangedFieldsWithoutTouchingUserLayers)
     learned.track.disc_number = 2;
 
     wiola::app::MetadataMerge merge;
+
     ASSERT_TRUE(merge.merge(repository, record.id, learned));
 
     const auto* updated = repository.track(record.id);
+
     ASSERT_NE(updated, nullptr);
     EXPECT_EQ(updated->embedded.title, "Learned title");
     EXPECT_EQ(updated->embedded.artist, "Known artist");
@@ -70,7 +73,9 @@ TEST(MetadataMerge, LearnsOnlyChangedFieldsWithoutTouchingUserLayers)
 
     EXPECT_FALSE(merge.merge(repository, record.id, learned));
     EXPECT_EQ(repository.track(record.id)->metadata_revision, 8);
+
     const wiola::media::Metadata unavailable_fields;
+
     EXPECT_FALSE(merge.merge(repository, record.id, unavailable_fields));
     EXPECT_EQ(repository.track(record.id)->embedded.duration, learned.track.duration);
     EXPECT_EQ(repository.track(record.id)->embedded.year, learned.track.year);

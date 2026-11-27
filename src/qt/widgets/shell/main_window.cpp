@@ -18,17 +18,27 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "main_window.hpp"
-#include "window_panels.hpp"
-
+#include "document_command_router.hpp"
 #include "document_host.hpp"
 #include "library_navigation.hpp"
+#include "main_window.hpp"
 #include "player_actions.hpp"
+#include "player_dialogs.hpp"
+#include "player_menu.hpp"
 #include "saved_playlist_manager.hpp"
-#include <QApplication>
+#include "window_panels.hpp"
+
+#include <app/metadata/custom_tag_commands.hpp>
+#include <app/playback/playback_queue.hpp>
 #include <app/playback/queue_settings.hpp>
 #include <qt/application/library/library_session.hpp>
+#include <qt/application/library/m3u_playlist.hpp>
+#include <qt/application/metadata/media_revision_publisher.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
+#include <qt/application/workspace/workspace_watcher.hpp>
+#include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/appearance/theme.hpp>
+#include <qt/widgets/appearance/theme_editor.hpp>
 #include <qt/widgets/appearance/theme_manager.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
 #include <qt/widgets/controls/status_view.hpp>
@@ -37,46 +47,32 @@
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
-#include <qt/widgets/layout/layout_document.hpp>
-#include <qt/widgets/layout/layout_session.hpp>
-#include <qt/widgets/layout/view_registry.hpp>
-#include <qt/widgets/metadata/track_inspector.hpp>
-#include <wiola/app/playback/playback_service.hpp>
-#include <wiola/app/playback/volume_control.hpp>
-#include <wiola/library/metadata_patch.hpp>
-#include <wiola/media/local/resource.hpp>
-
-#include <app/metadata/custom_tag_commands.hpp>
-#include <app/playback/playback_queue.hpp>
-#include <qt/application/library/m3u_playlist.hpp>
-#include <qt/application/metadata/media_revision_publisher.hpp>
-#include <qt/application/workspace/workspace_watcher.hpp>
-#include <wiola/app/library/playlist_destination.hpp>
-#include <wiola/app/metadata/metadata_edit_service.hpp>
-#include <wiola/app/metadata/metadata_merge.hpp>
-#include <wiola/library/in_memory_repository.hpp>
-#include <wiola/media/audio_decoder.hpp>
-#include <wiola/units.hpp>
-
-#include "document_command_router.hpp"
-#include "player_dialogs.hpp"
-#include "player_menu.hpp"
-#include <qt/widgets/metadata/metadata_inspector_binding.hpp>
-
-#include <qt/widgets/appearance/presentation_tokens.hpp>
-#include <qt/widgets/appearance/theme.hpp>
-#include <qt/widgets/appearance/theme_editor.hpp>
 #include <qt/widgets/layout/classic_layout.hpp>
 #include <qt/widgets/layout/editor/layout_editor_dialog.hpp>
 #include <qt/widgets/layout/focused_layout.hpp>
 #include <qt/widgets/layout/layout_builder.hpp>
+#include <qt/widgets/layout/layout_document.hpp>
+#include <qt/widgets/layout/layout_session.hpp>
+#include <qt/widgets/layout/view_registry.hpp>
+#include <qt/widgets/metadata/metadata_inspector_binding.hpp>
+#include <qt/widgets/metadata/track_inspector.hpp>
+#include <wiola/app/library/playlist_destination.hpp>
+#include <wiola/app/metadata/metadata_edit_service.hpp>
+#include <wiola/app/metadata/metadata_merge.hpp>
+#include <wiola/app/playback/playback_service.hpp>
+#include <wiola/app/playback/volume_control.hpp>
+#include <wiola/library/in_memory_repository.hpp>
+#include <wiola/library/metadata.hpp>
+#include <wiola/library/metadata_patch.hpp>
+#include <wiola/library/records.hpp>
+#include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/local/resource.hpp>
 #include <wiola/qt/paths.hpp>
 #include <wiola/qt/storage/settings.hpp>
-
-#include <wiola/library/metadata.hpp>
-#include <wiola/library/records.hpp>
+#include <wiola/units.hpp>
 
 #include <QActionGroup>
+#include <QApplication>
 #include <QCloseEvent>
 #include <QDir>
 #include <QFileInfo>
@@ -154,6 +150,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 {
     for (const auto& descriptor : action_descriptors())
         addAction(actions_.action(descriptor.id));
+
     ui_preferences_.bind_library(library_session_);
     theme_ = ThemeManager::acquire(settings_);
     actions_.reload_icons(*this);
@@ -163,28 +160,38 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
     statusBar()->setObjectName("playbackFooter");
     statusBar()->setSizeGripEnabled(false);
+
     transport_ = new TransportView{actions_, this};
+
     volume_view_ = new VolumeView{this};
+
     status_ = new StatusView{this};
     show_volume();
+
     if (!library_session_.restore_error().isEmpty())
         show_status(library_session_.restore_error());
 
     dialogs_ = std::make_unique<NativePlayerDialogs>(*this);
+
     commands_ = new DocumentCommandRouter{library_session_, playback_, playlist_, *dialogs_,
         [this](const DocumentCommandOutcome& outcome) {
             if (outcome.open_result)
                 said_ = *outcome.open_result;
+
             if (outcome.open_playlist)
                 static_cast<void>(document_host_->open_playlist(*outcome.open_playlist));
+
             if (outcome.open_workspace)
                 static_cast<void>(document_host_->open_workspace(*outcome.open_workspace));
+
             if (!outcome.message.isEmpty())
                 show_status(outcome.message);
+
             if (outcome.queue_changed)
                 refresh();
         },
         this};
+
     DocumentCommands document_commands;
     document_commands.selection_changed = [this] {
         if (inspector_binding_)
@@ -206,6 +213,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     document_commands.rescan = [this](const auto& id, bool recursive) {
         commands_->rescan(id, recursive);
     };
+
     document_host_ = new DocumentHost{library_session_, playback_, ui_preferences_,
         std::move(document_commands), this};
     documents_ = &document_host_->tabs();
@@ -215,8 +223,10 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     navigation_ = new LibraryNavigation{this};
     navigation_->show_repository(library_);
     show_workspace_navigation();
+
     playlist_manager_ =
         new SavedPlaylistManager{library_, library_session_.playlists(), *navigation_, this};
+
     inspector_ = new TrackInspector{this};
 
     inspector_binding_ = new MetadataInspectorBinding{*inspector_, *document_host_,
@@ -227,6 +237,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
 
     connect(&library_session_, &app::LibrarySession::status_changed, this,
         &MainWindow::show_status);
+
     connect(&library_session_, &app::LibrarySession::workspace_changed, this,
         [this](const library::WorkspaceId& id) {
             if (library_.workspace(id))
@@ -234,6 +245,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         });
 
     library_pane_ = new QWidget{this};
+
     QVBoxLayout* library_layout = new QVBoxLayout{library_pane_};
     library_layout->setContentsMargins(0, 0, 0, 0);
     library_layout->addWidget(navigation_);
@@ -278,6 +290,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         LayoutComponentKind::inspector, false));
     static_cast<void>(views_.add(DocumentViewReference{DocumentId::queue()}, now_playing_,
         LayoutComponentKind::track_table, false));
+
     const auto legacy_layout = settings_.value("layout/preset", "classic").toString();
     layout_session_ = std::make_unique<LayoutSession>(
         platform::qt::QtPathAdapter::from_qt(
@@ -286,26 +299,35 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         layout_for(legacy_layout),
         parse_layout_choice(legacy_layout).value_or(LayoutChoice::classic)
     );
+
     if (layout_session_->choice() != LayoutChoice::custom) {
         const auto choice = layout_session_->choice();
         layout_session_->update_preset(layout_for(layout_choice_name(choice)));
     }
+
     if (!install_layout(layout_session_->document(), layout_session_->choice(), false)) {
         layout_session_->use_fallback(classic_layout_document(), LayoutChoice::classic);
         static_cast<void>(install_layout(layout_session_->document(), LayoutChoice::classic,
             false));
     }
+
     const auto panel_state = platform::qt::QtSettingsAdapter{settings_}.read_panel_state();
+
     if (!panel_state.isEmpty())
         restoreState(panel_state, 1);
+
     const auto geometry = ui_preferences_.state().window;
+
     if (geometry.isValid()) {
         auto* screen = QGuiApplication::screenAt(geometry.center());
+
         if (!screen)
             screen = QGuiApplication::primaryScreen();
+
         if (screen) {
             const auto available = screen->availableGeometry();
             setMinimumSize(minimumSize().boundedTo(available.size()));
+
             const auto size = geometry.size().expandedTo(minimumSize()).boundedTo(available.size());
             const QPoint top{
                 std::clamp(geometry.x(), available.left(), available.right() - size.width() + 1),
@@ -313,47 +335,62 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
             setGeometry(QRect{top, size});
         }
     }
+
     for (auto* splitter : findChildren<QSplitter*>())
         if (const auto found =
                 ui_preferences_.state().splitters.find(splitter->objectName().toStdString());
             found != ui_preferences_.state().splitters.end() &&
             found->second.size() == static_cast<std::size_t>(splitter->count())) {
             QList<int> sizes;
+
             for (const auto size : found->second)
                 sizes.push_back(size);
+
             splitter->setSizes(sizes);
         }
+
     connect(&ui_preferences_, &app::SessionPreferences::save_failed, this,
         [this](auto) { show_status("Could not save view preferences; changes remain pending"); });
+
     if (ui_preferences_.restore_error() != app::SessionStateError::none)
         show_status(ui_preferences_.restore_error() == app::SessionStateError::unsupported_version
                 ? "View preferences use a newer version; the saved file was retained"
                 : "Could not restore all view preferences; a usable session was retained");
+
     if (layout_session_->restore_error() != LayoutSessionError::none)
         show_status("Could not restore the saved layout; a usable layout was retained");
 
     connect(actions_.action(PlayerAction::open), &QAction::triggered, commands_,
         [commands = commands_] { commands->choose_tracks(); });
+
     connect(actions_.action(PlayerAction::previous), &QAction::triggered, this,
         &MainWindow::play_previous);
+
     connect(actions_.action(PlayerAction::next), &QAction::triggered, this, &MainWindow::play_next);
     connect(actions_.action(PlayerAction::play), &QAction::triggered, this,
         &MainWindow::toggle_playback);
+
     connect(actions_.action(PlayerAction::stop), &QAction::triggered, this,
         &MainWindow::stop_playback);
+
     connect(actions_.action(PlayerAction::repeat), &QAction::triggered, this,
         &MainWindow::cycle_repeat);
+
     connect(actions_.action(PlayerAction::shuffle), &QAction::triggered, this,
         &MainWindow::set_shuffled);
+
     connect(actions_.action(PlayerAction::add), &QAction::triggered, commands_,
         [commands = commands_] { commands->choose_tracks(true); });
+
     connect(actions_.action(PlayerAction::remove), &QAction::triggered, document_host_,
         [host = document_host_] {
             if (const auto current = host->registry().active())
                 host->dispatch(TrackCommand::remove, *current);
         });
+
     connect(actions_.action(PlayerAction::clear), &QAction::triggered, commands_,
         &DocumentCommandRouter::clear_queue);
+
     connect(actions_.action(PlayerAction::equalizer), &QAction::triggered, this,
         &MainWindow::show_equalizer);
 
@@ -362,9 +399,11 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
             [commands = commands_] { commands->import_playlist(); },
             [this] {
                 std::optional<library::PlaylistId> target;
+
                 if (const auto document = document_host_->registry().active();
                     document && document->playlist())
                     target = *document->playlist();
+
                 commands_->export_playlist(target);
             },
             [library = QPointer<app::LibrarySession>{&library_session_}] {
@@ -376,20 +415,25 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     queue_view->setObjectName("showPlayQueue");
     connect(queue_view, &QAction::triggered, document_host_,
         [host = document_host_] { static_cast<void>(host->activate(DocumentId::queue())); });
+
     view->addSeparator();
     panels_->add_menu_actions(*view);
     view->addSeparator();
+
     auto* theme_menu = view->addMenu("Theme");
     auto* themes = new QActionGroup{this};
     themes->setExclusive(true);
+
     for (const auto& preset : theme_presets()) {
         auto* item = themes->addAction(theme_menu->addAction(QString::fromLatin1(preset.label)));
         item->setCheckable(true);
         item->setData(static_cast<int>(preset.choice));
     }
+
     auto* custom = themes->addAction(theme_menu->addAction("Use saved custom theme"));
     custom->setCheckable(true);
     custom->setData(static_cast<int>(ThemeChoice::custom));
+
     const auto reflect_theme = [this, themes] {
         actions_.reload_icons(*this);
         for (auto* item : themes->actions())
@@ -398,10 +442,13 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     reflect_theme();
     connect(theme_.get(), &ThemeManager::theme_changed, this,
         [reflect_theme](auto) { reflect_theme(); });
+
     connect(themes, &QActionGroup::triggered, this, [this, reflect_theme](QAction* item) {
         const auto error = theme_->select(static_cast<ThemeChoice>(item->data().toInt()));
+
         if (error != ThemeError::none)
             show_status("Could not save the theme; the current theme was retained");
+
         reflect_theme();
     });
 
@@ -420,22 +467,28 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(import_layout_action, &QAction::triggered, this, [this] {
         const QPointer<MainWindow> alive{this};
         const auto path = dialogs_->file(PlayerFileChoice::import_layout);
+
         if (!alive || !path)
             return;
+
         persistence::qt::AtomicFileStore input{*path, 256 * 1024};
         const auto read = input.read(persistence::qt::FileSlot::primary);
+
         if (read.error != persistence::qt::FileStoreError::none || !read.exists)
             show_status("Could not read the layout file");
         else
             static_cast<void>(import_layout(read.bytes));
     });
+
     auto* export_layout_action = tools->addAction("Export layout...");
     connect(export_layout_action, &QAction::triggered, this, [this] {
         const QPointer<MainWindow> alive{this};
         const auto definition = layout_json();
         const auto path = dialogs_->file(PlayerFileChoice::export_layout);
+
         if (!alive || !path)
             return;
+
         persistence::qt::AtomicFileStore output{*path, 256 * 1024};
         show_status(output.write(persistence::qt::FileSlot::primary, definition) ==
                     persistence::qt::FileStoreError::none
@@ -444,6 +497,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     });
 
     theme_menu->addSeparator();
+
     QAction* edit_theme = theme_menu->addAction("Customize theme...");
     connect(edit_theme, &QAction::triggered, this, [this] {
         auto* editor = new ThemeEditor{theme_->colors(), this};
@@ -455,31 +509,39 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
         });
         editor->show();
     });
+
     auto* import_theme = theme_menu->addAction("Import theme...");
     connect(import_theme, &QAction::triggered, this, [this] {
         const QPointer<MainWindow> alive{this};
         const auto path = dialogs_->file(PlayerFileChoice::import_theme);
+
         if (!alive || !path)
             return;
+
         persistence::qt::AtomicFileStore input{*path, 16 * 1024};
         const auto read = input.read(persistence::qt::FileSlot::primary);
+
         if (read.error != persistence::qt::FileStoreError::none || !read.exists ||
             theme_->import_json(read.bytes) != ThemeError::none)
             show_status("Could not import the theme; the current theme was retained");
     });
+
     auto* export_theme = theme_menu->addAction("Export theme...");
     connect(export_theme, &QAction::triggered, this, [this] {
         const QPointer<MainWindow> alive{this};
         const auto definition = theme_->export_json();
         const auto path = dialogs_->file(PlayerFileChoice::export_theme);
+
         if (!alive || !path)
             return;
+
         persistence::qt::AtomicFileStore output{*path, 16 * 1024};
         show_status(output.write(persistence::qt::FileSlot::primary, definition) ==
                     persistence::qt::FileStoreError::none
                 ? "Theme exported"
                 : "Could not export the theme");
     });
+
     if (theme_->restore_error() != ThemeError::none)
         show_status("Could not restore the saved theme; a usable theme was retained");
 
@@ -487,6 +549,7 @@ MainWindow::MainWindow(app::PlaybackService& playback_service, app::LibrarySessi
     connect(volume_view_, &VolumeView::boost_requested, this, &MainWindow::set_boosted);
     connect(transport_, &TransportView::seek_requested, this, &MainWindow::seek_to);
     connect(documents_, &QTabWidget::currentChanged, this, &MainWindow::show_document_context);
+
     show_document_context();
 
     if (const std::size_t gone{preferences.missing_tracks()}; gone != 0)
@@ -520,15 +583,19 @@ void MainWindow::save_window_state()
 {
     if (!layout_session_)
         return;
+
     platform::qt::QtSettingsAdapter{settings_}.write_panel_state(saveState(1));
+
     const auto geometry = this->geometry();
     std::map<std::string, std::vector<int>> splitters;
+
     for (auto* splitter : findChildren<QSplitter*>())
         if (!splitter->objectName().isEmpty() && !qobject_cast<QDialog*>(splitter->window())) {
             const auto sizes = splitter->sizes();
             splitters.emplace(splitter->objectName().toStdString(),
                 std::vector<int>{sizes.begin(), sizes.end()});
         }
+
     ui_preferences_.edit([&](auto& state) {
         state.window = geometry;
         state.splitters = std::move(splitters);
@@ -544,10 +611,12 @@ bool MainWindow::switch_layout(const LayoutDocument& document)
 bool MainWindow::import_layout(QByteArrayView bytes)
 {
     LayoutDocument document;
+
     if (read_layout_json(bytes, document) != LayoutJsonError::none) {
         show_status("That layout file is invalid or uses an unsupported version");
         return false;
     }
+
     return switch_layout(document);
 }
 
@@ -573,24 +642,30 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
         static_cast<void>(live.add(DocumentViewReference{id, DocumentViewPart::tags},
             widget->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
     };
+
     // Queue whole is already a singleton registration; its nested browser parts are separate views.
     static_cast<void>(live.add(DocumentViewReference{DocumentId::queue(), DocumentViewPart::search},
         now_playing_->findChild<QWidget*>("trackSearchPanel"), LayoutComponentKind::search));
     static_cast<void>(live.add(DocumentViewReference{DocumentId::queue(), DocumentViewPart::tags},
         now_playing_->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
+
     for (const auto& [id, view] : document_host_->registry().playlists())
         if (view)
             register_document(DocumentId::playlist(id), view);
+
     for (const auto& [id, view] : document_host_->registry().workspaces())
         if (view)
             register_document(DocumentId::workspace(id), view);
+
     LayoutBuilder builder{live};
 
     auto prepared = builder.prepare(document.root, {.actions = &actions_}, this);
     QWidget* root = nullptr;
+
     if (persist && prepared) {
         const auto result = layout_session_->accept(document, choice, std::move(prepared), this);
         root = result.root;
+
         if (result.error != LayoutSessionError::none) {
             show_status(result.error == LayoutSessionError::unsupported_version
                     ? "Saved layout uses a newer version"
@@ -600,6 +675,7 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
                     : "Could not save or attach this layout");
             return false;
         }
+
         settings_.remove("layout/preset");
         settings_.sync();
     } else if (prepared)
@@ -620,11 +696,15 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
     };
 
     panels_->reconcile(*root);
+
     for (const auto& [id, registration] : live.entries()) {
         QWidget* widget = registration.widget.data();
+
         if (!widget || panels_->contains(*widget))
             continue;
+
         bool registered_ancestor = false;
+
         for (QWidget* ancestor = widget->parentWidget(); ancestor && ancestor != this;
             ancestor = ancestor->parentWidget())
             if (std::ranges::any_of(live.entries(),
@@ -632,6 +712,7 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
                 registered_ancestor = true;
                 break;
             }
+
         if (!belongs_to_root(widget)) {
             if (!registered_ancestor)
                 widget->setParent(this);
@@ -648,23 +729,29 @@ bool MainWindow::install_layout(const LayoutDocument& document, LayoutChoice cho
     const bool has_playback_section = belongs_to_root(transport_);
     auto* footer = statusBar();
     footer->removeWidget(transport_);
+
     if (has_playback_section) {
         footer->addPermanentWidget(transport_, 1);
         transport_->show();
+
         if (root == transport_)
             root = new QWidget{this};
     }
+
     footer->setVisible(has_playback_section);
 
     setCentralWidget(root);
+
     if (isVisible()) {
         root->show();
         if (previous_focus &&
             (belongs_to_root(previous_focus) || footer->isAncestorOf(previous_focus)))
             previous_focus->setFocus(Qt::OtherFocusReason);
     }
+
     if (persist)
         save_window_state();
+
     return true;
 }
 
@@ -692,8 +779,10 @@ void MainWindow::apply_library_changes(const library::LibraryChangeBatch& batch)
         navigation_->show_repository(library_);
         show_document_context();
     }
+
     if (!batch.workspaces.empty() || !batch.removed_workspaces.empty())
         show_workspace_navigation();
+
     if (!batch.media.empty() || !batch.removed_media.empty()) {
         const bool playback_changed =
             now_playing_->show_library_changes(playback_.playlist(), library_, batch);
@@ -739,6 +828,7 @@ void MainWindow::show_list_buttons()
 void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
 {
     show_document_context();
+
     const engine::PlaybackSnapshot& playback = presentation.playback;
     const engine::OpenResult result{playback.open_result};
 
@@ -760,6 +850,7 @@ void MainWindow::update_after_pump(const app::PlayerPresentation& presentation)
         named_place_ = playback_.playlist().position();
 
         QString name{"no track"};
+
         if (!named_.empty()) {
             const auto path = media::local_path(named_);
             name = path ? platform::qt::QtPathAdapter::to_qt(path->filename())
@@ -842,12 +933,16 @@ void MainWindow::seek_to(double fraction)
 void MainWindow::show_document_context()
 {
     QString destination = "None selected";
+
     document_host_->refresh_playback();
+
     const auto active = document_host_->active_playlist();
     navigation_->set_active_playlist(active);
+
     if (const auto id = active)
         if (const auto record = library_.playlist(*id))
             destination = QString::fromStdString(record->name);
+
     status_->show_context(documents_->tabText(documents_->currentIndex()), destination);
 }
 
@@ -860,6 +955,7 @@ void MainWindow::refresh()
 {
     transport_->present(app::present_playback(playback_));
     show_document_context();
+
     if (now_playing_->show_playlist(playback_.playlist()) && inspector_binding_)
         inspector_binding_->refresh();
 }

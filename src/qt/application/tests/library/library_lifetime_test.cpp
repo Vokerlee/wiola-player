@@ -1,16 +1,16 @@
-#include <QCoreApplication>
-#include <fakes/provider.hpp>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
-#include <QTemporaryDir>
-#include <QTest>
 #include <app/library/local_identity.hpp>
+#include <fakes/provider.hpp>
 #include <fixtures/gated_media_provider.hpp>
-#include <gtest/gtest.h>
 #include <qt/application/library/library_session.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
 #include <wiola/media/local/resource.hpp>
 #include <wiola/qt/paths.hpp>
+
+#include <QCoreApplication>
+#include <QTemporaryDir>
+#include <QTest>
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -30,15 +30,21 @@ protected:
         barrier = platform::qt::QtPathAdapter::from_qt(directory.filePath("barrier.mp3"));
         std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
         std::filesystem::copy_file(path, barrier);
+
         std::filesystem::path staged;
         {
             auto provider{wiola::codec::ffmpeg::make_provider()};
             auto asset = provider->open(wiola::media::local_resource(path));
+
             ASSERT_TRUE(asset);
+
             media::MetadataWriteRequest request;
             request.overrides.title = "Original physical metadata";
+
             const auto outcome = (*asset)->write_metadata(request);
+
             ASSERT_EQ(outcome.state, media::MetadataWriteState::written);
+
             staged = outcome.staged_output;
             ASSERT_FALSE(staged.empty());
         }
@@ -68,18 +74,23 @@ TEST_F(LibraryLifetime, CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbedded
         library::TrackRecord record;
         record.id = media;
         record.locations = {path};
+
         const auto fingerprint = media::fingerprint_media(path);
+
         ASSERT_TRUE(fingerprint);
+
         record.fingerprint = *fingerprint;
         ASSERT_TRUE(session.repository().put_track(record));
         ASSERT_TRUE(seed.commit());
     }
     session.request_metadata(media, path);
     ASSERT_TRUE(gate.wait_entered());
+
     auto edit = app::MetadataEditSession::capture({session.repository().track(media)});
     library::StandardMetadataPatch patch;
     patch.title = "New physical metadata";
     edit.set_draft(patch);
+
     std::optional<app::MetadataWriteResult> terminal;
     QObject::connect(&session, &app::LibrarySession::file_write_outcome, &session,
         [&](const auto& result) {
@@ -88,10 +99,12 @@ TEST_F(LibraryLifetime, CapturedReadAfterPhysicalWriteCannotOverwriteNewEmbedded
                 result.stage == app::MetadataWriteStage::conflicted)
                 terminal = result;
         });
+
     ASSERT_EQ(session.file_writes().submit(edit).size(), 1);
     ASSERT_TRUE(QTest::qWaitFor([&] { return terminal.has_value(); }, 10000));
     ASSERT_EQ(terminal->stage, app::MetadataWriteStage::complete) << terminal->outcome.detail;
     ASSERT_EQ(session.snapshot(media)->embedded.title, "New physical metadata");
+
     gate.release();
     session.request_metadata(barrier_id, barrier);
     // Same worker/owner delivery order: observing this later request proves the old result ran.
@@ -123,8 +136,10 @@ TEST_F(LibraryLifetime, CapturedReadAfterRecordRemovalCannotResurrectItsIdentity
     }
     session.request_metadata(media, path);
     ASSERT_TRUE(gate.wait_entered());
+
     {
         library::RepositoryTransaction remove{session.repository(), session.persistence()};
+
         ASSERT_TRUE(session.repository().replace_all({}, {}, {}));
         ASSERT_TRUE(remove.commit());
     }
@@ -142,7 +157,9 @@ TEST_F(LibraryLifetime, CapturedReadAfterRecordRemovalCannotResurrectItsIdentity
 TEST(LibraryMetadata, UnavailableBackgroundTagsDoNotPublishGlobalErrorMessages)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     auto provider = wiola::testing::FakeMediaProvider::metadata_only(
         [](const auto&, const auto&) -> wiola::media::Result<wiola::media::Metadata> {
             return wiola::media::unexpected{
@@ -156,6 +173,7 @@ TEST(LibraryMetadata, UnavailableBackgroundTagsDoNotPublishGlobalErrorMessages)
     QStringList notices;
     QObject::connect(&session, &wiola::app::LibrarySession::status_changed, &session,
         [&](const QString& notice) { notices.push_back(notice); });
+
     const wiola::library::MediaId media{"no-tags"};
     session.request_metadata(media, "no-tags.wav");
     ASSERT_TRUE(QTest::qWaitFor([&] { return session.artwork(media).known(); }));
@@ -168,9 +186,12 @@ int main(int argc, char** argv)
 {
     QCoreApplication application{argc, argv};
     QTemporaryDir settings;
+
     if (!settings.isValid())
         return 2;
+
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settings.path());
     ::testing::InitGoogleTest(&argc, argv);
+
     return RUN_ALL_TESTS();
 }

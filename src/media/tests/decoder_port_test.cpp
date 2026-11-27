@@ -56,12 +56,16 @@ TEST(AudioDecoderPort, MediaAssetReturnsAnOwnedDecoderWithoutBackendServices)
 {
     std::unique_ptr<wiola::media::MediaAsset> asset{std::make_unique<SampleAsset>()};
     auto opened{asset->create_decoder()};
+
     ASSERT_TRUE(opened);
+
     auto decoder{std::move(*opened)};
+
     asset.reset();
 
     std::array<float, 4> output{};
     const auto read{decoder->read(output)};
+
     ASSERT_TRUE(read);
     EXPECT_EQ(read->frames, wiola::pcm::Frames{2});
     EXPECT_TRUE(read->end_of_stream);

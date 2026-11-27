@@ -19,7 +19,6 @@
  */
 
 #include <wiola/audio/output_sanitizer.hpp>
-
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 

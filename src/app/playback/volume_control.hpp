@@ -20,11 +20,10 @@
 
 #pragma once
 
-#include <wiola/app/playback/volume_scale.hpp>
-
 #include "playback_service.hpp"
-
 #include "playback_settings.hpp"
+
+#include <wiola/app/playback/volume_scale.hpp>
 
 namespace wiola::app {
 

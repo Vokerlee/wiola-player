@@ -22,6 +22,7 @@
 
 #ifndef Q_MOC_RUN
 #include "track_table_model.hpp"
+
 #include <app/library/tag_key_catalog.hpp>
 #include <wiola/presentation/tracks/browser_view_state.hpp>
 #include <wiola/presentation/tracks/track_commands.hpp>

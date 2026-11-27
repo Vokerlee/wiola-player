@@ -19,7 +19,6 @@
  */
 
 #include <app/metadata/custom_tag_commands.hpp>
-
 #include <wiola/library/tags.hpp>
 
 #include <gtest/gtest.h>
@@ -49,6 +48,7 @@ TEST_F(CustomTagCommands, AddsEditsAndRemovesValuesWithStableIdentity)
         }};
 
     const auto added = commands.add(media, " Genre ", " Jazz ");
+
     ASSERT_TRUE(added.succeeded());
     EXPECT_TRUE(added.changed);
     ASSERT_TRUE(added.tag.valid());
@@ -57,6 +57,7 @@ TEST_F(CustomTagCommands, AddsEditsAndRemovesValuesWithStableIdentity)
     EXPECT_EQ(repository.track(media)->metadata_revision, 1);
 
     const auto edited = commands.edit(media, added.tag, "GENRE", "Nu Jazz");
+
     ASSERT_TRUE(edited.succeeded());
     EXPECT_TRUE(edited.changed);
     EXPECT_EQ(edited.tag, added.tag);
@@ -66,6 +67,7 @@ TEST_F(CustomTagCommands, AddsEditsAndRemovesValuesWithStableIdentity)
     EXPECT_EQ(repository.track(media)->metadata_revision, 2);
 
     const auto removed = commands.remove(media, added.tag);
+
     ASSERT_TRUE(removed.succeeded());
     EXPECT_TRUE(removed.changed);
     EXPECT_TRUE(repository.track(media)->tags.empty());
@@ -82,6 +84,7 @@ TEST_F(CustomTagCommands, RejectsInvalidDuplicatesMissingRecordsAndOverflow)
         }};
 
     const auto first = commands.add(media, "Genre", "Jazz");
+
     ASSERT_TRUE(first.succeeded());
 
     EXPECT_EQ(commands.add(media, "genre", "jazz").error,
@@ -95,6 +98,7 @@ TEST_F(CustomTagCommands, RejectsInvalidDuplicatesMissingRecordsAndOverflow)
         wiola::app::CustomTagError::missing_tag);
 
     const auto noop = commands.edit(media, first.tag, "Genre", "Jazz");
+
     EXPECT_TRUE(noop.succeeded());
     EXPECT_FALSE(noop.changed);
     EXPECT_EQ(saves, 1);
@@ -118,6 +122,7 @@ TEST_F(CustomTagCommands, RollsBackEveryMutationWhenPersistenceFails)
     EXPECT_EQ(repository.track(media)->metadata_revision, 0);
 
     const wiola::library::TagId retained = repository.add_tag(media, "Genre", "Jazz");
+
     ASSERT_TRUE(retained.valid());
 
     EXPECT_EQ(commands.edit(media, retained, "Genre", "Fusion").error,

@@ -49,6 +49,7 @@ void EqualizerControl::set_band_gain(std::size_t index, float db)
 {
     if (index >= equalizer_.equalizer_config().layout.count)
         return;
+
     equalizer_.set_equalizer_band(index, db);
     settings_.write_band_gain(index, equalizer_.equalizer_band(index));
 }

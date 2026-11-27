@@ -53,8 +53,10 @@ void Loader::start(LoadRequest request)
     std::optional<LoadCompletion> retired;
     {
         const std::lock_guard asked{mutex_};
+
         if (opening_)
             obsolete = active_stop_;
+
         asked_ = std::move(request);
         retired = std::exchange(done_, std::nullopt);
         ++num_asked_;
@@ -71,8 +73,10 @@ void Loader::cancel() noexcept
     std::optional<LoadCompletion> retired;
     {
         const std::lock_guard asked{mutex_};
+
         if (opening_)
             obsolete = active_stop_;
+
         asked_.reset();
         retired = std::exchange(done_, std::nullopt);
         ++num_asked_;
@@ -116,13 +120,16 @@ void Loader::work(const std::stop_token& stop)
         auto opened{[&]() -> media::DecoderOpenResult {
             try {
                 auto asset{provider_->open(request.resource, context)};
+
                 if (!asset)
                     return media::unexpected{asset.error()};
+
                 if (!*asset)
                     return media::unexpected{
                         media::Error{.category = media::ErrorCategory::damaged,
                                      .detail = "media provider returned no asset"}
                     };
+
                 return (*asset)->create_decoder(context);
             } catch (const std::bad_alloc&) {
                 throw;
@@ -136,6 +143,7 @@ void Loader::work(const std::stop_token& stop)
 
         {
             const std::lock_guard asked{mutex_};
+
             opening_ = false;
 
             if (asked_when == num_asked_)

@@ -20,9 +20,8 @@
 
 #include "m3u_playlist.hpp"
 
-#include <wiola/qt/paths.hpp>
-
 #include <app/library/local_identity.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QLocale>
 #include <QStringDecoder>
@@ -51,16 +50,19 @@ bool metadata_empty(const media::TrackMetadata& metadata)
 bool parse_extinf(const QString& line, media::TrackMetadata& metadata)
 {
     const qsizetype comma = line.indexOf(',', 8);
+
     if (comma < 0)
         return false;
 
     bool valid = false;
     const double seconds = QLocale::c().toDouble(line.sliced(8, comma - 8), &valid);
+
     if (!valid || !std::isfinite(seconds) || seconds < -1.0)
         return false;
 
     metadata.duration =
         seconds >= 0.0 ? std::optional<units::Time>{units::Time{seconds}} : std::nullopt;
+
     const QString description = line.sliced(comma + 1);
     const qsizetype separator = description.indexOf(" - ");
 
@@ -80,6 +82,7 @@ M3uError M3uPlaylist::export_playlist(const library::LibraryRepository& reposito
     const library::PlaylistId& id, const std::filesystem::path& directory, QByteArray& output)
 {
     const library::PlaylistRecord* playlist = repository.playlist(id);
+
     if (playlist == nullptr)
         return M3uError::missing_playlist;
 
@@ -90,15 +93,18 @@ M3uError M3uPlaylist::export_playlist(const library::LibraryRepository& reposito
 
     for (const library::PlaylistEntryRecord& entry : playlist->entries) {
         const library::TrackRecord* media = repository.track(entry.media);
+
         if (media == nullptr || media->locations.empty())
             return M3uError::invalid_record;
 
         const std::filesystem::path& location = media->locations.front();
         std::filesystem::path relative = location.lexically_relative(directory);
+
         if (relative.empty())
             relative = location;
 
         const QString path = platform::qt::QtPathAdapter::to_qt(relative);
+
         if (path.contains('\n') || path.contains('\r'))
             return M3uError::invalid_record;
 
@@ -117,6 +123,7 @@ M3uError M3uPlaylist::export_playlist(const library::LibraryRepository& reposito
     }
 
     output = std::move(encoded);
+
     return M3uError::none;
 }
 
@@ -132,10 +139,12 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
 
     QStringDecoder decoder{QStringDecoder::Utf8};
     const QString text = decoder(input);
+
     if (decoder.hasError())
         return M3uError::malformed;
 
     const QList<QString> lines = text.split('\n', Qt::KeepEmptyParts);
+
     if (static_cast<std::size_t>(lines.size()) > 2 * max_m3u_entries + 1)
         return M3uError::limit_exceeded;
 
@@ -159,6 +168,7 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
 
             if (!has_pending)
                 return M3uError::malformed;
+
             continue;
         }
 
@@ -166,18 +176,22 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
             return M3uError::limit_exceeded;
 
         std::filesystem::path location = platform::qt::QtPathAdapter::from_qt(line);
+
         if (!location.is_absolute())
             location = directory / location;
 
         const library::MediaId media = app::media_id_for(location);
+
         if (!media.valid())
             return M3uError::invalid_record;
 
         library::TrackRecord record;
+
         if (const library::TrackRecord* existing = updated.track(media))
             record = *existing;
 
         record.id = media;
+
         if (std::ranges::find(record.locations, location) == record.locations.end())
             record.locations.push_back(location);
 
@@ -198,6 +212,7 @@ M3uError M3uPlaylist::import_playlist(library::InMemoryRepository& repository,
         return M3uError::invalid_record;
 
     output = playlist;
+
     return M3uError::none;
 }
 

@@ -102,6 +102,7 @@ struct StreamSpec {
     {
         assert(num_channels > 0);
         assert(num_frames.count() <= std::numeric_limits<std::size_t>::max() / num_channels);
+
         return num_frames.count() * num_channels;
     }
 
@@ -136,6 +137,7 @@ struct StreamSpec {
             return std::nullopt;
 
         const double frames{position * sample_rate};
+
         if (!position_is_representable(frames))
             return std::nullopt;
 
@@ -154,8 +156,10 @@ struct StreamSpec {
     [[nodiscard]] constexpr std::size_t samples_per(units::Time duration) const noexcept
     {
         const double frames{duration * sample_rate};
+
         assert(valid());
         assert(position_is_representable(frames));
+
         return samples_per(Frames{static_cast<std::size_t>(frames)});
     }
 

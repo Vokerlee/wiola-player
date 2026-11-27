@@ -18,13 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fakes/resource.hpp>
-#include <wiola/app/playback/playback_service.hpp>
-
-#include <fakes/provider.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
+#include <wiola/app/playback/playback_service.hpp>
 
 #include <gtest/gtest.h>
 
@@ -86,8 +84,10 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
         )};
 
     service.open({wiola::testing::resource("track.wav", "track")});
+
     while (service.reading())
         std::this_thread::yield();
+
     static_cast<void>(service.pump());
     ASSERT_TRUE(service.loaded());
 
@@ -107,6 +107,7 @@ TEST(PlaybackService, SeparatesPlayPauseAndResume)
     EXPECT_EQ(service.state(), wiola::engine::PlaybackState::paused);
     EXPECT_EQ(service.toggle_playback(), CommandResult::accepted);
     EXPECT_EQ(service.state(), wiola::engine::PlaybackState::playing);
+
     service.stop();
 }
 
@@ -117,6 +118,7 @@ TEST(PlaybackService, ExposesAudioControlsAsValues)
     service.set_volume(0.25F);
     service.set_equalizer_enabled(true);
     ASSERT_GT(service.num_equalizer_bands(), 0U);
+
     service.set_equalizer_band(0, 3.0F);
 
     EXPECT_FLOAT_EQ(service.volume(), 0.25F);
@@ -143,10 +145,12 @@ TEST(PlaybackService, HeadlessPumpPublishesACoherentCompletionSnapshot)
         )};
 
     service.open({wiola::testing::resource("headless.wav", "headless")});
+
     while (service.reading())
         std::this_thread::yield();
 
     const auto snapshot{service.pump()};
+
     EXPECT_TRUE(snapshot.loaded);
     EXPECT_EQ(snapshot.open_result, wiola::engine::OpenResult::opened);
     EXPECT_EQ(snapshot.track, wiola::testing::resource("headless.wav", "headless"));
@@ -170,11 +174,13 @@ TEST(PlaybackService, ConnectsAnAcceptedOpenWithItsTypedFailure)
         )};
 
     const auto receipt{service.open({wiola::testing::resource("unsupported.wav", "unsupported")})};
+
     ASSERT_EQ(receipt.acceptance, CommandResult::accepted);
     ASSERT_NE(receipt.id, 0U);
 
     while (service.reading())
         std::this_thread::yield();
+
     service.pump();
 
     const auto outcomes{service.take_outcomes()};
@@ -215,12 +221,16 @@ TEST(PlaybackService, SuppressesAnObsoleteOpenCompletion)
         )};
 
     const auto old{service.open({wiola::testing::resource("old.wav", "old")})};
+
     opening.wait_until_entered();
+
     const auto current{service.open({wiola::testing::resource("current.wav", "current")})};
+
     opening.release();
 
     while (service.reading())
         std::this_thread::yield();
+
     service.pump();
 
     const auto outcomes{service.take_outcomes()};
@@ -263,6 +273,7 @@ TEST(PlaybackService, ReportsMetadataFailureWithoutSilencingPlayback)
         )};
 
     const auto receipt{service.open({wiola::testing::resource("playable.wav", "playable")})};
+
     ASSERT_EQ(receipt.acceptance, CommandResult::accepted);
 
     while (!service.loaded() || service.playlist().metadata_revision() == 0) {
@@ -311,6 +322,7 @@ TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
 
     while (service.reading() || num_metadata_reads < 80)
         std::this_thread::yield();
+
     service.pump();
 
     const auto outcomes{service.take_outcomes()};
@@ -327,6 +339,7 @@ TEST(PlaybackService, BoundsRetainedOutcomesAndReportsOverflow)
         << ", open result: " << static_cast<int>(service.open_result());
 
     const auto next{service.take_outcomes()};
+
     EXPECT_TRUE(next.values.empty());
     EXPECT_FALSE(next.overflowed);
 }
@@ -335,6 +348,7 @@ TEST(PlaybackService, IndependentServicesKeepTheirOwnProcessingSettings)
 {
     auto first{idle_service()};
     auto second{idle_service()};
+
     first.set_volume(0.25F);
     first.set_equalizer_band(0, 3.0F);
     first.set_equalizer_enabled(false);
@@ -354,6 +368,7 @@ TEST(PlaybackService, DestructionQuiescesActiveCallbacksBeforeItsProcessingStora
         [&](wiola::audio::Source& source) {
             auto output{std::make_unique<wiola::testing::FakeOutput>(source)};
             device = output.get();
+
             return output;
         },
         std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -369,16 +384,22 @@ TEST(PlaybackService, DestructionQuiescesActiveCallbacksBeforeItsProcessingStora
         )
     )};
     service->open({wiola::testing::resource("continuous", "Continuous")});
+
     while (service->reading())
         std::this_thread::yield();
+
     static_cast<void>(service->pump());
     ASSERT_TRUE(service->loaded());
     ASSERT_EQ(service->play(), CommandResult::accepted);
+
     const auto deadline{std::chrono::steady_clock::now() + std::chrono::seconds{5}};
+
     while (device->frames_played() == wiola::pcm::Frames{} &&
         std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
+
     ASSERT_GT(device->frames_played(), wiola::pcm::Frames{});
+
     service.reset();
 }
 
@@ -397,28 +418,38 @@ TEST(PlaybackService, ShutdownRejectsNewCommandsWithoutChangingAcceptedQueueOrSe
     service.open({wiola::testing::resource("first", "first"),
         wiola::testing::resource("selected", "selected"),
         wiola::testing::resource("last", "last")});
+
     while (service.reading())
         std::this_thread::yield();
+
     static_cast<void>(service.pump());
     ASSERT_TRUE(service.play_track(1));
+
     while (service.reading())
         std::this_thread::yield();
+
     static_cast<void>(service.pump());
     ASSERT_TRUE(service.loaded());
     ASSERT_TRUE(service.total_time());
+
     const auto seek_position{*service.total_time() * 0.5};
+
     service.set_volume(0.25F);
     service.set_equalizer_band(0, 3.0F);
     service.set_repeat(wiola::engine::RepeatMode::all);
+
     const auto before{service.snapshot()};
 
     service.stop_accepting();
 
     const auto receipt{service.open({wiola::testing::resource("late", "late")})};
+
     EXPECT_EQ(receipt.acceptance, CommandResult::unavailable);
     EXPECT_EQ(receipt.id, 0U);
+
     service.add({wiola::testing::resource("late", "late")});
     EXPECT_FALSE(service.remove(0));
+
     service.clear();
     EXPECT_FALSE(service.play_track(0));
     EXPECT_FALSE(service.next_track());
@@ -426,6 +457,7 @@ TEST(PlaybackService, ShutdownRejectsNewCommandsWithoutChangingAcceptedQueueOrSe
     EXPECT_EQ(service.play(), CommandResult::unavailable);
     EXPECT_EQ(service.pause(), CommandResult::unavailable);
     EXPECT_EQ(service.resume(), CommandResult::unavailable);
+
     service.seek(seek_position);
     service.set_volume(0.75F);
     service.set_equalizer_enabled(false);
@@ -463,24 +495,34 @@ TEST(PlaybackService, MediaHandoffRestoresOnlyWhileTheApplicationStillAcceptsWor
             }
         )};
     service.open({wiola::testing::resource("editable", "editable")});
+
     while (service.reading())
         std::this_thread::yield();
+
     static_cast<void>(service.pump());
     ASSERT_TRUE(service.loaded());
     EXPECT_FALSE(service.release_media(wiola::testing::resource("unrelated", "unrelated")));
+
     const auto first{service.release_media(wiola::testing::resource("editable", "editable"))};
+
     ASSERT_TRUE(first);
     EXPECT_FALSE(service.loaded());
+
     service.restore_media(*first);
+
     while (service.reading())
         std::this_thread::yield();
+
     static_cast<void>(service.pump());
     EXPECT_TRUE(service.loaded());
     EXPECT_EQ(opens, 2U);
 
     service.stop_accepting();
+
     const auto retiring{service.release_media(wiola::testing::resource("editable", "editable"))};
+
     ASSERT_TRUE(retiring);
+
     service.restore_media(*retiring);
     static_cast<void>(service.pump());
     EXPECT_FALSE(service.loaded());
@@ -503,8 +545,10 @@ TEST(PlaybackService, FractionSeekLeavesAnUnknownLengthStreamUntouched)
             }
         )};
     service.open({wiola::testing::resource("unknown-length", "unknown-length")});
+
     while (service.reading())
         std::this_thread::yield();
+
     static_cast<void>(service.pump());
     ASSERT_TRUE(service.loaded());
     ASSERT_TRUE(service.seekable());

@@ -49,11 +49,13 @@ void BackgroundMetadata::stop()
 {
     {
         std::lock_guard lock{mutex_};
+
         stopping_ = true;
         cancellation_.request_stop();
     }
 
     available_.notify_one();
+
     if (worker_.joinable())
         worker_.join();
 }
@@ -66,6 +68,7 @@ bool BackgroundMetadata::enqueue(const library::MediaId& media, std::filesystem:
 
     {
         std::lock_guard lock{mutex_};
+
         if (stopping_ || jobs_.size() >= max_pending_metadata)
             return false;
 
@@ -73,6 +76,7 @@ bool BackgroundMetadata::enqueue(const library::MediaId& media, std::filesystem:
     }
 
     available_.notify_one();
+
     return true;
 }
 
@@ -97,6 +101,7 @@ void BackgroundMetadata::run()
             .metadata = {},
             .error = {}};
         const media::OperationContext context{.stop = cancellation_.get_token(), .deadline = {}};
+
         try {
             if (context.stop_reason() != media::StopReason::none)
                 result.error = context.error();
@@ -116,6 +121,7 @@ void BackgroundMetadata::run()
             result.error =
                 media::Error{.category = media::ErrorCategory::read_failed, .detail = error.what()};
         }
+
         if (context.stop_reason() != media::StopReason::none) {
             result.metadata.reset();
             result.error = context.error();
@@ -124,9 +130,11 @@ void BackgroundMetadata::run()
         if (result.metadata &&
             result.metadata->artwork.data.size() > media::max_encoded_artwork_bytes)
             result.metadata->artwork = {};
+
         if (result.metadata)
             result.metadata->artwork.content_id =
                 media::artwork_content_id(result.metadata->artwork);
+
         job.observer(std::move(result));
     }
 }

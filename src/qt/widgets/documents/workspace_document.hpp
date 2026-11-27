@@ -21,7 +21,6 @@
 #pragma once
 
 #include <qt/application/workspace/workspace_scan_publisher.hpp>
-
 #include <wiola/library/repository.hpp>
 #include <wiola/presentation/documents/workspace_rows.hpp>
 

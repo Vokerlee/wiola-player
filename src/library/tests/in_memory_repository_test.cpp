@@ -76,6 +76,7 @@ TEST_F(InMemoryRepository, CreatesDeterministicPlaylistIdentitiesAndAvoidsRestor
     EXPECT_EQ(second.value, "playlist-2");
 
     PlaylistRecord restored{.id = {.value = "playlist-3"}, .name = "Restored", .entries = {}};
+
     ASSERT_TRUE(repository.put_playlist(restored));
 
     EXPECT_EQ(repository.create_playlist("Next").value, "playlist-4");
@@ -197,6 +198,7 @@ TEST_F(InMemoryRepository, RejectsDuplicateTagIdentitiesWithoutReplacingExisting
     restored.id = {"media-duplicate-tag-id"};
     restored.embedded.title = "Retained";
     ASSERT_TRUE(repository.put_track(restored));
+
     restored.embedded.title = "Rejected";
     restored.tags = {
         {.id = {"tag-same"}, .key = "genre", .value = "Jazz"  },
@@ -232,6 +234,7 @@ TEST_F(InMemoryRepository, BoundsTagsAndAvoidsARestoredTagIdentity)
 TEST_F(InMemoryRepository, StoresObservedWorkspaceRootsAndPersistentIdentities)
 {
     const WorkspaceId first = repository.create_workspace("music/album/..", false);
+
     ASSERT_TRUE(first.valid());
     ASSERT_NE(repository.workspace(first), nullptr);
 
@@ -242,6 +245,7 @@ TEST_F(InMemoryRepository, StoresObservedWorkspaceRootsAndPersistentIdentities)
     WorkspaceRecord restored{.id = WorkspaceId{"workspace-restored"},
         .root = "other",
         .recursive = true};
+
     ASSERT_TRUE(repository.put_workspace(restored));
     EXPECT_EQ(repository.workspace(restored.id)->root, restored.root);
     EXPECT_EQ(repository.create_workspace("next").value, "workspace-2");

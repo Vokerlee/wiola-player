@@ -39,6 +39,7 @@ bool PlayerShortcuts::eventFilter(QObject* watched, QEvent* event)
     if (event->type() == QEvent::ShortcutOverride && context_) {
         auto* button = qobject_cast<QAbstractButton*>(watched);
         auto* key = static_cast<QKeyEvent*>(event);
+
         if (button && button->isEnabled() && button->window() == context_->window() &&
             key->key() == Qt::Key_Space && key->modifiers() == Qt::NoModifier) {
             key->accept();

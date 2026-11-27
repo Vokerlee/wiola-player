@@ -18,15 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/presentation/documents/queue_rows.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
-#include <wiola/presentation/tracks/track_sort.hpp>
-
 #include <app/library/local_identity.hpp>
 #include <queue/playlist.hpp>
 #include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
+#include <wiola/presentation/tracks/track_sort.hpp>
 
 #include <gtest/gtest.h>
 
@@ -49,6 +46,7 @@ protected:
     void SetUp() override
     {
         playlist.set({wiola::media::local_resource("Music/Track.flac")});
+
         wiola::media::TrackMetadata metadata;
         metadata.title = "  My Title";
         metadata.artist = "Some Artist";
@@ -92,6 +90,7 @@ TEST_F(TrackSort, ProducesTypedStandardValuesAndDirections)
 
     const TrackSortKey descending =
         standard(TrackSortField::duration, TrackSortDirection::descending);
+
     EXPECT_TRUE(descending.valid());
     EXPECT_EQ(descending.direction, TrackSortDirection::descending);
 }
@@ -99,13 +98,16 @@ TEST_F(TrackSort, ProducesTypedStandardValuesAndDirections)
 TEST_F(TrackSort, ResolvesCustomTagsWithoutCaseSensitivityAndKeepsMultipleValues)
 {
     const TrackSortKey key = TrackSortKey::for_tag(" genre ", TrackSortDirection::descending);
+
     ASSERT_TRUE(key.valid());
     EXPECT_EQ(key.tag_key, "genre");
 
     const auto value = wiola::gui::track_sort_value(key, track(), &repository);
+
     EXPECT_EQ(std::get<std::string>(value), "jazz, fusion");
 
     const TrackSortKey missing = TrackSortKey::for_tag("Mood");
+
     EXPECT_EQ(std::get<std::string>(wiola::gui::track_sort_value(missing, track(), &repository)),
         "");
 }
@@ -120,6 +122,7 @@ TEST_F(TrackSort, RejectsMalformedKeysAndRepresentsMissingDuration)
 
     const wiola::engine::QueueEntry unknown{wiola::engine::QueueEntryId{2},
         wiola::media::local_resource("unknown.wav")};
+
     EXPECT_TRUE(std::holds_alternative<std::monostate>(wiola::gui::track_sort_value(
         standard(TrackSortField::duration), wiola::gui::queue_row(unknown), &repository
     )));

@@ -22,10 +22,10 @@
 
 #include <wiola/audio/output.hpp>
 #include <wiola/media/stream_spec.hpp>
+#include <wiola/playback/output_factory.hpp>
 
 #include <memory>
 #include <stdexcept>
-#include <wiola/playback/output_factory.hpp>
 
 namespace wiola::audio {
 

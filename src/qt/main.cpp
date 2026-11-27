@@ -42,6 +42,7 @@ wiola::app::PlayerRuntimeConfig desktop_runtime()
     config.output = [](wiola::audio::Source& source) {
         return std::make_unique<wiola::audio::Device>(source);
     };
+
     return config;
 }
 
@@ -86,9 +87,11 @@ int main(int argc, char** argv)
     window.show();
 
     const int result = QApplication::exec();
+
     if (!player.shutdown()) {
         qCritical("Could not flush player data during shutdown");
         return 1;
     }
+
     return result;
 }

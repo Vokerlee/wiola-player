@@ -17,8 +17,10 @@ def _capture(*command: str) -> str:
 
 def _program(name: str) -> str:
     path = shutil.which(name)
+
     if path is None:
         raise ValueError("Required executable not found: " + name)
+
     # Preserve clang++/clang invocation names; resolving that symlink changes driver behavior.
     return os.path.abspath(path)
 
@@ -43,6 +45,7 @@ class QtCoreContext:
     def build_identity(self) -> str:
         inputs = asdict(self)
         inputs.pop("qualification_sha256")
+
         return hashlib.sha256(
             json.dumps(inputs, sort_keys=True).encode("utf-8")
         ).hexdigest()
@@ -80,6 +83,7 @@ class QtCoreContext:
             Path(_capture("pkg-config", "--variable=libdir", "Qt6Core"))
             / "libQt6Core.so.6"
         )
+
         return cls(
             source,
             source.identity,

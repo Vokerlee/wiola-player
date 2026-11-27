@@ -19,7 +19,6 @@
  */
 
 #include "settings.hpp"
-#include <set>
 
 #include <wiola/qt/paths.hpp>
 
@@ -28,6 +27,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <set>
 
 namespace wiola::platform::qt {
 
@@ -60,6 +60,7 @@ float stored_gain(const QSettings& settings, std::size_t index) noexcept
 {
     bool numeric{false};
     const float gain{settings.value(band_key(index), 0.0F).toFloat(&numeric)};
+
     return numeric && std::isfinite(gain) ? gain : 0.0F;
 }
 
@@ -114,29 +115,38 @@ app::QueueSnapshot QtSettingsAdapter::read_queue() const
     app::QueueSnapshot settings;
     const QStringList tracks{settings_.value("queue").toStringList()};
     settings.tracks.reserve(static_cast<std::size_t>(tracks.size()));
+
     for (const QString& track : tracks)
         settings.tracks.push_back(platform::qt::QtPathAdapter::from_qt(track));
 
     const QString selected{settings_.value("queue/path").toString()};
+
     if (!selected.isEmpty())
         settings.selected = platform::qt::QtPathAdapter::from_qt(selected);
+
     settings.repeat = repeat_of(settings_.value("queue/repeat", 0).toInt());
     settings.shuffled = settings_.value("queue/shuffled", false).toBool();
     settings.has_occurrence_ids = settings_.contains("queue/entry_ids");
+
     const auto ids = settings_.value("queue/entry_ids").toStringList();
     std::set<std::uint64_t> unique;
+
     if (ids.size() == tracks.size())
         for (const auto& id : ids) {
             bool valid = false;
             const auto token = id.toULongLong(&valid);
+
             if (!valid || !token || !unique.insert(token).second) {
                 settings.occurrence_ids.clear();
                 break;
             }
+
             settings.occurrence_ids.push_back(token);
         }
+
     bool valid = false;
     const auto selected_id = settings_.value("queue/selected_id").toString().toULongLong(&valid);
+
     if (valid && selected_id && unique.contains(selected_id) &&
         settings.occurrence_ids.size() == settings.tracks.size())
         settings.selected_occurrence = selected_id;
@@ -147,6 +157,7 @@ app::QueueSnapshot QtSettingsAdapter::read_queue() const
 void QtSettingsAdapter::write_queue(const app::QueueSnapshot& settings)
 {
     QStringList tracks;
+
     for (const std::filesystem::path& track : settings.tracks)
         tracks.append(platform::qt::QtPathAdapter::to_qt(track));
 
@@ -155,10 +166,13 @@ void QtSettingsAdapter::write_queue(const app::QueueSnapshot& settings)
         settings.selected ? platform::qt::QtPathAdapter::to_qt(*settings.selected) : QString{});
     settings_.setValue("queue/repeat", static_cast<int>(settings.repeat));
     settings_.setValue("queue/shuffled", settings.shuffled);
+
     if (settings.has_occurrence_ids || !settings.occurrence_ids.empty()) {
         QStringList ids;
+
         for (const auto id : settings.occurrence_ids)
             ids.push_back(QString::number(id));
+
         settings_.setValue("queue/entry_ids", ids);
         settings_.setValue("queue/selected_id",
             settings.selected_occurrence ? QString::number(*settings.selected_occurrence)

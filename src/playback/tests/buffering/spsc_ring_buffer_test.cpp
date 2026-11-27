@@ -101,17 +101,20 @@ TYPED_TEST(RingEndpointContract, InertProducerCannotPublishOrDiscardLiveData)
     auto consumer = buffer.consumer();
     auto inert = buffer.producer();
     const std::array input{TypeParam{1}, TypeParam{2}};
+
     ASSERT_EQ(producer.push(input), input.size());
 
     EXPECT_FALSE(static_cast<bool>(inert));
     EXPECT_EQ(inert.push(input), 0U);
     EXPECT_FALSE(inert.try_push(TypeParam{3}));
     EXPECT_EQ(inert.acquire_write().size(), 0U);
+
     inert.commit_write(0);
     inert.mark_discard();
     EXPECT_EQ(inert.space_approx(), 0U);
 
     std::array<TypeParam, 2> output{};
+
     ASSERT_EQ(consumer.pop(output), output.size());
     EXPECT_EQ(output, input);
 }
@@ -123,14 +126,17 @@ TYPED_TEST(RingEndpointContract, InertConsumerCannotReadOrCommitLiveData)
     auto consumer = buffer.consumer();
     auto inert = buffer.consumer();
     const std::array input{TypeParam{1}, TypeParam{2}};
+
     ASSERT_EQ(producer.push(input), input.size());
 
     const std::array untouched{TypeParam{-1}, TypeParam{-1}};
     auto output = untouched;
+
     EXPECT_FALSE(static_cast<bool>(inert));
     EXPECT_EQ(inert.pop(output), 0U);
     EXPECT_FALSE(inert.try_pop());
     EXPECT_EQ(inert.acquire_read().size(), 0U);
+
     inert.commit_read(0);
     EXPECT_EQ(output, untouched);
     EXPECT_EQ(buffer.size_approx(), input.size());
@@ -201,10 +207,12 @@ TEST(SPSCRingBuffer, DiscardsWhatWasNotRead)
     producer.mark_discard();
 
     std::array<int, 4> read{};
+
     EXPECT_EQ(consumer.pop(read), 0u);
 
     // The buffer is usable again, and gives back only what came after the mark.
     const std::array again{5, 6};
+
     EXPECT_EQ(producer.push(again), again.size());
     EXPECT_EQ(consumer.pop(read), again.size());
     EXPECT_EQ(read[0], 5);
@@ -221,10 +229,12 @@ TEST(SPSCRingBuffer, KeepsWhatWasWrittenAfterAMark)
     const std::array fresh{5, 6};
 
     EXPECT_EQ(producer.push(stale), stale.size());
+
     producer.mark_discard();
     EXPECT_EQ(producer.push(fresh), fresh.size());
 
     std::array<int, 6> read{};
+
     EXPECT_EQ(consumer.pop(read), fresh.size());
     EXPECT_EQ(read[0], 5);
     EXPECT_EQ(read[1], 6);
@@ -238,12 +248,15 @@ TEST(SPSCRingBuffer, AppliesOnlyTheLatestOfSeveralMarks)
     auto consumer{buffer.consumer()};
 
     EXPECT_EQ(producer.push(std::array{1, 2}), 2u);
+
     producer.mark_discard();
     EXPECT_EQ(producer.push(std::array{3, 4}), 2u);
+
     producer.mark_discard();
     EXPECT_EQ(producer.push(std::array{5}), 1u);
 
     std::array<int, 8> read{};
+
     EXPECT_EQ(consumer.pop(read), 1u);
     EXPECT_EQ(read[0], 5);
 }
@@ -260,6 +273,7 @@ TEST(SPSCRingBuffer, MarksNothingOnAnEmptyBuffer)
     EXPECT_EQ(producer.push(std::array{1, 2}), 2u);
 
     std::array<int, 4> read{};
+
     EXPECT_EQ(consumer.pop(read), 2u);
     EXPECT_EQ(read[0], 1);
 }
@@ -281,6 +295,7 @@ TEST(SPSCRingBuffer, FreesTheSpaceOnlyOnceTheConsumerHasRead)
     EXPECT_EQ(buffer.size_approx(), full.size());
 
     std::array<int, 4> read{};
+
     EXPECT_EQ(consumer.pop(read), 0u);
 
     EXPECT_TRUE(buffer.empty_approx());
@@ -303,6 +318,7 @@ TEST(SPSCRingBuffer, DiscardsAcrossTheWrap)
     }
 
     EXPECT_EQ(producer.push(std::array{7, 8}), 2u);
+
     producer.mark_discard();
     EXPECT_EQ(consumer.pop(read), 0u);
 
@@ -321,20 +337,26 @@ TEST(SPSCRingBuffer, LeavesAReadRegionAlreadyHandedOutAlone)
     EXPECT_EQ(producer.push(std::array{1, 2, 3, 4}), 4u);
 
     const auto region = consumer.acquire_read();
+
     ASSERT_EQ(region.size(), 4u);
 
     producer.mark_discard();
 
     EXPECT_EQ(region.first[0], 1);
+
     consumer.commit_read(2);
 
     const auto discarded = consumer.acquire_read();
+
     EXPECT_EQ(discarded.size(), 0u);
+
     consumer.commit_read(0);
 
     // The delayed discard cannot replay the consumed prefix or move the read index backwards.
     ASSERT_EQ(producer.push(std::array{5, 6}), 2u);
+
     std::array<int, 2> next{};
+
     EXPECT_EQ(consumer.pop(next), 2u);
     EXPECT_EQ(next, (std::array{5, 6}));
 }
@@ -468,6 +490,7 @@ TEST(SPSCRingBuffer, CommitsOnlyWhatAReaderTook)
     const auto region = consumer.acquire_read();
 
     ASSERT_EQ(region.size(), 3u);
+
     consumer.commit_read(1);
 
     EXPECT_EQ(buffer.size_approx(), 2u);
@@ -582,7 +605,9 @@ TEST(SPSCRingBufferDeathTest, RejectsAReadCommitPastItsReservation)
     wiola::lockfree::SPSCRingBuffer<float> buffer{4};
     auto producer{buffer.producer()};
     auto consumer{buffer.consumer()};
+
     ASSERT_EQ(producer.push(std::array{1.0F, 2.0F}), 2U);
+
     const auto region = consumer.acquire_read();
 
     EXPECT_DEATH(consumer.commit_read(region.size() + 1), "");
@@ -613,11 +638,13 @@ TEST(SPSCRingBuffer, CarriesEveryElementBetweenTwoThreads)
 
         if (!value.has_value()) {
             ASSERT_LT(std::chrono::steady_clock::now(), deadline) << "stalled at " << expected;
+
             std::this_thread::yield();
             continue;
         }
 
         ASSERT_EQ(*value, expected);
+
         ++expected;
     }
 }
@@ -663,6 +690,7 @@ TEST(SPSCRingBuffer, CarriesEveryElementBetweenTwoThreadsInRegions)
         if (region.size() == 0) {
             consumer.commit_read(0);
             ASSERT_LT(std::chrono::steady_clock::now(), deadline) << "stalled at " << expected;
+
             std::this_thread::yield();
             continue;
         }
@@ -715,6 +743,7 @@ TEST(SPSCRingBuffer, NeverCarriesWhatWasMarkedStale)
 
         if (!value.has_value()) {
             ASSERT_LT(std::chrono::steady_clock::now(), deadline) << "stalled at " << num_read;
+
             std::this_thread::yield();
             continue;
         }

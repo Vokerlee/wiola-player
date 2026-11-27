@@ -19,15 +19,19 @@
  */
 
 #include "track_view_state.hpp"
-#include <algorithm>
+
 #include <wiola/library/tags.hpp>
+
+#include <algorithm>
 
 namespace wiola::gui {
 
 TrackViewState normalized_track_view_state(TrackViewState state)
 {
     state.query = library::normalized_search_query(std::move(state.query));
+
     std::vector<library::TagFilter> filters;
+
     for (auto& filter : state.query.filters) {
         if (!library::make_tag_value(filter.key, "value") ||
             (!filter.value.empty() && !library::make_tag_value("key", filter.value)))
@@ -35,19 +39,26 @@ TrackViewState normalized_track_view_state(TrackViewState state)
         if (std::ranges::find(filters, filter) == filters.end())
             filters.push_back(std::move(filter));
     }
+
     state.query.filters = std::move(filters);
+
     std::vector<TrackSortKey> keys;
+
     for (auto key : state.sort_keys) {
         if (!key.valid())
             continue;
+
         if (key.field == TrackSortField::custom_tag)
             key.tag_key = library::normalized_tag_text(key.tag_key);
+
         if (std::ranges::none_of(keys, [&](const auto& present) {
                 return present.field == key.field && present.tag_key == key.tag_key;
             }))
             keys.push_back(std::move(key));
     }
+
     state.sort_keys = std::move(keys);
+
     return state;
 }
 

@@ -93,6 +93,7 @@ bool Device::start() noexcept
 
     ma_device_config config{ma_device_config_init(ma_device_type_playback)};
     ma_channel channel_map[MA_MAX_CHANNELS]{};
+
     config.playback.format = ma_format_f32;
     config.playback.channels = static_cast<ma_uint32>(spec_.num_channels);
     set_channel_map(spec_, channel_map);
@@ -114,6 +115,7 @@ bool Device::start() noexcept
     }
 
     backend_->initialized = true;
+
     return true;
 }
 

@@ -19,9 +19,9 @@
  */
 
 #include "composition.hpp"
-
 #include "metadata.hpp"
 #include "metadata_writer.hpp"
+
 #include <wiola/media/local/file_stream.hpp>
 #include <wiola/media/local/resource.hpp>
 
@@ -51,6 +51,7 @@ public:
 
         const pcm::StreamSpec spec{(*decoder)->spec()};
         const std::optional<pcm::Frames> length{(*decoder)->duration_frames()};
+
         return media::MediaInfo{.spec = spec,
             .duration =
                 spec.valid() && length ? std::optional{spec.time_per(*length)} : std::nullopt,
@@ -82,6 +83,7 @@ public:
         auto name = path_.stem();
         name += ".wiola-writing";
         name += path_.extension();
+
         const auto temporary = path_.parent_path() / name;
 
         return ffmpeg::remux_metadata(path_, temporary, request, context);
@@ -125,9 +127,12 @@ media::Result<std::unique_ptr<media::MediaAsset>> LocalMediaProvider::open(
 {
     if (context.stop_reason() != media::StopReason::none)
         return media::unexpected{context.error()};
+
     auto path{media::local_path(resource)};
+
     if (!path)
         return media::unexpected{path.error()};
+
     auto stream{media::LocalFileStream::open(*path, context)};
 
     if (!stream)
@@ -135,6 +140,7 @@ media::Result<std::unique_ptr<media::MediaAsset>> LocalMediaProvider::open(
 
     std::unique_ptr<media::MediaAsset> asset{
         std::make_unique<LocalMediaAsset>(std::move(*path), registry_)};
+
     return asset;
 }
 

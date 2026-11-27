@@ -19,7 +19,6 @@
  */
 
 #include "in_memory_repository.hpp"
-
 #include "repository_transaction.hpp"
 #include "tags.hpp"
 
@@ -38,6 +37,7 @@ void InMemoryRepository::check_mutation() const
 bool InMemoryRepository::put_track(TrackRecord track)
 {
     check_mutation();
+
     if (!track.id.valid() || track.tags.size() > max_tags_per_track)
         return false;
 
@@ -56,8 +56,10 @@ bool InMemoryRepository::put_track(TrackRecord track)
     }
 
     const MediaId id{track.id};
+
     if (transaction_)
         transaction_->touch_track(id);
+
     data_.tracks_.insert_or_assign(id, std::move(track));
 
     return true;
@@ -85,6 +87,7 @@ bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
     const std::vector<PlaylistRecord>& playlists, const std::vector<WorkspaceRecord>& workspaces)
 {
     check_mutation();
+
     InMemoryRepository replacement;
 
     for (const TrackRecord& track : tracks) {
@@ -119,6 +122,7 @@ bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
         remember(data_.workspaces_, replacement.data_.workspaces_,
             &RepositoryTransaction::touch_workspace);
     }
+
     data_.tracks_ = std::move(replacement.data_.tracks_);
     data_.playlists_ = std::move(replacement.data_.playlists_);
     data_.workspaces_ = std::move(replacement.data_.workspaces_);
@@ -129,9 +133,12 @@ bool InMemoryRepository::replace_all(const std::vector<TrackRecord>& tracks,
 PlaylistId InMemoryRepository::create_playlist(std::string name)
 {
     check_mutation();
+
     const PlaylistId id{next_playlist_id()};
+
     if (transaction_)
         transaction_->touch_playlist(id);
+
     data_.playlists_.emplace(id, PlaylistRecord{.id = id, .name = std::move(name), .entries = {}});
 
     return id;
@@ -140,6 +147,7 @@ PlaylistId InMemoryRepository::create_playlist(std::string name)
 bool InMemoryRepository::put_playlist(PlaylistRecord playlist)
 {
     check_mutation();
+
     if (!playlist.id.valid())
         return false;
 
@@ -151,8 +159,10 @@ bool InMemoryRepository::put_playlist(PlaylistRecord playlist)
     }
 
     const PlaylistId id{playlist.id};
+
     if (transaction_)
         transaction_->touch_playlist(id);
+
     data_.playlists_.insert_or_assign(id, std::move(playlist));
 
     return true;
@@ -161,8 +171,10 @@ bool InMemoryRepository::put_playlist(PlaylistRecord playlist)
 bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_playlist(id);
+
     PlaylistRecord* found{data_.playlists_.contains(id) ? &data_.playlists_.at(id) : nullptr};
 
     if (found == nullptr)
@@ -176,8 +188,10 @@ bool InMemoryRepository::rename_playlist(const PlaylistId& id, std::string name)
 bool InMemoryRepository::delete_playlist(const PlaylistId& id)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_playlist(id);
+
     return data_.playlists_.erase(id) != 0;
 }
 
@@ -203,8 +217,10 @@ std::optional<PlaylistEntryId> InMemoryRepository::append_track(const PlaylistId
     const MediaId& media)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_playlist(playlist_id);
+
     PlaylistRecord* found{
         data_.playlists_.contains(playlist_id) ? &data_.playlists_.at(playlist_id) : nullptr};
 
@@ -220,8 +236,10 @@ std::optional<PlaylistEntryId> InMemoryRepository::append_track(const PlaylistId
 bool InMemoryRepository::remove_entry(const PlaylistId& playlist_id, const PlaylistEntryId& entry)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_playlist(playlist_id);
+
     PlaylistRecord* found{
         data_.playlists_.contains(playlist_id) ? &data_.playlists_.at(playlist_id) : nullptr};
 
@@ -236,12 +254,15 @@ bool InMemoryRepository::remove_entry(const PlaylistId& playlist_id, const Playl
 WorkspaceId InMemoryRepository::create_workspace(std::filesystem::path root, bool recursive)
 {
     check_mutation();
+
     if (root.empty())
         return {};
 
     const WorkspaceId id{next_workspace_id()};
+
     if (transaction_)
         transaction_->touch_workspace(id);
+
     data_.workspaces_.emplace(id,
         WorkspaceRecord{.id = id, .root = root.lexically_normal(), .recursive = recursive});
 
@@ -251,12 +272,15 @@ WorkspaceId InMemoryRepository::create_workspace(std::filesystem::path root, boo
 bool InMemoryRepository::put_workspace(WorkspaceRecord workspace)
 {
     check_mutation();
+
     if (!workspace.id.valid() || workspace.root.empty())
         return false;
 
     workspace.root = workspace.root.lexically_normal();
+
     if (transaction_)
         transaction_->touch_workspace(workspace.id);
+
     data_.workspaces_.insert_or_assign(workspace.id, std::move(workspace));
 
     return true;
@@ -282,16 +306,20 @@ std::vector<WorkspaceRecord> InMemoryRepository::workspaces() const
 bool InMemoryRepository::delete_workspace(const WorkspaceId& id)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_workspace(id);
+
     return data_.workspaces_.erase(id) != 0;
 }
 
 TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::string value)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_track(media);
+
     TrackRecord* found{data_.tracks_.contains(media) ? &data_.tracks_.at(media) : nullptr};
     auto candidate = make_tag_value(std::move(key), std::move(value));
 
@@ -313,8 +341,10 @@ TagId InMemoryRepository::add_tag(const MediaId& media, std::string key, std::st
 bool InMemoryRepository::remove_tag(const MediaId& media, const TagId& tag)
 {
     check_mutation();
+
     if (transaction_)
         transaction_->touch_track(media);
+
     TrackRecord* found{data_.tracks_.contains(media) ? &data_.tracks_.at(media) : nullptr};
 
     if (found == nullptr)

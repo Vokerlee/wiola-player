@@ -43,6 +43,7 @@ Result<void> DecoderStreamInfo::validate() const
 Result<DecodeOutcome> AudioDecoder::read(std::span<float> output)
 {
     const auto valid{stream_info_.validate()};
+
     if (!valid)
         return unexpected{valid.error()};
 
@@ -106,6 +107,7 @@ Result<std::size_t> AudioDecoder::render(std::span<float> output)
 Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
 {
     const auto valid{stream_info_.validate()};
+
     if (!valid)
         return unexpected{valid.error()};
 
@@ -122,6 +124,7 @@ Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
         };
 
     auto sought{seek_frame(frame_index)};
+
     if (!sought)
         return unexpected{sought.error()};
 
@@ -145,6 +148,7 @@ Result<SeekOutcome> AudioDecoder::seek(pcm::Frames frame_index)
 
     position_ = sought->achieved;
     exhausted_ = length_accuracy() == LengthAccuracy::exact && position_ == num_frames();
+
     return sought;
 }
 

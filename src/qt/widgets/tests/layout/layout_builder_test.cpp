@@ -30,7 +30,6 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
-
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -43,6 +42,7 @@ bool register_fixture_view(wiola::gui::LayoutBuilder& builder, const char* name,
 {
     using K = wiola::gui::LayoutComponentKind;
     K kind = K::button;
+
     if (qobject_cast<QSplitter*>(widget))
         kind = K::splitter;
     else if (qobject_cast<QTabWidget*>(widget))
@@ -53,6 +53,7 @@ bool register_fixture_view(wiola::gui::LayoutBuilder& builder, const char* name,
         kind = K::grid;
     else if (qobject_cast<QBoxLayout*>(widget->layout()))
         kind = K::column;
+
     return builder.views().add(wiola::gui::component_view(name), widget, kind,
         wiola::gui::is_layout_container(kind));
 }
@@ -62,12 +63,15 @@ QWidget* build_fixture(wiola::gui::LayoutBuilder& builder, wiola::gui::LayoutNod
 {
     const auto assign = [&](auto&& self, wiola::gui::LayoutNode& current) -> void {
         const auto ref = wiola::gui::component_view(current.id.toStdString());
+
         if (builder.views().find(ref))
             current.view = ref;
+
         for (auto& child : current.children)
             self(self, child);
     };
     assign(assign, node);
+
     return builder.build(node, context, parent);
 }
 
@@ -100,12 +104,14 @@ TEST(LayoutBuilder, BuildsRegisteredComponentsWithDimensionsAndActions)
 
     wiola::gui::LayoutBuilder builder;
     QWidget* widget = build_fixture(builder, root, {.actions = &actions});
+
     ASSERT_NE(widget, nullptr);
 
     EXPECT_EQ(widget->minimumWidth(), 640);
     EXPECT_EQ(widget->layout()->count(), 1);
 
     QPushButton* button = widget->findChild<QPushButton*>("play");
+
     ASSERT_NE(button, nullptr);
     EXPECT_EQ(button->width(), 64);
     EXPECT_EQ(button->accessibleName(), "Play");
@@ -142,9 +148,11 @@ TEST(LayoutBuilder, BuildsStackedAndGroupedChildren)
 
     wiola::gui::LayoutBuilder builder;
     QWidget* widget = build_fixture(builder, group, {});
+
     ASSERT_NE(widget, nullptr);
 
     auto* pages = widget->findChild<QStackedWidget*>("stack");
+
     ASSERT_NE(pages, nullptr);
     EXPECT_EQ(pages->count(), 1);
 
@@ -155,6 +163,7 @@ TEST(LayoutBuilder, ReusesARegisteredWidgetByIdentity)
 {
     auto* existing = new QPushButton{"Existing"};
     wiola::gui::LayoutBuilder builder;
+
     ASSERT_TRUE(register_fixture_view(builder, "play", existing));
     EXPECT_FALSE(register_fixture_view(builder, "play", existing));
 
@@ -163,6 +172,7 @@ TEST(LayoutBuilder, ReusesARegisteredWidgetByIdentity)
     node.kind = wiola::gui::LayoutComponentKind::button;
 
     EXPECT_EQ(build_fixture(builder, node, {}), existing);
+
     delete existing;
 }
 
@@ -189,7 +199,9 @@ TEST(LayoutBuilder, FailedConstructionLeavesRegisteredWidgetsInTheirOriginalLayo
     root.children = {reused, invalid};
 
     wiola::gui::LayoutBuilder builder;
+
     ASSERT_TRUE(register_fixture_view(builder, "play", existing));
+
     QPointer<QPushButton> observed = existing;
 
     EXPECT_EQ(build_fixture(builder, root, {}), nullptr);
@@ -202,6 +214,7 @@ TEST(LayoutBuilder, FailedConstructionLeavesRegisteredWidgetsInTheirOriginalLayo
 TEST(LayoutBuilder, BuildsVerticalSplitterWithGridAndLabeledTabs)
 {
     wiola::gui::LayoutDocument document;
+
     ASSERT_EQ(wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"panes",
         "type":"splitter","orientation":"vertical","sizes":[1,3],"children":[
         {"id":"grid","type":"grid","columns":2,"children":[
@@ -210,17 +223,23 @@ TEST(LayoutBuilder, BuildsVerticalSplitterWithGridAndLabeledTabs)
             {"id":"first","type":"status","title":"First"},{"id":"second","type":"status"}]}]}})",
                   document),
         wiola::gui::LayoutJsonError::none);
+
     wiola::gui::LayoutBuilder builder;
     std::unique_ptr<QWidget> widget{build_fixture(builder, document.root, {})};
     auto* splitter = qobject_cast<QSplitter*>(widget.get());
+
     ASSERT_NE(splitter, nullptr);
     EXPECT_EQ(splitter->orientation(), Qt::Vertical);
     EXPECT_FALSE(splitter->childrenCollapsible());
     ASSERT_EQ(splitter->count(), 2);
+
     auto* grid = qobject_cast<QGridLayout*>(splitter->widget(0)->layout());
+
     ASSERT_NE(grid, nullptr);
     EXPECT_EQ(grid->itemAtPosition(1, 0)->widget()->objectName(), "three");
+
     auto* tabs = qobject_cast<QTabWidget*>(splitter->widget(1));
+
     ASSERT_NE(tabs, nullptr);
     EXPECT_EQ(tabs->count(), 2);
     EXPECT_EQ(tabs->tabText(0), "First");
@@ -230,11 +249,14 @@ TEST(LayoutBuilder, BuildsVerticalSplitterWithGridAndLabeledTabs)
 TEST(LayoutBuilder, ReusedGridDropsStretchFromRemovedColumns)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* grid = new QWidget{&owner};
     auto* layout = new QGridLayout{grid};
     LayoutBuilder builder;
+
     ASSERT_TRUE(register_fixture_view(builder, "grid", grid));
+
     LayoutNode node{.id = "grid", .kind = LayoutComponentKind::grid};
     node.columns = 3;
     node.children = {
@@ -244,6 +266,7 @@ TEST(LayoutBuilder, ReusedGridDropsStretchFromRemovedColumns)
     };
     ASSERT_EQ(build_fixture(builder, node, {}, &owner), grid);
     EXPECT_EQ(layout->columnStretch(2), 1);
+
     node.columns = 2;
     node.children.pop_back();
     ASSERT_EQ(build_fixture(builder, node, {}, &owner), grid);
@@ -258,9 +281,12 @@ TEST(LayoutBuilder, PlacesBorrowedWidgetsInGridCellsAndTabPages)
     auto* first = new QPushButton{"Borrowed first", &owner};
     auto* second = new QPushButton{"Borrowed second", &owner};
     wiola::gui::LayoutBuilder builder;
+
     ASSERT_TRUE(register_fixture_view(builder, "first", first));
     ASSERT_TRUE(register_fixture_view(builder, "second", second));
+
     wiola::gui::LayoutDocument document;
+
     ASSERT_EQ(
         wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"grid","type":"grid","columns":2,
         "children":[{"id":"first","type":"button"},{"id":"tabs","type":"tabs","children":[
@@ -268,12 +294,18 @@ TEST(LayoutBuilder, PlacesBorrowedWidgetsInGridCellsAndTabPages)
             document),
         wiola::gui::LayoutJsonError::none
     );
+
     QWidget* root = build_fixture(builder, document.root, {}, &owner);
+
     ASSERT_NE(root, nullptr);
+
     auto* grid = qobject_cast<QGridLayout*>(root->layout());
+
     ASSERT_NE(grid, nullptr);
     EXPECT_EQ(grid->itemAtPosition(0, 0)->widget(), first);
+
     auto* tabs = qobject_cast<QTabWidget*>(grid->itemAtPosition(0, 1)->widget());
+
     ASSERT_NE(tabs, nullptr);
     EXPECT_EQ(tabs->widget(0), second);
     EXPECT_EQ(tabs->tabText(0), "Borrowed page");
@@ -285,15 +317,20 @@ TEST(LayoutBuilder, ReordersBorrowedTabPagesAndPreservesTheSelectedPage)
     auto* tabs = new QTabWidget{&owner};
     auto* first = new QPushButton{"First"};
     auto* second = new QPushButton{"Second"};
+
     tabs->addTab(first, "Old first");
     tabs->addTab(second, "Old second");
     tabs->setCurrentWidget(second);
+
     wiola::gui::LayoutBuilder builder;
+
     ASSERT_TRUE(register_fixture_view(builder, "tabs", tabs));
     ASSERT_TRUE(register_fixture_view(builder, "first", first));
     ASSERT_TRUE(register_fixture_view(builder, "second", second));
     EXPECT_FALSE(register_fixture_view(builder, "duplicate", second));
+
     wiola::gui::LayoutDocument document;
+
     ASSERT_EQ(wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"tabs","type":"tabs",
         "children":[{"id":"second","type":"button","title":"Selected"},
                     {"id":"first","type":"button","title":"Other"}]}})",
@@ -315,7 +352,9 @@ TEST(LayoutBuilder, IncompatibleNestedContainerDoesNotMoveBorrowedWidgets)
     auto* button = new QPushButton{"Keep me", &owner};
     auto* original = new QHBoxLayout{&owner};
     original->addWidget(button);
+
     wiola::gui::LayoutDocument document;
+
     ASSERT_EQ(
         wiola::gui::read_layout_json(R"({"version":1,"root":{"id":"tabs","type":"tabs","children":[
         {"id":"borrowed","type":"button"},{"id":"grid","type":"grid","children":[
@@ -323,7 +362,9 @@ TEST(LayoutBuilder, IncompatibleNestedContainerDoesNotMoveBorrowedWidgets)
             document),
         wiola::gui::LayoutJsonError::none
     );
+
     wiola::gui::LayoutBuilder builder;
+
     ASSERT_TRUE(register_fixture_view(builder, "borrowed", button));
     // Borrowed widgets must be valid even if a later registered container is incompatible.
     ASSERT_TRUE(register_fixture_view(builder, "grid", new QPushButton{&owner}));
@@ -336,6 +377,7 @@ TEST(LayoutBuilder, RetiresDiscardedContainersWithoutDeletingOmittedRegisteredVi
 {
     for (const QString type : {"splitter", "tabs", "stack", "grid", "column"}) {
         SCOPED_TRACE(type.toStdString());
+
         QWidget owner;
         wiola::gui::LayoutBuilder builder;
         wiola::gui::LayoutDocument original;
@@ -344,12 +386,17 @@ TEST(LayoutBuilder, RetiresDiscardedContainersWithoutDeletingOmittedRegisteredVi
                 {"id":"omitted","type":"button"}]}]}})"}
                                              .arg(type)
                                              .toUtf8();
+
         ASSERT_EQ(wiola::gui::read_layout_json(original_json, original),
             wiola::gui::LayoutJsonError::none);
+
         QWidget* root = build_fixture(builder, original.root, {}, &owner);
+
         ASSERT_NE(root, nullptr);
+
         QPointer<QWidget> wrapper = root->findChild<QWidget*>("wrapper");
         QPointer<QPushButton> omitted = root->findChild<QPushButton*>("omitted");
+
         ASSERT_NE(wrapper, nullptr);
         ASSERT_NE(omitted, nullptr);
         ASSERT_TRUE(register_fixture_view(builder, "root", root));
@@ -360,6 +407,7 @@ TEST(LayoutBuilder, RetiresDiscardedContainersWithoutDeletingOmittedRegisteredVi
             "children":[{"id":"replacement","type":"status"}]}})"}
                                                 .arg(type)
                                                 .toUtf8();
+
         ASSERT_EQ(wiola::gui::read_layout_json(replacement_json, replacement),
             wiola::gui::LayoutJsonError::none);
         ASSERT_EQ(build_fixture(builder, replacement.root, {}, &owner), root);
@@ -374,15 +422,20 @@ TEST(LayoutBuilder, RetiresDiscardedContainersWithoutDeletingOmittedRegisteredVi
 TEST(LayoutBuilder, NodeIdentityDoesNotImplicitlyBorrowAndExplicitViewSurvivesRenaming)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* existing = new QPushButton{"Live", &owner};
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("playPause"), existing,
         LayoutComponentKind::button));
+
     LayoutNode fresh{.id = "playPause", .kind = LayoutComponentKind::button};
     auto* created = builder.build(fresh, {}, &owner);
+
     ASSERT_NE(created, nullptr);
     EXPECT_NE(created, existing);
+
     delete created;
     fresh.id = "arbitraryNode";
     fresh.view = component_view("playPause");
@@ -392,32 +445,41 @@ TEST(LayoutBuilder, NodeIdentityDoesNotImplicitlyBorrowAndExplicitViewSurvivesRe
 TEST(LayoutBuilder, RejectsDuplicateUnavailableIncompatibleAndAncestorViewsBeforeMovingAnything)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* button = new QPushButton{"Live", &owner};
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("live"), button, LayoutComponentKind::button));
+
     LayoutNode one{.id = "one",
         .kind = LayoutComponentKind::button,
         .view = component_view("live")};
     auto two = one;
     two.id = "two";
+
     LayoutNode root{
         .id = "root",
         .kind = LayoutComponentKind::column,
         .children = {one, two}
     };
+
     EXPECT_EQ(builder.build(root, {}, &owner), nullptr);
     EXPECT_EQ(button->parentWidget(), &owner);
+
     one.kind = LayoutComponentKind::status;
     EXPECT_EQ(builder.build(one, {}, &owner), nullptr);
+
     one.kind = LayoutComponentKind::button;
     one.view = component_view("absent");
     EXPECT_EQ(builder.build(one, {}, &owner), nullptr);
     ASSERT_TRUE(builder.views().add(component_view("ancestor"), &owner, LayoutComponentKind::column,
         true));
+
     one.kind = LayoutComponentKind::column;
     one.view = component_view("ancestor");
     EXPECT_EQ(builder.build(one, {}, button), nullptr);
+
     delete button;
     one.kind = LayoutComponentKind::button;
     one.view = component_view("live");
@@ -427,31 +489,41 @@ TEST(LayoutBuilder, RejectsDuplicateUnavailableIncompatibleAndAncestorViewsBefor
 TEST(LayoutBuilder, OpaqueDocumentHostAndTypedDocumentReferencesKeepTheirKindsAndLifetimes)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* host = new QTabWidget{&owner};
     auto* saved = new QWidget{host};
     host->addTab(saved, "Saved");
+
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("documents"), host,
         LayoutComponentKind::document_host));
+
     const ViewReference reference =
         DocumentViewReference{DocumentId::playlist(wiola::library::PlaylistId{"saved:identity"})};
+
     ASSERT_TRUE(builder.views().add(reference, saved, LayoutComponentKind::track_table));
+
     LayoutNode opaque{.id = "hostNode",
         .kind = LayoutComponentKind::document_host,
         .view = component_view("documents")};
+
     EXPECT_EQ(builder.build(opaque, {}, &owner), host);
     EXPECT_EQ(host->count(), 1);
+
     opaque.children = {
         {.id = "illegal", .kind = LayoutComponentKind::status}
     };
     EXPECT_EQ(builder.build(opaque, {}, &owner), nullptr);
     EXPECT_EQ(host->widget(0), saved);
+
     LayoutDocument document{
         .root = {.id = "savedNode", .kind = LayoutComponentKind::track_table, .view = reference},
         .node_count = 1
     };
     LayoutDocument restored;
+
     ASSERT_EQ(read_layout_json(write_layout_json(document), restored), LayoutJsonError::none);
     EXPECT_EQ(restored.root.view, reference);
     EXPECT_EQ(builder.build(restored.root, {}, &owner), saved);
@@ -460,15 +532,19 @@ TEST(LayoutBuilder, OpaqueDocumentHostAndTypedDocumentReferencesKeepTheirKindsAn
 TEST(PreparedLayout, AbandonmentAndDestroyedBorrowedViewsDoNotAttachAnyLiveWidget)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* first = new QPushButton{"First", &owner};
     auto* second = new QPushButton{"Second", &owner};
     auto* old = new QHBoxLayout{&owner};
     old->addWidget(first);
     old->addWidget(second);
+
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("first"), first, LayoutComponentKind::button));
     ASSERT_TRUE(builder.views().add(component_view("second"), second, LayoutComponentKind::button));
+
     LayoutNode root{
         .id = "root",
         .kind = LayoutComponentKind::column,
@@ -478,14 +554,18 @@ TEST(PreparedLayout, AbandonmentAndDestroyedBorrowedViewsDoNotAttachAnyLiveWidge
     };
     {
         auto candidate = builder.prepare(root, {}, &owner);
+
         ASSERT_NE(candidate, nullptr);
         EXPECT_TRUE(candidate->ready(&owner));
         EXPECT_EQ(first->parentWidget(), &owner);
         EXPECT_EQ(old->indexOf(first), 0);
     }
     EXPECT_EQ(first->parentWidget(), &owner);
+
     auto candidate = builder.prepare(root, {}, &owner);
+
     ASSERT_NE(candidate, nullptr);
+
     delete second;
     EXPECT_FALSE(candidate->ready(&owner));
     EXPECT_EQ(candidate->attach(&owner), nullptr);
@@ -496,19 +576,26 @@ TEST(PreparedLayout, AbandonmentAndDestroyedBorrowedViewsDoNotAttachAnyLiveWidge
 TEST(PreparedLayout, DetectsChangedBorrowedOwnershipAndCanOnlyAttachOnce)
 {
     using namespace wiola::gui;
+
     QWidget owner, other;
     auto* button = new QPushButton{"Live", &owner};
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("live"), button, LayoutComponentKind::button));
+
     LayoutNode node{.id = "renamed",
         .kind = LayoutComponentKind::button,
         .view = component_view("live")};
     auto pending = builder.prepare(node, {}, &owner);
+
     ASSERT_NE(pending, nullptr);
+
     button->setParent(&other);
     EXPECT_EQ(pending->attach(&owner), nullptr);
     EXPECT_EQ(button->parentWidget(), &other);
+
     auto accepted = builder.prepare(node, {}, &owner);
+
     ASSERT_NE(accepted, nullptr);
     EXPECT_EQ(accepted->attach(&owner), button);
     EXPECT_EQ(accepted->attach(&owner), nullptr);
@@ -518,24 +605,29 @@ TEST(PreparedLayout, DetectsChangedBorrowedOwnershipAndCanOnlyAttachOnce)
 TEST(PreparedLayout, RetiringAStructureKeepsOmittedRegisteredCompositeContentsTogether)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* root = new QSplitter{&owner};
     auto* composite = new QTabWidget;
     auto* content = new QWidget;
     composite->addTab(content, "Retained");
     root->addWidget(composite);
+
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("root"), root, LayoutComponentKind::splitter,
         true));
     ASSERT_TRUE(builder.views().add(component_view("zparent"), composite,
         LayoutComponentKind::document_host));
     ASSERT_TRUE(builder.views().add(component_view("achild"), content,
         LayoutComponentKind::status));
+
     LayoutNode node{.id = "newRoot",
         .kind = LayoutComponentKind::splitter,
         .children = {{.id = "replacement", .kind = LayoutComponentKind::status}},
         .view = component_view("root")};
     auto prepared = builder.prepare(node, {}, &owner);
+
     ASSERT_NE(prepared, nullptr);
     ASSERT_EQ(prepared->attach(&owner), root);
     EXPECT_EQ(composite->parentWidget(), &owner);
@@ -546,22 +638,28 @@ TEST(PreparedLayout, RetiringAStructureKeepsOmittedRegisteredCompositeContentsTo
 TEST(LayoutBuilder, RemovingSizeOverridesRestoresCapturedComponentConstraints)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     auto* button = new QPushButton{"Live", &owner};
     button->setMinimumSize(23, 17);
     button->setMaximumSize(350, 200);
+
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("live"), button, LayoutComponentKind::button));
+
     LayoutNode node{.id = "control",
         .kind = LayoutComponentKind::button,
         .width = 100,
         .height = 70,
         .min_width = 40,
         .view = component_view("live")};
+
     for (int repeat = 0; repeat < 3; ++repeat) {
         ASSERT_EQ(builder.build(node, {}, &owner), button);
         EXPECT_EQ(button->minimumWidth(), 100);
         EXPECT_EQ(button->maximumWidth(), 100);
+
         auto automatic = node;
         automatic.width.reset();
         automatic.height.reset();
@@ -570,10 +668,12 @@ TEST(LayoutBuilder, RemovingSizeOverridesRestoresCapturedComponentConstraints)
         EXPECT_EQ(button->minimumSize(), QSize(23, 17));
         EXPECT_EQ(button->maximumSize(), QSize(350, 200));
     }
+
     auto invalid = node;
     invalid.width = 10;
     EXPECT_EQ(builder.build(invalid, {}, &owner), nullptr);
     EXPECT_EQ(button->minimumSize(), QSize(23, 17));
+
     invalid = node;
     invalid.min_width = 101;
     EXPECT_EQ(builder.build(invalid, {}, &owner), nullptr);
@@ -582,13 +682,18 @@ TEST(LayoutBuilder, RemovingSizeOverridesRestoresCapturedComponentConstraints)
 TEST(LayoutBuilder, RemovingSplitterOverridesRestoresOrientationAndDefaultWeights)
 {
     using namespace wiola::gui;
+
     QWidget owner;
     owner.resize(600, 600);
+
     auto* splitter = new QSplitter{Qt::Vertical, &owner};
     splitter->resize(400, 400);
+
     LayoutBuilder builder;
+
     ASSERT_TRUE(builder.views().add(component_view("split"), splitter,
         LayoutComponentKind::splitter, true));
+
     LayoutNode node{
         .id = "splitterNode",
         .kind = LayoutComponentKind::splitter,
@@ -598,16 +703,21 @@ TEST(LayoutBuilder, RemovingSplitterOverridesRestoresOrientationAndDefaultWeight
                   {.id = "second", .kind = LayoutComponentKind::status}  },
         .view = component_view("split")
     };
+
     ASSERT_EQ(builder.build(node, {}, &owner), splitter);
     EXPECT_EQ(splitter->orientation(), Qt::Horizontal);
+
     node.orientation.reset();
     node.sizes.clear();
     ASSERT_EQ(builder.build(node, {}, &owner), splitter);
     EXPECT_EQ(splitter->orientation(), Qt::Vertical);
+
     owner.show();
     splitter->show();
     QApplication::processEvents();
+
     const auto sizes = splitter->sizes();
+
     ASSERT_EQ(sizes.size(), 2);
     EXPECT_LE(std::abs(sizes[0] - sizes[1]), 1);
 }
@@ -618,6 +728,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

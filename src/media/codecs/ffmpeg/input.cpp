@@ -19,7 +19,6 @@
  */
 
 #include "input.hpp"
-
 #include "qualification.hpp"
 
 extern "C" {
@@ -52,12 +51,15 @@ std::optional<pcm::ChannelLayout> semantic_channel_layout(const AVChannelLayout&
         (layout.order == AV_CHANNEL_ORDER_UNSPEC ||
             (layout.order == AV_CHANNEL_ORDER_NATIVE && layout.u.mask == AV_CH_LAYOUT_MONO)))
         return pcm::ChannelLayout::mono;
+
     if (layout.nb_channels == 2 &&
         (layout.order == AV_CHANNEL_ORDER_UNSPEC ||
             (layout.order == AV_CHANNEL_ORDER_NATIVE && layout.u.mask == AV_CH_LAYOUT_STEREO)))
         return pcm::ChannelLayout::stereo;
+
     if (layout.order == AV_CHANNEL_ORDER_NATIVE && layout.u.mask == AV_CH_LAYOUT_5POINT1)
         return pcm::ChannelLayout::five_point_one_side;
+
     return std::nullopt;
 }
 
@@ -109,18 +111,22 @@ FfmpegInput::open(std::unique_ptr<media::ByteStream> stream, const media::Operat
 
     auto input{std::unique_ptr<FfmpegInput>{new FfmpegInput{std::move(stream), context}}};
     auto initialized{input->initialize()};
+
     if (!initialized)
         return media::unexpected{initialized.error()};
+
     return input;
 }
 
 media::Result<void> FfmpegInput::initialize()
 {
     auto measured{measure_size()};
+
     if (!measured)
         return measured;
 
     format_ = avformat_alloc_context();
+
     if (!format_)
         return media::unexpected{
             failure(media::ErrorCategory::unreadable, "FFmpeg input allocation failed")};
@@ -147,12 +153,14 @@ media::Result<void> FfmpegInput::initialize()
         AVIOInterruptCB{.callback = &FfmpegInput::interrupted, .opaque = this};
 
     const int opened{avformat_open_input(&format_, "", nullptr, nullptr)};
+
     if (opened < 0) {
         if (context_.stop_reason() != media::StopReason::none)
             return media::unexpected{context_.error()};
 
         if (io_error_)
             return media::unexpected{*io_error_};
+
         return media::unexpected{
             failure(media::ErrorCategory::not_mine, "FFmpeg did not recognize the input")};
     }
@@ -163,23 +171,32 @@ media::Result<void> FfmpegInput::initialize()
 media::Result<void> FfmpegInput::measure_size()
 {
     auto original{stream_->tell(context_)};
+
     if (!original)
         return media::unexpected{original.error()};
+
     auto end{stream_->seek(0, media::SeekOrigin::end, context_)};
+
     if (!end)
         return media::unexpected{end.error()};
+
     auto measured{stream_->tell(context_)};
+
     if (!measured)
         return media::unexpected{measured.error()};
+
     auto restored{
         stream_->seek(static_cast<std::int64_t>(*original), media::SeekOrigin::start, context_)};
+
     if (!restored)
         return media::unexpected{restored.error()};
+
     if (*measured > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
         return media::unexpected{
             failure(media::ErrorCategory::seek_failed, "input exceeds FFmpeg offsets")};
 
     size_ = *measured;
+
     return {};
 }
 
@@ -208,6 +225,7 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stre
 
         if (io_error_)
             return media::unexpected{*io_error_};
+
         return media::unexpected{
             failure(media::ErrorCategory::damaged, "FFmpeg stream inspection failed")};
     }
@@ -255,10 +273,12 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stre
     std::optional<pcm::Frames> length;
     AVRational time_base{selected->time_base};
     std::int64_t duration{selected->duration};
+
     if (duration == AV_NOPTS_VALUE && format_->duration != AV_NOPTS_VALUE) {
         duration = format_->duration;
         time_base = AV_TIME_BASE_Q;
     }
+
     if (duration != AV_NOPTS_VALUE && duration >= 0 && av_q2d(time_base) > 0.0) {
         const double seconds{static_cast<double>(duration) * av_q2d(time_base)};
         length = spec.checked_frames_at(units::Time{seconds});
@@ -268,6 +288,7 @@ media::Result<FfmpegStreamFacts> FfmpegInput::inspect(StreamInfoReader read_stre
         selected->duration != AV_NOPTS_VALUE &&
         std::string_view{format_->iformat->name} == "mov,mp4,m4a,3gp,3g2,mj2"};
     const bool exact_length{has_exact_sample_count(parameters->codec_id) || exact_mp4_aac};
+
     return FfmpegStreamFacts{
         .stream_index = static_cast<std::size_t>(selected->index),
         .output = media::DecoderStreamInfo{.spec = spec,
@@ -301,11 +322,13 @@ int FfmpegInput::read(unsigned char* output, int size) noexcept
         auto count{
             stream_->read({reinterpret_cast<std::byte*>(output), static_cast<std::size_t>(size)},
                 context_)};
+
         if (!count) {
             if (!io_error_)
                 io_error_ = std::move(count.error());
             return AVERROR(EIO);
         }
+
         return *count == 0 ? AVERROR_EOF : static_cast<int>(*count);
     } catch (...) {
         remember_exception(media::ErrorCategory::read_failed);
@@ -324,29 +347,36 @@ std::int64_t FfmpegInput::seek(std::int64_t offset, int origin) noexcept
         return static_cast<std::int64_t>(size_);
 
     origin &= ~AVSEEK_FORCE;
+
     const std::optional<media::SeekOrigin> mapped{origin == SEEK_SET
             ? std::optional{media::SeekOrigin::start}
             : origin == SEEK_CUR ? std::optional{media::SeekOrigin::current}
             : origin == SEEK_END ? std::optional{media::SeekOrigin::end}
                                  : std::nullopt};
+
     if (!mapped)
         return AVERROR(EINVAL);
 
     try {
         auto moved{stream_->seek(offset, *mapped, context_)};
+
         if (!moved) {
             if (!io_error_)
                 io_error_ = std::move(moved.error());
             return AVERROR(EIO);
         }
+
         auto position{stream_->tell(context_)};
+
         if (!position) {
             if (!io_error_)
                 io_error_ = std::move(position.error());
             return AVERROR(EIO);
         }
+
         if (*position > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
             return AVERROR(EOVERFLOW);
+
         return static_cast<std::int64_t>(*position);
     } catch (...) {
         remember_exception(media::ErrorCategory::seek_failed);

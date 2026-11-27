@@ -21,10 +21,12 @@
 #pragma once
 
 #include "document_id.hpp"
+
+#include <wiola/presentation/tracks/browser_view_state.hpp>
+
 #include <map>
 #include <optional>
 #include <vector>
-#include <wiola/presentation/tracks/browser_view_state.hpp>
 
 namespace wiola::gui {
 

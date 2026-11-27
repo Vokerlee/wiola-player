@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "player_layout.hpp"
 #include "layout_tree.hpp"
+#include "player_layout.hpp"
 
 namespace wiola::gui {
 namespace {
@@ -32,8 +32,10 @@ LayoutNode container(const char* id, LayoutComponentKind kind, std::vector<Layou
     node.kind = kind;
     node.title = title;
     node.children = std::move(children);
+
     if (view)
         node.view = component_view(view);
+
     return node;
 }
 
@@ -41,6 +43,7 @@ LayoutNode leaf(const char* id, LayoutComponentKind kind, std::optional<PlayerAc
 {
     auto node = container(id, kind, {}, "", id);
     node.action = action;
+
     return node;
 }
 
@@ -52,15 +55,18 @@ LayoutNode transport()
         {leaf("previousTrack", K::button, A::previous), leaf("playPause", K::button, A::play),
             leaf("nextTrack", K::button, A::next)});
     controls.alignment = Qt::AlignHCenter;
+
     auto options = container("playbackOptions", K::row,
         {leaf("repeatQueue", K::button, A::repeat), leaf("shuffleQueue", K::button, A::shuffle),
             leaf("equalizer", K::button, A::equalizer)});
     options.alignment = Qt::AlignRight;
+
     auto volume = container("volumeControls", K::row,
         {leaf("volumeSlider", K::volume), leaf("volumeValue", K::status),
             leaf("boostButton", K::button)},
         "", "volumeSection");
     volume.alignment = Qt::AlignRight;
+
     auto regions = container("playbackRegions", K::grid,
         {leaf("trackLabel", K::status),
             container("playbackCenter", K::column,
@@ -72,6 +78,7 @@ LayoutNode transport()
                                     leaf("totalDuration", K::status)})})}),
             container("playbackUtilities", K::column, {std::move(options), std::move(volume)})});
     regions.columns = 3;
+
     return container("playbackGroup", K::group, {std::move(regions)}, "", "transportSection");
 }
 
@@ -89,6 +96,7 @@ LayoutDocument player_layout_document(PlayerLayoutPreset preset)
              {leaf("openTracks", K::button, A::open), leaf("addTracks", K::button, A::add)}),
             leaf("documentTabs", K::document_host), transport(), leaf("playerStatus", K::status)});
     document.node_count = layout_node_count(document.root);
+
     return document;
 }
 

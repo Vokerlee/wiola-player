@@ -46,10 +46,12 @@ CustomTagResult CustomTagCommands::add(const library::MediaId& media, std::strin
     std::string value)
 {
     const library::TrackRecord* track = repository_.track(media);
+
     if (track == nullptr)
         return failure(CustomTagError::missing_media);
 
     auto candidate = library::make_tag_value(std::move(key), std::move(value));
+
     if (!candidate)
         return failure(CustomTagError::invalid_value);
 
@@ -73,14 +75,17 @@ CustomTagResult CustomTagCommands::edit(const library::MediaId& media, const lib
     std::string key, std::string value)
 {
     const library::TrackRecord* track = repository_.track(media);
+
     if (track == nullptr)
         return failure(CustomTagError::missing_media, tag);
 
     const auto existing = std::ranges::find(track->tags, tag, &library::TagRecord::id);
+
     if (existing == track->tags.end())
         return failure(CustomTagError::missing_tag, tag);
 
     auto candidate = library::make_tag_value(std::move(key), std::move(value));
+
     if (!candidate)
         return failure(CustomTagError::invalid_value, tag);
 
@@ -107,6 +112,7 @@ CustomTagResult CustomTagCommands::edit(const library::MediaId& media, const lib
 CustomTagResult CustomTagCommands::remove(const library::MediaId& media, const library::TagId& tag)
 {
     const library::TrackRecord* track = repository_.track(media);
+
     if (track == nullptr)
         return failure(CustomTagError::missing_media, tag);
 
@@ -114,6 +120,7 @@ CustomTagResult CustomTagCommands::remove(const library::MediaId& media, const l
         return failure(CustomTagError::missing_tag, tag);
 
     library::RepositoryTransaction transaction{repository_, persist_};
+
     if (!repository_.remove_tag(media, tag))
         return failure(CustomTagError::missing_tag, tag);
 

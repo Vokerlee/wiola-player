@@ -35,6 +35,7 @@ std::unique_ptr<audio::Output> construct_output(audio::Source& source,
     const OutputFactory& make_output)
 {
     std::unique_ptr<audio::Output> output;
+
     try {
         output = make_output(source);
     } catch (const std::bad_alloc&) {
@@ -44,8 +45,10 @@ std::unique_ptr<audio::Output> construct_output(audio::Source& source,
     } catch (...) {
         throw OutputSession::Unavailable{"output factory threw an unknown exception"};
     }
+
     if (!output)
         throw OutputSession::Unavailable{"output factory returned no output"};
+
     return output;
 }
 
