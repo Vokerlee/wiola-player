@@ -34,6 +34,7 @@ struct WorkspaceScanScheduling {
     WorkspaceScanPolicy scan;
 };
 
+/// Owner-thread scheduler; stop closes publication and joins all cooperatively cancelled workers.
 class WorkspaceScanPublisher final {
 public:
     using Observer = WorkspaceScanner::Observer;
@@ -67,7 +68,7 @@ private:
     void receive(WorkspaceScanBatch batch);
     QueuedDelivery delivery_;
     std::shared_ptr<Lifetime> lifetime_;
-    Observer observer_;
+    std::shared_ptr<Observer> observer_;
     WorkspaceScanScheduling policy_;
     std::map<library::WorkspaceId, std::uint64_t> generations_;
     std::map<library::WorkspaceId, Running> running_;

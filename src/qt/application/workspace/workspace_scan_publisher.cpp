@@ -31,24 +31,25 @@ WorkspaceScanPublisher::WorkspaceScanPublisher(QObject& context, Observer observ
     WorkspaceScanScheduling policy)
     : delivery_{context}
     , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
-    , observer_{std::move(observer)}
+    , observer_{std::make_shared<Observer>(std::move(observer))}
     , policy_{std::move(policy)}
 {
     WorkspaceScanner validate{policy_.scan};
-    if (!observer_ || policy_.max_active == 0 || policy_.max_active > 8 ||
+    if (!*observer_ || policy_.max_active == 0 || policy_.max_active > 8 ||
         policy_.max_pending == 0 || policy_.max_pending > 64)
         throw std::invalid_argument{"invalid scan scheduling policy"};
 }
 
 WorkspaceScanPublisher::~WorkspaceScanPublisher()
 {
-    stop();
     lifetime_->owner = nullptr;
+    stop();
 }
 
 void WorkspaceScanPublisher::stop()
 {
     stopped_ = true;
+    delivery_.stop_accepting();
     pending_.clear();
     order_.clear();
 
@@ -60,6 +61,7 @@ void WorkspaceScanPublisher::stop()
 
     running_.clear();
     generations_.clear();
+    delivery_.discard();
 }
 
 std::uint64_t WorkspaceScanPublisher::start(const library::WorkspaceRecord& workspace,
@@ -126,10 +128,13 @@ void WorkspaceScanPublisher::cancel()
 
 void WorkspaceScanPublisher::pump()
 {
+    const auto lifetime = lifetime_;
+
     if (stopped_)
         return;
     for (std::size_t attempts = order_.size();
-        attempts > 0 && !order_.empty() && running_.size() < policy_.max_active; --attempts) {
+        lifetime->owner && attempts > 0 && !order_.empty() && running_.size() < policy_.max_active;
+        --attempts) {
         auto id = std::move(order_.front());
 
         order_.pop_front();
@@ -192,12 +197,15 @@ void WorkspaceScanPublisher::receive(WorkspaceScanBatch batch)
             running_.erase(current);
     }
 
+    const auto lifetime = lifetime_;
+    const auto observer = observer_;
+
     if (const auto latest = generations_.find(batch.workspace);
         latest != generations_.end() && latest->second == batch.generation)
-        observer_(std::move(batch));
+        (*observer)(std::move(batch));
 
-    if (finished)
-        pump();
+    if (finished && lifetime->owner)
+        lifetime->owner->pump();
 }
 
 } // namespace wiola::app
