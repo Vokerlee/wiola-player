@@ -34,13 +34,14 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
     : QWidget{parent}
 {
     setObjectName("nowPlayingDocument");
-    setAccessibleName("Now Playing");
+    setWindowTitle("Play queue");
+    setAccessibleName(windowTitle());
 
-    QLabel* heading = new QLabel{"Now Playing", this};
+    QLabel* heading = new QLabel{windowTitle(), this};
     heading->setObjectName("nowPlayingHeading");
 
     browser_ = new TrackBrowser{TrackCapabilities::queue(), this};
-    browser_->table().setAccessibleName("Now Playing tracks");
+    browser_->table().setAccessibleName("Play queue tracks");
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);

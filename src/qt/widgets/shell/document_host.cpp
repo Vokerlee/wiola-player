@@ -55,7 +55,7 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     setObjectName("documentTabs");
     setDocumentMode(true);
     setTabsClosable(true);
-    addTab(queue_, "Now Playing");
+    addTab(queue_, queue_->windowTitle());
     registry_.add(*queue_, [this] {
         std::vector<SelectedTrack> selected;
         for (const auto id : queue_->chosen_tracks())
@@ -85,7 +85,6 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     static_cast<void>(registry_.activate(DocumentId::queue()));
     connect(this, &QTabWidget::currentChanged, &lifetime_, [this](int) {
         registry_.activate(currentWidget());
-        queue_requested_ = !restoring_ && currentWidget() == queue_;
         if (!restoring_)
             if (const auto shown = registry_.active(); shown && shown->playlist())
                 last_playlist_ = *shown->playlist();
@@ -234,9 +233,8 @@ bool DocumentHost::activate(const DocumentId& id)
     if (!registry_.activate(id))
         return false;
     if (!restoring_ && id.is_queue()) {
-        queue_requested_ = true;
         if (indexOf(queue_) < 0)
-            insertTab(0, queue_, "Now Playing");
+            insertTab(0, queue_, queue_->windowTitle());
         setTabVisible(indexOf(queue_), true);
     }
     if (!restoring_ && id.playlist())
@@ -333,7 +331,6 @@ bool DocumentHost::close(const DocumentId& id)
         const int index = indexOf(queue_);
         if (index < 0)
             return false;
-        queue_requested_ = false;
         removeTab(index);
         queue_->hide();
         save();
@@ -395,10 +392,7 @@ void DocumentHost::refresh_playback()
     }
     const int queue_index = indexOf(queue_);
     if (queue_index >= 0) {
-        const bool visible = !active || queue_requested_;
-        if (!visible && currentWidget() == queue_)
-            setCurrentWidget(registry_.playlist(*active));
-        setTabVisible(queue_index, visible);
+        setTabVisible(queue_index, currentWidget() == queue_);
     }
 }
 
