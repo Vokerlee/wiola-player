@@ -21,8 +21,10 @@
 #include <allocation_failure.hpp>
 #include <fakes/tone.hpp>
 #include <fixtures/shaping.hpp>
+#include <wiola/audio/equalizer.hpp>
 #include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/stage.hpp>
+#include <wiola/audio/volume.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
@@ -113,6 +115,39 @@ private:
     std::string name_;
     float factor_;
 };
+
+TEST(ProcessingChain, BuiltInProcessingDoesNotAllocateAfterConfiguration)
+{
+    wiola::audio::Equalizer equalizer{stereo};
+    wiola::audio::Volume volume;
+    ProcessingChain chain{equalizer, volume};
+    chain.configure(stereo);
+    std::array<float, 1024> block;
+    bool valid = true;
+    const auto process = [&] {
+        for (int iteration = 0; iteration < 1024; ++iteration) {
+            if (iteration % 32 == 0) {
+                equalizer.set_enabled(iteration % 64 == 0);
+                equalizer.set_band_gain(0, iteration % 64 == 0 ? 6.0F : -6.0F);
+                volume.set_gain(iteration % 64 == 0 ? 0.5F : 1.0F);
+            }
+            block.fill(0.25F);
+            chain.process(block);
+            for (const auto sample : block)
+                valid = valid && std::isfinite(sample) && std::abs(sample) <= 1.0F;
+        }
+    };
+
+#if WIOLA_TEST_ALLOCATOR_REPLACEMENT
+    {
+        wiola::testing::AllocationFailure failure{0};
+        process();
+    }
+#else
+    process();
+#endif
+    EXPECT_TRUE(valid);
+}
 
 } // namespace
 

@@ -240,15 +240,6 @@ target_link_libraries(
     PRIVATE wiola::local_media wiola::qt_paths
 )
 
-# Explicit benchmark target: measurements are artifacts, not wall-clock CI pass/fail assertions.
-add_executable(
-    gui_projection_benchmark
-    EXCLUDE_FROM_ALL
-    benchmarks/projection_benchmark.cpp
-)
-
-target_link_libraries(gui_projection_benchmark PRIVATE wiola::qt_widgets)
-
 wiola_add_test(
     gui_reader_contract_test
     SOURCES contracts/reader_contract_test.cpp
@@ -353,11 +344,6 @@ install(
     DESTINATION media
     COMPONENT wiola_desktop_tests
     EXCLUDE_FROM_ALL
-)
-
-target_include_directories(
-    gui_projection_benchmark
-    PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests"
 )
 
 wiola_add_test(

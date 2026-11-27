@@ -18,3 +18,5 @@ flowchart LR
 `components.cmake` selects ordinary source targets for independent core/application work. The dependency recipes prepare external SDKs only for the chosen composition. Configure presets describe toolchains and build directories; CTest runs tests. With `ENABLE_COVERAGE=ON`, `coverage.cmake` exposes the `coverage` build target: it builds instrumented targets and passes their object mappings directly to LLVM through a generated response file. Untested code remains in the report without a synthetic executable or a maintained target list.
 
 Top-level `BUILD_TESTING` registers the lightweight presentation and QtCore consumer checks through CTest target names. `ENABLE_UNIT_TESTS` additionally builds the GoogleTest suites. The headless preset leaves those suites disabled and runs its registered public consumer through the normal configure/build/test presets. CMake supplies executable paths to CTest.
+
+With `WIOLA_BUILD_BENCHMARKS=ON`, source owners declare optional executables through `wiola_add_benchmark`; the root derives a sequential `benchmarks` target from those declarations. There is no separately maintained benchmark target list.

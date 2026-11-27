@@ -206,3 +206,21 @@ function(wiola_add_test name)
 
     gtest_discover_tests(${name})
 endfunction()
+
+# Owners declare their optional measurements; the root runs the configured set in order.
+function(wiola_add_benchmark name)
+    cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;LIBS")
+
+    add_executable(${name} EXCLUDE_FROM_ALL ${arg_SOURCES})
+
+    wiola_apply_build_controls(${name})
+
+    target_include_directories(
+        ${name}
+        PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests"
+    )
+
+    target_link_libraries(${name} PRIVATE ${arg_LIBS})
+
+    set_property(GLOBAL APPEND PROPERTY WIOLA_BENCHMARK_TARGETS "${name}")
+endfunction()

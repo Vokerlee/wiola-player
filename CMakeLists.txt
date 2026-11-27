@@ -28,6 +28,12 @@ option(ENABLE_UNIT_TESTS "Build unit tests" ON)
 
 option(WIOLA_BUILD_GUI "Build the Qt GUI and player executable" ON)
 
+option(
+    WIOLA_BUILD_BENCHMARKS
+    "Build optional native performance measurements"
+    OFF
+)
+
 option(ENABLE_COVERAGE "Instrument the project's code for coverage" OFF)
 
 option(ENABLE_ASAN "Build the project's code with the address sanitizer" OFF)
@@ -71,4 +77,23 @@ if(ENABLE_COVERAGE)
     cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
 
     include(coverage)
+endif()
+
+if(WIOLA_BUILD_BENCHMARKS)
+    get_property(benchmark_targets GLOBAL PROPERTY WIOLA_BENCHMARK_TARGETS)
+
+    set(benchmark_commands)
+
+    foreach(target IN LISTS benchmark_targets)
+        list(APPEND benchmark_commands COMMAND "$<TARGET_FILE:${target}>")
+    endforeach()
+
+    add_custom_target(
+        benchmarks
+        ${benchmark_commands}
+        DEPENDS ${benchmark_targets}
+        COMMENT "Run selected native benchmarks sequentially"
+        USES_TERMINAL
+        VERBATIM
+    )
 endif()

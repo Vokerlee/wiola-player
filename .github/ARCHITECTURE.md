@@ -27,3 +27,5 @@ flowchart LR
 | [coverage.yml](workflows/coverage.yml) | Full coverage measurement, reports and main's Pages publication. |
 
 These workflows are called directly; there is no second dispatch layer. Windows packaging and execution stay together so their artifact dependency is explicit. Coverage publication stays with measurement. Ordinary Linux jobs have no Qt SDK construction or sanitizer-runtime conditionals. GUI failure artifacts use one job-owned artifact directory, independent of preset build-directory names.
+
+[performance.yml](workflows/performance.yml) is a manual measurement workflow. It prepares dependencies, records build timings and runs the native CMake benchmark target. It does not add timing thresholds or run on every pull request.
