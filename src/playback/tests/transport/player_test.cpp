@@ -72,7 +72,9 @@ std::unique_ptr<wiola::testing::FakeDecoder> pcm_source()
 template<typename Predicate>
 bool eventually(Predicate predicate, std::chrono::milliseconds limit = 5s)
 {
-    for (auto waited = 0ms; waited < limit; waited += 10ms) {
+    const auto deadline = std::chrono::steady_clock::now() + limit;
+
+    while (std::chrono::steady_clock::now() < deadline) {
         if (predicate())
             return true;
 
@@ -780,15 +782,15 @@ TEST(Player, KeepsASeekAskedForAfterStopping)
     EXPECT_GT(player.time_played().get<units::Sec>(), 0.9);
 }
 
-/// A source that takes its time moving, so the gap between asking for a seek and it being carried
-/// out is wide enough to look into. Silence is enough: nothing here listens.
+/// A source that holds a seek until the test has inspected the outstanding intent.
 class SlowSource final : public wiola::media::AudioDecoder {
 public:
-    SlowSource()
+    explicit SlowSource(wiola::testing::Gate& gate)
         : wiola::media::AudioDecoder{
               wiola::pcm::StreamSpec{units::Frequency{44100.0}, 2},
               wiola::pcm::Frames{44100 * 4}
-    }
+    },
+        gate_{gate}
     {
     }
 
@@ -804,10 +806,13 @@ protected:
     wiola::media::Result<wiola::media::SeekOutcome>
     seek_frame(wiola::pcm::Frames frame_index) override
     {
-        std::this_thread::sleep_for(200ms);
+        gate_.wait();
 
         return wiola::media::SeekOutcome{.target = frame_index, .achieved = frame_index};
     }
+
+private:
+    wiola::testing::Gate& gate_;
 };
 
 /// A source short enough to run out while what it decoded is still being played, and one that
@@ -877,22 +882,25 @@ TEST(Player, SeeksWhileTheLastOfItIsStillBeingPlayed)
 /// that springs back before it settles.
 TEST(Player, TimePlayedNeverFallsBackWhileASeekIsCarriedOut)
 {
-    Rig rig{std::make_unique<SlowSource>()};
+    wiola::testing::Gate gate;
+    Rig rig{std::make_unique<SlowSource>(gate)};
     Player& player{rig.player};
 
+    struct ReleaseOnExit {
+        wiola::testing::Gate& gate;
+
+        ~ReleaseOnExit() { gate.release(); }
+    } release{gate};
+
     ASSERT_TRUE(player.start());
-
     player.seek(2000_ms);
+    gate.wait_until_entered();
 
-    // Watched from the moment it is asked for until well after the source has finished moving.
-    double lowest{player.time_played().get<units::Sec>()};
+    for (int sample = 0; sample < 64; ++sample)
+        EXPECT_GT(player.time_played().get<units::Sec>(), 1.9);
 
-    for (auto waited = 0ms; waited < 400ms; waited += 1ms) {
-        lowest = std::min(lowest, player.time_played().get<units::Sec>());
-        std::this_thread::sleep_for(1ms);
-    }
-
-    EXPECT_GT(lowest, 1.9);
+    gate.release();
+    EXPECT_TRUE(eventually([&] { return player.time_played().get<units::Sec>() >= 2.0; }));
 }
 
 TEST(Player, PlaysAgainAfterEnding)
@@ -1006,18 +1014,13 @@ TEST(Player, SurvivesATransportHammering)
 
     ASSERT_TRUE(player.start());
 
-    std::atomic<bool> asking{true};
-
-    const std::jthread listener{[&player, &asking] {
-        for (int i = 0; asking.load(); ++i) {
+    const std::jthread listener{[&player] {
+        for (int i = 0; i < 2048; ++i) {
             static_cast<void>(player.pause());
             player.seek(units::Time{std::chrono::milliseconds{i % 1400}});
             static_cast<void>(player.resume());
         }
     }};
-
-    std::this_thread::sleep_for(1s);
-    asking.store(false);
 }
 
 /// The rule the device depends on: the caller opens it, and from the moment there is a decoding
@@ -1044,11 +1047,10 @@ TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
     for (int i = 0; i < 20; ++i) {
         ASSERT_TRUE(player.pause());
 
-        std::this_thread::sleep_for(5ms);
+        ASSERT_TRUE(eventually([&] { return !output.running(); }));
 
         ASSERT_TRUE(player.resume());
-
-        std::this_thread::sleep_for(5ms);
+        ASSERT_TRUE(eventually([&] { return output.running(); }));
     }
 
     player.stop();

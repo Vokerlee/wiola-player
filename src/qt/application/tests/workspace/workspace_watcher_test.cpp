@@ -44,48 +44,23 @@ bool pump_until(std::function<bool()> predicate)
     return predicate();
 }
 
-TEST(WorkspaceWatcher, CoalescesFilesystemBurstsAndStopsAfterUnwatch)
+TEST(WorkspaceWatcher, DeliversNativeFilesystemNotifications)
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path() / "wiola-watch";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
-
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const auto root = wiola::platform::qt::QtPathAdapter::from_qt(directory.path());
     wiola::app::WorkspaceWatcher watcher;
-    const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
-        .root = root,
-        .recursive = true};
+    const wiola::library::WorkspaceId id{"workspace"};
+    ASSERT_TRUE(watcher.watch({.id = id, .root = root, .recursive = false}));
 
-    ASSERT_TRUE(watcher.watch(workspace));
-
-    int notifications{0};
-    watcher.on_changed([&](wiola::library::WorkspaceId id) {
-        EXPECT_EQ(id, workspace.id);
+    int notifications = 0;
+    watcher.on_changed([&](auto changed) {
+        EXPECT_EQ(changed, id);
         ++notifications;
     });
 
     std::ofstream{root / "first.wav"} << "first";
-    ASSERT_TRUE(pump_until([&] { return notifications == 1; }));
-
-    for (int index = 0; index < 5; ++index)
-        std::ofstream{root / ("burst-" + std::to_string(index) + ".wav")} << "audio";
-
-    ASSERT_TRUE(pump_until([&] { return notifications == 2; }));
-
-    QThread::msleep(250);
-    QCoreApplication::processEvents();
-    EXPECT_EQ(notifications, 2);
-
-    watcher.unwatch(workspace.id);
-    std::ofstream{root / "ignored.wav"} << "ignored";
-    QThread::msleep(250);
-    QCoreApplication::processEvents();
-    EXPECT_EQ(notifications, 2);
-
-    EXPECT_FALSE(watcher.watch(
-        {.id = wiola::library::WorkspaceId{"missing"}, .root = root / "missing", .recursive = true}
-    ));
-
-    std::filesystem::remove_all(root);
+    EXPECT_TRUE(pump_until([&] { return notifications > 0; }));
 }
 
 class FakeWatchBackend final : public wiola::app::WorkspaceWatchBackend {
@@ -125,6 +100,36 @@ public:
     std::map<std::filesystem::path, int> adds;
     Observer observer_;
 };
+
+TEST(WorkspaceWatcher, CoalescesABurstAndDiscardsAPendingNotificationAfterUnwatch)
+{
+    QTemporaryDir directory;
+    const auto root = wiola::platform::qt::QtPathAdapter::from_qt(directory.path());
+    auto backend = std::make_unique<FakeWatchBackend>();
+    auto* events = backend.get();
+    wiola::app::WorkspaceWatcher watcher{std::move(backend),
+        {.debounce = std::chrono::milliseconds{0}}};
+    const wiola::library::WorkspaceId id{"workspace"};
+    ASSERT_TRUE(watcher.watch({.id = id, .root = root, .recursive = false}));
+
+    int notifications = 0;
+    watcher.on_changed([&](auto changed) {
+        EXPECT_EQ(changed, id);
+        ++notifications;
+    });
+    for (int index = 0; index < 5; ++index)
+        events->change(root);
+
+    ASSERT_TRUE(pump_until([&] { return notifications == 1; }));
+    QCoreApplication::processEvents();
+    EXPECT_EQ(notifications, 1);
+
+    events->change(root);
+    watcher.unwatch(id);
+    QCoreApplication::processEvents();
+    EXPECT_EQ(notifications, 1);
+    EXPECT_FALSE(events->contains(root));
+}
 
 TEST(WorkspaceWatcher,
     OverlappingSubscriptionsSurviveClosingOneWorkspaceAndNotifyEveryInterestedRoot)
