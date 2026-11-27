@@ -13,7 +13,7 @@ flowchart LR
 
 [Qt tooling](qt/README.md) is complete under `qt/`: one source provider, the x64 Windows recipe and the native instrumented Core recipe. Use their canonical commands directly; no Qt launcher or implementation lives elsewhere in this tree.
 
-[Configured builds](build/README.md) expose one public CMake inventory/build API used by the Qt SDK recipes and coverage reporting.
+`cmake.py` resolves a named target artifact from CMake’s generated File API reply for focused coverage and the instrumented Qt recipe. Build commands use CMake directly; there is no Python build model or source/dependency inventory to maintain.
 
 Current other commands:
 

@@ -1,1 +1,0 @@
-"""Configured build adapter contracts."""

@@ -5,7 +5,7 @@ import re
 import subprocess
 import os
 
-from scripts.build.cmake import CMakeBuild, CMakeInventory
+from scripts.cmake import target_artifact
 
 from scripts.qt.source.provider import QtSourceStore
 
@@ -25,6 +25,17 @@ class QtCoreTsanBuilder:
     ):
         if timeout <= 0:
             raise ValueError("SDK build timeout must be positive")
+
+        if jobs is None:
+            configured = os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL")
+            jobs = int(configured) if configured else (
+                len(os.sched_getaffinity(0))
+                if hasattr(os, "sched_getaffinity")
+                else os.cpu_count() or 1
+            )
+
+        if jobs < 1:
+            raise ValueError("SDK build parallelism must be positive")
 
         self.workspace = workspace.resolve()
         self.context, self.jobs = context, jobs
@@ -66,19 +77,20 @@ class QtCoreTsanBuilder:
                 timeout=self.timeout,
             )
 
-        inventory = CMakeInventory.read(build)
-        targets = [target for target in inventory.targets if target.name == "Core"]
+        library = target_artifact(build, "Core", "SHARED_LIBRARY")
 
-        if (
-            len(targets) != 1
-            or targets[0].kind != "SHARED_LIBRARY"
-            or len(targets[0].artifacts) != 1
-        ):
-            raise ValueError("Qt Core has no unique configured shared-library artifact")
+        with (self.workspace / "build.log").open("w", encoding="utf-8") as log:
+            subprocess.run(
+                [
+                    "cmake", "--build", str(build), "--target", "Core",
+                    "--parallel", str(self.jobs),
+                ],
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                check=True,
+                timeout=self.timeout,
+            )
 
-        adapter = CMakeBuild(inventory, jobs=self.jobs, timeout=self.timeout)
-        adapter.build("Core", self.workspace / "build.log")
-        library = targets[0].artifacts[0]
         symbols = subprocess.check_output(["nm", "-D", str(library)], text=True)
 
         if not re.search(r"\b__tsan_", symbols):
