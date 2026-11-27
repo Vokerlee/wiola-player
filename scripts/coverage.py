@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import tempfile
 
-from scripts.build.cmake import CMakeBuild, CMakeInventory
+from scripts.cmake import target_artifact
 
 
 def main():
@@ -48,8 +48,12 @@ def main():
     ]
 
     if args.target:
-        build = CMakeBuild(CMakeInventory.read(args.build_dir))
-        objects = sorted({build.executable(name) for name in args.target})
+        objects = sorted(
+            {target_artifact(args.build_dir, name, "EXECUTABLE") for name in args.target}
+        )
+        if any(not path.is_file() for path in objects):
+            parser.error("Build the selected executable targets before collecting coverage")
+
         mappings = [str(objects[0]), *["-object=" + str(path) for path in objects[1:]]]
         discovered = json.loads(
             subprocess.check_output(
