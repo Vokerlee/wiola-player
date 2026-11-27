@@ -202,7 +202,7 @@ int main()
 {
     using namespace wiola;
 
-    Processing processing;
+    auto processing = core::Lease<Processing>::make();
     Device* device{};
     engine::Session session{processing,
         [&](audio::Source& source) {
@@ -227,7 +227,7 @@ int main()
     if (!current || snapshot.track != supplied || snapshot.track.label() != supplied.label() ||
         current->resource() != supplied || snapshot.open_result != engine::OpenResult::opened ||
         snapshot.total_time != duration || snapshot.queue_position != 0 ||
-        processing.configured != stream || current->metadata().title != "controlled title")
+        processing->configured != stream || current->metadata().title != "controlled title")
         return fail("installed decoder facts or processing configuration were lost");
 
     const auto outcomes{session.take_outcomes()};

@@ -28,7 +28,7 @@ wiola_target_headers(
 
 target_link_libraries(
     wiola_playback_api
-    INTERFACE wiola::media wiola::quantities
+    INTERFACE wiola::media wiola::quantities wiola::lifetime
 )
 
 # PCM transport storage and its render bridge are private playback implementation.

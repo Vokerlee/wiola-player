@@ -189,7 +189,7 @@ TEST(Session, HandoffPreservesAnUnrelatedOpenAndRestoresOnlyAfterItsFailure)
             wiola::testing::Gate opening;
             std::atomic<bool> cancelled{false};
             std::atomic<int> active_opens{0};
-            wiola::audio::ProcessingChain processing;
+            auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
             Session session{processing, wiola::testing::passive_output,
                 std::make_shared<wiola::testing::FakeMediaProvider>(
                     [&](const wiola::media::ResourceReference& resource,
@@ -287,7 +287,7 @@ TEST(Session, HandoffCancelsASameResourceOpenButKeepsItsNewOccurrenceIntent)
     wiola::testing::Gate opening;
     std::atomic<int> opens{0};
     std::atomic<bool> cancelled{false};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
             [&](const wiola::media::ResourceReference&,

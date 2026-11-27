@@ -124,6 +124,8 @@ TEST(PlaybackService, ExposesAudioControlsAsValues)
     EXPECT_FLOAT_EQ(service.volume(), 0.25F);
     EXPECT_TRUE(service.equalizer_enabled());
     EXPECT_FLOAT_EQ(service.equalizer_band(0), 3.0F);
+    EXPECT_FLOAT_EQ(service.equalizer_preamp(), -3.0F);
+    EXPECT_EQ(service.equalizer_band_center(0), service.equalizer_config().layout.first);
 }
 
 } // namespace

@@ -55,7 +55,7 @@ std::shared_ptr<media::MediaProvider> validated(std::shared_ptr<media::MediaProv
 
 } // namespace
 
-Session::Impl::Impl(audio::Stage& processing, OutputFactory make_output,
+Session::Impl::Impl(core::Lease<audio::Stage> processing, OutputFactory make_output,
     std::shared_ptr<media::MediaProvider> provider, TransportConfig transport,
     BufferingConfig buffering)
     : processing_{processing}
@@ -354,7 +354,7 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
             "decoder stream cannot support the configured playback buffer"});
 
     try {
-        auto processing{processing_.prepare(spec)};
+        auto processing{processing_->prepare(spec)};
         auto output{out_.prepare(spec)};
         auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
             *buffer_frames, transport_)};

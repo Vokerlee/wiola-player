@@ -26,7 +26,7 @@
 
 namespace wiola::engine {
 
-Session::Session(audio::Stage& processing, OutputFactory make_output,
+Session::Session(core::Lease<audio::Stage> processing, OutputFactory make_output,
     std::shared_ptr<media::MediaProvider> provider, TransportConfig transport,
     BufferingConfig buffering)
     : impl_{std::make_unique<Impl>(processing, std::move(make_output), std::move(provider),

@@ -21,10 +21,12 @@
 #pragma once
 
 #include <wiola/audio/output.hpp>
+#include <wiola/foundation/lease.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/playback/output_factory.hpp>
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 namespace wiola::audio {
@@ -37,7 +39,7 @@ class Source;
 namespace wiola::engine {
 
 /// Prepares stream-specific output leases and caches the last committed stream for reuse.
-/// The borrowed processing stage must outlive both this cache and every prepared lease.
+/// Retained processing dependencies survive the cache through prepared output leases.
 class OutputSession {
     struct Stream;
 
@@ -62,12 +64,12 @@ public:
 
     private:
         friend class OutputSession;
-        explicit Lease(std::shared_ptr<Stream> stream) noexcept;
+        explicit Lease(core::Lease<Stream> stream) noexcept;
 
-        std::shared_ptr<Stream> stream_;
+        core::Lease<Stream> stream_;
     };
 
-    OutputSession(audio::Stage& processing, OutputFactory make_output) noexcept;
+    OutputSession(core::Lease<audio::Stage> processing, OutputFactory make_output) noexcept;
     ~OutputSession();
 
     OutputSession(const OutputSession&) = delete;
@@ -86,9 +88,9 @@ public:
     [[nodiscard]] bool open_for(pcm::StreamSpec spec) const noexcept;
 
 private:
-    audio::Stage& processing_;
+    core::Lease<audio::Stage> processing_;
     OutputFactory make_output_;
-    std::shared_ptr<Stream> stream_;
+    std::optional<core::Lease<Stream>> stream_;
 };
 
 } // namespace wiola::engine

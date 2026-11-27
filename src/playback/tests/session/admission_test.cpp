@@ -77,7 +77,7 @@ public:
 
 TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
 {
-    SuppliedProcessing processing;
+    auto processing = wiola::core::Lease<SuppliedProcessing>::make();
     wiola::audio::Source* rendered{};
     wiola::testing::FakeOutput* device{};
     Session session{processing,
@@ -102,8 +102,8 @@ TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
     ASSERT_EQ(load_and_wait(session,
                   wiola::testing::resource("supplied-processing", "supplied-processing")),
         OpenResult::opened);
-    ASSERT_TRUE(processing.prepared_for);
-    EXPECT_EQ(*processing.prepared_for, wiola::pcm::StreamSpec{});
+    ASSERT_TRUE(processing->prepared_for);
+    EXPECT_EQ(*processing->prepared_for, wiola::pcm::StreamSpec{});
     ASSERT_TRUE(session.play());
     ASSERT_TRUE(poll_until(session, [&] { return device->running(); }));
 
@@ -113,10 +113,42 @@ TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
     EXPECT_EQ(block, (std::array{0.25F, 0.25F}));
 }
 
+TEST(Session, RetainsTheSuppliedProcessingNodeUntilSessionTeardown)
+{
+    wiola::core::WeakLease<SuppliedProcessing> observer;
+    std::unique_ptr<Session> session;
+
+    {
+        const auto processing = wiola::core::Lease<SuppliedProcessing>::make();
+        observer = processing.weak();
+        session = std::make_unique<Session>(processing, wiola::testing::passive_output,
+            std::make_shared<wiola::testing::FakeMediaProvider>(
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
+                    return wiola::media::DecoderOpenResult{
+                        std::make_unique<wiola::testing::FakeDecoder>()};
+                },
+                [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
+                    return wiola::media::Metadata{};
+                }
+            ));
+    }
+
+    ASSERT_EQ(load_and_wait(*session, wiola::testing::resource("retained", "retained")),
+        OpenResult::opened);
+    {
+        const auto processing = observer.lock();
+        ASSERT_TRUE(processing);
+        EXPECT_EQ((*processing)->prepared_for, wiola::pcm::StreamSpec{});
+    }
+
+    session.reset();
+    EXPECT_FALSE(observer.lock());
+}
+
 TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
 {
     std::size_t num_outputs{0};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [&num_outputs](wiola::audio::Source&) {
             ++num_outputs;
@@ -150,7 +182,7 @@ TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
 TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
 {
     const auto loads_with = [](units::Time duration) {
-        wiola::audio::ProcessingChain processing;
+        auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
         Session session{processing,
             [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
             std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -181,7 +213,7 @@ TEST(Session, OwnsIndependentAndValidatedBufferingConfiguration)
 
 TEST(Session, RejectsInvalidConstructionBeforeStartingAnyCollaborator)
 {
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     std::atomic<unsigned> media_calls{};
     unsigned output_calls{};
     const auto provider{std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -258,13 +290,13 @@ TEST(Session, PreservesSuppliedProcessingSettingsAcrossTracks)
     SessionFixture fixture;
     const wiola::media::ResourceReference resource{fixture.track()};
 
-    fixture.processing.volume.set_gain(0.25F);
-    fixture.processing.equalizer.set_band_gain(3, 6.0F);
+    fixture.processing->volume.set_gain(0.25F);
+    fixture.processing->equalizer.set_band_gain(3, 6.0F);
 
     ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
 
-    EXPECT_FLOAT_EQ(fixture.processing.volume.gain(), 0.25F);
-    EXPECT_FLOAT_EQ(fixture.processing.equalizer.band_gain(3), 6.0F);
+    EXPECT_FLOAT_EQ(fixture.processing->volume.gain(), 0.25F);
+    EXPECT_FLOAT_EQ(fixture.processing->equalizer.band_gain(3), 6.0F);
 }
 
 TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
@@ -282,8 +314,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
     for (const auto fault : {Fault::no_output, Fault::exception, Fault::unknown_exception}) {
         wiola::testing::FakeOutput* active_device{};
         bool fail{false};
-        wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
-        Session session{processing.chain,
+        wiola::core::Lease<wiola::testing::Shaping> processing =
+            wiola::core::Lease<wiola::testing::Shaping>::make(wiola::pcm::StreamSpec{});
+        Session session{processing.member<&wiola::testing::Shaping::chain>(),
             [&](wiola::audio::Source&) -> std::unique_ptr<wiola::audio::Output> {
                 if (fail) {
                     if (fault == Fault::no_output)
@@ -321,8 +354,8 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         ASSERT_EQ(load_and_wait(session, wiola::testing::resource("current", "current")),
             OpenResult::opened);
 
-        processing.equalizer.set_band_gain(9, 3.0F);
-        processing.volume.set_gain(0.25F);
+        processing->equalizer.set_band_gain(9, 3.0F);
+        processing->volume.set_gain(0.25F);
         ASSERT_TRUE(session.play());
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
 
@@ -349,9 +382,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         EXPECT_FALSE(session.seekable());
         EXPECT_TRUE(active_device->running());
         EXPECT_EQ(session.time_played(), position);
-        EXPECT_EQ(processing.equalizer.num_bands(), 10U);
-        EXPECT_FLOAT_EQ(processing.equalizer.preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(processing.volume.gain(), 0.25F);
+        EXPECT_EQ(processing->equalizer.num_bands(), 10U);
+        EXPECT_FLOAT_EQ(processing->equalizer.preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(processing->volume.gain(), 0.25F);
 
         const auto outcomes{session.take_outcomes()};
         const auto completion{std::ranges::find_if(outcomes.values, [&](const auto& value) {
@@ -374,14 +407,14 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         EXPECT_EQ(load_and_wait(session, wiola::testing::resource("candidate", "candidate")),
             OpenResult::opened);
         EXPECT_EQ(session.track(), wiola::testing::resource("candidate", "candidate"));
-        EXPECT_EQ(processing.equalizer.num_bands(), 9U);
+        EXPECT_EQ(processing->equalizer.num_bands(), 9U);
     }
 }
 
 TEST(Session, NullDecoderCompletionReportsFailureWithoutOpeningOutput)
 {
     std::size_t outputs{0};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [&](wiola::audio::Source&) {
             ++outputs;
@@ -414,7 +447,7 @@ TEST(Session, NullDecoderCompletionReportsFailureWithoutOpeningOutput)
 
 TEST(Session, InvalidStreamCompletionCannotReportASuccessfulOpen)
 {
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
             [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
@@ -449,7 +482,7 @@ TEST(Session, InvalidStreamCompletionCannotReportASuccessfulOpen)
 
 TEST(Session, InvalidDecoderCapabilitiesCannotRetireTheActivePipeline)
 {
-    SuppliedProcessing processing;
+    auto processing = wiola::core::Lease<SuppliedProcessing>::make();
     std::size_t outputs{0};
     Session session{processing,
         [&](wiola::audio::Source&) {
@@ -481,7 +514,7 @@ TEST(Session, InvalidDecoderCapabilitiesCannotRetireTheActivePipeline)
         OpenResult::opened);
     ASSERT_TRUE(session.play());
 
-    const auto prepared{processing.prepared_for};
+    const auto prepared{processing->prepared_for};
 
     static_cast<void>(session.take_outcomes());
 
@@ -489,7 +522,7 @@ TEST(Session, InvalidDecoderCapabilitiesCannotRetireTheActivePipeline)
         OpenResult::damaged);
 
     EXPECT_EQ(outputs, 1U);
-    EXPECT_EQ(processing.prepared_for, prepared);
+    EXPECT_EQ(processing->prepared_for, prepared);
     EXPECT_TRUE(session.loaded());
     EXPECT_TRUE(session.playing());
     EXPECT_EQ(session.track(), wiola::testing::resource("active.media", "active"));
@@ -517,7 +550,7 @@ TEST(Session, UnrepresentableBufferPoliciesFailBeforePreparingResources)
             spec.sample_rate.hz() / static_cast<double>(spec.num_channels)}};
 
     for (const auto duration : durations) {
-        SuppliedProcessing processing;
+        auto processing = wiola::core::Lease<SuppliedProcessing>::make();
         std::size_t outputs{0};
         Session session{processing,
             [&](wiola::audio::Source&) {
@@ -539,7 +572,7 @@ TEST(Session, UnrepresentableBufferPoliciesFailBeforePreparingResources)
                       wiola::testing::resource("controlled.media", "controlled")),
             OpenResult::damaged);
         EXPECT_FALSE(session.loaded());
-        EXPECT_FALSE(processing.prepared_for);
+        EXPECT_FALSE(processing->prepared_for);
         EXPECT_EQ(outputs, 0U);
 
         const auto outcomes{session.take_outcomes()};
@@ -560,7 +593,7 @@ TEST(Session, UnrepresentableBufferPoliciesFailBeforePreparingResources)
 
 TEST(Session, DeviceStartFailureIsAnEventualTransportFailureAfterInstallation)
 {
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [](wiola::audio::Source&) {
             auto output{std::make_unique<wiola::testing::FakeOutput>()};
@@ -611,8 +644,9 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
     for (std::size_t after{0};; ++after) {
         wiola::testing::Gate opening;
         wiola::testing::FakeOutput* active_device{};
-        wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
-        Session session{processing.chain,
+        wiola::core::Lease<wiola::testing::Shaping> processing =
+            wiola::core::Lease<wiola::testing::Shaping>::make(wiola::pcm::StreamSpec{});
+        Session session{processing.member<&wiola::testing::Shaping::chain>(),
             [&](wiola::audio::Source& rendered) {
                 auto output{std::make_unique<wiola::testing::FakeOutput>()};
 
@@ -650,8 +684,8 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         ASSERT_TRUE(poll_until(session,
             [&] { return session.playlist().tracks().front().metadata().title == "settled"; }));
 
-        processing.equalizer.set_band_gain(9, 3.0F);
-        processing.volume.set_gain(0.25F);
+        processing->equalizer.set_band_gain(9, 3.0F);
+        processing->volume.set_gain(0.25F);
         ASSERT_TRUE(session.play());
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
 
@@ -710,10 +744,10 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         EXPECT_TRUE(active_device->running());
         EXPECT_FALSE(session.seekable());
         EXPECT_EQ(session.time_played(), position);
-        EXPECT_EQ(processing.equalizer.num_bands(), 10U);
-        EXPECT_FLOAT_EQ(processing.equalizer.preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(processing.equalizer.band_gain(9), 3.0F);
-        EXPECT_FLOAT_EQ(processing.volume.gain(), 0.25F);
+        EXPECT_EQ(processing->equalizer.num_bands(), 10U);
+        EXPECT_FLOAT_EQ(processing->equalizer.preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(processing->equalizer.band_gain(9), 3.0F);
+        EXPECT_FLOAT_EQ(processing->volume.gain(), 0.25F);
     }
 }
 #endif

@@ -36,7 +36,7 @@ namespace wiola::engine {
 
 /// All worker/storage ownership stays private to the playback implementation.
 struct Session::Impl {
-    Impl(audio::Stage& processing, OutputFactory make_output,
+    Impl(core::Lease<audio::Stage> processing, OutputFactory make_output,
         std::shared_ptr<media::MediaProvider> provider, TransportConfig transport,
         BufferingConfig buffering);
     ~Impl() = default;
@@ -102,8 +102,8 @@ private:
     /// that went away, is not a cue to play anything.
     void advance_if_ended();
 
-    /// Host-owned processing policy; the complete stage outlives this session and its outputs.
-    audio::Stage& processing_;
+    /// Retains the complete host-supplied processing graph across all prepared outputs.
+    core::Lease<audio::Stage> processing_;
     std::shared_ptr<media::MediaProvider> provider_;
     Loader loader_;
     MetadataCoordinator metadata_;

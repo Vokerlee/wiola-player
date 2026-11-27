@@ -24,6 +24,8 @@
 #include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/volume.hpp>
 
+#include <functional>
+#include <initializer_list>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -36,12 +38,17 @@ struct PlaybackService::Impl {
     {
     }
 
-    // Session/output teardown precedes destruction of the processing objects it borrows.
-    audio::Equalizer equalizer{pcm::StreamSpec{}};
-    audio::Volume volume;
-    audio::ProcessingChain processing{
-        {equalizer, volume}
-    };
+    core::Lease<audio::Equalizer> equalizer =
+        core::Lease<audio::Equalizer>::make(pcm::StreamSpec{});
+    core::Lease<audio::Volume> volume = core::Lease<audio::Volume>::make();
+    core::Lease<audio::ProcessingChain> processing = core::Lease<audio::ProcessingChain>::dependent(
+        [](audio::Equalizer& equalizer, audio::Volume& volume) {
+            return std::make_unique<audio::ProcessingChain>(
+                std::initializer_list<std::reference_wrapper<audio::Stage>>{equalizer, volume}
+            );
+        },
+        equalizer, volume
+    );
     engine::Session session;
     bool accepting{true};
 };
@@ -170,61 +177,61 @@ void PlaybackService::set_volume(float gain) noexcept
 {
     if (!impl_->accepting)
         return;
-    impl_->volume.set_gain(gain);
+    impl_->volume->set_gain(gain);
 }
 
 float PlaybackService::volume() const noexcept
 {
-    return impl_->volume.gain();
+    return impl_->volume->gain();
 }
 
 void PlaybackService::set_equalizer_enabled(bool enabled) noexcept
 {
     if (!impl_->accepting)
         return;
-    impl_->equalizer.set_enabled(enabled);
+    impl_->equalizer->set_enabled(enabled);
 }
 
 bool PlaybackService::equalizer_enabled() const noexcept
 {
-    return impl_->equalizer.enabled();
+    return impl_->equalizer->enabled();
 }
 
 void PlaybackService::set_equalizer_band(std::size_t index, float db) noexcept
 {
     if (!impl_->accepting)
         return;
-    impl_->equalizer.set_band_gain(index, db);
+    impl_->equalizer->set_band_gain(index, db);
 }
 
 float PlaybackService::equalizer_band(std::size_t index) const noexcept
 {
-    return impl_->equalizer.band_gain(index);
+    return impl_->equalizer->band_gain(index);
 }
 
 std::size_t PlaybackService::num_equalizer_bands() const noexcept
 {
-    return impl_->equalizer.num_bands();
+    return impl_->equalizer->num_bands();
 }
 
 const audio::VolumePolicy& PlaybackService::volume_policy() const noexcept
 {
-    return impl_->volume.policy();
+    return impl_->volume->policy();
 }
 
 const audio::EqualizerConfig& PlaybackService::equalizer_config() const noexcept
 {
-    return impl_->equalizer.config();
+    return impl_->equalizer->config();
 }
 
 float PlaybackService::equalizer_preamp() const noexcept
 {
-    return impl_->equalizer.preamp();
+    return impl_->equalizer->preamp();
 }
 
 units::Frequency PlaybackService::equalizer_band_center(std::size_t index) const noexcept
 {
-    return impl_->equalizer.band_center(index);
+    return impl_->equalizer->band_center(index);
 }
 
 engine::CommandResult PlaybackService::toggle_playback() noexcept
