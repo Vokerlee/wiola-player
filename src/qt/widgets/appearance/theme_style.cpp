@@ -165,6 +165,8 @@ QMenu::item:disabled { color: @disabled-text@; }
 QMenu::separator { height: 1px; background: @border@; margin: 4px 8px; }
 QDockWidget::title { background: @window@; color: @muted-text@; padding: 4px; }
 QStatusBar::item { border: none; }
+QMainWindow::separator { width: 8px; height: 8px; background: @window@; border-left: 1px solid @border@; }
+QMainWindow::separator:hover { background: @accent@; }
 QSplitter::handle { background: @window@; }
 QSplitter::handle:hover { background: @border@; }
 QSlider::groove:horizontal { height: 4px; background: @border@; border-radius: 2px; }

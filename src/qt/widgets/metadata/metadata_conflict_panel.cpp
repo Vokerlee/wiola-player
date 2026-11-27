@@ -20,7 +20,7 @@
 
 #include "metadata_conflict_panel.hpp"
 
-#include <QHBoxLayout>
+#include <QFormLayout>
 #include <QVBoxLayout>
 
 namespace wiola::gui {
@@ -54,13 +54,12 @@ MetadataConflictPanel::MetadataConflictPanel(QWidget* parent)
     overwrite_->setObjectName("overwriteMetadataConflict");
     overwrite_->setAccessibleName("Overwrite current values after review");
 
-    QHBoxLayout* commands = new QHBoxLayout;
-    commands->addWidget(reload_);
-    commands->addWidget(keep_);
-    commands->addWidget(merge_);
-    commands->addWidget(review_);
-    commands->addWidget(overwrite_);
-    commands->addStretch();
+    auto* commands = new QFormLayout;
+    commands->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    commands->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    commands->addRow(reload_, keep_);
+    commands->addRow(merge_, review_);
+    commands->addRow(overwrite_);
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);

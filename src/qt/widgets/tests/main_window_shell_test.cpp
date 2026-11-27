@@ -58,6 +58,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QSettings>
 #include <QSlider>
@@ -1188,7 +1189,33 @@ TEST_F(MainWindowShell, DockedTrackDetailsLeaveFullWidthPlaybackAndItsCurrentTra
         edit->click();
         ASSERT_TRUE(details->isVisible());
         unchanged();
-        window.resizeDocks({details}, {details->width() + 80}, Qt::Horizontal);
+        const auto drag_details_edge = [&](int movement) {
+            const int gap =
+                details->geometry().left() - window.centralWidget()->geometry().right() - 1;
+            ASSERT_GT(gap, 0);
+            const QPoint start{details->geometry().left() - (gap + 1) / 2,
+                details->geometry().center().y()};
+            const QPoint finish = start + QPoint{movement, 0};
+            QTest::mouseMove(&window, start);
+            QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
+            QMouseEvent move{QEvent::MouseMove, QPointF{finish},
+                QPointF{window.mapToGlobal(finish)}, Qt::NoButton, Qt::LeftButton, Qt::NoModifier};
+            const int previous_width = details->width();
+            QApplication::sendEvent(&window, &move);
+            const bool resized =
+                wiola::testing::await_gui([&] { return details->width() != previous_width; });
+            QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, finish);
+            EXPECT_TRUE(resized);
+            QApplication::processEvents();
+        };
+        const int initial_width = details->width();
+        const int step = window.fontMetrics().horizontalAdvance("mmmmmmmm");
+        drag_details_edge(-step);
+        EXPECT_GT(details->width(), initial_width);
+        unchanged();
+        const int expanded_width = details->width();
+        drag_details_edge(step);
+        EXPECT_LT(details->width(), expanded_width);
         unchanged();
         sidebar->hide();
         unchanged();
