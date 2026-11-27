@@ -22,6 +22,7 @@
 
 #include <app/workspace/workspace_scanner.hpp>
 #include <qt/queued_delivery.hpp>
+#include <wiola/foundation/shared_callback.hpp>
 
 #include <deque>
 #include <map>
@@ -68,7 +69,7 @@ private:
     void receive(WorkspaceScanBatch batch);
     QueuedDelivery delivery_;
     std::shared_ptr<Lifetime> lifetime_;
-    std::shared_ptr<Observer> observer_;
+    core::SharedCallback<void(WorkspaceScanBatch)> observer_;
     WorkspaceScanScheduling policy_;
     std::map<library::WorkspaceId, std::uint64_t> generations_;
     std::map<library::WorkspaceId, Running> running_;

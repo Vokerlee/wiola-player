@@ -24,6 +24,7 @@
 #include <app/metadata/media_replacement.hpp>
 #include <qt/queued_delivery.hpp>
 #include <wiola/app/metadata/metadata_edit_session.hpp>
+#include <wiola/foundation/shared_callback.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
 #include <functional>
@@ -81,7 +82,7 @@ private:
     library::InMemoryRepository& repository_;
     media::FileReplacement& replacement_;
     std::shared_ptr<library::RepositoryTransaction::Persist> persist_;
-    std::shared_ptr<Observer> observer_;
+    core::SharedCallback<void(const MetadataWriteResult&)> observer_;
     std::shared_ptr<Handoff> handoff_;
     std::shared_ptr<DurabilityGate> durability_;
     std::shared_ptr<std::function<void()>> flush_durability_;

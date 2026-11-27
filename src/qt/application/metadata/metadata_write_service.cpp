@@ -54,7 +54,7 @@ MetadataWriteService::MetadataWriteService(QObject& owner,
     , repository_{repository}
     , replacement_{replacement}
     , persist_{std::make_shared<library::RepositoryTransaction::Persist>(std::move(persist))}
-    , observer_{observer ? std::make_shared<Observer>(std::move(observer)) : nullptr}
+    , observer_{std::move(observer)}
     , staging_{provider_}
     , worker_{[this] { run(); }}
 {
@@ -92,10 +92,8 @@ void MetadataWriteService::publish(const MetadataWriteResult& result)
 {
     Q_ASSERT(QThread::currentThread() == delivery_.thread());
 
-    const auto observer = observer_;
-
-    if (observer)
-        (*observer)(result);
+    if (observer_)
+        observer_(result);
 }
 
 std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const MetadataEditSession& edit)
