@@ -139,8 +139,11 @@ TrackTableView::TrackTableView(QWidget* parent)
     edit->setShortcutContext(Qt::WidgetShortcut);
     edit->setEnabled(false);
     addAction(edit);
-    connect(selectionModel(), &QItemSelectionModel::selectionChanged, this,
-        [this, edit] { edit->setEnabled(!chosen_rows().empty()); });
+    const auto update_edit = [this, edit] {
+        edit->setEnabled(!chosen_rows().empty());
+    };
+    connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, update_edit);
+    connect(this, &TrackTableView::presentation_restored, this, update_edit);
     connect(edit, &QAction::triggered, this, &TrackTableView::edit_asked);
 
     QAction* remove = new QAction{"Remove selected tracks", this};

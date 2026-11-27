@@ -71,7 +71,7 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
     tools->addWidget(edit);
     layout->addLayout(tools);
     connect(edit, &QPushButton::clicked, this, &TrackBrowser::edit_requested);
-    connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+    connect(this, &TrackBrowser::selection_changed, edit,
         [this, edit] { edit->setEnabled(!table_->chosen_rows().empty()); });
     layout->addWidget(table_);
     connect(table_.data(), &TrackTableView::row_chosen, &lifetime_,
