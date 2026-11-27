@@ -21,9 +21,12 @@
 #include "saved_playlist_document.hpp"
 
 #include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/playlist_name.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 
+#include <QEvent>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -46,12 +49,23 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     font.setBold(true);
     heading_->setFont(font);
 
+    activity_ = new QLabel{this};
+    activity_->setObjectName("playlistActivityIndicator");
+    activity_->setAccessibleName("Active playlist");
+    activity_->setToolTip("Active playlist: contains the current track");
+    activity_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    activity_->hide();
+
+    auto* heading = new QHBoxLayout;
+    heading->addWidget(activity_);
+    heading->addWidget(heading_, 1);
+
     browser_ = new TrackBrowser{TrackCapabilities::playlist(), this};
     browser_->table().setAccessibleName("Saved playlist tracks");
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(PresentationTokens{}.player.control_spacing, 0, 0, 0);
-    layout->addWidget(heading_);
+    layout->addLayout(heading);
     layout->addWidget(browser_);
 
     connect(browser_, &TrackBrowser::row_activated, this, [this](TrackRowId occurrence) {
@@ -139,6 +153,21 @@ void SavedPlaylistDocument::update_heading()
     heading_->setText(name_);
     heading_->setAccessibleDescription(active_ ? "Active playlist" : "");
     heading_->setToolTip(active_ ? name_ + "\nActive playlist" : name_);
+
+    const int size = style()->pixelMetric(QStyle::PM_SmallIconSize, nullptr, this);
+    activity_->setPixmap(playlist_activity_icon(*this).pixmap(QSize{size, size},
+        devicePixelRatioF()));
+    activity_->setVisible(active_);
+}
+
+void SavedPlaylistDocument::changeEvent(QEvent* event)
+{
+    QWidget::changeEvent(event);
+
+    if (activity_ &&
+        (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange ||
+            event->type() == QEvent::FontChange))
+        update_heading();
 }
 
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const

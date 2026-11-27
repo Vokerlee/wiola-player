@@ -20,7 +20,6 @@
 
 #include "document_host.hpp"
 
-#include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/playlist_name.hpp>
@@ -434,8 +433,7 @@ void DocumentHost::refresh_playback()
 
     if (activity_palette_ != palette().cacheKey()) {
         activity_palette_ = palette().cacheKey();
-        activity_icon_ = themed_standard_icon(*this, PresentationTokens{}.playlist.activity_icon,
-            QPalette::Highlight);
+        activity_icon_ = playlist_activity_icon(*this);
     }
 
     for (const auto& [id, document] : registry_.playlists()) {
@@ -462,6 +460,11 @@ void DocumentHost::refresh_playback()
 
         if (tabToolTip(index) != tip)
             setTabToolTip(index, tip);
+
+        const QString accessible = playing ? label + ", active playlist" : label;
+
+        if (tabBar()->accessibleTabName(index) != accessible)
+            tabBar()->setAccessibleTabName(index, accessible);
     }
 
     const int queue_index = indexOf(queue_);

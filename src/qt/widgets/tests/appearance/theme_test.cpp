@@ -52,6 +52,36 @@ TEST(Theme, LightAndDarkPalettesDefineSemanticStates)
     }
 }
 
+TEST(Theme, PlaylistActivityBadgeRemainsVisibleInNormalAndSelectedStates)
+{
+    using namespace wiola::gui;
+
+    for (const auto& preset : theme_presets()) {
+        const auto colors = theme_colors(preset.palette);
+        QWidget host;
+        host.setPalette(theme_palette(colors));
+        const auto icon = playlist_activity_icon(host);
+
+        ASSERT_FALSE(icon.isNull()) << preset.key;
+
+        for (const auto mode : {QIcon::Normal, QIcon::Active, QIcon::Selected}) {
+            const auto image = icon.pixmap(32, 32, mode).toImage();
+            int fill{}, mark{};
+
+            for (int y = 0; y < image.height(); ++y)
+                for (int x = 0; x < image.width(); ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    fill += pixel == colors.accent;
+                    mark += pixel == colors.accent_text;
+                }
+
+            EXPECT_GT(fill, 0) << preset.key;
+            EXPECT_GT(mark, 0) << preset.key;
+            EXPECT_GE(contrast_ratio(colors.accent, colors.accent_text), 4.5);
+        }
+    }
+}
+
 TEST(Theme, ApplyingDarkThemeUpdatesNativePaletteAndSemanticStates)
 {
     wiola::gui::apply_theme(wiola::gui::Theme::dark);

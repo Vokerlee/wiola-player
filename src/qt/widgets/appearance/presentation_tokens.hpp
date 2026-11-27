@@ -44,7 +44,6 @@ struct PlayerPresentationTokens {
 };
 
 struct PlaylistPresentationTokens {
-    QStyle::StandardPixmap activity_icon{QStyle::SP_MediaVolume};
     ArtworkRequest artwork{};
     int min_height{120};
     int row_padding{4};

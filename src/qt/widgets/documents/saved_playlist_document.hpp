@@ -59,10 +59,14 @@ public:
     void on_transfer_destination_requested(std::function<void()> observer);
     void on_transfer_move_requested(std::function<void()> observer);
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 private:
     void update_heading();
 
     QLabel* heading_{nullptr};
+    QLabel* activity_{nullptr};
     TrackBrowser* browser_{nullptr};
     SavedPlaylistRows source_;
     QString name_;

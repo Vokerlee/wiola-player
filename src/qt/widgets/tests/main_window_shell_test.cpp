@@ -1696,6 +1696,18 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     EXPECT_EQ(navigation->currentItem()->text(0), "First list");
     EXPECT_TRUE(navigation->currentItem()->font(0).bold());
     EXPECT_FALSE(navigation->currentItem()->icon(0).isNull());
+    EXPECT_FALSE(host->tabIcon(host->indexOf(first_view)).isNull());
+    EXPECT_FALSE(first_view->findChild<QLabel*>("playlistActivityIndicator")->isHidden());
+    EXPECT_EQ(host->findChild<QTabBar*>()->accessibleTabName(host->indexOf(first_view)),
+        "First list, active playlist");
+
+    ASSERT_EQ(playback.play(), engine::CommandResult::accepted);
+    ASSERT_EQ(playback.pause(), engine::CommandResult::accepted);
+    window.refresh();
+    EXPECT_EQ(host->active_playlist(), first);
+    EXPECT_FALSE(host->tabIcon(host->indexOf(first_view)).isNull());
+    EXPECT_FALSE(first_view->findChild<QLabel*>("playlistActivityIndicator")->isHidden());
+    ASSERT_EQ(playback.resume(), engine::CommandResult::accepted);
 
     first_view->findChild<QLineEdit*>("searchTitle")->setText("no matching tracks");
     EXPECT_EQ(host->active_playlist(), first);
@@ -1765,6 +1777,8 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     ASSERT_NE(second_view, nullptr);
     EXPECT_FALSE(host->active_playlist());
     EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
+    EXPECT_TRUE(host->tabIcon(host->indexOf(first_view)).isNull());
+    EXPECT_TRUE(first_view->findChild<QLabel*>("playlistActivityIndicator")->isHidden());
 
     window.refresh();
     EXPECT_FALSE(host->isTabVisible(host->indexOf(&host->queue())));
@@ -1820,6 +1834,15 @@ TEST_F(MainWindowShell, PlaylistActivityFollowsLastOpenedListAndCurrentTrackMemb
     if (!previews.isEmpty()) {
         QDir{}.mkpath(previews);
         EXPECT_TRUE(window.grab().save(QDir{previews}.filePath("automatic-active-playlist.png")));
+
+        for (const auto& preset : gui::theme_presets()) {
+            gui::apply_theme(gui::theme_colors(preset.palette), preset.style);
+            window.refresh();
+            QApplication::processEvents();
+            EXPECT_TRUE(window.grab().save(
+                QDir{previews}.filePath(QString{"passive-playlist-%1.png"}.arg(preset.key))
+            ));
+        }
     }
 
     playback.clear();
