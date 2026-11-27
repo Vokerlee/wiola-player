@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <wiola/foundation/lease.hpp>
 #include <wiola/media/resource.hpp>
 #include <wiola/playback/buffering_config.hpp>
 #include <wiola/playback/open_result.hpp>
@@ -59,16 +60,17 @@ namespace wiola::engine {
  * on owned workers; completion delivery and installation are observed after a control turn.
  *
  * A buffer and an output are cut for the format of the track that is loaded, so opening another
- * one replaces them. The supplied processing stage outlives them all. Built-in control/settings
- * composition belongs to the application rather than to the playback kernel. The stage serves
- * this Session's processing role; sharing it requires an implementation that explicitly supports
- * that concurrency, and configuration requires all of its prior callbacks to be quiescent.
+ * one replaces them. The supplied lease retains the processing stage across their lifetimes.
+ * Built-in control/settings composition belongs to the application rather than to the playback
+ * kernel. The stage serves this Session's processing role; sharing it requires an implementation
+ * that explicitly supports that concurrency, and configuration requires all of its prior callbacks
+ * to be quiescent.
  */
 class Session {
 public:
     /// The host supplies output creation and one format-neutral provider for loading/metadata.
     /// Null providers or invalid per-instance policies fail synchronously before work can start.
-    Session(audio::Stage& processing, OutputFactory make_output,
+    Session(core::Lease<audio::Stage> processing, OutputFactory make_output,
         std::shared_ptr<media::MediaProvider> provider, TransportConfig transport = {},
         BufferingConfig buffering = {});
 

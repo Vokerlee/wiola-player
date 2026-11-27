@@ -53,7 +53,7 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
     endif()
 
     if(playback IN_LIST WIOLA_SELECTED_COMPONENTS)
-        list(APPEND WIOLA_SELECTED_COMPONENTS audio)
+        list(APPEND WIOLA_SELECTED_COMPONENTS audio lifetime)
     endif()
 
     if(audio IN_LIST WIOLA_SELECTED_COMPONENTS)

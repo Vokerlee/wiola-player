@@ -104,7 +104,7 @@ public:
     static constexpr units::Time duration{std::chrono::milliseconds{1500}};
 
     SessionFixture()
-        : session{processing.chain,
+        : session{processing.member<&wiola::testing::Shaping::chain>(),
               [this](wiola::audio::Source& source) {
                   ++num_outputs;
                   return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)
@@ -156,7 +156,8 @@ public:
     /// Set before loading, when a test needs a track that cannot run out from under it.
     bool consuming{true};
     std::size_t num_outputs{0};
-    wiola::testing::Shaping processing{wiola::pcm::StreamSpec{}};
+    wiola::core::Lease<wiola::testing::Shaping> processing =
+        wiola::core::Lease<wiola::testing::Shaping>::make(wiola::pcm::StreamSpec{});
     Session session;
 };
 

@@ -46,7 +46,7 @@ public:
 class CodecSession : public ::testing::Test {
 protected:
     std::vector<wiola::pcm::StreamSpec> outputs;
-    PassThrough processing;
+    wiola::core::Lease<PassThrough> processing = wiola::core::Lease<PassThrough>::make();
     wiola::engine::Session session{processing,
         [this](wiola::audio::Source& source) {
             outputs.push_back(source.spec());

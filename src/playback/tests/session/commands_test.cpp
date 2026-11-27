@@ -535,7 +535,7 @@ TEST(Session, KeepsPlayingOrNotWhenTheTrackChanges)
 TEST(Session, EnrichesAQueueLargerThanTheMetadataWorkerCapacity)
 {
     std::atomic<std::size_t> num_reads{0};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -586,7 +586,7 @@ TEST(Session, ForwardsCompleteMetadataValuesWithoutReinterpretingTheirFields)
     observed.artwork.data = {std::byte{1}, std::byte{2}};
     observed.artwork.mime_type = "image/test";
 
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -613,7 +613,7 @@ TEST(Session, ForwardsCompleteMetadataValuesWithoutReinterpretingTheirFields)
 
 TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 {
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -643,7 +643,7 @@ TEST(Session, MetadataFailureLeavesPlayableAudioAndFallbackTitleIntact)
 TEST(Session, ClearDuringLoadPreventsAnObsoleteInstall)
 {
     wiola::testing::Gate opening;
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -675,7 +675,7 @@ TEST(Session, StopDuringLoadPreventsAnObsoleteAutoplay)
 {
     wiola::testing::Gate opening;
     const wiola::media::ResourceReference second{wiola::testing::resource("second.wav", "second")};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing,
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); },
         std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -713,7 +713,7 @@ TEST(Session, StopCancelsTheActiveOpenWithoutInstallingItsLateResult)
 {
     wiola::testing::Gate opening;
     std::atomic<bool> cancelled{false};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
             [&](const wiola::media::ResourceReference&,
@@ -745,7 +745,7 @@ TEST(Session, OpeningAnEmptyQueueCancelsAnObsoleteOpen)
 {
     wiola::testing::Gate opening;
     std::atomic<bool> cancelled{false};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
             [&](const wiola::media::ResourceReference&,
@@ -776,7 +776,7 @@ TEST(Session, RemovingThePendingOccurrenceCancelsItsOpenWithoutReplacingActivePl
 {
     wiola::testing::Gate opening;
     std::atomic<bool> cancelled{false};
-    wiola::audio::ProcessingChain processing;
+    auto processing = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     Session session{processing, wiola::testing::passive_output,
         std::make_shared<wiola::testing::FakeMediaProvider>(
             [&](const wiola::media::ResourceReference& resource,
