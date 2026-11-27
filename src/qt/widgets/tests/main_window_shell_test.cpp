@@ -73,6 +73,7 @@
 #include <fixtures/wav.hpp>
 #include <qt/application/player_application.hpp>
 #include <qt/widgets/appearance/theme.hpp>
+#include <qt/widgets/appearance/theme_manager.hpp>
 #include <qt/widgets/layout/layout_tree.hpp>
 #include <qt/widgets/shell/player_dialogs.hpp>
 #include <qt/widgets/tests/journeys/session_journey.hpp>
@@ -934,8 +935,20 @@ TEST_F(MainWindowShell,
         auto* dialog = window.findChild<QDialog*>("themeEditor");
         ASSERT_NE(dialog, nullptr);
         auto* editor = static_cast<wiola::gui::ThemeEditor*>(dialog);
-        if (color == QColor{"#eeeeee"})
+        if (color == QColor{"#eeeeee"}) {
             EXPECT_EQ(editor->colors().window, QColor{"#f0f0f0"});
+            EXPECT_EQ(editor->style(), (wiola::gui::ThemeStyle{5, 7, 110}));
+        }
+        editor->set_style({5, 7, 110});
+        QApplication::processEvents();
+        auto* apply = editor->findChild<QPushButton*>("applyThemeEdit");
+        ASSERT_NE(apply, nullptr);
+        EXPECT_TRUE(editor->rect().contains(QRect{apply->mapTo(editor, QPoint{}), apply->size()}));
+        const auto previews = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+        if (!previews.isEmpty()) {
+            QDir{}.mkpath(previews);
+            EXPECT_TRUE(editor->grab().save(QDir{previews}.filePath("theme-editor.png")));
+        }
         editor->set_color(wiola::gui::ThemeColorRole::window, color);
         dialog->findChild<QPushButton*>("applyThemeEdit")->click();
         EXPECT_EQ(window.palette().color(QPalette::Window), color);
@@ -947,13 +960,19 @@ TEST_F(MainWindowShell,
     EXPECT_TRUE(action(*menu(window, "&View"), "Custom theme")->isChecked());
 }
 
-TEST_F(MainWindowShell, DefaultBrowserHasMovablePanelsAndReadableCompactControlsInBothThemes)
+TEST_F(MainWindowShell, AppearancePresetsPreserveCustomLayoutAndReadableMovablePanels)
 {
     wiola::app::PlaybackService playback{wiola::testing::passive_output,
         wiola::codec::ffmpeg::make_provider()};
     wiola::app::LibrarySession library{wiola::codec::ffmpeg::make_provider()};
     wiola::app::PlaybackPreferences preferences{playback};
     wiola::gui::MainWindow window{playback, library, preferences};
+    auto personal_layout = wiola::gui::classic_layout_document();
+    auto* commands = wiola::gui::locate_layout_node(personal_layout.root, "libraryCommands").node;
+    ASSERT_NE(commands, nullptr);
+    std::reverse(commands->children.begin(), commands->children.end());
+    ASSERT_TRUE(window.switch_layout(personal_layout));
+    const auto layout_before = window.layout_json();
     QTemporaryDir tracks;
     ASSERT_TRUE(tracks.isValid());
     const auto directory = wiola::platform::qt::QtPathAdapter::from_qt(tracks.path());
@@ -984,11 +1003,18 @@ TEST_F(MainWindowShell, DefaultBrowserHasMovablePanelsAndReadableCompactControls
     ASSERT_NE(filters, nullptr);
     EXPECT_FALSE(more->isChecked());
     EXPECT_FALSE(filters->isChecked());
-    for (const auto theme : {wiola::gui::Theme::light, wiola::gui::Theme::dark}) {
-        action(*menu(window, "&View"),
-            theme == wiola::gui::Theme::dark ? "Dark theme" : "Light theme")
-            ->trigger();
+    const auto queued_entry = playback.playlist().tracks().front().id();
+    const auto* play_button = window.findChild<QPushButton*>("playPause");
+    for (const auto& preset : wiola::gui::theme_presets()) {
+        const auto theme = preset.palette;
+        auto* chosen = action(*menu(window, "&View"), preset.label);
+        ASSERT_NE(chosen, nullptr);
+        chosen->trigger();
         QApplication::processEvents();
+        EXPECT_TRUE(chosen->isChecked());
+        EXPECT_EQ(window.layout_json(), layout_before);
+        EXPECT_EQ(window.findChild<QPushButton*>("playPause"), play_button);
+        EXPECT_EQ(playback.playlist().tracks().front().id(), queued_entry);
         EXPECT_GE(search->height(), search->sizeHint().height());
         EXPECT_GT(browser->table().height(), window.height() / 3);
         auto* volume = window.findChild<QSlider*>("volumeSlider");
@@ -999,7 +1025,7 @@ TEST_F(MainWindowShell, DefaultBrowserHasMovablePanelsAndReadableCompactControls
         if (!directory.isEmpty()) {
             QDir{}.mkpath(directory);
             EXPECT_TRUE(window.grab().save(QDir{directory}.filePath(
-                theme == wiola::gui::Theme::dark ? "desktop-dark.png" : "desktop-light.png"
+                QString{"desktop-%1.png"}.arg(QString::fromLatin1(preset.key))
             )));
         }
         auto* shuffle = window.findChild<QPushButton*>("shuffleQueue");
@@ -1008,9 +1034,9 @@ TEST_F(MainWindowShell, DefaultBrowserHasMovablePanelsAndReadableCompactControls
         shuffle->click();
         EXPECT_TRUE(shuffle->isChecked());
         if (!directory.isEmpty())
-            EXPECT_TRUE(window.grab().save(QDir{directory}.filePath(theme == wiola::gui::Theme::dark
-                    ? "desktop-dark-shuffle-on.png"
-                    : "desktop-light-shuffle-on.png")));
+            EXPECT_TRUE(window.grab().save(QDir{directory}.filePath(
+                QString{"desktop-%1-shuffle-on.png"}.arg(QString::fromLatin1(preset.key))
+            )));
         shuffle->click();
         EXPECT_FALSE(shuffle->isChecked());
     }

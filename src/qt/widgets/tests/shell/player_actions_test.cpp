@@ -19,6 +19,7 @@
  */
 
 #include <QPushButton>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/shell/action_button_binding.hpp>
 #include <qt/widgets/shell/player_actions.hpp>
 
@@ -167,6 +168,32 @@ TEST_F(PlayerActions, EveryButtonTracksSharedStateAndDisconnectsWithItsLifetime)
     command->setEnabled(true);
     second.click();
     EXPECT_EQ(triggered, 2);
+}
+
+TEST_F(PlayerActions, PrimaryPlayButtonsKeepContrastingIconsWhenPresetsAndPlaybackStateChange)
+{
+    using namespace wiola::gui;
+    QPushButton button;
+    new ActionButtonBinding{button, *actions.action(PlayerAction::play),
+        ActionButtonPresentation::icon_only};
+    for (const auto& preset : theme_presets()) {
+        const auto colors = theme_colors(preset.palette);
+        apply_theme(colors, preset.style);
+        QApplication::processEvents();
+        actions.reload_icons(styled);
+        for (const bool playing : {false, true}) {
+            actions.set_playing(playing);
+            const auto image = button.icon().pixmap(24, 24).toImage();
+            int opaque{};
+            for (int y = 0; y < image.height(); ++y)
+                for (int x = 0; x < image.width(); ++x)
+                    if (const auto pixel = image.pixelColor(x, y); pixel.alpha() == 255) {
+                        EXPECT_EQ(pixel, colors.accent_text);
+                        ++opaque;
+                    }
+            EXPECT_GT(opaque, 0);
+        }
+    }
 }
 
 TEST_F(PlayerActions, BindingSafelyDisablesWhenTheActionDies)

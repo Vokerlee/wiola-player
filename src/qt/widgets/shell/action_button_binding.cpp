@@ -21,6 +21,7 @@
 #include "action_button_binding.hpp"
 #include <QPointer>
 #include <QSignalBlocker>
+#include <qt/widgets/appearance/theme.hpp>
 
 namespace wiola::gui {
 
@@ -29,6 +30,7 @@ ActionButtonBinding::ActionButtonBinding(QAbstractButton& button, QAction& actio
     : QObject{&button}
 {
     button.setFocusPolicy(Qt::StrongFocus);
+    button.setProperty("appearanceRole", action.property("appearanceRole"));
     const auto refresh = [&button, &action, presentation] {
         const QSignalBlocker blocked{&button};
         button.setEnabled(action.isEnabled());
@@ -36,7 +38,9 @@ ActionButtonBinding::ActionButtonBinding(QAbstractButton& button, QAction& actio
         button.setChecked(action.isChecked());
         button.setText(presentation == ActionButtonPresentation::icon_only ? QString{}
                                                                            : action.text());
-        button.setIcon(action.icon());
+        button.setIcon(button.property("appearanceRole").toString() == "primary"
+                ? tinted_icon(action.icon(), button.palette(), QPalette::HighlightedText)
+                : action.icon());
         button.setToolTip(action.toolTip());
         button.setStatusTip(action.statusTip());
         button.setAccessibleName(action.text());

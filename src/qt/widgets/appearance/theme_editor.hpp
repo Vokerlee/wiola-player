@@ -25,6 +25,8 @@
 #include <QDialog>
 #include <QLabel>
 #include <QPushButton>
+#include <QSpinBox>
+#include <vector>
 
 #include <functional>
 #include <map>
@@ -39,6 +41,9 @@ public:
 
     void set_color(ThemeColorRole role, const QColor& color);
     void set_colors(const ThemeColors& colors);
+    void set_style(const ThemeStyle& style);
+
+    [[nodiscard]] ThemeStyle style() const noexcept { return style_; }
 
     [[nodiscard]] const ThemeColors& colors() const noexcept { return colors_; }
 
@@ -47,9 +52,13 @@ public:
 private:
     void update_color(ThemeColorRole role);
     void validate();
+    void refresh_preview();
 
     ThemeColors colors_;
+    ThemeStyle style_;
+    std::vector<std::pair<int ThemeStyle::*, QSpinBox*>> metrics_;
     std::map<ThemeColorRole, QPushButton*> swatches_;
+    QWidget* preview_{nullptr};
     QLabel* status_{nullptr};
     QPushButton* apply_{nullptr};
     ApplyObserver apply_observer_;

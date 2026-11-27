@@ -21,7 +21,9 @@
 #include <qt/widgets/appearance/theme.hpp>
 
 #include <QApplication>
+#include <QPainter>
 #include <QPushButton>
+#include <QStyleOption>
 #include <QWidget>
 
 #include <gtest/gtest.h>
@@ -58,7 +60,7 @@ TEST(Theme, ApplyingDarkThemeUpdatesNativePaletteAndSemanticStates)
     EXPECT_EQ(QApplication::palette().color(QPalette::Window), colors.window);
     EXPECT_TRUE(qApp->styleSheet().contains(colors.focus.name()));
     EXPECT_TRUE(qApp->styleSheet().contains(colors.error.name()));
-    EXPECT_TRUE(qApp->styleSheet().contains("padding: 5px"));
+    EXPECT_TRUE(qApp->styleSheet().contains("border-radius: 8px"));
     EXPECT_TRUE(qApp->styleSheet().contains("QLabel[status=\"error\"]"));
     EXPECT_TRUE(qApp->styleSheet().contains("QLabel[status=\"busy\"]"));
 }
@@ -87,6 +89,49 @@ TEST(Theme, CheckedButtonsHaveAContrastingAccentFillInBothThemes)
         QApplication::processEvents();
         EXPECT_EQ(button.grab().toImage().pixelColor(sample), off);
     }
+}
+
+TEST(Theme, EveryPresetHasFlatControlsReadableStatesAndStableFontScaling)
+{
+    using namespace wiola::gui;
+    for (const auto& preset : theme_presets()) {
+        const auto colors = theme_colors(preset.palette);
+        ASSERT_TRUE(theme_contrast_error(colors).isEmpty()) << preset.key;
+        ASSERT_TRUE(valid_theme_style(preset.style));
+        apply_theme(colors, preset.style);
+        const auto first_font = QApplication::font();
+        apply_theme(colors, preset.style);
+        EXPECT_EQ(QApplication::font(), first_font);
+        QPushButton button{"Play"};
+        button.setProperty("appearanceRole", "primary");
+        button.resize(button.sizeHint().expandedTo(QSize{140, 48}));
+        button.show();
+        QApplication::processEvents();
+        const auto image = button.grab().toImage();
+        EXPECT_EQ(image.pixelColor(button.width() / 2, 4), colors.accent) << preset.key;
+        EXPECT_TRUE(qApp->styleSheet().contains(
+            QString{"border-radius: %1px"}.arg(preset.style.corner_radius)
+        ));
+        EXPECT_FALSE(qApp->styleSheet().contains('@'));
+        QImage close{24, 24, QImage::Format_ARGB32_Premultiplied};
+        close.fill(Qt::transparent);
+        QStyleOption option;
+        option.rect = close.rect();
+        option.palette = theme_palette(colors);
+        option.state = QStyle::State_Enabled;
+        QPainter painter{&close};
+        qApp->style()->drawPrimitive(QStyle::PE_IndicatorTabClose, &option, &painter);
+        painter.end();
+        int opaque{};
+        for (int y = 0; y < close.height(); ++y)
+            for (int x = 0; x < close.width(); ++x)
+                if (const auto pixel = close.pixelColor(x, y); pixel.alpha() == 255) {
+                    EXPECT_EQ(pixel, colors.text);
+                    ++opaque;
+                }
+        EXPECT_GT(opaque, 0);
+    }
+    EXPECT_TRUE(tinted_icon({}, QApplication::palette(), QPalette::ButtonText).isNull());
 }
 
 TEST(Theme, CustomIconsAndArtworkFollowTheActivePalette)
