@@ -83,8 +83,6 @@ DocumentHost::DocumentHost(app::LibrarySession& library, app::PlaybackService& p
     connect(queue_, &NowPlayingDocument::order_application_asked, &lifetime_,
         [this] { dispatch(TrackCommand::apply_order, DocumentId::queue()); });
     static_cast<void>(registry_.activate(DocumentId::queue()));
-    tabBar()->setTabButton(0, QTabBar::RightSide, nullptr);
-    tabBar()->setTabButton(0, QTabBar::LeftSide, nullptr);
     connect(this, &QTabWidget::currentChanged, &lifetime_, [this](int) {
         registry_.activate(currentWidget());
         queue_requested_ = !restoring_ && currentWidget() == queue_;
@@ -237,6 +235,8 @@ bool DocumentHost::activate(const DocumentId& id)
         return false;
     if (!restoring_ && id.is_queue()) {
         queue_requested_ = true;
+        if (indexOf(queue_) < 0)
+            insertTab(0, queue_, "Now Playing");
         setTabVisible(indexOf(queue_), true);
     }
     if (!restoring_ && id.playlist())
@@ -329,8 +329,16 @@ void DocumentHost::begin_scan(const library::WorkspaceId& id)
 
 bool DocumentHost::close(const DocumentId& id)
 {
-    if (id.is_queue())
-        return false;
+    if (id.is_queue()) {
+        const int index = indexOf(queue_);
+        if (index < 0)
+            return false;
+        queue_requested_ = false;
+        removeTab(index);
+        queue_->hide();
+        save();
+        return true;
+    }
     auto* document = registry_.view(id);
     if (!document)
         return false;
