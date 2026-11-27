@@ -22,3 +22,5 @@ The shared controlled output in `tests/fakes/output.hpp` is a test-only collabor
 The [processing suites](processing/README.md) and `AudioProcessing.Consumer` link `wiola::audio_dsp`. `audio_tone_test` checks the shared controlled source through the output contract only; it does not link processing.
 
 Connection handoff cases qualify a candidate prepared while the old claim is held, a retry after its release, two candidates competing for one returned claim and repeated acquisition preserving a live connection. These operations run on the setup thread; callbacks only use the already acquired control.
+
+`output_contract.hpp` provides `verify_output_contract` for an available controlled output. It verifies exclusive claims, stop/restart and claim return on destruction without assuming driver-specific counters or a physical device.

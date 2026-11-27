@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "output_contract.hpp"
+
 #include <fakes/output.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/audio/output_connection.hpp>
@@ -345,4 +347,11 @@ TEST(OutputConnection, OnlyOnePreparedCandidateAcquiresTheReturnedClaim)
     EXPECT_TRUE(first.control().start());
     EXPECT_FALSE(second.control().start());
     EXPECT_EQ(output.num_starts(), 1);
+}
+
+TEST(OutputConnection, SatisfiesTheReusableOutputContract)
+{
+    FakeOutput output;
+    wiola::testing::verify_output_contract(output);
+    EXPECT_FALSE(output.running());
 }
