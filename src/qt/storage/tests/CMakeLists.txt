@@ -10,6 +10,8 @@ wiola_add_test(
     LIBS wiola::qt_library_store
 )
 
+target_link_libraries(gui_library_storage_test PRIVATE wiola::qt_paths)
+
 wiola_add_test(
     gui_saved_playlist_storage_test
     SOURCES repository_storage_test.cpp
