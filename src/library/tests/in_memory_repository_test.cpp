@@ -24,7 +24,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <random>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -264,4 +267,51 @@ TEST(RepositoryContract, InMemoryImplementationPreservesPortableSemantics)
 {
     wiola::library::InMemoryRepository repository;
     wiola::testing::verify_repository_contract(repository);
+}
+
+TEST(RepositoryContract, LongPlaylistEditSequencesPreserveAnIndependentOrderedModel)
+{
+    wiola::library::InMemoryRepository repository;
+    const std::array media{wiola::library::MediaId{"first"}, wiola::library::MediaId{"second"},
+        wiola::library::MediaId{"third"}};
+    for (const auto& id : media) {
+        wiola::library::TrackRecord track;
+        track.id = id;
+        ASSERT_TRUE(repository.put_track(track));
+    }
+    const auto playlist = repository.create_playlist("Model");
+    auto expected = repository.playlist(playlist)->entries;
+    std::mt19937 random{0x57494F4C};
+
+    for (int step = 0; step < 5000; ++step) {
+        SCOPED_TRACE(step);
+        switch (random() % 4) {
+        case 0: {
+            const auto& track = media[random() % media.size()];
+            const auto entry = repository.append_track(playlist, track);
+            ASSERT_TRUE(entry);
+            expected.push_back({.id = *entry, .media = track});
+            break;
+        }
+        case 1: {
+            if (!expected.empty()) {
+                const auto index = random() % expected.size();
+                ASSERT_TRUE(repository.remove_entry(playlist, expected[index].id));
+                expected.erase(expected.begin() + index);
+            }
+            break;
+        }
+        case 2:
+            EXPECT_FALSE(repository.remove_entry(playlist,
+                wiola::library::PlaylistEntryId{"missing"}));
+            break;
+        default:
+            EXPECT_FALSE(repository.append_track(playlist, wiola::library::MediaId{"missing"}));
+            break;
+        }
+
+        ASSERT_NE(repository.playlist(playlist), nullptr);
+        EXPECT_EQ(repository.playlist(playlist)->entries, expected);
+        EXPECT_EQ(repository.tracks().size(), media.size());
+    }
 }

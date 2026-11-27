@@ -12,3 +12,5 @@ These targets link the scoped buffering target and GoogleTest directly:
 Existing buffering cases are retained; relay and shaped-source cases use playback-owned targets. Mode-specific allocation witnesses remain in their supported configurations. Concurrency cases use controlled endpoints and native TSan; the overflow regression also has a direct UBSan reproduction. No device, FFmpeg or Qt implementation is needed.
 
 PCM zero-minimum cases transfer a complete frame through the actual producer/consumer for mono, stereo and larger channel shapes. An unrepresentable one-frame request must fail before storage allocation. Assertions express usable frame capacity and payload preservation rather than freezing the generic ring's incidental two-sample minimum into the PCM contract.
+
+A fixed-seed FIFO model mixes copying, scalar and borrowed-region operations for integer/float elements across small rounded capacities. It checks every value, untouched output tails and occupancy after each operation, independently of ring indices and masks.

@@ -67,6 +67,14 @@ include("{ROOT / 'cmake/coverage.cmake'}")
             self.assertEqual(files["unlinked.cpp"]["lines"]["percent"], 0)
             self.assertTrue((build / "coverage/html/index.html").is_file())
             self.assertTrue((build / "coverage/coverage.lcov").is_file())
+            metrics = (build / "coverage/metrics.md").read_text()
+            self.assertIn("Full coverage", metrics)
+            self.assertIn("| Lines |", metrics)
+            self.assertIn("| Functions |", metrics)
+            self.assertIn("| Branches |", metrics)
+            self.assertIn("| Lines | 2 / 3 | 66.67% |", metrics)
+            self.assertIn("| Functions | 2 / 3 | 66.67% |", metrics)
+            self.assertIn("| Branches | 1 / 2 | 50.00% |", metrics)
 
             focused = build / "focused"
             run(
@@ -77,3 +85,7 @@ include("{ROOT / 'cmake/coverage.cmake'}")
             data = json.loads((focused / "summary.json").read_text())["data"][0]
             names = {Path(item["filename"]).name for item in data["files"]}
             self.assertEqual(names, {"main.cpp", "used.cpp"})
+
+            focused_metrics = (focused / "metrics.md").read_text()
+            self.assertIn("Focused coverage", focused_metrics)
+            self.assertIn("| Lines | 2 / 2 | 100.00% |", focused_metrics)

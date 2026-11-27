@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Format-neutral access to an identified media resource.
+ * @brief Reusable provider and decoder conformance checks.
  * @author Roman Glaz
  * @copyright (c) 2026, <vokerlee@gmail.com>
  *

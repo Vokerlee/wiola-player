@@ -161,12 +161,27 @@ def main():
             "show",
             *arguments,
             "-format=html",
+            "-show-branches=count",
             "-output-dir=" + str(output / "html"),
         ],
         check=True,
     )
     summary = json.loads((output / "summary.json").read_text())
-    percent = summary["data"][0]["totals"]["lines"]["percent"]
+    totals = summary["data"][0]["totals"]
+    scope = "Focused" if args.target else "Full"
+    metrics = [
+        f"### {scope} coverage", "", f"Source: `{source}`",
+        f"Excluded filenames: `{args.exclude or 'none'}`", "",
+        "| Measure | Covered / total | Rate |", "| --- | ---: | ---: |",
+    ]
+    for key in ("lines", "functions", "branches"):
+        value = totals[key]
+        rate = f"{value['percent']:.2f}%" if value["count"] else "—"
+        metrics.append(
+            f"| {key.title()} | {value['covered']} / {value['count']} | {rate} |"
+        )
+    (output / "metrics.md").write_text("\n".join(metrics) + "\n")
+    percent = totals["lines"]["percent"]
     (output / "html/badge.json").write_text(
         json.dumps(
             {
