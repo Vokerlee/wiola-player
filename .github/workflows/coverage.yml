@@ -1,0 +1,96 @@
+name: Coverage
+
+on:
+  workflow_call:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # All of it, since what a pull request changed is measured against where it started.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: ./.github/actions/setup-build
+        with:
+          name: coverage
+          build-dir: build-coverage
+          packages: llvm-18
+      - run: cmake --preset linux-coverage
+        env:
+          CXX: clang++-18
+      - run: cmake --build --preset linux-coverage --parallel 4
+      - run: cmake --build --preset linux-coverage --target wiola_coverage_inventory --parallel 4
+      - name: Collect compiler coverage reports
+        run: python3 -m scripts.coverage --build-dir build-coverage --source src --exclude '/tests/'
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Upload coverage test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-test-diagnostics
+          path: build-coverage/Testing/Temporary
+          if-no-files-found: ignore
+          retention-days: 7
+      # The numbers, on the run's own page.
+      - run: |
+          {
+            echo '### Coverage'
+            echo '```'
+            cat build-coverage/coverage/summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      # What this pull request itself left untested, which a total is too blunt to show.
+      - if: github.event_name == 'pull_request'
+        run: |
+          diff-cover build-coverage/coverage/coverage.lcov \
+            --compare-branch "origin/${{ github.base_ref }}" \
+            --fail-under=100 --format "markdown:diff-coverage.md"
+          cat diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build-coverage/coverage/html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-evidence
+          path: |
+            build-coverage/coverage/summary.json
+            build-coverage/coverage/summary.txt
+            build-coverage/coverage/coverage.lcov
+            build-coverage/coverage/coverage.profdata
+            build-coverage/coverage/raw-*/
+      # Only from main: what a pull request measured is its own, and does not replace the report.
+      # The report takes a path of its own, leaving the root for whatever is put there later.
+      - if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p site/coverage
+          cp -r build-coverage/coverage/html/. site/coverage/
+          printf '<meta http-equiv="refresh" content="0; url=coverage/">\n' > site/index.html
+      - if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  pages:
+    needs: coverage
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
