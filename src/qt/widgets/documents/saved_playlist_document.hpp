@@ -59,9 +59,6 @@ public:
     void on_transfer_destination_requested(std::function<void()> observer);
     void on_transfer_move_requested(std::function<void()> observer);
 
-protected:
-    void paintEvent(QPaintEvent* event) override;
-
 private:
     void update_heading();
 

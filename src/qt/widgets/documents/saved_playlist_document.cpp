@@ -25,7 +25,6 @@
 #include <qt/widgets/tracks/track_browser.hpp>
 
 #include <QLabel>
-#include <QPainter>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -140,7 +139,6 @@ void SavedPlaylistDocument::update_heading()
     heading_->setText(name_);
     heading_->setAccessibleDescription(active_ ? "Active playlist" : "");
     heading_->setToolTip(active_ ? name_ + "\nActive playlist" : name_);
-    update();
 }
 
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
@@ -169,16 +167,6 @@ std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() co
 void SavedPlaylistDocument::on_entry_chosen(std::function<void(library::PlaylistEntryId)> observer)
 {
     entry_observer_ = std::move(observer);
-}
-
-void SavedPlaylistDocument::paintEvent(QPaintEvent* event)
-{
-    QWidget::paintEvent(event);
-    if (active_) {
-        QPainter painter{this};
-        painter.fillRect(0, 0, PresentationTokens{}.playlist.activity_accent_width, height(),
-            palette().color(QPalette::Highlight));
-    }
 }
 
 void SavedPlaylistDocument::on_transfer_active_requested(std::function<void()> observer)
