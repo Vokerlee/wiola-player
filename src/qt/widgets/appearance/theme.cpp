@@ -21,12 +21,11 @@
 #include "theme.hpp"
 
 #include <QApplication>
-#include <QFont>
 #include <QPainter>
-#include <QStyleFactory>
 #include <QWidget>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace wiola::gui {
@@ -54,6 +53,14 @@ void set_text_roles(QPalette& palette, QPalette::ColorGroup group, const QColor&
 
 ThemeColors theme_colors(Theme theme)
 {
+    if (theme == Theme::midnight)
+        return {QColor{"#10121c"}, QColor{"#191d2b"}, QColor{"#edf0ff"}, QColor{"#afb7d2"},
+            QColor{"#7f8aaa"}, QColor{"#b8a3ff"}, QColor{"#1b1430"}, QColor{"#d1c2ff"},
+            QColor{"#ff9f9f"}};
+    if (theme == Theme::studio)
+        return {QColor{"#161b1b"}, QColor{"#202727"}, QColor{"#eff6f3"}, QColor{"#b2c4bc"},
+            QColor{"#7e958a"}, QColor{"#6fe0ad"}, QColor{"#10271d"}, QColor{"#94efc3"},
+            QColor{"#ffa5a5"}};
     if (theme == Theme::dark) {
         return {
             .window = QColor{"#202124"},
@@ -79,6 +86,17 @@ ThemeColors theme_colors(Theme theme)
         .focus = QColor{"#185abc"},
         .error = QColor{"#b3261e"},
     };
+}
+
+std::span<const ThemePreset> theme_presets()
+{
+    static constexpr std::array presets{
+        ThemePreset{ThemeChoice::light,    Theme::light,    "light",    "Light theme", {}          },
+        ThemePreset{ThemeChoice::dark,     Theme::dark,     "dark",     "Dark theme",  {}          },
+        ThemePreset{ThemeChoice::midnight, Theme::midnight, "midnight", "Midnight",    {12, 8, 105}},
+        ThemePreset{ThemeChoice::studio,   Theme::studio,   "studio",   "Studio",      {3, 4, 100} },
+    };
+    return presets;
 }
 
 QColor& theme_color(ThemeColors& colors, ThemeColorRole role)
@@ -230,7 +248,14 @@ QPalette theme_palette(const ThemeColors& colors)
 QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
     QPalette::ColorRole color)
 {
-    const QPixmap source = styled.style()->standardIcon(icon).pixmap(24, 24);
+    return tinted_icon(styled.style()->standardIcon(icon), styled.palette(), color);
+}
+
+QIcon tinted_icon(const QIcon& icon, const QPalette& palette, QPalette::ColorRole color)
+{
+    const QPixmap source = icon.pixmap(24, 24);
+    if (source.isNull())
+        return {};
     const auto tinted = [&source](const QColor& color) {
         QPixmap result{source.size()};
         result.fill(Qt::transparent);
@@ -242,8 +267,8 @@ QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
     };
 
     QIcon result;
-    result.addPixmap(tinted(styled.palette().color(QPalette::Active, color)), QIcon::Normal);
-    result.addPixmap(tinted(styled.palette().color(QPalette::Disabled, color)), QIcon::Disabled);
+    result.addPixmap(tinted(palette.color(QPalette::Active, color)), QIcon::Normal);
+    result.addPixmap(tinted(palette.color(QPalette::Disabled, color)), QIcon::Disabled);
     return result;
 }
 
@@ -274,35 +299,15 @@ void apply_theme(Theme theme)
     apply_theme(theme_colors(theme));
 }
 
-void apply_theme(const ThemeColors& colors)
+void apply_theme(const ThemeColors& colors, const ThemeStyle& style)
 {
-    // Native Windows styles draw controls with system colors, ignoring a custom dark palette.
-    QApplication::setStyle(QStyleFactory::create("Fusion"));
+    if (!valid_theme_style(style) || !theme_contrast_error(colors).isEmpty())
+        return;
+    QApplication::setStyle(make_theme_widget_style());
     QApplication::setPalette(theme_palette(colors));
 
-    QFont font = QApplication::font();
-    font.setStyleStrategy(QFont::PreferAntialias);
-    QApplication::setFont(font);
-
-    constexpr int control_padding = 5;
-    qApp->setStyleSheet(QString{
-        "QPushButton, QLineEdit, QComboBox, QSpinBox { padding: %1px; min-height: 1.2em; }\n"
-        "QPushButton:checked { background-color: %7; color: %8; border: 1px solid %7; }\n"
-        "QToolButton { padding: 4px; }\n"
-        "QTabBar::tab { padding: 7px 12px; }\n"
-        "QHeaderView::section { padding: 6px; }\n"
-        "QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus,"
-        " QTableView:focus, QTreeView:focus { border: 1px solid %2; }\n"
-        "QLineEdit[error=\"true\"], QComboBox[error=\"true\"] { border: 1px solid %3; }\n"
-        "QLabel[status=\"busy\"] { color: %2; }\n"
-        "QLabel[status=\"error\"] { color: %3; }\n"
-        "QLabel[status=\"ready\"] { color: %6; }\n"
-        "QToolTip { color: %4; background-color: %5; border: 1px solid %2; }"}
-            .arg(control_padding)
-            .arg(colors.focus.name(), colors.error.name(), colors.text.name(),
-                colors.surface.name())
-            .arg(colors.muted_text.name())
-            .arg(colors.accent.name(), colors.accent_text.name()));
+    QApplication::setFont(theme_font(style));
+    qApp->setStyleSheet(theme_stylesheet(colors, style));
 }
 
 } // namespace wiola::gui

@@ -21,7 +21,9 @@
 #include <qt/widgets/appearance/theme_editor.hpp>
 
 #include <QApplication>
+#include <QComboBox>
 #include <QLabel>
+#include <QSpinBox>
 
 #include <gtest/gtest.h>
 
@@ -57,7 +59,8 @@ TEST(ThemeEditor, RejectsLowContrastAndAppliesAnEditableCopy)
     apply->click();
     EXPECT_EQ(applications, 0);
 
-    editor.findChild<QPushButton*>("copyLightTheme")->click();
+    editor.findChild<QComboBox*>("themePresetSource")->setCurrentIndex(0);
+    editor.findChild<QPushButton*>("copyThemePreset")->click();
     ASSERT_TRUE(apply->isEnabled());
     EXPECT_EQ(editor.colors().window, wiola::gui::theme_colors(wiola::gui::Theme::light).window);
 
@@ -65,6 +68,45 @@ TEST(ThemeEditor, RejectsLowContrastAndAppliesAnEditableCopy)
     apply->click();
     EXPECT_EQ(applications, 1);
     EXPECT_EQ(editor.result(), QDialog::Accepted);
+}
+
+TEST(ThemeEditor, PresetsCopyShapeAndColorsAndMetricsPreviewRemainsLocalUntilApply)
+{
+    using namespace wiola::gui;
+    const auto global_sheet = qApp->styleSheet();
+    const auto global_palette = QApplication::palette();
+    ThemeEditor editor{theme_colors(Theme::light)};
+    auto* presets = editor.findChild<QComboBox*>("themePresetSource");
+    auto* copy = editor.findChild<QPushButton*>("copyThemePreset");
+    auto* preview = editor.findChild<QWidget*>("themePreview");
+    ASSERT_NE(presets, nullptr);
+    ASSERT_NE(copy, nullptr);
+    ASSERT_NE(preview, nullptr);
+    for (std::size_t index = 0; index < theme_presets().size(); ++index) {
+        presets->setCurrentIndex(static_cast<int>(index));
+        copy->click();
+        const auto& preset = theme_presets()[index];
+        EXPECT_EQ(editor.colors(), theme_colors(preset.palette));
+        EXPECT_EQ(editor.style(), preset.style);
+    }
+    const ThemeStyle personal{5, 9, 115};
+    for (const auto& metric : theme_style_metrics()) {
+        auto* field = editor.findChild<QSpinBox*>("themeStyle:" + QString::fromLatin1(metric.key));
+        ASSERT_NE(field, nullptr);
+        field->setValue(personal.*metric.value);
+    }
+    EXPECT_EQ(editor.style(), personal);
+    EXPECT_TRUE(preview->styleSheet().contains("border-radius: 5px"));
+    EXPECT_EQ(qApp->styleSheet(), global_sheet);
+    EXPECT_EQ(QApplication::palette(), global_palette);
+    bool applied{};
+    editor.on_apply([&](const auto&) {
+        applied = true;
+        EXPECT_EQ(editor.style(), personal);
+        return true;
+    });
+    editor.findChild<QPushButton*>("applyThemeEdit")->click();
+    EXPECT_TRUE(applied);
 }
 
 TEST(ThemeEditor, FailedDurableAcceptanceRetainsTheDraftForRetry)

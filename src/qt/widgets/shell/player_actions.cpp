@@ -45,6 +45,7 @@ PlayerActions::PlayerActions(QWidget& styled)
         actions_[index_of(description.id)] = command;
     }
 
+    action(PlayerAction::play)->setProperty("appearanceRole", "primary");
     new PlayerShortcuts{styled, this};
     reload_icons(styled);
     set_shuffled(false);

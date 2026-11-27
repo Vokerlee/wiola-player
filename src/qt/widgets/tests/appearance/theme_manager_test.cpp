@@ -175,6 +175,67 @@ TEST(ThemeManager, BoundedAllowlistedImportsAndFutureFilesPreserveTheAcceptedDef
     EXPECT_EQ(bytes(directory.filePath("theme.json")), future);
 }
 
+TEST(ThemeManager, PresetsAndCustomMetricsRoundTripWithoutLosingPersonalAppearance)
+{
+    QTemporaryDir directory;
+    QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
+    const ThemeStyle personal{5, 9, 115};
+    {
+        ThemeManager manager{settings};
+        ASSERT_EQ(manager.set_custom(theme_colors(Theme::dark), personal), ThemeError::none);
+        for (const auto& preset : theme_presets()) {
+            ASSERT_EQ(manager.select(preset.choice), ThemeError::none);
+            EXPECT_EQ(manager.style(), preset.style);
+            EXPECT_EQ(manager.colors(), theme_colors(preset.palette));
+            ThemeState decoded;
+            ASSERT_EQ(read_theme_json(manager.export_json(), decoded), ThemeError::none);
+            EXPECT_EQ(decoded, manager.state());
+            EXPECT_EQ(decoded.custom_style, personal);
+        }
+        ASSERT_EQ(manager.select(ThemeChoice::custom), ThemeError::none);
+        EXPECT_EQ(manager.style(), personal);
+    }
+    ThemeManager restored{settings};
+    EXPECT_EQ(restored.style(), personal);
+    EXPECT_EQ(restored.colors(), theme_colors(Theme::dark));
+    const auto accepted = restored.export_json();
+    auto invalid = personal;
+    invalid.corner_radius = -1;
+    EXPECT_EQ(restored.set_custom(restored.colors(), invalid), ThemeError::invalid);
+    EXPECT_EQ(restored.export_json(), accepted);
+}
+
+TEST(ThemeManager, LegacyColorsMigrateAndMalformedMetricsNeverReplaceAcceptedState)
+{
+    ThemeState accepted;
+    auto object = QJsonDocument::fromJson(write_theme_json(accepted)).object();
+    object.insert("version", 1);
+    object.remove("style");
+    ThemeState decoded;
+    ASSERT_EQ(read_theme_json(QJsonDocument{object}.toJson(), decoded), ThemeError::none);
+    EXPECT_EQ(decoded, accepted);
+    object = QJsonDocument::fromJson(write_theme_json(accepted)).object();
+    for (const auto& metric : theme_style_metrics()) {
+        for (const QJsonValue value :
+            {QJsonValue{metric.minimum - 1}, QJsonValue{metric.maximum + 1},
+                QJsonValue{metric.minimum + 0.5}, QJsonValue{"invalid"}, QJsonValue{}}) {
+            auto invalid = object;
+            auto style = invalid.value("style").toObject();
+            style.insert(metric.key, value);
+            invalid.insert("style", style);
+            EXPECT_EQ(read_theme_json(QJsonDocument{invalid}.toJson(), decoded),
+                ThemeError::invalid);
+            EXPECT_EQ(decoded, accepted);
+        }
+        auto invalid = object;
+        auto style = invalid.value("style").toObject();
+        style.remove(metric.key);
+        invalid.insert("style", style);
+        EXPECT_EQ(read_theme_json(QJsonDocument{invalid}.toJson(), decoded), ThemeError::invalid);
+        EXPECT_EQ(decoded, accepted);
+    }
+}
+
 TEST(ThemeManager, SharedGuiOwnersReuseOneStateAndPaletteChangesInvalidateArtworkPlaceholders)
 {
     QTemporaryDir directory;
