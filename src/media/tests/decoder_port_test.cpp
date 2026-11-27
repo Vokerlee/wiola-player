@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -51,6 +53,45 @@ public:
         return std::unique_ptr<wiola::media::AudioDecoder>{std::make_unique<SampleDecoder>()};
     }
 };
+
+class SampleProvider final : public wiola::media::MediaProvider {
+public:
+    explicit SampleProvider(bool& destroyed)
+        : destroyed_{destroyed}
+    {
+    }
+
+    ~SampleProvider() override { destroyed_ = true; }
+
+    wiola::media::Result<std::unique_ptr<wiola::media::MediaAsset>>
+    open(const wiola::media::ResourceReference&, const wiola::media::OperationContext&) override
+    {
+        return std::unique_ptr<wiola::media::MediaAsset>{std::make_unique<SampleAsset>()};
+    }
+
+    std::vector<std::string> playback_extensions() const override { return {"sample"}; }
+
+private:
+    bool& destroyed_;
+};
+
+TEST(AudioDecoderPort, AnOpenedAssetOutlivesItsProvider)
+{
+    bool destroyed = false;
+    std::unique_ptr<wiola::media::MediaProvider> provider =
+        std::make_unique<SampleProvider>(destroyed);
+    const auto opened = provider->open({"sample", "track", "Track"});
+
+    ASSERT_TRUE(opened);
+    EXPECT_EQ(provider->playback_extensions(), (std::vector<std::string>{"sample"}));
+
+    provider.reset();
+
+    EXPECT_TRUE(destroyed);
+    EXPECT_TRUE((*opened)->inspect());
+    EXPECT_TRUE((*opened)->read_metadata());
+    EXPECT_TRUE((*opened)->create_decoder());
+}
 
 TEST(AudioDecoderPort, MediaAssetReturnsAnOwnedDecoderWithoutBackendServices)
 {

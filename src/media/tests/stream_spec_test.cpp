@@ -25,6 +25,7 @@
 
 #include <array>
 #include <cmath>
+#include <compare>
 #include <cstddef>
 #include <limits>
 #include <optional>
@@ -34,6 +35,21 @@ namespace {
 using wiola::pcm::Frames;
 using wiola::pcm::StreamSpec;
 using namespace wiola::units;
+
+TEST(Frames, ArithmeticPreservesCountsAndSupportsChainedAccumulation)
+{
+    Frames position{3};
+
+    EXPECT_EQ((position += Frames{4}), Frames{7});
+    EXPECT_EQ(&(position += Frames{}), &position);
+    EXPECT_EQ(position, Frames{7});
+    EXPECT_EQ(position + Frames{5}, Frames{12});
+    EXPECT_EQ(position - Frames{2}, Frames{5});
+    EXPECT_EQ(position - position, Frames{});
+    EXPECT_LT(Frames{}, position);
+    EXPECT_GT(position, Frames{6});
+    EXPECT_EQ(position <=> Frames{7}, std::strong_ordering::equal);
+}
 
 TEST(StreamSpec, DefaultsToStereoAt48kHz)
 {
@@ -147,6 +163,56 @@ TEST(StreamSpec, ChecksDurationConversionBeforeMultiplyingChannels)
 
     EXPECT_FALSE(spec.checked_samples_per(1_s).has_value());
     EXPECT_EQ(spec.checked_samples_per(Time{}), 0U);
+}
+
+TEST(StreamSpec, TruncatesPartialFramesAndPreservesZeroPositions)
+{
+    const StreamSpec spec{.sample_rate = Frequency{4}, .num_channels = 3};
+
+    EXPECT_EQ(spec.frames_per(2), Frames{});
+    EXPECT_EQ(spec.frames_per(5), Frames{1});
+    EXPECT_EQ(spec.checked_frames_at(Time{}), Frames{});
+    EXPECT_EQ(spec.checked_frames_at(Time{-0.0}), Frames{});
+    EXPECT_EQ(spec.checked_frames_at(Time{0.49}), Frames{1});
+    EXPECT_EQ(spec.checked_samples_per(Time{0.49}), 3U);
+    EXPECT_EQ(spec.samples_per(Time{0.49}), 3U);
+    EXPECT_EQ(spec.checked_samples_per(Frames{}), 0U);
+}
+
+TEST(StreamSpec, RejectsTheFirstUnrepresentableFrameAndAcceptsItsPredecessor)
+{
+    const StreamSpec spec{.sample_rate = Frequency{1}, .num_channels = 1};
+    const double boundary = static_cast<double>(std::numeric_limits<std::size_t>::max());
+    const double predecessor = std::nextafter(boundary, 0.0);
+
+    EXPECT_FALSE(spec.checked_frames_at(Time{boundary}));
+    EXPECT_FALSE(spec.checked_samples_per(Time{boundary}));
+    EXPECT_EQ(spec.checked_frames_at(Time{predecessor}),
+        Frames{static_cast<std::size_t>(predecessor)});
+    EXPECT_EQ(spec.checked_samples_per(Time{predecessor}), static_cast<std::size_t>(predecessor));
+}
+
+TEST(StreamSpec, EveryStreamPropertyParticipatesInEquality)
+{
+    const StreamSpec baseline{};
+    auto changed = baseline;
+    changed.sample_rate = Frequency{44100};
+
+    EXPECT_NE(baseline, changed);
+    EXPECT_NE(changed, baseline);
+
+    changed = baseline;
+    changed.num_channels = 1;
+
+    EXPECT_NE(baseline, changed);
+    EXPECT_NE(changed, baseline);
+
+    changed = baseline;
+    changed.channel_layout = wiola::pcm::ChannelLayout::stereo;
+
+    EXPECT_NE(baseline, changed);
+    EXPECT_NE(changed, baseline);
+    EXPECT_EQ(baseline, StreamSpec{});
 }
 
 TEST(StreamSpec, ComparesMemberwise)

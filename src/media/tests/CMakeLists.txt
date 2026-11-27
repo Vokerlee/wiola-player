@@ -29,6 +29,10 @@ target_include_directories(
 
 wiola_media_add_test(media_resource_test resource_test.cpp)
 
+wiola_media_add_test(media_result_test result_test.cpp)
+
+wiola_media_add_test(media_artwork_reference_test artwork_reference_test.cpp)
+
 wiola_media_add_test(media_track_metadata_test track_metadata_test.cpp)
 
 wiola_media_add_test(media_metadata_writer_test metadata_writer_test.cpp)
