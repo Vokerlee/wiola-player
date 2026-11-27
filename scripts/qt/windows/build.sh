@@ -10,7 +10,7 @@ fi
 prefix="$1"
 work="${2:-$prefix/.work}"
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repository_directory="$(git -C "$script_directory" rev-parse --show-toplevel)"
+repository_directory="$(cd -- "$script_directory/../../.." && pwd)"
 toolchain="${WIOLA_QT_TOOLCHAIN_FILE:-$repository_directory/cmake/mingw-w64.cmake}"
 
 # Cross-builds borrow moc, rcc and uic from the host, and Qt refuses a version mismatch.

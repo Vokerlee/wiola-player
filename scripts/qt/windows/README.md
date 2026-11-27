@@ -24,3 +24,5 @@ The host version must have a reviewed checksum in its release registry. `WIOLA_Q
 can select a shared source workspace. SDK context identity includes the selected source and
 provider recipe, so source changes invalidate installed-SDK reuse. Python 3.12 is required by
 the source provider; no Python package installation is needed for it.
+
+Both commands locate the source root relative to this owner, so they also work from an extracted source archive without Git metadata. Git is not used to identify the SDK or find its toolchain.

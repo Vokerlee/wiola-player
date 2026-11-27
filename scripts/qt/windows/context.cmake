@@ -1,14 +1,5 @@
 # Read the selected toolchain rather than duplicating its compiler choice in CI.
-find_program(git_command NAMES git REQUIRED)
-
-execute_process(
-    COMMAND
-        "${git_command}" -C "${CMAKE_CURRENT_LIST_DIR}" rev-parse
-        --show-toplevel
-    OUTPUT_VARIABLE repository
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
+get_filename_component(repository "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
 
 if(
     DEFINED ENV{WIOLA_QT_TOOLCHAIN_FILE}

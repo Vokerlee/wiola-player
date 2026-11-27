@@ -136,6 +136,29 @@ class QtSdkTest(unittest.TestCase):
         self.assertFalse((self.prefix / ".work").exists())
         self.assertFalse((self.prefix / "build").exists())
 
+    def test_source_archive_needs_no_git_for_build_or_cache_identity(self):
+        archive = self.root / "source archive"
+        owner = archive / "scripts/qt/windows"
+        owner.mkdir(parents=True)
+        shutil.copy2(BUILD, owner / BUILD.name)
+        shutil.copy2(CONTEXT, owner / CONTEXT.name)
+        self.sources(self.workspace)
+        self.executable("git", "raise RuntimeError('Git must not be used')")
+
+        build = subprocess.run(
+            [str(owner / BUILD.name), str(self.prefix), str(self.workspace)],
+            cwd=self.root, env=self.environment, capture_output=True, text=True,
+        )
+        self.assertEqual(build.returncode, 0, build.stderr)
+        self.assertTrue((self.prefix / "lib/cmake/Qt6Test/Qt6TestConfig.cmake").is_file())
+
+        identity = subprocess.run(
+            [self.real_cmake, "-P", str(owner / CONTEXT.name)],
+            cwd=self.root, env=self.environment, capture_output=True, text=True,
+        )
+        self.assertEqual(identity.returncode, 0, identity.stderr)
+        self.assertRegex(identity.stdout.strip(), "^[0-9a-f]{64}$")
+
     def test_legacy_one_argument_call_keeps_its_existing_workspace(self):
         self.sources(self.prefix / ".work")
         result = self.run_builder(self.prefix)
