@@ -34,7 +34,12 @@ if(NOT "${WIOLA_COMPONENTS}" STREQUAL "")
 
     foreach(component IN LISTS WIOLA_COMPONENTS)
         if(NOT component IN_LIST WIOLA_PORTABLE_COMPONENTS)
-            message(FATAL_ERROR "Unknown portable component: ${component}")
+            list(JOIN WIOLA_PORTABLE_COMPONENTS ", " supported_components)
+
+            message(
+                FATAL_ERROR
+                "Unknown portable component: ${component}. Supported: ${supported_components}"
+            )
         endif()
     endforeach()
 
