@@ -59,6 +59,7 @@ enum class ComponentProperty : unsigned {
 struct ComponentDescriptor {
     LayoutComponentKind kind;
     const char* key;
+    const char* label;
     bool container;
     unsigned properties;
 
