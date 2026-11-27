@@ -88,6 +88,9 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
         [this](TrackRowId id) { emit row_activated(std::move(id)); });
 
     connect(table_.data(), &TrackTableView::edit_asked, this, &TrackBrowser::edit_requested);
+    connect(table_.data(), &TrackTableView::append_asked, &lifetime_,
+        [this] { emit command_requested(TrackCommand::append); });
+
     connect(table_.data(), &TrackTableView::removal_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::remove); });
 

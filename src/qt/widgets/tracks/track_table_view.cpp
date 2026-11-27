@@ -144,12 +144,27 @@ TrackTableView::TrackTableView(QWidget* parent)
     edit->setEnabled(false);
     addAction(edit);
 
-    const auto update_edit = [this, edit] {
-        edit->setEnabled(!chosen_rows().empty());
+    const auto require_selection = [this](QAction* action,
+                                       std::optional<TrackCommand> command = {}) {
+        const auto update = [this, action, command] {
+            action->setEnabled(!chosen_rows().empty() &&
+                (!command || capabilities_.supports(*command)));
+        };
+        update();
+        connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, update);
+        connect(this, &TrackTableView::presentation_restored, this, update);
     };
-    connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, update_edit);
-    connect(this, &TrackTableView::presentation_restored, this, update_edit);
+    require_selection(edit);
     connect(edit, &QAction::triggered, this, &TrackTableView::edit_asked);
+
+    auto* append = new QAction{"Add to play queue", this};
+    append->setObjectName("appendToPlayQueue");
+    append->setToolTip(
+        "Append selected tracks without interrupting playback; repeat is turned off"
+    );
+    addAction(append);
+    require_selection(append, TrackCommand::append);
+    connect(append, &QAction::triggered, this, &TrackTableView::append_asked);
 
     QAction* remove = new QAction{"Remove selected tracks", this};
     addAction(remove);
@@ -188,6 +203,7 @@ TrackTableView::TrackTableView(QWidget* parent)
     connect(apply_order, &QAction::triggered, this, &TrackTableView::order_application_asked);
 
     command_actions_ = {
+        {TrackCommand::append,               append     },
         {TrackCommand::remove,               remove     },
         {TrackCommand::transfer,             add_active },
         {TrackCommand::transfer_destination, add_to     },
@@ -344,7 +360,8 @@ void TrackTableView::set_capabilities(TrackCapabilities capabilities)
     for (const auto& [command, action] : command_actions_) {
         const bool available = capabilities_.supports(command);
         action->setVisible(available);
-        action->setEnabled(available);
+        action->setEnabled(available &&
+            (command != TrackCommand::append || !chosen_rows().empty()));
     }
 }
 

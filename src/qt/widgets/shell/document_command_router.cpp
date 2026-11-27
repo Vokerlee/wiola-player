@@ -63,8 +63,11 @@ void DocumentCommandRouter::open(std::vector<std::filesystem::path> paths, bool 
         ? app::PlaybackQueue{}.append_paths(playback_, std::move(paths))
         : app::PlaybackQueue{}.replace_with_paths(playback_, std::move(paths));
 
+    if (append)
+        playback_.set_repeat(engine::RepeatMode::none);
+
     queue_.save();
-    publish({append ? QString{"%1 track(s) added to Now Playing"}.arg(result.queued)
+    publish({append ? QString{"%1 track(s) added to play queue"}.arg(result.queued)
                     : "opening " + first + "...",
         true, append ? std::nullopt : std::optional{result.open_result}});
 }

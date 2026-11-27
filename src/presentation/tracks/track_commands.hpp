@@ -65,7 +65,7 @@ public:
     static constexpr TrackCapabilities playlist() noexcept
     {
         return {TrackCommand::play, TrackCommand::transfer, TrackCommand::transfer_destination,
-            TrackCommand::move, TrackCommand::apply_order};
+            TrackCommand::move, TrackCommand::apply_order, TrackCommand::append};
     }
 
     static constexpr TrackCapabilities workspace() noexcept

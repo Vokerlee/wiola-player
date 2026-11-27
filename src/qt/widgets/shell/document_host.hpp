@@ -70,6 +70,7 @@ public:
 private:
     void restore_browser(const DocumentId& id, TrackBrowser& browser, bool complete);
     void configure_browser(TrackBrowser& browser);
+    [[nodiscard]] std::optional<DocumentId> document_containing(const QWidget& widget) const;
     [[nodiscard]] DocumentCommandContext selection_context(const DocumentId& id) const;
     void refresh(const library::LibraryChangeBatch& batch);
     void restore();

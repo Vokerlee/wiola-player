@@ -163,6 +163,15 @@ DocumentHost::~DocumentHost()
     static_cast<void>(preferences_.flush());
 }
 
+std::optional<DocumentId> DocumentHost::document_containing(const QWidget& widget) const
+{
+    for (const QWidget* view = &widget; view; view = view->parentWidget())
+        if (const auto id = registry_.identify(view))
+            return id;
+
+    return {};
+}
+
 void DocumentHost::configure_browser(TrackBrowser& browser)
 {
     connect(&browser, &TrackBrowser::edit_requested, &lifetime_, [this] {
@@ -170,12 +179,16 @@ void DocumentHost::configure_browser(TrackBrowser& browser)
             commands_.edit_track();
     });
 
+    connect(&browser, &TrackBrowser::command_requested, &lifetime_,
+        [this, &browser](TrackCommand command) {
+            if (command == TrackCommand::append)
+                if (const auto id = document_containing(browser))
+                    dispatch(command, *id);
+        });
+
     connect(&browser.table(), &TrackTableView::playlist_menu_requested, &lifetime_,
         [this, &browser](QMenu* menu, TrackCommand command) {
-            std::optional<DocumentId> source;
-
-            for (QWidget* view = &browser; view && !source; view = view->parentWidget())
-                source = registry_.identify(view);
+            const auto source = document_containing(browser);
 
             if (!source)
                 return;
