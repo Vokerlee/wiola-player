@@ -351,4 +351,44 @@ TEST(LibraryJson, MalformedRecordFieldsCannotPartiallyReplaceTheStoredLibrary)
     }
 }
 
+TEST(LibraryJson, EveryTruncatedDocumentPreservesThePreviouslyAcceptedSnapshot)
+{
+    LibrarySnapshot original;
+    original.tracks.push_back(track_record());
+    original.tracks.front().embedded.title = "Музыка — 音楽";
+    QByteArray bytes;
+    ASSERT_EQ(write_library_json(original, bytes), LibraryJsonError::none);
+    auto retained = original;
+    retained.tracks.front().embedded.title = "Retained";
+
+    for (qsizetype length = 0; length < bytes.size(); ++length) {
+        SCOPED_TRACE(length);
+        auto output = retained;
+        EXPECT_NE(read_library_json(QByteArrayView{bytes}.first(length), output),
+            LibraryJsonError::none);
+        EXPECT_EQ(output.tracks, retained.tracks);
+        EXPECT_EQ(output.playlists, retained.playlists);
+        EXPECT_EQ(output.workspaces, retained.workspaces);
+    }
+}
+
+TEST(LibraryJson, InvalidLaterLegacyRecordDoesNotPublishPartiallyDefaultedRecords)
+{
+    const QByteArray valid{R"({"version":1,"tracks":[{"id":"legacy"}],"playlists":[]})"};
+    LibrarySnapshot legacy;
+    ASSERT_EQ(read_library_json(valid, legacy), LibraryJsonError::none);
+    ASSERT_EQ(legacy.tracks.size(), 1U);
+    EXPECT_TRUE(legacy.tracks.front().embedded.title.empty());
+
+    const QByteArray invalid{
+        R"({"version":1,"tracks":[{"id":"legacy"},{"id":""}],"playlists":[]})"};
+    LibrarySnapshot retained;
+    retained.tracks.push_back(track_record());
+    const auto before = retained;
+    EXPECT_EQ(read_library_json(invalid, retained), LibraryJsonError::invalid_record);
+    EXPECT_EQ(retained.tracks, before.tracks);
+    EXPECT_EQ(retained.playlists, before.playlists);
+    EXPECT_EQ(retained.workspaces, before.workspaces);
+}
+
 } // namespace

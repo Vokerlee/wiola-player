@@ -346,4 +346,37 @@ TEST_F(LibraryPersistenceCore, FlushSavesTheInitialSnapshotWithoutInventingAnEdi
     EXPECT_EQ(acknowledgments, 1);
 }
 
+TEST_F(LibraryPersistenceCore, EditsAdmittedWhileAFailureWaitsForDeliverySurviveRecovery)
+{
+    store.block();
+    start();
+    const auto first = writer->accept(revision(1, "first"));
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(store.wait_entered());
+    const auto second = writer->accept(revision(2, "second"));
+    ASSERT_TRUE(second);
+    store.release({app::SnapshotWriteError::io});
+    ASSERT_TRUE(delivery.wait_pending(1));
+
+    const auto third = writer->accept(revision(3, "third"));
+    ASSERT_TRUE(third);
+    delivery.reverse_pending();
+    delivery.drain();
+    store.release();
+    bool saved = false;
+    for (int attempt = 0; attempt < 4 && !saved; ++attempt) {
+        writer->retry();
+        saved = writer->flush().succeeded();
+    }
+
+    ASSERT_TRUE(saved);
+    EXPECT_EQ(writer->durable_revision(), 3U);
+    EXPECT_EQ(writer->pending_revision(), 3U);
+    const auto snapshot = store.last_snapshot();
+    ASSERT_EQ(snapshot.tracks.size(), 3U);
+    EXPECT_EQ(snapshot.tracks[0].id.value, "first");
+    EXPECT_EQ(snapshot.tracks[1].id.value, "second");
+    EXPECT_EQ(snapshot.tracks[2].id.value, "third");
+}
+
 } // namespace wiola::app::test::persistence

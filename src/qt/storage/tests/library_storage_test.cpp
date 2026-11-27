@@ -19,9 +19,11 @@
  */
 
 #include <qt/storage/library_store.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QSaveFile>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 
@@ -275,6 +277,67 @@ TEST_F(LibraryStorage, BackupCommitFailureLeavesThePrimaryUnchanged)
 
     ASSERT_TRUE(original.load(restored).succeeded());
     EXPECT_EQ(restored.tracks.front().embedded.title, "Original");
+}
+
+enum class WriteFault {
+    none,
+    short_write,
+    commit,
+};
+
+/// Real temporary file output: abandonment must leave the primary's bytes unchanged.
+class InterruptibleOutput final : public AtomicOutput {
+public:
+    InterruptibleOutput(const std::filesystem::path& path, WriteFault fault)
+        : file_{wiola::platform::qt::QtPathAdapter::to_qt(path)}
+        , fault_{fault}
+    {
+        opened_ = file_.open(QIODevice::WriteOnly);
+    }
+
+    qint64 write(QByteArrayView bytes) override
+    {
+        const auto size = fault_ == WriteFault::short_write ? bytes.size() / 2 : bytes.size();
+        return opened_ ? file_.write(bytes.data(), size) : -1;
+    }
+
+    bool commit() override { return opened_ && fault_ != WriteFault::commit && file_.commit(); }
+
+private:
+    QSaveFile file_;
+    WriteFault fault_;
+    bool opened_{};
+};
+
+TEST_F(LibraryStorage, InterruptedPrimaryWritesRetainBothLastGoodCopiesAndAllowRetry)
+{
+    for (const auto fault : {WriteFault::short_write, WriteFault::commit}) {
+        SCOPED_TRACE(static_cast<int>(fault));
+        const auto target = file(fault == WriteFault::short_write ? "short.json" : "commit.json");
+        Storage original{target};
+        ASSERT_TRUE(original.save(snapshot("Original")).succeeded());
+        AtomicFileStore bytes{target, max_library_document_bytes};
+        const auto primary = bytes.read(FileSlot::primary).bytes;
+        auto active_fault = fault;
+        Storage interrupted{target, [&](const std::filesystem::path& path) {
+                                return std::make_unique<InterruptibleOutput>(path,
+                                    path == target ? active_fault : WriteFault::none);
+                            }};
+
+        EXPECT_EQ(interrupted.save(snapshot("Rejected")),
+            (LibraryStoreResult{.io = FileStoreError::io}));
+        EXPECT_EQ(bytes.read(FileSlot::primary).bytes, primary);
+        EXPECT_EQ(bytes.read(FileSlot::backup).bytes, primary);
+        wiola::library::LibrarySnapshot restored;
+        ASSERT_TRUE(interrupted.load(restored).succeeded());
+        EXPECT_EQ(restored.tracks.front().embedded.title, "Original");
+
+        active_fault = WriteFault::none;
+        ASSERT_TRUE(interrupted.save(snapshot("Recovered")).succeeded());
+        ASSERT_TRUE(interrupted.load(restored).succeeded());
+        EXPECT_EQ(restored.tracks.front().embedded.title, "Recovered");
+        EXPECT_EQ(bytes.read(FileSlot::backup).bytes, primary);
+    }
 }
 
 } // namespace
