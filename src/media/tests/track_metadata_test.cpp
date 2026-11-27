@@ -22,20 +22,20 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cstddef>
+#include <utility>
+
 namespace {
 
 TEST(TrackMetadata, ExistingReadersRemainCompatibleAndNewFieldsAffectEmptiness)
 {
-    const wiola::media::TrackMetadata original{.title = "Title",
-        .artist = "Artist",
-        .album = "Album",
-        .duration = wiola::units::Time{1},
-        .genre = {}};
-    const wiola::media::TrackMetadata same{.title = "Title",
-        .artist = "Artist",
-        .album = "Album",
-        .duration = wiola::units::Time{1},
-        .genre = {}};
+    wiola::media::TrackMetadata original;
+    original.title = "Title";
+    original.artist = "Artist";
+    original.album = "Album";
+    original.duration = wiola::units::Time{1};
+    const auto same = original;
 
     EXPECT_EQ(original, same);
 
@@ -56,27 +56,94 @@ TEST(TrackMetadata, ExistingReadersRemainCompatibleAndNewFieldsAffectEmptiness)
     EXPECT_FALSE(metadata.empty());
 }
 
-TEST(TrackMetadata, EveryExtendedFieldIsIndependent)
+TEST(TrackMetadata, EveryTextFieldIndependentlyChangesEmptinessAndEquality)
+{
+    using wiola::media::TrackMetadata;
+    const TrackMetadata empty;
+
+    for (const auto& [name, member] : std::array{
+             std::pair{"title",    &TrackMetadata::title   },
+             std::pair{"artist",   &TrackMetadata::artist  },
+             std::pair{"album",    &TrackMetadata::album   },
+             std::pair{"genre",    &TrackMetadata::genre   },
+             std::pair{"comment",  &TrackMetadata::comment },
+             std::pair{"composer", &TrackMetadata::composer}
+    }) {
+        SCOPED_TRACE(name);
+        wiola::media::Metadata metadata;
+
+        metadata.track.*member = "value";
+
+        EXPECT_FALSE(metadata.empty());
+        EXPECT_NE(metadata.track, empty);
+        EXPECT_NE(empty, metadata.track);
+
+        metadata.track.*member = {};
+
+        EXPECT_TRUE(metadata.empty());
+        EXPECT_EQ(metadata.track, empty);
+    }
+}
+
+TEST(TrackMetadata, EveryNumberFieldDistinguishesAnExplicitZeroFromAnAbsentValue)
+{
+    using wiola::media::TrackMetadata;
+    const TrackMetadata empty;
+
+    for (const auto& [name, member] : std::array{
+             std::pair{"year",         &TrackMetadata::year        },
+             std::pair{"track number", &TrackMetadata::track_number},
+             std::pair{"disc number",  &TrackMetadata::disc_number }
+    }) {
+        SCOPED_TRACE(name);
+        wiola::media::Metadata metadata;
+
+        metadata.track.*member = 0;
+
+        EXPECT_FALSE(metadata.empty());
+        EXPECT_NE(metadata.track, empty);
+        EXPECT_NE(empty, metadata.track);
+
+        (metadata.track.*member).reset();
+
+        EXPECT_TRUE(metadata.empty());
+        EXPECT_EQ(metadata.track, empty);
+    }
+}
+
+TEST(TrackMetadata, ZeroDurationIsPresentAndDistinctFromAnUnknownDuration)
 {
     wiola::media::Metadata metadata;
-    metadata.track.year = 2026;
-    EXPECT_FALSE(metadata.empty());
+    const wiola::media::TrackMetadata empty;
+    metadata.track.duration = wiola::units::Time{};
 
-    metadata = {};
-    metadata.track.track_number = 1;
     EXPECT_FALSE(metadata.empty());
+    EXPECT_NE(metadata.track, empty);
+    EXPECT_NE(empty, metadata.track);
 
-    metadata = {};
-    metadata.track.disc_number = 1;
-    EXPECT_FALSE(metadata.empty());
+    metadata.track.duration.reset();
 
-    metadata = {};
-    metadata.track.comment = "Comment";
-    EXPECT_FALSE(metadata.empty());
+    EXPECT_TRUE(metadata.empty());
+    EXPECT_EQ(metadata.track, empty);
+}
 
-    metadata = {};
-    metadata.track.composer = "Composer";
+TEST(TrackMetadata, ArtworkBytesAloneMakeMetadataNonempty)
+{
+    wiola::media::Metadata metadata;
+    metadata.artwork.mime_type = "image/png";
+    metadata.artwork.content_id = 123;
+
+    EXPECT_TRUE(metadata.empty());
+    EXPECT_TRUE(metadata.artwork.empty());
+
+    metadata.artwork.data = {std::byte{0x61}};
+
     EXPECT_FALSE(metadata.empty());
+    EXPECT_FALSE(metadata.artwork.empty());
+
+    metadata.artwork.data.clear();
+
+    EXPECT_TRUE(metadata.empty());
 }
 
 } // namespace

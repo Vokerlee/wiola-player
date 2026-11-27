@@ -22,6 +22,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <string>
+#include <utility>
+
 namespace {
 
 class ReadOnlyAsset final : public wiola::media::MediaAsset {
@@ -78,6 +82,84 @@ TEST(MetadataWriter, ReadOnlyAssetsRejectWritesWithoutModifyingTheSource)
     EXPECT_FALSE(outcome.detail.empty());
     EXPECT_TRUE(outcome.staged_output.empty());
     EXPECT_FALSE(asset.metadata_write_capabilities().any());
+}
+
+TEST(MetadataWriter, EveryWriteCapabilityIndependentlyEnablesWriting)
+{
+    using wiola::media::MetadataWriteCapabilities;
+
+    EXPECT_FALSE(MetadataWriteCapabilities{}.any());
+
+    for (const auto& [name, member] : std::array{
+             std::pair{"title",        &MetadataWriteCapabilities::title       },
+             std::pair{"artist",       &MetadataWriteCapabilities::artist      },
+             std::pair{"album",        &MetadataWriteCapabilities::album       },
+             std::pair{"genre",        &MetadataWriteCapabilities::genre       },
+             std::pair{"year",         &MetadataWriteCapabilities::year        },
+             std::pair{"comment",      &MetadataWriteCapabilities::comment     },
+             std::pair{"composer",     &MetadataWriteCapabilities::composer    },
+             std::pair{"track number", &MetadataWriteCapabilities::track_number},
+             std::pair{"disc number",  &MetadataWriteCapabilities::disc_number }
+    }) {
+        SCOPED_TRACE(name);
+        MetadataWriteCapabilities capabilities;
+        capabilities.*member = true;
+
+        EXPECT_TRUE(capabilities.any());
+
+        capabilities.*member = false;
+
+        EXPECT_FALSE(capabilities.any());
+    }
+}
+
+TEST(MetadataWriter, EveryTextOverrideDistinguishesClearingAFieldFromLeavingItAlone)
+{
+    using wiola::media::MetadataOverrides;
+
+    EXPECT_TRUE(MetadataOverrides{}.empty());
+
+    for (const auto& [name, member] : std::array{
+             std::pair{"title",    &MetadataOverrides::title   },
+             std::pair{"artist",   &MetadataOverrides::artist  },
+             std::pair{"album",    &MetadataOverrides::album   },
+             std::pair{"genre",    &MetadataOverrides::genre   },
+             std::pair{"comment",  &MetadataOverrides::comment },
+             std::pair{"composer", &MetadataOverrides::composer}
+    }) {
+        SCOPED_TRACE(name);
+        MetadataOverrides overrides;
+        overrides.*member = std::string{};
+
+        EXPECT_FALSE(overrides.empty());
+        ASSERT_TRUE((overrides.*member).has_value());
+        EXPECT_TRUE((overrides.*member)->empty());
+
+        (overrides.*member).reset();
+
+        EXPECT_TRUE(overrides.empty());
+    }
+}
+
+TEST(MetadataWriter, EveryNumericOverrideDistinguishesZeroFromNoEdit)
+{
+    using wiola::media::MetadataOverrides;
+
+    for (const auto& [name, member] : std::array{
+             std::pair{"year",         &MetadataOverrides::year        },
+             std::pair{"track number", &MetadataOverrides::track_number},
+             std::pair{"disc number",  &MetadataOverrides::disc_number }
+    }) {
+        SCOPED_TRACE(name);
+        MetadataOverrides overrides;
+        overrides.*member = 0;
+
+        EXPECT_FALSE(overrides.empty());
+
+        (overrides.*member).reset();
+
+        EXPECT_TRUE(overrides.empty());
+    }
 }
 
 } // namespace
