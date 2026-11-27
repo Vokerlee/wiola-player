@@ -19,8 +19,10 @@
  */
 
 #include <fixtures/temporary_directory.hpp>
+#include <media/tests/provider_contract.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/codecs/registry.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <gtest/gtest.h>
 
@@ -173,4 +175,15 @@ TEST(Decoder, PlaysThroughTheInterface)
     EXPECT_GT(num_rendered, 0u);
     EXPECT_LE(num_rendered, block.size());
     EXPECT_TRUE(std::ranges::any_of(block, [](float v) { return v != 0.0F; }));
+}
+
+TEST(Decoder, SatisfiesTheReusableProviderAndDecoderContract)
+{
+    auto decoder = wiola::codec::ffmpeg::make_registry().open(fixture("tone.wav"));
+    ASSERT_TRUE(decoder);
+    const auto expected = (*decoder)->num_frames();
+    decoder->reset();
+
+    wiola::testing::verify_provider_contract(wiola::codec::ffmpeg::make_provider(),
+        wiola::media::local_resource(fixture("tone.wav")), expected);
 }

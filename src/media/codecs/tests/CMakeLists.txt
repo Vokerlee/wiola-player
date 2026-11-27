@@ -172,6 +172,8 @@ wiola_add_test(
     DATA "${fixtures}"
 )
 
+target_link_libraries(codec_decoder_test PRIVATE wiola::local_media)
+
 wiola_add_test(
     codec_player_integration_test
     SOURCES player_integration_test.cpp

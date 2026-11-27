@@ -18,6 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "repository_contract.hpp"
+
 #include <wiola/library/in_memory_repository.hpp>
 
 #include <gtest/gtest.h>
@@ -257,3 +259,9 @@ TEST_F(InMemoryRepository, StoresObservedWorkspaceRootsAndPersistentIdentities)
 }
 
 } // namespace
+
+TEST(RepositoryContract, InMemoryImplementationPreservesPortableSemantics)
+{
+    wiola::library::InMemoryRepository repository;
+    wiola::testing::verify_repository_contract(repository);
+}

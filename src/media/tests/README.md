@@ -21,3 +21,5 @@ Configure with `-DWIOLA_COMPONENTS=media` and build the local targets declared i
 `Media.Consumer` is an ordinary executable built from `consumer.cpp` and linked to `wiola::media`. It exercises the public contracts using supplied collaborators; CTest runs the configured executable directly.
 
 `media_resource_test` verifies owned reference values, provider-qualified identity, stable ordering/grouping when labels differ, and namespace separation for equal keys. Nonthrowing moves preserve the playback installation commit guarantee.
+
+`provider_contract.hpp` provides `verify_decoder_contract` and `verify_provider_contract` for fresh finite fixtures with a stated decoded frame count. The same suite exercises the sample provider and the real FFmpeg WAV provider, including provider/asset-independent decoder lifetime. Include it only in test targets; codec setup stays in the caller.
