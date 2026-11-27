@@ -23,6 +23,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPushButton>
 #include <app/library/search_index.hpp>
 #include <array>
 #include <gtest/gtest.h>
@@ -92,6 +93,48 @@ TEST(TrackBrowser, CapabilitiesGovernMenusAndKeyboardCommands)
         QKeyEvent key{QEvent::KeyPress, Qt::Key_Delete, Qt::NoModifier};
         QApplication::sendEvent(&browser.table(), &key);
         EXPECT_EQ(removals, capabilities.supports(TrackCommand::remove) ? 1 : 0);
+    }
+}
+
+TEST(TrackBrowser, EditCommandsFollowRestoredSelectionAcrossDocumentReloads)
+{
+    for (const auto capabilities : {TrackCapabilities::queue(), TrackCapabilities::playlist(),
+             TrackCapabilities::workspace()}) {
+        TrackRow row;
+        row.id = wiola::library::PlaylistEntryId{"selected"};
+        row.media = {"track"};
+        row.metadata.title = "Alpha";
+        TrackBrowser browser{capabilities};
+        browser.show_rows({row});
+        browser.table().selectRow(0);
+        const auto saved = browser.capture_browser_state();
+        auto* button = browser.findChild<QPushButton*>("editSelectedTrack");
+        auto* context_edit = action(browser, "Edit track details…");
+        ASSERT_NE(button, nullptr);
+        ASSERT_NE(context_edit, nullptr);
+        ASSERT_TRUE(button->isEnabled());
+        browser.table().clearSelection();
+        ASSERT_FALSE(button->isEnabled());
+        ASSERT_FALSE(context_edit->isEnabled());
+        browser.restore_browser_state(saved);
+        browser.table().finish_browser_restore();
+        ASSERT_EQ(browser.table().chosen_rows(), (std::vector<TrackRowId>{row.id}));
+        EXPECT_TRUE(button->isEnabled());
+        EXPECT_TRUE(context_edit->isEnabled());
+        int edits{};
+        QObject::connect(&browser, &TrackBrowser::edit_requested, [&] { ++edits; });
+        button->click();
+        EXPECT_EQ(edits, 1);
+        context_edit->trigger();
+        EXPECT_EQ(edits, 2);
+        browser.show_rows({});
+        EXPECT_FALSE(button->isEnabled());
+        EXPECT_FALSE(context_edit->isEnabled());
+        browser.restore_browser_state(saved);
+        browser.show_rows({row});
+        browser.table().finish_browser_restore();
+        EXPECT_TRUE(button->isEnabled());
+        EXPECT_TRUE(context_edit->isEnabled());
     }
 }
 
