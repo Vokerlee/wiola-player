@@ -234,7 +234,7 @@ wiola_add_test(
 
 target_link_libraries(
     gui_document_command_router_test
-    PRIVATE wiola::local_media
+    PRIVATE wiola::local_media wiola::qt_paths
 )
 
 # Explicit benchmark target: measurements are artifacts, not wall-clock CI pass/fail assertions.

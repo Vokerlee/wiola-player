@@ -106,6 +106,55 @@ TEST(TrackBrowser, CapabilitiesGovernMenusAndKeyboardCommands)
     }
 }
 
+TEST(TrackBrowser, QueueAppendFollowsCapabilitiesSelectionAndRestoration)
+{
+    for (const auto capabilities : {TrackCapabilities::queue(), TrackCapabilities::playlist(),
+             TrackCapabilities::workspace()}) {
+        TrackBrowser browser{capabilities};
+        auto* append = action(browser, "Add to play queue");
+
+        ASSERT_NE(append, nullptr);
+        EXPECT_EQ(append->isVisible(), capabilities.supports(TrackCommand::append));
+        EXPECT_FALSE(append->isEnabled());
+
+        TrackRow row;
+        row.id = wiola::library::PlaylistEntryId{"selected"};
+        row.media = {"track"};
+        row.metadata.title = "Selected";
+        browser.show_rows({row});
+        browser.table().selectRow(0);
+
+        const bool supported = capabilities.supports(TrackCommand::append);
+
+        EXPECT_EQ(append->isEnabled(), supported);
+
+        int requests{};
+        QObject::connect(&browser, &TrackBrowser::command_requested, [&](TrackCommand command) {
+            EXPECT_EQ(command, TrackCommand::append);
+            ++requests;
+        });
+
+        append->trigger();
+
+        EXPECT_EQ(requests, supported ? 1 : 0);
+
+        const auto saved = browser.capture_browser_state();
+        browser.table().clearSelection();
+
+        EXPECT_FALSE(append->isEnabled());
+
+        browser.restore_browser_state(saved);
+        browser.table().finish_browser_restore();
+
+        EXPECT_EQ(append->isEnabled(), supported);
+
+        browser.table().set_capabilities(TrackCapabilities{});
+
+        EXPECT_FALSE(append->isVisible());
+        EXPECT_FALSE(append->isEnabled());
+    }
+}
+
 TEST(TrackBrowser, EditCommandsFollowRestoredSelectionAcrossDocumentReloads)
 {
     for (const auto capabilities : {TrackCapabilities::queue(), TrackCapabilities::playlist(),

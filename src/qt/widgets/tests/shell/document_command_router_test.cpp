@@ -19,7 +19,9 @@
  */
 
 #include <fakes/output.hpp>
+#include <fixtures/wav.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
 #include <qt/widgets/shell/document_command_router.hpp>
@@ -30,9 +32,13 @@
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 
+#include <QAction>
 #include <QApplication>
+#include <QDir>
 #include <QFile>
+#include <QItemSelectionModel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QPointer>
@@ -81,6 +87,198 @@ protected:
     std::unique_ptr<app::PlaybackPreferences> preferences;
     std::vector<gui::DocumentCommandOutcome> outcomes;
 };
+
+TEST_F(DocumentCommandRouterTest, PlaylistMenuAppendsOnlySelectedTracksWithoutReplacingPlayback)
+{
+    const auto source = library->playlists().create("Source").id;
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
+    const auto first = library->repository().append_track(source, library::MediaId{"one"});
+    const auto second = library->repository().append_track(source, library::MediaId{"two"});
+
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(second);
+    ASSERT_TRUE(seed.commit());
+
+    const auto existing = wiola::testing::write_wav("playing.wav", wiola::testing::source_rate,
+        platform::qt::QtPathAdapter::from_qt(directory.path()));
+    static_cast<void>(playback.open({media::local_resource(existing)}));
+
+    ASSERT_TRUE(wiola::testing::await_gui([&] {
+        playback.pump();
+        return !playback.reading();
+    }));
+    ASSERT_TRUE(playback.loaded());
+    ASSERT_EQ(playback.play(), engine::CommandResult::accepted);
+
+    playback.set_repeat(engine::RepeatMode::all);
+    const auto original = playback.playlist().current()->id();
+    const auto original_entries = library->repository().playlist(source)->entries;
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    gui::DocumentCommands callbacks;
+    callbacks.execute = [&](auto command, auto context) {
+        commands.execute(command, std::move(context));
+    };
+    gui::DocumentHost host{*library, playback, preferences->ui_session(), std::move(callbacks)};
+
+    ASSERT_TRUE(host.open_playlist(source));
+
+    auto* document = host.registry().playlist(source);
+    auto& table = document->browser().table();
+    table.selectRow(1);
+    auto* append = table.findChild<QAction*>("appendToPlayQueue");
+
+    ASSERT_NE(append, nullptr);
+    ASSERT_TRUE(append->isVisible());
+    ASSERT_TRUE(append->isEnabled());
+
+    QMenu menu;
+    const auto previews = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+    menu.setUpdatesEnabled(!previews.isEmpty());
+    menu.addActions(table.actions());
+
+    if (!previews.isEmpty())
+        gui::apply_theme(gui::Theme::dark);
+
+    menu.popup(table.mapToGlobal(QPoint{}));
+
+    ASSERT_TRUE(wiola::testing::await_gui([&] { return menu.isVisible(); }));
+    menu.setActiveAction(append);
+
+    if (!previews.isEmpty()) {
+        QDir{}.mkpath(previews);
+        EXPECT_TRUE(menu.grab().save(QDir{previews}.filePath("add-to-play-queue-menu.png")));
+    }
+
+    QTest::keyClick(&menu, Qt::Key_Return);
+
+    ASSERT_EQ(playback.playlist().tracks().size(), 2U);
+    EXPECT_EQ(playback.playlist().current()->id(), original);
+    EXPECT_EQ(playback.playlist().tracks()[0].resource(), media::local_resource(existing));
+    EXPECT_EQ(playback.playlist().tracks()[1].resource(), media::local_resource("two.wav"));
+    EXPECT_EQ(playback.repeat(), engine::RepeatMode::none);
+    EXPECT_TRUE(playback.playing());
+    EXPECT_EQ(library->repository().playlist(source)->entries, original_entries);
+    EXPECT_EQ(host.currentWidget(), document);
+    ASSERT_EQ(outcomes.size(), 1U);
+    EXPECT_TRUE(outcomes.back().queue_changed);
+    EXPECT_FALSE(outcomes.back().open_result);
+    EXPECT_EQ(outcomes.back().message, "1 track(s) added to play queue");
+
+    // A queued menu event from a closing document must not append a second time.
+    const QPointer<QAction> closing_action{append};
+
+    ASSERT_TRUE(host.close(gui::DocumentId::playlist(source)));
+    ASSERT_NE(closing_action, nullptr);
+
+    closing_action->trigger();
+
+    EXPECT_EQ(playback.playlist().tracks().size(), 2U);
+    EXPECT_EQ(outcomes.size(), 1U);
+}
+
+TEST_F(DocumentCommandRouterTest, EmptyQueueAppendPreservesRepeatAndExistingTracks)
+{
+    playback.add({media::local_resource("existing.wav")});
+    playback.set_repeat(engine::RepeatMode::track);
+    const auto original = playback.playlist().current()->id();
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    gui::DocumentCommandContext context{
+        .document = gui::DocumentId::playlist(library::PlaylistId{"source"}),
+        .capabilities = gui::TrackCapabilities::playlist(),
+        .selection = {},
+        .displayed_paths = {},
+        .active_playlist = {},
+        .target_playlist = {}};
+
+    commands.execute(gui::TrackCommand::append, context);
+    commands.open({}, true);
+
+    EXPECT_EQ(playback.playlist().tracks().size(), 1U);
+    EXPECT_EQ(playback.playlist().current()->id(), original);
+    EXPECT_EQ(playback.repeat(), engine::RepeatMode::track);
+}
+
+TEST_F(DocumentCommandRouterTest,
+    ManuallyQueuedTracksFinishWithoutStartingTheRestOfTheSavedPlaylist)
+{
+    const auto folder = platform::qt::QtPathAdapter::from_qt(directory.path());
+    const auto first_path =
+        wiola::testing::write_wav("first.wav", wiola::testing::source_rate, folder);
+    const auto last_path =
+        wiola::testing::write_wav("last.wav", wiola::testing::source_rate, folder);
+    library::RepositoryTransaction seed{library->repository(), library->persistence()};
+
+    for (const auto& [id, path] : {
+             std::pair{library::MediaId{"one"}, first_path},
+             std::pair{library::MediaId{"two"}, last_path }
+    }) {
+        auto track = *library->repository().track(id);
+        track.locations = {path};
+        ASSERT_TRUE(library->repository().put_track(track));
+    }
+
+    const auto source = library->repository().create_playlist("Source");
+
+    ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"one"}));
+    ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"two"}));
+    ASSERT_TRUE(library->repository().append_track(source, library::MediaId{"one"}));
+    ASSERT_TRUE(seed.commit());
+
+    app::PlaybackService consuming{
+        [](audio::Source& stream) { return std::make_unique<wiola::testing::FakeOutput>(stream); },
+        codec::ffmpeg::make_provider()};
+    app::PlaybackPreferences consuming_preferences{consuming};
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    gui::DocumentCommandRouter commands{*library, consuming, consuming_preferences.queue(), dialogs,
+        {}};
+    gui::DocumentCommands callbacks;
+    callbacks.execute = [&](auto command, auto context) {
+        commands.execute(command, std::move(context));
+    };
+    gui::DocumentHost host{*library, consuming, consuming_preferences.ui_session(),
+        std::move(callbacks)};
+
+    ASSERT_TRUE(host.open_playlist(source));
+
+    auto* document = host.registry().playlist(source);
+    auto& table = document->browser().table();
+    table.selectRow(0);
+    table.selectionModel()->select(table.model()->index(1, 0),
+        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    consuming.set_repeat(engine::RepeatMode::all);
+    table.findChild<QAction*>("appendToPlayQueue")->trigger();
+
+    ASSERT_EQ(consuming.playlist().tracks().size(), 2U);
+    EXPECT_EQ(consuming.repeat(), engine::RepeatMode::none);
+    EXPECT_FALSE(consuming.playing());
+    ASSERT_TRUE(wiola::testing::await_gui([&] {
+        consuming.pump();
+        return !consuming.reading();
+    }));
+    ASSERT_TRUE(consuming.loaded());
+    ASSERT_EQ(consuming.play(), engine::CommandResult::accepted);
+
+    const auto last = consuming.playlist().tracks().back().id();
+
+    ASSERT_TRUE(wiola::testing::await_gui([&] {
+        consuming.pump();
+        return !consuming.reading() && consuming.track() == media::local_resource(last_path) &&
+            consuming.playlist().current()->id() == last &&
+            consuming.state() == engine::PlaybackState::ended;
+    }));
+
+    for (int refresh = 0; refresh < 32; ++refresh)
+        consuming.pump();
+
+    EXPECT_FALSE(consuming.playing());
+    EXPECT_FALSE(consuming.reading());
+    EXPECT_EQ(consuming.playlist().current()->id(), last);
+    EXPECT_EQ(consuming.track(), media::local_resource(last_path));
+    EXPECT_EQ(library->repository().playlist(source)->entries.size(), 3U);
+    EXPECT_EQ(host.currentWidget(), document);
+}
 
 TEST_F(DocumentCommandRouterTest, ContextMenuTransferAfterCloseAndReopenUsesOneExactOccurrence)
 {
@@ -512,7 +710,9 @@ TEST_F(DocumentCommandRouterTest,
 
 int main(int argc, char** argv)
 {
-    qputenv("QT_QPA_PLATFORM", "minimal");
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM",
+            qEnvironmentVariableIsEmpty("WIOLA_GUI_PREVIEW_DIR") ? "minimal" : "offscreen");
 
     QApplication app{argc, argv};
 

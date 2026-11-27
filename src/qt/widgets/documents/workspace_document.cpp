@@ -65,7 +65,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     play_ = new QPushButton{"Play selection", this};
     play_->setObjectName("playWorkspaceSelection");
 
-    append_ = new QPushButton{"Add to Now Playing", this};
+    append_ = new QPushButton{"Add to play queue", this};
     append_->setObjectName("appendWorkspaceSelection");
 
     browser_ = new TrackBrowser{TrackCapabilities::workspace(), this};

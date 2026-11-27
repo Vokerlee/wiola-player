@@ -100,6 +100,7 @@ signals:
     void row_chosen(wiola::gui::TrackRowId id);
     void view_state_changed();
     void removal_asked();
+    void append_asked();
     void edit_asked();
     void transfer_active_asked();
     void playlist_menu_requested(QMenu* menu, wiola::gui::TrackCommand command);
