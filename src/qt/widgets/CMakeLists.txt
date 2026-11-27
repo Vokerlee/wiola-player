@@ -86,3 +86,11 @@ target_link_libraries(
         wiola::presentation
     PRIVATE wiola::local_media
 )
+
+if(WIOLA_BUILD_BENCHMARKS)
+    wiola_add_benchmark(
+        gui_projection_benchmark
+        SOURCES tests/benchmarks/projection_benchmark.cpp
+        LIBS wiola::qt_widgets
+    )
+endif()

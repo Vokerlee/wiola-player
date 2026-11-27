@@ -207,6 +207,19 @@ Coverage thresholds belong to CI. The current workflow uses the ordinary `diff-c
 diff-cover build-coverage/coverage/coverage.lcov --compare-branch origin/main --fail-under=100
 ```
 
+## Performance measurements
+
+Benchmarks are optional native C++ programs owned beside the corresponding subsystem tests:
+
+```bash
+cmake -S . -B build-performance -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DWIOLA_BUILD_BENCHMARKS=ON
+cmake --build build-performance --target benchmarks --parallel 4
+```
+
+The aggregate target builds the selected benchmarks, then runs them sequentially to avoid mutual contention. Full builds measure configured audio processing, recursive scans of 1,000/10,000 files, and playlist projection at 1,000/10,000/100,000 rows. Component builds expose only their available measurements; for example `-DWIOLA_COMPONENTS=audio` needs no Qt or fetched SDKs. Raw records are JSON lines on standard output. Scan fixture creation is outside the reported interval; repeated trials retain normal filesystem cache effects. Processing measurements exclude initial stage preparation and include a checksum to retain the work.
+
+The manual **Performance measurements** Actions workflow records the commit, compiler/machine context and `/usr/bin/time` reports for a fresh player build, no-op build and one-entry-point rebuild. FFmpeg is prepared before timing compilation and compiler caching is disabled. Its artifact includes benchmark output. Compare equivalent machines, compilers and configurations; timing results have no CI pass/fail threshold. Ordinary tests enforce correctness and allocation invariants separately. The configured built-in processing chain is exercised with all current-thread allocations rejected after preparation in Debug/ASan; TSan runs its normal processing assertions with its own allocator.
+
 ## Commit names
 
 ```

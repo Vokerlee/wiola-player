@@ -195,3 +195,11 @@ endif()
 if(WIOLA_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+if(WIOLA_BUILD_BENCHMARKS AND TARGET wiola_app)
+    wiola_add_benchmark(
+        workspace_scan_benchmark
+        SOURCES tests/workspace/scanner_benchmark.cpp
+        LIBS wiola_app
+    )
+endif()

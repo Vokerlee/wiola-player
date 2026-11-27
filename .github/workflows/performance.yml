@@ -1,0 +1,54 @@
+name: Performance measurements
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CXX: clang++-18
+      CCACHE_DISABLE: "1"
+      BUILD_DIR: build-performance
+      REPORT_DIR: performance-results
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+        with:
+          name: performance
+          build-dir: build-performance
+      - name: Configure optimized measurements without unit tests
+        run: cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DWIOLA_BUILD_BENCHMARKS=ON
+      - name: Prepare the external codec before timing player compilation
+        run: cmake --build "$BUILD_DIR" --target wiola_ffmpeg_build --parallel 4
+      - name: Record machine and compiler context
+        run: |
+          mkdir -p "$REPORT_DIR"
+          {
+            git rev-parse HEAD
+            cmake --version
+            "$CXX" --version
+            lscpu
+            ccache --show-stats
+          } > "$REPORT_DIR/context.txt"
+      - name: Measure a clean player build and a no-op rebuild
+        run: |
+          /usr/bin/time -v -o "$REPORT_DIR/clean-build.txt" cmake --build "$BUILD_DIR" --parallel 4
+          /usr/bin/time -v -o "$REPORT_DIR/no-op-build.txt" cmake --build "$BUILD_DIR" --parallel 4
+      - name: Measure rebuilding one changed entry-point translation unit
+        run: |
+          touch src/qt/main.cpp
+          /usr/bin/time -v -o "$REPORT_DIR/incremental-build.txt" cmake --build "$BUILD_DIR" --parallel 4
+      - name: Measure processing, scanning and playlist projection sequentially
+        run: cmake --build "$BUILD_DIR" --target benchmarks --parallel 4 > "$REPORT_DIR/benchmarks.log" 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-performance
+          path: ${{ env.REPORT_DIR }}/
+          retention-days: 14

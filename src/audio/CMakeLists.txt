@@ -66,3 +66,11 @@ endif()
 if(NOT WIOLA_COMPONENT_BUILD)
     add_subdirectory(miniaudio)
 endif()
+
+if(WIOLA_BUILD_BENCHMARKS)
+    wiola_add_benchmark(
+        audio_processing_benchmark
+        SOURCES tests/processing/processing_benchmark.cpp
+        LIBS wiola::audio_dsp
+    )
+endif()
