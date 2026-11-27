@@ -19,8 +19,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 # Project modules are included by name, not by path.
@@ -59,10 +57,6 @@ endif()
 
 add_subdirectory(src)
 
-if(ENABLE_COVERAGE)
-    include(coverage_inventory)
-endif()
-
 if(WIOLA_BUILD_TESTS AND NOT WIOLA_COMPONENT_BUILD)
     add_subdirectory(tests)
 
@@ -71,4 +65,10 @@ if(WIOLA_BUILD_TESTS AND NOT WIOLA_COMPONENT_BUILD)
 
         wiola_add_qt_tsan_runtime_check(gui_desktop_journey_test)
     endif()
+endif()
+
+if(ENABLE_COVERAGE)
+    cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2)
+
+    include(coverage)
 endif()
