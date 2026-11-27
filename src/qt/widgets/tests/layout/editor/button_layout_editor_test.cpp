@@ -26,6 +26,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QHeaderView>
 #include <QLineEdit>
@@ -723,6 +724,73 @@ TEST(LayoutEditorComponents, RejectsOversizedAndUnknownDragPayloadsWithoutIssuin
     }
 
     EXPECT_EQ(drops, 0);
+}
+
+TEST(ButtonLayoutEditor, RepeatedInsertionsAfterLeavesHaveUniqueIdsAndPreserveSiblingOrder)
+{
+    using namespace wiola::gui;
+    LayoutEditorDialog editor{classic_layout_document()};
+    auto* palette = editor.findChild<QListWidget*>("layoutComponentPalette");
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    auto* add = editor.findChild<QPushButton*>("addLayoutAction");
+    tree->setCurrentItem(item(*tree, "transportControls"));
+    palette->setCurrentRow(0);
+    add->click();
+    tree->setCurrentItem(item(*tree, "open"));
+    add->click();
+    ASSERT_NE(find(editor.document().root, "open-2"), nullptr);
+    tree->setCurrentItem(item(*tree, "open-2"));
+    add->click();
+    ASSERT_NE(find(editor.document().root, "open-3"), nullptr);
+    EXPECT_EQ(find(editor.document().root, "open-3")->action, PlayerAction::open);
+
+    auto* add_container = editor.findChild<QPushButton*>("addLayoutContainer");
+    const auto before = editor.document().node_count;
+    add_container->click();
+    EXPECT_EQ(editor.document().node_count, before + 1);
+    add_container->click();
+    EXPECT_EQ(editor.document().node_count, before + 2);
+    editor.findChild<QPushButton*>("undoLayoutEdit")->click();
+    EXPECT_EQ(editor.document().node_count, before + 1);
+}
+
+TEST(ButtonLayoutEditor, RealPaletteAndHierarchyMimeDataSupportActionInsertionAndNodeMovement)
+{
+    using namespace wiola::gui;
+    LayoutEditorDialog editor{classic_layout_document()};
+    editor.setUpdatesEnabled(false);
+    editor.resize(1000, 700);
+    editor.show();
+    auto* palette = editor.findChild<QListWidget*>("layoutComponentPalette");
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    QCoreApplication::processEvents();
+    const auto drag = [&](const QMimeData& data, QTreeWidgetItem* target) {
+        tree->scrollToItem(target);
+        const auto point = tree->visualItemRect(target).center();
+        QDragEnterEvent enter{point, Qt::MoveAction, &data, Qt::LeftButton, Qt::NoModifier};
+        QApplication::sendEvent(tree->viewport(), &enter);
+        EXPECT_TRUE(enter.isAccepted());
+        QDragMoveEvent move{point, Qt::MoveAction, &data, Qt::LeftButton, Qt::NoModifier};
+        QApplication::sendEvent(tree->viewport(), &move);
+        EXPECT_TRUE(move.isAccepted());
+        QDropEvent drop{QPointF{point}, Qt::MoveAction, &data, Qt::LeftButton, Qt::NoModifier};
+        QApplication::sendEvent(tree->viewport(), &drop);
+        EXPECT_TRUE(drop.isAccepted());
+    };
+    std::unique_ptr<QMimeData> action{palette->model()->mimeData({palette->model()->index(0, 0)})};
+    ASSERT_NE(action, nullptr);
+    EXPECT_FALSE(action->text().isEmpty());
+    drag(*action, item(*tree, "transportControls"));
+    ASSERT_NE(item(*tree, "open"), nullptr);
+    drag(*action, item(*tree, "open"));
+    ASSERT_NE(item(*tree, "open-2"), nullptr);
+    std::unique_ptr<QMimeData> node{
+        tree->model()->mimeData({tree->indexFromItem(item(*tree, "open"))})};
+    ASSERT_NE(node, nullptr);
+    EXPECT_FALSE(tree->model()->mimeTypes().isEmpty());
+    drag(*node, item(*tree, "open-2"));
+    EXPECT_NE(find(editor.document().root, "open"), nullptr);
+    EXPECT_NE(find(editor.document().root, "open-2"), nullptr);
 }
 
 } // namespace

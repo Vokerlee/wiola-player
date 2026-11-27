@@ -19,6 +19,9 @@
  */
 
 #include <app/metadata/media_replacement.hpp>
+#include <fakes/decoder.hpp>
+#include <fakes/provider.hpp>
+#include <fixtures/temporary_directory.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
 #include <wiola/media/audio_decoder.hpp>
@@ -404,6 +407,66 @@ TEST(MediaReplacement, SuppliesValidatedOwnedInputsToTheSelectedDriverWithoutNat
     EXPECT_EQ(outcome.detail, "driver refused");
     EXPECT_EQ(bytes(source), original);
     EXPECT_TRUE(std::filesystem::exists(output));
+}
+
+TEST(MediaReplacement, AdmissionAndCancelledCommitPreserveTheSource)
+{
+    using namespace wiola;
+    wiola::testing::TemporaryDirectory directory;
+    const auto source = directory.path() / "source.wav";
+    const auto output = directory.path() / "output.wav";
+    std::ofstream{source} << "source";
+    std::ofstream{output} << "output";
+    auto unavailable = wiola::testing::FakeMediaProvider::unavailable();
+    EXPECT_EQ(app::prepare_media_replacement(source, source, *unavailable).failure.error,
+        media::MetadataWriteError::invalid_edit);
+    EXPECT_EQ(app::prepare_media_replacement(directory.path() / "missing", output, *unavailable)
+                  .failure.error,
+        media::MetadataWriteError::io);
+    EXPECT_EQ(app::prepare_media_replacement(source, output, *unavailable).failure.error,
+        media::MetadataWriteError::invalid_output);
+
+    auto replacement = media::native_file_replacement(media::fingerprint_media);
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    const app::PreparedMediaReplacement prepared{source, output, *media::fingerprint_media(source),
+        "staged"};
+    EXPECT_EQ(app::commit_prepared_media_replacement(prepared, *replacement,
+                  {.stop = cancelled.get_token()})
+                  .error,
+        media::MetadataWriteError::cancelled);
+    EXPECT_TRUE(std::filesystem::exists(source));
+}
+
+TEST(MediaReplacement, MismatchedDecoderFormatsAndLengthsRejectStagedOutput)
+{
+    using namespace wiola;
+    for (const bool different_format : {false, true}) {
+        wiola::testing::TemporaryDirectory directory;
+        const auto source = directory.path() / "source.wav";
+        const auto output = directory.path() / "output.wav";
+        std::ofstream{source} << "source";
+        std::ofstream{output} << "output";
+        auto provider = wiola::testing::FakeMediaProvider::decoder_only(
+            [&](const auto& resource, const auto&) -> media::DecoderOpenResult {
+                const auto local = media::local_path(resource);
+                const bool staged = local && *local == output;
+                pcm::StreamSpec spec;
+                if (different_format && staged)
+                    spec.sample_rate = units::Frequency{22050};
+                const auto length = pcm::Frames{staged ? 20U : 10U};
+                return std::unique_ptr<media::AudioDecoder>{
+                    std::make_unique<wiola::testing::FakeDecoder>(length, spec)};
+            }
+        );
+        const auto result = app::prepare_media_replacement(source, output, *provider);
+        EXPECT_FALSE(result.prepared);
+        EXPECT_EQ(result.failure.error, media::MetadataWriteError::invalid_output);
+        EXPECT_NE(result.failure.detail.find(different_format ? "format" : "different frame"),
+            std::string::npos);
+        EXPECT_FALSE(std::filesystem::exists(output));
+        EXPECT_TRUE(std::filesystem::exists(source));
+    }
 }
 
 } // namespace

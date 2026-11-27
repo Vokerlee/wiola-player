@@ -706,6 +706,115 @@ TEST_F(DocumentCommandRouterTest,
     EXPECT_EQ(title->text(), "Unaccepted draft");
 }
 
+TEST_F(DocumentCommandRouterTest, TrackPickerAppendReplaceClearAndQueueCommandsPersistTheirScope)
+{
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    dialogs.paths = {"one.wav", "two.wav"};
+    commands.choose_tracks(true);
+    ASSERT_EQ(playback.playlist().tracks().size(), 2);
+    EXPECT_EQ(dialogs.prompts, 1);
+
+    const auto selected = playback.playlist().tracks()[1].id();
+    gui::DocumentCommandContext context{gui::DocumentId::queue(), gui::TrackCapabilities::queue(),
+        {{library::MediaId{"two"}, selected, "two.wav"}}, {}};
+    commands.execute(gui::TrackCommand::play, context);
+    EXPECT_EQ(playback.playlist().current()->id(), selected);
+    commands.execute(gui::TrackCommand::remove, context);
+    ASSERT_EQ(playback.playlist().tracks().size(), 1);
+    EXPECT_NE(playback.playlist().tracks().front().id(), selected);
+
+    context.selection.clear();
+    commands.execute(gui::TrackCommand::play, context);
+    EXPECT_EQ(playback.playlist().tracks().size(), 1);
+    context.displayed_paths = {"two.wav", "one.wav"};
+    commands.execute(gui::TrackCommand::apply_order, context);
+    ASSERT_EQ(playback.playlist().tracks().size(), 2);
+    EXPECT_EQ(playback.playlist().tracks().front().resource(), media::local_resource("two.wav"));
+
+    dialogs.paths = {"replacement.wav"};
+    commands.choose_tracks();
+    ASSERT_EQ(playback.playlist().tracks().size(), 1);
+    EXPECT_EQ(playback.playlist().tracks().front().resource(),
+        media::local_resource("replacement.wav"));
+    commands.clear_queue();
+    EXPECT_TRUE(playback.playlist().tracks().empty());
+    EXPECT_TRUE(outcomes.back().queue_changed);
+}
+
+TEST_F(DocumentCommandRouterTest, FolderChoiceCreatesWorkspaceAndRescanPersistsRecursion)
+{
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    dialogs.chosen_path = platform::qt::QtPathAdapter::from_qt(directory.path());
+    commands.choose_folder();
+    ASSERT_FALSE(outcomes.empty());
+    ASSERT_TRUE(outcomes.back().open_workspace);
+    const auto id = *outcomes.back().open_workspace;
+    ASSERT_NE(library->repository().workspace(id), nullptr);
+
+    commands.rescan(id, false);
+    EXPECT_FALSE(library->repository().workspace(id)->recursive);
+    commands.rescan(id, false);
+    library->cancel_workspace_scan(id);
+    commands.rescan(library::WorkspaceId{"absent"}, true);
+    EXPECT_EQ(library->repository().workspaces().size(), 1);
+}
+
+TEST_F(DocumentCommandRouterTest, PlaylistImportReportsSuccessFailureAndCancellationSeparately)
+{
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    commands.import_playlist();
+    EXPECT_TRUE(outcomes.empty());
+
+    dialogs.chosen_path = platform::qt::QtPathAdapter::from_qt(directory.filePath("missing.m3u8"));
+    commands.import_playlist();
+    ASSERT_FALSE(outcomes.empty());
+    EXPECT_TRUE(outcomes.back().message.contains("Could not import"));
+    EXPECT_TRUE(library->repository().playlists().empty());
+
+    QFile input{directory.filePath("list.m3u8")};
+    ASSERT_TRUE(input.open(QIODevice::WriteOnly));
+    input.write("#EXTM3U\none.wav\ntwo.wav\n");
+    input.close();
+    dialogs.chosen_path = platform::qt::QtPathAdapter::from_qt(input.fileName());
+    commands.import_playlist();
+    ASSERT_TRUE(outcomes.back().open_playlist);
+    const auto id = *outcomes.back().open_playlist;
+    ASSERT_NE(library->repository().playlist(id), nullptr);
+    EXPECT_EQ(library->repository().playlist(id)->entries.size(), 2);
+
+    dialogs.chosen_path.reset();
+    const auto count = outcomes.size();
+    commands.export_playlist(id);
+    EXPECT_EQ(outcomes.size(), count);
+    commands.play_saved(library->playlists().create("Empty").id);
+    EXPECT_TRUE(outcomes.back().message.contains("no playable tracks"));
+}
+
+TEST_F(DocumentCommandRouterTest, ClosedLibraryRejectsEveryCommandAndNeverOpensDialogs)
+{
+    wiola::testing::ScriptedPlayerDialogs dialogs;
+    auto commands = router(dialogs);
+    library.reset();
+
+    commands.choose_tracks();
+    commands.choose_folder();
+    commands.import_playlist();
+    commands.export_playlist(library::PlaylistId{"saved"});
+    commands.play_saved(library::PlaylistId{"saved"});
+    commands.rescan(library::WorkspaceId{"folder"}, true);
+    commands.clear_queue();
+    commands.open({"one.wav"});
+    commands.execute(gui::TrackCommand::remove,
+        {gui::DocumentId::queue(), gui::TrackCapabilities::all(), {}, {}});
+
+    EXPECT_EQ(dialogs.prompts, 0);
+    EXPECT_TRUE(outcomes.empty());
+    EXPECT_TRUE(playback.playlist().tracks().empty());
+}
+
 } // namespace
 
 int main(int argc, char** argv)

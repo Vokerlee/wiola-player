@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/provider.hpp>
 #include <qt/application/metadata/metadata_write_service.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
@@ -30,6 +31,7 @@
 #include <QThread>
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -335,6 +337,73 @@ TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPe
         EXPECT_EQ(repository.track(record.id)->embedded.title, "After driver failure");
 
         service.stop();
+    }
+}
+
+TEST(MetadataWriteService, ValidationDriverFailuresRetainSourceAndTerminateEachAcceptedOperation)
+{
+    using namespace wiola;
+    enum class Failure {
+        rejected,
+        standard_exception,
+        opaque_exception,
+        missing_metadata,
+    };
+    for (const auto failure : {Failure::rejected, Failure::standard_exception,
+             Failure::opaque_exception, Failure::missing_metadata}) {
+        SCOPED_TRACE(static_cast<int>(failure));
+        QTemporaryDir directory;
+        const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("source.mp3"));
+        std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+        const auto original = media::fingerprint_media(path);
+        auto delegate = codec::ffmpeg::make_provider();
+        std::atomic<int> opens{};
+        auto provider = std::make_shared<wiola::testing::FakeMediaProvider>(
+            [&](const auto& resource,
+                const auto& context) -> media::Result<std::unique_ptr<media::MediaAsset>> {
+                const auto call = ++opens;
+                if (call == 2 && failure == Failure::standard_exception)
+                    throw std::runtime_error{"validation driver failed"};
+                if (call == 2 && failure == Failure::opaque_exception)
+                    throw 42;
+                if ((call == 2 && failure == Failure::rejected) ||
+                    (call == 4 && failure == Failure::missing_metadata))
+                    return media::unexpected{
+                        media::Error{media::ErrorCategory::unreadable, "validation unavailable"}
+                    };
+                return delegate->open(resource, context);
+            }
+        );
+        library::InMemoryRepository repository;
+        library::TrackRecord record;
+        record.id = library::MediaId{"media"};
+        record.locations = {path};
+        ASSERT_TRUE(repository.put_track(record));
+        auto edit = app::MetadataEditSession::capture({repository.track(record.id)});
+        library::StandardMetadataPatch patch;
+        patch.title = "Draft";
+        edit.set_draft(patch);
+        auto replacement = media::native_file_replacement(media::fingerprint_media);
+        std::vector<app::MetadataWriteResult> terminal;
+        app::MetadataWriteService service{*QCoreApplication::instance(), provider, repository,
+            *replacement, [](const auto&) { return true; },
+            [&](const auto& result) {
+                if (result.stage == app::MetadataWriteStage::failed ||
+                    result.stage == app::MetadataWriteStage::conflicted ||
+                    result.stage == app::MetadataWriteStage::complete)
+                    terminal.push_back(result);
+            }};
+        const auto accepted = service.submit(edit);
+        ASSERT_EQ(accepted.size(), 1);
+        ASSERT_TRUE(pump([&] { return !terminal.empty(); }));
+        ASSERT_EQ(terminal.size(), 1);
+        EXPECT_EQ(terminal[0].job.operation, accepted[0]);
+        EXPECT_EQ(terminal[0].stage, app::MetadataWriteStage::failed);
+        EXPECT_FALSE(terminal[0].outcome.source_modified);
+        EXPECT_EQ(repository.track(record.id)->content_revision, record.content_revision);
+        EXPECT_EQ(media::fingerprint_media(path), original);
+        service.stop();
+        EXPECT_TRUE(service.submit(edit).empty());
     }
 }
 

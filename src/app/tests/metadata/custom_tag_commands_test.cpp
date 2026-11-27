@@ -139,4 +139,36 @@ TEST_F(CustomTagCommands, RollsBackEveryMutationWhenPersistenceFails)
     EXPECT_EQ(repository.track(media)->metadata_revision, 1);
 }
 
+TEST_F(CustomTagCommands, InvalidEditAndRemoveCommandsNeverPersistOrChangeExistingTags)
+{
+    using namespace wiola;
+    app::CustomTagCommands commands{repository, [this](const auto&) {
+                                        ++saves;
+                                        return true;
+                                    }};
+    const auto first = commands.add(media, "Mood", "Calm");
+    const auto second = commands.add(media, "Mood", "Energetic");
+    ASSERT_TRUE(first.succeeded());
+    ASSERT_TRUE(second.succeeded());
+    const auto before = *repository.track(media);
+    const library::MediaId missing{"absent"};
+    const library::TagId absent{"absent"};
+    for (const auto& [result, error] :
+        std::vector<std::pair<app::CustomTagResult, app::CustomTagError>>{
+            {commands.add({}, "Mood", "Calm"), app::CustomTagError::missing_media},
+            {commands.edit(missing, first.tag, "Mood", "Calm"), app::CustomTagError::missing_media},
+            {commands.edit(media, first.tag, "", "Calm"), app::CustomTagError::invalid_value},
+            {commands.edit(media, first.tag, "Mood", "Energetic"),
+             app::CustomTagError::duplicate_value},
+            {commands.remove(media, {}), app::CustomTagError::missing_tag},
+            {commands.remove(missing, first.tag), app::CustomTagError::missing_media},
+            {commands.remove(media, absent), app::CustomTagError::missing_tag}
+    }) {
+        EXPECT_EQ(result.error, error);
+        EXPECT_FALSE(result.changed);
+    }
+    EXPECT_EQ(*repository.track(media), before);
+    EXPECT_EQ(saves, 2);
+}
+
 } // namespace

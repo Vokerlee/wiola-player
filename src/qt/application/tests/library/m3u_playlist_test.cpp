@@ -135,6 +135,37 @@ TEST_F(M3uPlaylist, BoundsInputBeforeParsing)
     EXPECT_TRUE(repository.playlists().empty());
 }
 
+TEST_F(M3uPlaylist, InvalidExportFactsAndImportNamesPreserveCallerState)
+{
+    using namespace wiola;
+    library::InMemoryRepository repository;
+    QByteArray output{"Keep previous export"};
+    EXPECT_EQ(app::M3uPlaylist::export_playlist(repository, library::PlaylistId{"missing"},
+                  path(""), output),
+        app::M3uError::missing_playlist);
+    library::TrackRecord track;
+    track.id = library::MediaId{"media"};
+    ASSERT_TRUE(repository.put_track(track));
+    const auto playlist = repository.create_playlist("List");
+    ASSERT_TRUE(repository.append_track(playlist, track.id));
+    EXPECT_EQ(app::M3uPlaylist::export_playlist(repository, playlist, path(""), output),
+        app::M3uError::invalid_record);
+    track.locations = {"line\nbreak.wav"};
+    ASSERT_TRUE(repository.put_track(track));
+    EXPECT_EQ(app::M3uPlaylist::export_playlist(repository, playlist, path(""), output),
+        app::M3uError::invalid_record);
+    EXPECT_EQ(output, "Keep previous export");
+
+    library::PlaylistId imported{"unchanged"};
+    EXPECT_EQ(app::M3uPlaylist::import_playlist(repository, path(""), " ", "file.wav\n", imported),
+        app::M3uError::invalid_record);
+    EXPECT_EQ(app::M3uPlaylist::import_playlist(repository, path(""), "Invalid",
+                  "#EXTINF:1\nfile.wav\n", imported),
+        app::M3uError::malformed);
+    EXPECT_EQ(imported.value, "unchanged");
+    EXPECT_EQ(repository.playlists().size(), 1);
+}
+
 } // namespace
 
 int main(int argc, char** argv)

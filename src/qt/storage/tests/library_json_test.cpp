@@ -22,6 +22,9 @@
 #include <wiola/library/metadata_patch.hpp>
 
 #include <QByteArray>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <gtest/gtest.h>
 
 #include <string>
@@ -279,6 +282,73 @@ TEST(LibraryJson, RejectsANonNumericRevision)
     wiola::library::LibrarySnapshot restored;
 
     EXPECT_EQ(read_library_json(json, restored), LibraryJsonError::invalid_record);
+}
+
+TEST(LibraryJson, MalformedRecordFieldsCannotPartiallyReplaceTheStoredLibrary)
+{
+    LibrarySnapshot original;
+    original.tracks = {track_record()};
+    QByteArray encoded;
+    ASSERT_EQ(write_library_json(original, encoded), LibraryJsonError::none);
+    const auto root = QJsonDocument::fromJson(encoded).object();
+    const auto track = root["tracks"].toArray().first().toObject();
+    const auto reject = [&](QJsonObject candidate) {
+        auto output = original;
+        EXPECT_NE(read_library_json(QJsonDocument{candidate}.toJson(), output),
+            LibraryJsonError::none);
+        EXPECT_EQ(output.tracks, original.tracks);
+        EXPECT_EQ(output.playlists, original.playlists);
+        EXPECT_EQ(output.workspaces, original.workspaces);
+    };
+    for (const auto& [key, value] : std::vector<std::pair<QString, QJsonValue>>{
+             {"id", false},
+             {"id", QString(4097, 'a')},
+             {"embedded", false},
+             {"overrides", false},
+             {"tags", false},
+             {"tags", QJsonArray{false}},
+             {"tags", QJsonArray{QJsonObject{{"id", ""}, {"key", "Mood"}, {"value", "Calm"}}}},
+             {"locations", false},
+             {"locations", QJsonArray{false}},
+             {"missing", "false"},
+             {"contentRevision", false}
+    }) {
+        SCOPED_TRACE(key.toStdString());
+        auto changed = track;
+        changed[key] = value;
+        auto candidate = root;
+        candidate["tracks"] = QJsonArray{changed};
+        reject(candidate);
+    }
+    for (const auto& [key, value] : std::vector<std::pair<QString, QJsonValue>>{
+             {"title",           false       },
+             {"year",            -1          },
+             {"year",            4294967296.0},
+             {"durationSeconds", -1          }
+    }) {
+        SCOPED_TRACE(key.toStdString());
+        auto embedded = track["embedded"].toObject();
+        embedded[key] = value;
+        auto changed = track;
+        changed["embedded"] = embedded;
+        auto candidate = root;
+        candidate["tracks"] = QJsonArray{changed};
+        reject(candidate);
+    }
+    for (const auto& [key, value] : std::vector<std::pair<QString, QJsonValue>>{
+             {"playlists",  QJsonArray{false}                                               },
+             {"playlists",  QJsonArray{QJsonObject{{"id", "saved"}, {"name", false}}}       },
+             {"workspaces", false                                                           },
+             {"workspaces", QJsonArray{false}                                               },
+             {"workspaces", QJsonArray{QJsonObject{{"id", "folder"}, {"root", ""}}}         },
+             {"workspaces",
+              QJsonArray{
+                     QJsonObject{{"id", "folder"}, {"root", "music"}, {"recursive", "yes"}}}}
+    }) {
+        auto candidate = root;
+        candidate[key] = value;
+        reject(candidate);
+    }
 }
 
 } // namespace
