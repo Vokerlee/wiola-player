@@ -37,7 +37,7 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     , colors_{initial}
 {
     setObjectName("themeEditor");
-    setWindowTitle("Edit theme");
+    setWindowTitle("Customize theme");
 
     auto* fields = new QFormLayout;
     for (const auto& metric : theme_style_metrics()) {
@@ -111,6 +111,11 @@ ThemeEditor::ThemeEditor(const ThemeColors& initial, QWidget* parent)
     scroll->setWidget(content);
 
     auto* layout = new QVBoxLayout{this};
+    auto* help = new QLabel{
+        "Preview changes here. Apply saves your custom theme; Cancel keeps the current look.",
+        this};
+    help->setWordWrap(true);
+    layout->addWidget(help);
     layout->addLayout(copies);
     layout->addWidget(preview_);
     layout->addWidget(scroll, 1);
