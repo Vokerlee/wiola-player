@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #ifndef Q_MOC_RUN
 #include "tag_filter_panel.hpp"
 #include "track_search_panel.hpp"

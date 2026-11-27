@@ -1,4 +1,5 @@
 #pragma once
+
 #include <filesystem>
 #include <random>
 #include <stdexcept>
@@ -11,12 +12,14 @@ public:
     TemporaryDirectory()
     {
         std::random_device random;
+
         for (int attempt = 0; attempt < 100; ++attempt) {
             path_ = std::filesystem::temp_directory_path() /
                 ("wiola-test-" + std::to_string(random()) + "-" + std::to_string(random()));
             if (std::filesystem::create_directory(path_))
                 return;
         }
+
         throw std::runtime_error{"Cannot create an isolated test directory"};
     }
 

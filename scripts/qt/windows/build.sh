@@ -17,6 +17,7 @@ toolchain="${WIOLA_QT_TOOLCHAIN_FILE:-$repository_directory/cmake/mingw-w64.cmak
 version="$(qmake6 -query QT_VERSION)"
 host_prefix="$(qmake6 -query QT_INSTALL_PREFIX)"
 host_cmake_dir="$(qmake6 -query QT_INSTALL_LIBS)/cmake"
+
 if [ ! -d "$host_cmake_dir/Qt6" ]; then
     echo "host Qt CMake packages not found: $host_cmake_dir/Qt6" >&2
     exit 1
@@ -42,6 +43,7 @@ cmake -G Ninja -S "$source_dir" -B "$work/build" \
     -DFEATURE_testlib=ON
 
 cmake --build "$work/build" --parallel "${WIOLA_QT_BUILD_JOBS:-$(nproc)}"
+
 cmake --install "$work/build"
 
 test -f "$prefix/lib/cmake/Qt6Test/Qt6TestConfig.cmake"

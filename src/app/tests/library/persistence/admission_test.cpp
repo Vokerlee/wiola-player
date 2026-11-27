@@ -19,6 +19,7 @@
  */
 
 #include "fixture.hpp"
+
 #include <limits>
 #include <new>
 
@@ -30,13 +31,16 @@ TEST_F(LibraryPersistenceCore, RejectsNullSkippedAndRepeatedRevisionsWithoutLosi
     EXPECT_FALSE(writer->accept({}));
     EXPECT_FALSE(writer->accept(revision(2)));
     EXPECT_EQ(writer->pending_revision(), 0U);
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
     EXPECT_EQ(accepted.state, library::CommitState::accepted);
     EXPECT_FALSE(writer->accept(revision(1)));
     ASSERT_TRUE(writer->flush().succeeded());
     EXPECT_TRUE(accepted.receipt->durable());
     EXPECT_EQ(writer->durable_revision(), 1U);
+
     writer->stop();
     writer->stop();
     EXPECT_TRUE(writer->flush().succeeded());
@@ -46,6 +50,7 @@ TEST_F(LibraryPersistenceCore, RejectsNullSkippedAndRepeatedRevisionsWithoutLosi
 TEST_F(LibraryPersistenceCore, RequiresBothOwnerDeliveryOperationsBeforeStartingTheWorker)
 {
     EXPECT_THROW((app::LibraryPersistence{store, {}, {}}), std::invalid_argument);
+
     auto callbacks = delivery.callbacks();
     callbacks.drain = {};
     EXPECT_THROW((app::LibraryPersistence{store, callbacks, {}}), std::invalid_argument);
@@ -56,13 +61,17 @@ TEST_F(LibraryPersistenceCore, RetainedCapacityCannotBypassThePayloadBudget)
     app::LibraryPersistenceLimits limits;
     limits.pending_payload_bytes =
         sizeof(library::RevisionDelta) + 8 * sizeof(library::TrackRecord);
+
     for (const bool nested_text : {false, true}) {
         start({}, {}, limits);
+
         auto delta = revision(1);
+
         if (nested_text)
             delta->tracks.front().embedded.comment.reserve(limits.pending_payload_bytes + 1);
         else
             delta->tracks.reserve(limits.pending_payload_bytes / sizeof(library::TrackRecord) + 1);
+
         bool accepted = false;
         bool allocation_failed = false;
         {
@@ -78,7 +87,9 @@ TEST_F(LibraryPersistenceCore, RetainedCapacityCannotBypassThePayloadBudget)
         EXPECT_FALSE(accepted);
         EXPECT_FALSE(allocation_failed);
         EXPECT_EQ(writer->pending_revision(), 0U);
+
         const auto recovery = writer->accept(revision(1));
+
         ASSERT_TRUE(recovery);
         ASSERT_TRUE(writer->flush().succeeded());
         EXPECT_TRUE(recovery.receipt->durable());
@@ -89,6 +100,7 @@ TEST_F(LibraryPersistenceCore, ExactHeaderCapacityAdmitsAnEmptyRevision)
 {
     auto delta = std::make_shared<library::RevisionDelta>();
     delta->changes.revision = 1;
+
     app::LibraryPersistenceLimits limits;
     limits.pending_payload_bytes = sizeof(*delta);
     limits.file_result_extra_bytes = 0;
@@ -110,11 +122,15 @@ TEST_F(LibraryPersistenceCore, EveryAdmissionAllocationFailurePreservesThePendin
             .pending_revisions = 2,
             .outstanding_receipts = 3,
         };
+
         store.block();
         start({}, {}, limits);
+
         const auto first = writer->accept(revision(1, "first"));
+
         ASSERT_TRUE(first);
         ASSERT_TRUE(store.wait_entered());
+
         const auto delta = revision(2, "second");
         library::CommitResult accepted;
         bool failed = false;
@@ -128,11 +144,14 @@ TEST_F(LibraryPersistenceCore, EveryAdmissionAllocationFailurePreservesThePendin
         }
         EXPECT_EQ(writer->pending_revision(), failed ? 1U : 2U);
         EXPECT_EQ(writer->durable_revision(), 0U);
+
         if (failed) {
             observed_failure = true;
             EXPECT_FALSE(accepted);
+
             accepted = writer->accept(delta);
         }
+
         ASSERT_TRUE(accepted);
         EXPECT_EQ(accepted.revision, delta->changes.revision);
         EXPECT_FALSE(writer->accept(revision(3, "capacity-reserved")));
@@ -142,10 +161,13 @@ TEST_F(LibraryPersistenceCore, EveryAdmissionAllocationFailurePreservesThePendin
         EXPECT_TRUE(first.receipt->durable());
         EXPECT_TRUE(accepted.receipt->durable());
         EXPECT_EQ(writer->durable_revision(), delta->changes.revision);
+
         const auto snapshot = store.last_snapshot();
+
         ASSERT_EQ(snapshot.tracks.size(), 2U);
         EXPECT_EQ(snapshot.tracks.front().id.value, "first");
         EXPECT_EQ(snapshot.tracks.back(), delta->tracks.front());
+
         if (!failed) {
             EXPECT_TRUE(observed_failure);
             break;
@@ -158,6 +180,7 @@ TEST_F(LibraryPersistenceCore, PhysicalResultMayUseTheLastByteOfItsReservedCapac
 {
     auto delta = std::make_shared<library::RevisionDelta>();
     delta->changes.revision = 1;
+
     app::LibraryPersistenceLimits limits;
     limits.pending_payload_bytes = sizeof(*delta) - 1;
     limits.file_result_extra_bytes = 1;
@@ -166,6 +189,7 @@ TEST_F(LibraryPersistenceCore, PhysicalResultMayUseTheLastByteOfItsReservedCapac
     EXPECT_EQ(writer->pending_revision(), 0U);
 
     delta->priority = library::CommitPriority::file_result;
+
     const auto accepted = writer->accept(delta);
 
     ASSERT_TRUE(accepted);
@@ -203,12 +227,15 @@ TEST_F(LibraryPersistenceCore, ReservesReceiptCapacityUntilOwnerAcknowledgment)
     ASSERT_TRUE(writer->accept(revision(1, "first")));
     ASSERT_TRUE(store.wait_entered());
     EXPECT_FALSE(writer->accept(revision(2, "ordinary")));
+
     auto physical = revision(2, "physical");
     physical->priority = library::CommitPriority::file_result;
     ASSERT_TRUE(writer->accept(physical));
+
     auto overflow = revision(3, "overflow");
     overflow->priority = library::CommitPriority::file_result;
     EXPECT_FALSE(writer->accept(overflow));
+
     store.release();
     ASSERT_TRUE(writer->flush().succeeded());
     ASSERT_TRUE(writer->accept(revision(3, "ordinary")));
@@ -222,9 +249,11 @@ TEST_F(LibraryPersistenceCore, ReservesExtraPayloadCapacityForPhysicalFileResult
         sizeof(library::RevisionDelta) + 8 * sizeof(library::TrackRecord);
     limits.file_result_extra_bytes = limits.pending_payload_bytes;
     start({}, {}, limits);
+
     auto delta = revision(1);
     delta->tracks.front().embedded.comment.reserve(limits.pending_payload_bytes + 1);
     EXPECT_FALSE(writer->accept(delta));
+
     delta->priority = library::CommitPriority::file_result;
     ASSERT_TRUE(writer->accept(delta));
     EXPECT_TRUE(writer->flush().succeeded());
@@ -238,16 +267,22 @@ TEST_F(LibraryPersistenceCore, ReservesTheFinalPendingSlotForPhysicalFileResults
     start({}, {}, limits);
     ASSERT_TRUE(writer->accept(revision(1)));
     ASSERT_TRUE(store.wait_entered());
+
     std::uint64_t next = 2;
+
     for (std::size_t queued = 0; queued < limits.pending_revisions - 1; ++queued)
         ASSERT_TRUE(writer->accept(revision(next++)));
+
     EXPECT_FALSE(writer->accept(revision(next)));
+
     auto physical = revision(next++);
     physical->priority = library::CommitPriority::file_result;
     ASSERT_TRUE(writer->accept(physical));
+
     auto overflow = revision(next);
     overflow->priority = library::CommitPriority::file_result;
     EXPECT_FALSE(writer->accept(overflow));
+
     store.release();
     EXPECT_TRUE(writer->flush().succeeded());
     EXPECT_EQ(writer->durable_revision(), next - 1);
@@ -262,12 +297,16 @@ TEST_F(LibraryPersistenceCore, QueuedPayloadBudgetIsReleasedAfterThePendingPrefi
     start({}, {}, limits);
     ASSERT_TRUE(writer->accept(revision(1)));
     ASSERT_TRUE(store.wait_entered());
+
     std::uint64_t next = 2;
+
     while (writer->accept(revision(next)))
         ++next;
+
     EXPECT_GT(next, 2U);
     EXPECT_LT(next, limits.pending_revisions);
     EXPECT_EQ(writer->pending_revision(), next - 1);
+
     store.release();
     ASSERT_TRUE(writer->flush().succeeded());
     ASSERT_TRUE(writer->accept(revision(next)));
@@ -279,8 +318,11 @@ TEST_F(LibraryPersistenceCore, AcknowledgmentReleasesReceiptCapacityForAReentran
     app::LibraryPersistenceLimits limits;
     limits.outstanding_receipts = 2;
     start({}, {}, limits);
+
     const auto first = writer->accept(revision(1));
+
     ASSERT_TRUE(first);
+
     library::CommitResult second;
     first.receipt->observe([&](auto event) {
         if (event.durable)

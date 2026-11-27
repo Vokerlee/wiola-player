@@ -87,6 +87,7 @@ private:
     {
         const std::lock_guard lock{media_mutex_};
         const auto found{media_.find(resource)};
+
         return found == media_.end() ? std::nullopt : std::optional{found->second};
     }
 
@@ -113,8 +114,10 @@ public:
                   [this](const wiola::media::ResourceReference& resource,
                       const wiola::media::OperationContext&) -> wiola::media::DecoderOpenResult {
                       const auto info{lookup(resource)};
+
                       if (!info)
                           return missing();
+
                       return wiola::media::DecoderOpenResult{
                           std::make_unique<wiola::testing::FakeDecoder>(*info)};
                   },
@@ -122,10 +125,13 @@ public:
                       const wiola::media::OperationContext&)
                       -> wiola::media::Result<wiola::media::Metadata> {
                       const auto info{lookup(resource)};
+
                       if (!info)
                           return missing();
+
                       wiola::media::Metadata result;
                       result.track.duration = info->spec.time_per(info->length.value());
+
                       return result;
                   }
               )}
@@ -141,7 +147,9 @@ public:
             .length_accuracy = wiola::media::LengthAccuracy::exact,
             .seekable = true};
         const std::lock_guard lock{media_mutex_};
+
         media_.emplace(resource, info);
+
         return resource;
     }
 

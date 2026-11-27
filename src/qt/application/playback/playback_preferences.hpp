@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <app/playback/queue_settings.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <wiola/app/playback/equalizer_control.hpp>

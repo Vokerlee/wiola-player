@@ -27,9 +27,9 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
-#include <cmath>
 
 #include <algorithm>
+#include <cmath>
 
 namespace wiola::gui {
 
@@ -61,6 +61,7 @@ public:
     {
         bool valid{};
         const auto number = value.toDouble(&valid);
+
         if (valid)
             bar()->request_seek(number / 100);
     }
@@ -103,12 +104,14 @@ void SeekBar::set_fraction(double fraction)
 {
     if (!std::isfinite(fraction))
         return;
+
     const double shown{std::clamp(fraction, 0.0, 1.0)};
 
     if (dragging_ || shown == fraction_)
         return;
 
     fraction_ = shown;
+
     QAccessibleValueChangeEvent changed{this, fraction_ * 100};
     QAccessible::updateAccessibility(&changed);
     update();
@@ -127,6 +130,7 @@ void SeekBar::paintEvent(QPaintEvent* /*event*/)
     QPainter painter{this};
 
     painter.setRenderHint(QPainter::Antialiasing);
+
     const QRectF track{0, height() * 0.25, static_cast<qreal>(width()), height() * 0.5};
     const qreal radius = track.height() / 2;
     const qreal played = fraction_ * track.width();
@@ -140,12 +144,15 @@ void SeekBar::paintEvent(QPaintEvent* /*event*/)
                                               : tokens.colors.seek_played_disabled));
     painter.drawRoundedRect(track, radius, radius);
     painter.restore();
+
     if (isEnabled()) {
         painter.setBrush(colors.color(tokens.colors.seek_edge));
+
         const qreal handle = std::max(radius, static_cast<qreal>(tokens.seek.edge_width * 2));
         const qreal center = std::clamp(played, handle, std::max(handle, width() - handle));
         painter.drawEllipse(QPointF{center, height() / 2.0}, handle, handle);
     }
+
     if (hasFocus()) {
         painter.setRenderHint(QPainter::Antialiasing, false);
         painter.setPen(colors.color(QPalette::Highlight));
@@ -158,9 +165,13 @@ void SeekBar::request_seek(double value)
 {
     if (!isEnabled() || !std::isfinite(value))
         return;
+
     dragging_ = false;
+
     const auto previous = fraction_;
+
     set_fraction(value);
+
     if (fraction_ != previous)
         emit seek_requested(fraction_);
 }
@@ -201,7 +212,9 @@ void SeekBar::keyPressEvent(QKeyEvent* event)
         QWidget::keyPressEvent(event);
         return;
     }
+
     double next = fraction_;
+
     switch (event->key()) {
     case Qt::Key_Left:
     case Qt::Key_Down:
@@ -234,6 +247,7 @@ void SeekBar::keyPressEvent(QKeyEvent* event)
         QWidget::keyPressEvent(event);
         return;
     }
+
     request_seek(next);
     event->accept();
 }

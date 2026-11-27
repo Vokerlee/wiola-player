@@ -131,6 +131,7 @@ void DecodeLoop::decode()
         }
 
         follow_playback();
+
         if (playback_.finished())
             break;
 

@@ -183,8 +183,10 @@ private:
     [[nodiscard]] static std::size_t require_capacity(std::size_t minimum_capacity)
     {
         const auto capacity = checked_capacity(minimum_capacity);
+
         if (!capacity)
             throw std::invalid_argument{"SPSC capacity rounding would overflow"};
+
         return *capacity;
     }
 
@@ -318,6 +320,7 @@ template<RingElement T>
 std::size_t SPSCRingBuffer<T>::push(std::span<const T> src) noexcept
 {
     assert(!write_outstanding_);
+
     const std::size_t w = write_.load(std::memory_order_relaxed);
     std::size_t num_free_slots = capacity() - (w - producer_read_cache_);
 
@@ -329,6 +332,7 @@ std::size_t SPSCRingBuffer<T>::push(std::span<const T> src) noexcept
     const std::size_t n = std::min(num_free_slots, src.size());
     copy_in(w, src.first(n));
     write_.store(w + n, std::memory_order_release);
+
     return n;
 }
 
@@ -336,6 +340,7 @@ template<RingElement T>
 std::size_t SPSCRingBuffer<T>::pop(std::span<T> dst) noexcept
 {
     assert(!read_outstanding_);
+
     const std::size_t r = apply_discard();
     std::size_t ready = consumer_write_cache_ - r;
 
@@ -347,6 +352,7 @@ std::size_t SPSCRingBuffer<T>::pop(std::span<T> dst) noexcept
     const std::size_t n = std::min(ready, dst.size());
     copy_out(r, dst.first(n));
     read_.store(r + n, std::memory_order_release);
+
     return n;
 }
 
@@ -372,7 +378,9 @@ template<RingElement T>
 auto SPSCRingBuffer<T>::acquire_write() noexcept -> WriteRegion
 {
     assert(!write_outstanding_);
+
     const std::size_t w = write_.load(std::memory_order_relaxed);
+
     producer_read_cache_ = read_.load(std::memory_order_acquire);
 
     const std::size_t num_free_slots = capacity() - (w - producer_read_cache_);
@@ -392,6 +400,7 @@ template<RingElement T>
 void SPSCRingBuffer<T>::commit_write(std::size_t num_elements) noexcept
 {
     assert(write_outstanding_ && num_elements <= write_reserved_);
+
     write_.store(write_.load(std::memory_order_relaxed) + num_elements, std::memory_order_release);
     write_reserved_ = 0;
     write_outstanding_ = false;
@@ -401,7 +410,9 @@ template<RingElement T>
 auto SPSCRingBuffer<T>::acquire_read() noexcept -> ReadRegion
 {
     assert(!read_outstanding_);
+
     const std::size_t r = apply_discard();
+
     consumer_write_cache_ = write_.load(std::memory_order_acquire);
 
     const std::size_t ready = consumer_write_cache_ - r;
@@ -421,6 +432,7 @@ template<RingElement T>
 void SPSCRingBuffer<T>::commit_read(std::size_t num_elements) noexcept
 {
     assert(read_outstanding_ && num_elements <= read_reserved_);
+
     read_.store(read_.load(std::memory_order_relaxed) + num_elements, std::memory_order_release);
     read_reserved_ = 0;
     read_outstanding_ = false;

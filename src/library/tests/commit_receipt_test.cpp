@@ -18,12 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <wiola/library/commit_receipt.hpp>
+
 #include <gtest/gtest.h>
+
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
 #include <vector>
-#include <wiola/library/commit_receipt.hpp>
 
 namespace {
 
@@ -36,6 +38,7 @@ TEST(CommitReceipt, WaitsForAnAttemptAndIgnoresEmptyObservers)
 {
     CommitReceipt receipt{17};
     receipt.observe({});
+
     std::vector<bool> events;
     receipt.observe([&](auto event) {
         EXPECT_EQ(event.revision, 17U);
@@ -43,6 +46,7 @@ TEST(CommitReceipt, WaitsForAnAttemptAndIgnoresEmptyObservers)
     });
     EXPECT_FALSE(receipt.durable());
     EXPECT_TRUE(events.empty());
+
     receipt.notify(false);
     receipt.notify(false);
     EXPECT_EQ(events, (std::vector<bool>{false, false}));
@@ -53,12 +57,14 @@ TEST(CommitReceipt, RetainsFailedObserversForRetryAndInformsLateSubscribers)
 {
     CommitReceipt receipt{23};
     receipt.notify(false);
+
     std::vector<bool> events;
     receipt.observe([&](auto event) {
         EXPECT_EQ(event.revision, 23U);
         events.push_back(event.durable);
     });
     EXPECT_EQ(events, std::vector<bool>{false});
+
     receipt.notify(true);
     EXPECT_EQ(events, (std::vector<bool>{false, true}));
     EXPECT_TRUE(receipt.durable());
@@ -137,6 +143,7 @@ TEST(CommitReceipt, ObserversAddedDuringDeliveryReceiveTheCurrentStateOnce)
             receipt.observe([&](auto added) {
                 EXPECT_EQ(added.revision, 43U);
                 EXPECT_EQ(added.durable, durable);
+
                 ++added_calls;
             });
             EXPECT_EQ(event.durable, durable);
@@ -162,16 +169,20 @@ TEST(CommitReceipt, ObserverExceptionsDoNotStrandOtherObservers)
         receipt.observe([&](auto event) {
             EXPECT_EQ(event.revision, 47U);
             EXPECT_EQ(event.durable, durable);
+
             calls.push_back(3);
         });
+
         try {
             receipt.notify(durable);
             FAIL() << "the first observer exception must reach the caller";
         } catch (const std::runtime_error& error) {
             EXPECT_STREQ(error.what(), "first observer");
         }
+
         EXPECT_EQ(calls, (std::vector{1, 2, 3}));
         EXPECT_EQ(receipt.durable(), durable);
+
         receipt.cancel();
     }
 }
@@ -180,12 +191,14 @@ TEST(CommitReceipt, FailureObserverExceptionsDoNotPreventALaterSuccessfulRetry)
 {
     CommitReceipt receipt{53};
     std::vector<bool> events;
+
     receipt.observe([](auto event) {
         if (!event.durable)
             throw std::runtime_error{"failed attempt observer"};
     });
     receipt.observe([&](auto event) { events.push_back(event.durable); });
     EXPECT_THROW(receipt.notify(false), std::runtime_error);
+
     receipt.notify(true);
     EXPECT_EQ(events, (std::vector<bool>{false, true}));
     EXPECT_TRUE(receipt.durable());
@@ -201,11 +214,13 @@ TEST(CommitReceipt, RejectsCrossThreadMutationWithoutChangingOwnerState)
         } catch (const std::logic_error&) {
             ++rejected;
         }
+
         try {
             receipt.notify(true);
         } catch (const std::logic_error&) {
             ++rejected;
         }
+
         try {
             receipt.cancel();
         } catch (const std::logic_error&) {
@@ -215,6 +230,7 @@ TEST(CommitReceipt, RejectsCrossThreadMutationWithoutChangingOwnerState)
     other.join();
     EXPECT_EQ(rejected, 3);
     EXPECT_FALSE(receipt.durable());
+
     int calls = 0;
     receipt.observe([&](auto) { ++calls; });
     receipt.notify(true);
@@ -225,18 +241,24 @@ TEST(CommitResult, DistinguishesRejectedAcceptedAndSynchronouslyDurableResults)
 {
     const CommitResult empty;
     const CommitResult rejected{false};
+
     EXPECT_FALSE(empty);
     EXPECT_FALSE(rejected);
     EXPECT_FALSE(rejected.durable());
+
     const CommitResult saved{true};
+
     EXPECT_TRUE(saved);
     EXPECT_TRUE(saved.durable());
+
     auto receipt = std::make_shared<CommitReceipt>(61);
     const auto accepted = CommitResult::accepted(61, receipt);
+
     EXPECT_TRUE(accepted);
     EXPECT_FALSE(accepted.durable());
     EXPECT_EQ(accepted.revision, 61U);
     EXPECT_EQ(accepted.receipt, receipt);
+
     receipt->notify(true);
     EXPECT_TRUE(accepted.receipt->durable());
     EXPECT_FALSE(accepted.durable()); // The original result records acceptance, not later delivery.
@@ -275,10 +297,12 @@ TEST(CommitReceipt, LateFailedObserverCanReleaseTheLastOwningHandle)
 {
     auto receipt = std::make_shared<CommitReceipt>(73);
     receipt->notify(false);
+
     const std::weak_ptr<CommitReceipt> weak = receipt;
     int calls = 0;
     receipt->observe([&](auto event) {
         EXPECT_FALSE(event.durable);
+
         ++calls;
         receipt.reset();
     });
@@ -290,6 +314,7 @@ TEST(CommitReceipt, RethrowsObserverFailureAfterTheOwningHandleIsReleased)
 {
     auto receipt = std::make_shared<CommitReceipt>(79);
     int remaining = 0;
+
     receipt->observe([&](auto) {
         receipt.reset();
         throw std::runtime_error{"released receipt observer"};
@@ -305,9 +330,11 @@ TEST(CommitReceipt, CancellationCanReleaseASelfCapturingObserver)
     auto receipt = std::make_shared<CommitReceipt>(83);
     const std::weak_ptr<CommitReceipt> weak = receipt;
     auto* retained = receipt.get();
+
     receipt->observe([owner = receipt](auto) { static_cast<void>(owner->durable()); });
     receipt.reset();
     ASSERT_FALSE(weak.expired());
+
     retained->cancel();
     EXPECT_TRUE(weak.expired());
 }

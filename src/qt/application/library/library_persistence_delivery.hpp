@@ -21,8 +21,9 @@
 #pragma once
 
 #include <qt/queued_delivery.hpp>
-#include <utility>
 #include <wiola/app/library/library_persistence.hpp>
+
+#include <utility>
 
 namespace wiola::app {
 

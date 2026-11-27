@@ -12,9 +12,11 @@ namespace wiola::testing::compatibility {
 inline QByteArray contents(const QString& path)
 {
     QFile file{path};
+
     if (!file.open(QIODevice::ReadOnly)) {
         throw std::runtime_error{"Cannot read compatibility fixture: " + path.toStdString()};
     }
+
     return file.readAll();
 }
 

@@ -20,9 +20,8 @@
 
 #include "library_json.hpp"
 
-#include <wiola/qt/paths.hpp>
-
 #include <wiola/library/tags.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -88,6 +87,7 @@ bool read_override(const QJsonObject& object, const char* key, std::optional<std
         return true;
 
     std::string text;
+
     if (!read_text(object, key, text))
         return false;
 
@@ -107,6 +107,7 @@ bool read_number(const QJsonValue& value, std::optional<std::uint32_t>& output)
         return false;
 
     output = static_cast<std::uint32_t>(value.toDouble());
+
     return true;
 }
 
@@ -114,10 +115,12 @@ bool read_number_override(const QJsonObject& object, const char* key,
     std::optional<std::optional<std::uint32_t>>& output)
 {
     const QJsonValue value{object.value(key)};
+
     if (value.isUndefined())
         return true;
 
     output.emplace();
+
     return read_number(value, *output);
 }
 
@@ -218,6 +221,7 @@ LibraryJsonError read_track(const QJsonValue& value, library::TrackRecord& outpu
                 return LibraryJsonError::invalid_record;
 
             auto value = library::make_tag_value(std::move(tag.key), std::move(tag.value));
+
             if (!value ||
                 !values
                     .emplace(library::normalized_tag_text(value->key),
@@ -356,16 +360,22 @@ QJsonObject write_track(const library::TrackRecord& track)
                                    : QJsonValue::Null);
 
     QJsonObject overrides;
+
     if (track.overrides.title)
         overrides.insert("title", qt(*track.overrides.title));
+
     if (track.overrides.artist)
         overrides.insert("artist", qt(*track.overrides.artist));
+
     if (track.overrides.album)
         overrides.insert("album", qt(*track.overrides.album));
+
     if (track.overrides.genre)
         overrides.insert("genre", qt(*track.overrides.genre));
+
     if (track.overrides.comment)
         overrides.insert("comment", qt(*track.overrides.comment));
+
     if (track.overrides.composer)
         overrides.insert("composer", qt(*track.overrides.composer));
 
@@ -382,6 +392,7 @@ QJsonObject write_track(const library::TrackRecord& track)
     write_number_override("discNumber", track.overrides.disc_number);
 
     QJsonArray tags;
+
     for (const library::TagRecord& tag : track.tags)
         tags.push_back(QJsonObject{
             {"id",    qt(tag.id.value)},
@@ -390,6 +401,7 @@ QJsonObject write_track(const library::TrackRecord& track)
         });
 
     QJsonArray locations;
+
     for (const std::filesystem::path& location : track.locations)
         locations.push_back(platform::qt::QtPathAdapter::to_qt(location));
 
@@ -437,14 +449,17 @@ QJsonObject write_workspace(const library::WorkspaceRecord& workspace)
 LibraryJsonError write_library_json(const library::LibrarySnapshot& library, QByteArray& output)
 {
     QJsonArray tracks;
+
     for (const library::TrackRecord& track : library.tracks)
         tracks.push_back(write_track(track));
 
     QJsonArray playlists;
+
     for (const library::PlaylistRecord& playlist : library.playlists)
         playlists.push_back(write_playlist(playlist));
 
     QJsonArray workspaces;
+
     for (const library::WorkspaceRecord& workspace : library.workspaces)
         workspaces.push_back(write_workspace(workspace));
 

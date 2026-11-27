@@ -30,6 +30,7 @@ SeekMailbox::SeekMailbox(std::size_t num_channels) noexcept
 void SeekMailbox::request(pcm::Frames target) noexcept
 {
     const std::lock_guard lock{mutex_};
+
     target_ = target;
     ++requested_;
 }
@@ -54,6 +55,7 @@ void SeekMailbox::begin(pcm::Frames source_start, pcm::Frames output_baseline,
     const Claim& claim) noexcept
 {
     const std::lock_guard lock{mutex_};
+
     epoch_.begin(source_start, output_baseline);
     applied_ = claim.requested;
 }

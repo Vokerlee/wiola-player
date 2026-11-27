@@ -44,8 +44,10 @@ int main()
     track.id = {"opaque-media"};
     track.embedded.title = "Embedded title";
     track.locations = {"observed/track.flac"};
+
     if (!repository.put_track(track))
         return 1;
+
     bool persisted = false;
     std::size_t notifications = 0;
     auto subscription = repository.observe([&](const auto&) { ++notifications; });
@@ -56,43 +58,60 @@ int main()
                                                            candidate.track(track.id) != nullptr;
                                                        return persisted;
                                                    }};
+
         playlist = repository.create_playlist("Saved");
+
         const auto first = repository.append_track(playlist, track.id);
         const auto second = repository.append_track(playlist, track.id);
+
         if (!first || !second || *first == *second)
             return 2;
+
         track.overrides.title = "Owned title";
+
         if (!repository.put_track(track) ||
             !repository.add_tag(track.id, " Mood ", " Calm ").valid())
             return 3;
+
         const auto committed = transaction.commit();
+
         if (!committed || !committed.durable() || committed.revision != 1)
             return 4;
     }
+
     if (!persisted || notifications != 1 || repository.playlist(playlist)->entries.size() != 2)
         return 5;
+
     const auto* stored = repository.track(track.id);
     library::SearchQuery query;
     query.title = "OWNED";
     query.filters.push_back({.key = "mood", .value = "calm"});
+
     if (!stored || !library::matches_search(query, *stored) ||
         library::resolve_title(*stored) != "Owned title")
         return 6;
+
     std::unordered_map<library::MediaId, int> indexed{
         {track.id, 7}
     };
+
     if (indexed.at(track.id) != 7)
         return 7;
+
     const auto snapshot = library::snapshot_of(repository);
     {
         library::RepositoryTransaction rejected{repository, [](const auto&) { return false; }};
+
         repository.create_playlist("Rejected");
+
         if (rejected.commit())
             return 8;
     }
+
     if (repository.playlists() != snapshot.playlists || repository.change_revision() != 1 ||
         repository.staged_delta())
         return 9;
+
     auto receipt = std::make_shared<library::CommitReceipt>(2);
     auto accepted = library::CommitResult::accepted(2, receipt);
     bool durable = false;
@@ -100,10 +119,14 @@ int main()
         durable = event.durable && event.revision == 2;
     });
     receipt->notify(false);
+
     if (!accepted || accepted.durable() || durable)
         return 10;
+
     receipt->notify(true);
+
     if (!durable)
         return 11;
+
     return 0;
 }

@@ -18,11 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QTemporaryDir>
-#include <gtest/gtest.h>
 #include <qt/storage/library_store.hpp>
 #include <qt/storage/snapshot_writer.hpp>
 #include <wiola/qt/paths.hpp>
+
+#include <QTemporaryDir>
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -43,8 +44,10 @@ TEST(QtSnapshotWriter, TranslatesFormatAndFileFailuresAtTheDriverBoundary)
         {{.schema = Schema::malformed},           Error::invalid_snapshot   },
         {{.schema = Schema::invalid_record},      Error::invalid_snapshot   },
     };
+
     for (const auto& [detail, expected] : cases) {
         const auto result = persistence::qt::snapshot_write_result(detail);
+
         EXPECT_EQ(result.error, expected);
         EXPECT_EQ(result.succeeded(), expected == Error::none);
     }
@@ -53,7 +56,9 @@ TEST(QtSnapshotWriter, TranslatesFormatAndFileFailuresAtTheDriverBoundary)
 TEST(QtSnapshotWriter, WritesThroughThePortablePortAndPreservesTheStoredSnapshot)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
     persistence::qt::LibraryStore store{path};
     persistence::qt::SnapshotWriter adapter{store};
@@ -64,9 +69,12 @@ TEST(QtSnapshotWriter, WritesThroughThePortablePortAndPreservesTheStoredSnapshot
     track.embedded.title = "Owned";
     snapshot.tracks.push_back(track);
     ASSERT_TRUE(writer.write(snapshot).succeeded());
+
     library::LibrarySnapshot restored;
+
     ASSERT_TRUE(store.load(restored).succeeded());
     EXPECT_EQ(restored.tracks, snapshot.tracks);
+
     snapshot.tracks.front().id = {};
     EXPECT_EQ(writer.write(snapshot).error, app::SnapshotWriteError::invalid_snapshot);
     ASSERT_TRUE(store.load(restored).succeeded());

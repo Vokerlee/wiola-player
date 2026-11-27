@@ -18,11 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
 #include <wiola/audio/stage.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
 #include <wiola/playback/session.hpp>
 
@@ -59,12 +58,16 @@ protected:
     bool pump_until(Predicate settled)
     {
         const auto deadline{std::chrono::steady_clock::now() + std::chrono::seconds{5}};
+
         do {
             session.catch_up();
+
             if (settled())
                 return true;
+
             std::this_thread::yield();
         } while (std::chrono::steady_clock::now() < deadline);
+
         return settled();
     }
 
@@ -96,6 +99,7 @@ protected:
 TEST_F(CodecSession, DecoderAndMetadataReachTheSessionThroughTheProviderPort)
 {
     const auto path{wiola::testing::write_wav("wiola_codec_session.wav")};
+
     ASSERT_TRUE(open(path));
     ASSERT_EQ(session.open_result(), wiola::engine::OpenResult::opened);
     EXPECT_TRUE(session.loaded());
@@ -110,6 +114,7 @@ TEST_F(CodecSession, RealStreamShapeControlsOutputReuse)
 {
     const auto first{wiola::testing::write_wav("wiola_codec_session_first.wav", 44100)};
     const auto changed{wiola::testing::write_wav("wiola_codec_session_changed.wav", 48000)};
+
     ASSERT_TRUE(open(first));
     ASSERT_EQ(session.open_result(), wiola::engine::OpenResult::opened);
     ASSERT_TRUE(open(first));
@@ -147,12 +152,15 @@ TEST_F(CodecSession, AppendedQueueReceivesMetadataForEveryFormat)
 TEST_F(CodecSession, UnreadableResourcePreservesTheInstalledRealDecoder)
 {
     const auto path{wiola::testing::write_wav("wiola_codec_session_kept.wav")};
+
     ASSERT_TRUE(open(path));
     ASSERT_EQ(session.open_result(), wiola::engine::OpenResult::opened);
     ASSERT_TRUE(session.play());
     ASSERT_TRUE(pump_until([this] { return session.playing(); }));
+
     const auto missing{
         path.parent_path() / (path.stem().string() + "-missing" + path.extension().string())};
+
     ASSERT_TRUE(open(missing));
     EXPECT_EQ(session.open_result(), wiola::engine::OpenResult::unreadable);
     EXPECT_TRUE(session.loaded());

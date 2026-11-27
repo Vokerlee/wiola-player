@@ -19,13 +19,12 @@
  */
 
 #include "equalizer_panel.hpp"
-#include <QScrollArea>
-#include <wiola/app/playback/equalizer_control.hpp>
 
 #include <qt/widgets/appearance/presentation_tokens.hpp>
-
+#include <wiola/app/playback/equalizer_control.hpp>
 #include <wiola/units.hpp>
 
+#include <QScrollArea>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -90,9 +89,11 @@ EqualizerPanel::EqualizerPanel(app::EqualizerControl& equalizer, QWidget* parent
 
     auto* layout = new QVBoxLayout{this};
     layout->addWidget(enabled_box_);
+
     auto* scroll = new QScrollArea{this};
     scroll->setObjectName("equalizerBandsScroll");
     scroll->setWidgetResizable(true);
+
     auto* contents = new QWidget;
     contents->setLayout(bands_row_);
     scroll->setWidget(contents);

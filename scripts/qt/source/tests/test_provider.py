@@ -22,6 +22,7 @@ from scripts.qt.source.__main__ import main
 def archive_fixture(*, unsafe=False, missing_root=False):
     output = BytesIO()
     root = "wrong-root" if missing_root else "qtbase-everywhere-src-6.4.2"
+
     with tarfile.open(fileobj=output, mode="w:xz") as archive:
         for name, content in [
             (root + "/CMakeLists.txt", b"# reviewed fixture\n"),
@@ -42,6 +43,7 @@ def archive_fixture(*, unsafe=False, missing_root=False):
             link = tarfile.TarInfo(root + "/linked.cpp")
             link.type, link.linkname = tarfile.SYMTYPE, "value.cpp"
             archive.addfile(link)
+
     return output.getvalue()
 
 
@@ -71,20 +73,26 @@ class QtSourceStoreTest(unittest.TestCase):
         store = QtSourceStore(self.download)
         source = store.materialize(self.pin, self.root)
         (source / "value.cpp").write_text("external edit")
+
         with self.assertRaisesRegex(ValueError, "edited"):
             store.materialize(self.pin, self.root)
+
         self.assertEqual((source / "value.cpp").read_text(), "external edit")
         (self.root / (self.pin.directory + ".json")).unlink()
+
         with self.assertRaisesRegex(ValueError, "differs"):
             store.materialize(self.pin, self.root)
+
         archive = self.root / "download" / self.pin.archive
         archive.write_bytes(b"corrupt")
+
         with self.assertRaisesRegex(ValueError, "checksum"):
             store.materialize(self.pin, self.root)
 
     def test_identical_legacy_tree_is_adopted_and_invalid_receipt_can_be_repaired(self):
         with tarfile.open(fileobj=BytesIO(self.archive)) as archive:
             archive.extractall(self.root, filter="data")
+
         source = self.root / self.pin.directory
         original_inode = (source / "value.cpp").stat().st_ino
         receipt = self.root / (self.pin.directory + ".json")
@@ -103,10 +111,12 @@ class QtSourceStoreTest(unittest.TestCase):
 
         with self.assertRaises(OSError):
             QtSourceStore(failed).materialize(self.pin, self.root)
+
         with self.assertRaisesRegex(ValueError, "checksum"):
             QtSourceStore(lambda url, path: path.write_bytes(b"wrong")).materialize(
                 self.pin, self.root
             )
+
         self.assertFalse((self.root / "download" / self.pin.archive).exists())
         self.assertFalse(list(self.root.rglob("*.part")))
 
@@ -115,10 +125,12 @@ class QtSourceStoreTest(unittest.TestCase):
             archive = archive_fixture(unsafe=unsafe, missing_root=missing)
             pin = QtSourcePin("6.4.2", hashlib.sha256(archive).hexdigest())
             workspace = self.root / str(unsafe)
+
             with self.assertRaises((ValueError, tarfile.TarError)):
                 QtSourceStore(lambda url, path: path.write_bytes(archive)).materialize(
                     pin, workspace
                 )
+
             self.assertFalse((workspace / pin.directory).exists())
             self.assertFalse((self.root / "escape").exists())
 
@@ -137,6 +149,7 @@ class QtSourceStoreTest(unittest.TestCase):
             self.assertEqual(
                 futures[0].result(timeout=10), futures[1].result(timeout=10)
             )
+
         self.assertEqual(
             QtSourceStore(self.download).materialize(self.pin, self.root),
             self.root / self.pin.directory,
@@ -146,11 +159,14 @@ class QtSourceStoreTest(unittest.TestCase):
     def test_registry_and_cli_identity_reject_unreviewed_versions(self):
         pin = QtSourcePin.resolve("6.4.2")
         self.assertEqual(len(pin.identity), 64)
+
         with self.assertRaises(ValueError):
             QtSourcePin.resolve("6.99.0")
+
         for version, checksum in (("../escape", "0" * 64), ("6.4.2", "invalid")):
             with self.assertRaises(ValueError):
                 QtSourcePin(version, checksum)
+
         result = subprocess.run(
             [sys.executable, "-m", "scripts.qt.source", "6.4.2", "--identity"],
             capture_output=True,
@@ -166,22 +182,28 @@ class QtSourceStoreTest(unittest.TestCase):
         archive.parent.mkdir()
         archive.write_bytes(self.archive)
         output = StringIO()
+
         with patch.object(
             QtSourcePin, "resolve", return_value=self.pin
         ), redirect_stdout(output):
             self.assertEqual(main([self.pin.version, str(self.root)]), 0)
+
         self.assertEqual(output.getvalue().strip(), str(self.root / self.pin.directory))
         output = StringIO()
+
         with redirect_stdout(output):
             self.assertEqual(main(["6.4.2", "--identity"]), 0)
+
         self.assertEqual(
             output.getvalue().strip(), QtSourcePin.resolve("6.4.2").identity
         )
         error = StringIO()
+
         with redirect_stderr(error):
             self.assertEqual(main(["6.99.0", "--identity"]), 1)
             with self.assertRaises(SystemExit) as stopped:
                 main(["6.4.2"])
+
         self.assertEqual(stopped.exception.code, 2)
         self.assertIn("Qt source preparation failed", error.getvalue())
         self.assertNotIn("Traceback", error.getvalue())
@@ -200,6 +222,7 @@ class QtSourceStoreTest(unittest.TestCase):
         )
         curl.chmod(0o755)
         log = self.root / "transfer.json"
+
         with patch.dict(
             os.environ,
             PATH=str(binary) + os.pathsep + os.environ["PATH"],
@@ -207,8 +230,10 @@ class QtSourceStoreTest(unittest.TestCase):
             QT_SOURCE_FIXTURE_ARCHIVE=str(fixture),
         ):
             QtSourceStore().materialize(self.pin, self.root / "workspace")
+
         arguments = json.loads(log.read_text())
         self.assertIn(self.pin.url, arguments)
+
         for flag in (
             "--fail",
             "--retry",
@@ -225,7 +250,9 @@ class QtSourceStoreTest(unittest.TestCase):
 
         with patch.object(Path, "rename", autospec=True, side_effect=concurrent_winner):
             result = QtSourceStore(self.download).materialize(self.pin, self.root)
+
         self.assertEqual(result, self.root / self.pin.directory)
+
         with patch.object(
             Path,
             "rename",
@@ -243,6 +270,7 @@ class QtSourceStoreTest(unittest.TestCase):
         ):
             with self.assertRaises(PermissionError):
                 QtSourceStore(self.download).materialize(self.pin, self.root)
+
         download = self.root / "download"
         (download / self.pin.archive).write_bytes(self.archive)
         original_write = Path.write_text
@@ -257,6 +285,7 @@ class QtSourceStoreTest(unittest.TestCase):
         ):
             with self.assertRaises(PermissionError):
                 QtSourceStore(self.download).materialize(self.pin, self.root)
+
         self.assertFalse((self.root / (self.pin.directory + ".json")).exists())
         self.assertTrue((self.root / self.pin.directory / "CMakeLists.txt").is_file())
         self.assertFalse(list(self.root.glob(".qt-receipt-*")))
@@ -272,5 +301,6 @@ class QtSourceStoreTest(unittest.TestCase):
         store = QtSourceStore(self.download)
         source = store.materialize(self.pin, self.root)
         os.mkfifo(source / "not-a-source-file")
+
         with self.assertRaisesRegex(ValueError, "Unsupported entry"):
             store.materialize(self.pin, self.root)

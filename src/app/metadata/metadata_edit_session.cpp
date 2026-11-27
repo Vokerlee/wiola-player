@@ -19,6 +19,7 @@
  */
 
 #include "metadata_edit_session.hpp"
+
 #include <algorithm>
 
 namespace wiola::app {
@@ -28,6 +29,7 @@ MetadataEditSession::capture(const std::vector<const library::TrackRecord*>& rec
 {
     MetadataEditSession session;
     std::set<library::MediaId> seen;
+
     for (const auto* record : records) {
         if (!record || !record->id.valid() || !seen.insert(record->id).second)
             continue;
@@ -37,11 +39,15 @@ MetadataEditSession::capture(const std::vector<const library::TrackRecord*>& rec
             record->overrides != library::StandardFieldOverrides{}
         });
     }
+
     // Selection order is not identity; selecting another duplicate occurrence keeps the draft.
     std::ranges::sort(session.targets_, {}, &Target::media);
+
     if (session.targets_.empty())
         return session;
+
     session.common_ = session.targets_.front().original;
+
     for (const auto& target : session.targets_) {
         const auto mix = [&](StandardMetadataField field, auto& common, const auto& value) {
             if (common != value) {
@@ -61,6 +67,7 @@ MetadataEditSession::capture(const std::vector<const library::TrackRecord*>& rec
         mix(StandardMetadataField::disc_number, session.common_.disc_number,
             target.original.disc_number);
     }
+
     return session;
 }
 
@@ -68,16 +75,20 @@ std::vector<library::MediaId> MetadataEditSession::media() const
 {
     std::vector<library::MediaId> ids;
     ids.reserve(targets_.size());
+
     for (const auto& target : targets_)
         ids.push_back(target.media);
+
     return ids;
 }
 
 std::map<library::MediaId, ExpectedMediaState> MetadataEditSession::expectations() const
 {
     std::map<library::MediaId, ExpectedMediaState> expected;
+
     for (const auto& target : targets_)
         expected.emplace(target.media, target.expected);
+
     return expected;
 }
 

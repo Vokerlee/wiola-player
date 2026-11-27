@@ -19,13 +19,18 @@
  */
 
 #pragma once
+
 #ifndef Q_MOC_RUN
 #include "theme.hpp"
-#include <QSettings>
-#include <memory>
+
 #include <qt/storage/atomic_file_store.hpp>
+
+#include <QSettings>
+
+#include <memory>
 #endif
 #include <QObject>
+
 #include <cstdint>
 
 namespace wiola::gui {
@@ -36,6 +41,7 @@ struct ThemeState {
     ThemeStyle custom_style;
     bool operator==(const ThemeState&) const = default;
 };
+
 enum class ThemeError {
     none,
     invalid,

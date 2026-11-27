@@ -19,7 +19,9 @@
  */
 
 #include "track_browser.hpp"
+
 #include <QVBoxLayout>
+
 #include <algorithm>
 
 namespace wiola::gui {
@@ -37,10 +39,12 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
     connect(&search_timer_, &QTimer::timeout, &lifetime_, [this] {
         if (pending_query_) {
             auto query = std::move(*pending_query_);
+
             pending_query_.reset();
             apply_query(std::move(query));
         }
     });
+
     search_->on_changed([this](library::SearchQuery query) {
         if (table_->total_count() >= TrackTableModel::asynchronous_projection_threshold) {
             pending_query_ = std::move(query);
@@ -50,21 +54,26 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
     });
     filters_->on_edit([this](TagFilterEdit edit) {
         auto state = table_->view_state();
+
         if (edit.kind == TagFilterEdit::Kind::add)
             state.query.filters.push_back(std::move(edit.filter));
         else
             std::erase(state.query.filters, edit.filter);
+
         table_->set_view_state(std::move(state));
     });
     connect(table_.data(), &TrackTableView::view_state_changed, &lifetime_, [this] {
         filters_->show_filters(table_->view_state().query.filters);
         update_results();
     });
+
     auto* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(search_);
+
     auto* tools = new QHBoxLayout;
     tools->addWidget(filters_, 1);
+
     auto* edit = new QPushButton{"Edit track…", this};
     edit->setObjectName("editSelectedTrack");
     edit->setEnabled(false);
@@ -73,24 +82,33 @@ TrackBrowser::TrackBrowser(TrackCapabilities capabilities, QWidget* parent)
     connect(edit, &QPushButton::clicked, this, &TrackBrowser::edit_requested);
     connect(this, &TrackBrowser::selection_changed, edit,
         [this, edit] { edit->setEnabled(!table_->chosen_rows().empty()); });
+
     layout->addWidget(table_);
     connect(table_.data(), &TrackTableView::row_chosen, &lifetime_,
         [this](TrackRowId id) { emit row_activated(std::move(id)); });
+
     connect(table_.data(), &TrackTableView::edit_asked, this, &TrackBrowser::edit_requested);
     connect(table_.data(), &TrackTableView::removal_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::remove); });
+
     connect(table_.data(), &TrackTableView::transfer_active_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::transfer); });
+
     connect(table_.data(), &TrackTableView::transfer_destination_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::transfer_destination); });
+
     connect(table_.data(), &TrackTableView::transfer_move_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::move); });
+
     connect(table_.data(), &TrackTableView::order_application_asked, &lifetime_,
         [this] { emit command_requested(TrackCommand::apply_order); });
+
     connect(table_.data(), &TrackTableView::presentation_restored, &lifetime_,
         [this] { emit selection_changed(); });
+
     connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, &lifetime_,
         [this] { emit selection_changed(); });
+
     update_results();
 }
 

@@ -19,6 +19,7 @@
  */
 
 #include <app/library/artwork_store.hpp>
+
 #include <gtest/gtest.h>
 
 namespace {
@@ -29,6 +30,7 @@ std::shared_ptr<wiola::media::Artwork> encoded(std::size_t bytes, char value = '
     result->data.resize(bytes, std::byte{static_cast<unsigned char>(value)});
     result->mime_type = "image/png";
     result->content_id = wiola::media::artwork_content_id(*result);
+
     return result;
 }
 
@@ -37,16 +39,21 @@ TEST(ArtworkStore, ByteBudgetEvictsLeastRecentlyUsedWithoutPinningRows)
     wiola::app::ArtworkStore store{8, 3};
     const wiola::library::MediaId a{"a"}, b{"b"}, c{"c"};
     auto original = encoded(4);
+
     ASSERT_TRUE(store.put(a, original));
+
     auto reference = store.get(a);
+
     original.reset();
     ASSERT_TRUE(reference);
     ASSERT_TRUE(store.put(b, encoded(4)));
+
     static_cast<void>(store.get(a));
     ASSERT_TRUE(store.put(c, encoded(4)));
     EXPECT_TRUE(store.get(a).known());
     EXPECT_FALSE(store.get(b).known());
     EXPECT_LE(store.bytes(), 8);
+
     store.remove(a);
     EXPECT_FALSE(reference);
     EXPECT_NE(reference.content_id(), 0);
@@ -56,8 +63,11 @@ TEST(ArtworkStore, ContentIdentityIgnoresPointerChangesAndNegativeEntriesStayBou
 {
     wiola::app::ArtworkStore store{8, 2};
     const wiola::library::MediaId a{"a"}, b{"b"}, c{"c"};
+
     EXPECT_TRUE(store.put(a, encoded(4)));
+
     const auto id = store.get(a).content_id();
+
     EXPECT_FALSE(store.put(a, encoded(4)));
     EXPECT_EQ(store.get(a).content_id(), id);
     EXPECT_TRUE(store.put(a, encoded(4, 'b')));

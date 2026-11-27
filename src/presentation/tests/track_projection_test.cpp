@@ -18,11 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <wiola/presentation/tracks/track_projection.hpp>
+
+#include <gtest/gtest.h>
+
 #include <array>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
-#include <gtest/gtest.h>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -31,7 +34,6 @@
 #include <thread>
 #include <utility>
 #include <vector>
-#include <wiola/presentation/tracks/track_projection.hpp>
 
 namespace {
 
@@ -50,15 +52,21 @@ public:
     {
         return {[this](auto task) {
                     std::lock_guard lock{mutex_};
+
                     ++attempts_;
+
                     if (posting_ != Posting::accept) {
                         changed_.notify_all();
+
                         if (posting_ == Posting::fail)
                             throw std::logic_error{"receiver unavailable"};
+
                         return false;
                     }
+
                     pending_.push_back(std::move(task));
                     changed_.notify_all();
+
                     return true;
                 },
             [this] { discard(); }};
@@ -121,6 +129,7 @@ public:
                                     changed_.notify_all();
                                 }};
         std::unique_lock lock{mutex_};
+
         entered_ = true;
         changed_.notify_all();
         changed_.wait(lock, [&] { return stop.stop_requested(); });
@@ -144,15 +153,18 @@ std::shared_ptr<const gui::TrackProjectionInput> input()
     first.id = engine::QueueEntryId{1};
     first.media = {"first"};
     first.metadata.title = "Obsolete";
+
     gui::TrackRow last;
     last.id = engine::QueueEntryId{2};
     last.media = {"last"};
     last.metadata.title = "Latest";
+
     std::map<library::MediaId, library::SearchFields> search;
     library::TrackRecord record;
     record.id = last.media;
     record.embedded = last.metadata;
     search.emplace(last.media, library::search_fields_of(record));
+
     return std::make_shared<const gui::TrackProjectionInput>(std::vector{first, last},
         std::move(search));
 }
@@ -181,9 +193,12 @@ TEST(TrackProjectionCore, NullRequestsAndClosedAdmissionNeverProduceWork)
     ManualDelivery delivery;
     int calls{};
     gui::TrackProjection projection{delivery.callbacks(), [&](auto) { ++calls; }};
+
     EXPECT_EQ(projection.request({}, {}), 0U);
+
     projection.stop();
     EXPECT_EQ(projection.request(input(), {}), 0U);
+
     projection.cancel();
     projection.stop();
     delivery.drain();
@@ -204,13 +219,19 @@ TEST(TrackProjectionCore, LatestGenerationReplacesBlockedWorkWithOwnedSearchFact
     auto snapshot = input();
     gui::TrackViewState old;
     old.query.title = "Obsolete";
+
     const auto first = projection.request(snapshot, old);
+
     ASSERT_TRUE(gate.wait());
+
     gui::TrackViewState current;
     current.query.title = "Latest";
+
     const auto last = projection.request(snapshot, current);
+
     snapshot.reset();
     ASSERT_TRUE(delivery.wait_pending());
+
     delivery.drain();
 
     ASSERT_EQ(results.size(), 1U);
@@ -227,12 +248,15 @@ TEST(TrackProjectionCore, CallbackIdentitySurvivesMultipleOwnerDeliveries)
     std::vector<int> calls;
     gui::TrackProjection projection{delivery.callbacks(),
         [&, count = 0](auto) mutable { calls.push_back(++count); }};
+
     for (int expected = 1; expected <= 2; ++expected) {
         static_cast<void>(projection.request(input(), {}));
         ASSERT_TRUE(delivery.wait_pending());
+
         delivery.drain();
         ASSERT_EQ(calls.size(), static_cast<std::size_t>(expected));
     }
+
     EXPECT_EQ(calls, (std::vector{1, 2}));
 }
 
@@ -247,6 +271,7 @@ TEST(TrackProjectionCore, ObserverMayDisposeTheFacadeDuringDelivery)
     });
     static_cast<void>(projection->request(input(), {}));
     ASSERT_TRUE(delivery.wait_pending());
+
     delivery.drain();
     EXPECT_FALSE(projection);
     EXPECT_EQ(calls, 1);
@@ -260,14 +285,19 @@ TEST(TrackProjectionCore, ADetachedDeliveryCannotKeepTheWorkflowOrInputAlive)
         std::make_unique<gui::TrackProjection>(delivery.callbacks(), [&](auto) { ++calls; });
     auto snapshot = input();
     const std::weak_ptr<const gui::TrackProjectionInput> released = snapshot;
+
     static_cast<void>(projection->request(snapshot, {}));
     snapshot.reset();
     ASSERT_TRUE(delivery.wait_pending());
+
     auto posted = delivery.take();
+
     projection.reset();
     EXPECT_TRUE(released.expired());
+
     for (auto& task : posted)
         task();
+
     EXPECT_EQ(calls, 0);
 }
 
@@ -281,12 +311,15 @@ TEST(TrackProjectionCore, AComputationExceptionIsOwnedByItsResultAndTheWorkerRem
             if (++calls == 1)
                 throw std::logic_error{"computation failed"};
         }};
+
     for (int expected = 1; expected <= 2; ++expected) {
         static_cast<void>(projection.request(input(), {}));
         ASSERT_TRUE(delivery.wait_pending());
+
         delivery.drain();
         ASSERT_EQ(results.size(), static_cast<std::size_t>(expected));
     }
+
     ASSERT_TRUE(results.front().failure);
     EXPECT_THROW(std::rethrow_exception(results.front().failure), std::logic_error);
     EXPECT_FALSE(results.back().failure);
@@ -298,14 +331,20 @@ TEST(TrackProjectionCore, FailedOrRejectedPostingCannotTerminateTheWorkerOrKeepP
     for (const auto mode : {ManualDelivery::Posting::reject, ManualDelivery::Posting::fail}) {
         ManualDelivery delivery;
         delivery.posting(mode);
+
         std::vector<gui::TrackProjectionResult> results;
         gui::TrackProjection projection{delivery.callbacks(),
             [&](auto result) { results.push_back(std::move(result)); }};
         const auto first = projection.request(input(), {});
+
         ASSERT_TRUE(delivery.wait_attempts(1));
+
         delivery.posting(ManualDelivery::Posting::accept);
+
         const auto next = projection.request(input(), {});
+
         ASSERT_TRUE(delivery.wait_pending());
+
         delivery.drain();
         ASSERT_EQ(results.size(), 1U);
         EXPECT_NE(next, first);
@@ -324,11 +363,13 @@ TEST(TrackProjectionCore, OwnerThreadRulesApplyBeforeAnyStateMutation)
         } catch (const std::logic_error&) {
             rejected[0] = true;
         }
+
         try {
             projection.cancel();
         } catch (const std::logic_error&) {
             rejected[1] = true;
         }
+
         try {
             projection.stop();
         } catch (const std::logic_error&) {
@@ -352,6 +393,7 @@ TEST(TrackProjectionCore, ObserverFailureConsumesOnlyItsOwnResultAndKeepsCallbac
     static_cast<void>(projection.request(input(), {}));
     ASSERT_TRUE(delivery.wait_pending());
     EXPECT_THROW(delivery.drain(), std::logic_error);
+
     static_cast<void>(projection.request(input(), {}));
     ASSERT_TRUE(delivery.wait_pending());
     EXPECT_NO_THROW(delivery.drain());
@@ -362,11 +404,13 @@ TEST(TrackProjectionCore, StopJoinsTheWorkerBeforeReportingAReceiverCleanupFailu
 {
     ManualDelivery delivery;
     delivery.fail_discard = true;
+
     CancellationGate gate;
     gui::TrackProjection projection{delivery.callbacks(), [](auto) { },
         [&](auto, auto stop) { gate.enter(stop); }};
     auto snapshot = input();
     std::weak_ptr<const gui::TrackProjectionInput> released = snapshot;
+
     static_cast<void>(projection.request(snapshot, {}));
     snapshot.reset();
     ASSERT_TRUE(gate.wait());
@@ -379,15 +423,18 @@ TEST(TrackProjectionCore, DestructionFinishesTheWorkerEvenWhenReceiverCleanupFai
 {
     ManualDelivery delivery;
     delivery.fail_discard = true;
+
     CancellationGate gate;
     auto projection = std::make_unique<gui::TrackProjection>(
         delivery.callbacks(), [](auto) { }, [&](auto, auto stop) { gate.enter(stop); }
     );
     auto snapshot = input();
     std::weak_ptr<const gui::TrackProjectionInput> released = snapshot;
+
     static_cast<void>(projection->request(snapshot, {}));
     snapshot.reset();
     ASSERT_TRUE(gate.wait());
+
     projection.reset();
     EXPECT_TRUE(released.expired());
 }
@@ -411,16 +458,22 @@ TEST(TrackProjectionCore, CancellationCallbacksMayReenterTheOwnerWithoutHoldingT
     owner = &projection;
     static_cast<void>(projection.request(input(), {}));
     ASSERT_TRUE(gate.wait());
+
     static_cast<void>(projection.request(input(), {}));
     EXPECT_TRUE(reentered);
+
     const auto final = projection.request(input(), {});
+
     ASSERT_TRUE(delivery.wait_pending());
+
     delivery.drain();
+
     // The reentrant cancel removed the intermediate query; only the final one remains eligible.
     if (results.empty()) {
         ASSERT_TRUE(delivery.wait_pending());
         delivery.drain();
     }
+
     ASSERT_EQ(results.size(), 1U);
     EXPECT_EQ(results.front().generation, final);
 }
@@ -436,21 +489,28 @@ TEST(TrackProjectionCore, CompletedPayloadsCoalesceBehindOneQueuedOwnerDelivery)
         [&](auto result) { results.push_back(std::move(result)); }};
     static_cast<void>(projection.request(input(), {}));
     ASSERT_TRUE(delivery.wait_pending());
+
     auto next = std::shared_ptr<const gui::TrackProjectionInput>{new gui::TrackProjectionInput{},
         [&](const auto* snapshot) {
             delete snapshot;
+
             std::lock_guard lock{mutex};
+
             completed = true;
             changed.notify_all();
         }};
     const auto final = projection.request(next, {});
+
     next.reset();
     {
         std::unique_lock lock{mutex};
         ASSERT_TRUE(changed.wait_for(lock, 5s, [&] { return completed; }));
     }
+
     auto pending = delivery.take();
+
     ASSERT_EQ(pending.size(), 1U);
+
     pending.front()();
     ASSERT_EQ(results.size(), 1U);
     EXPECT_EQ(results.front().generation, final);
@@ -472,12 +532,16 @@ TEST(TrackProjectionCore, ReceiverCleanupMayDisposeTheFacadeBeforeItsWorkerHasJo
     projection = std::make_unique<gui::TrackProjection>(
         std::move(callbacks), [](auto) { }, [&](auto, auto stop) { gate.enter(stop); }
     );
+
     auto snapshot = input();
     std::weak_ptr<const gui::TrackProjectionInput> released = snapshot;
+
     static_cast<void>(projection->request(snapshot, {}));
     snapshot.reset();
     ASSERT_TRUE(gate.wait());
+
     auto* owner = projection.get();
+
     may_dispose = true;
     owner->stop();
     EXPECT_FALSE(projection);
@@ -518,12 +582,16 @@ TEST(TrackProjectionCore, CancellationMayDisposeTheFacadeWhileAnOwnerRequestReta
                 });
         }
     );
+
     auto snapshot = input();
     const std::weak_ptr<const gui::TrackProjectionInput> released = snapshot;
+
     static_cast<void>(projection->request(snapshot, {}));
     snapshot.reset();
     ASSERT_TRUE(gate.wait());
+
     auto* owner = projection.get();
+
     may_dispose = true;
 
     EXPECT_NE(owner->request(input(), {}), 0U);
@@ -539,12 +607,15 @@ TEST(TrackProjectionCore, CancelClearsAQueuedCompletionWithoutClosingAdmission)
         [&](auto result) { results.push_back(std::move(result)); }};
     static_cast<void>(projection.request(input(), {}));
     ASSERT_TRUE(delivery.wait_pending());
+
     projection.cancel();
     delivery.drain();
     EXPECT_TRUE(results.empty());
 
     const auto next = projection.request(input(), {});
+
     ASSERT_TRUE(delivery.wait_pending());
+
     delivery.drain();
     ASSERT_EQ(results.size(), 1U);
     EXPECT_EQ(results.front().generation, next);

@@ -18,12 +18,13 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <array>
-#include <string>
 #include <wiola/library/records.hpp>
 #include <wiola/library/tags.hpp>
 
 #include <gtest/gtest.h>
+
+#include <array>
+#include <string>
 
 namespace {
 
@@ -71,7 +72,9 @@ TEST(TagValue, StandaloneKeysUseTheSameValidationAsCompleteTags)
 TEST(TagValue, ComparisonFoldsAsciiAndRetainsOtherBytes)
 {
     using namespace wiola::library;
+
     const std::string text{" \tABCDEFGHIJKLMNOPQRSTUVWXYZ-[0-9]-\xc3\x89_\xd0\xaf \n"};
+
     EXPECT_EQ(normalized_tag_text(text), "abcdefghijklmnopqrstuvwxyz-[0-9]-\xc3\x89_\xd0\xaf");
     EXPECT_TRUE(normalized_tag_text(" \t\n\r\f\v").empty());
 }
@@ -79,10 +82,12 @@ TEST(TagValue, ComparisonFoldsAsciiAndRetainsOtherBytes)
 TEST(TagValue, DuplicateMatchingUsesOnePolicyWithAnExplicitOccurrenceExclusion)
 {
     using namespace wiola::library;
+
     const std::array tags{
         TagRecord{.id = {"tag-1"}, .key = "Mood", .value = "Calm"},
         TagRecord{.id = {"tag-2"}, .key = "Mood", .value = "Loud"}
     };
+
     EXPECT_TRUE(contains_tag_value(tags, {.key = " mood ", .value = "CALM"}));
     EXPECT_FALSE(contains_tag_value(tags, {.key = "Mood", .value = "Calm"}, {"tag-1"}));
     EXPECT_TRUE(contains_tag_value(tags, {.key = "Mood", .value = "Loud"}, {"tag-1"}));

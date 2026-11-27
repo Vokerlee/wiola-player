@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include "library_changes.hpp"
 #include "records.hpp"
 

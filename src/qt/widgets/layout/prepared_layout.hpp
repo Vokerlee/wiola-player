@@ -19,8 +19,10 @@
  */
 
 #pragma once
+
 #include "layout_document.hpp"
 #include "view_registry.hpp"
+
 #include <memory>
 
 namespace wiola::gui {

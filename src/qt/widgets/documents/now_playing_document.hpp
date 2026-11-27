@@ -21,6 +21,7 @@
 #pragma once
 
 #ifndef Q_MOC_RUN
+#include <wiola/library/identity.hpp>
 #include <wiola/presentation/documents/queue_rows.hpp>
 #endif
 
@@ -28,7 +29,6 @@
 
 #include <functional>
 #include <vector>
-#include <wiola/library/identity.hpp>
 
 namespace wiola::library {
 

@@ -19,11 +19,13 @@
  */
 
 #pragma once
+
 #include <app/workspace/workspace_scanner.hpp>
+#include <qt/queued_delivery.hpp>
+
 #include <deque>
 #include <map>
 #include <memory>
-#include <qt/queued_delivery.hpp>
 
 namespace wiola::app {
 

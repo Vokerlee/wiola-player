@@ -26,6 +26,7 @@ class QtCoreRuntime:
                 "library_sha256": digest(self.library),
             }
             value = json.loads(self.receipt.read_text(encoding="utf-8"))
+
             return (
                 isinstance(value, dict)
                 and type(value.get("schema_version")) is int
@@ -63,6 +64,7 @@ class QtCoreRuntime:
             raise ValueError(
                 "Qt runtime is not qualified for the selected build context"
             )
+
         result = subprocess.run(
             ["ldd", str(binary.resolve())],
             stdout=subprocess.PIPE,
@@ -74,8 +76,10 @@ class QtCoreRuntime:
         )
         log.parent.mkdir(parents=True, exist_ok=True)
         log.write_text(result.stdout, encoding="utf-8")
+
         if result.returncode:
             raise ValueError("Cannot inspect program runtime; see " + str(log))
+
         pattern = (
             r"^\s*"
             + re.escape(self.library.name)
@@ -86,6 +90,7 @@ class QtCoreRuntime:
             for line in result.stdout.splitlines()
             if (match := re.fullmatch(pattern, line))
         ]
+
         if paths != [self.library.resolve()]:
             raise ValueError(
                 "Program did not resolve the qualified instrumented Core; see "

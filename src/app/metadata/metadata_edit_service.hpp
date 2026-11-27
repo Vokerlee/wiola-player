@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include <wiola/library/metadata_patch.hpp>
-
 #include "metadata_conflicts.hpp"
 #include "metadata_edit_session.hpp"
+
+#include <wiola/library/metadata_patch.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
 #include <map>

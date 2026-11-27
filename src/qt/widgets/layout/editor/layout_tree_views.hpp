@@ -19,10 +19,13 @@
  */
 
 #pragma once
+
+#include <qt/widgets/layout/layout_document.hpp>
+
 #include <QListWidget>
 #include <QTreeWidget>
+
 #include <functional>
-#include <qt/widgets/layout/layout_document.hpp>
 #include <variant>
 
 namespace wiola::gui {

@@ -19,6 +19,7 @@
  */
 
 #include "playlist_name.hpp"
+
 #include <cstdint>
 #include <utility>
 
@@ -34,10 +35,13 @@ struct Scalar {
 Scalar next_scalar(std::string_view text)
 {
     const auto first = static_cast<std::uint8_t>(text.front());
+
     if (first < 0x80)
         return {first, 1, true};
+
     std::size_t width;
     char32_t value, minimum;
+
     if (first >= 0xc2 && first <= 0xdf) {
         width = 2;
         value = first & 0x1f;
@@ -53,16 +57,22 @@ Scalar next_scalar(std::string_view text)
     } else {
         return {0xfffd, 1, false};
     }
+
     if (text.size() < width)
         return {0xfffd, 1, false};
+
     for (std::size_t i = 1; i != width; ++i) {
         const auto byte = static_cast<std::uint8_t>(text[i]);
+
         if (byte < 0x80 || byte > 0xbf)
             return {0xfffd, 1, false};
+
         value = (value << 6) | (byte & 0x3f);
     }
+
     if (value < minimum || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff))
         return {0xfffd, 1, false};
+
     return {value, width, true};
 }
 
@@ -86,12 +96,16 @@ std::optional<PlaylistName> PlaylistName::parse(std::string_view text)
     // QString's UTF-8 conversion consumes one initial BOM and repairs each malformed byte.
     if (text.starts_with("\xef\xbb\xbf"))
         text.remove_prefix(3);
+
     std::size_t begin = text.size(), end = 0, units = 0;
+
     for (std::size_t offset = 0; offset != text.size();) {
         const auto scalar = next_scalar(text.substr(offset));
         const bool space = whitespace(scalar.value);
+
         if (!space && begin == text.size())
             begin = offset;
+
         if (begin != text.size()) {
             units += scalar.value > 0xffff ? 2 : 1;
             if (!space) {
@@ -100,20 +114,27 @@ std::optional<PlaylistName> PlaylistName::parse(std::string_view text)
                 end = offset + scalar.bytes;
             }
         }
+
         offset += scalar.bytes;
     }
+
     if (begin == text.size())
         return std::nullopt;
+
     std::string normalized;
     normalized.reserve(end - begin);
+
     for (std::size_t offset = begin; offset != end;) {
         const auto scalar = next_scalar(text.substr(offset));
+
         if (scalar.valid)
             normalized.append(text.substr(offset, scalar.bytes));
         else
             normalized.append("\xef\xbf\xbd");
+
         offset += scalar.bytes;
     }
+
     return PlaylistName{std::move(normalized)};
 }
 

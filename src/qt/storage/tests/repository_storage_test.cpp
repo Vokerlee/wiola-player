@@ -23,7 +23,6 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 namespace {
@@ -51,22 +50,28 @@ TEST_F(SavedPlaylistStorage, RestoresOrderedEntriesAndDuplicateMediaWithStableId
     wiola::library::InMemoryRepository original;
     const wiola::library::MediaId first{"media-first"};
     const wiola::library::MediaId second{"media-second"};
+
     ASSERT_TRUE(original.put_track(track(first)));
     ASSERT_TRUE(original.put_track(track(second)));
+
     const auto workspace = original.create_workspace("music", false);
+
     ASSERT_TRUE(workspace.valid());
 
     const auto playlist = original.create_playlist("Favorites");
     const auto first_entry = original.append_track(playlist, first);
     const auto duplicate = original.append_track(playlist, first);
     const auto last_entry = original.append_track(playlist, second);
+
     ASSERT_TRUE(first_entry && duplicate && last_entry);
 
     wiola::persistence::qt::LibraryStore storage{file()};
+
     ASSERT_EQ(storage.save(wiola::library::snapshot_of(original)),
         wiola::persistence::qt::LibraryStoreResult{});
 
     wiola::library::InMemoryRepository restored;
+
     ASSERT_TRUE(restored.put_track(track(wiola::library::MediaId{"obsolete"})));
     ASSERT_EQ(wiola::persistence::qt::restore_repository(storage, restored),
         wiola::persistence::qt::LibraryStoreResult{});
@@ -77,6 +82,7 @@ TEST_F(SavedPlaylistStorage, RestoresOrderedEntriesAndDuplicateMediaWithStableId
     EXPECT_FALSE(restored.workspace(workspace)->recursive);
 
     const wiola::library::PlaylistRecord* saved = restored.playlist(playlist);
+
     ASSERT_NE(saved, nullptr);
     ASSERT_EQ(saved->entries.size(), 3);
     EXPECT_EQ(saved->name, "Favorites");
@@ -95,11 +101,17 @@ TEST_F(SavedPlaylistStorage, ResolvesLegacyRelativeWorkspaceRootsAtRestore)
     legacy.workspaces.push_back(
         {.id = {.value = "workspace-legacy"}, .root = "music/album/..", .recursive = false}
     );
+
     wiola::persistence::qt::LibraryStore storage{file()};
+
     ASSERT_TRUE(storage.save(legacy).succeeded());
+
     wiola::library::InMemoryRepository repository;
+
     ASSERT_TRUE(wiola::persistence::qt::restore_repository(storage, repository).succeeded());
+
     const auto* workspace = repository.workspace(legacy.workspaces.front().id);
+
     ASSERT_NE(workspace, nullptr);
     EXPECT_EQ(workspace->root,
         std::filesystem::absolute(legacy.workspaces.front().root).lexically_normal());
@@ -110,6 +122,7 @@ TEST_F(SavedPlaylistStorage, RejectsInvalidSavedRecordsWithoutChangingTheReposit
 {
     wiola::library::InMemoryRepository repository;
     const wiola::library::MediaId retained{"retained"};
+
     ASSERT_TRUE(repository.put_track(track(retained)));
 
     const wiola::library::PlaylistRecord invalid{
@@ -124,11 +137,14 @@ TEST_F(SavedPlaylistStorage, RejectsInvalidSavedRecordsWithoutChangingTheReposit
     ASSERT_NE(repository.track(retained), nullptr);
 
     QFile corrupted{file()};
+
     ASSERT_TRUE(corrupted.open(QIODevice::WriteOnly));
     ASSERT_TRUE(corrupted.write("{not json") > 0);
+
     corrupted.close();
 
     wiola::persistence::qt::LibraryStore storage{file()};
+
     EXPECT_EQ(wiola::persistence::qt::restore_repository(storage, repository),
         wiola::persistence::qt::LibraryStoreResult{
             .schema = wiola::persistence::qt::LibraryJsonError::malformed});
@@ -141,6 +157,7 @@ TEST_F(SavedPlaylistStorage, RejectsInvalidSavedRecordsWithoutChangingTheReposit
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

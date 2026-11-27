@@ -18,15 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/presentation/documents/queue_rows.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
-#include <wiola/presentation/tracks/track_sorter.hpp>
-
 #include <app/library/local_identity.hpp>
 #include <queue/playlist.hpp>
 #include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
+#include <wiola/presentation/tracks/track_sorter.hpp>
 
 #include <gtest/gtest.h>
 
@@ -52,6 +49,7 @@ TEST(TrackSorter, AppliesMultipleKeysWithDeterministicIdentityFallback)
         {.title = "Same", .artist = "Zed", .album = {}, .duration = {}});
     playlist.describe(playlist.tracks()[2].id(),
         {.title = "Before", .artist = "Amy", .album = {}, .duration = {}});
+
     wiola::library::InMemoryRepository repository;
 
     const auto sorted = wiola::gui::sorted_rows(wiola::gui::queue_rows(playlist.tracks()),
@@ -66,6 +64,7 @@ TEST(TrackSorter, AppliesMultipleKeysWithDeterministicIdentityFallback)
         wiola::gui::sorted_rows(wiola::gui::queue_rows(playlist.tracks()), &repository,
             {key(TrackSortField::artist, TrackSortDirection::descending),
                 key(TrackSortField::title, TrackSortDirection::descending)});
+
     EXPECT_EQ(descending[0].location, "a.wav");
     EXPECT_EQ(descending[1].location, "b.wav");
     EXPECT_EQ(descending[2].location, "c.wav");
@@ -80,6 +79,7 @@ TEST(TrackSorter, KeepsMissingDurationsLastAndUsesTagKeys)
         {.title = {}, .artist = {}, .album = {}, .duration = wiola::units::Time{1}});
     playlist.describe(playlist.tracks()[2].id(),
         {.title = {}, .artist = {}, .album = {}, .duration = wiola::units::Time{2}});
+
     wiola::library::InMemoryRepository repository;
 
     const auto ascending = wiola::gui::sorted_rows(wiola::gui::queue_rows(playlist.tracks()),
@@ -101,13 +101,16 @@ TEST(TrackSorter, KeepsMissingDurationsLastAndUsesTagKeys)
 
     const auto tagged = wiola::gui::sorted_rows(wiola::gui::queue_rows(playlist.tracks()),
         &repository, {TrackSortKey::for_tag("Mood", TrackSortDirection::descending)});
+
     EXPECT_EQ(tagged.front().location, "unknown.wav");
 }
 
 TEST(TrackSorter, PreparesEachSortValueOncePerRowInsteadOfOncePerComparison)
 {
     using namespace wiola;
+
     std::vector<gui::TrackRow> rows;
+
     for (int i = 0; i < 5000; ++i) {
         gui::TrackRow row;
         row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
@@ -116,12 +119,15 @@ TEST(TrackSorter, PreparesEachSortValueOncePerRowInsteadOfOncePerComparison)
         row.metadata.artist = "Artist " + std::to_string(i % 7);
         rows.push_back(std::move(row));
     }
+
     gui::TrackSortStatistics statistics;
     const auto sorted = gui::sorted_rows(rows, nullptr,
         {key(TrackSortField::artist), key(TrackSortField::title)}, &statistics);
+
     ASSERT_EQ(sorted.size(), rows.size());
     EXPECT_EQ(statistics.prepared_values, rows.size() * 4);
     EXPECT_GT(statistics.comparisons, rows.size());
+
     std::stop_source cancelled;
     cancelled.request_stop();
     EXPECT_TRUE(gui::sorted_rows(rows, nullptr, {key(TrackSortField::title)}, nullptr,

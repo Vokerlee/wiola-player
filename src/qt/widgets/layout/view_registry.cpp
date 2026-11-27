@@ -19,6 +19,7 @@
  */
 
 #include "view_registry.hpp"
+
 #include <algorithm>
 
 namespace wiola::gui {
@@ -29,15 +30,19 @@ bool ViewRegistry::add(ViewReference reference, QWidget* widget, LayoutComponent
     if (!widget || !valid_view_reference(reference) || !component_descriptor(kind) ||
         (structure && !component_descriptor(kind)->container))
         return false;
+
     if (const auto old = views_.find(reference); old != views_.end()) {
         if (old->second.widget)
             return false;
         views_.erase(old);
     }
+
     if (std::ranges::any_of(views_,
             [widget](const auto& entry) { return entry.second.widget == widget; }))
         return false;
+
     views_.emplace(std::move(reference), ViewRegistration{widget, kind, structure});
+
     return true;
 }
 

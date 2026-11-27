@@ -46,23 +46,30 @@ class CMakeInventory:
                 raise BuildInventoryError(
                     "CMake reply references must be local JSON filenames"
                 )
+
             value = json.loads((reply / name).read_text(encoding="utf-8"))
+
             if not isinstance(value, dict):
                 raise BuildInventoryError(f"CMake reply must contain an object: {name}")
+
             return value
 
         try:
             indexes = sorted(reply.glob("index-*.json"))
+
             if not indexes:
                 raise BuildInventoryError(
                     "Configure a CMake File API codemodel-v2 query first"
                 )
+
             index = read_reference(indexes[-1].name)
             model = read_reference(index["reply"]["codemodel-v2"]["jsonFile"])
+
             if model["version"]["major"] != 2 or len(model["configurations"]) != 1:
                 raise BuildInventoryError(
                     "Select one configured codemodel-v2 build variant"
                 )
+
             source_root = Path(model["paths"]["source"]).resolve()
 
             @cache
@@ -77,42 +84,55 @@ class CMakeInventory:
 
             entries = model["configurations"][0]["targets"]
             names = {entry["id"]: entry["name"] for entry in entries}
+
             if len(names) != len(entries) or len(set(names.values())) != len(entries):
                 raise BuildInventoryError("CMake target identities must be unique")
+
             targets = []
+
             for entry in entries:
                 target = read_reference(entry["jsonFile"])
                 sources, generated = [], []
+
                 for item in target.get("sources", []):
                     path = Path(item["path"])
+
                     if not path.is_absolute():
                         path = source_root / path
+
                     path = path.resolve()
+
                     if not path.is_relative_to(source_root):
                         continue
+
                     relative = path.relative_to(source_root).as_posix()
                     in_active_build = build.is_relative_to(
                         source_root
                     ) and path.is_relative_to(build)
+
                     if relative not in declared and (
                         in_active_build or inside_build_tree(path.parent)
                     ):
                         if not item.get("isGenerated", False) or not in_active_build:
                             continue
+
                     (generated if item.get("isGenerated", False) else sources).append(
                         relative
                     )
+
                 artifacts = tuple(
                     (build / artifact["path"]).resolve()
                     for artifact in target.get("artifacts", [])
                 )
                 name_on_disk = target.get("nameOnDisk")
+
                 if name_on_disk is not None and (
                     not isinstance(name_on_disk, str) or not name_on_disk
                 ):
                     raise BuildInventoryError(
                         "Invalid primary artifact name in CMake target"
                     )
+
                 targets.append(
                     BuildTarget(
                         entry["name"],
@@ -138,6 +158,7 @@ class CMakeInventory:
                         name_on_disk,
                     )
                 )
+
             return cls(
                 source_root,
                 tuple(sorted(targets, key=lambda target: target.name)),

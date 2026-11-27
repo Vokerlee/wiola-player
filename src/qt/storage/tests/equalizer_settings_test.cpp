@@ -28,7 +28,6 @@
 
 #include <QSettings>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 #include <cstddef>
@@ -145,14 +144,17 @@ TEST_F(EqualizerControl, KeepsABandTheFormatCannotCarry)
     narrow.open({
         wiola::media::ResourceReference{"controlled", "narrow-stream", "Narrow stream"}
     });
+
     while (narrow.reading())
         std::this_thread::yield();
+
     static_cast<void>(narrow.pump());
     ASSERT_EQ(narrow.open_result(), wiola::engine::OpenResult::opened);
 
     Control control{narrow, writer};
 
     const std::size_t beyond{narrow.num_equalizer_bands()};
+
     ASSERT_LT(beyond, narrow.equalizer_config().layout.count);
 
     control.set_band_gain(beyond, 5.0F);
@@ -202,6 +204,7 @@ TEST_F(EqualizerControl, RestoresEveryBandTheLayoutNames)
 TEST_F(EqualizerControl, IgnoresANonFiniteStoredGain)
 {
     settings.setValue("equalizer/band/1", std::numeric_limits<float>::infinity());
+
     Control control{equalizer, writer};
 
     restore(control);

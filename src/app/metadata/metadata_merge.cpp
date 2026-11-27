@@ -26,6 +26,7 @@ bool MetadataMerge::merge(library::InMemoryRepository& repository, const library
     const wiola::media::Metadata& learned) const
 {
     const library::TrackRecord* existing = repository.track(media);
+
     if (existing == nullptr)
         return false;
 
@@ -62,6 +63,7 @@ bool MetadataMerge::merge(library::InMemoryRepository& repository, const library
         return false;
 
     ++updated.metadata_revision;
+
     return repository.put_track(std::move(updated));
 }
 

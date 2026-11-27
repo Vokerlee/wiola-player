@@ -68,6 +68,7 @@ public:
 int main()
 {
     using namespace wiola;
+
     engine::OperationReceipt receipt{.id = 7,
         .operation = engine::OperationKind::open,
         .acceptance = engine::CommandResult::accepted};
@@ -78,54 +79,74 @@ int main()
         .error = media::Error{media::ErrorCategory::damaged, "controlled failure"}
     });
     completed.overflowed = true;
+
     if (!completed.values.front().error || completed.values.front().id != receipt.id ||
         !completed.overflowed)
         return 1;
+
     engine::PlaybackSnapshot snapshot;
     snapshot.state = engine::PlaybackState::faulted;
     snapshot.open_result = engine::open_failed(*completed.values.front().error);
     snapshot.track = media::ResourceReference{"consumer", "owned resource", "Owned resource"};
     snapshot.queue_position = 0;
+
     const auto retained = snapshot;
+
     snapshot.track = {};
+
     if (retained.track.empty() || retained.total_time ||
         retained.open_result != engine::OpenResult::damaged)
         return 2;
+
     engine::OperationOutcome device_failure{.id = receipt.id,
         .operation = receipt.operation,
         .error = engine::OutputSetupError{"controlled device failure"}};
+
     if (!device_failure.error ||
         engine::open_failed(*device_failure.error) != engine::OpenResult::output_unavailable)
         return 3;
+
     engine::OperationOutcome success;
+
     if (success.error)
         return 4;
+
     media::TrackMetadata facts;
     facts.title = "owned title";
+
     const engine::QueueEntry entry{
         engine::QueueEntryId{receipt.id},
         media::ResourceReference{"consumer", "resource", "Resource"},
         facts
     };
+
     facts.title.clear();
+
     if (entry.id() != engine::QueueEntryId{receipt.id} || entry.resource().key() != "resource" ||
         entry.metadata().title != "owned title" || entry.artwork() || entry.revision() != 0)
         return 5;
+
     ConsumerQueue queue;
     const engine::QueueView& view{queue};
+
     if (!view.empty() || view.current() || view.position() || view.index_of(entry.id()))
         return 6;
+
     queue.entries.push_back(entry);
     queue.selected = 0;
     ++queue.structure;
+
     const auto owned_entry{view.tracks().front()};
+
     queue.entries.emplace_back(engine::QueueEntryId{receipt.id + 1},
         media::ResourceReference{"consumer", "resource", "Resource"});
     ++queue.structure;
+
     if (view.tracks().size() != 2 || view.current()->id() != entry.id() || view.position() != 0 ||
         view.index_of(engine::QueueEntryId{receipt.id + 1}) != 1 ||
         view.structural_revision() != 2 || view.metadata_revision() != 0 ||
         owned_entry.metadata().title != "owned title")
         return 7;
+
     return !engine::QueueEntryId{receipt.id}.valid();
 }

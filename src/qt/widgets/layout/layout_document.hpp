@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include "component_descriptor.hpp"
 #include "view_reference.hpp"
 

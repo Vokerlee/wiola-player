@@ -18,19 +18,17 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <transport/player.hpp>
-#include <transport/seek_operation.hpp>
-
 #include "rig.hpp"
 
 #include <buffering/buffer_source.hpp>
 #include <buffering/pcm_queue.hpp>
+#include <fakes/decoder.hpp>
+#include <fakes/output.hpp>
+#include <transport/player.hpp>
+#include <transport/seek_operation.hpp>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/media/stream_spec.hpp>
-
-#include <fakes/decoder.hpp>
-#include <fakes/output.hpp>
 
 #include <gtest/gtest.h>
 
@@ -66,6 +64,7 @@ std::unique_ptr<wiola::testing::FakeDecoder> pcm_source()
 {
     constexpr StreamSpec spec{.sample_rate = 44100_Hz, .num_channels = 2};
     constexpr units::Time duration{1.5};
+
     return std::make_unique<wiola::testing::FakeDecoder>(*spec.checked_frames_at(duration), spec);
 }
 
@@ -101,6 +100,7 @@ protected:
     {
         ++num_reads_;
         std::fill_n(output.begin(), num_frames.count() * 2, 0.25F);
+
         return wiola::media::DecodeOutcome{.frames = num_frames};
     }
 
@@ -133,6 +133,7 @@ protected:
         const wiola::pcm::Frames remaining{length - position_frames()};
         const wiola::pcm::Frames produced{std::min(num_frames, remaining)};
         std::fill_n(output.begin(), produced.count() * 2, 0.0F);
+
         return wiola::media::DecodeOutcome{.frames = produced,
             .end_of_stream = position_frames() + produced == length};
     }
@@ -193,6 +194,7 @@ protected:
             };
 
         std::fill_n(output.begin(), num_frames.count() * 2, 0.0F);
+
         return wiola::media::DecodeOutcome{.frames = num_frames};
     }
 
@@ -211,6 +213,7 @@ private:
 TEST(Player, PlaysControlledPcmToTheEndOnItsOwn)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const wiola::media::AudioDecoder* played{source.get()};
@@ -239,17 +242,20 @@ TEST(Player, DrainsFramesReturnedTogetherWithEndOfStream)
     wiola::testing::FakeOutput output;
     wiola::engine::TransportConfig config;
     config.decode_chunk = wiola::pcm::Frames{4};
+
     Player player{std::move(source), buffer.producer(), output, config};
     std::array<float, 8> played{};
 
     ASSERT_TRUE(player.start());
     ASSERT_TRUE(eventually([decoded] { return decoded->num_reads() == 2; }));
     ASSERT_EQ(consumer.pop(played), played.size());
+
     output.play(wiola::pcm::Frames{4});
     ASSERT_TRUE(eventually([&buffer] { return buffer.size_approx() == 8; }));
     EXPECT_FALSE(player.finished());
 
     ASSERT_EQ(consumer.pop(played), played.size());
+
     output.play(wiola::pcm::Frames{4});
     player.wait();
     EXPECT_EQ(player.state(), State::ended);
@@ -265,9 +271,11 @@ TEST(Player, PrimingReadFailureFaultsInsteadOfBeingRetriedAsNormalPlayback)
     wiola::testing::FakeOutput output;
     wiola::engine::TransportConfig config;
     config.decode_chunk = wiola::pcm::Frames{8};
+
     Player player{std::move(source), buffer.producer(), output, config};
 
     ASSERT_TRUE(player.start());
+
     player.wait();
 
     EXPECT_EQ(player.state(), State::faulted);
@@ -282,6 +290,7 @@ TEST(Player, UnknownDurationPlaysToActualExhaustion)
     EXPECT_EQ(player.total_time(), std::nullopt);
     EXPECT_TRUE(player.seekable());
     ASSERT_TRUE(player.start());
+
     rig.play_out();
     player.wait();
 
@@ -300,9 +309,11 @@ TEST(Player, UnknownDurationKeepsTransportAndAbsoluteSeekAvailable)
 
     ASSERT_TRUE(player.start());
     ASSERT_TRUE(player.pause());
+
     player.seek(units::Time{2.0 / 44100.0});
     EXPECT_EQ(player.time_played(), units::Time{2.0 / 44100.0});
     ASSERT_TRUE(player.resume());
+
     player.stop();
     player.wait();
 
@@ -313,6 +324,7 @@ TEST(Player, UnknownDurationKeepsTransportAndAbsoluteSeekAvailable)
 TEST(Player, StartReturnsBeforePlaybackEnds)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -331,6 +343,7 @@ TEST(Player, StopEndsPlaybackWithoutDrainingTheSource)
     Player& player{rig.player};
 
     ASSERT_TRUE(player.start());
+
     player.stop();
     player.wait();
 
@@ -344,6 +357,7 @@ TEST(Player, StopEndsPlaybackWithoutDrainingTheSource)
 TEST(Player, StopIsHarmlessAfterPlaybackHasEnded)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -362,6 +376,7 @@ TEST(Player, StopIsHarmlessAfterPlaybackHasEnded)
 TEST(Player, PauseSilencesAndResumeContinues)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -397,11 +412,13 @@ TEST(Player, SeekMovesTheSource)
 
     ASSERT_TRUE(player.start());
     ASSERT_TRUE(player.pause());
+
     player.seek(1300_ms);
     EXPECT_FALSE(player.playing());
 
     ASSERT_TRUE(player.resume());
     ASSERT_TRUE(eventually([&] { return decoder->last_seek() == target && rig.output.running(); }));
+
     rig.play_out();
     player.wait();
 
@@ -467,6 +484,7 @@ TEST(Player, UnseekableMediaDoesNotPublishOrExecuteASeek)
     Player player{std::move(source), buffer.producer(), output};
 
     EXPECT_FALSE(player.seekable());
+
     player.seek(0.01_s);
 
     EXPECT_EQ(player.time_played(), units::Time{});
@@ -499,6 +517,7 @@ TEST(Player, FailedSeekBeforeStartKeepsThePreservedBeginning)
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
     wiola::testing::FakeDecoder* moved{source.get()};
     moved->refuse_seeks();
+
     wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
@@ -521,6 +540,7 @@ TEST(Player, FailedSeekDoesNotPublishTheRequestedPosition)
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
     wiola::testing::FakeDecoder* moved{source.get()};
     moved->refuse_seeks();
+
     wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
@@ -547,6 +567,7 @@ TEST(Player, PublishesTheAchievedPositionOfAnApproximateSeek)
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
     wiola::testing::FakeDecoder* moved{source.get()};
     moved->achieve_next_seek_at(wiola::pcm::Frames{90});
+
     wiola::pcm::PcmQueue buffer{spec, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
@@ -554,6 +575,7 @@ TEST(Player, PublishesTheAchievedPositionOfAnApproximateSeek)
     ASSERT_TRUE(player.start());
     ASSERT_TRUE(player.pause());
     ASSERT_TRUE(eventually([&output] { return !output.running(); }));
+
     player.seek(1_s);
 
     ASSERT_TRUE(eventually([moved] { return moved->num_seeks() == 1; }));
@@ -570,8 +592,10 @@ TEST(Player, NewerSeekSurvivesFailureOfAnOlderOne)
     auto source{std::make_unique<wiola::testing::FakeDecoder>(wiola::pcm::Frames{10000}, spec)};
     wiola::testing::FakeDecoder* moved{source.get()};
     moved->refuse_next_seek();
+
     wiola::testing::Gate seeking;
     moved->block_seeks_on(seeking);
+
     wiola::pcm::PcmQueue buffer{StreamSpec{}, wiola::pcm::Frames{512}};
     wiola::testing::FakeOutput output;
     Player player{std::move(source), buffer.producer(), output};
@@ -598,6 +622,7 @@ TEST(Player, NewerSeekSurvivesFailureOfAnOlderOne)
 TEST(Player, TimePlayedStartsAtTheBeginning)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -609,6 +634,7 @@ TEST(Player, TimePlayedStartsAtTheBeginning)
 TEST(Player, TimePlayedReachesTheEndOfTheSource)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const auto duration{source->spec().time_per(source->num_frames())};
@@ -627,6 +653,7 @@ TEST(Player, TimePlayedReachesTheEndOfTheSource)
 TEST(Player, TimePlayedFollowsASeek)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -635,6 +662,7 @@ TEST(Player, TimePlayedFollowsASeek)
     ASSERT_TRUE(player.start());
 
     ASSERT_TRUE(player.pause());
+
     player.seek(200_ms);
 
     EXPECT_TRUE(eventually([&player] {
@@ -646,6 +674,7 @@ TEST(Player, TimePlayedFollowsASeek)
 TEST(Player, ResumeRefusesBeforeStart)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -661,6 +690,7 @@ TEST(Player, ResumeRefusesBeforeStart)
 TEST(Player, DistinguishesEndingFromBeingStopped)
 {
     auto ended = pcm_source();
+
     ASSERT_NE(ended, nullptr);
 
     Rig first_rig{std::move(ended)};
@@ -678,6 +708,7 @@ TEST(Player, DistinguishesEndingFromBeingStopped)
     Player& second{second_rig.player};
 
     ASSERT_TRUE(second.start());
+
     second.stop();
     second.wait();
 
@@ -688,6 +719,7 @@ TEST(Player, DistinguishesEndingFromBeingStopped)
 TEST(Player, TimePlayedReportsASeekThatHasNotBeenAppliedYet)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -702,6 +734,7 @@ TEST(Player, TimePlayedReportsASeekThatHasNotBeenAppliedYet)
 TEST(Player, StartsWhereASeekAskedForBeforeIt)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const wiola::pcm::Frames total{source->num_frames()};
@@ -728,6 +761,7 @@ TEST(Player, StartsWhereASeekAskedForBeforeIt)
 TEST(Player, KeepsASeekAskedForAfterStopping)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -864,6 +898,7 @@ TEST(Player, TimePlayedNeverFallsBackWhileASeekIsCarriedOut)
 TEST(Player, PlaysAgainAfterEnding)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -889,6 +924,7 @@ TEST(Player, PlaysAgainAfterEnding)
 TEST(Player, RefusesToStartWhilePlaying)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -909,6 +945,7 @@ TEST(Player, RefusesToStartWhilePlaying)
 TEST(Player, RunsOnAnyOutput)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -932,6 +969,7 @@ TEST(Player, RunsOnAnyOutput)
 TEST(Player, FollowsTheOutputRatherThanTheDecoder)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -960,6 +998,7 @@ TEST(Player, FollowsTheOutputRatherThanTheDecoder)
 TEST(Player, SurvivesATransportHammering)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     Rig rig{std::move(source)};
@@ -987,6 +1026,7 @@ TEST(Player, SurvivesATransportHammering)
 TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -1003,9 +1043,11 @@ TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
 
     for (int i = 0; i < 20; ++i) {
         ASSERT_TRUE(player.pause());
+
         std::this_thread::sleep_for(5ms);
 
         ASSERT_TRUE(player.resume());
+
         std::this_thread::sleep_for(5ms);
     }
 
@@ -1023,6 +1065,7 @@ TEST(Player, TouchesTheOutputFromTheDecodingThreadAlone)
 TEST(Player, ReportsAFaultWhenTheOutputWillNotStartAgain)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};
@@ -1054,6 +1097,7 @@ TEST(Player, ReportsAFaultWhenTheOutputWillNotStartAgain)
 TEST(Player, ReportsAFaultWhenTheDeviceStopsOnItsOwn)
 {
     auto source = pcm_source();
+
     ASSERT_NE(source, nullptr);
 
     const StreamSpec spec{source->spec()};

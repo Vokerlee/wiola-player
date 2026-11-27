@@ -123,16 +123,19 @@ TEST(StreamSpec, DetectsFrameToSampleOverflow)
     EXPECT_FALSE(stereo.checked_samples_per(Frames{largest}).has_value());
 
     const StreamSpec many_channels{.sample_rate = 48_kHz, .num_channels = largest};
+
     EXPECT_FALSE(many_channels.checked_samples_per(Frames{2}).has_value());
 }
 
 TEST(StreamSpec, DetectsDurationConversionOverflow)
 {
     constexpr StreamSpec spec{};
+
     EXPECT_FALSE(spec.checked_frames_at(Time{std::numeric_limits<double>::max()}).has_value());
 
     const StreamSpec extreme_rate{.sample_rate = Frequency{std::numeric_limits<double>::max()},
         .num_channels = 2};
+
     EXPECT_FALSE(extreme_rate.checked_frames_at(1_s).has_value());
     EXPECT_FALSE(extreme_rate.checked_samples_per(1_s).has_value());
 }

@@ -19,11 +19,13 @@
  */
 
 #include "player_application.hpp"
+
+#include <wiola/media/local/resource.hpp>
+
 #include <QScopedValueRollback>
 #include <QThread>
 
 #include <stdexcept>
-#include <wiola/media/local/resource.hpp>
 
 namespace wiola::app {
 namespace {
@@ -48,8 +50,10 @@ PlayerApplication::PlayerApplication(PlayerRuntimeConfig config, QObject* parent
     library_.file_writes().set_handoff(
         [this](const std::filesystem::path& path) -> MetadataWriteService::Restore {
             auto state = playback_.release_media(wiola::media::local_resource(path));
+
             if (!state)
                 return {};
+
             return [this, state = *state] {
                 playback_.restore_media(state);
             };
@@ -59,7 +63,9 @@ PlayerApplication::PlayerApplication(PlayerRuntimeConfig config, QObject* parent
         static_cast<void>(playback_.pump());
         emit pumped(present_playback(playback_));
     });
+
     connect(&refresh_timer_, &QTimer::timeout, this, &PlayerApplication::refresh_requested);
+
     pump_timer_.start(config.pump_interval);
     refresh_timer_.start(config.presentation_interval);
 }
@@ -73,6 +79,7 @@ void PlayerApplication::observe(QObject& receiver,
     std::function<void(const PlayerPresentation&)> playback, std::function<void()> refresh)
 {
     Q_ASSERT(receiver.thread() == thread());
+
     connect(this, &PlayerApplication::pumped, &receiver, std::move(playback));
     connect(this, &PlayerApplication::refresh_requested, &receiver, std::move(refresh));
 }
@@ -80,14 +87,19 @@ void PlayerApplication::observe(QObject& receiver,
 bool PlayerApplication::shutdown()
 {
     Q_ASSERT(QThread::currentThread() == thread());
+
     if (shutting_down_)
         return false;
+
     const QScopedValueRollback<bool> in_progress{shutting_down_, true};
+
     pump_timer_.stop();
     refresh_timer_.stop();
     playback_.stop_accepting();
+
     const auto library_result = library_.shutdown();
     const bool preferences_saved = preferences_.flush();
+
     return library_result.succeeded() && preferences_saved;
 }
 

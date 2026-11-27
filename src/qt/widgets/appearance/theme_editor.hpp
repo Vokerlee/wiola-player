@@ -26,10 +26,10 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
-#include <vector>
 
 #include <functional>
 #include <map>
+#include <vector>
 
 namespace wiola::gui {
 

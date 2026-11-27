@@ -19,7 +19,11 @@
  */
 
 #include <allocation_failure.hpp>
+#include <wiola/app/library/playlist_name.hpp>
+#include <wiola/app/library/saved_playlist_commands.hpp>
+
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <new>
 #include <optional>
@@ -27,8 +31,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <wiola/app/library/playlist_name.hpp>
-#include <wiola/app/library/saved_playlist_commands.hpp>
 
 namespace {
 
@@ -45,6 +47,7 @@ TEST(PlaylistCommands, UnchangedNamesDoNotInventAnotherCommit)
                                             return true;
                                         }};
     const auto created = commands.create("Saved");
+
     ASSERT_TRUE(created.commit);
 
     const auto unchanged = commands.rename(created.id, " Saved ");
@@ -66,23 +69,31 @@ TEST(PlaylistCommands, CreatesRenamesCopiesOccurrencesAndRemovesUsingTheSupplied
     library::TrackRecord track;
     track.id = {"track"};
     ASSERT_TRUE(repository.put_track(track));
+
     const auto created = commands.create("  Road trip  ");
+
     ASSERT_TRUE(created.commit);
     ASSERT_TRUE(created.id.valid());
     ASSERT_TRUE(repository.append_track(created.id, track.id));
     ASSERT_TRUE(repository.append_track(created.id, track.id));
     EXPECT_TRUE(commands.rename(created.id, " Evening "));
+
     const auto copied = commands.duplicate(created.id);
+
     ASSERT_TRUE(copied.commit);
     EXPECT_NE(copied.id, created.id);
+
     const auto* playlist = repository.playlist(copied.id);
+
     ASSERT_NE(playlist, nullptr);
     EXPECT_EQ(playlist->name, "Evening copy");
     ASSERT_EQ(playlist->entries.size(), repository.playlist(created.id)->entries.size());
+
     for (std::size_t i = 0; i != playlist->entries.size(); ++i) {
         EXPECT_EQ(playlist->entries[i].media, track.id);
         EXPECT_NE(playlist->entries[i].id, repository.playlist(created.id)->entries[i].id);
     }
+
     EXPECT_TRUE(commands.remove(created.id));
     EXPECT_EQ(repository.playlist(created.id), nullptr);
     EXPECT_NE(repository.playlist(copied.id), nullptr);
@@ -98,17 +109,23 @@ TEST(PlaylistCommands, InvalidOperationsDoNotReuseAnEarlierOwnedCommit)
                                             return true;
                                         }};
     const auto created = commands.create("Saved");
+
     ASSERT_TRUE(created.commit);
+
     const auto revision = created.commit.revision;
+
     for (const auto& name : {std::string{}, std::string{"  "},
              std::string(app::PlaylistName::max_utf16_units + 1, 'x')}) {
         const auto rejected = commands.create(name);
+
         EXPECT_FALSE(rejected.id.valid());
         EXPECT_FALSE(rejected.commit);
         EXPECT_EQ(rejected.commit.revision, 0U);
         EXPECT_FALSE(commands.rename(created.id, name));
     }
+
     const library::PlaylistId missing{"missing"};
+
     EXPECT_FALSE(commands.rename(missing, "Name"));
     EXPECT_FALSE(commands.duplicate(missing).commit);
     EXPECT_FALSE(commands.remove(missing));
@@ -123,13 +140,20 @@ TEST(PlaylistCommands, FailedPersistenceRestoresRecordsAndIdentityAllocation)
     library::InMemoryRepository repository;
     bool saved = false;
     app::SavedPlaylistCommands commands{repository, [&](const auto&) { return saved; }};
+
     EXPECT_FALSE(commands.create("Rejected").commit);
     EXPECT_TRUE(repository.playlists().empty());
+
     saved = true;
+
     const auto created = commands.create("Retained");
+
     ASSERT_TRUE(created.commit);
+
     library::InMemoryRepository fresh;
+
     EXPECT_EQ(created.id, fresh.create_playlist("Retained"));
+
     saved = false;
     EXPECT_FALSE(commands.rename(created.id, "Rejected"));
     EXPECT_FALSE(commands.duplicate(created.id).commit);
@@ -147,15 +171,20 @@ TEST(PlaylistCommands, DuplicationValidatesTheCompleteResultNameBeforeMutation)
                                             return true;
                                         }};
     const auto full = commands.create(std::string(app::PlaylistName::max_utf16_units, 'x'));
+
     ASSERT_TRUE(full.commit);
     EXPECT_FALSE(commands.duplicate(full.id).commit);
     EXPECT_EQ(writes, 1U);
     EXPECT_EQ(repository.playlists().size(), 1U);
+
     const std::string suffix = " copy";
     const auto fitting =
         commands.create(std::string(app::PlaylistName::max_utf16_units - suffix.size(), 'x'));
+
     ASSERT_TRUE(fitting.commit);
+
     const auto copied = commands.duplicate(fitting.id);
+
     ASSERT_TRUE(copied.commit);
     EXPECT_EQ(repository.playlist(copied.id)->name.size(), app::PlaylistName::max_utf16_units);
 }
@@ -171,15 +200,18 @@ TEST(PlaylistCommands, AcceptedReceiptsRemainOwnedByTheirIndividualCommandResult
                                         }};
     const auto first = commands.create("First");
     const auto second = commands.create("Second");
+
     ASSERT_TRUE(first.commit.receipt);
     ASSERT_TRUE(second.commit.receipt);
     EXPECT_NE(first.commit.receipt, second.commit.receipt);
     EXPECT_LT(first.commit.revision, second.commit.revision);
     EXPECT_FALSE(commands.create(" ").commit);
     EXPECT_FALSE(first.commit.receipt->durable());
+
     second.commit.receipt->notify(true);
     EXPECT_TRUE(second.commit.receipt->durable());
     EXPECT_FALSE(first.commit.receipt->durable());
+
     first.commit.receipt->notify(true);
     EXPECT_TRUE(first.commit.receipt->durable());
 }
@@ -195,6 +227,7 @@ TEST(PlaylistCommands, NestedChangeObserversKeepIndependentReturnedOutcomes)
             nested = commands.create("Nested");
     });
     const auto outer = commands.create("Outer");
+
     ASSERT_TRUE(outer.commit);
     ASSERT_TRUE(nested);
     EXPECT_TRUE(nested->commit);
@@ -211,6 +244,7 @@ TEST(PlaylistCommands, RetainsMutablePersistIdentityAcrossOperations)
                                             calls.push_back(++count);
                                             return true;
                                         }};
+
     ASSERT_TRUE(commands.create("First").commit);
     ASSERT_TRUE(commands.create("Second").commit);
     EXPECT_EQ(calls, (std::vector<int>{1, 2}));
@@ -237,6 +271,7 @@ TEST(PlaylistCommands, ThrowingPersistenceRestoresTheCandidate)
     library::InMemoryRepository repository;
     app::SavedPlaylistCommands throwing{repository,
         [](const auto&) -> library::CommitResult { throw std::runtime_error{"store failed"}; }};
+
     EXPECT_THROW(static_cast<void>(throwing.create("Rejected")), std::runtime_error);
     EXPECT_TRUE(repository.playlists().empty());
     EXPECT_EQ(repository.change_revision(), 0U);
@@ -264,21 +299,28 @@ TEST(PlaylistCommands, EveryPreparationAllocationFailureRestoresTheRepository)
                 failed = true;
             }
         }
+
         if (failed) {
             observed_failure = true;
             if (!admitted) {
                 EXPECT_TRUE(repository.playlists().empty());
                 EXPECT_EQ(repository.change_revision(), 0U);
+
                 result = commands.create(name);
             }
         }
+
         if (!failed)
             EXPECT_TRUE(result.commit);
+
         ASSERT_EQ(repository.playlists().size(), 1U);
+
         const auto stored = repository.playlists().front();
         library::InMemoryRepository fresh;
+
         EXPECT_EQ(stored.id, fresh.create_playlist(name));
         EXPECT_EQ(stored.name, name);
+
         if (!failed) {
             EXPECT_TRUE(observed_failure);
             break;

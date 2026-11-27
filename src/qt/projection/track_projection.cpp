@@ -19,8 +19,11 @@
  */
 
 #include "track_projection.hpp"
-#include <QThread>
+
 #include <qt/queued_delivery.hpp>
+
+#include <QThread>
+
 #include <stdexcept>
 #include <utility>
 
@@ -31,8 +34,10 @@ std::unique_ptr<TrackProjection> make_track_projection(QObject& owner,
 {
     if (QThread::currentThread() != owner.thread())
         throw std::logic_error{"projection receiver belongs to another thread"};
+
     auto receiver = std::make_shared<app::QueuedDelivery>(owner);
     const auto endpoint = receiver->endpoint();
+
     return std::make_unique<TrackProjection>(
         TrackProjection::Delivery{[endpoint](auto task) { return endpoint.post(std::move(task)); },
             [receiver] { receiver->discard(); }},

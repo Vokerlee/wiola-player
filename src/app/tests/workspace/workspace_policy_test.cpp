@@ -18,13 +18,15 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <wiola/app/library/local_identity.hpp>
+#include <wiola/app/workspace/workspace_reconciliation.hpp>
+
 #include <gtest/gtest.h>
+
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <vector>
-#include <wiola/app/library/local_identity.hpp>
-#include <wiola/app/workspace/workspace_reconciliation.hpp>
 
 namespace {
 
@@ -36,14 +38,18 @@ public:
         std::stop_token stopped) override
     {
         stopped_seen = stopped.stop_requested();
+
         const auto found = digests.find(path);
+
         return found == digests.end() ? std::optional<std::string>{} : found->second;
     }
 
     Presence presence(const std::filesystem::path& path) override
     {
         ++presence_reads;
+
         const auto found = present.find(path);
+
         return found == present.end() ? Presence::absent : found->second;
     }
 
@@ -62,6 +68,7 @@ protected:
         value.locations = {root / (value.id.value + ".flac")};
         value.fingerprint = "same-content";
         value.content_revision = 7;
+
         return value;
     }
 
@@ -73,8 +80,10 @@ protected:
 TEST_F(WorkspacePolicy, UnknownLocationOwnsItsIdentityAndObservedFingerprint)
 {
     files.digests[output] = "new-content";
+
     app::WorkspaceDiscovery discovery{files, root, {}};
     const auto found = discovery.resolve(output);
+
     files.digests.clear();
     EXPECT_EQ(found.media, app::media_id_for(output));
     EXPECT_EQ(found.location, output);
@@ -87,8 +96,10 @@ TEST_F(WorkspacePolicy, KnownLocationPreservesCatalogIdentityAndCapturedRevision
 {
     const std::vector known{record()};
     files.digests[known.front().locations.front()] = "edited-content";
+
     app::WorkspaceDiscovery discovery{files, root, known};
     const auto found = discovery.resolve(known.front().locations.front());
+
     EXPECT_EQ(found.media, known.front().id);
     EXPECT_EQ(found.expected_content_revision, known.front().content_revision);
     EXPECT_EQ(found.fingerprint, "edited-content");
@@ -100,6 +111,7 @@ TEST_F(WorkspacePolicy, UnreadableObservationNeverInventsAContentIdentity)
 {
     app::WorkspaceDiscovery discovery{files, root, {}};
     const auto found = discovery.resolve(output);
+
     EXPECT_TRUE(found.unreadable);
     EXPECT_FALSE(found.fingerprint);
     EXPECT_FALSE(found.known());
@@ -109,10 +121,13 @@ TEST_F(WorkspacePolicy, OnlyAnAbsentUniqueCandidateCanBeRelocatedAndOnlyOnce)
 {
     const std::vector known{record()};
     files.digests[output] = known.front().fingerprint;
+
     const auto another = root / "another.flac";
     files.digests[another] = known.front().fingerprint;
+
     app::WorkspaceDiscovery discovery{files, root, known};
     const auto relocated = discovery.resolve(output);
+
     EXPECT_EQ(relocated.media, known.front().id);
     EXPECT_TRUE(relocated.relocated());
     EXPECT_EQ(relocated.expected_content_revision, known.front().content_revision);
@@ -123,10 +138,13 @@ TEST_F(WorkspacePolicy, PresentAndUnknownCandidatesAreNeverEvidenceForRelocation
 {
     const std::vector known{record()};
     files.digests[output] = known.front().fingerprint;
+
     for (const auto presence :
         {app::WorkspaceFiles::Presence::present, app::WorkspaceFiles::Presence::unknown}) {
         files.present[known.front().locations.front()] = presence;
+
         app::WorkspaceDiscovery discovery{files, root, known};
+
         EXPECT_FALSE(discovery.resolve(output).known());
     }
 }
@@ -135,11 +153,15 @@ TEST_F(WorkspacePolicy, CapturedEnumerationControlsPresenceWithoutLiveExistenceR
 {
     const std::vector known{record()};
     files.digests[output] = known.front().fingerprint;
+
     const std::vector current{known.front().locations.front(), output};
     app::WorkspaceDiscovery present{files, root, known, current};
+
     EXPECT_FALSE(present.resolve(output).known());
+
     const std::vector absent{output};
     app::WorkspaceDiscovery moved{files, root, known, absent};
+
     EXPECT_TRUE(moved.resolve(output).relocated());
     EXPECT_EQ(files.presence_reads, 0);
 }
@@ -148,7 +170,9 @@ TEST_F(WorkspacePolicy, AmbiguousAbsentCandidatesRemainDistinct)
 {
     const std::vector known{record("one"), record("two")};
     files.digests[output] = known.front().fingerprint;
+
     app::WorkspaceDiscovery discovery{files, root, known};
+
     EXPECT_FALSE(discovery.resolve(output).known());
 }
 
@@ -157,7 +181,9 @@ TEST_F(WorkspacePolicy, AVisibleCandidateDoesNotHideAnotherUniquelyAbsentCandida
     const std::vector known{record("one"), record("two")};
     files.digests[output] = known.front().fingerprint;
     files.present[known.front().locations.front()] = app::WorkspaceFiles::Presence::present;
+
     app::WorkspaceDiscovery discovery{files, root, known};
+
     EXPECT_EQ(discovery.resolve(output).media, known.back().id);
 }
 
@@ -165,11 +191,16 @@ TEST_F(WorkspacePolicy, OutsideRootAndEmptyFingerprintsAreNotRelocationCandidate
 {
     auto outside = record("outside");
     outside.locations = {root.parent_path() / "outside.flac"};
+
     auto unknown = record("unknown");
     unknown.fingerprint.clear();
+
     const std::vector known{outside, unknown};
+
     files.digests[output] = outside.fingerprint;
+
     app::WorkspaceDiscovery discovery{files, root, known};
+
     EXPECT_FALSE(discovery.resolve(output).known());
     EXPECT_FALSE(app::workspace_contains(root, outside.locations.front()));
     EXPECT_TRUE(app::workspace_contains(root, output));
@@ -180,6 +211,7 @@ TEST_F(WorkspacePolicy, TheSuppliedReaderReceivesTheScanCancellationToken)
 {
     std::stop_source cancelled;
     cancelled.request_stop();
+
     app::WorkspaceDiscovery discovery{files, root, {}, cancelled.get_token()};
     static_cast<void>(discovery.resolve(output));
     EXPECT_TRUE(files.stopped_seen);
@@ -195,7 +227,9 @@ TEST_F(WorkspacePolicy, ReconciliationPreservesTheMutablePersistenceCallbackIden
         return true;
     }};
     app::WorkspaceScanEntry entry{.media = {"stable"}, .location = output, .fingerprint = "first"};
+
     ASSERT_TRUE(reconcile.reconcile(repository, workspace, std::span{&entry, 1}).succeeded);
+
     entry.expected_content_revision = repository.track(entry.media)->content_revision;
     entry.fingerprint = "second";
     ASSERT_TRUE(reconcile.reconcile(repository, workspace, std::span{&entry, 1}).succeeded);
@@ -211,9 +245,11 @@ TEST_F(WorkspacePolicy, AnAdmittedTransactionMayOutliveTheReconciliationFacade)
         reconcile.reset();
         return true;
     });
+
     app::WorkspaceScanEntry entry{.media = {"stable"},
         .location = output,
         .fingerprint = "content"};
+
     EXPECT_TRUE(reconcile->reconcile(repository, workspace, std::span{&entry, 1}).succeeded);
     EXPECT_FALSE(reconcile);
     ASSERT_NE(repository.track(entry.media), nullptr);
@@ -229,6 +265,7 @@ TEST_F(WorkspacePolicy, RejectedPersistenceRollsBackDiscoveryWithoutLosingTheOri
     app::WorkspaceScanEntry entry{.media = {"stable"},
         .location = output,
         .fingerprint = "content"};
+
     EXPECT_FALSE(reconcile.reconcile(repository, workspace, std::span{&entry, 1}).succeeded);
     EXPECT_EQ(repository.tracks(), before);
 }
@@ -241,6 +278,7 @@ TEST_F(WorkspacePolicy, UnknownWorkspaceDoesNotInvokePersistence)
         ++calls;
         return true;
     }};
+
     EXPECT_FALSE(reconcile.reconcile(repository, {"missing"}, {}).succeeded);
     EXPECT_EQ(calls, 0);
 }
@@ -258,6 +296,7 @@ TEST_F(WorkspacePolicy, InvalidAndRemovedCapturedTargetsAreRejectedWithoutInvent
                                 .kind = app::WorkspaceDiscoveryKind::known_location}
     };
     const auto result = reconcile.reconcile(repository, workspace, entries);
+
     EXPECT_TRUE(result.succeeded);
     EXPECT_EQ(result.failed, entries.size());
     EXPECT_TRUE(repository.tracks().empty());
@@ -272,6 +311,7 @@ TEST_F(WorkspacePolicy, AnEmptyObservedFingerprintCannotCreateATrack)
         .location = output,
         .fingerprint = std::string{}};
     const auto result = reconcile.reconcile(repository, workspace, std::span{&entry, 1});
+
     EXPECT_TRUE(result.succeeded);
     EXPECT_EQ(result.failed, 1U);
     EXPECT_TRUE(repository.tracks().empty());
@@ -286,8 +326,10 @@ TEST_F(WorkspacePolicy, UnreadableLocationsAreRetainedWithoutDuplicatingPaths)
         .location = output,
         .fingerprint = {},
         .unreadable = true};
+
     for (int attempt = 0; attempt < 2; ++attempt) {
         const auto result = reconcile.reconcile(repository, workspace, std::span{&entry, 1});
+
         EXPECT_TRUE(result.succeeded);
         EXPECT_EQ(result.failed, 1U);
         ASSERT_NE(repository.track(entry.media), nullptr);

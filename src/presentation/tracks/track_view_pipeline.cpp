@@ -19,10 +19,11 @@
  */
 
 #include "track_view_pipeline.hpp"
-#include <app/library/search_index.hpp>
-#include <set>
 
+#include <app/library/search_index.hpp>
 #include <wiola/library/records.hpp>
+
+#include <set>
 
 namespace wiola::gui {
 
@@ -41,6 +42,7 @@ bool matches(const TrackRow& track, const library::LibraryRepository* repository
     presented.id = media;
     presented.embedded = track.metadata;
     presented.tags = track.tags;
+
     return library::matches_normalized_search(query, presented);
 }
 
@@ -62,14 +64,18 @@ std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
 
     std::set<library::MediaId> matching;
     const bool active = track_query_active(query);
+
     if (search && active) {
         const auto& ids = search->query_normalized(query);
         matching.insert(ids.begin(), ids.end());
     }
+
     std::size_t visited = 0;
+
     for (const TrackRow& track : source) {
         if ((visited++ % 64) == 0 && stop.stop_requested())
             return {};
+
         const auto held = fields
             ? fields->find(track.media)
             : std::map<library::MediaId, library::SearchFields>::const_iterator{};
@@ -78,6 +84,7 @@ std::vector<TrackRow> apply_track_view(const std::vector<TrackRow>& source,
                                              : (search && search->contains(track.media)
                                                        ? matching.contains(track.media)
                                                        : matches(track, repository, query)));
+
         if (accepted)
             visible.push_back(track);
     }

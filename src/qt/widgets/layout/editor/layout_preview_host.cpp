@@ -19,6 +19,7 @@
  */
 
 #include "layout_preview_host.hpp"
+
 #include <qt/widgets/layout/layout_builder.hpp>
 
 namespace wiola::gui {
@@ -36,19 +37,25 @@ bool LayoutPreviewHost::show_document(const LayoutDocument& document)
     auto candidate = std::make_unique<QWidget>();
     auto* actions = new PlayerActions{*candidate};
     actions->setParent(candidate.get());
+
     auto prepared = LayoutBuilder{}.prepare(document.root,
         {.actions = actions, .isolated_preview = true}, candidate.get());
+
     if (!prepared)
         return false;
+
     auto* built = prepared->attach(candidate.get());
+
     if (!built)
         return false;
+
     auto* layout = new QVBoxLayout{candidate.get()};
     layout->setSizeConstraint(QLayout::SetMinAndMaxSize);
     layout->addWidget(built);
     delete preview_.data();
     preview_ = candidate.release();
     layout_->addWidget(preview_);
+
     return true;
 }
 

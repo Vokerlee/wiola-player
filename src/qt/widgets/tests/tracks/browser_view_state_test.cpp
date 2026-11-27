@@ -18,13 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <qt/widgets/tracks/track_browser.hpp>
+#include <wiola/library/in_memory_repository.hpp>
+
 #include <QAction>
 #include <QApplication>
 #include <QHeaderView>
 #include <QTest>
 #include <gtest/gtest.h>
-#include <qt/widgets/tracks/track_browser.hpp>
-#include <wiola/library/in_memory_repository.hpp>
 
 namespace {
 
@@ -41,6 +42,7 @@ gui::TrackRow row(const char* occurrence, const char* title = "Song")
     row.tags = {
         {.id = library::TagId{"tag"}, .key = "Mood", .value = "Calm"}
     };
+
     return row;
 }
 
@@ -58,6 +60,7 @@ TEST(BrowserViewState, DeferredSelectionRestoresWhenItsOccurrenceArrivesAndNewUs
     table.resize(600, 300);
     table.show();
     QApplication::processEvents();
+
     gui::BrowserViewState saved;
     saved.selected = {library::PlaylistEntryId{"second"}};
     saved.current = saved.selected.front();
@@ -65,11 +68,14 @@ TEST(BrowserViewState, DeferredSelectionRestoresWhenItsOccurrenceArrivesAndNewUs
     table.show_rows({row("first")});
     EXPECT_TRUE(table.chosen_rows().empty());
     EXPECT_EQ(table.capture_browser_state().selected, saved.selected);
+
     table.show_rows({row("first"), row("second")});
     EXPECT_EQ(table.chosen_rows(), saved.selected);
     EXPECT_EQ(table.capture_browser_state().current, saved.current);
+
     table.show_rows({row("first")});
     table.restore_browser_state(saved);
+
     const auto first = table.model()->index(0, 1);
     QTest::mouseClick(table.viewport(), Qt::LeftButton, Qt::NoModifier,
         table.visualRect(first).center());
@@ -85,19 +91,25 @@ TEST(BrowserViewState, RestoresColumnOrderWidthsVisibilityAndMatchingMenuChecks)
     track.id = library::MediaId{"same-media"};
     track.tags = row("first").tags;
     catalog.upsert(track);
+
     library::InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track));
+
     gui::TrackTableView first;
     first.set_tag_catalog(&catalog);
     first.show_rows({row("first")});
     first.show_library(repository);
     ASSERT_NE(action(first, "Tag: Mood"), nullptr);
+
     action(first, "Tag: Mood")->setChecked(true);
     first.setColumnWidth(gui::StandardTrackColumn::artist, 211);
     action(first, "Artist")->setChecked(false);
+
     const int custom = first.model()->columnCount() - 1;
     first.setColumnWidth(custom, 233);
     first.horizontalHeader()->moveSection(first.horizontalHeader()->visualIndex(custom), 1);
+
     const auto saved = first.capture_browser_state();
     gui::TrackTableView second;
     second.set_tag_catalog(&catalog);
@@ -109,9 +121,12 @@ TEST(BrowserViewState, RestoresColumnOrderWidthsVisibilityAndMatchingMenuChecks)
     EXPECT_FALSE(action(second, "Artist")->isChecked());
     ASSERT_NE(action(second, "Tag: Mood"), nullptr);
     EXPECT_TRUE(action(second, "Tag: Mood")->isChecked());
+
     const int restored = second.model()->columnCount() - 1;
+
     EXPECT_EQ(second.columnWidth(restored), 233);
     EXPECT_EQ(second.horizontalHeader()->visualIndex(restored), 1);
+
     action(second, "Artist")->setChecked(true);
     EXPECT_EQ(second.columnWidth(gui::StandardTrackColumn::artist), 211);
 }
@@ -120,6 +135,7 @@ TEST(BrowserViewState, QueryPanelsSortAndDuplicateOccurrenceSelectionRestoreToge
 {
     gui::TrackBrowser browser{gui::TrackCapabilities::playlist()};
     browser.show_rows({row("first"), row("second")});
+
     gui::BrowserViewState state;
     state.view.query = {.title = "Song", .artist = "Artist", .album = "Album", .tags = "Calm"};
     state.view.sort_keys = {
@@ -143,7 +159,10 @@ int main(int argc, char** argv)
 {
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
         qputenv("QT_QPA_PLATFORM", "minimal");
+
     QApplication application{argc, argv};
+
     testing::InitGoogleTest(&argc, argv);
+
     return RUN_ALL_TESTS();
 }

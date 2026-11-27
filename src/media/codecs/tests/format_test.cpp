@@ -18,10 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fakes/byte_stream.hpp>
 #include <wiola/media/codecs/format.hpp>
 #include <wiola/media/codecs/registry.hpp>
-
-#include <fakes/byte_stream.hpp>
 
 #include <gtest/gtest.h>
 
@@ -43,7 +42,9 @@ FileHead head_of(std::string_view bytes)
         std::vector<std::byte>{raw.begin(), raw.end()}
     };
     const auto head{FileHead::read(stream)};
+
     EXPECT_TRUE(head);
+
     return head ? *head : FileHead{};
 }
 
@@ -97,6 +98,7 @@ TEST(FileHead, RejectsOverflowingMarkerRanges)
 {
     const auto head{head_of("RIFF")};
     const auto maximum{std::numeric_limits<std::size_t>::max()};
+
     EXPECT_FALSE(head.carries(Marker{maximum, "RIFF"}));
     EXPECT_FALSE(head.carries(Marker{maximum - 1, "RIFF"}));
     EXPECT_FALSE(head.carries(Marker{maximum - 2, "RIFF"}));
@@ -105,10 +107,13 @@ TEST(FileHead, RejectsOverflowingMarkerRanges)
 TEST(FileHead, EmptyMarkersStillRequireAValidPosition)
 {
     const auto head{head_of("RIFF")};
+
     EXPECT_TRUE(head.carries(Marker{0, ""}));
     EXPECT_TRUE(head.carries(Marker{4, ""}));
     EXPECT_FALSE(head.carries(Marker{5, ""}));
+
     const FileHead empty;
+
     EXPECT_TRUE(empty.carries(Marker{0, ""}));
     EXPECT_FALSE(empty.carries(Marker{1, ""}));
 }

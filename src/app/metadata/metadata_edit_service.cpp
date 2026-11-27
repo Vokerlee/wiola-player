@@ -19,6 +19,7 @@
  */
 
 #include "metadata_edit_service.hpp"
+
 #include <set>
 #include <stdexcept>
 #include <thread>
@@ -58,53 +59,72 @@ struct MetadataEditService::State : std::enable_shared_from_this<State> {
         if (!library::valid_metadata_patch(patch))
             return {.state = MetadataEditState::failed,
                 .error = StandardMetadataError::invalid_edit};
+
         if (library::metadata_patch_empty(patch))
             return {.state = MetadataEditState::failed, .error = StandardMetadataError::empty_edit};
+
         const std::set<library::MediaId> unique{media.begin(), media.end()};
         library::RepositoryTransaction transaction{repository,
             [this](const auto& candidate) { return persist(candidate); }};
+
         for (const auto& [id, version] : expected) {
             if (!unique.contains(id))
                 continue;
+
             const auto conflict = conflicts.check(repository, id, version);
+
             if (conflict != MetadataConflictKind::none)
                 return {.state = MetadataEditState::conflicted, .conflict = conflict};
         }
+
         MetadataEditOutcome outcome;
+
         for (const auto& id : unique) {
             const auto* existing = repository.track(id);
+
             if (!existing) {
                 ++outcome.missing;
                 continue;
             }
+
             auto updated = *existing;
             static_cast<void>(library::apply_metadata_patch(updated.overrides, patch));
+
             if (updated.overrides == existing->overrides) {
                 ++outcome.unchanged;
                 continue;
             }
+
             ++updated.metadata_revision;
+
             if (!repository.put_track(std::move(updated))) {
                 ++outcome.missing;
                 continue;
             }
+
             ++outcome.changed;
         }
+
         if (outcome.changed == 0) {
             outcome.state = MetadataEditState::succeeded;
             return outcome;
         }
+
         const auto committed = transaction.commit();
+
         if (!committed) {
             outcome.state = MetadataEditState::failed;
             outcome.error = StandardMetadataError::persistence_failed;
             outcome.changed = 0;
+
             return outcome;
         }
+
         outcome.revision = committed.revision;
         outcome.state =
             committed.durable() ? MetadataEditState::succeeded : MetadataEditState::accepted;
         outcome.retained_changes = !committed.durable();
+
         if (committed.receipt) {
             const auto weak = weak_from_this();
             committed.receipt->observe([weak, outcome](library::DurabilityEvent event) mutable {
@@ -118,6 +138,7 @@ struct MetadataEditService::State : std::enable_shared_from_this<State> {
                 }
             });
         }
+
         return outcome;
     }
 
@@ -148,10 +169,12 @@ MetadataEditOutcome MetadataEditService::apply(const std::vector<library::MediaI
 {
     const auto state = state_;
     state->check_owner();
+
     const auto captured_edit = edit;
     const auto captured_expected = expected;
     const auto outcome = state->edit(media, captured_edit, captured_expected);
     state->publish(outcome);
+
     return outcome;
 }
 
@@ -160,6 +183,7 @@ MetadataEditOutcome MetadataEditService::apply(const MetadataEditSession& sessio
 {
     const auto state = state_;
     state->check_owner();
+
     const auto media = session.media();
     const auto patch = session.draft();
     const auto expected = policy == MetadataConflictPolicy::require_captured_state
@@ -167,6 +191,7 @@ MetadataEditOutcome MetadataEditService::apply(const MetadataEditSession& sessio
         : std::map<library::MediaId, ExpectedMediaState>{};
     const auto outcome = state->edit(media, patch, expected);
     state->publish(outcome);
+
     return outcome;
 }
 
@@ -182,6 +207,7 @@ MetadataEditOutcome MetadataEditService::reset(const std::vector<library::MediaI
     patch.year = library::FieldEdit<std::uint32_t>::inherit();
     patch.track_number = library::FieldEdit<std::uint32_t>::inherit();
     patch.disc_number = library::FieldEdit<std::uint32_t>::inherit();
+
     return apply(media, patch);
 }
 

@@ -18,9 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <wiola/app/library/library_persistence.hpp>
+
 #include <deque>
 #include <mutex>
-#include <wiola/app/library/library_persistence.hpp>
 
 class Writer final : public wiola::app::SnapshotWriter {
 public:
@@ -40,7 +41,9 @@ int main()
     wiola::app::LibraryPersistence::Delivery delivery{
         [&](std::function<void()> task) {
             std::lock_guard lock{mutex};
+
             pending.push_back(std::move(task));
+
             return true;
         },
         [&] {
@@ -49,6 +52,7 @@ int main()
                 std::lock_guard lock{mutex};
                 tasks.swap(pending);
             }
+
             for (auto& task : tasks)
                 task();
         },
@@ -57,14 +61,19 @@ int main()
     wiola::app::LibraryPersistence persistence{output, std::move(delivery), {}};
     auto delta = std::make_shared<wiola::library::RevisionDelta>();
     delta->changes.revision = 1;
+
     wiola::library::TrackRecord track;
     track.id = {"opaque-media"};
     delta->tracks.push_back(track);
+
     const auto accepted = persistence.accept(delta);
+
     if (!accepted || accepted.durable() || !persistence.flush().succeeded())
         return 1;
+
     if (!accepted.receipt->durable() || output.snapshot.tracks.size() != 1 ||
         output.snapshot.tracks.front().id != track.id)
         return 2;
+
     return 0;
 }

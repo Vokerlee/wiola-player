@@ -19,9 +19,11 @@
  */
 
 #pragma once
-#include <map>
+
 #include <wiola/library/repository.hpp>
 #include <wiola/presentation/tracks/track_row.hpp>
+
+#include <map>
 
 namespace wiola::gui {
 

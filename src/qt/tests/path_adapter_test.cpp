@@ -29,6 +29,7 @@ TEST(QtPathAdapter, PreservesNonAsciiPathsInBothDirections)
     )};
 
     const QString converted{wiola::platform::qt::QtPathAdapter::to_qt(path)};
+
     EXPECT_EQ(converted, QString::fromUtf8("music/Романтика-音楽.flac"));
     EXPECT_EQ(wiola::platform::qt::QtPathAdapter::from_qt(converted), path);
 }
@@ -36,6 +37,7 @@ TEST(QtPathAdapter, PreservesNonAsciiPathsInBothDirections)
 TEST(QtPathAdapter, DisplaysNativeSeparatorsAndDriveLetterWithoutChangingStoredSpelling)
 {
     using namespace wiola::platform::qt::QtPathAdapter;
+
     const auto original = QString::fromUtf8("c:/Users/Роман/Музыка.flac");
     const auto path = from_qt(original);
 #ifdef _WIN32

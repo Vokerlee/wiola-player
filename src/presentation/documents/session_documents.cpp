@@ -19,6 +19,7 @@
  */
 
 #include "session_documents.hpp"
+
 #include <utility>
 
 namespace wiola::gui {
@@ -31,17 +32,21 @@ void SessionDocuments::remap_queue(
         const auto remap = [&](std::optional<TrackRowId> value) -> std::optional<TrackRowId> {
             if (!value)
                 return {};
+
             if (const auto* queue = std::get_if<engine::QueueEntryId>(&*value)) {
                 const auto found = mapping.find(*queue);
                 return found == mapping.end() ? std::nullopt
                                               : std::optional<TrackRowId>{found->second};
             }
+
             return value;
         };
         std::vector<TrackRowId> selected;
+
         for (const auto& occurrence : browser.selected)
             if (auto mapped = remap(occurrence))
                 selected.push_back(*mapped);
+
         browser.selected = std::move(selected);
         browser.current = remap(browser.current);
         browser.anchor = remap(browser.anchor);

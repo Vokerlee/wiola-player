@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <chrono>
 #include <wiola/units.hpp>
+
+#include <chrono>
 using namespace wiola::units;
 static_assert(UnitOf<Ms, Time>);
 static_assert(!UnitOf<Hz, Time>);

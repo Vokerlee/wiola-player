@@ -29,11 +29,16 @@ int main()
     int value = 7;
     IntHandle first{value};
     IntHandle moved{std::move(first)};
+
     if (first || !moved || moved.read() != value)
         return 1;
+
     wiola::core::Claimable capability;
+
     if (!capability.claim() || capability.claim())
         return 2;
+
     capability.release();
+
     return capability.claim() && read(wiola::core::Borrowed<int>{value}) == value ? 0 : 3;
 }

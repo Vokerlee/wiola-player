@@ -56,12 +56,15 @@ std::unique_ptr<Stage::Preparation> ProcessingChain::prepare(pcm::StreamSpec spe
 {
     std::vector<std::unique_ptr<Stage::Preparation>> prepared;
     prepared.reserve(stages_.size());
+
     for (Stage* stage : stages_) {
         if (auto candidate{stage->prepare(spec)})
             prepared.push_back(std::move(candidate));
     }
+
     if (prepared.empty())
         return nullptr;
+
     return std::make_unique<PreparedChain>(std::move(prepared));
 }
 

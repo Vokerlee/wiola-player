@@ -68,6 +68,7 @@ engine::OperationReceipt PlaybackService::open(std::vector<media::ResourceRefere
         return {.id = 0,
             .operation = engine::OperationKind::open,
             .acceptance = engine::CommandResult::unavailable};
+
     impl_->session.open(std::move(tracks));
 
     return {.id = impl_->session.open_request_id(),

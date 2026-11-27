@@ -22,9 +22,8 @@
 
 #include <wiola/media/local/resource.hpp>
 
-#include <stdexcept>
-
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -47,7 +46,9 @@ std::size_t QueueSettings::restore()
     std::size_t gone{0};
 
     restored_.clear();
+
     std::vector<std::size_t> available;
+
     for (std::size_t i = 0; i < stored.tracks.size(); ++i) {
         if (available_(stored.tracks[i])) {
             tracks.push_back(stored.tracks[i]);
@@ -62,13 +63,17 @@ std::size_t QueueSettings::restore()
         return gone;
 
     const auto first_new = playback_.playlist().tracks().size();
+
     playback_.add(wiola::media::local_resources(tracks));
+
     if (playback_.playlist().tracks().size() != first_new + tracks.size())
         return gone + tracks.size();
+
     if (stored.occurrence_ids.size() == stored.tracks.size())
         for (std::size_t i = 0; i < available.size(); ++i)
             restored_.emplace(engine::QueueEntryId{stored.occurrence_ids[available[i]]},
                 playback_.playlist().tracks()[first_new + i].id());
+
     if (stored.selected_occurrence) {
         const auto found = restored_.find(engine::QueueEntryId{*stored.selected_occurrence});
         if (found != restored_.end())
@@ -100,6 +105,7 @@ void QueueSettings::save()
             settings.occurrence_ids.push_back(track.id().value);
         }
     }
+
     settings.has_occurrence_ids = true;
 
     if (const engine::QueueEntry* current = playback_.playlist().current()) {

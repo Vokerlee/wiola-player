@@ -19,6 +19,7 @@
  */
 
 #include "view_reference.hpp"
+
 #include <algorithm>
 #include <array>
 
@@ -44,12 +45,15 @@ QJsonObject write_view_reference(const ViewReference& reference)
 {
     if (!valid_view_reference(reference))
         return {};
+
     if (const auto* component = std::get_if<ComponentViewId>(&reference))
         return {
             {"component", QString::fromStdString(component->value)}
         };
+
     const auto& view = std::get<DocumentViewReference>(reference);
     QJsonObject document;
+
     if (const auto* id = view.document.playlist())
         document = {
             {"kind", "playlist"                       },
@@ -64,6 +68,7 @@ QJsonObject write_view_reference(const ViewReference& reference)
         document = {
             {"kind", "queue"}
         };
+
     return {
         {"document", document                                   },
         {"part",
@@ -76,6 +81,7 @@ QJsonObject write_view_reference(const ViewReference& reference)
 std::optional<ViewReference> read_view_reference(const QJsonObject& object)
 {
     std::optional<ViewReference> result;
+
     if (object.size() == 1 && object.value("component").isString())
         result = component_view(object.value("component").toString().toStdString());
     else if (object.size() == 2 && object.value("document").isObject() &&
@@ -84,6 +90,7 @@ std::optional<ViewReference> read_view_reference(const QJsonObject& object)
         const auto kind = document.value("kind").toString();
         const auto id = document.value("id").toString();
         std::optional<DocumentId> identity;
+
         if (kind == "queue" && document.size() == 1)
             identity = DocumentId::queue();
         else if (document.size() == 2 && !id.isEmpty() && id.toUtf8().size() <= 128) {
@@ -92,13 +99,16 @@ std::optional<ViewReference> read_view_reference(const QJsonObject& object)
             else if (kind == "workspace")
                 identity = DocumentId::workspace(library::WorkspaceId{id.toStdString()});
         }
+
         const auto part = object.value("part").toString();
+
         if (identity && (part == "whole" || part == "search" || part == "tags"))
             result = DocumentViewReference{*identity,
                 part == "whole"        ? DocumentViewPart::whole
                     : part == "search" ? DocumentViewPart::search
                                        : DocumentViewPart::tags};
     }
+
     return result && valid_view_reference(*result) ? result : std::nullopt;
 }
 
@@ -141,13 +151,17 @@ std::optional<ViewReference> legacy_view_reference(const QString& id)
 {
     if (id == "nowPlayingDocument")
         return DocumentViewReference{DocumentId::queue()};
+
     if (id == "nowPlayingSearch")
         return DocumentViewReference{DocumentId::queue(), DocumentViewPart::search};
+
     if (id == "nowPlayingFilters")
         return DocumentViewReference{DocumentId::queue(), DocumentViewPart::tags};
+
     for (const auto& descriptor : legacy_view_descriptors())
         if (id == descriptor.key)
             return component_view(descriptor.key);
+
     return {};
 }
 

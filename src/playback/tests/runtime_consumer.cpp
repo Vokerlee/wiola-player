@@ -55,6 +55,7 @@ private:
     {
         const auto frames{std::min(requested, num_frames_left())};
         std::fill_n(samples.begin(), stream.samples_per(frames), 0.25F);
+
         return media::DecodeOutcome{.frames = frames, .end_of_stream = frames == num_frames_left()};
     }
 
@@ -78,9 +79,11 @@ public:
     {
         if (context.stop_reason() != media::StopReason::none)
             return media::unexpected{context.error()};
+
         media::Metadata facts;
         facts.track.title = "controlled title";
         facts.track.duration = duration;
+
         return facts;
     }
 
@@ -137,10 +140,13 @@ public:
     std::size_t consume(std::span<float> samples)
     {
         const std::lock_guard callback{callback_};
+
         if (!running())
             return 0;
+
         const auto count{source_.render(samples)};
         frames_.fetch_add(source_.spec().frames_per(count).count());
+
         return count;
     }
 
@@ -148,8 +154,10 @@ private:
     bool start() noexcept override
     {
         const std::lock_guard callback{callback_};
+
         frames_.store(0);
         running_.store(true);
+
         return true;
     }
 
@@ -169,12 +177,16 @@ template<class Predicate>
 bool await(engine::Session& session, Predicate settled)
 {
     const auto deadline{std::chrono::steady_clock::now() + std::chrono::seconds{5}};
+
     do {
         session.catch_up();
+
         if (settled())
             return true;
+
         std::this_thread::yield();
     } while (std::chrono::steady_clock::now() < deadline);
+
     return settled();
 }
 
@@ -189,63 +201,86 @@ int fail(std::string_view message)
 int main()
 {
     using namespace wiola;
+
     Processing processing;
     Device* device{};
     engine::Session session{processing,
         [&](audio::Source& source) {
             auto output{std::make_unique<Device>(source)};
             device = output.get();
+
             return output;
         },
         std::make_shared<Provider>()};
     const media::ResourceReference supplied{"memory", "opaque?track=17", "Controlled resource"};
     session.open({supplied});
+
     const auto request{session.open_request_id()};
+
     if (!await(session,
             [&] { return session.loaded() && session.playlist().metadata_revision() != 0; }))
         return fail("decoder/metadata did not settle through the supplied provider");
+
     const auto snapshot{session.snapshot()};
     const auto* current{session.playlist().current()};
+
     if (!current || snapshot.track != supplied || snapshot.track.label() != supplied.label() ||
         current->resource() != supplied || snapshot.open_result != engine::OpenResult::opened ||
         snapshot.total_time != duration || snapshot.queue_position != 0 ||
         processing.configured != stream || current->metadata().title != "controlled title")
         return fail("installed decoder facts or processing configuration were lost");
+
     const auto outcomes{session.take_outcomes()};
+
     if (std::ranges::none_of(outcomes.values, [&](const auto& value) {
             return value.operation == engine::OperationKind::open && value.id == request &&
                 !value.error;
         }))
         return fail("accepted open did not retain its successful completion");
+
     if (!session.play() || !await(session, [&] { return device && device->running(); }))
         return fail("supplied output did not start");
+
     std::array<float, 16> samples{};
+
     if (!await(session, [&] { return device->consume(samples) != 0; }) ||
         !std::ranges::all_of(samples, [](float value) { return value == 0.5F; }))
         return fail("rendering did not pass through the supplied processing stage");
+
     if (!session.pause() || !await(session, [&] { return !device->running(); }) ||
         session.state() != engine::PlaybackState::paused)
         return fail("pause did not quiesce output");
+
     if (!session.resume() || !await(session, [&] { return device->running(); }))
         return fail("resume did not restart output");
+
     const units::Time position{std::chrono::milliseconds{250}};
     session.seek(position);
+
     if (!await(session, [&] { return session.time_played() >= position && device->running(); }))
         return fail("seek did not apply before output restart");
+
     session.stop();
+
     if (!await(session, [&] { return !device->running(); }) ||
         session.state() != engine::PlaybackState::stopped)
         return fail("stop did not settle transport/output");
+
     session.clear();
+
     if (!session.playlist().empty())
         return fail("clear retained queue occurrences");
+
     const auto resource{session.track()};
     const auto held{session.release_media(resource)};
+
     if (!held || session.loaded() || session.restore_media(*held) != engine::OpenResult::loading ||
         !await(session, [&] { return session.loaded(); }))
         return fail("retained media could not be handed off independently of its queue");
+
     if (!session.playlist().empty() || session.track() != resource || session.playing() ||
         session.time_played() != units::Time{})
         return fail("restoration changed queue selection, stopped intent or resource identity");
+
     return 0;
 }

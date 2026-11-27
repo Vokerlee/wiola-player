@@ -19,9 +19,11 @@
  */
 
 #include "queued_delivery.hpp"
+
 #include <QCoreApplication>
 #include <QEvent>
 #include <QThread>
+
 #include <deque>
 #include <mutex>
 
@@ -50,6 +52,7 @@ QueuedDelivery::QueuedDelivery(QObject& context)
     : state_{std::make_shared<State>()}
 {
     Q_ASSERT(QThread::currentThread() == context.thread());
+
     state_->receiver = this;
     static_cast<void>(delivery_event_type());
     connect(&context, &QObject::destroyed, this, [this] { discard(); });
@@ -64,15 +67,21 @@ bool QueuedDelivery::Endpoint::post(std::function<void()> delivery) const
 {
     if (!delivery)
         return false;
+
     const auto state = state_.lock();
+
     if (!state)
         return false;
+
     std::lock_guard lock{state->mutex};
+
     if (!state->accepting || !state->receiver)
         return false;
+
     state->pending->push_back(std::move(delivery));
     // The receiver destructor takes this mutex before retiring the QObject address.
     QCoreApplication::postEvent(state->receiver, new QEvent{delivery_event_type()});
+
     return true;
 }
 
@@ -88,6 +97,7 @@ void QueuedDelivery::discard()
     std::unique_ptr<State::Pending> discarded;
     {
         std::lock_guard lock{state->mutex};
+
         state->accepting = false;
         state->receiver = nullptr;
         discarded = std::move(state->pending);
@@ -98,13 +108,17 @@ void QueuedDelivery::discard()
 void QueuedDelivery::drain()
 {
     Q_ASSERT(QThread::currentThread() == thread());
+
     const auto state = state_;
+
     for (;;) {
         std::function<void()> callback;
         {
             std::lock_guard lock{state->mutex};
+
             if (!state->pending || state->pending->empty())
                 return;
+
             callback = std::move(state->pending->front());
             state->pending->pop_front();
         }
@@ -121,16 +135,20 @@ void QueuedDelivery::customEvent(QEvent* event)
         // Acquire the producer publication before inspecting even the wakeup event. System Qt
         // may be uninstrumented; all first-party cross-thread payload access uses this boundary.
         std::lock_guard lock{state->mutex};
+
         foreign = event->type() != delivery_event_type();
+
         if (!foreign && state->pending && !state->pending->empty()) {
             callback = std::move(state->pending->front());
             state->pending->pop_front();
         }
     }
+
     if (foreign) {
         QObject::customEvent(event);
         return;
     }
+
     if (callback)
         callback();
 }

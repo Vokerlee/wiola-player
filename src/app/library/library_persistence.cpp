@@ -19,6 +19,9 @@
  */
 
 #include "library_persistence.hpp"
+
+#include <wiola/library/records.hpp>
+
 #include <algorithm>
 #include <condition_variable>
 #include <cstdint>
@@ -32,7 +35,6 @@
 #include <thread>
 #include <utility>
 #include <vector>
-#include <wiola/library/records.hpp>
 
 namespace wiola::app {
 namespace {
@@ -117,8 +119,10 @@ auto values(const Map& map)
 {
     std::vector<typename Map::mapped_type> result;
     result.reserve(map.size());
+
     for (const auto& [id, value] : map)
         result.push_back(value);
+
     return result;
 }
 
@@ -130,57 +134,73 @@ std::optional<std::size_t> retained_bytes(const library::RevisionDelta& delta,
     size.storage(delta.tracks);
     size.storage(delta.playlists);
     size.storage(delta.workspaces);
+
     for (const auto& track : delta.tracks) {
         size.text(track.id.value);
         size.text(track.fingerprint);
         size.storage(track.locations);
+
         for (const auto& location : track.locations)
             size.text(location.native());
+
         size.storage(track.tags);
+
         for (const auto& tag : track.tags) {
             size.text(tag.id.value);
             size.text(tag.key);
             size.text(tag.value);
         }
+
         for (const auto* value :
             {&track.embedded.title, &track.embedded.artist, &track.embedded.album,
                 &track.embedded.genre, &track.embedded.comment, &track.embedded.composer})
             size.text(*value);
+
         for (const auto* value :
             {&track.overrides.title, &track.overrides.artist, &track.overrides.album,
                 &track.overrides.genre, &track.overrides.comment, &track.overrides.composer})
             if (*value)
                 size.text(**value);
     }
+
     for (const auto& playlist : delta.playlists) {
         size.text(playlist.id.value);
         size.text(playlist.name);
         size.storage(playlist.entries);
+
         for (const auto& entry : playlist.entries) {
             size.text(entry.id.value);
             size.text(entry.media.value);
         }
     }
+
     for (const auto& workspace : delta.workspaces) {
         size.text(workspace.id.value);
         size.text(workspace.root.native());
     }
+
     size.storage(delta.changes.media);
+
     for (const auto& change : delta.changes.media)
         size.text(change.media.value);
+
     for (const auto* ids : {&delta.changes.playlists, &delta.changes.removed_playlists}) {
         size.storage(*ids);
         for (const auto& id : *ids)
             size.text(id.value);
     }
+
     for (const auto* ids : {&delta.changes.workspaces, &delta.changes.removed_workspaces}) {
         size.storage(*ids);
         for (const auto& id : *ids)
             size.text(id.value);
     }
+
     size.storage(delta.changes.removed_media);
+
     for (const auto& id : delta.changes.removed_media)
         size.text(id.value);
+
     return size.value();
 }
 
@@ -225,6 +245,7 @@ struct LibraryPersistence::State : std::enable_shared_from_this<State> {
             stopping_ = true;
         }
         changed_.notify_all();
+
         if (worker_.joinable())
             worker_.join();
     }
@@ -273,8 +294,10 @@ LibraryPersistence::~LibraryPersistence()
     state->check_owner();
     state->callbacks_enabled_ = false;
     state->stop_worker();
+
     for (const auto& [revision, receipt] : state->receipts_)
         receipt->cancel();
+
     state->receipts_.clear();
     state->awaiters_.clear();
 }
@@ -284,35 +307,44 @@ LibraryPersistence::accept(std::shared_ptr<const library::RevisionDelta> delta)
 {
     const auto state = state_;
     state->check_owner();
+
     if (!delta || !state->callbacks_enabled_)
         return false;
+
     const bool critical = delta->priority == library::CommitPriority::file_result;
     const auto byte_limit = state->limits_.pending_payload_bytes +
         (critical ? state->limits_.file_result_extra_bytes : 0);
     const auto bytes = retained_bytes(*delta, byte_limit);
+
     if (!bytes)
         return false;
+
     const auto revision = delta->changes.revision;
     auto receipt = std::make_shared<library::CommitReceipt>(revision);
     {
         std::lock_guard lock{state->mutex_};
+
         if (state->stopping_ || revision != state->latest_ + 1 ||
             state->pending_.size() >= state->limits_.pending_revisions - (critical ? 0 : 1) ||
             state->latest_ - state->acknowledged_ >=
                 state->limits_.outstanding_receipts - (critical ? 0 : 1) ||
             state->pending_bytes_ > byte_limit - *bytes)
             return false;
+
         state->pending_.push_back({std::move(delta), *bytes});
+
         try {
             state->receipts_.emplace(revision, receipt);
         } catch (...) {
             state->pending_.pop_back();
             throw;
         }
+
         state->pending_bytes_ += *bytes;
         state->latest_ = revision;
     }
     state->changed_.notify_all();
+
     return library::CommitResult::accepted(revision, std::move(receipt));
 }
 
@@ -320,6 +352,7 @@ std::uint64_t LibraryPersistence::pending_revision() const
 {
     const auto state = state_;
     std::lock_guard lock{state->mutex_};
+
     return state->latest_;
 }
 
@@ -327,6 +360,7 @@ std::uint64_t LibraryPersistence::durable_revision() const
 {
     const auto state = state_;
     std::lock_guard lock{state->mutex_};
+
     return state->durable_;
 }
 
@@ -334,6 +368,7 @@ void LibraryPersistence::retry()
 {
     const auto state = state_;
     std::lock_guard lock{state->mutex_};
+
     if (!state->stopping_ && (!state->has_durable_ || state->durable_ < state->latest_)) {
         state->retry_ = true;
         state->changed_.notify_all();
@@ -344,18 +379,23 @@ void LibraryPersistence::when_durable(std::uint64_t revision, std::function<void
 {
     const auto state = state_;
     state->check_owner();
+
     if (!observer || !state->callbacks_enabled_)
         return;
+
     bool saved = false, unavailable = false;
     {
         std::lock_guard lock{state->mutex_};
+
         saved = state->has_durable_ && state->durable_ >= revision;
         unavailable = state->stopping_ || revision > state->latest_;
     }
+
     if (saved || unavailable) {
         observer(saved);
         return;
     }
+
     state->awaiters_.push_back({revision, std::move(observer)});
     retry();
 }
@@ -367,6 +407,7 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
     std::map<library::WorkspaceId, library::WorkspaceRecord> workspaces;
     bool initialized = false;
     const auto weak = weak_from_this();
+
     for (;;) {
         std::uint64_t revision;
         std::size_t pending_count;
@@ -374,14 +415,18 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
             std::unique_lock lock{mutex_};
             changed_.wait(lock,
                 [this] { return stopping_ || retry_ || latest_ > last_attempt_.revision; });
+
             if (stopping_ && latest_ <= last_attempt_.revision && !retry_)
                 return;
+
             retry_ = false;
             active_ = true;
             revision = latest_;
             pending_count = pending_.size();
         }
+
         Result result;
+
         try {
             if (!initialized) {
                 upsert(tracks, initial.tracks);
@@ -390,6 +435,7 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
                 initial = {};
                 initialized = true;
             }
+
             // Only this worker removes entries. Later admissions append beyond this prefix.
             for (std::size_t remaining = pending_count; remaining != 0; --remaining) {
                 std::shared_ptr<const library::RevisionDelta> delta;
@@ -407,23 +453,29 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
                     // Retain a failed immutable delta and its capacity until every record
                     // has been applied. A retry replays it before any newer revision.
                     std::lock_guard lock{mutex_};
+
                     pending_bytes_ -= pending_.front().bytes;
                     pending_.pop_front();
                 }
             }
+
             result = store_.write({values(tracks), values(playlists), values(workspaces)});
         } catch (...) {
             // Preparation and driver failures retain enough state to retry accepted edits.
             result.error = SnapshotWriteError::io;
         }
+
         {
             std::lock_guard lock{mutex_};
+
             active_ = false;
             last_attempt_ = {last_attempt_.number + 1, revision, result};
+
             if (result.succeeded()) {
                 durable_ = revision;
                 has_durable_ = true;
             }
+
             try {
                 // Explicit flush/stop also deliver this attempt if scheduling rejects or throws.
                 static_cast<void>(delivery_.post([weak, attempt = last_attempt_] {
@@ -441,17 +493,20 @@ void LibraryPersistence::State::run(library::LibrarySnapshot initial)
 void LibraryPersistence::State::deliver(Attempt attempt)
 {
     std::exception_ptr failure;
+
     try {
         delivery_.drain();
     } catch (...) {
         failure = std::current_exception();
     }
+
     try {
         completed(attempt);
     } catch (...) {
         if (!failure)
             failure = std::current_exception();
     }
+
     if (failure)
         std::rethrow_exception(failure);
 }
@@ -459,8 +514,10 @@ void LibraryPersistence::State::deliver(Attempt attempt)
 void LibraryPersistence::State::completed(Attempt attempt)
 {
     check_owner();
+
     if (!callbacks_enabled_ || attempt.number <= delivered_attempt_)
         return;
+
     const auto [number, revision, result] = attempt;
     std::optional<std::uint64_t> durable_revision;
     {
@@ -468,6 +525,7 @@ void LibraryPersistence::State::completed(Attempt attempt)
         if (has_durable_)
             durable_revision = std::min(revision, durable_);
     }
+
     const auto saved = [durable_revision](std::uint64_t accepted_revision) {
         return durable_revision && accepted_revision <= *durable_revision;
     };
@@ -480,11 +538,15 @@ void LibraryPersistence::State::completed(Attempt attempt)
     std::vector<ReceiptNotification> receipts;
     const auto last = receipts_.upper_bound(revision);
     receipts.reserve(static_cast<std::size_t>(std::distance(receipts_.begin(), last)));
+
     for (auto it = receipts_.begin(); it != last; ++it)
         receipts.push_back({it->second, saved(it->first)});
+
     std::vector<Awaiter> ready;
     ready.reserve(awaiters_.size());
+
     auto retained = awaiters_.begin();
+
     for (auto it = awaiters_.begin(); it != awaiters_.end(); ++it) {
         if (it->revision <= revision) {
             ready.push_back(std::move(*it));
@@ -494,9 +556,12 @@ void LibraryPersistence::State::completed(Attempt attempt)
             ++retained;
         }
     }
+
     awaiters_.erase(retained, awaiters_.end());
+
     if (durable_revision)
         acknowledged_ = std::max(acknowledged_, *durable_revision);
+
     // Preparation above may allocate. Mark delivery only after it succeeds, and before
     // invoking observers that may flush again or dispose the workflow.
     delivered_attempt_ = number;
@@ -510,13 +575,16 @@ void LibraryPersistence::State::completed(Attempt attempt)
                 failure = std::current_exception();
         }
     };
+
     for (const auto& notification : receipts) {
         invoke([&] { notification.receipt->notify(notification.durable); });
         if (!callbacks_enabled_)
             break;
     }
+
     if (callbacks_enabled_)
         receipts_.erase(receipts_.begin(), receipts_.upper_bound(acknowledged_));
+
     if (callbacks_enabled_) {
         for (const auto& awaiter : ready) {
             invoke([&] { awaiter.observer(saved(awaiter.revision)); });
@@ -524,8 +592,10 @@ void LibraryPersistence::State::completed(Attempt attempt)
                 break;
         }
     }
+
     if (callbacks_enabled_ && observer_)
         invoke([&] { observer_(revision, result); });
+
     if (failure)
         std::rethrow_exception(failure);
 }
@@ -534,22 +604,28 @@ LibraryPersistence::Result LibraryPersistence::flush()
 {
     const auto state = state_;
     state->check_owner();
+
     for (;;) {
         State::Attempt attempt;
         std::uint64_t target;
         {
             std::unique_lock lock{state->mutex_};
+
             target = state->latest_;
+
             // Report an unseen completed attempt before starting another. A failed
             // preparation retains pending entries, but needs a new retry after delivery.
             const bool awaiting_delivery = !state->active_ && !state->retry_ &&
                 state->last_attempt_.number > state->delivered_attempt_ &&
                 state->last_attempt_.revision >= target;
+
             if (!state->stopping_ && !awaiting_delivery &&
                 !(state->has_durable_ && state->durable_ >= target)) {
                 const auto before = state->last_attempt_.number;
+
                 if (!state->active_)
                     state->retry_ = true;
+
                 state->changed_.notify_all();
                 state->changed_.wait(lock, [&] {
                     return (state->has_durable_ && state->durable_ >= target) ||
@@ -557,12 +633,16 @@ LibraryPersistence::Result LibraryPersistence::flush()
                             state->last_attempt_.revision >= target);
                 });
             }
+
             attempt = state->last_attempt_;
         }
         state->deliver(attempt);
+
         std::lock_guard lock{state->mutex_};
+
         if (!state->callbacks_enabled_)
             return state->last_attempt_.result; // Disposal joined the final admitted write.
+
         if (!attempt.result.succeeded() || state->latest_ == target)
             return attempt.result;
     }
@@ -573,6 +653,7 @@ void LibraryPersistence::stop()
     const auto state = state_;
     state->check_owner();
     state->stop_worker();
+
     State::Attempt attempt;
     {
         std::lock_guard lock{state->mutex_};

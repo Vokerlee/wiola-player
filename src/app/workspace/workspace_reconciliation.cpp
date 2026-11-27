@@ -34,8 +34,10 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
     const library::WorkspaceId& workspace, std::span<const WorkspaceScanEntry> entries) const
 {
     const auto* definition = repository.workspace(workspace);
+
     if (!definition)
         return {};
+
     const auto root = definition->root;
     const auto in_scope = [root, recursive = definition->recursive](const auto& path) {
         return workspace_contains(root, path) &&
@@ -46,36 +48,47 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
         [persist](const auto& candidate) { return (*persist)(candidate); }};
     WorkspaceReconciliationResult result;
     std::set<library::MediaId> seen;
+
     for (const auto& entry : entries) {
         if (!in_scope(entry.location)) {
             ++result.outside;
             continue;
         }
+
         if (!entry.media.valid()) {
             ++result.failed;
             continue;
         }
+
         seen.insert(entry.media);
+
         const auto* current = repository.track(entry.media);
+
         if ((entry.known() && !current) ||
             (current && current->content_revision != entry.expected_content_revision)) {
             ++result.failed;
             continue;
         }
+
         library::TrackRecord track;
+
         if (current)
             track = *current;
         else
             track.id = entry.media;
+
         const bool was_missing = track.missing;
         const bool relocated = entry.relocated();
+
         if (entry.fingerprint) {
             const auto change =
                 library::reconcile_location(track, entry.location, *entry.fingerprint);
+
             if (!change) {
                 ++result.failed;
                 continue;
             }
+
             if (relocated)
                 ++result.relocated;
             else if (was_missing)
@@ -87,18 +100,23 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
         } else {
             if (std::ranges::find(track.locations, entry.location) == track.locations.end())
                 track.locations.push_back(entry.location);
+
             track.missing = entry.unreadable;
+
             if (entry.unreadable)
                 ++result.failed;
         }
+
         if (entry.relocated()) {
             const auto preferred = std::ranges::find(track.locations, entry.location);
             if (preferred != track.locations.end())
                 std::rotate(track.locations.begin(), preferred, preferred + 1);
         }
+
         if (!repository.put_track(std::move(track)))
             ++result.failed;
     }
+
     for (auto track : repository.tracks()) {
         if (seen.contains(track.id) || track.missing)
             continue;
@@ -110,7 +128,9 @@ WorkspaceReconciliation::reconcile(library::InMemoryRepository& repository,
                 ++result.missing;
         }
     }
+
     result.succeeded = transaction.commit();
+
     return result;
 }
 

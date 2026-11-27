@@ -38,7 +38,9 @@ MediaRevisionPublisher::~MediaRevisionPublisher()
 void MediaRevisionPublisher::stop()
 {
     reader_.stop();
+
     std::lock_guard lock{state_->mutex};
+
     state_->requests.clear();
 }
 
@@ -51,6 +53,7 @@ bool MediaRevisionPublisher::enqueue(const library::MediaId& media, std::filesys
 
     {
         std::lock_guard lock{state_->mutex};
+
         request = ++state_->next_request;
         state_->requests[media] = request;
     }
@@ -79,6 +82,7 @@ void MediaRevisionPublisher::receive(const std::weak_ptr<State>& weak,
     QueuedDelivery::Endpoint delivery, std::uint64_t request, BackgroundMetadataResult result)
 {
     const auto state = weak.lock();
+
     if (!state)
         return;
 
@@ -94,6 +98,7 @@ void MediaRevisionPublisher::receive(const std::weak_ptr<State>& weak,
 
     static_cast<void>(delivery.post([weak, media, request, result = std::move(result)]() mutable {
         const auto current = weak.lock();
+
         if (!current)
             return;
 

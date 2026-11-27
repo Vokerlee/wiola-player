@@ -18,9 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/media/codecs/registry.hpp>
-
 #include <fixtures/temporary_directory.hpp>
+#include <wiola/media/codecs/registry.hpp>
 
 #include <gtest/gtest.h>
 
@@ -56,6 +55,7 @@ std::filesystem::path fake_file(const std::filesystem::path& directory)
 {
     const auto path{directory / "wiola_registry.fake"};
     std::ofstream{path, std::ios::binary}.write("FAKE payload", 12);
+
     return path;
 }
 
@@ -69,7 +69,9 @@ wiola::codec::Format fake_backend(int& attempts)
     return {"Fake", markers, extensions,
         [&attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
             ++attempts;
+
             std::unique_ptr<wiola::media::AudioDecoder> decoder{std::make_unique<EmptyDecoder>()};
+
             return decoder;
         }};
 }
@@ -109,6 +111,7 @@ TEST(MediaBackendRegistry, StopsImmediatelyWhenAReadableResourceFails)
                                 .detail = "resource disappeared"}
         };
     };
+
     const wiola::codec::MediaBackendRegistry registry{
         {first, fake_backend(second_attempts)}
     };
@@ -140,6 +143,7 @@ TEST(MediaBackendRegistry, SeparatesPlaybackCapabilityFromDiscoveryMetadata)
     auto backend{fake_backend(attempts)};
     backend.capabilities.playback = false;
     backend.capabilities.metadata = true;
+
     wiola::codec::MediaBackendRegistry registry{{backend}};
 
     auto decoder{registry.open(fake_file(directory.path()))};
@@ -163,6 +167,7 @@ TEST(MediaBackendRegistry, BoundsFallbackAttempts)
                                 .detail = "not fake"}
         };
     };
+
     wiola::codec::MediaBackendRegistry registry{
         {first, fake_backend(second_attempts)},
         1
@@ -187,11 +192,14 @@ TEST(MediaBackendRegistry, DescriptorCopiesOwnTheirIdentityAndProbeData)
             wiola::codec::Marker{0, signature}
         };
         const std::array<std::string_view, 1> extensions{extension};
+
         return wiola::codec::Format{name, markers, extensions,
             [&attempts](const std::filesystem::path&) -> wiola::media::DecoderOpenResult {
                 ++attempts;
+
                 std::unique_ptr<wiola::media::AudioDecoder> decoder{
                     std::make_unique<EmptyDecoder>()};
+
                 return decoder;
             }};
     }()};
@@ -214,6 +222,7 @@ TEST(MediaBackendRegistry, RecognizedUnsupportedEncodingIsNotReportedAsDamage)
                                 .detail = "recognized container has an unsupported codec"}
         };
     };
+
     const wiola::codec::MediaBackendRegistry registry{{backend}};
 
     auto decoder{registry.open(fake_file(directory.path()))};
@@ -265,6 +274,7 @@ TEST(MediaBackendRegistry, CapabilityViewDeduplicatesAndExcludesMetadataOnlyBack
     int attempts{0};
     auto metadata_only{fake_backend(attempts)};
     metadata_only.capabilities.playback = false;
+
     const wiola::codec::MediaBackendRegistry registry{
         {fake_backend(attempts), fake_backend(attempts), metadata_only}
     };
@@ -277,11 +287,14 @@ TEST(MediaBackendRegistry, CapabilityViewDeduplicatesAndExcludesMetadataOnlyBack
 TEST(MediaBackendRegistry, EmptyCompositionAdvertisesAndOpensNothing)
 {
     const wiola::codec::MediaBackendRegistry registry{{}};
+
     EXPECT_TRUE(registry.backends().empty());
     EXPECT_TRUE(registry.playback_extensions().empty());
     EXPECT_FALSE(registry.metadata_write_capabilities("track.flac").any());
+
     wiola::testing::TemporaryDirectory directory;
     const auto opened = registry.open(fake_file(directory.path()));
+
     ASSERT_FALSE(opened);
     EXPECT_EQ(opened.error().category, wiola::media::ErrorCategory::unsupported);
 }

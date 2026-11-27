@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <wiola/presentation/tracks/track_row.hpp>
 
 namespace wiola::app {

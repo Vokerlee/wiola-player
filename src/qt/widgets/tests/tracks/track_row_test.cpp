@@ -18,18 +18,17 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QKeyEvent>
 #include <fixtures/track_view.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
-#include <QAction>
-#include <QApplication>
-#include <gtest/gtest.h>
 #include <qt/widgets/tracks/track_table_model.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <queue/playlist.hpp>
+#include <wiola/media/local/resource.hpp>
 #include <wiola/presentation/documents/queue_rows.hpp>
+
+#include <QAction>
+#include <QApplication>
+#include <QKeyEvent>
+#include <gtest/gtest.h>
 
 #include <algorithm>
 
@@ -68,6 +67,7 @@ TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
 {
     ControlledQueue queue;
     gui::QueueRows projection;
+
     EXPECT_TRUE(projection.reconcile(queue, nullptr).structure);
     EXPECT_TRUE(projection.rows().empty());
 
@@ -79,13 +79,17 @@ TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
     };
     queue.selected = 1;
     ++queue.structure;
+
     const auto initial{projection.reconcile(queue, nullptr)};
+
     EXPECT_TRUE(initial.structure);
     EXPECT_TRUE(initial.current);
     ASSERT_EQ(projection.rows().size(), 2U);
     EXPECT_NE(projection.rows()[0].id, projection.rows()[1].id);
     EXPECT_EQ(projection.current(), engine::QueueEntryId{12});
+
     const auto retained{projection.rows()};
+
     EXPECT_FALSE(projection.reconcile(queue, nullptr).changed());
 
     // Replace backing storage without changing occurrence order. A retained span would dangle.
@@ -99,7 +103,9 @@ TEST(TrackRows, LiveReadPortReacquiresEntriesAndRetainsOwnedProjectionFacts)
     }
     queue.selected = 0;
     ++queue.metadata;
+
     const auto changed{projection.reconcile(queue, nullptr)};
+
     EXPECT_FALSE(changed.structure);
     EXPECT_TRUE(changed.current);
     ASSERT_EQ(changed.rows.size(), 1U);
@@ -138,6 +144,7 @@ library::TrackRecord record(std::string id, std::string title, std::string mood)
     result.embedded.title = std::move(title);
     result.embedded.artist = "Artist";
     result.tags.push_back({library::TagId{"tag-" + result.id.value}, "Mood", std::move(mood)});
+
     return result;
 }
 
@@ -147,8 +154,10 @@ TEST(TrackRows, NonPlayingRowsKeepTheirLibraryIdentityAndResolvedValues)
     source.overrides.title = "Override";
     source.metadata_revision = 12;
     source.content_revision = 4;
+
     const library::PlaylistEntryId entry{"occurrence"};
     const auto row = gui::present_record(entry, source);
+
     EXPECT_EQ(row.media, source.id);
     EXPECT_EQ(std::get<library::PlaylistEntryId>(row.id), entry);
     EXPECT_EQ(row.metadata.title, "Override");
@@ -164,6 +173,7 @@ TEST(TrackRows, SortsAndFiltersSavedAndWorkspaceRowsWithoutAPlaybackQueueOrRepos
     auto saved = record("saved-media", "Zulu", "Calm");
     auto workspace = record("workspace-media", "Alpha", "Brisk");
     workspace.missing = true;
+
     const auto first = gui::present_record(library::PlaylistEntryId{"entry"}, saved);
     const auto second =
         gui::present_record(gui::WorkspaceTrackId{library::WorkspaceId{"workspace"}, workspace.id},
@@ -180,8 +190,10 @@ TEST(TrackRows, SortsAndFiltersSavedAndWorkspaceRowsWithoutAPlaybackQueueOrRepos
     EXPECT_EQ(model.row_id(model.index(0, 0)), second.id);
     EXPECT_EQ(model.row_id(model.index(1, 0)), first.id);
     EXPECT_TRUE(model.data(model.index(0, 0), Qt::ToolTipRole).toString().contains("unavailable"));
+
     model.show_tag_keys({"Mood"});
     EXPECT_EQ(model.data(model.index(1, 5), Qt::DisplayRole).toString(), "Calm");
+
     library::SearchQuery query;
     query.artist = "Artist";
     query.tags = "Calm";
@@ -199,12 +211,15 @@ TEST(TrackRows, SelectionAndActivationRetainDistinctSavedOccurrenceIdentities)
     view.show_rows({first, duplicate});
     view.selectRow(1);
     view.setCurrentIndex(view.model()->index(1, 0));
+
     std::optional<gui::TrackRowId> activated;
     QObject::connect(&view, &gui::TrackTableView::row_chosen,
         [&](gui::TrackRowId id) { activated = std::move(id); });
+
     QKeyEvent enter{QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier};
     QApplication::sendEvent(&view, &enter);
     EXPECT_EQ(activated, duplicate.id);
+
     first.metadata.title = "Updated";
     view.show_rows({duplicate, first});
     EXPECT_EQ(view.chosen_rows(), std::vector{duplicate.id});
@@ -215,7 +230,9 @@ TEST(TrackRows, QueueAdapterKeepsDuplicateOccurrencesAndMediaIdentitySeparate)
 {
     engine::Playlist queue;
     queue.set({wiola::media::local_resource("same.wav"), wiola::media::local_resource("same.wav")});
+
     const auto rows = gui::queue_rows(queue.tracks());
+
     ASSERT_EQ(rows.size(), 2);
     EXPECT_NE(rows[0].id, rows[1].id);
     EXPECT_EQ(rows[0].media, rows[1].media);
@@ -229,6 +246,8 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "minimal");
     ::testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
+
     return RUN_ALL_TESTS();
 }

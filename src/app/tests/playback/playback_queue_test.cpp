@@ -19,12 +19,10 @@
  */
 
 #include <app/playback/playback_queue.hpp>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
 #include <fakes/output.hpp>
-#include <wiola/media/local/resource.hpp>
-
 #include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <gtest/gtest.h>
 
@@ -42,6 +40,7 @@ TEST(PlaybackQueue, ReplacesTheQueueOnlyThroughAnExplicitSavedPlaylistLoad)
     ASSERT_TRUE(repository.put_track(media));
 
     const auto playlist = repository.create_playlist("Favorites");
+
     ASSERT_TRUE(repository.append_track(playlist, media.id));
     ASSERT_TRUE(repository.append_track(playlist, media.id));
 
@@ -72,6 +71,7 @@ TEST(PlaybackQueue, DoesNotReplaceTheQueueForMissingOrUnavailablePlaylists)
     ASSERT_TRUE(repository.put_track(unavailable));
 
     const auto playlist = repository.create_playlist("Unavailable");
+
     ASSERT_TRUE(repository.append_track(playlist, unavailable.id));
 
     wiola::app::PlaybackQueue queue;
@@ -121,16 +121,22 @@ TEST(PlaybackQueue, SelectsTheRequestedDuplicateOccurrenceAndNeverFallsBackForUn
     track.id = {"same"};
     track.locations = {"duplicate.wav"};
     ASSERT_TRUE(repository.put_track(track));
+
     const auto playlist = repository.create_playlist("Duplicate");
     const auto first = repository.append_track(playlist, track.id),
                second = repository.append_track(playlist, track.id);
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
+
     const auto result = wiola::app::PlaybackQueue{}.replace_with_saved_playlist(playback,
         repository, playlist, *second);
+
     ASSERT_TRUE(result.requested);
     EXPECT_EQ(playback.playlist().position(), 1);
+
     const auto before = playback.playlist().tracks()[1].id();
+
     EXPECT_FALSE(wiola::app::PlaybackQueue{}
             .replace_with_saved_playlist(playback, repository, playlist,
                 wiola::library::PlaylistEntryId{"unknown"})

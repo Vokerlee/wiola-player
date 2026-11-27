@@ -18,25 +18,30 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include <wiola/app/metadata/metadata_edit_session.hpp>
+
+#include <gtest/gtest.h>
 
 namespace {
 
 TEST(MetadataEditSession, CapturesOwnedUniqueTargetsInStableIdentityOrder)
 {
     using namespace wiola;
+
     library::TrackRecord first, second, invalid;
     first.id = {"first"};
     first.embedded.title = "First";
     second.id = {"second"};
     second.embedded.title = "Second";
     second.overrides.artist = "Override";
+
     const auto session =
         app::MetadataEditSession::capture({&second, &first, &first, nullptr, &invalid});
+
     ASSERT_EQ(session.targets().size(), 2U);
     EXPECT_EQ(session.media(), (std::vector<library::MediaId>{first.id, second.id}));
     EXPECT_TRUE(session.overrides_present());
+
     first.embedded.title = "Changed outside the captured session";
     EXPECT_EQ(session.targets().front().original.title, "First");
     EXPECT_TRUE(session.valid());
@@ -46,6 +51,7 @@ TEST(MetadataEditSession, CapturesOwnedUniqueTargetsInStableIdentityOrder)
 TEST(MetadataEditSession, CommonAndMixedValuesFollowOnlyTheCapturedRecords)
 {
     using namespace wiola;
+
     library::TrackRecord first, second;
     first.id = {"first"};
     first.embedded.title = "First";
@@ -55,7 +61,9 @@ TEST(MetadataEditSession, CommonAndMixedValuesFollowOnlyTheCapturedRecords)
     second.id = {"second"};
     second.embedded.title = "Second";
     second.embedded.year = 2000;
+
     const auto session = app::MetadataEditSession::capture({&first, &second});
+
     EXPECT_EQ(session.common().artist, first.embedded.artist);
     EXPECT_FALSE(session.mixed(app::StandardMetadataField::artist));
     EXPECT_TRUE(session.mixed(app::StandardMetadataField::title));
@@ -69,11 +77,13 @@ TEST(MetadataEditSession, CommonAndMixedValuesFollowOnlyTheCapturedRecords)
 TEST(MetadataEditSession, DraftChangesDoNotReplaceCapturedTargetsOrExpectations)
 {
     using namespace wiola;
+
     library::TrackRecord record;
     record.id = {"media"};
     record.metadata_revision = 4;
     record.content_revision = 2;
     record.fingerprint = "captured";
+
     auto session = app::MetadataEditSession::capture({&record});
     const auto original = session;
     library::StandardMetadataPatch patch;
@@ -81,9 +91,12 @@ TEST(MetadataEditSession, DraftChangesDoNotReplaceCapturedTargetsOrExpectations)
     session.set_draft(patch);
     EXPECT_TRUE(session.same_targets(original));
     EXPECT_EQ(session.draft().title, patch.title);
+
     ++record.metadata_revision;
     EXPECT_FALSE(session.same_targets(app::MetadataEditSession::capture({&record})));
+
     const auto expected = session.expectations().at(record.id);
+
     EXPECT_EQ(expected.metadata_revision, original.targets().front().expected.metadata_revision);
     EXPECT_EQ(expected.fingerprint, "captured");
 }
@@ -91,6 +104,7 @@ TEST(MetadataEditSession, DraftChangesDoNotReplaceCapturedTargetsOrExpectations)
 TEST(MetadataEditSession, EmptyCaptureHasNoTargetsFactsOrOverrides)
 {
     const auto session = wiola::app::MetadataEditSession::capture({nullptr});
+
     EXPECT_FALSE(session.valid());
     EXPECT_TRUE(session.media().empty());
     EXPECT_TRUE(session.expectations().empty());

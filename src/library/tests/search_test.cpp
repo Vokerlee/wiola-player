@@ -19,10 +19,11 @@
  */
 
 #include <allocation_failure.hpp>
-#include <new>
 #include <wiola/library/search.hpp>
 
 #include <gtest/gtest.h>
+
+#include <new>
 
 namespace {
 
@@ -119,11 +120,14 @@ TEST(SearchFields, TitleFallbackAndExplicitEmptyLayersKeepTheirSearchMeaning)
     track.locations = {"missing/file-title.flac"};
     track.embedded.artist = "Embedded Artist";
     track.embedded.album = "Embedded Album";
+
     auto fields = wiola::library::search_fields_of(track);
+
     EXPECT_EQ(fields.title, "file-title");
     EXPECT_EQ(fields.artist, "embedded artist");
     EXPECT_EQ(fields.album, "embedded album");
     EXPECT_TRUE(wiola::library::matches_search({.title = "file-title"}, track));
+
     track.overrides.title = "";
     track.overrides.artist = "";
     track.overrides.album = "";
@@ -141,6 +145,7 @@ TEST(SearchFields, UnsearchedPayloadDoesNotAllocateSearchState)
     track.embedded.comment.assign(4096, 'c');
     track.embedded.composer.assign(4096, 'a');
     track.embedded.genre.assign(4096, 'g');
+
     wiola::library::SearchFields fields;
     bool failed = false;
     {

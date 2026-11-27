@@ -19,6 +19,7 @@
  */
 
 #include "tag_reader.hpp"
+
 #include <wiola/media/artwork_reference.hpp>
 
 #include <algorithm>
@@ -48,6 +49,7 @@ TagReader::~TagReader()
 
     // Stop new claims before capturing the active context under the state mutex.
     thread_.request_stop();
+
     std::stop_source active{std::nostopstate};
     {
         const std::lock_guard asked{mutex_};
@@ -68,18 +70,21 @@ std::size_t TagReader::submit(std::span<Request> requests)
         const std::size_t available{max_pending_ - std::min(asked_.size(), max_pending_)};
         accepted = std::min(requests.size(), available);
     }
+
     if (accepted == 0)
         return 0;
 
     // Lifecycle calls have one owner; the worker can only free capacity before publication.
     if (!thread_.joinable())
         thread_ = std::jthread{[this](const std::stop_token& stop) { work(stop); }};
+
     {
         const std::lock_guard asked{mutex_};
         for (Request& request : requests.first(accepted))
             asked_.push_back(std::move(request));
     }
     waiting_.notify_one();
+
     return accepted;
 }
 
@@ -88,14 +93,18 @@ void TagReader::cancel_before(std::uint64_t generation)
     std::stop_source obsolete{std::nostopstate};
     {
         const std::lock_guard asked{mutex_};
+
         latest_generation_ = std::max(latest_generation_, generation);
+
         if (active_generation_ && *active_generation_ < latest_generation_)
             obsolete = active_stop_;
+
         std::erase_if(asked_,
             [generation](const Request& request) { return request.generation < generation; });
         std::erase_if(read_,
             [generation](const Reading& reading) { return reading.generation < generation; });
         completed_artwork_bytes_ = 0;
+
         for (const Reading& reading : read_)
             completed_artwork_bytes_ += reading.result ? reading.result->artwork.data.size() : 0;
     }
@@ -110,10 +119,12 @@ std::vector<TagReader::Reading> TagReader::take()
     std::vector<Reading> readings;
     {
         const std::lock_guard asked{mutex_};
+
         readings = std::exchange(read_, {});
         completed_artwork_bytes_ = 0;
     }
     collected_.notify_one();
+
     return readings;
 }
 
@@ -138,8 +149,10 @@ void TagReader::work(const std::stop_token& stop)
 
             request = std::move(asked_.front());
             asked_.pop_front();
+
             if (request.generation < latest_generation_)
                 continue;
+
             active_stop_ = std::stop_source{};
             context.stop = active_stop_.get_token();
             active_generation_ = request.generation;
@@ -169,6 +182,7 @@ void TagReader::work(const std::stop_token& stop)
         }
 
         constexpr std::size_t max_error_detail_bytes{1024};
+
         if (!result && result.error().detail.size() > max_error_detail_bytes)
             result.error().detail.resize(max_error_detail_bytes);
 
@@ -177,6 +191,7 @@ void TagReader::work(const std::stop_token& stop)
 
         if (result)
             result->artwork.content_id = media::artwork_content_id(result->artwork);
+
         const std::size_t artwork_bytes{result ? result->artwork.data.size() : 0};
 
         {
@@ -190,6 +205,7 @@ void TagReader::work(const std::stop_token& stop)
 
             if (stop.stop_requested())
                 return;
+
             if (request.generation < latest_generation_) {
                 active_generation_.reset();
                 continue;

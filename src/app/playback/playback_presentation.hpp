@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <wiola/playback/repeat_mode.hpp>
 #include <wiola/playback/snapshot.hpp>
 

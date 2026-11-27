@@ -25,6 +25,7 @@ class QtCoreTsanBuilder:
     ):
         if timeout <= 0:
             raise ValueError("SDK build timeout must be positive")
+
         self.workspace = workspace.resolve()
         self.context, self.jobs = context, jobs
         self.runtime = QtCoreRuntime(self.workspace / "runtime")
@@ -34,11 +35,13 @@ class QtCoreTsanBuilder:
     def prepare(self) -> Path:
         if self.runtime.qualified(self.context.identity):
             return self.runtime.directory
+
         source = self._source()
         build = self.workspace / "build" / self.context.build_identity
         query = build / ".cmake/api/v1/query/codemodel-v2"
         query.parent.mkdir(parents=True, exist_ok=True)
         query.touch()
+
         with (self.workspace / "configure.log").open("w", encoding="utf-8") as log:
             subprocess.run(
                 [
@@ -62,24 +65,31 @@ class QtCoreTsanBuilder:
                 check=True,
                 timeout=self.timeout,
             )
+
         inventory = CMakeInventory.read(build)
         targets = [target for target in inventory.targets if target.name == "Core"]
+
         if (
             len(targets) != 1
             or targets[0].kind != "SHARED_LIBRARY"
             or len(targets[0].artifacts) != 1
         ):
             raise ValueError("Qt Core has no unique configured shared-library artifact")
+
         adapter = CMakeBuild(inventory, jobs=self.jobs, timeout=self.timeout)
         adapter.build("Core", self.workspace / "build.log")
         library = targets[0].artifacts[0]
         symbols = subprocess.check_output(["nm", "-D", str(library)], text=True)
+
         if not re.search(r"\b__tsan_", symbols):
             raise ValueError("Qt Core artifact has no TSan instrumentation")
+
         self.runtime.publish(library, self.context.identity)
+
         return self.runtime.directory
 
     def _source(self) -> Path:
         selected = os.environ.get("WIOLA_QT_SOURCE_CACHE")
         workspace = Path(selected) if selected else self.workspace
+
         return self.source_store.materialize(self.context.source, workspace)

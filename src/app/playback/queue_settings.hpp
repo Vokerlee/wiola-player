@@ -20,12 +20,12 @@
 
 #pragma once
 
+#include "queue_settings_store.hpp"
+
 #include <wiola/app/playback/playback_service.hpp>
 
-#include "queue_settings_store.hpp"
-#include <functional>
-
 #include <cstddef>
+#include <functional>
 #include <map>
 
 namespace wiola::app {

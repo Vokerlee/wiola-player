@@ -1,8 +1,9 @@
-#include <QSignalSpy>
 #include <qt/widgets/metadata/standard_metadata_editor.hpp>
 #include <qt/widgets/tests/support/gui_interaction.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <qt/widgets/tracks/track_search_panel.hpp>
+
+#include <QSignalSpy>
 
 namespace {
 
@@ -15,22 +16,30 @@ TEST_F(GuiInteraction, KeyboardSearchAndResetReachTheActualQueryObserver)
     panel.setUpdatesEnabled(false);
     panel.resize(450, 240);
     panel.show();
+
     std::optional<wiola::library::SearchQuery> query;
     panel.on_changed([&](auto value) { query = std::move(value); });
+
     auto* title = panel.findChild<QLineEdit*>("searchTitle");
     auto* artist = panel.findChild<QLineEdit*>("searchArtist");
+
     title->setFocus();
     QTest::keyClicks(title, "Song");
+
     auto* more = panel.findChild<QToolButton*>("advancedTrackSearch");
+
     ASSERT_NE(more, nullptr);
+
     more->setFocus();
     QTest::keyClick(more, Qt::Key_Space);
     artist->setFocus();
     ASSERT_TRUE(wiola::testing::await_gui([&] { return artist->hasFocus(); }));
+
     QTest::keyClicks(artist, "Artist");
     ASSERT_TRUE(query);
     EXPECT_EQ(query->title, "Song");
     EXPECT_EQ(query->artist, "Artist");
+
     auto* reset = panel.findChild<QPushButton*>("resetTrackSearch");
     reset->setFocus();
     QTest::keyClick(reset, Qt::Key_Space);
@@ -48,23 +57,32 @@ TEST_F(GuiInteraction, DisabledAndInvalidMetadataCannotFireButValidInputFiresExa
     editor.setUpdatesEnabled(false);
     editor.resize(500, 500);
     editor.show();
+
     int applied = 0;
     editor.on_apply([&](const auto&) { ++applied; });
+
     auto* apply = editor.findChild<QPushButton*>("applyStandardMetadata");
+
     ASSERT_FALSE(apply->isEnabled());
+
     QTest::mouseClick(apply, Qt::LeftButton);
     EXPECT_EQ(applied, 0);
+
     wiola::library::TrackRecord record;
     record.id = {"selected"};
     editor.show_track(&record);
+
     auto* year = editor.findChild<QLineEdit*>("standardYear");
     QTest::keyClicks(year, "bad");
     EXPECT_FALSE(apply->isEnabled());
+
     QTest::mouseClick(apply, Qt::LeftButton);
     EXPECT_EQ(applied, 0);
+
     year->selectAll();
     QTest::keyClicks(year, "2026");
     ASSERT_TRUE(apply->isEnabled());
+
     apply->setFocus();
     QTest::keyClick(apply, Qt::Key_Space);
     EXPECT_EQ(applied, 1);
@@ -76,6 +94,7 @@ TEST_F(GuiInteraction, MouseSelectionUsesOccurrenceIdentityAndEmitsTheBrowserSig
     watch(browser);
     browser.setUpdatesEnabled(false);
     browser.resize(600, 650);
+
     wiola::gui::TrackRow first, second;
     first.id = wiola::engine::QueueEntryId{1};
     first.media = {"shared"};
@@ -84,6 +103,7 @@ TEST_F(GuiInteraction, MouseSelectionUsesOccurrenceIdentityAndEmitsTheBrowserSig
     second.id = wiola::engine::QueueEntryId{2};
     browser.show_rows({first, second});
     browser.show();
+
     auto& table = browser.table();
     QSignalSpy changed{&browser, &wiola::gui::TrackBrowser::selection_changed};
     const auto index = table.model()->index(1, 1);

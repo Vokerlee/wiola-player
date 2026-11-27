@@ -29,6 +29,7 @@ wiola::gui::LayoutNode node(const QString& id, wiola::gui::LayoutComponentKind k
     wiola::gui::LayoutNode result;
     result.id = id;
     result.kind = kind;
+
     return result;
 }
 
@@ -41,6 +42,7 @@ wiola::gui::LayoutDocument document()
         node("play", wiola::gui::LayoutComponentKind::button),
     };
     result.node_count = 3;
+
     return result;
 }
 
@@ -55,6 +57,7 @@ TEST(LayoutEditor, InsertsWithUndoAndRedoWithoutAcceptingDuplicateIds)
     EXPECT_FALSE(editor.can_redo());
 
     const auto before_rejection = editor.document();
+
     EXPECT_FALSE(editor.insert("root", 0, node("status", wiola::gui::LayoutComponentKind::status)));
     EXPECT_EQ(editor.document().root.children.size(), before_rejection.root.children.size());
 
@@ -98,6 +101,7 @@ TEST(LayoutEditor, MovesAndConfiguresComponentsWithoutChangingTheirIdentity)
 TEST(LayoutEditor, RemovesSubtreesAndRejectsInvalidConfigurations)
 {
     wiola::gui::LayoutEditor editor{document()};
+
     ASSERT_TRUE(editor.insert("controls", 0,
         node("volume", wiola::gui::LayoutComponentKind::volume)));
 
@@ -122,7 +126,9 @@ TEST(LayoutEditor, KeepsSplitterWeightsAlignedThroughEditsAndHistory)
     layout.root.kind = wiola::gui::LayoutComponentKind::splitter;
     layout.root.sizes = {2, 5};
     layout.root.orientation = Qt::Vertical;
+
     wiola::gui::LayoutEditor editor{layout};
+
     ASSERT_TRUE(editor.insert("root", 1, node("extra", wiola::gui::LayoutComponentKind::status)));
     EXPECT_EQ(editor.document().root.sizes, (std::vector<int>{2, 1, 5}));
     ASSERT_TRUE(editor.move("play", "root", 0));

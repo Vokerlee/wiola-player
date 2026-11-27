@@ -18,13 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "metadata_inspector_binding.hpp"
-
 #include "inspector_context.hpp"
 #include "metadata_edit_presentation.hpp"
-#include <algorithm>
+#include "metadata_inspector_binding.hpp"
+
 #include <wiola/media/local/resource.hpp>
 #include <wiola/presentation/documents/queue_rows.hpp>
+
+#include <algorithm>
 
 namespace wiola::gui {
 
@@ -63,12 +64,15 @@ MetadataInspectorBinding::MetadataInspectorBinding(TrackInspector& inspector, Do
     inspector_->standard_metadata()->on_file_write([this](const app::MetadataEditSession& draft) {
         if (!library_)
             return;
+
         const auto captured = draft;
         const auto outcome = library_->metadata_edits().apply(captured);
+
         if (!outcome.succeeded()) {
             inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
             return;
         }
+
         static_cast<void>(library_->file_writes().submit(captured));
         inspector_->standard_metadata()->discard();
         refresh();
@@ -79,6 +83,7 @@ MetadataInspectorBinding::MetadataInspectorBinding(TrackInspector& inspector, Do
             inspector_->standard_metadata()->show_file_status(message);
             show_status(message);
         });
+
     const QPointer<app::LibrarySession> artwork_library{library_.data()};
     inspector_->set_artwork_requester([artwork_library](const auto& id) {
         if (artwork_library)
@@ -89,6 +94,7 @@ MetadataInspectorBinding::MetadataInspectorBinding(TrackInspector& inspector, Do
             if (artwork_library)
                 inspector->refresh_artwork(media, artwork_library->artwork(media));
         });
+
     inspector_->conflicts()->on_action([this](MetadataConflictAction action) {
         if (library_)
             resolve_metadata_conflict(action);
@@ -140,8 +146,10 @@ void MetadataInspectorBinding::refresh()
 {
     if (!inspector_ || !host_ || !library_)
         return;
+
     const auto active = host_->registry().active();
     std::optional<TrackRow> playing;
+
     // Only Now Playing opts into a labeled fallback. An empty saved/workspace view stays empty.
     if (active && active->is_queue())
         if (const auto* current = playback_.playlist().current()) {
@@ -149,6 +157,7 @@ void MetadataInspectorBinding::refresh()
             if (auto path = media::local_path(current->resource()))
                 playing->media = library_->media_at(*path);
         }
+
     inspector_->show_context(inspector_context(*library_, host_->registry().selection(),
         std::move(playing)));
 }
@@ -170,10 +179,12 @@ void MetadataInspectorBinding::refresh(const library::LibraryChangeBatch& batch)
 void MetadataInspectorBinding::finish_standard_metadata(const app::MetadataEditSession& session)
 {
     const auto outcome = library_->metadata_edits().apply(session);
+
     if (outcome.succeeded()) {
         inspector_->standard_metadata()->discard();
         refresh();
     }
+
     if (!outcome.succeeded())
         inspector_->standard_metadata()->show_status(metadata_edit_message(outcome));
 }
@@ -185,18 +196,23 @@ void MetadataInspectorBinding::resolve_metadata_conflict(MetadataConflictAction 
 
     auto* editor = inspector_->standard_metadata();
     const auto session = editor->edit_session();
+
     if (!session.valid())
         return;
+
     if (action == MetadataConflictAction::keep) {
         editor->discard();
         inspector_->conflicts()->hide_conflict();
         show_status("Kept current application metadata");
         refresh();
+
         return;
     }
+
     const auto outcome = action == MetadataConflictAction::reload
         ? library_->metadata_edits().reset(session.media())
         : library_->metadata_edits().apply(session, app::MetadataConflictPolicy::overwrite_current);
+
     if (outcome.succeeded()) {
         editor->discard();
         refresh();

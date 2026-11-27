@@ -19,6 +19,7 @@
  */
 
 #include "library_changes.hpp"
+
 #include <cassert>
 #include <deque>
 #include <exception>
@@ -86,6 +87,7 @@ void LibraryChanges::Subscription::reset() noexcept
         assert(state->owner == std::this_thread::get_id());
         state->observers.erase(id_);
     }
+
     state_.reset();
     id_ = 0;
 }
@@ -93,20 +95,26 @@ void LibraryChanges::Subscription::reset() noexcept
 LibraryChanges::Subscription LibraryChanges::observe(Observer observer)
 {
     check_owner();
+
     if (!observer)
         throw std::invalid_argument{"a library observer must be callable"};
+
     const auto id = state_->next++;
     state_->observers.emplace(id, std::make_shared<Observer>(std::move(observer)));
+
     return Subscription{state_, id};
 }
 
 void LibraryChanges::publish(LibraryChangeBatch batch)
 {
     check_owner();
+
     const auto state = state_;
     state->pending.push_back(std::move(batch));
+
     if (state->publishing)
         return;
+
     state->publishing = true;
 
     struct Reset {
@@ -116,25 +124,32 @@ void LibraryChanges::publish(LibraryChangeBatch batch)
     } reset{state->publishing};
 
     std::exception_ptr failure;
+
     while (!state->pending.empty()) {
         auto next = std::move(state->pending.front());
+
         state->pending.pop_front();
+
         // Subscribers added by a callback start with the next batch. Retain the active
         // callable independently of its subscription, including when it disconnects itself.
         const auto next_subscription = state->next;
+
         for (auto found = state->observers.begin();
             found != state->observers.end() && found->first < next_subscription;) {
             const auto id = found->first;
             const auto observer = found->second;
+
             try {
                 (*observer)(next);
             } catch (...) {
                 if (!failure)
                     failure = std::current_exception();
             }
+
             found = state->observers.upper_bound(id);
         }
     }
+
     if (failure)
         std::rethrow_exception(failure);
 }

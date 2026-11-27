@@ -49,6 +49,7 @@ bool DocumentRegistry::add(DocumentId id, QWidget& widget, TrackCapabilities cap
 {
     if (!id.valid() || view(id) || !selection)
         return false;
+
     const auto registration = ++next_;
     entries_.insert_or_assign(id, Entry{&widget, capabilities, std::move(selection), registration});
     QObject::connect(&widget, &QObject::destroyed, &lifetime_, [this, id, registration] {
@@ -56,6 +57,7 @@ bool DocumentRegistry::add(DocumentId id, QWidget& widget, TrackCapabilities cap
         if (found != entries_.end() && found->second.registration == registration)
             remove(id);
     });
+
     return true;
 }
 
@@ -63,11 +65,13 @@ bool DocumentRegistry::remove(const DocumentId& id)
 {
     if (!entries_.erase(id))
         return false;
+
     if (active_ == id) {
         active_.reset();
         if (view(DocumentId::queue()))
             active_ = DocumentId::queue();
     }
+
     return true;
 }
 
@@ -100,7 +104,9 @@ bool DocumentRegistry::activate(const DocumentId& id)
 {
     if (!view(id))
         return false;
+
     active_ = id;
+
     return true;
 }
 
@@ -117,17 +123,22 @@ std::optional<DocumentId> DocumentRegistry::active() const
 std::vector<SelectedTrack> DocumentRegistry::selection() const
 {
     const auto id = active();
+
     if (!id)
         return {};
+
     return selection(*id);
 }
 
 std::vector<SelectedTrack> DocumentRegistry::selection(const DocumentId& id) const
 {
     const auto found = entries_.find(id);
+
     if (found == entries_.end() || !found->second.view)
         return {};
+
     const auto capture = found->second.selection;
+
     return capture();
 }
 
@@ -142,10 +153,12 @@ std::vector<std::pair<library::PlaylistId, QPointer<SavedPlaylistDocument>>>
 DocumentRegistry::playlists() const
 {
     std::vector<std::pair<library::PlaylistId, QPointer<SavedPlaylistDocument>>> result;
+
     for (const auto& [id, entry] : entries_)
         if (id.playlist() && entry.view)
             result.emplace_back(*id.playlist(),
                 static_cast<SavedPlaylistDocument*>(entry.view.data()));
+
     return result;
 }
 
@@ -153,10 +166,12 @@ std::vector<std::pair<library::WorkspaceId, QPointer<WorkspaceDocument>>>
 DocumentRegistry::workspaces() const
 {
     std::vector<std::pair<library::WorkspaceId, QPointer<WorkspaceDocument>>> result;
+
     for (const auto& [id, entry] : entries_)
         if (id.workspace() && entry.view)
             result.emplace_back(*id.workspace(),
                 static_cast<WorkspaceDocument*>(entry.view.data()));
+
     return result;
 }
 

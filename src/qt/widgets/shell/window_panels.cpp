@@ -25,6 +25,7 @@
 #include <QLayout>
 #include <QMainWindow>
 #include <QMenu>
+
 #include <algorithm>
 
 namespace wiola::gui {
@@ -42,14 +43,17 @@ WindowPanels::WindowPanels(QMainWindow& window, QWidget& library, QWidget& inspe
 {
     for (auto* view : library_views)
         library_views_.emplace_back(view, view->objectName());
+
     window.setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks);
     library_dock_->setObjectName("libraryDock");
     inspector_dock_->setObjectName("inspectorDock");
+
     for (auto* dock : {library_dock_, inspector_dock_}) {
         dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
         dock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
             QDockWidget::DockWidgetFloatable);
     }
+
     library_dock_->setWidget(&library_);
     inspector_dock_->setWidget(&inspector_);
     window.addDockWidget(Qt::LeftDockWidgetArea, library_dock_);
@@ -75,21 +79,26 @@ void WindowPanels::reconcile(QWidget& central)
         } else {
             if (content.parentWidget() != &dock)
                 dock.setWidget(&content);
+
             content.show();
             dock.setVisible(was_embedded ? open : !dock.isHidden());
         }
         dock.toggleViewAction()->setEnabled(!embedded);
     };
+
     if (!library_embedded)
         for (const auto& [view, name] : library_views_) {
             library_.layout()->addWidget(view);
             view->setObjectName(name);
             view->show();
         }
+
     if (!library_embedded)
         library_.setObjectName(library_name_);
+
     if (!inspector_embedded)
         inspector_.setObjectName(inspector_name_);
+
     reconcile_panel(*library_dock_, library_, library_embedded, library_embedded_, library_open_);
     reconcile_panel(*inspector_dock_, inspector_, inspector_embedded, inspector_embedded_,
         inspector_open_);
@@ -108,6 +117,7 @@ void WindowPanels::show_inspector()
         inspector_dock_->show();
         inspector_dock_->raise();
     }
+
     inspector_.show();
     inspector_.setFocus(Qt::OtherFocusReason);
 }
@@ -116,6 +126,7 @@ void WindowPanels::add_menu_actions(QMenu& menu)
 {
     menu.addAction(library_dock_->toggleViewAction());
     menu.addAction(inspector_dock_->toggleViewAction());
+
     auto* reset_action = menu.addAction("Reset panel positions");
     connect(reset_action, &QAction::triggered, this, [this] { reset(); });
 }
@@ -124,6 +135,7 @@ void WindowPanels::reset()
 {
     for (auto* dock : {library_dock_, inspector_dock_})
         dock->setFloating(false);
+
     window_.addDockWidget(Qt::LeftDockWidgetArea, library_dock_);
     window_.addDockWidget(Qt::RightDockWidgetArea, inspector_dock_);
     library_dock_->setVisible(!library_embedded_);

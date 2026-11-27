@@ -58,33 +58,42 @@ bool valid_id(const QString& id)
 bool component_kind(const QString& text, LayoutComponentKind& output)
 {
     const auto found = parse_component(text);
+
     if (!found)
         return false;
+
     output = *found;
+
     return true;
 }
 
 bool player_action(const QString& text, PlayerAction& output)
 {
     const auto found = parse_action(text);
+
     if (!found)
         return false;
+
     output = *found;
+
     return true;
 }
 
 bool read_dimension(const QJsonObject& object, const char* key, std::optional<int>& output)
 {
     const QJsonValue value = object.value(key);
+
     if (value.isUndefined())
         return true;
 
     const double number = value.toDouble(std::numeric_limits<double>::quiet_NaN());
+
     if (!std::isfinite(number) || number < 0 || number > max_dimension ||
         std::floor(number) != number)
         return false;
 
     output = static_cast<int>(number);
+
     return true;
 }
 
@@ -93,27 +102,34 @@ bool valid_container_properties(const LayoutNode& node)
     if ((node.width && node.min_width && *node.min_width > *node.width) ||
         (node.height && node.min_height && *node.min_height > *node.height))
         return false;
+
     const auto* descriptor = component_descriptor(node.kind);
+
     if (!descriptor)
         return false;
+
     if (node.orientation &&
         (!descriptor->supports(ComponentProperty::orientation) ||
             (*node.orientation != Qt::Horizontal && *node.orientation != Qt::Vertical)))
         return false;
+
     if (!node.sizes.empty() &&
         (!descriptor->supports(ComponentProperty::weights) ||
             node.sizes.size() != node.children.size() ||
             !std::ranges::all_of(node.sizes,
                 [](int size) { return size > 0 && size <= max_dimension; })))
         return false;
+
     if (node.alignment &&
         (!descriptor->supports(ComponentProperty::alignment) ||
             layout_alignment_name(*node.alignment).isEmpty()))
         return false;
+
     if (node.columns &&
         (!descriptor->supports(ComponentProperty::columns) || *node.columns < 1 ||
             *node.columns > static_cast<int>(max_children)))
         return false;
+
     return node.children.empty() || is_layout_container(node.kind);
 }
 
@@ -131,6 +147,7 @@ struct Parser {
 
         const QJsonObject object = value.toObject();
         const QString id = object.value("id").toString();
+
         if (!valid_id(id) || identities.contains(id))
             return LayoutJsonError::invalid_component;
 
@@ -138,12 +155,15 @@ struct Parser {
             return LayoutJsonError::invalid_component;
 
         const auto alignment = object.value("alignment");
+
         if (!alignment.isUndefined()) {
             output.alignment = parse_layout_alignment(alignment.toString());
             if (!output.alignment)
                 return LayoutJsonError::invalid_component;
         }
+
         const QJsonValue orientation = object.value("orientation");
+
         if (!orientation.isUndefined()) {
             if (!orientation.isString() ||
                 (orientation.toString() != "horizontal" && orientation.toString() != "vertical"))
@@ -151,26 +171,35 @@ struct Parser {
             output.orientation =
                 orientation.toString() == "horizontal" ? Qt::Horizontal : Qt::Vertical;
         }
+
         if (!read_dimension(object, "columns", output.columns))
             return LayoutJsonError::invalid_component;
+
         const QJsonValue sizes = object.value("sizes");
+
         if (!sizes.isUndefined()) {
             if (!sizes.isArray() || sizes.toArray().size() > static_cast<qsizetype>(max_children))
                 return LayoutJsonError::invalid_component;
+
             for (const QJsonValue& size : sizes.toArray()) {
                 const double number = size.toDouble(std::numeric_limits<double>::quiet_NaN());
+
                 if (!std::isfinite(number) || number < 1 || number > max_dimension ||
                     std::floor(number) != number)
                     return LayoutJsonError::invalid_component;
+
                 output.sizes.push_back(static_cast<int>(number));
             }
+
             if (output.kind != LayoutComponentKind::splitter)
                 return LayoutJsonError::invalid_component;
         }
 
         const QJsonValue title = object.value("title");
+
         if (!title.isUndefined() && (!title.isString() || title.toString().toUtf8().size() > 128))
             return LayoutJsonError::invalid_component;
+
         output.title = title.toString();
 
         output.id = id;
@@ -178,22 +207,27 @@ struct Parser {
         ++document.node_count;
 
         const QJsonValue action_value = object.value("action");
+
         if (!action_value.isUndefined()) {
             if (output.kind != LayoutComponentKind::button || !action_value.isString())
                 return LayoutJsonError::invalid_component;
 
             PlayerAction action;
+
             if (!player_action(action_value.toString(), action))
                 return LayoutJsonError::invalid_component;
+
             output.action = action;
         }
 
         const QJsonValue size_value = object.value("size");
+
         if (!size_value.isUndefined()) {
             if (!size_value.isObject())
                 return LayoutJsonError::invalid_component;
 
             const QJsonObject size = size_value.toObject();
+
             if (!read_dimension(size, "width", output.width) ||
                 !read_dimension(size, "height", output.height) ||
                 !read_dimension(size, "minWidth", output.min_width) ||
@@ -204,11 +238,15 @@ struct Parser {
         if (object.contains("view")) {
             if (!object.value("view").isObject())
                 return LayoutJsonError::invalid_component;
+
             output.view = read_view_reference(object.value("view").toObject());
+
             if (!output.view)
                 return LayoutJsonError::invalid_component;
         }
+
         const QJsonValue children_value = object.value("children");
+
         if (children_value.isUndefined())
             return valid_container_properties(output) ? LayoutJsonError::none
                                                       : LayoutJsonError::invalid_component;
@@ -223,8 +261,10 @@ struct Parser {
         for (const QJsonValue& child : children) {
             LayoutNode nested;
             const LayoutJsonError error = node(child, nested, depth + 1);
+
             if (error != LayoutJsonError::none)
                 return error;
+
             output.children.push_back(std::move(nested));
         }
 
@@ -243,19 +283,23 @@ LayoutJsonError read_layout_json(QByteArrayView json, LayoutDocument& output)
     QJsonParseError error;
     const QJsonDocument parsed =
         QJsonDocument::fromJson(QByteArray{json.data(), json.size()}, &error);
+
     if (error.error != QJsonParseError::NoError || !parsed.isObject())
         return LayoutJsonError::malformed;
 
     const QJsonObject object = parsed.object();
     const double version =
         object.value("version").toDouble(std::numeric_limits<double>::quiet_NaN());
+
     if (!std::isfinite(version) || std::floor(version) != version)
         return LayoutJsonError::malformed;
+
     if (version != 1 && version != 2)
         return LayoutJsonError::unsupported_version;
 
     Parser parser;
     parser.document.version = 2;
+
     const LayoutJsonError result = parser.node(object.value("root"), parser.document.root, 0);
 
     if (result != LayoutJsonError::none)
@@ -265,17 +309,23 @@ LayoutJsonError read_layout_json(QByteArrayView json, LayoutDocument& output)
         const auto migrate = [](auto&& self, LayoutNode& node) -> void {
             if (!node.view)
                 node.view = legacy_view_reference(node.id);
+
             if (node.id == "documentTabs")
                 node.kind = LayoutComponentKind::document_host;
+
             for (auto& child : node.children)
                 self(self, child);
         };
         migrate(migrate, parser.document.root);
     }
+
     const auto validated = validate_layout_document(parser.document);
+
     if (validated != LayoutJsonError::none)
         return validated;
+
     output = std::move(parser.document);
+
     return LayoutJsonError::none;
 }
 
@@ -297,8 +347,10 @@ LayoutJsonError validate_layout_document(const LayoutDocument& document)
             return LayoutJsonError::invalid_component;
 
         const auto* descriptor = component_descriptor(node.kind);
+
         if (!descriptor)
             return LayoutJsonError::invalid_component;
+
         if (node.action &&
             (!descriptor->supports(ComponentProperty::action) || !action_descriptor(*node.action)))
             return LayoutJsonError::invalid_component;
@@ -311,11 +363,13 @@ LayoutJsonError validate_layout_document(const LayoutDocument& document)
 
         if (node.children.size() > max_children)
             return LayoutJsonError::invalid_component;
+
         if (!valid_container_properties(node))
             return LayoutJsonError::invalid_component;
 
         if (node.view && (!valid_view_reference(*node.view) || !views.insert(*node.view).second))
             return LayoutJsonError::invalid_component;
+
         identities.insert(node.id);
         ++count;
 
@@ -329,6 +383,7 @@ LayoutJsonError validate_layout_document(const LayoutDocument& document)
     };
 
     const LayoutJsonError result = validate_node(validate_node, document.root, 0);
+
     if (result != LayoutJsonError::none)
         return result;
 
@@ -380,13 +435,18 @@ QByteArray write_layout_json(const LayoutDocument& document)
             {"id",   node.id                         },
             {"type", layout_component_name(node.kind)}
         };
+
         if (node.view)
             result.insert("view", write_view_reference(*node.view));
+
         if (!node.title.isEmpty())
             result.insert("title", node.title);
+
         if (node.action)
             result.insert("action", action_name(*node.action));
+
         QJsonObject size;
+
         for (const auto& [key, value] : {
                  std::pair{"width",     node.width     },
                  {"height",    node.height    },
@@ -396,27 +456,38 @@ QByteArray write_layout_json(const LayoutDocument& document)
             if (value)
                 size.insert(key, *value);
         }
+
         if (!size.isEmpty())
             result.insert("size", size);
+
         if (node.alignment)
             result.insert("alignment", layout_alignment_name(*node.alignment));
+
         if (node.orientation)
             result.insert("orientation",
                 *node.orientation == Qt::Horizontal ? "horizontal" : "vertical");
+
         if (node.columns)
             result.insert("columns", *node.columns);
+
         if (!node.sizes.empty()) {
             QJsonArray sizes;
+
             for (int value : node.sizes)
                 sizes.append(value);
+
             result.insert("sizes", sizes);
         }
+
         if (!node.children.empty()) {
             QJsonArray children;
+
             for (const LayoutNode& child : node.children)
                 children.append(self(self, child));
+
             result.insert("children", children);
         }
+
         return result;
     };
     const QByteArray json =
@@ -425,6 +496,7 @@ QByteArray write_layout_json(const LayoutDocument& document)
                         {"root", serialize(serialize, document.root)}}
     }
             .toJson(QJsonDocument::Compact);
+
     return static_cast<std::size_t>(json.size()) <= max_document_bytes ? json : QByteArray{};
 }
 

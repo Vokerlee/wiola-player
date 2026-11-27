@@ -30,12 +30,16 @@
 int main()
 {
     auto provider = wiola::codec::ffmpeg::make_provider();
+
     if (provider->playback_extensions().empty())
         return 1;
+
     std::stop_source cancellation;
     cancellation.request_stop();
+
     const auto opened =
         provider->open(wiola::media::ResourceReference{"controlled", "track", "Track"},
             {.stop = cancellation.get_token(), .deadline = {}});
+
     return !opened && opened.error().category == wiola::media::ErrorCategory::cancelled ? 0 : 1;
 }

@@ -18,16 +18,18 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QCoreApplication>
-#include <QTemporaryDir>
-#include <gtest/gtest.h>
-#include <limits>
 #include <qt/application/library/library_persistence_delivery.hpp>
 #include <qt/storage/library_store.hpp>
 #include <qt/storage/snapshot_writer.hpp>
 #include <qt/tests/support/gated_atomic_output.hpp>
-#include <stdexcept>
 #include <wiola/library/repository_transaction.hpp>
+
+#include <QCoreApplication>
+#include <QTemporaryDir>
+#include <gtest/gtest.h>
+
+#include <limits>
+#include <stdexcept>
 
 namespace {
 
@@ -45,6 +47,7 @@ TEST(LibraryPersistence, CoalescesAcceptedRevisionsAndRetriesWithoutLosingEither
     const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("library.json"));
     wiola::testing::AtomicWriteGate gate;
     gate.fail = true;
+
     persistence::qt::LibraryStore store{path,
         [&](const auto& file) {
             return std::make_unique<wiola::testing::GatedAtomicOutput>(file, path, gate);
@@ -65,13 +68,18 @@ TEST(LibraryPersistence, CoalescesAcceptedRevisionsAndRetriesWithoutLosingEither
         track.id = {title};
         track.embedded.title = title;
         EXPECT_TRUE(repository.put_track(track));
+
         return transaction.commit();
     };
     const auto first = edit("A");
+
     ASSERT_EQ(first.state, library::CommitState::accepted);
     ASSERT_TRUE(gate.wait_entered());
+
     const auto second = edit("B");
+
     ASSERT_EQ(second.state, library::CommitState::accepted);
+
     std::vector<bool> a, b;
     first.receipt->observe([&](auto event) { a.push_back(event.durable); });
     second.receipt->observe([&](auto event) { b.push_back(event.durable); });
@@ -81,6 +89,7 @@ TEST(LibraryPersistence, CoalescesAcceptedRevisionsAndRetriesWithoutLosingEither
     EXPECT_NE(repository.track(library::MediaId{"B"}), nullptr);
     EXPECT_FALSE(first.receipt->durable());
     EXPECT_FALSE(second.receipt->durable());
+
     gate.fail = false;
     writer.retry();
     ASSERT_TRUE(writer.flush().succeeded());
@@ -92,13 +101,16 @@ TEST(LibraryPersistence, CoalescesAcceptedRevisionsAndRetriesWithoutLosingEither
     EXPECT_FALSE(b.front());
     EXPECT_TRUE(a.back());
     EXPECT_TRUE(b.back());
+
     library::LibrarySnapshot restored;
+
     ASSERT_TRUE(store.load(restored).succeeded());
     ASSERT_EQ(restored.tracks.size(), 2);
     EXPECT_EQ(restored.tracks[0].embedded.title, "A");
     EXPECT_EQ(restored.tracks[1].embedded.title, "B");
     EXPECT_EQ(writer.durable_revision(), 2);
     EXPECT_NE(gate.writer, std::this_thread::get_id());
+
     writer.stop();
 }
 
@@ -115,6 +127,7 @@ TEST(LibraryPersistence,
     QObject owner;
     app::LibraryPersistenceLimits limits;
     limits.pending_revisions = 3;
+
     app::QueuedDelivery delivery{owner};
     persistence::qt::SnapshotWriter snapshot_writer{store};
     app::LibraryPersistence writer{snapshot_writer, app::library_persistence_delivery(delivery), {},
@@ -126,31 +139,42 @@ TEST(LibraryPersistence,
     };
     const auto create = [&] {
         library::RepositoryTransaction transaction{repository, persist};
+
         repository.create_playlist("Accepted");
+
         return transaction.commit();
     };
+
     ASSERT_TRUE(create());
     ASSERT_TRUE(gate.wait_entered());
+
     for (std::size_t i = 0; i < limits.pending_revisions - 1; ++i)
         ASSERT_TRUE(create());
+
     EXPECT_FALSE(create());
     EXPECT_EQ(repository.playlists().size(), limits.pending_revisions);
     EXPECT_EQ(repository.change_revision(), limits.pending_revisions);
+
     {
         library::RepositoryTransaction physical_result{repository, persist,
             library::CommitPriority::file_result};
+
         repository.create_playlist("Physical write result");
         ASSERT_TRUE(physical_result.commit());
     }
     EXPECT_FALSE(create());
     EXPECT_EQ(repository.playlists().size(), limits.pending_revisions + 1);
     EXPECT_EQ(repository.change_revision(), limits.pending_revisions + 1);
+
     gate.release();
     ASSERT_TRUE(writer.flush().succeeded());
     EXPECT_EQ(gate.primary_writes, 2);
+
     library::LibrarySnapshot restored;
+
     ASSERT_TRUE(store.load(restored).succeeded());
     EXPECT_EQ(restored.playlists.size(), limits.pending_revisions + 1);
+
     writer.stop();
 }
 
@@ -159,6 +183,8 @@ TEST(LibraryPersistence,
 int main(int argc, char** argv)
 {
     QCoreApplication app{argc, argv};
+
     ::testing::InitGoogleTest(&argc, argv);
+
     return RUN_ALL_TESTS();
 }

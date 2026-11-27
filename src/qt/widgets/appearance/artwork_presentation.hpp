@@ -19,13 +19,16 @@
  */
 
 #pragma once
+
+#include <wiola/library/identity.hpp>
+#include <wiola/media/artwork_reference.hpp>
+
 #include <QImage>
 #include <QPixmap>
 #include <QWidget>
+
 #include <functional>
 #include <map>
-#include <wiola/library/identity.hpp>
-#include <wiola/media/artwork_reference.hpp>
 
 namespace wiola::gui {
 

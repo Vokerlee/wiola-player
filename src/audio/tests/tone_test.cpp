@@ -50,6 +50,7 @@ TEST(SineSource, StaysWithinAmplitude)
     source.render(block);
 
     const auto [min, max] = std::ranges::minmax_element(block);
+
     EXPECT_LE(*max, 0.5F);
     EXPECT_GE(*min, -0.5F);
     EXPECT_GT(*max, 0.4F);
@@ -94,6 +95,7 @@ TEST(SineSource, ProducesTheRequestedFrequency)
     source.render(block);
 
     std::size_t num_crossings = 0;
+
     for (std::size_t i = stereo.num_channels; i < block.size(); i += stereo.num_channels) {
         if ((block[i - stereo.num_channels] < 0.0F) != (block[i] < 0.0F))
             ++num_crossings;
@@ -235,6 +237,7 @@ TEST(SineSource, DefaultsToAQuietAmplitude)
     source.render(block);
 
     const auto [min, max] = std::ranges::minmax_element(block);
+
     EXPECT_LE(*max, 0.2F);
     EXPECT_GE(*min, -0.2F);
     EXPECT_GT(*max, 0.19F);

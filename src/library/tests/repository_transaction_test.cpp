@@ -19,11 +19,13 @@
  */
 
 #include <allocation_failure.hpp>
-#include <gtest/gtest.h>
-#include <new>
-#include <stdexcept>
 #include <wiola/library/repository_transaction.hpp>
 #include <wiola/library/snapshot.hpp>
+
+#include <gtest/gtest.h>
+
+#include <new>
+#include <stdexcept>
 
 namespace {
 
@@ -35,13 +37,16 @@ TrackRecord track()
     value.id = MediaId{"media"};
     value.embedded.title = "Original";
     value.metadata_revision = 7;
+
     return value;
 }
 
 TEST(RepositoryTransaction, PersistenceFailureRestoresValuesRevisionsAndEveryAllocator)
 {
     InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track()));
+
     PlaylistId playlist;
     PlaylistEntryId entry;
     WorkspaceId workspace;
@@ -50,6 +55,7 @@ TEST(RepositoryTransaction, PersistenceFailureRestoresValuesRevisionsAndEveryAll
                                           EXPECT_EQ(candidate.playlists().size(), 1U);
                                           return false;
                                       }};
+
     playlist = repository.create_playlist("Temporary");
     entry = *repository.append_track(playlist, MediaId{"media"});
     workspace = repository.create_workspace("temporary");
@@ -88,9 +94,11 @@ TEST(RepositoryTransaction, ExceptionDuringPersistenceRollsBack)
     const auto fail = [&repository] {
         RepositoryTransaction transaction{repository,
             [](const LibraryRepository&) -> bool { throw std::runtime_error{"disk failure"}; }};
+
         repository.create_playlist("Discarded");
         static_cast<void>(transaction.commit());
     };
+
     EXPECT_THROW(fail(), std::runtime_error);
     EXPECT_TRUE(repository.playlists().empty());
     EXPECT_EQ(repository.create_playlist("Next").value, "playlist-1");
@@ -103,6 +111,7 @@ TEST(RepositoryTransaction, SuccessfulCommitOutlivesItsOwnerAndCannotBeCommitted
     {
         RepositoryTransaction transaction{repository,
             [](const LibraryRepository&) { return true; }};
+
         id = repository.create_playlist("Retained");
         ASSERT_TRUE(transaction.commit());
         EXPECT_THROW(static_cast<void>(transaction.commit()), std::logic_error);
@@ -113,16 +122,20 @@ TEST(RepositoryTransaction, SuccessfulCommitOutlivesItsOwnerAndCannotBeCommitted
 TEST(RepositoryTransaction, CaughtPersistenceExceptionImmediatelyReleasesTheCandidate)
 {
     InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track()));
+
     RepositoryTransaction failed{repository,
         [](const auto&) -> bool { throw std::runtime_error{"disk failure"}; }};
     const auto discarded = repository.create_playlist("Discarded");
+
     EXPECT_THROW(static_cast<void>(failed.commit()), std::runtime_error);
     EXPECT_TRUE(repository.playlists().empty());
     EXPECT_FALSE(repository.staged_delta());
     EXPECT_EQ(repository.change_revision(), 0U);
 
     RepositoryTransaction next{repository, [](const auto&) { return true; }};
+
     EXPECT_EQ(repository.create_playlist("Retained"), discarded);
     ASSERT_TRUE(next.commit());
     EXPECT_THROW(static_cast<void>(failed.commit()), std::logic_error);
@@ -132,10 +145,14 @@ TEST(RepositoryTransaction, CaughtPersistenceExceptionImmediatelyReleasesTheCand
 TEST(RepositoryTransaction, PersistenceCannotMutateItsFrozenCandidateOrReenterCommit)
 {
     InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track()));
+
     const auto playlist = repository.create_playlist("Original");
     const auto entry = repository.append_track(playlist, MediaId{"media"});
+
     ASSERT_TRUE(entry);
+
     const auto workspace = repository.create_workspace("music");
     const auto tag = repository.add_tag(MediaId{"media"}, "Mood", "Calm");
     RepositoryTransaction* active = nullptr;
@@ -157,6 +174,7 @@ TEST(RepositoryTransaction, PersistenceCannotMutateItsFrozenCandidateOrReenterCo
             EXPECT_THROW(repository.add_tag(MediaId{"media"}, "Mood", "Loud"), std::logic_error);
             EXPECT_THROW(repository.remove_tag(MediaId{"media"}, tag), std::logic_error);
             EXPECT_THROW(static_cast<void>(active->commit()), std::logic_error);
+
             return true;
         }};
     active = &transaction;
@@ -173,6 +191,7 @@ TEST(RepositoryTransaction, PersistenceCannotMutateItsFrozenCandidateOrReenterCo
 TEST(RepositoryTransaction, RejectsAnImplicitPersistencePolicy)
 {
     InMemoryRepository repository;
+
     EXPECT_THROW((RepositoryTransaction{repository, {}}), std::invalid_argument);
     EXPECT_TRUE(repository.playlists().empty());
 }
@@ -180,11 +199,13 @@ TEST(RepositoryTransaction, RejectsAnImplicitPersistencePolicy)
 TEST(RepositoryTransaction, OnlyTouchedRecordsMoveAndTheImmutableDeltaSurvivesPublication)
 {
     InMemoryRepository repository;
+
     for (int i = 0; i < 1000; ++i) {
         auto value = track();
         value.id = {"media-" + std::to_string(i)};
         ASSERT_TRUE(repository.put_track(value));
     }
+
     const auto* untouched = repository.track(MediaId{"media-999"});
     std::shared_ptr<const RevisionDelta> accepted;
     RepositoryTransaction transaction{repository, [&](const LibraryRepository&) {
@@ -207,10 +228,14 @@ TEST(RepositoryTransaction,
     BulkReplacementAndRepeatedEditsRestoreEveryOriginalRecordWithoutAllocatingOnRollback)
 {
     InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track()));
+
     const auto playlist = repository.create_playlist("Original");
     const auto entry = repository.append_track(playlist, MediaId{"media"});
+
     ASSERT_TRUE(entry);
+
     const auto* original = repository.track(MediaId{"media"});
     {
         RepositoryTransaction transaction{repository, [](const auto&) { return false; }};
@@ -218,6 +243,7 @@ TEST(RepositoryTransaction,
         next.id = {"other"};
         ASSERT_TRUE(repository.replace_all({next}, {}, {}));
         ASSERT_TRUE(repository.put_track(next));
+
         repository.create_playlist("Discarded");
         EXPECT_FALSE(transaction.commit());
     }
@@ -236,18 +262,24 @@ TEST(RepositoryTransaction,
     {
         RepositoryTransaction transaction{repository,
             [&](const auto&) { return CommitResult::accepted(1, receipt); }};
+
         ASSERT_TRUE(repository.put_track(track()));
+
         const auto result = transaction.commit();
+
         EXPECT_EQ(result.state, CommitState::accepted);
         EXPECT_FALSE(result.durable());
     }
+
     auto changed = track();
     changed.embedded.title = "Later edit";
     {
         RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+
         ASSERT_TRUE(repository.put_track(changed));
         ASSERT_TRUE(transaction.commit());
     }
+
     std::vector<bool> notifications;
     receipt->observe([&](auto event) {
         EXPECT_EQ(event.revision, 1);
@@ -255,6 +287,7 @@ TEST(RepositoryTransaction,
     });
     receipt->notify(false);
     EXPECT_EQ(repository.track(MediaId{"media"})->embedded.title, "Later edit");
+
     receipt->notify(true);
     EXPECT_EQ(notifications, (std::vector<bool>{false, true}));
 }
@@ -262,9 +295,13 @@ TEST(RepositoryTransaction,
 TEST(RepositoryTransaction, RestoringTheOriginalSnapshotBeforeCommitIsANoop)
 {
     InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track()));
+
     const auto playlist = repository.create_playlist("Original");
+
     ASSERT_TRUE(repository.append_track(playlist, MediaId{"media"}));
+
     const auto workspace = repository.create_workspace("music");
     const auto original = snapshot_of(repository);
     int writes = 0;
@@ -274,12 +311,15 @@ TEST(RepositoryTransaction, RestoringTheOriginalSnapshotBeforeCommitIsANoop)
                                           ++writes;
                                           return true;
                                       }};
+
     ASSERT_TRUE(repository.put_track(track()));
     ASSERT_TRUE(repository.rename_playlist(playlist, "Temporary"));
     ASSERT_TRUE(repository.put_workspace(*repository.workspace(workspace)));
+
     auto transient = track();
     transient.id = {"temporary-media"};
     ASSERT_TRUE(repository.put_track(transient));
+
     repository.create_playlist("Temporary");
     repository.create_workspace("temporary");
     ASSERT_TRUE(repository.replace_all(original.tracks, original.playlists, original.workspaces));
@@ -296,7 +336,9 @@ TEST(RepositoryTransaction, RestoringTheOriginalSnapshotBeforeCommitIsANoop)
 TEST(RepositoryTransaction, ContentNotificationsDistinguishDigestAndRevisionChanges)
 {
     InMemoryRepository repository;
+
     ASSERT_TRUE(repository.put_track(track()));
+
     std::vector<MediaChange> changes;
     auto subscription = repository.observe([&](const auto& batch) {
         changes.insert(changes.end(), batch.media.begin(), batch.media.end());
@@ -304,6 +346,7 @@ TEST(RepositoryTransaction, ContentNotificationsDistinguishDigestAndRevisionChan
     auto updated = *repository.track(MediaId{"media"});
     {
         RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+
         updated.fingerprint = "observed-new-content";
         ASSERT_TRUE(repository.put_track(updated));
         ASSERT_TRUE(transaction.commit());
@@ -311,8 +354,10 @@ TEST(RepositoryTransaction, ContentNotificationsDistinguishDigestAndRevisionChan
     ASSERT_EQ(changes.size(), 1U);
     EXPECT_EQ(changes.back().fields, MediaChangeFields::content);
     EXPECT_EQ(changes.back().content_revision, 0U);
+
     {
         RepositoryTransaction transaction{repository, [](const auto&) { return true; }};
+
         ++updated.content_revision;
         ASSERT_TRUE(repository.put_track(updated));
         ASSERT_TRUE(transaction.commit());
@@ -338,10 +383,12 @@ TEST(RepositoryTransaction, EveryTouchAllocationFailurePreservesTheOriginalRecor
             {.id = {"tag-original"}, .key = "Mood", .value = "Calm"}
         };
         ASSERT_TRUE(repository.put_track(original));
+
         auto updated = original;
         updated.embedded.title.assign(512, 'u');
         ++updated.metadata_revision;
         updated.locations.push_back("another/observed-location.wav");
+
         bool failed = false;
         bool accepted = false;
         {
@@ -361,11 +408,14 @@ TEST(RepositoryTransaction, EveryTouchAllocationFailurePreservesTheOriginalRecor
         }
         ASSERT_NE(repository.track(original.id), nullptr);
         EXPECT_EQ(*repository.track(original.id), original);
+
         if (!failed) {
             EXPECT_TRUE(accepted);
             EXPECT_TRUE(observed_failure);
+
             break;
         }
+
         observed_failure = true;
     }
 }
@@ -375,9 +425,13 @@ TEST(RepositoryTransaction, AllocationFailuresRespectThePersistenceAcceptanceBou
     bool observed_failure = false;
     for (std::size_t after = 0;; ++after) {
         InMemoryRepository repository;
+
         ASSERT_TRUE(repository.put_track(track()));
+
         const auto playlist = repository.create_playlist("Original");
+
         ASSERT_TRUE(repository.append_track(playlist, MediaId{"media"}));
+
         const auto workspace = repository.create_workspace("music");
         const auto original = snapshot_of(repository);
         bool persisted = false;
@@ -392,9 +446,11 @@ TEST(RepositoryTransaction, AllocationFailuresRespectThePersistenceAcceptanceBou
         ++updated.metadata_revision;
         ASSERT_TRUE(repository.put_track(updated));
         ASSERT_TRUE(repository.rename_playlist(playlist, "Updated"));
+
         auto next_workspace = *repository.workspace(workspace);
         next_workspace.recursive = false;
         ASSERT_TRUE(repository.put_workspace(next_workspace));
+
         const auto candidate = snapshot_of(repository);
         bool failed = false;
         CommitResult result;
@@ -406,22 +462,29 @@ TEST(RepositoryTransaction, AllocationFailuresRespectThePersistenceAcceptanceBou
                 failed = true;
             }
         }
+
         const auto& expected = persisted ? candidate : original;
+
         EXPECT_EQ(repository.tracks(), expected.tracks);
         EXPECT_EQ(repository.playlists(), expected.playlists);
         EXPECT_EQ(repository.workspaces(), expected.workspaces);
         EXPECT_FALSE(repository.staged_delta());
         EXPECT_EQ(repository.change_revision(), persisted ? 1U : 0U);
+
         // Publication failure cannot undo a durable commit. Both outcomes release the writer.
         RepositoryTransaction next{repository, [](const auto&) { return true; }};
+
         ASSERT_TRUE(next.commit());
+
         if (!failed) {
             EXPECT_TRUE(result);
             EXPECT_TRUE(persisted);
             EXPECT_EQ(notifications, 1U);
             EXPECT_TRUE(observed_failure);
+
             break;
         }
+
         observed_failure = true;
     }
 }

@@ -19,6 +19,7 @@
  */
 
 #include "fixture.hpp"
+
 #include <new>
 #include <stdexcept>
 
@@ -37,14 +38,19 @@ TEST_F(LibraryPersistenceCore, InitialSnapshotAndRemovalFactsReachTheSuppliedWri
         {.id = {"workspace"}, .root = "observed"}
     };
     start(initial);
+
     auto delta = revision(1, "added");
     delta->changes.removed_media = {removed.id};
     delta->changes.removed_playlists = {initial.playlists.front().id};
     delta->changes.removed_workspaces = {initial.workspaces.front().id};
+
     const auto accepted = writer->accept(delta);
+
     ASSERT_TRUE(accepted);
     ASSERT_TRUE(writer->flush().succeeded());
+
     const auto saved = store.last_snapshot();
+
     ASSERT_EQ(saved.tracks.size(), 2U);
     EXPECT_EQ(saved.tracks.front().id.value, "added");
     EXPECT_EQ(saved.tracks.back(), first);
@@ -56,14 +62,20 @@ TEST_F(LibraryPersistenceCore, FailedAttemptsRetainBothAcceptedEditsForSuccessfu
 {
     store.block();
     start();
+
     const auto first = writer->accept(revision(1, "first"));
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(store.wait_entered());
+
     const auto second = writer->accept(revision(2, "second"));
+
     ASSERT_TRUE(second);
+
     std::vector<bool> first_events, second_events;
     first.receipt->observe([&](auto event) { first_events.push_back(event.durable); });
     second.receipt->observe([&](auto event) { second_events.push_back(event.durable); });
+
     bool attempt_saved = true;
     writer->when_durable(2, [&](bool saved) { attempt_saved = saved; });
     store.release({app::SnapshotWriteError::io});
@@ -71,6 +83,7 @@ TEST_F(LibraryPersistenceCore, FailedAttemptsRetainBothAcceptedEditsForSuccessfu
     EXPECT_FALSE(attempt_saved);
     EXPECT_EQ(writer->pending_revision(), 2U);
     EXPECT_EQ(writer->durable_revision(), 0U);
+
     store.release();
     writer->retry();
     ASSERT_TRUE(writer->flush().succeeded());
@@ -88,10 +101,13 @@ TEST_F(LibraryPersistenceCore, RuntimeFailureAtTheDriverBoundaryLeavesTheRevisio
 {
     store.release({}, std::make_exception_ptr(std::runtime_error{"controlled storage failure"}));
     start();
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
     EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
     EXPECT_FALSE(accepted.receipt->durable());
+
     store.release();
     ASSERT_TRUE(writer->flush().succeeded());
     EXPECT_TRUE(accepted.receipt->durable());
@@ -101,9 +117,12 @@ TEST_F(LibraryPersistenceCore, FlushReportsAnUnseenDriverFailureThenRetriesTheRe
 {
     store.release({app::SnapshotWriteError::io});
     start();
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
     ASSERT_TRUE(delivery.wait_pending(1));
+
     store.release();
 
     EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
@@ -116,11 +135,15 @@ TEST_F(LibraryPersistenceCore, FlushRetriesADriverFailureAlreadyDeliveredByTheOw
 {
     store.release({app::SnapshotWriteError::io});
     start();
+
     const auto accepted = writer->accept(revision(1));
+
     ASSERT_TRUE(accepted);
     ASSERT_TRUE(delivery.wait_pending(1));
+
     delivery.drain();
     EXPECT_FALSE(accepted.receipt->durable());
+
     store.release();
 
     ASSERT_TRUE(writer->flush().succeeded());
@@ -133,18 +156,25 @@ TEST_F(LibraryPersistenceCore, PartialPreparationFailureRetainsTheEntireAccepted
     store.block();
     writer = std::make_unique<app::LibraryPersistence>(store, fail_after_first_delivery(delivery),
         library::LibrarySnapshot{});
+
     auto seed = revision(1, "first");
     seed->tracks.push_back(revision(1, "obsolete")->tracks.front());
+
     const auto first = writer->accept(seed);
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(store.wait_entered());
+
     auto delta = revision(2, "first");
     delta->tracks.front().embedded.title = "Updated";
     ++delta->tracks.front().metadata_revision;
     delta->tracks.push_back(revision(2, "second")->tracks.front());
     delta->changes.removed_media = {{"obsolete"}};
+
     const auto second = writer->accept(delta);
+
     ASSERT_TRUE(second);
+
     store.release();
 
     EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
@@ -169,8 +199,11 @@ TEST_F(LibraryPersistenceCore, FlushReportsAnAlreadyCompletedPreparationFailureB
         library::LibrarySnapshot{});
     ASSERT_TRUE(writer->accept(revision(1, "first")));
     ASSERT_TRUE(store.wait_entered());
+
     const auto second = writer->accept(revision(2, "second"));
+
     ASSERT_TRUE(second);
+
     store.release();
     ASSERT_TRUE(delivery.wait_pending(2));
 
@@ -184,13 +217,17 @@ TEST_F(LibraryPersistenceCore, FlushReportsAnAlreadyCompletedPreparationFailureB
 TEST_F(LibraryPersistenceCore, FailedPreparationKeepsCapacityUntilANewerPhysicalResultRecoversIt)
 {
     const app::LibraryPersistenceLimits limits{.pending_revisions = 2};
+
     store.block();
     writer = std::make_unique<app::LibraryPersistence>(store, fail_after_first_delivery(delivery),
         library::LibrarySnapshot{}, app::LibraryPersistence::Observer{}, limits);
     ASSERT_TRUE(writer->accept(revision(1, "first")));
     ASSERT_TRUE(store.wait_entered());
+
     const auto second = writer->accept(revision(2, "second"));
+
     ASSERT_TRUE(second);
+
     store.release();
     EXPECT_EQ(writer->flush().error, app::SnapshotWriteError::io);
     EXPECT_FALSE(second.receipt->durable());
@@ -198,13 +235,17 @@ TEST_F(LibraryPersistenceCore, FailedPreparationKeepsCapacityUntilANewerPhysical
 
     auto physical = revision(3, "physical");
     physical->priority = library::CommitPriority::file_result;
+
     const auto third = writer->accept(physical);
+
     ASSERT_TRUE(third);
     ASSERT_TRUE(writer->flush().succeeded());
 
     EXPECT_TRUE(second.receipt->durable());
     EXPECT_TRUE(third.receipt->durable());
+
     const auto snapshot = store.last_snapshot();
+
     ASSERT_EQ(snapshot.tracks.size(), 3U);
     EXPECT_EQ(snapshot.tracks.front().id.value, "first");
     EXPECT_EQ(snapshot.tracks[1], physical->tracks.front());
@@ -220,9 +261,12 @@ TEST_F(LibraryPersistenceCore, EveryDriverExceptionLeavesTheRevisionRetryable)
              std::make_exception_ptr(std::bad_alloc{}), std::make_exception_ptr(DriverFailure{})}) {
         store.release({}, failure);
         start();
+
         const auto delta = revision(1, "retained");
         const auto accepted = writer->accept(delta);
+
         ASSERT_TRUE(accepted);
+
         std::vector<bool> attempts;
         accepted.receipt->observe([&](auto event) { attempts.push_back(event.durable); });
 
@@ -236,7 +280,9 @@ TEST_F(LibraryPersistenceCore, EveryDriverExceptionLeavesTheRevisionRetryable)
         ASSERT_TRUE(writer->flush().succeeded());
         EXPECT_TRUE(accepted.receipt->durable());
         EXPECT_EQ(attempts, (std::vector<bool>{false, true}));
+
         const auto snapshot = store.last_snapshot();
+
         ASSERT_EQ(snapshot.tracks.size(), delta->tracks.size());
         EXPECT_EQ(snapshot.tracks.front(), delta->tracks.front());
     }
@@ -249,6 +295,7 @@ TEST_F(LibraryPersistenceCore, OwnedDeltaUpdatesEverySnapshotCollection)
         EXPECT_TRUE(result.succeeded());
         acknowledgments.push_back(number);
     });
+
     auto delta = revision(1);
     auto& track = delta->tracks.front();
     track.fingerprint = "observed-fingerprint";
@@ -268,7 +315,9 @@ TEST_F(LibraryPersistenceCore, OwnedDeltaUpdatesEverySnapshotCollection)
     delta->changes.workspaces = {delta->workspaces.front().id};
     ASSERT_TRUE(writer->accept(delta));
     ASSERT_TRUE(writer->flush().succeeded());
+
     const auto saved = store.last_snapshot();
+
     EXPECT_EQ(saved.tracks, delta->tracks);
     EXPECT_EQ(saved.playlists, delta->playlists);
     EXPECT_EQ(saved.workspaces, delta->workspaces);
@@ -279,16 +328,19 @@ TEST_F(LibraryPersistenceCore, FlushSavesTheInitialSnapshotWithoutInventingAnEdi
 {
     library::LibrarySnapshot initial;
     initial.tracks = revision(1)->tracks;
+
     int acknowledgments = 0;
     start(initial, [&](auto number, auto result) {
         EXPECT_EQ(number, 0U);
         EXPECT_TRUE(result.succeeded());
+
         ++acknowledgments;
     });
     ASSERT_TRUE(writer->flush().succeeded());
     EXPECT_EQ(writer->pending_revision(), 0U);
     EXPECT_EQ(writer->durable_revision(), 0U);
     EXPECT_EQ(store.last_snapshot().tracks, initial.tracks);
+
     writer->retry();
     EXPECT_TRUE(writer->flush().succeeded());
     EXPECT_EQ(acknowledgments, 1);

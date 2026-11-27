@@ -18,14 +18,16 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QApplication>
-#include <QEvent>
-#include <gtest/gtest.h>
-#include <memory>
 #include <qt/widgets/documents/document_registry.hpp>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
+
+#include <QApplication>
+#include <QEvent>
+#include <gtest/gtest.h>
+
+#include <memory>
 
 namespace {
 
@@ -41,6 +43,7 @@ TEST(DocumentRegistry, SeparatesTypedIdentitiesAndTrackCapabilities)
     WorkspaceDocument folder;
     const PlaylistId playlist{"same"};
     const WorkspaceId workspace{"same"};
+
     ASSERT_TRUE(registry.add(queue, [] { return std::vector<SelectedTrack>{}; }));
     ASSERT_TRUE(registry.add(playlist, saved, [] { return std::vector<SelectedTrack>{}; }));
     ASSERT_TRUE(registry.add(workspace, folder, [] { return std::vector<SelectedTrack>{}; }));
@@ -64,10 +67,13 @@ TEST(DocumentRegistry, RejectsDuplicateViewsAndReturnsOwnedOccurrenceSelections)
     std::vector<SelectedTrack> selected{
         {wiola::library::MediaId{"media"}, wiola::library::PlaylistEntryId{"entry"}, {}}
     };
+
     ASSERT_TRUE(registry.add(playlist, first, [&] { return selected; }));
     EXPECT_FALSE(registry.add(playlist, duplicate, [] { return std::vector<SelectedTrack>{}; }));
     ASSERT_TRUE(registry.activate(DocumentId::playlist(playlist)));
+
     const auto snapshot = registry.selection();
+
     selected.clear();
     ASSERT_EQ(snapshot.size(), 1);
     EXPECT_EQ(std::get<wiola::library::PlaylistEntryId>(snapshot.front().occurrence).value,
@@ -81,12 +87,17 @@ TEST(DocumentRegistry, DelayedDestructionCannotUnregisterAReplacementView)
     DocumentRegistry registry;
     auto* original = new SavedPlaylistDocument;
     const PlaylistId playlist{"saved"};
+
     ASSERT_TRUE(registry.add(playlist, *original, [] { return std::vector<SelectedTrack>{}; }));
     ASSERT_TRUE(registry.remove(DocumentId::playlist(playlist)));
+
     original->deleteLater();
+
     SavedPlaylistDocument replacement;
+
     ASSERT_TRUE(registry.add(playlist, replacement, [] { return std::vector<SelectedTrack>{}; }));
     ASSERT_TRUE(registry.activate(DocumentId::playlist(playlist)));
+
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     EXPECT_EQ(registry.playlist(playlist), &replacement);
     EXPECT_EQ(registry.active(), DocumentId::playlist(playlist));
@@ -99,12 +110,15 @@ TEST(DocumentRegistry, DestroyedViewsAndRegistriesReleaseTheirObservers)
         DocumentRegistry registry;
         NowPlayingDocument queue;
         const PlaylistId playlist{"saved"};
+
         ASSERT_TRUE(registry.add(queue, [] { return std::vector<SelectedTrack>{}; }));
         ASSERT_TRUE(registry.add(playlist, *saved, [] { return std::vector<SelectedTrack>{}; }));
         ASSERT_TRUE(registry.activate(DocumentId::playlist(playlist)));
+
         saved.reset();
         EXPECT_EQ(registry.playlist(playlist), nullptr);
         EXPECT_EQ(registry.active(), DocumentId::queue());
+
         saved = std::make_unique<SavedPlaylistDocument>();
         ASSERT_TRUE(registry.add(playlist, *saved, [] { return std::vector<SelectedTrack>{}; }));
     }
@@ -117,6 +131,8 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "minimal");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
+
     return RUN_ALL_TESTS();
 }

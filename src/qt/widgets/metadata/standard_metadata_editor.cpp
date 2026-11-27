@@ -66,6 +66,7 @@ QLineEdit* field(QWidget* parent, const char* name, const QString& placeholder)
     input->setPlaceholderText(placeholder);
     // A UTF-16 input capacity is only an upper bound; catalog admission checks encoded bytes.
     input->setMaxLength(static_cast<int>(library::max_metadata_text_bytes));
+
     return input;
 }
 
@@ -116,12 +117,14 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     commands->setRowWrapPolicy(QFormLayout::WrapLongRows);
     commands->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     commands->addRow(apply_, cancel_);
+
     save_file_ = new QPushButton{"Apply and save to file", this};
     save_file_->setObjectName("saveMetadataToFile");
     save_file_->setAccessibleName("Apply changes and save embedded metadata to file");
     save_file_->setToolTip("Writes changed fields when the format supports them. Application "
                            "overrides remain if file writing fails.");
     commands->addRow(save_file_);
+
     file_status_ = new QLabel{this};
     file_status_->setObjectName("metadataFileStatus");
     file_status_->setWordWrap(true);
@@ -149,8 +152,10 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
 
             touched_.insert(input);
             feedback_.clear();
+
             if (valid_numbers())
                 session_.set_draft(patch());
+
             update_actions();
         });
     }
@@ -161,6 +166,7 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
             observer_(session_);
         }
     });
+
     connect(cancel_, &QPushButton::clicked, this, [this] { discard(); });
 
     show_track(nullptr);
@@ -180,6 +186,7 @@ void StandardMetadataEditor::show_tracks(const std::vector<const library::TrackR
 void StandardMetadataEditor::show_session(app::MetadataEditSession next)
 {
     offered_ = std::move(next);
+
     if (retains_draft()) {
         if (!session_.same_targets(offered_))
             show_status(
@@ -188,8 +195,10 @@ void StandardMetadataEditor::show_session(app::MetadataEditSession next)
             );
         return;
     }
+
     if (initialized_ && session_.same_targets(offered_))
         return;
+
     discard();
 }
 
@@ -198,6 +207,7 @@ void StandardMetadataEditor::discard()
     session_ = offered_;
     initialized_ = true;
     mixed_.clear();
+
     const auto mix = [&](QLineEdit* field, app::StandardMetadataField id) {
         if (session_.mixed(id))
             mixed_.insert(field);
@@ -227,6 +237,7 @@ library::ResolvedMetadata StandardMetadataEditor::current() const
     current.composer = composer_->text().toStdString();
     current.track_number = number(track_number_->text());
     current.disc_number = number(disc_number_->text());
+
     return current;
 }
 
@@ -237,7 +248,9 @@ library::StandardMetadataPatch StandardMetadataEditor::patch() const
     const auto assign = [this](QLineEdit* field, auto& target, const auto& value) {
         if (!touched_.contains(field))
             return;
+
         using Edit = std::decay_t<decltype(target)>;
+
         if constexpr (std::is_same_v<typename Edit::Value, std::string>)
             target = value;
         else
@@ -253,6 +266,7 @@ library::StandardMetadataPatch StandardMetadataEditor::patch() const
     assign(composer_, result.composer, values.composer);
     assign(track_number_, result.track_number, values.track_number);
     assign(disc_number_, result.disc_number, values.disc_number);
+
     return result;
 }
 
@@ -314,7 +328,9 @@ void StandardMetadataEditor::update_actions()
         status_->setText("Application overrides are active. Embedded file data is unchanged.");
     else
         status_->setText("Embedded values. Edits are stored in the application.");
+
     status_->setAccessibleDescription(status_->text());
+
     for (auto* input : {year_, track_number_, disc_number_})
         input->setAccessibleDescription(valid_numbers() ? QString{} : status_->text());
 }

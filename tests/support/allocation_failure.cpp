@@ -57,15 +57,19 @@ void* operator new(std::size_t size)
             allocations_before_failure = std::numeric_limits<std::size_t>::max();
         throw std::bad_alloc{};
     }
+
     if (allocations_before_failure != std::numeric_limits<std::size_t>::max())
         --allocations_before_failure;
 
     while (true) {
         if (void* memory{std::malloc(size == 0 ? 1 : size)})
             return memory;
+
         const auto handler{std::get_new_handler()};
+
         if (!handler)
             throw std::bad_alloc{};
+
         handler();
     }
 }

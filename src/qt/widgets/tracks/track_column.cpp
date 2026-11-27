@@ -19,6 +19,7 @@
  */
 
 #include "track_column.hpp"
+
 #include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <wiola/library/tags.hpp>
 
@@ -39,6 +40,7 @@ const std::array<TrackColumnDescriptor, num_columns>& standard_track_columns()
          {length, "Length", t.playlist.length_column_width, QHeaderView::Fixed,
                 TrackSortKey{.field = TrackSortField::duration}}}
     };
+
     return columns;
 }
 

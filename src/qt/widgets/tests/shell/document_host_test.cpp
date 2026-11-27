@@ -18,22 +18,23 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QApplication>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
-#include <QEvent>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QTemporaryDir>
 #include <fakes/output.hpp>
-#include <gtest/gtest.h>
-#include <memory>
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
+
+#include <QApplication>
+#include <QEvent>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTemporaryDir>
+#include <gtest/gtest.h>
+
+#include <memory>
 
 namespace {
 
@@ -44,7 +45,9 @@ protected:
     void SetUp() override
     {
         ASSERT_TRUE(directory.isValid());
+
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.path());
+
         QSettings settings{QSettings::IniFormat, QSettings::UserScope, "wiola-player", "settings"};
         preferences = std::make_unique<app::SessionPreferences>(settings);
         library = std::make_unique<app::LibrarySession>(wiola::codec::ffmpeg::make_provider());
@@ -63,14 +66,18 @@ TEST_F(DocumentHostTest,
 {
     const auto first = library->playlists().create("First").id;
     const auto second = library->playlists().create("Second").id;
+
     ASSERT_TRUE(library->playlist_destination().set(second));
+
     preferences->edit([&](auto& state) {
         state.documents.open = {gui::DocumentId::queue(), gui::DocumentId::playlist(first),
             gui::DocumentId::playlist(second)};
         state.documents.visible = gui::DocumentId::queue();
         state.documents.last_playlist = first;
     });
+
     gui::DocumentHost host{*library, playback, *preferences, {}};
+
     EXPECT_EQ(preferences->state().documents.last_playlist, first);
     EXPECT_FALSE(host.active_playlist());
     EXPECT_EQ(library->playlist_destination().id(), second);
@@ -86,8 +93,11 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
 {
     const auto playlist = library->playlists().create("Favorites").id;
     gui::DocumentHost host{*library, playback, *preferences, {}};
+
     ASSERT_TRUE(host.open_playlist(playlist));
+
     auto* original = host.registry().playlist(playlist);
+
     ASSERT_NE(original, nullptr);
     EXPECT_TRUE(host.open_playlist(playlist));
     EXPECT_EQ(host.registry().playlist(playlist), original);
@@ -100,8 +110,11 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
     EXPECT_EQ(host.registry().playlist(playlist), nullptr);
     EXPECT_NE(library->repository().playlist(playlist), nullptr);
     ASSERT_TRUE(host.open_playlist(playlist));
+
     auto* replacement = host.registry().playlist(playlist);
+
     ASSERT_NE(replacement, nullptr);
+
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     EXPECT_EQ(host.registry().playlist(playlist), replacement);
     EXPECT_EQ(host.tabs().count(), 2);
@@ -110,12 +123,17 @@ TEST_F(DocumentHostTest, ActivatesExistingDocumentsAndClosesViewsWithoutDeleting
 TEST_F(DocumentHostTest, ClosingTheLastTabPreservesQueueRowsSelectionAndFiltersUntilReopened)
 {
     playback.add({media::local_resource("queued.wav"), media::local_resource("queued.wav")});
+
     const auto entry = playback.playlist().tracks()[1].id();
     gui::DocumentHost host{*library, playback, *preferences, {}};
     auto& queue = host.queue();
+
     ASSERT_TRUE(queue.show_playlist(playback.playlist()));
+
     auto* search = queue.findChild<QLineEdit*>("searchTitle");
+
     ASSERT_NE(search, nullptr);
+
     search->setText("queued");
     queue.browser().table().selectRow(1);
     ASSERT_EQ(queue.chosen_tracks(), (std::vector<engine::QueueEntryId>{entry}));
@@ -126,6 +144,7 @@ TEST_F(DocumentHostTest, ClosingTheLastTabPreservesQueueRowsSelectionAndFiltersU
     EXPECT_EQ(host.registry().view(gui::DocumentId::queue()), &queue);
     EXPECT_TRUE(queue.isHidden());
     EXPECT_FALSE(host.close(gui::DocumentId::queue()));
+
     host.refresh_playback();
     EXPECT_EQ(host.count(), 0);
     ASSERT_EQ(playback.playlist().tracks().size(), 2);
@@ -143,16 +162,21 @@ TEST_F(DocumentHostTest, RestoresTheActiveTypedDocumentWithoutChangingPlayback)
 {
     const auto first = library->playlists().create("First").id;
     const auto second = library->playlists().create("Second").id;
+
     playback.add({wiola::media::local_resource("queued.wav"),
         wiola::media::local_resource("queued.wav")});
+
     const auto entry = playback.playlist().tracks()[1].id();
     {
         gui::DocumentHost host{*library, playback, *preferences, {}};
+
         ASSERT_TRUE(host.open_playlist(first));
         ASSERT_TRUE(host.open_playlist(second));
         ASSERT_TRUE(host.activate(gui::DocumentId::playlist(first)));
     }
+
     gui::DocumentHost restored{*library, playback, *preferences, {}};
+
     EXPECT_EQ(restored.tabs().count(), 3);
     EXPECT_EQ(restored.registry().active(), gui::DocumentId::playlist(first));
     EXPECT_EQ(restored.tabs().tabText(restored.tabs().currentIndex()), "First");
@@ -164,6 +188,7 @@ TEST_F(DocumentHostTest, CommittedDeletionUpdatesTabsAndActiveIdentity)
 {
     const auto playlist = library->playlists().create("Deleted").id;
     gui::DocumentHost host{*library, playback, *preferences, {}};
+
     ASSERT_TRUE(host.open_playlist(playlist));
     ASSERT_TRUE(library->playlists().remove(playlist));
     EXPECT_EQ(host.registry().playlist(playlist), nullptr);
@@ -175,6 +200,7 @@ TEST_F(DocumentHostTest, CommittedDeletionUpdatesTabsAndActiveIdentity)
 TEST_F(DocumentHostTest, NoPermanentOpenFolderTabIsCreated)
 {
     gui::DocumentHost host{*library, playback, *preferences, {}};
+
     EXPECT_EQ(host.count(), 1);
     EXPECT_EQ(host.currentWidget(), &host.queue());
     EXPECT_EQ(host.findChild<QPushButton*>("openFolderFromDocuments"), nullptr);
@@ -187,6 +213,8 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "minimal");
     ::testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
+
     return RUN_ALL_TESTS();
 }

@@ -18,11 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <transport/transport_worker.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
-
+#include <transport/transport_worker.hpp>
 #include <wiola/audio/output_connection.hpp>
 
 #include <gtest/gtest.h>
@@ -74,10 +72,13 @@ private:
             if (reading_)
                 reading_->wait();
         }
+
         if (!failed_ &&
             (phase_ == Phase::priming || (phase_ == Phase::decoding && output_.running())))
             fail();
+
         std::fill(output.begin(), output.end(), 0.0F);
+
         return wiola::media::DecodeOutcome{.frames = frames};
     }
 
@@ -127,6 +128,7 @@ private:
             };
 
         std::fill(output.begin(), output.end(), 0.0F);
+
         return wiola::media::DecodeOutcome{.frames = frames};
     }
 
@@ -149,6 +151,7 @@ TEST(TransportWorker, TypedDecodeFailureQuiescesOutput)
     TransportWorker worker{std::make_unique<RejectingDecoder>(false), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
@@ -167,11 +170,15 @@ TEST(TransportWorker, TypedSeekPrimingFailureNeverRestartsOutput)
         output};
 
     ASSERT_TRUE(worker.start());
+
     reading.wait_until_entered();
+
     // The output has consumed its original primed block. The held EOF read submits no
     // further samples, leaving room for the seek transaction to prime before restarting.
     std::array<float, 1024> played{};
+
     EXPECT_EQ(consumer.pop(played), played.size());
+
     output.play(Frames{512});
     worker.seek(Frames{8});
     reading.release();
@@ -188,16 +195,20 @@ TEST(TransportWorker, RestartJoinsThePreviousExecutionWithoutAnExplicitWait)
     wiola::pcm::PcmQueue buffer{{}, Frames{512}};
     FakeOutput output;
     output.refuse_starts();
+
     TransportWorker worker{std::make_unique<FakeDecoder>(), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
     while (!worker.finished()) {
         ASSERT_LT(std::chrono::steady_clock::now(), deadline);
         std::this_thread::yield();
     }
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
@@ -227,6 +238,7 @@ TEST(TransportWorker, PrimingExceptionFaultsWithoutStartingOutput)
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
@@ -242,6 +254,7 @@ TEST(TransportWorker, DecodeExceptionStopsOutputAndAllowsAnotherStart)
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
@@ -250,6 +263,7 @@ TEST(TransportWorker, DecodeExceptionStopsOutputAndAllowsAnotherStart)
     EXPECT_FALSE(output.running());
 
     EXPECT_TRUE(worker.start());
+
     worker.stop();
     worker.wait();
     EXPECT_EQ(worker.state(), State::stopped);
@@ -266,6 +280,7 @@ TEST(TransportWorker, AcceptedStopWinsOverALaterDecoderException)
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     reading.wait_until_entered();
     worker.stop();
     reading.release();
@@ -286,6 +301,7 @@ TEST(TransportWorker, SeekExceptionAfterOutputStartedLeavesItStopped)
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     reading.wait_until_entered();
     worker.seek(Frames{8});
     reading.release();
@@ -302,11 +318,13 @@ TEST(TransportWorker, StartAndCommandsDoNotWaitForABlockedDecoderRead)
     auto source{std::make_unique<FakeDecoder>()};
     Gate reading;
     source->block_reads_on(reading);
+
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     FakeOutput output;
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     reading.wait_until_entered();
     EXPECT_TRUE(worker.pause());
     EXPECT_EQ(worker.state(), State::paused);
@@ -325,11 +343,13 @@ TEST(TransportWorker, StopDuringInitialSeekNeverStartsOutputOrPrimes)
     auto* decoder{source.get()};
     Gate seeking;
     source->block_seeks_on(seeking);
+
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     FakeOutput output;
     TransportWorker worker{std::move(source), buffer.producer(), output};
     worker.seek(Frames{8});
     ASSERT_TRUE(worker.start());
+
     seeking.wait_until_entered();
     worker.stop();
     seeking.release();
@@ -347,9 +367,11 @@ TEST(TransportWorker, OutputStartFailureIsEventualRatherThanRequestRefusal)
     wiola::pcm::PcmQueue buffer{source->spec(), Frames{512}};
     FakeOutput output;
     output.refuse_starts();
+
     TransportWorker worker{std::move(source), buffer.producer(), output};
 
     EXPECT_TRUE(worker.start());
+
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
@@ -366,6 +388,7 @@ TEST(TransportWorker, ThreadLaunchFailureLeavesNoRunningOutput)
     TransportWorker worker{std::move(source), buffer.producer(), output, fail};
 
     EXPECT_FALSE(worker.start());
+
     worker.wait();
 
     EXPECT_EQ(worker.state(), State::faulted);
@@ -379,6 +402,7 @@ TEST(TransportWait, NotificationBeforeWaitingIsNotLost)
     waiting.notify();
 
     const auto before = std::chrono::steady_clock::now();
+
     waiting.wait();
 
     EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::milliseconds{100});
@@ -391,16 +415,20 @@ TEST(TransportWorker, StopInterruptsALongOutputProgressPoll)
     FakeOutput output;
     wiola::engine::TransportConfig config;
     config.poll_interval = std::chrono::milliseconds{5000};
+
     TransportWorker worker{std::move(source), buffer.producer(), output, {}, config};
 
     ASSERT_TRUE(worker.start());
+
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
     while (!output.running()) {
         ASSERT_LT(std::chrono::steady_clock::now(), deadline);
         std::this_thread::yield();
     }
 
     const auto before = std::chrono::steady_clock::now();
+
     worker.stop();
     worker.wait();
 
@@ -417,10 +445,13 @@ TEST(TransportWorker, UsesItsOwnDecodeChunkConfiguration)
         FakeOutput output;
         wiola::engine::TransportConfig config;
         config.decode_chunk = Frames{chunk_frames};
+
         TransportWorker worker{std::move(source), buffer.producer(), output, {}, config};
 
         ASSERT_TRUE(worker.start());
+
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
         while (played->num_reads() == 0) {
             ASSERT_LT(std::chrono::steady_clock::now(), deadline);
             std::this_thread::yield();
@@ -451,6 +482,7 @@ TEST(TransportWorker, PreparedCandidateClaimsOutputAfterThePreviousOwnerIsReleas
 {
     FakeOutput output;
     output.refuse_starts();
+
     auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
     wiola::pcm::PcmQueue queue{{}, Frames{64}};
     bool claimed_before_launch{false};
@@ -459,9 +491,11 @@ TEST(TransportWorker, PreparedCandidateClaimsOutputAfterThePreviousOwnerIsReleas
             claimed_before_launch = !static_cast<bool>(output.control());
             return std::jthread{std::move(work)};
         }};
+
     previous.reset();
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
 
     EXPECT_TRUE(claimed_before_launch);
@@ -473,18 +507,22 @@ TEST(TransportWorker, OutputContentionFaultsWithoutTouchingTheOwnerAndCanBeRetri
 {
     FakeOutput output;
     output.refuse_starts();
+
     auto previous{std::make_unique<wiola::audio::OutputConnection>(output)};
     wiola::pcm::PcmQueue queue{{}, Frames{64}};
     TransportWorker worker{std::make_unique<FakeDecoder>(Frames{64}), queue.producer(), output};
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
     EXPECT_EQ(worker.state(), State::faulted);
     EXPECT_EQ(output.num_starts(), 0);
     EXPECT_EQ(output.num_stops(), 0);
+
     previous.reset();
 
     ASSERT_TRUE(worker.start());
+
     worker.wait();
     EXPECT_EQ(output.num_starts(), 1);
     EXPECT_EQ(worker.state(), State::faulted);

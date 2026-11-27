@@ -19,14 +19,14 @@
  */
 
 #include "saved_playlist_document.hpp"
-#include <qt/widgets/documents/playlist_name.hpp>
 
+#include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/documents/playlist_name.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 
 #include <QLabel>
 #include <QPainter>
 #include <QVBoxLayout>
-#include <qt/widgets/appearance/presentation_tokens.hpp>
 
 #include <algorithm>
 #include <utility>
@@ -42,6 +42,7 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
     heading_->setObjectName("savedPlaylistHeading");
     heading_->setTextFormat(Qt::PlainText);
     heading_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+
     QFont font = heading_->font();
     font.setBold(true);
     heading_->setFont(font);
@@ -59,6 +60,7 @@ SavedPlaylistDocument::SavedPlaylistDocument(QWidget* parent)
             id && entry_observer_)
             entry_observer_(*id);
     });
+
     connect(browser_, &TrackBrowser::command_requested, this, [this](TrackCommand command) {
         switch (command) {
         case TrackCommand::transfer:
@@ -87,6 +89,7 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
     const library::PlaylistId& id)
 {
     const library::PlaylistRecord* playlist = repository.playlist(id);
+
     if (playlist == nullptr)
         return false;
 
@@ -97,6 +100,7 @@ bool SavedPlaylistDocument::show_playlist(const library::LibraryRepository& repo
         return false;
 
     browser_->show_rows(source_.rows(), {}, &repository);
+
     return true;
 }
 
@@ -105,16 +109,20 @@ bool SavedPlaylistDocument::show_media_revision(const library::LibraryRepository
 {
     if (!source_.update_media(repository, media))
         return false;
+
     browser_->update_rows(source_.media_rows(media), &repository);
+
     return true;
 }
 
 std::vector<SelectedTrack> SavedPlaylistDocument::selection() const
 {
     std::vector<SelectedTrack> selected;
+
     for (const auto& entry : chosen_entries())
         if (const auto* row = source_.row(entry))
             selected.push_back({row->media, row->id, row->location});
+
     return selected;
 }
 
@@ -122,6 +130,7 @@ void SavedPlaylistDocument::set_active(bool active)
 {
     if (active_ == active)
         return;
+
     active_ = active;
     update_heading();
 }
@@ -137,19 +146,23 @@ void SavedPlaylistDocument::update_heading()
 std::vector<std::filesystem::path> SavedPlaylistDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
+
     for (const auto& occurrence : browser_->table().displayed_rows())
         if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence))
             if (const auto* row = source_.row(*id); row && !row->location.empty())
                 paths.push_back(row->location);
+
     return paths;
 }
 
 std::vector<library::PlaylistEntryId> SavedPlaylistDocument::chosen_entries() const
 {
     std::vector<library::PlaylistEntryId> selected;
+
     for (const auto& occurrence : browser_->table().chosen_rows())
         if (const auto* id = std::get_if<library::PlaylistEntryId>(&occurrence))
             selected.push_back(*id);
+
     return selected;
 }
 

@@ -19,6 +19,7 @@
  */
 
 #include "custom_tag_editor.hpp"
+
 #include <wiola/library/tags.hpp>
 
 #include <QFormLayout>
@@ -129,11 +130,13 @@ void CustomTagEditor::show_track(const library::TrackRecord* track)
         return;
 
     const library::TagId selected = media_ == next_media ? selected_tag() : library::TagId{};
+
     media_ = next_media;
     revision_ = next_revision;
     initialized_ = true;
 
     const QSignalBlocker blocked{values_};
+
     values_->clear();
     key_->clear();
     value_->clear();

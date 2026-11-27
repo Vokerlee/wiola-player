@@ -18,29 +18,33 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <qt/application/metadata/metadata_write_service.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/qt/paths.hpp>
+
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QThread>
+#include <gtest/gtest.h>
+
 #include <chrono>
 #include <exception>
-#include <gtest/gtest.h>
 #include <memory>
-#include <qt/application/metadata/metadata_write_service.hpp>
 #include <stdexcept>
 #include <utility>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-#include <wiola/media/local/fingerprint.hpp>
-#include <wiola/qt/paths.hpp>
 
 namespace {
 
 bool pump(const std::function<bool()>& ready)
 {
     const auto end = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
     while (!ready() && std::chrono::steady_clock::now() < end)
         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
     return ready();
 }
 
@@ -51,10 +55,12 @@ TEST(MetadataWriteService, EnqueueRejectionIsIdentifiedAndDeliveredLaterOnOwnerT
     wiola::library::TrackRecord record;
     record.id = {"missing-location"};
     repository.put_track(record);
+
     auto edit = wiola::app::MetadataEditSession::capture({repository.track(record.id)});
     wiola::library::StandardMetadataPatch patch;
     patch.title = "Draft";
     edit.set_draft(patch);
+
     std::vector<wiola::app::MetadataWriteResult> outcomes;
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     wiola::app::MetadataWriteService service{context, wiola::codec::ffmpeg::make_provider(),
@@ -64,12 +70,14 @@ TEST(MetadataWriteService, EnqueueRejectionIsIdentifiedAndDeliveredLaterOnOwnerT
             outcomes.push_back(result);
         }};
     const auto ids = service.submit(edit);
+
     ASSERT_EQ(ids.size(), 1);
     ASSERT_EQ(outcomes.size(), 1);
     EXPECT_EQ(outcomes.front().stage, wiola::app::MetadataWriteStage::queued);
     ASSERT_TRUE(pump([&] { return outcomes.size() == 2; }));
     EXPECT_EQ(outcomes.back().job.operation, ids.front());
     EXPECT_EQ(outcomes.back().stage, wiola::app::MetadataWriteStage::failed);
+
     service.stop();
     QCoreApplication::processEvents();
     EXPECT_EQ(outcomes.size(), 2);
@@ -78,14 +86,18 @@ TEST(MetadataWriteService, EnqueueRejectionIsIdentifiedAndDeliveredLaterOnOwnerT
 TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSupersededOne)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     const auto path = wiola::platform::qt::QtPathAdapter::from_qt(directory.filePath("track.mp3"));
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
     record.id = {"media"};
     record.locations = {path};
     repository.put_track(record);
+
     auto first = wiola::app::MetadataEditSession::capture({repository.track(record.id)}),
          second = first;
     wiola::library::StandardMetadataPatch patch;
@@ -93,6 +105,7 @@ TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSu
     first.set_draft(patch);
     patch.title = "Newest";
     second.set_draft(patch);
+
     wiola::app::MetadataWriteService* pointer = nullptr;
     bool submitted = false;
     std::vector<wiola::app::MetadataWriteResult> terminal;
@@ -111,7 +124,9 @@ TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSu
                 terminal.push_back(result);
         }};
     pointer = &service;
+
     const auto accepted = service.submit(first);
+
     ASSERT_EQ(accepted.size(), 1);
     ASSERT_TRUE(pump([&] { return terminal.size() == 2; }));
     EXPECT_NE(terminal.front().job.operation, terminal.back().job.operation);
@@ -119,28 +134,36 @@ TEST(MetadataWriteService, ReentrantSubmissionKeepsNewestWriteAndTerminatesTheSu
     EXPECT_EQ(terminal.back().stage, wiola::app::MetadataWriteStage::complete)
         << terminal.back().outcome.detail;
     EXPECT_EQ(repository.track(record.id)->embedded.title, "Newest");
+
     service.stop();
 }
 
 void qualify_durable_file_write(bool save_result)
 {
     using namespace wiola;
+
     QTemporaryDir directory;
     const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("音楽.mp3"));
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+
     const auto bytes = [&] {
         QFile file{platform::qt::QtPathAdapter::to_qt(path)};
+
         if (!file.open(QIODevice::ReadOnly))
             return QByteArray{};
+
         return file.readAll();
     };
     const auto original = bytes();
+
     ASSERT_FALSE(original.isEmpty());
+
     library::InMemoryRepository repository;
     library::TrackRecord record;
     record.id = {"media"};
     record.locations = {path};
     ASSERT_TRUE(repository.put_track(record));
+
     auto edit = app::MetadataEditSession::capture({repository.track(record.id)});
     library::StandardMetadataPatch patch;
     patch.title = "Durable title";
@@ -177,6 +200,7 @@ void qualify_durable_file_write(bool save_result)
         [&] {
             while (!pending.empty()) {
                 auto completion = std::move(pending.front().completion);
+
                 pending.pop_front();
                 completion(false);
             }
@@ -185,7 +209,9 @@ void qualify_durable_file_write(bool save_result)
     ASSERT_TRUE(pump([&] { return !pending.empty(); }));
     EXPECT_EQ(handoffs, 0);
     EXPECT_EQ(bytes(), original);
+
     auto rejected = std::move(pending.front().completion);
+
     pending.pop_front();
     rejected(false);
     ASSERT_EQ(terminal.size(), 1);
@@ -194,7 +220,9 @@ void qualify_durable_file_write(bool save_result)
     EXPECT_EQ(bytes(), original);
     ASSERT_EQ(service.submit(edit).size(), 1);
     ASSERT_TRUE(pump([&] { return !pending.empty(); }));
+
     auto intent = std::move(pending.front().completion);
+
     pending.pop_front();
     intent(true);
     ASSERT_TRUE(pump([&] { return !pending.empty(); }));
@@ -203,16 +231,21 @@ void qualify_durable_file_write(bool save_result)
     EXPECT_EQ(terminal.size(), 1);
     EXPECT_EQ(repository.track(record.id)->embedded.title, "Durable title");
     EXPECT_EQ(pending.front().revision, repository.change_revision());
+
     auto after = std::move(pending.front().completion);
+
     pending.pop_front();
     after(save_result);
     ASSERT_EQ(terminal.size(), 2);
     EXPECT_TRUE(terminal.back().outcome.source_modified);
     EXPECT_EQ(terminal.back().stage,
         save_result ? app::MetadataWriteStage::complete : app::MetadataWriteStage::failed);
+
     if (!save_result)
         EXPECT_NE(terminal.back().outcome.detail.find("remain in memory"), std::string::npos);
+
     EXPECT_EQ(repository.track(record.id)->embedded.title, "Durable title");
+
     service.stop();
 }
 
@@ -265,15 +298,18 @@ TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPe
         QTemporaryDir directory;
         const auto path = platform::qt::QtPathAdapter::from_qt(directory.filePath("source.mp3"));
         std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", path);
+
         library::InMemoryRepository repository;
         library::TrackRecord record;
         record.id = {"media"};
         record.locations = {path};
         ASSERT_TRUE(repository.put_track(record));
+
         auto edit = app::MetadataEditSession::capture({repository.track(record.id)});
         library::StandardMetadataPatch patch;
         patch.title = "After driver failure";
         edit.set_draft(patch);
+
         ThrowOnceReplacement replacement{failure};
         std::vector<app::MetadataWriteResult> terminal;
         app::MetadataWriteService service{*QCoreApplication::instance(),
@@ -284,6 +320,7 @@ TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPe
                     result.stage == app::MetadataWriteStage::complete)
                     terminal.push_back(result);
             }};
+
         ASSERT_EQ(service.submit(edit).size(), 1U);
         ASSERT_TRUE(pump([&] { return terminal.size() == 1; }));
         EXPECT_EQ(terminal.front().stage, app::MetadataWriteStage::failed);
@@ -296,6 +333,7 @@ TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPe
         ASSERT_TRUE(pump([&] { return terminal.size() == 2; }));
         EXPECT_EQ(terminal.back().stage, app::MetadataWriteStage::complete);
         EXPECT_EQ(repository.track(record.id)->embedded.title, "After driver failure");
+
         service.stop();
     }
 }
@@ -305,7 +343,9 @@ TEST(MetadataWriteService, ReplacementDriverExceptionsTerminateOneOperationAndPe
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication app{argc, argv};
+
     return RUN_ALL_TESTS();
 }
 
@@ -333,10 +373,12 @@ TEST(MetadataWriteService, TerminalShutdownObserverCanReleaseTheService)
     wiola::library::TrackRecord record;
     record.id = {"missing-location"};
     ASSERT_TRUE(repository.put_track(record));
+
     auto edit = wiola::app::MetadataEditSession::capture({repository.track(record.id)});
     wiola::library::StandardMetadataPatch patch;
     patch.title = "Draft";
     edit.set_draft(patch);
+
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     std::unique_ptr<wiola::app::MetadataWriteService> service;
     int observed{};
@@ -351,6 +393,7 @@ TEST(MetadataWriteService, TerminalShutdownObserverCanReleaseTheService)
         }
     );
     ASSERT_EQ(service->submit(edit).size(), 1);
+
     service->stop();
     EXPECT_FALSE(service);
     EXPECT_EQ(observed, 1);
@@ -365,11 +408,13 @@ TEST(MetadataWriteService, TerminalObserverFailureStillDrainsOtherJobsAndFlushes
     second.id = {"second-missing-location"};
     ASSERT_TRUE(repository.put_track(first));
     ASSERT_TRUE(repository.put_track(second));
+
     auto edit = wiola::app::MetadataEditSession::capture({repository.track(first.id),
         repository.track(second.id)});
     wiola::library::StandardMetadataPatch patch;
     patch.title = "Draft";
     edit.set_draft(patch);
+
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     int terminal{}, flushed{};
     wiola::app::MetadataWriteService service{context, wiola::codec::ffmpeg::make_provider(),
@@ -394,10 +439,12 @@ TEST(MetadataWriteService, QueuedObserverCanReleaseTheServiceDuringSubmission)
     wiola::library::TrackRecord record;
     record.id = {"queued-close"};
     ASSERT_TRUE(repository.put_track(record));
+
     auto edit = wiola::app::MetadataEditSession::capture({repository.track(record.id)});
     wiola::library::StandardMetadataPatch patch;
     patch.title = "Draft";
     edit.set_draft(patch);
+
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     std::unique_ptr<wiola::app::MetadataWriteService> service;
     service = std::make_unique<wiola::app::MetadataWriteService>(
@@ -408,7 +455,9 @@ TEST(MetadataWriteService, QueuedObserverCanReleaseTheServiceDuringSubmission)
                 service.reset();
         }
     );
+
     const auto accepted = service->submit(edit);
+
     EXPECT_EQ(accepted.size(), 1);
     EXPECT_FALSE(service);
 }
@@ -418,6 +467,7 @@ TEST(MetadataWriteService, MissingRequiredDriversAreRejectedBeforeStartingWorker
     QObject context;
     wiola::library::InMemoryRepository repository;
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
+
     EXPECT_THROW((wiola::app::MetadataWriteService{context, {}, repository, *replacement,
                      [](const auto&) { return true; }, {}}),
         std::invalid_argument);

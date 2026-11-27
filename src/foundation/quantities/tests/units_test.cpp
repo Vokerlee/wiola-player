@@ -119,8 +119,10 @@ TEST(Units, MultipliesFrequencyByTimeIntoCycles)
     static_assert(440_Hz * 2_s == 880.0);
     static_assert(1_kHz * 3_ms == 3.0);
     static_assert(std::is_same_v<decltype(440_Hz * 2_s), double>);
+
     Frequency rate{48000};
     Time interval{0.25};
+
     EXPECT_DOUBLE_EQ(rate * interval, 12000.0);
     EXPECT_DOUBLE_EQ(interval * rate, 12000.0);
 }
@@ -181,10 +183,12 @@ TEST(Units, DividesLikeQuantitiesIntoARatio)
     static_assert(std::is_same_v<decltype(440_Hz / 2.0), Frequency>);
 
     static_assert(!Addable<Frequency, Frequency>);
+
     Frequency rate{48000};
     Frequency reference{12000};
     Time interval{1.0};
     Time quantum{0.25};
+
     EXPECT_DOUBLE_EQ(rate / reference, 4.0);
     EXPECT_DOUBLE_EQ(interval / quantum, 4.0);
 }

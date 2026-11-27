@@ -19,11 +19,14 @@
  */
 
 #pragma once
+
+#include <wiola/presentation/documents/session_documents.hpp>
+
 #include <QByteArray>
 #include <QRect>
 #include <QString>
+
 #include <map>
-#include <wiola/presentation/documents/session_documents.hpp>
 
 namespace wiola::app {
 
@@ -34,6 +37,7 @@ struct SessionState {
     QString layout_identity;
     bool operator==(const SessionState&) const = default;
 };
+
 enum class SessionStateError {
     none,
     invalid,

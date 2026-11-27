@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts.formatting import format_sources, install_hook
+from scripts.formatting._cpp import spaced_pragma_once
 from scripts.formatting.__main__ import main
 
 
@@ -28,16 +29,19 @@ class FormattingTest(unittest.TestCase):
             "notes.txt",
             "deleted.cpp",
         ]
+
         for name in self.files:
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("fixture contents\n")
+
         subprocess.run(["git", "add", "--all"], cwd=self.root, check=True)
         (self.root / "untracked.cpp").write_text("not selected")
         (self.root / "deleted.cpp").unlink()
         self.bin = self.root / "controlled tools"
         self.bin.mkdir()
         self.log = self.root / "calls.jsonl"
+
         for name in ("gersemi", "clang-format"):
             executable = self.bin / name
             executable.write_text(
@@ -48,6 +52,7 @@ class FormattingTest(unittest.TestCase):
                 "sys.exit(int(os.environ.get('FORMAT_CONTRACT_EXIT', '0')))\n"
             )
             executable.chmod(0o755)
+
         environment = patch.dict(
             os.environ,
             PATH=str(self.bin) + os.pathsep + os.environ["PATH"],
@@ -98,17 +103,22 @@ class FormattingTest(unittest.TestCase):
         for languages in ((), ("unknown",)):
             with self.assertRaises(ValueError):
                 format_sources(self.root, languages)
+
         for name in ("untracked.cpp", "notes.txt", "deleted.cpp", "../external.cpp"):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 format_sources(self.root, ("cpp",), paths=(Path(name),))
+
         with tempfile.TemporaryDirectory() as external:
             outside = Path(external) / "value.cpp"
             outside.write_text("external data")
             (self.root / "linked.cpp").symlink_to(outside)
             subprocess.run(["git", "add", "linked.cpp"], cwd=self.root, check=True)
+
             with self.assertRaisesRegex(ValueError, "escapes"):
                 format_sources(self.root, ("cpp",))
+
             self.assertEqual(outside.read_text(), "external data")
+
         self.assertFalse(self.log.exists())
 
     def test_nonzero_and_missing_tools_propagate_without_a_successful_check(self):
@@ -116,11 +126,47 @@ class FormattingTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError) as error:
                 format_sources(self.root, ("cpp",), check=True)
             self.assertEqual(error.exception.returncode, 23)
+
         (self.bin / "clang-format").unlink()
+
         # Avoid discovering a real system formatter through the inherited search path.
         with patch.dict(os.environ, PATH=str(self.bin)):
             with self.assertRaises(FileNotFoundError):
                 format_sources(self.root, ("cpp",), check=True)
+
+    def test_pragma_spacing_check_is_read_only_and_format_is_idempotent(self):
+        path = self.root / "header.hpp"
+        original = "/* license */\n#pragma once\n#include <QSaveFile>\n"
+        expected = "/* license */\n\n#pragma once\n\n#include <QSaveFile>\n"
+        path.write_text(original)
+
+        with self.assertRaisesRegex(ValueError, "#pragma once"):
+            format_sources(self.root, ("cpp",), check=True, paths=("header.hpp",))
+
+        self.assertEqual(path.read_text(), original)
+        self.assertFalse(self.log.exists())
+
+        format_sources(self.root, ("cpp",), paths=("header.hpp",))
+        self.assertEqual(path.read_text(), expected)
+
+        format_sources(self.root, ("cpp",), check=True, paths=("header.hpp",))
+        self.assertEqual(path.read_text(), expected)
+
+    def test_pragma_normalization_preserves_literals_comments_and_file_boundaries(self):
+        for source, expected in (
+            ("#pragma once\n#include <vector>\n", "#pragma once\n\n#include <vector>\n"),
+            ("#pragma once\n", "#pragma once\n"),
+            ("/*\n#pragma once\n*/\n#pragma once\nint value;\n",
+             "/*\n#pragma once\n*/\n\n#pragma once\n\nint value;\n"),
+            ("\n" * 10000, "\n" * 10000),
+            ("// license\n#pragma once // retained\nint value;\n",
+             "// license\n\n#pragma once // retained\n\nint value;\n"),
+            ('const char* text = R"(\n#pragma once\n)";\n',
+             'const char* text = R"(\n#pragma once\n)";\n'),
+        ):
+            with self.subTest(source=source):
+                self.assertEqual(spaced_pragma_once(source), expected)
+                self.assertEqual(spaced_pragma_once(expected), expected)
 
     def test_empty_matching_inventory_does_not_require_a_formatter(self):
         subprocess.run(
@@ -147,8 +193,10 @@ class FormattingTest(unittest.TestCase):
         self.assertTrue(destination.is_file())
         destination.unlink()
         destination.write_text("regular custom hook")
+
         with self.assertRaisesRegex(ValueError, "overwrite"):
             install_hook(self.root)
+
         self.assertEqual(destination.read_text(), "regular custom hook")
         self.assertFalse(list(destination.parent.glob(".wiola-hook-*")))
 
@@ -160,10 +208,12 @@ class FormattingTest(unittest.TestCase):
         self.assertEqual(main([*prefix, "format", "all"]), 0)
         self.assertEqual(main([*prefix, "install-hooks"]), 0)
         self.assertEqual(main([*prefix, "hook"]), 0)
+
         with patch.dict(os.environ, FORMAT_CONTRACT_EXIT="23"), redirect_stderr(
             StringIO()
         ) as error:
             self.assertEqual(main([*prefix, "hook"]), 1)
+
         self.assertIn("Formatting failed", error.getvalue())
         process = subprocess.run(
             [
@@ -218,11 +268,57 @@ class FormattingTest(unittest.TestCase):
     ):
         destination = install_hook(self.root)
         original = os.readlink(destination)
+
         with patch(
             "scripts.formatting._hooks.os.replace",
             side_effect=OSError("controlled publication failure"),
         ):
             with self.assertRaisesRegex(OSError, "publication failure"):
                 install_hook(self.root)
+
         self.assertEqual(os.readlink(destination), original)
         self.assertFalse(list(destination.parent.glob(".wiola-hook-*")))
+
+
+class IncludeGroupingTest(unittest.TestCase):
+    def format_cpp(self, source):
+        configuration = Path(__file__).resolve().parents[3] / ".clang-format"
+
+        return subprocess.check_output(
+            ["clang-format", "--style=file:" + str(configuration), "--assume-filename=other.cpp"],
+            input=spaced_pragma_once(source),
+            text=True,
+        )
+
+    def test_real_formatter_groups_headers_by_ownership_and_is_idempotent(self):
+        source = (
+            "/* license */\n#pragma once\n"
+            '#include <vector>\n#include "other.hpp"\n'
+            '#include <QSaveFile>\n#include "local.hpp"\n'
+            "#include <wiola/qt/paths.hpp>\n#include <atomic>\n"
+            "#include <gtest/gtest.h>\n#include <qt/storage/atomic_file_store.hpp>\n"
+        )
+        expected = (
+            "/* license */\n\n#pragma once\n\n"
+            '#include "local.hpp"\n#include "other.hpp"\n\n'
+            "#include <qt/storage/atomic_file_store.hpp>\n#include <wiola/qt/paths.hpp>\n\n"
+            "#include <QSaveFile>\n#include <gtest/gtest.h>\n\n"
+            "#include <atomic>\n#include <vector>\n"
+        )
+
+        formatted = self.format_cpp(source)
+
+        self.assertEqual(formatted, expected)
+        self.assertEqual(self.format_cpp(formatted), expected)
+
+    def test_conditional_includes_remain_inside_their_original_branches(self):
+        source = (
+            "#ifdef _WIN32\n#include <windows.h>\n#include <QFile>\n"
+            "#else\n#include <unistd.h>\n#include <QFile>\n#endif\n"
+        )
+        expected = (
+            "#ifdef _WIN32\n#include <QFile>\n\n#include <windows.h>\n"
+            "#else\n#include <QFile>\n\n#include <unistd.h>\n#endif\n"
+        )
+
+        self.assertEqual(self.format_cpp(source), expected)

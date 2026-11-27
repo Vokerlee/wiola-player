@@ -118,7 +118,9 @@ public:
     constexpr Time& operator/=(double divisor) noexcept
     {
         assert(divisor != 0.0);
+
         seconds_ /= divisor;
+
         return *this;
     }
 
@@ -201,6 +203,7 @@ public:
         } else {
             static_assert(UnitOf<U, Time>, "not a frequency or time unit");
             assert(hz_ != 0.0);
+
             return detail::from_base(1.0 / hz_, U::exp10);
         }
     }
@@ -214,7 +217,9 @@ public:
     constexpr Frequency& operator/=(double divisor) noexcept
     {
         assert(divisor != 0.0);
+
         hz_ /= divisor;
+
         return *this;
     }
 
@@ -306,6 +311,7 @@ constexpr auto Time::to() const noexcept
     } else {
         static_assert(UnitOf<U, Frequency>, "not a frequency or time unit");
         assert(seconds_ != 0.0);
+
         return detail::from_base(1.0 / seconds_, U::exp10);
     }
 }

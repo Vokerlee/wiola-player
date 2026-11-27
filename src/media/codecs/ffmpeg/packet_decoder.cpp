@@ -50,6 +50,7 @@ media::Result<std::unique_ptr<PacketDecoder>> PacketDecoder::open(FfmpegInput& i
 {
     if (input.context().stop_reason() != media::StopReason::none)
         return media::unexpected{input.context().error()};
+
     if (facts.stream_index >= input.format()->nb_streams)
         return media::unexpected{decode_error("stream facts do not belong to this input")};
 

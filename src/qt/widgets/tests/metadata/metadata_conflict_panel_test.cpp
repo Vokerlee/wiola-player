@@ -21,7 +21,6 @@
 #include <qt/widgets/metadata/metadata_conflict_panel.hpp>
 
 #include <QApplication>
-
 #include <gtest/gtest.h>
 
 namespace {
@@ -29,11 +28,14 @@ namespace {
 TEST(MetadataConflictPanel, RoutesEveryChoiceAndRequiresReviewBeforeOverwrite)
 {
     wiola::gui::MetadataConflictPanel panel;
+
     EXPECT_FALSE(panel.isVisible());
 
     panel.show_conflict("External metadata changed");
     EXPECT_TRUE(panel.isVisible());
+
     QPushButton* overwrite = panel.findChild<QPushButton*>("overwriteMetadataConflict");
+
     ASSERT_NE(overwrite, nullptr);
     EXPECT_FALSE(overwrite->isEnabled());
 
@@ -45,6 +47,7 @@ TEST(MetadataConflictPanel, RoutesEveryChoiceAndRequiresReviewBeforeOverwrite)
     panel.findChild<QPushButton*>("mergeMetadataFields")->click();
     panel.findChild<QPushButton*>("reviewMetadataConflict")->click();
     EXPECT_TRUE(overwrite->isEnabled());
+
     overwrite->click();
 
     ASSERT_EQ(actions.size(), 5);
@@ -64,6 +67,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

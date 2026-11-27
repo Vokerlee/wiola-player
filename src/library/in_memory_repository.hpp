@@ -21,6 +21,7 @@
 #pragma once
 
 #include "revision_delta.hpp"
+
 #include <wiola/library/library_changes.hpp>
 #include <wiola/library/repository.hpp>
 

@@ -19,7 +19,6 @@
  */
 
 #include <buffering/relay.hpp>
-
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
@@ -155,10 +154,12 @@ TEST(Relay, PolymorphicDestructionPreservesTheBorrowedSource)
     Constant source{0.5F, 2};
     auto relay = std::make_unique<Relay>(stereo);
     relay->point_at(source);
+
     std::unique_ptr<Source> port = std::move(relay);
     port.reset();
 
     std::array<float, 2> output{};
+
     EXPECT_EQ(source.render(output), output.size());
     EXPECT_FLOAT_EQ(output[0], 0.5F);
 }

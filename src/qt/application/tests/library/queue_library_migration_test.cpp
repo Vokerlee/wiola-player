@@ -18,20 +18,17 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <qt/application/library/queue_library_migration.hpp>
-
 #include <app/library/local_identity.hpp>
+#include <fixtures/wav.hpp>
+#include <qt/application/library/queue_library_migration.hpp>
 #include <qt/storage/library_store.hpp>
 #include <wiola/qt/paths.hpp>
 #include <wiola/qt/storage/settings.hpp>
-
-#include <fixtures/wav.hpp>
 
 #include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 #include <filesystem>
@@ -98,6 +95,7 @@ TEST_F(QueueLibraryMigration, CreatesAnEmptyLibraryForAnEmptyQueue)
 
     LibraryStore storage{library_file()};
     wiola::library::LibrarySnapshot restored;
+
     EXPECT_EQ(storage.load(restored), LibraryStoreResult{});
     EXPECT_TRUE(restored.tracks.empty());
     EXPECT_TRUE(restored.playlists.empty());
@@ -116,10 +114,12 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     wiola::platform::qt::QtSettingsAdapter{settings}.write_queue(queue);
 
     const Migration migration{settings};
+
     ASSERT_EQ(migration.migrate(settings), LibraryStoreResult{});
 
     LibraryStore storage{library_file()};
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
 
     ASSERT_EQ(restored.tracks.size(), 2U);
@@ -128,6 +128,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     ASSERT_EQ(restored.playlists.front().entries.size(), 3U);
 
     const auto& entries = restored.playlists.front().entries;
+
     EXPECT_EQ(entries[0].media, entries[1].media);
     EXPECT_NE(entries[0].id, entries[1].id);
     EXPECT_NE(entries[1].media, entries[2].media);
@@ -140,6 +141,7 @@ TEST_F(QueueLibraryMigration, PreservesDuplicateOccurrencesAndMissingTracks)
     }
 
     const auto unchanged = wiola::platform::qt::QtSettingsAdapter{settings}.read_queue();
+
     EXPECT_EQ(unchanged.tracks, queue.tracks);
     EXPECT_EQ(unchanged.selected, queue.selected);
     EXPECT_EQ(unchanged.repeat, queue.repeat);
@@ -155,6 +157,7 @@ TEST_F(QueueLibraryMigration, DoesNotOverwriteAnExistingValidLibrary)
     existing.tracks.push_back(track);
 
     LibraryStore storage{library_file()};
+
     ASSERT_EQ(storage.save(existing), LibraryStoreResult{});
 
     wiola::app::QueueSnapshot queue;
@@ -162,9 +165,11 @@ TEST_F(QueueLibraryMigration, DoesNotOverwriteAnExistingValidLibrary)
     wiola::platform::qt::QtSettingsAdapter{settings}.write_queue(queue);
 
     const Migration migration{settings};
+
     ASSERT_EQ(migration.migrate(settings), LibraryStoreResult{});
 
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(storage.load(restored), LibraryStoreResult{});
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front().embedded.title, "Keep me");
@@ -176,8 +181,10 @@ TEST_F(QueueLibraryMigration, DoesNotReplaceACorruptLibrary)
     std::filesystem::create_directories(library_file().parent_path());
 
     QFile damaged{QString::fromStdString(library_file().string())};
+
     ASSERT_TRUE(damaged.open(QIODevice::WriteOnly));
     ASSERT_EQ(damaged.write("broken"), 6);
+
     damaged.close();
 
     const Migration migration{settings};
@@ -194,6 +201,7 @@ TEST_F(QueueLibraryMigration, DoesNotReplaceACorruptLibrary)
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

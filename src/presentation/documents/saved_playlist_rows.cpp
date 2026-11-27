@@ -26,34 +26,45 @@ bool SavedPlaylistRows::reconcile(const library::LibraryRepository& repository,
     const library::PlaylistId& id)
 {
     const auto* playlist = repository.playlist(id);
+
     if (!playlist)
         return false;
+
     std::vector<TrackRow> rows;
     std::map<library::MediaId, TrackRow> resolved;
+
     rows.reserve(playlist->entries.size());
+
     for (const auto& entry : playlist->entries) {
         auto found = resolved.find(entry.media);
+
         if (found == resolved.end()) {
             TrackRow row;
+
             if (const auto* record = repository.track(entry.media))
                 row = present_record(entry.id, *record);
             else {
                 row.media = entry.media;
                 row.missing = true;
             }
+
             found = resolved.emplace(entry.media, std::move(row)).first;
         }
+
         auto row = found->second;
         row.id = entry.id;
         rows.push_back(std::move(row));
     }
+
     rows_ = std::move(rows);
     entries_.clear();
     media_.clear();
+
     for (std::size_t position = 0; position < rows_.size(); ++position) {
         entries_.emplace(std::get<library::PlaylistEntryId>(rows_[position].id), position);
         media_[rows_[position].media].push_back(position);
     }
+
     return true;
 }
 
@@ -61,30 +72,40 @@ bool SavedPlaylistRows::update_media(const library::LibraryRepository& repositor
     const library::MediaId& media)
 {
     const auto found = media_.find(media);
+
     if (found == media_.end())
         return false;
+
     const auto* record = repository.track(media);
+
     if (!record)
         return false;
+
     const auto resolved = present_record(library::PlaylistEntryId{}, *record);
     bool changed = false;
+
     for (const auto position : found->second) {
         auto row = resolved;
         row.id = rows_[position].id;
+
         if (row == rows_[position])
             continue;
+
         rows_[position] = std::move(row);
         changed = true;
     }
+
     return changed;
 }
 
 std::vector<TrackRow> SavedPlaylistRows::media_rows(const library::MediaId& media) const
 {
     std::vector<TrackRow> rows;
+
     if (const auto found = media_.find(media); found != media_.end())
         for (const auto position : found->second)
             rows.push_back(rows_[position]);
+
     return rows;
 }
 

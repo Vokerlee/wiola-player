@@ -19,8 +19,10 @@
  */
 
 #include "inspector_context.hpp"
+
 #include <app/library/local_identity.hpp>
 #include <qt/application/library/library_session.hpp>
+
 #include <set>
 
 namespace wiola::gui {
@@ -29,18 +31,23 @@ InspectorContext inspector_context(const app::LibrarySession& library,
     std::vector<SelectedTrack> selection, std::optional<TrackRow> playing)
 {
     InspectorContext context;
+
     if (!selection.empty())
         context.origin = InspectorContext::Origin::selection;
     else if (playing) {
         context.origin = InspectorContext::Origin::playing;
         selection.push_back({playing->media, playing->id, playing->location});
     }
+
     std::set<library::MediaId> seen;
+
     for (const auto& item : selection) {
         if (!item.media.valid() || !seen.insert(item.media).second)
             continue;
+
         TrackRow row;
         bool registered = false;
+
         if (auto snapshot = library.snapshot(item.media)) {
             registered = true;
             row = present_record(item.occurrence, *snapshot);
@@ -49,12 +56,16 @@ InspectorContext inspector_context(const app::LibrarySession& library,
         } else {
             row.id = item.occurrence;
             row.media = item.media;
+
             const auto stem = item.location.stem().u8string();
             row.metadata.title.assign(stem.begin(), stem.end());
         }
+
         if (!item.location.empty())
             row.location = item.location;
+
         row.location_key = app::media_id_for(row.location).value;
+
         // Never display artwork belonging to a different playing track.
         if (playing && playing->media == row.media) {
             if (!registered)
@@ -64,10 +75,13 @@ InspectorContext inspector_context(const app::LibrarySession& library,
                     playing->artwork))
                 row.artwork = playing->artwork;
         }
+
         context.tracks.push_back(std::move(row));
     }
+
     if (context.tracks.empty())
         context.origin = InspectorContext::Origin::none;
+
     return context;
 }
 

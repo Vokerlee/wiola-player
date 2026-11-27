@@ -19,13 +19,16 @@
  */
 
 #pragma once
+
+#include <wiola/library/records.hpp>
+
 #include <QTimer>
+
 #include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
 #include <set>
-#include <wiola/library/records.hpp>
 
 namespace wiola::app {
 

@@ -19,6 +19,7 @@
  */
 
 #include "player_menu.hpp"
+
 #include <QMenu>
 
 namespace wiola::gui {
@@ -27,30 +28,41 @@ PlayerMenus build_player_menus(QMenuBar& bar, PlayerActions& actions, QObject& r
     PlayerFileCommands commands)
 {
     auto* file = bar.addMenu("&File");
+
     for (const auto id : {PlayerAction::open, PlayerAction::add})
         file->addAction(actions.action(id));
+
     file->addSeparator();
     QObject::connect(file->addAction("Open folder..."), &QAction::triggered, &receiver,
         std::move(commands.open_folder));
+
     file->addSeparator();
     QObject::connect(file->addAction("Import playlist..."), &QAction::triggered, &receiver,
         std::move(commands.import_playlist));
+
     QObject::connect(file->addAction("Save playlist as..."), &QAction::triggered, &receiver,
         std::move(commands.export_playlist));
+
     file->addSeparator();
     QObject::connect(file->addAction("Retry saving library"), &QAction::triggered, &receiver,
         std::move(commands.retry_save));
+
     auto* playback = bar.addMenu("&Playback");
+
     for (const auto id :
         {PlayerAction::previous, PlayerAction::play, PlayerAction::next, PlayerAction::stop})
         playback->addAction(actions.action(id));
+
     playback->addAction(actions.action(PlayerAction::clear));
     playback->addSeparator();
+
     for (const auto id : {PlayerAction::repeat, PlayerAction::shuffle})
         playback->addAction(actions.action(id));
+
     auto* view = bar.addMenu("&View");
     auto* tools = bar.addMenu("&Tools");
     tools->addAction(actions.action(PlayerAction::equalizer));
+
     return {view, tools};
 }
 

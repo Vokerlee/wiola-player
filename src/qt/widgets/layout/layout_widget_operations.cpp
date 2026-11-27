@@ -19,6 +19,7 @@
  */
 
 #include "layout_widget_operations.hpp"
+
 #include <QAction>
 #include <QBoxLayout>
 #include <QGridLayout>
@@ -57,11 +58,14 @@ bool accepts_dimensions(const QWidget& widget, const LayoutNode& node)
 void configure_widget(QWidget& widget, const LayoutNode& node)
 {
     widget.setObjectName(node.id);
+
     if (auto* group = qobject_cast<QGroupBox*>(&widget))
         group->setTitle(node.title);
+
     if (auto* box = qobject_cast<QBoxLayout*>(widget.layout())) {
         if (node.kind == LayoutComponentKind::row) {
             box->setDirection(QBoxLayout::LeftToRight);
+
             const bool commands = std::ranges::all_of(node.children,
                 [](const auto& child) { return child.kind == LayoutComponentKind::button; });
             box->setAlignment(node.alignment ? *node.alignment | Qt::AlignVCenter
@@ -71,45 +75,60 @@ void configure_widget(QWidget& widget, const LayoutNode& node)
             node.kind == LayoutComponentKind::group)
             box->setDirection(QBoxLayout::TopToBottom);
     }
+
     if (auto* grid = qobject_cast<QGridLayout*>(widget.layout())) {
         const int columns = node.columns.value_or(1);
         for (int column = 0; column < std::max(grid->columnCount(), columns); ++column)
             grid->setColumnStretch(column, column < columns ? 1 : 0);
     }
+
     if (!widget.property(minimum_key).isValid()) {
         widget.setProperty(minimum_key, widget.minimumSize());
         widget.setProperty(maximum_key, widget.maximumSize());
+
         if (const auto* splitter = qobject_cast<QSplitter*>(&widget))
             widget.setProperty(orientation_key, static_cast<int>(splitter->orientation()));
     }
+
     const auto minimum = component_minimum(widget);
     const auto maximum = widget.property(maximum_key).toSize();
+
     // Reset only constraints owned by layout overrides, preserving the component's real minimums.
     widget.setMinimumSize(0, 0);
     widget.setMaximumSize(maximum);
     widget.setMinimumSize(minimum);
+
     if (node.min_width)
         widget.setMinimumWidth(std::max(minimum.width(), *node.min_width));
+
     if (node.min_height)
         widget.setMinimumHeight(std::max(minimum.height(), *node.min_height));
+
     if (node.width)
         widget.setFixedWidth(*node.width);
+
     if (node.height)
         widget.setFixedHeight(*node.height);
+
     if (node.kind == LayoutComponentKind::splitter) {
         auto* splitter = qobject_cast<QSplitter*>(&widget);
+
         if (!splitter)
             return;
+
         splitter->setOrientation(node.orientation.value_or(
             static_cast<Qt::Orientation>(widget.property(orientation_key).toInt())
         ));
         splitter->setChildrenCollapsible(false);
+
         QList<int> sizes;
+
         if (node.sizes.empty())
             sizes.fill(100, splitter->count());
         else
             for (const auto size : node.sizes)
                 sizes.append(size);
+
         splitter->setSizes(sizes);
     }
 }
@@ -159,10 +178,12 @@ void replace_placeholder(QWidget* placeholder, QWidget* widget, QWidget* parent)
     QWidget* container = placeholder->parentWidget();
     // QTabWidget pages belong to its private QStackedWidget, not directly to the tabs.
     auto* tabs = container ? qobject_cast<QTabWidget*>(container->parentWidget()) : nullptr;
+
     if (tabs && tabs->indexOf(placeholder) >= 0) {
         const int index = tabs->indexOf(placeholder);
         const QString title = tabs->tabText(index);
         QWidget* selected = tabs->currentWidget();
+
         tabs->removeTab(index);
         tabs->insertTab(index, widget, title);
         tabs->setCurrentWidget(selected == placeholder ? widget : selected);
@@ -170,6 +191,7 @@ void replace_placeholder(QWidget* placeholder, QWidget* widget, QWidget* parent)
         splitter->replaceWidget(splitter->indexOf(placeholder), widget);
     } else if (auto* stack = qobject_cast<QStackedWidget*>(container)) {
         QWidget* selected = stack->currentWidget();
+
         stack->insertWidget(stack->indexOf(placeholder), widget);
         stack->removeWidget(placeholder);
         stack->setCurrentWidget(selected == placeholder ? widget : selected);

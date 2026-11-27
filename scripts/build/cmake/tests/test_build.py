@@ -29,6 +29,7 @@ class CMakeBuildTest(unittest.TestCase):
     ):
         adapter = CMakeBuild(self.inventory, jobs=1)
         self.assertEqual(adapter.directory, self.inventory.build_directory.resolve())
+
         with self.assertRaises(ValueError):
             CMakeBuild(CMakeInventory(self.root, (self.target,)), jobs=1)
 
@@ -36,8 +37,10 @@ class CMakeBuildTest(unittest.TestCase):
         adapter = CMakeBuild(self.inventory, jobs=2)
         self.assertEqual(adapter.executable("contract"), self.binary)
         self.binary.unlink()
+
         with self.assertRaises(ValueError):
             adapter.executable("contract")
+
         with self.assertRaises(ValueError):
             adapter.executable("unknown")
 
@@ -90,8 +93,10 @@ class CMakeBuildTest(unittest.TestCase):
         with patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "3"}):
             self.assertEqual(CMakeBuild(self.inventory).jobs, 3)
             self.assertEqual(CMakeBuild(self.inventory, jobs=2).jobs, 2)
+
         with patch.dict(os.environ, {}, clear=True):
             self.assertGreaterEqual(CMakeBuild(self.inventory).jobs, 1)
+
         for changes in ({"jobs": 0}, {"jobs": 1, "timeout": 0}):
             with self.assertRaises(ValueError):
                 CMakeBuild(self.inventory, **changes)
@@ -109,12 +114,16 @@ class CMakeBuildTest(unittest.TestCase):
         arguments = json.loads(log.read_text())
         self.assertIn(str(adapter.directory), arguments)
         self.assertEqual(arguments[-1], "contract")
+
         with self.assertRaises(ValueError):
             adapter.build("unknown", self.root / "must-not-exist.log")
+
         self.assertFalse((self.root / "must-not-exist.log").exists())
         script.write_text("raise SystemExit(17)\n")
+
         with self.assertRaises(subprocess.CalledProcessError):
             adapter.build("contract", log)
+
         script.write_text("import time\ntime.sleep(5)\n")
         bounded = CMakeBuild(
             self.inventory,
@@ -122,5 +131,6 @@ class CMakeBuildTest(unittest.TestCase):
             timeout=0.1,
             command=(sys.executable, str(script)),
         )
+
         with self.assertRaises(subprocess.TimeoutExpired):
             bounded.build("contract", log)

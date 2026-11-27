@@ -19,14 +19,17 @@
  */
 
 #pragma once
+
+#include <wiola/library/identity.hpp>
+
 #include <QPointer>
 #include <QString>
 #include <QWidget>
+
 #include <filesystem>
 #include <optional>
 #include <span>
 #include <vector>
-#include <wiola/library/identity.hpp>
 
 namespace wiola::gui {
 

@@ -228,6 +228,7 @@ TEST(Playhead, HandsOutOneApplierOnly)
 
     // The one taken first does the work.
     const Playhead::Claim claim{first.claim()};
+
     ASSERT_TRUE(claim.outstanding);
 
     first.begin_at(claim.target, Frames{}, claim);
@@ -250,6 +251,7 @@ TEST(Playhead, LeavesNothingBehindWhenTheApplierIsMoved)
     EXPECT_EQ(applier.num_pushed(), 0U);
 
     const Playhead::Claim claim{moved.claim()};
+
     ASSERT_TRUE(claim.outstanding);
 
     moved.begin_at(claim.target, Frames{}, claim);
@@ -308,6 +310,7 @@ TEST(Playhead, NeverReportsAPlaceItHasLeft)
             const Frames seen{head.position(Frames{})};
 
             EXPECT_GE(seen, last);
+
             last = seen;
         }
     }};
@@ -404,8 +407,10 @@ TEST(Playhead, SerializesConcurrentSeekProducers)
     }
 
     const auto deadline = std::chrono::steady_clock::now() + patience;
+
     while (writers_done.load() != num_writers || head.seek_outstanding()) {
         ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+
         const Playhead::Claim claim{applier.claim()};
 
         if (claim.outstanding)
@@ -415,6 +420,7 @@ TEST(Playhead, SerializesConcurrentSeekProducers)
     }
 
     const Frames reported{head.position(Frames{})};
+
     EXPECT_GT(reported, Frames{});
     EXPECT_LE(reported, Frames{num_writers * seeks_per_writer});
     EXPECT_FALSE(head.seek_outstanding());

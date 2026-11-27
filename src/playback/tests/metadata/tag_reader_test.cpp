@@ -18,11 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fakes/resource.hpp>
-#include <metadata/tag_reader.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
+#include <metadata/tag_reader.hpp>
 
 #include <gtest/gtest.h>
 
@@ -60,6 +59,7 @@ std::vector<TagReader::Reading> wait_for(TagReader& reader)
 TEST(TagReader, HasNothingBeforeItIsAsked)
 {
     static_assert(!std::is_default_constructible_v<TagReader>);
+
     TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             ADD_FAILURE() << "an idle tag reader must not read metadata";
@@ -77,6 +77,7 @@ TEST(TagReader, ReadsWithTheSuppliedCollaborator)
         [](const wiola::media::ResourceReference& resource, const wiola::media::OperationContext&) {
             Tags tags;
             tags.track.artist = resource.label();
+
             return tags;
         }
     )};
@@ -110,6 +111,7 @@ TEST(TagReader, NullProviderAssetReportsFailureAndLaterMetadataStillCompletes)
         [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             Tags tags;
             tags.track.title = "valid metadata";
+
             return wiola::media::Result{std::move(tags)};
         }};
     TagReader reader{std::make_shared<wiola::testing::FakeMediaProvider>(
@@ -130,6 +132,7 @@ TEST(TagReader, NullProviderAssetReportsFailureAndLaterMetadataStillCompletes)
          .id = wiola::engine::QueueEntryId{2},
          .resource = wiola::testing::resource("valid.media", "valid")}
     });
+
     const auto readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 2U);
@@ -159,6 +162,7 @@ TEST(TagReader, ProviderErrorPreservesItsCategoryAndDiagnostic)
         {.id = wiola::engine::QueueEntryId{1},
          .resource = wiola::testing::resource("resource.media", "resource")}
     });
+
     const auto readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 1U);
@@ -190,7 +194,9 @@ TEST(TagReader, CancellationDuringProviderOpenReachesTheReturnedAsset)
                                                 cancelled = true;
                                                 opening.release();
                                             }};
+
                 opening.wait();
+
                 // Simulate a provider that still returns an asset after cancellation.
                 // The asset must receive the original stopped context before reading tags.
                 return valid.open(resource, {});
@@ -211,6 +217,7 @@ TEST(TagReader, CancellationDuringProviderOpenReachesTheReturnedAsset)
          .id = wiola::engine::QueueEntryId{2},
          .resource = wiola::testing::resource("new.media", "new")}
     });
+
     const auto readings{wait_for(reader)};
 
     EXPECT_TRUE(cancelled);
@@ -229,8 +236,10 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
     TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [&reading](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             reading.wait();
+
             Tags tags;
             tags.track.title = "released";
+
             return tags;
         }
     )};
@@ -247,6 +256,7 @@ TEST(TagReader, HoldsAReadUntilItsCollaboratorReturns)
     reading.release();
 
     const std::vector<TagReader::Reading> readings{wait_for(reader)};
+
     ASSERT_EQ(readings.size(), 1U);
     EXPECT_EQ(readings.front().result->track.title, "released");
 }
@@ -286,6 +296,7 @@ TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
     });
 
     const auto readings{wait_for(reader)};
+
     ASSERT_EQ(readings.size(), 2U);
     ASSERT_FALSE(readings[0].result);
     EXPECT_EQ(readings[0].result.error().category, wiola::media::ErrorCategory::unreadable);
@@ -297,6 +308,7 @@ TEST(TagReader, TurnsAWorkerExceptionIntoAFailedReading)
 TEST(TagReader, PreservesTypedFailuresAndContinuesWithTheNextRequest)
 {
     using wiola::media::ErrorCategory;
+
     const std::vector<std::pair<ErrorCategory, wiola::media::ResourceReference>> failures{
         {ErrorCategory::unreadable,     wiola::testing::resource("unreadable.wav",  "unreadable") },
         {ErrorCategory::unsupported,    wiola::testing::resource("unsupported.wav", "unsupported")},
@@ -329,6 +341,7 @@ TEST(TagReader, PreservesTypedFailuresAndContinuesWithTheNextRequest)
     reader.submit(std::move(requests));
 
     const auto readings{wait_for(reader)};
+
     ASSERT_EQ(readings.size(), failures.size() + 1);
 
     for (std::size_t index{0}; index < failures.size(); ++index) {
@@ -362,11 +375,13 @@ TEST(TagReader, AcceptsOnlyThePrefixThatFits)
     };
 
     EXPECT_EQ(reader.submit(requests), 1U);
+
     reading.wait_until_entered();
     EXPECT_EQ(reader.submit(std::span{requests}.subspan(1)), 1U);
     EXPECT_EQ(reader.submit(std::span{requests}.subspan(2)), 0U);
 
     reading.release();
+
     const auto readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 2U);
@@ -381,6 +396,7 @@ TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)
             [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 Tags tags;
                 tags.artwork.data.resize(5);
+
                 return tags;
             }
         ),
@@ -390,6 +406,7 @@ TEST(TagReader, DropsAnArtworkPayloadLargerThanTheCompletedByteBudget)
         {.id = wiola::engine::QueueEntryId{9},
          .resource = wiola::testing::resource("large-cover.wav", "large-cover")}
     });
+
     const auto readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 1U);
@@ -407,6 +424,7 @@ TEST(TagReader, GenerationCancellationReachesTheActiveReadOnly)
             if (resource == wiola::testing::resource("old.wav", "old")) {
                 reading.wait();
                 old_was_cancelled = context.stop_reason() == wiola::media::StopReason::cancelled;
+
                 return wiola::media::unexpected{context.error()};
             }
 
@@ -429,6 +447,7 @@ TEST(TagReader, GenerationCancellationReachesTheActiveReadOnly)
     reading.release();
 
     const auto readings{wait_for(reader)};
+
     ASSERT_EQ(readings.size(), 1U);
     EXPECT_EQ(readings.front().resource, wiola::testing::resource("current.wav", "current"));
     EXPECT_TRUE(readings.front().result);
@@ -443,7 +462,9 @@ TEST(TagReader, CancellationCallbacksCanQueryWorkerStateWithoutDeadlocking)
     TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [&](const wiola::media::ResourceReference&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] { observed = current->busy(); }};
+
             reading.wait();
+
             return Tags{};
         }
     )};
@@ -456,6 +477,7 @@ TEST(TagReader, CancellationCallbacksCanQueryWorkerStateWithoutDeadlocking)
     reading.wait_until_entered();
     reader.cancel_before(2);
     EXPECT_TRUE(observed);
+
     reading.release();
     EXPECT_TRUE(wait_for(reader).empty());
 }
@@ -467,7 +489,9 @@ TEST(TagReader, CancelBeforeDoesNotCancelANewerActiveGeneration)
     TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
         [&](const wiola::media::ResourceReference&, const wiola::media::OperationContext& context) {
             std::stop_callback callback{context.stop, [&] { cancelled = true; }};
+
             reading.wait();
+
             return Tags{};
         }
     )};
@@ -479,8 +503,10 @@ TEST(TagReader, CancelBeforeDoesNotCancelANewerActiveGeneration)
     reading.wait_until_entered();
     reader.cancel_before(4);
     EXPECT_FALSE(cancelled);
+
     reader.cancel_before(6);
     EXPECT_TRUE(cancelled);
+
     reading.release();
     EXPECT_TRUE(wait_for(reader).empty());
 }
@@ -513,8 +539,10 @@ TEST(TagReader, CancellationRetiresAnOlderCompletionEvenWhenNewerResultsFillTheB
     older_read.wait_until_entered();
     older_read.release();
     reader.cancel_before(2);
+
     // No take frees capacity here. Cancellation must retire the obsolete active completion.
     const auto readings{wait_for(reader)};
+
     ASSERT_EQ(readings.size(), 1U);
     EXPECT_EQ(readings.front().generation, 2U);
     EXPECT_EQ(readings.front().resource, wiola::testing::resource("new.wav", "new"));
@@ -530,8 +558,10 @@ TEST(TagReader, CancellationDropsOnlyOlderQueuedRequests)
                          [&](const wiola::media::ResourceReference& resource,
                              const wiola::media::OperationContext&) {
                              ++calls;
+
                              if (resource == wiola::testing::resource("active.wav", "active"))
                                  reading.wait();
+
                              return Tags{};
                          }
                      ),
@@ -552,7 +582,9 @@ TEST(TagReader, CancellationDropsOnlyOlderQueuedRequests)
     });
     reader.cancel_before(2);
     reading.release();
+
     const auto readings{wait_for(reader)};
+
     EXPECT_EQ(calls, 2);
     ASSERT_EQ(readings.size(), 1U);
     EXPECT_EQ(readings.front().resource, wiola::testing::resource("current.wav", "current"));
@@ -566,6 +598,7 @@ TEST(TagReader, RetainedArtworkAndLaterBatchesStayWithinTheCompletedByteBudget)
             [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
                 Tags tags;
                 tags.artwork.data.resize(3);
+
                 return tags;
             }
         ),
@@ -575,8 +608,10 @@ TEST(TagReader, RetainedArtworkAndLaterBatchesStayWithinTheCompletedByteBudget)
          .id = wiola::engine::QueueEntryId{1},
          .resource = wiola::testing::resource("first.wav", "first")}
     });
+
     while (reader.busy())
         std::this_thread::yield();
+
     // Retain this completed payload while cancellation recomputes its budget accounting.
     reader.cancel_before(2);
     reader.submit({
@@ -587,22 +622,28 @@ TEST(TagReader, RetainedArtworkAndLaterBatchesStayWithinTheCompletedByteBudget)
          .id = wiola::engine::QueueEntryId{3},
          .resource = wiola::testing::resource("third.wav",  "third") }
     });
+
     std::size_t completed{};
     const auto collect = [&] {
         auto batch{reader.take()};
         std::size_t bytes{};
+
         for (const auto& item : batch) {
             EXPECT_TRUE(item.result);
             if (item.result)
                 bytes += item.result->artwork.data.size();
         }
+
         EXPECT_LE(bytes, budget);
+
         completed += batch.size();
     };
+
     while (reader.busy()) {
         collect();
         std::this_thread::yield();
     }
+
     collect();
     EXPECT_EQ(completed, 3U);
 }
@@ -637,7 +678,9 @@ TEST(TagReader, ShutdownCancelsTheActiveContextBeforeJoining)
                                             observed = current->busy();
                                             reading.release();
                                         }};
+
             reading.wait();
+
             return Tags{};
         }
     ))};
@@ -694,6 +737,7 @@ TEST(TagReader, AllocationFailureRemainsFatalInsteadOfBecomingBadMetadata)
     EXPECT_EXIT(
         {
             std::set_terminate([] { std::_Exit(EXIT_FAILURE); });
+
             TagReader reader{wiola::testing::FakeMediaProvider::metadata_only(
                 [](const wiola::media::ResourceReference&,
                     const wiola::media::OperationContext&) -> Tags { throw std::bad_alloc{}; }
@@ -702,8 +746,10 @@ TEST(TagReader, AllocationFailureRemainsFatalInsteadOfBecomingBadMetadata)
                 {.id = wiola::engine::QueueEntryId{1},
                  .resource = wiola::testing::resource("allocation.wav", "allocation")}
             });
+
             while (reader.busy())
                 std::this_thread::yield();
+
             std::_Exit(EXIT_SUCCESS);
         },
         testing::ExitedWithCode(EXIT_FAILURE), ""
@@ -718,6 +764,7 @@ TEST(TagReader, RejectsZeroQueueAndArtworkBudgets)
             return Tags{};
         }
     )};
+
     EXPECT_THROW((TagReader{read, 0, 1, 1}), std::invalid_argument);
     EXPECT_THROW((TagReader{read, 1, 0, 1}), std::invalid_argument);
     EXPECT_THROW((TagReader{read, 1, 1, 0}), std::invalid_argument);
@@ -739,6 +786,7 @@ TEST(TagReader, BoundsBackendDiagnosticDetail)
         {.id = wiola::engine::QueueEntryId{9},
          .resource = wiola::testing::resource("verbose.wav", "verbose")}
     });
+
     const auto readings{wait_for(reader)};
 
     ASSERT_EQ(readings.size(), 1U);

@@ -22,6 +22,7 @@
 
 #include <QObject>
 #include <QString>
+
 #include <utility>
 #include <vector>
 

@@ -19,9 +19,11 @@
  */
 
 #include "action_button_binding.hpp"
+
+#include <qt/widgets/appearance/theme.hpp>
+
 #include <QPointer>
 #include <QSignalBlocker>
-#include <qt/widgets/appearance/theme.hpp>
 
 namespace wiola::gui {
 
@@ -31,8 +33,10 @@ ActionButtonBinding::ActionButtonBinding(QAbstractButton& button, QAction& actio
 {
     button.setFocusPolicy(Qt::StrongFocus);
     button.setProperty("appearanceRole", action.property("appearanceRole"));
+
     const auto refresh = [&button, &action, presentation] {
         const QSignalBlocker blocked{&button};
+
         button.setEnabled(action.isEnabled());
         button.setCheckable(action.isCheckable());
         button.setChecked(action.isChecked());

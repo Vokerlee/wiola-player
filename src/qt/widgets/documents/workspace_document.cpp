@@ -21,9 +21,8 @@
 #include "workspace_document.hpp"
 
 #include <qt/widgets/tracks/track_browser.hpp>
-#include <wiola/qt/paths.hpp>
-
 #include <wiola/library/records.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -39,8 +38,10 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
     projection_timer_.setSingleShot(true);
     projection_timer_.setInterval(25);
     connect(&projection_timer_, &QTimer::timeout, this, &WorkspaceDocument::show_projection);
+
     heading_ = new QLabel{this};
     heading_->setObjectName("workspaceHeading");
+
     QFont font = heading_->font();
     font.setBold(true);
     heading_->setFont(font);
@@ -50,16 +51,20 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
 
     recursive_ = new QCheckBox{"Include subfolders", this};
     recursive_->setObjectName("workspaceRecursive");
+
     rescan_ = new QPushButton{"Rescan", this};
     rescan_->setObjectName("rescanWorkspace");
+
     cancel_ = new QPushButton{"Cancel", this};
     cancel_->setObjectName("cancelWorkspaceScan");
+
     progress_ = new QProgressBar{this};
     progress_->setObjectName("workspaceProgress");
     progress_->setTextVisible(false);
 
     play_ = new QPushButton{"Play selection", this};
     play_->setObjectName("playWorkspaceSelection");
+
     append_ = new QPushButton{"Add to Now Playing", this};
     append_->setObjectName("appendWorkspaceSelection");
 
@@ -110,6 +115,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
         if (play_observer_)
             play_observer_();
     });
+
     connect(browser_, &TrackBrowser::command_requested, this, [this](TrackCommand command) {
         switch (command) {
         case TrackCommand::transfer:
@@ -128,6 +134,7 @@ WorkspaceDocument::WorkspaceDocument(QWidget* parent)
             break;
         }
     });
+
     set_busy(false);
 }
 
@@ -135,6 +142,7 @@ void WorkspaceDocument::begin(const library::WorkspaceRecord& workspace, std::ui
 {
     if (!source_.begin(workspace, generation))
         return;
+
     projection_timer_.stop();
     workspace_id_ = workspace.id;
     heading_->setText(platform::qt::QtPathAdapter::to_qt(workspace.root));
@@ -150,14 +158,18 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
 {
     if (!source_.apply(batch, repository))
         return false;
+
     queue_projection(repository, batch.status != app::WorkspaceScanStatus::running);
+
     if (batch.status == app::WorkspaceScanStatus::complete)
         browser_->table().finish_browser_restore();
+
     status_->setText(QString{"%1 tracks"}.arg(source_.size()));
     set_busy(batch.status == app::WorkspaceScanStatus::running);
 
     if (batch.status == app::WorkspaceScanStatus::failed) {
         QString reason;
+
         switch (batch.error) {
         case app::WorkspaceScanError::limit_exceeded:
             reason = "Scan limit reached; narrow the folder or use a non-recursive scan";
@@ -178,6 +190,7 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
             reason = "Scan failed; useful rows were retained";
             break;
         }
+
         status_->setText(status_->text() + " — " + reason);
         status_->setProperty("status", "error");
     } else if (batch.status == app::WorkspaceScanStatus::cancelled) {
@@ -187,6 +200,7 @@ bool WorkspaceDocument::show_batch(const app::WorkspaceScanBatch& batch,
 
     status_->style()->unpolish(status_);
     status_->style()->polish(status_);
+
     return true;
 }
 
@@ -196,14 +210,18 @@ bool WorkspaceDocument::show_media_revision(const library::LibraryRepository& re
     const auto id = WorkspaceTrackId{workspace_id_, media};
     const auto* before = source_.row(id);
     const auto location = before ? before->location_key : std::string{};
+
     if (!source_.update_media(repository, media))
         return false;
+
     const auto* row = source_.row(id);
+
     if (row && row->location_key == location && !projection_timer_.isActive()) {
         browser_->update_rows({*row}, &repository);
         projected_revision_ = source_.revision();
     } else
         queue_projection(&repository, false);
+
     return true;
 }
 
@@ -236,6 +254,7 @@ void WorkspaceDocument::show_projection()
 {
     if (projected_revision_ == source_.revision())
         return;
+
     browser_->show_rows(source_.rows(), {}, projection_repository_);
     projected_revision_ = source_.revision();
 }
@@ -271,27 +290,33 @@ std::vector<TrackRowId> WorkspaceDocument::chosen_rows() const
 std::vector<SelectedTrack> WorkspaceDocument::selection() const
 {
     std::vector<SelectedTrack> result;
+
     for (const auto& id : browser_->table().chosen_rows())
         if (const auto* row = source_.row(id))
             result.push_back({row->media, row->id, row->location});
+
     return result;
 }
 
 std::vector<std::filesystem::path> WorkspaceDocument::chosen_paths() const
 {
     std::vector<std::filesystem::path> paths;
+
     for (const auto& selected : selection())
         if (!selected.location.empty())
             paths.push_back(selected.location);
+
     return paths;
 }
 
 std::vector<std::filesystem::path> WorkspaceDocument::displayed_paths() const
 {
     std::vector<std::filesystem::path> paths;
+
     for (const auto& id : browser_->table().displayed_rows())
         if (const auto* row = source_.row(id); row && !row->location.empty())
             paths.push_back(row->location);
+
     return paths;
 }
 

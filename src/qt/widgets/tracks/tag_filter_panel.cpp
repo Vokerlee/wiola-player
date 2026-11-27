@@ -80,11 +80,14 @@ TagFilterPanel::TagFilterPanel(QWidget* parent)
     disclosure_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     disclosure_->setCheckable(true);
     disclosure_->setArrowType(Qt::RightArrow);
+
     editor_ = new QWidget{this};
+
     auto* fields = new QFormLayout{editor_};
     fields->setContentsMargins(0, 0, 0, 0);
     fields->addRow("Tag name", keys_);
     fields->addRow("Value", value_);
+
     auto* commands = new QHBoxLayout;
     commands->addWidget(include_);
     commands->addWidget(exclude_);
@@ -95,10 +98,13 @@ TagFilterPanel::TagFilterPanel(QWidget* parent)
         editor_->setVisible(expanded);
         disclosure_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
     });
+
     auto* chip_content = new QWidget{this};
+
     chips_ = new QHBoxLayout{chip_content};
     chips_->setContentsMargins(0, 0, 0, 0);
     chips_->addStretch();
+
     chip_scroll_ = new QScrollArea{this};
     chip_scroll_->setWidgetResizable(true);
     chip_scroll_->setFrameShape(QFrame::NoFrame);
@@ -107,6 +113,7 @@ TagFilterPanel::TagFilterPanel(QWidget* parent)
     chip_scroll_->setFixedHeight(include_->sizeHint().height() +
         chip_scroll_->horizontalScrollBar()->sizeHint().height());
     chip_scroll_->hide();
+
     auto* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(disclosure_);
@@ -115,6 +122,7 @@ TagFilterPanel::TagFilterPanel(QWidget* parent)
 
     connect(include_, &QPushButton::clicked, this,
         [this] { add(library::TagFilterMode::include); });
+
     connect(exclude_, &QPushButton::clicked, this,
         [this] { add(library::TagFilterMode::exclude); });
 }
@@ -123,12 +131,17 @@ void TagFilterPanel::suggest_keys(const std::vector<std::string>& keys)
 {
     if (keys == available_keys_)
         return;
+
     available_keys_ = keys;
+
     const QSignalBlocker block{keys_};
     const auto current = keys_->currentText();
+
     keys_->clear();
+
     for (const auto& key : keys)
         keys_->addItem(QString::fromStdString(key));
+
     keys_->setEditText(current);
     keys_->completer()->setCaseSensitivity(Qt::CaseInsensitive);
 }
@@ -136,6 +149,7 @@ void TagFilterPanel::suggest_keys(const std::vector<std::string>& keys)
 void TagFilterPanel::add(library::TagFilterMode mode)
 {
     const auto clean_key = library::make_tag_value(key_->text().toStdString(), "value");
+
     if (!clean_key || shown_.size() >= max_filters)
         return;
 
@@ -144,6 +158,7 @@ void TagFilterPanel::add(library::TagFilterMode mode)
 
     if (!raw_value.isEmpty()) {
         const auto valid = library::make_tag_value("key", raw_value.toStdString());
+
         if (!valid)
             return;
 
@@ -154,6 +169,7 @@ void TagFilterPanel::add(library::TagFilterMode mode)
 
     key_->clear();
     value_->clear();
+
     if (observer_)
         observer_({TagFilterEdit::Kind::add, std::move(filter)});
 }
@@ -162,6 +178,7 @@ void TagFilterPanel::show_filters(std::vector<library::TagFilter> filters)
 {
     if (filters == shown_)
         return;
+
     shown_ = std::move(filters);
     rebuild_chips();
 }

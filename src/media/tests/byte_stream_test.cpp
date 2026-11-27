@@ -32,6 +32,7 @@ private:
     {
         ++reads;
         observed = context;
+
         return next_read;
     }
 
@@ -42,6 +43,7 @@ private:
         offset = value;
         origin = from;
         observed = context;
+
         return next_seek;
     }
 
@@ -49,6 +51,7 @@ private:
     {
         ++tells;
         observed = context;
+
         return next_tell;
     }
 };
@@ -57,6 +60,7 @@ TEST(ByteStream, EmptyReadSucceedsWithoutInvokingTheBackend)
 {
     ObservedStream stream;
     const auto empty{stream.read({})};
+
     ASSERT_TRUE(empty);
     EXPECT_EQ(*empty, 0U);
     EXPECT_EQ(stream.reads, 0U);
@@ -66,11 +70,13 @@ TEST(ByteStream, StopAndDeadlineRejectEveryOperationBeforeBackendWork)
 {
     std::stop_source stopped;
     stopped.request_stop();
+
     const std::array contexts{
         OperationContext{.stop = stopped.get_token(), .deadline = {}                         },
         OperationContext{.stop = {},
                          .deadline = OperationContext::Clock::now() - std::chrono::seconds{1}}
     };
+
     for (const auto& context : contexts) {
         ObservedStream stream;
         std::array output{std::byte{0x55}, std::byte{0x55}};
@@ -78,6 +84,7 @@ TEST(ByteStream, StopAndDeadlineRejectEveryOperationBeforeBackendWork)
         const auto empty{stream.read({}, context)};
         const auto seek{stream.seek(1, SeekOrigin::current, context)};
         const auto tell{stream.tell(context)};
+
         ASSERT_FALSE(read);
         ASSERT_FALSE(empty);
         ASSERT_FALSE(seek);
@@ -101,7 +108,9 @@ TEST(ByteStream, AdmittedOperationsForwardContextAndArguments)
         .deadline = OperationContext::Clock::time_point::max()};
     std::array<std::byte, 4> output{};
     stream.next_read = Result<std::size_t>{output.size()};
+
     const auto read{stream.read(output, context)};
+
     ASSERT_TRUE(read);
     EXPECT_EQ(*read, output.size());
     EXPECT_EQ(stream.observed.stop, context.stop);
@@ -111,8 +120,11 @@ TEST(ByteStream, AdmittedOperationsForwardContextAndArguments)
     EXPECT_EQ(stream.origin, SeekOrigin::end);
     EXPECT_EQ(stream.observed.stop, context.stop);
     EXPECT_EQ(stream.observed.deadline, context.deadline);
+
     stream.next_tell = Result<std::uint64_t>{7};
+
     const auto position{stream.tell(context)};
+
     ASSERT_TRUE(position);
     EXPECT_EQ(*position, 7U);
     EXPECT_EQ(stream.observed.stop, context.stop);
@@ -127,7 +139,9 @@ TEST(ByteStream, RejectsAnOverreportedReadCountWithoutAcceptingItAsProgress)
     ObservedStream stream;
     std::array<std::byte, 4> output{};
     stream.next_read = Result<std::size_t>{output.size() + 1};
+
     const auto result{stream.read(output)};
+
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().category, ErrorCategory::damaged);
     EXPECT_EQ(result.error().detail, "byte stream reported more bytes than requested");
@@ -146,10 +160,12 @@ TEST(ByteStream, TypedBackendFailuresRemainDistinctFromZeroPositionOrEof)
     stream.next_tell = unexpected{
         Error{ErrorCategory::seek_failed, "cursor unavailable"}
     };
+
     std::array<std::byte, 1> output{};
     const auto read{stream.read(output)};
     const auto seek{stream.seek(0, SeekOrigin::start)};
     const auto tell{stream.tell()};
+
     ASSERT_FALSE(read);
     ASSERT_FALSE(seek);
     ASSERT_FALSE(tell);
@@ -168,21 +184,31 @@ TEST(ByteStream, ShortReadAndEofKeepTheirByteCountAndOwnedSourceLifetime)
     };
     std::array<std::byte, 4> output{};
     const auto read{stream.read(output)};
+
     ASSERT_TRUE(read);
     EXPECT_EQ(*read, 2U);
     EXPECT_EQ(output[0], std::byte{1});
     EXPECT_EQ(output[1], std::byte{2});
+
     const auto eof{stream.read(output)};
+
     ASSERT_TRUE(eof);
     EXPECT_EQ(*eof, 0U);
+
     const auto cursor{stream.tell()};
+
     ASSERT_TRUE(cursor);
     EXPECT_EQ(*cursor, 2U);
+
     const auto seek{stream.seek(0, SeekOrigin::start)};
+
     ASSERT_FALSE(seek);
     EXPECT_EQ(seek.error().category, ErrorCategory::unsupported);
+
     stream.fail_reads();
+
     const auto failed{stream.read(output)};
+
     ASSERT_FALSE(failed);
     EXPECT_EQ(failed.error().category, ErrorCategory::read_failed);
 }

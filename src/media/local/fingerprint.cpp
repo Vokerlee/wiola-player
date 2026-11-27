@@ -60,7 +60,9 @@ std::optional<std::string> fingerprint_media_cancellable(const std::filesystem::
     while (input) {
         if (stop.stop_requested())
             return {};
+
         input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+
         const std::streamsize count{input.gcount()};
 
         for (std::streamsize index = 0; index < count; ++index) {
@@ -78,6 +80,7 @@ std::optional<std::string> fingerprint_media_cancellable(const std::filesystem::
     append_hex(encoded, hash);
     encoded += ':';
     append_hex(encoded, bytes);
+
     return encoded;
 }
 

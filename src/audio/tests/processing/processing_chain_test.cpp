@@ -18,17 +18,15 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/processing_chain.hpp>
-
+#include <allocation_failure.hpp>
 #include <fakes/tone.hpp>
 #include <fixtures/shaping.hpp>
+#include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/stage.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
 #include <gtest/gtest.h>
-
-#include <allocation_failure.hpp>
 
 #include <array>
 #include <atomic>
@@ -297,9 +295,11 @@ TEST(ProcessingChain, DiscardedPreparationPreservesActiveStagesAndReleasesCandid
         {first, second}
     };
     chain.configure(stereo);
+
     const StreamSpec replacement{.sample_rate = 22050_Hz, .num_channels = 1};
     {
         const auto prepared{chain.prepare(replacement)};
+
         ASSERT_NE(prepared, nullptr);
         EXPECT_EQ(first.configured, stereo);
         EXPECT_EQ(second.configured, stereo);
@@ -342,6 +342,7 @@ TEST(ProcessingChain, CommitActivatesTheWholeChainOnlyOnce)
         {first, second}
     };
     auto prepared{chain.prepare(stereo)};
+
     ASSERT_NE(prepared, nullptr);
     EXPECT_EQ(first.num_configures, 0);
     EXPECT_EQ(second.num_configures, 0);
@@ -359,10 +360,15 @@ TEST(ProcessingChain, AChainOfStatelessStagesNeedsNoCommit)
 {
     wiola::audio::Volume volume;
     ProcessingChain chain{{volume}};
+
     EXPECT_EQ(chain.prepare(stereo), nullptr);
+
     chain.configure(stereo);
+
     ProcessingChain empty;
+
     EXPECT_EQ(empty.prepare(stereo), nullptr);
+
     empty.configure(stereo);
 }
 
@@ -370,8 +376,10 @@ TEST(ProcessingChain, EqualizerCommitUsesSettingsAcceptedAfterPreparation)
 {
     wiola::testing::Shaping shaping{stereo};
     auto prepared{shaping.chain.prepare({.sample_rate = 22050_Hz, .num_channels = 1})};
+
     ASSERT_NE(prepared, nullptr);
     EXPECT_EQ(shaping.equalizer.num_bands(), 10u);
+
     shaping.equalizer.set_band_gain(5, 6.0F);
     shaping.equalizer.set_band_gain(9, 3.0F);
     shaping.equalizer.set_enabled(false);
@@ -384,6 +392,7 @@ TEST(ProcessingChain, EqualizerCommitUsesSettingsAcceptedAfterPreparation)
     EXPECT_FLOAT_EQ(shaping.equalizer.band_gain(9), 3.0F);
     EXPECT_FLOAT_EQ(shaping.equalizer.preamp(), -6.0F);
     EXPECT_FALSE(shaping.equalizer.enabled());
+
     std::array block{0.8F, -0.4F};
     shaping.chain.process(block);
     EXPECT_EQ(block, (std::array{0.4F, -0.2F}));
@@ -393,10 +402,13 @@ TEST(ProcessingChain, PreparationCanOverlapActiveEqualizerProcessing)
 {
     wiola::testing::Shaping shaping{stereo};
     wiola::testing::Shaping reference{stereo};
+
     shaping.equalizer.set_band_gain(5, -6.0F);
     reference.equalizer.set_band_gain(5, -6.0F);
+
     std::array<float, 4096> seed{};
     seed.front() = 0.5F;
+
     auto actual{seed};
     auto expected{seed};
     std::atomic<bool> entered{false};
@@ -404,22 +416,29 @@ TEST(ProcessingChain, PreparationCanOverlapActiveEqualizerProcessing)
     std::jthread callback{[&](std::stop_token stop) {
         entered.store(true, std::memory_order_release);
         entered.notify_one();
+
         do {
             actual = seed;
             shaping.chain.process(actual);
             ++blocks;
         } while (!stop.stop_requested());
     }};
+
     entered.wait(false, std::memory_order_acquire);
+
     auto prepared{shaping.chain.prepare({.sample_rate = 22050_Hz, .num_channels = 1})};
+
     callback.request_stop();
     callback.join();
+
     for (std::size_t index{0}; index < blocks; ++index) {
         expected = seed;
         reference.chain.process(expected);
     }
+
     EXPECT_EQ(actual, expected);
     EXPECT_EQ(shaping.equalizer.num_bands(), 10u);
+
     prepared->commit();
     EXPECT_EQ(shaping.equalizer.num_bands(), 9u);
 }
@@ -429,14 +448,17 @@ TEST(ProcessingChain, AnyPreparationAllocationFailurePreservesTheWholeActiveChai
 {
     constexpr StreamSpec replacement{.sample_rate = 22050_Hz, .num_channels = 8};
     bool observed_failure{false};
+
     for (std::size_t after{0};; ++after) {
         wiola::audio::Equalizer first{stereo};
         wiola::audio::Equalizer second{stereo};
         ProcessingChain chain{
             {first, second}
         };
+
         first.set_band_gain(9, 3.0F);
         second.set_band_gain(9, 6.0F);
+
         bool failed{false};
         {
             const wiola::testing::AllocationFailure failure{after};
@@ -446,12 +468,15 @@ TEST(ProcessingChain, AnyPreparationAllocationFailurePreservesTheWholeActiveChai
                 failed = true;
             }
         }
+
         if (!failed) {
             EXPECT_TRUE(observed_failure);
             EXPECT_EQ(first.num_bands(), 9u);
             EXPECT_EQ(second.num_bands(), 9u);
+
             break;
         }
+
         observed_failure = true;
         EXPECT_EQ(first.num_bands(), 10u);
         EXPECT_EQ(second.num_bands(), 10u);

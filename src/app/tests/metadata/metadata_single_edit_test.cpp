@@ -19,7 +19,6 @@
  */
 
 #include <wiola/app/metadata/metadata_edit_service.hpp>
-
 #include <wiola/library/metadata.hpp>
 
 #include <gtest/gtest.h>
@@ -60,11 +59,14 @@ TEST_F(MetadataSingleEdit, AppliesFieldsImmediatelyAndSupportsNumericClearing)
     edit.year = 2026;
     edit.track_number = 4;
     edit.disc_number = 2;
+
     const auto applied = commands.apply({media}, edit);
 
     ASSERT_TRUE(applied.succeeded());
     EXPECT_TRUE(applied.changed);
+
     const auto resolved = wiola::library::resolve_metadata(*repository.track(media));
+
     EXPECT_EQ(resolved.title, "User title");
     EXPECT_EQ(resolved.genre, "Jazz");
     EXPECT_EQ(resolved.comment, "Comment");
@@ -129,8 +131,10 @@ TEST_F(MetadataSingleEdit, RejectsInvalidPatchesBeforePersistenceAndCanInheritEm
     EXPECT_EQ(commands.apply({media}, patch).error,
         wiola::app::StandardMetadataError::invalid_edit);
     EXPECT_EQ(saves, 0);
+
     patch.title = "Override";
     ASSERT_TRUE(commands.apply({media}, patch).succeeded());
+
     patch.title = wiola::library::FieldEdit<std::string>::inherit();
     ASSERT_TRUE(commands.apply({media}, patch).succeeded());
     EXPECT_EQ(wiola::library::resolve_metadata(*repository.track(media)).title, "Embedded");

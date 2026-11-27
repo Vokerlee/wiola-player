@@ -40,6 +40,7 @@ public:
             .resource = std::move(resource),
             .intent = intent,
             .position = position};
+
         return *active_;
     }
 
@@ -53,7 +54,9 @@ public:
     {
         if (!active_ || active_->entry != entry)
             return false;
+
         invalidate();
+
         return true;
     }
 
@@ -63,8 +66,11 @@ public:
     {
         if (!active_ || active_->resource != resource)
             return {};
+
         auto retired{std::move(active_)};
+
         invalidate();
+
         return retired;
     }
 
@@ -77,6 +83,7 @@ public:
             return false;
 
         active_.reset();
+
         return true;
     }
 

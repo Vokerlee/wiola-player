@@ -18,6 +18,7 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <allocation_failure.hpp>
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <pipeline/output_session.hpp>
@@ -27,7 +28,6 @@
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>
 
-#include <allocation_failure.hpp>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -66,6 +66,7 @@ public:
     {
         const auto count{spec_.samples_per(spec_.frames_per(samples.size()))};
         std::fill_n(samples.begin(), count, 0.25F);
+
         return count;
     }
 
@@ -111,6 +112,7 @@ private:
         const bool started{control_.start()};
         lifetime_.started.store(started, std::memory_order_release);
         lifetime_.started.notify_one();
+
         return started;
     }
 
@@ -135,6 +137,7 @@ public:
     {
         lifetime_.decoder_destroyed = true;
         lifetime_.decoder_saw_live_output = !lifetime_.output_destroyed;
+
         if (!lifetime_.output_destroyed)
             lifetime_.decoder_saw_running_output = lifetime_.device->running();
     }
@@ -159,6 +162,7 @@ TEST(OutputSession, RenderBridgeAcceptsAStageWithoutRequiringAChain)
 {
     wiola::audio::Volume processing;
     processing.set_gain(0.5F);
+
     ConstantSource source;
     Lifetime lifetime;
     OutputSession output{processing, [&](wiola::audio::Source& rendered) {
@@ -166,6 +170,7 @@ TEST(OutputSession, RenderBridgeAcceptsAStageWithoutRequiringAChain)
                          }};
     auto lease{output.prepare(stereo)};
     output.activate(*lease, source);
+
     std::array<float, 2> samples{};
 
     EXPECT_EQ(lifetime.bridge->render(samples), samples.size());
@@ -183,14 +188,21 @@ TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
                               return std::make_unique<wiola::testing::FakeOutput>();
                           }};
     auto first{session.prepare(stereo)};
+
     EXPECT_FALSE(session.open_for(stereo));
+
     session.activate(*first, source);
+
     auto same{session.prepare(stereo)};
+
     EXPECT_EQ(&same->output(), &first->output());
     EXPECT_EQ(num_outputs, 1U);
+
     auto different{session.prepare(mono)};
+
     EXPECT_TRUE(session.open_for(stereo));
     EXPECT_FALSE(session.open_for(mono));
+
     session.activate(*different, mono_source);
     EXPECT_TRUE(session.open_for(mono));
     EXPECT_EQ(num_outputs, 2U);
@@ -206,26 +218,34 @@ TEST(OutputSession, NullOrThrowingFactoryPreservesTheCommittedOutputAndSource)
         no_output,
         exception,
     };
+
     Failure failure{Failure::none};
     OutputSession session{chain,
         [&](wiola::audio::Source& rendered) -> std::unique_ptr<wiola::audio::Output> {
             if (failure == Failure::no_output)
                 return nullptr;
+
             if (failure == Failure::exception)
                 throw std::runtime_error{"device construction failed"};
+
             bridge = &rendered;
+
             return std::make_unique<wiola::testing::FakeOutput>();
         }};
     auto active{session.prepare(stereo)};
     session.activate(*active, source);
+
     const auto* original{&active->output()};
+
     for (const auto fault : {Failure::no_output, Failure::exception}) {
         failure = fault;
         EXPECT_THROW(static_cast<void>(session.prepare(mono)), std::runtime_error);
         EXPECT_TRUE(session.open_for(stereo));
         EXPECT_FALSE(session.open_for(mono));
         EXPECT_EQ(&active->output(), original);
+
         std::array<float, 2> samples{};
+
         ASSERT_NE(bridge, nullptr);
         EXPECT_EQ(bridge->render(samples), samples.size());
         EXPECT_EQ(samples, (std::array{0.25F, 0.25F}));
@@ -245,8 +265,11 @@ TEST(OutputSession, DiscardedSameFormatCandidateCannotDetachTheActiveSource)
     {
         const auto discarded{session.prepare(stereo)};
     }
+
     std::array<float, 2> samples{};
+
     EXPECT_EQ(lifetime.bridge->render(samples), samples.size());
+
     active.reset();
     EXPECT_EQ(lifetime.bridge->render(samples), 0U);
     EXPECT_FALSE(lifetime.output_destroyed);
@@ -262,12 +285,16 @@ TEST(OutputSession, SupersededLeaseCannotDetachTheSuccessorEvenForTheSameSource)
                           }};
     auto first{session.prepare(stereo)};
     session.activate(*first, source);
+
     auto successor{session.prepare(stereo)};
     session.activate(*successor, source);
     first.reset();
+
     auto owner{std::move(successor)};
     std::array<float, 2> samples{};
+
     EXPECT_EQ(lifetime.bridge->render(samples), samples.size());
+
     owner.reset();
     EXPECT_EQ(lifetime.bridge->render(samples), 0U);
 }
@@ -287,6 +314,7 @@ TEST(OutputSession, LeasePinsItsOutputAcrossCacheReplacementAndCacheDestruction)
                               }};
         old = session.prepare(stereo);
         session.activate(*old, source);
+
         auto next{session.prepare(mono)};
         session.activate(*next, mono_source);
         EXPECT_FALSE(old_stream.output_destroyed);
@@ -294,9 +322,12 @@ TEST(OutputSession, LeasePinsItsOutputAcrossCacheReplacementAndCacheDestruction)
     }
     EXPECT_FALSE(old_stream.output_destroyed);
     EXPECT_TRUE(new_stream.output_destroyed);
+
     {
         auto control{old->output().control()};
+
         EXPECT_TRUE(control.start());
+
         control.stop();
     }
     old.reset();
@@ -318,6 +349,7 @@ TEST(OutputSession, EveryPreparationAllocationFailurePreservesTheCommittedConnec
                               }};
         auto active{session.prepare(stereo)};
         session.activate(*active, source);
+
         std::unique_ptr<OutputSession::Lease> candidate;
         {
             const wiola::testing::AllocationFailure failure{after};
@@ -329,9 +361,12 @@ TEST(OutputSession, EveryPreparationAllocationFailurePreservesTheCommittedConnec
         }
         EXPECT_TRUE(session.open_for(stereo));
         EXPECT_FALSE(session.open_for(mono));
+
         std::array<float, 2> samples{};
+
         ASSERT_NE(bridge, nullptr);
         EXPECT_EQ(bridge->render(samples), samples.size());
+
         if (candidate) {
             EXPECT_TRUE(observed_failure);
             break;
@@ -349,6 +384,7 @@ TEST(PlaybackPipeline, OwnsAPlayableTrackWithoutASession)
     PlaybackPipeline pipeline{std::move(source), output.prepare(stereo), Frames{64}};
     pipeline.activate(output);
     ASSERT_TRUE(pipeline.player().start());
+
     pipeline.player().stop();
     pipeline.player().wait();
     EXPECT_TRUE(pipeline.player().finished());
@@ -364,13 +400,16 @@ TEST(PlaybackPipeline, FailedCandidateConstructionDoesNotDetachTheActiveConnecti
                          }};
     auto active{output.prepare(stereo)};
     output.activate(*active, source);
+
     wiola::engine::TransportConfig invalid;
     invalid.decode_chunk = Frames{};
     EXPECT_THROW((PlaybackPipeline{
                      std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, stereo),
                      output.prepare(stereo), Frames{64}, invalid}),
         std::invalid_argument);
+
     std::array<float, 2> samples{};
+
     EXPECT_EQ(lifetime.bridge->render(samples), samples.size());
 }
 
@@ -382,6 +421,7 @@ TEST(PlaybackPipeline, PreparedSameFormatReplacementAcquiresTheReturnedOutput)
                              auto result{std::make_unique<wiola::testing::FakeOutput>()};
                              device = result.get();
                              result->refuse_starts();
+
                              return result;
                          }};
     auto active{
@@ -389,11 +429,14 @@ TEST(PlaybackPipeline, PreparedSameFormatReplacementAcquiresTheReturnedOutput)
                                                stereo),
             output.prepare(stereo), Frames{64})};
     active->activate(output);
+
     PlaybackPipeline candidate{std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, stereo),
         output.prepare(stereo), Frames{64}};
+
     active.reset();
     candidate.activate(output);
     ASSERT_TRUE(candidate.player().start());
+
     candidate.player().wait();
     EXPECT_EQ(device->num_starts(), 1);
     EXPECT_EQ(candidate.player().state(), wiola::engine::PlaybackState::faulted);
@@ -414,6 +457,7 @@ TEST(PlaybackPipeline, QuiescesAndReleasesDecoderBeforeItsPinnedOutput)
     }
     EXPECT_FALSE(lifetime.output_destroyed);
     ASSERT_TRUE(pipeline->player().start());
+
     lifetime.started.wait(false, std::memory_order_acquire);
     pipeline.reset();
     EXPECT_TRUE(lifetime.decoder_destroyed);

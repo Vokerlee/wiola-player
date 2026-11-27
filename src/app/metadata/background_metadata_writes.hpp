@@ -19,7 +19,11 @@
  */
 
 #pragma once
+
 #include "metadata_write_job.hpp"
+
+#include <wiola/media/provider.hpp>
+
 #include <condition_variable>
 #include <deque>
 #include <exception>
@@ -27,7 +31,6 @@
 #include <memory>
 #include <mutex>
 #include <thread>
-#include <wiola/media/provider.hpp>
 
 namespace wiola::app {
 

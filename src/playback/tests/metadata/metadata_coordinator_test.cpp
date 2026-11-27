@@ -18,11 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fakes/resource.hpp>
-#include <metadata/metadata_coordinator.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/provider.hpp>
+#include <fakes/resource.hpp>
+#include <metadata/metadata_coordinator.hpp>
 #include <queue/playlist.hpp>
 
 #include <gtest/gtest.h>
@@ -67,10 +66,12 @@ public:
     std::size_t submit(std::span<Request> requests) override
     {
         const auto accepted{requests.first(std::min(requests.size(), acceptance_limit))};
+
         for (auto& request : accepted) {
             submitted.push_back(request);
             pending.push_back(std::move(request));
         }
+
         return accepted.size();
     }
 
@@ -107,6 +108,7 @@ TEST(MetadataCoordinator, DeferredWorkRemainsBusyWhenTheWorkerIsIdle)
     auto worker{std::make_unique<ControlledMetadataWorker>()};
     auto* controlled{worker.get()};
     controlled->acceptance_limit = 0;
+
     MetadataCoordinator coordinator{std::move(worker)};
     Playlist queue;
     queue.set({wiola::testing::resource("first.media", "first"),
@@ -120,20 +122,26 @@ TEST(MetadataCoordinator, DeferredWorkRemainsBusyWhenTheWorkerIsIdle)
     controlled->acceptance_limit = 1;
     EXPECT_TRUE(coordinator.take().empty());
     ASSERT_EQ(controlled->submitted.size(), 1U);
+
     const auto first{controlled->submitted.front()};
     controlled->deliver(first);
     EXPECT_FALSE(controlled->busy());
     EXPECT_TRUE(coordinator.busy());
 
     const auto accepted_first{coordinator.take()};
+
     ASSERT_EQ(accepted_first.size(), 1U);
     EXPECT_EQ(accepted_first[0].entries, std::vector{first.id});
     ASSERT_EQ(controlled->submitted.size(), 2U);
+
     const auto second{controlled->submitted.back()};
+
     EXPECT_NE(first.id, second.id);
+
     controlled->deliver(second);
 
     const auto accepted_second{coordinator.take()};
+
     ASSERT_EQ(accepted_second.size(), 1U);
     EXPECT_EQ(accepted_second[0].entries, std::vector{second.id});
     EXPECT_FALSE(coordinator.busy());
@@ -154,15 +162,22 @@ TEST(MetadataCoordinator, LateResultForTheSamePathCannotBindToANewerOccurrence)
     Playlist queue;
     queue.set({wiola::testing::resource("same.wav", "same")});
     coordinator.replace(queue.tracks());
+
     const auto old{controlled->submitted.back()};
+
     queue.set({wiola::testing::resource("same.wav", "same")});
     coordinator.replace(queue.tracks());
+
     const auto current{controlled->submitted.back()};
+
     controlled->deliver(old);
     EXPECT_TRUE(coordinator.take().empty());
     EXPECT_TRUE(coordinator.busy());
+
     controlled->deliver(current);
+
     const auto accepted{coordinator.take()};
+
     ASSERT_EQ(accepted.size(), 1U);
     EXPECT_EQ(accepted.front().entries, std::vector{queue.current()->id()});
     EXPECT_FALSE(coordinator.busy());
@@ -176,6 +191,7 @@ TEST(MetadataCoordinator, WrongRequestIdentityLeavesTheRealRequestPending)
     Playlist queue;
     queue.set({wiola::testing::resource("current.wav", "current")});
     coordinator.replace(queue.tracks());
+
     const auto current{controlled->submitted.back()};
     auto wrong{current};
     ++wrong.generation;
@@ -187,8 +203,10 @@ TEST(MetadataCoordinator, WrongRequestIdentityLeavesTheRealRequestPending)
     wrong.resource = wiola::testing::resource("foreign.wav", "foreign");
     controlled->deliver(wrong);
     EXPECT_TRUE(coordinator.take().empty());
+
     controlled->deliver(current);
     ASSERT_EQ(coordinator.take().size(), 1U);
+
     controlled->deliver(current);
     EXPECT_TRUE(coordinator.take().empty());
 }
@@ -202,11 +220,14 @@ TEST(MetadataCoordinator, OutOfOrderCompletionRetainsEachOccurrenceAssociation)
     queue.set({wiola::testing::resource("first.wav", "first"),
         wiola::testing::resource("second.wav", "second")});
     coordinator.replace(queue.tracks());
+
     const auto first{controlled->submitted.front()};
     const auto second{controlled->submitted.back()};
     controlled->deliver(second);
     controlled->deliver(first);
+
     const auto accepted{coordinator.take()};
+
     ASSERT_EQ(accepted.size(), 2U);
     EXPECT_EQ(accepted[0].entries, std::vector{queue.tracks()[1].id()});
     EXPECT_EQ(accepted[1].entries, std::vector{queue.tracks()[0].id()});
@@ -217,6 +238,7 @@ TEST(MetadataCoordinator, CoalescesDuplicatePathsWithoutMergingEntryIdentity)
     Playlist playlist;
     playlist.set({wiola::testing::resource("same.wav", "same"),
         wiola::testing::resource("same.wav", "same")});
+
     std::atomic<std::size_t> num_reads{0};
     MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
         [&num_reads](const wiola::media::ResourceReference&,
@@ -227,6 +249,7 @@ TEST(MetadataCoordinator, CoalescesDuplicatePathsWithoutMergingEntryIdentity)
     )};
 
     coordinator.replace(playlist.tracks());
+
     const auto readings{wait_for(coordinator)};
 
     ASSERT_EQ(readings.size(), 1U);
@@ -240,8 +263,10 @@ TEST(MetadataCoordinator, DropsAnObsoleteGenerationAfterItsPhysicalRead)
     Gate opening;
     Playlist old_queue;
     old_queue.set({wiola::testing::resource("old.wav", "old")});
+
     Playlist new_queue;
     new_queue.set({wiola::testing::resource("new.wav", "new")});
+
     MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
         [&opening](const wiola::media::ResourceReference& resource,
             const wiola::media::OperationContext&) {
@@ -257,6 +282,7 @@ TEST(MetadataCoordinator, DropsAnObsoleteGenerationAfterItsPhysicalRead)
     opening.release();
 
     const auto readings{wait_for(coordinator)};
+
     ASSERT_EQ(readings.size(), 1U);
     EXPECT_EQ(readings.front().resource, wiola::testing::resource("new.wav", "new"));
     EXPECT_EQ(readings.front().entries.front(), new_queue.tracks().front().id());
@@ -266,6 +292,7 @@ TEST(MetadataCoordinator, FeedsMoreThanTheWorkerCapacityIncrementally)
 {
     std::vector<QueueEntry> tracks;
     tracks.reserve(300);
+
     for (std::size_t index{0}; index < 300; ++index)
         tracks.emplace_back(wiola::engine::QueueEntryId{index + 1},
             wiola::testing::resource("track-" + std::to_string(index) + ".wav", "Track"));
@@ -295,6 +322,7 @@ TEST(MetadataCoordinator, CoalescesAppendedDuplicatesBeforeDeferredSubmission)
 {
     Playlist playlist;
     playlist.set({wiola::testing::resource("same.wav", "same")});
+
     std::atomic<std::size_t> num_reads{0};
     MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
                                         [&num_reads](const wiola::media::ResourceReference&,
@@ -327,8 +355,10 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWhenTheGenerationChanges)
             [&reading, &num_reads](const wiola::media::ResourceReference& resource,
                 const wiola::media::OperationContext&) {
                 ++num_reads;
+
                 if (resource != wiola::testing::resource("new.wav", "new"))
                     reading.wait();
+
                 return wiola::media::Metadata{};
             }
         ),
@@ -337,6 +367,7 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWhenTheGenerationChanges)
     old_queue.set({wiola::testing::resource("old-0.wav", "old-0"),
         wiola::testing::resource("old-1.wav", "old-1"),
         wiola::testing::resource("old-2.wav", "old-2")});
+
     Playlist new_queue;
     new_queue.set({wiola::testing::resource("new.wav", "new")});
 
@@ -362,6 +393,7 @@ TEST(MetadataCoordinator, CancelsDeferredWorkWithoutStartingIt)
                 const wiola::media::OperationContext&) {
                 ++num_reads;
                 reading.wait();
+
                 return wiola::media::Metadata{};
             }
         ),
@@ -386,6 +418,7 @@ TEST(MetadataCoordinator, PreservesTypedFailureBesideCoalescedEntryIdentity)
     Playlist playlist;
     playlist.set({wiola::testing::resource("same.wav", "same"),
         wiola::testing::resource("same.wav", "same")});
+
     MetadataCoordinator coordinator{wiola::testing::FakeMediaProvider::metadata_only(
         [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
             return wiola::media::unexpected{
@@ -396,6 +429,7 @@ TEST(MetadataCoordinator, PreservesTypedFailureBesideCoalescedEntryIdentity)
     )};
 
     coordinator.replace(playlist.tracks());
+
     const auto readings{wait_for(coordinator)};
 
     ASSERT_EQ(readings.size(), 1U);
@@ -412,19 +446,24 @@ TEST(MetadataCoordinator, GroupsOpaqueKeysBySourceWithoutConflatingLabels)
     const wiola::media::ResourceReference other{"b", "same", "First label"};
     Playlist queue;
     queue.set({first, second, other});
+
     auto worker{std::make_unique<ControlledMetadataWorker>()};
     auto* observed{worker.get()};
     MetadataCoordinator coordinator{std::move(worker)};
     coordinator.replace(queue.tracks());
     ASSERT_EQ(observed->submitted.size(), 2U);
+
     const auto requests{observed->submitted};
+
     for (const auto& request : requests) {
         auto relabelled{request};
         relabelled.resource = wiola::media::ResourceReference{request.resource.source(),
             request.resource.key(), "Updated display hint"};
         observed->deliver(relabelled);
     }
+
     const auto readings{coordinator.take()};
+
     ASSERT_EQ(readings.size(), 2U);
     EXPECT_EQ(readings[0].entries.size(), 2U);
     EXPECT_EQ(readings[1].entries.size(), 1U);

@@ -19,8 +19,10 @@
  */
 
 #pragma once
+
 #include <QKeySequence>
 #include <QStyle>
+
 #include <optional>
 #include <span>
 

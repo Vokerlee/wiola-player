@@ -19,10 +19,12 @@
  */
 
 #pragma once
+
+#include <qt/widgets/layout/layout_document.hpp>
+
 #include <QGroupBox>
 #include <QPointer>
 #include <QVBoxLayout>
-#include <qt/widgets/layout/layout_document.hpp>
 
 namespace wiola::gui {
 

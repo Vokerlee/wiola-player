@@ -20,6 +20,7 @@ def main(argv=None) -> int:
     commands.add_parser("hook")
     commands.add_parser("install-hooks")
     args = parser.parse_args(argv)
+
     try:
         if args.command == "install-hooks":
             install_hook(args.repository)
@@ -37,6 +38,7 @@ def main(argv=None) -> int:
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print("Formatting failed: " + str(error), file=sys.stderr)
         return 1
+
     return 0
 
 

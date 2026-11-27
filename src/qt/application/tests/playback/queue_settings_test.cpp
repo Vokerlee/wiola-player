@@ -19,20 +19,16 @@
  */
 
 #include <app/playback/queue_settings.hpp>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-#include <wiola/qt/storage/settings.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
-#include <wiola/app/playback/playback_service.hpp>
-
 #include <fakes/output.hpp>
 #include <fixtures/wav.hpp>
+#include <wiola/app/playback/playback_service.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/qt/storage/settings.hpp>
 
 #include <QSettings>
 #include <QString>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -140,6 +136,7 @@ TEST_F(QueueSettings, StandsWhereTheLastRunStood)
         presenter.add({wiola::media::local_resource(first), wiola::media::local_resource(next)});
         settle(presenter);
         ASSERT_TRUE(presenter.play_track(1));
+
         settle(presenter);
         control.save();
     }
@@ -149,6 +146,7 @@ TEST_F(QueueSettings, StandsWhereTheLastRunStood)
     Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
+
     settle(restored);
 
     EXPECT_EQ(restored.playlist().position(), 1U);
@@ -224,6 +222,7 @@ TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
         settle(session);
 
         ASSERT_TRUE(session.play_track(2));
+
         settle(session);
         ASSERT_EQ(session.playlist().position(), 2U);
 
@@ -235,6 +234,7 @@ TEST_F(QueueSettings, RestoresTheSelectedOccurrenceOfADuplicatePath)
     Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
+
     settle(restored);
 
     const auto& tracks{restored.playlist().tracks()};
@@ -260,9 +260,11 @@ TEST_F(QueueSettings, LegacyPathOnlySelectionMigratesWithoutInventingAnOccurrenc
         QStringList{QString::fromStdString(other.string()),
             QString::fromStdString(repeated.string()), QString::fromStdString(repeated.string())});
     settings.setValue("queue/path", QString::fromStdString(repeated.string()));
+
     Presenter playback{wiola::testing::passive_output, wiola::codec::ffmpeg::make_provider()};
 
     Control control{playback, store, available};
+
     ASSERT_EQ(control.restore(), 0);
     EXPECT_EQ(playback.playlist().position(), 1);
     EXPECT_TRUE(control.restore_mapping().empty());
@@ -278,9 +280,11 @@ TEST_F(QueueSettings, InvalidOccurrenceMetadataNeverSelectsADuplicateByFilename)
     settings.setValue("queue/path", QString::fromStdString(repeated.string()));
     settings.setValue("queue/entry_ids", QStringList{"11", "11", "13"});
     settings.setValue("queue/selected_id", "11");
+
     Presenter playback{wiola::testing::passive_output, wiola::codec::ffmpeg::make_provider()};
 
     Control control{playback, store, available};
+
     ASSERT_EQ(control.restore(), 0);
     EXPECT_TRUE(control.restore_mapping().empty());
     EXPECT_EQ(playback.playlist().position(), 0);
@@ -302,6 +306,7 @@ TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone
         settle(session);
 
         ASSERT_TRUE(session.play_track(1));
+
         settle(session);
         control.save();
     }
@@ -313,6 +318,7 @@ TEST_F(QueueSettings, FallsBackToTheFirstSurvivingEntryWhenTheSelectedFileIsGone
     Control control{restored, store, available};
 
     EXPECT_EQ(control.restore(), 1U);
+
     settle(restored);
 
     ASSERT_EQ(restored.playlist().tracks().size(), 2U);
@@ -341,6 +347,7 @@ TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
         settle(session);
 
         ASSERT_TRUE(session.play_track(1));
+
         settle(session);
 
         session.set_repeat(Repeat::all);
@@ -353,6 +360,7 @@ TEST_F(QueueSettings, KeepsTheSelectedEntryWhenTheRestoredQueueIsShuffled)
     Control control{restored, store, available};
 
     ASSERT_EQ(control.restore(), 0U);
+
     settle(restored);
 
     EXPECT_EQ(wiola::app::present_playback(restored).repeat, Repeat::all);
@@ -408,8 +416,10 @@ TEST_F(QueueSettings, LegacySelectionIsRestoredAmongTheAppendedOccurrences)
     saved.tracks = {first, selected};
     saved.selected = selected;
     wiola::platform::qt::QtSettingsAdapter{settings}.write_queue(saved);
+
     Presenter presenter{wiola::testing::passive_output, wiola::codec::ffmpeg::make_provider()};
     presenter.add({wiola::media::local_resource(existing)});
+
     Control control{presenter, store, available};
 
     EXPECT_EQ(control.restore(), 0U);

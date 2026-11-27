@@ -18,11 +18,10 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
 #include <fakes/provider.hpp>
+#include <fixtures/wav.hpp>
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/playback/playback_preferences.hpp>
 #include <qt/widgets/controls/equalizer_panel.hpp>
@@ -34,11 +33,10 @@
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/shell/main_window.hpp>
 #include <qt/widgets/shell/saved_playlist_manager.hpp>
-#include <wiola/app/playback/volume_control.hpp>
-#include <wiola/media/local/resource.hpp>
-
-#include <fixtures/wav.hpp>
 #include <qt/widgets/tests/support/widget_diagnostics.hpp>
+#include <wiola/app/playback/volume_control.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <QApplication>
 #include <QCheckBox>
@@ -56,7 +54,6 @@
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QThread>
-
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -180,9 +177,11 @@ protected:
     {
         QSettings settings = player_settings();
         settings.clear();
+
         for (const auto& name : {"layout.json", "layout.json.bak", "session.json",
                  "session.json.bak", "theme.json", "theme.json.bak"})
             QFile::remove(QFileInfo{settings.fileName()}.dir().filePath(name));
+
         settings.sync();
     }
 
@@ -457,6 +456,7 @@ TEST_F(MainWindowTest, ExplainsOutputSetupFailureWithoutBlamingTheTrack)
 
     wiola::app::PlaybackPreferences window_preferences{window_playback};
     MainWindow window{window_playback, window_library, window_preferences};
+
     window_playback.open({wiola::media::local_resource("valid-decoder")});
     ASSERT_TRUE(pump_until(window, window_playback, [&] {
         return window_playback.open_result() == wiola::engine::OpenResult::output_unavailable;
@@ -477,7 +477,9 @@ int main(int argc, char** argv)
 #endif
 
     ::testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
+
     wiola::testing::retain_widget_screenshots();
 
     return RUN_ALL_TESTS();

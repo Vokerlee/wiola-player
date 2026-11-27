@@ -51,6 +51,7 @@ inline std::filesystem::path write_wav(const char* name, std::uint32_t rate = so
     const auto num_frames{static_cast<std::size_t>(source_seconds * rate)};
 
     std::string samples;
+
     for (std::size_t i = 0; i < num_frames; ++i) {
         const auto value = static_cast<std::uint32_t>(static_cast<std::int16_t>(12000 *
             std::sin(2 * std::numbers::pi * 440 * static_cast<double>(i) / rate)));

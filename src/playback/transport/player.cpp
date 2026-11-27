@@ -54,6 +54,7 @@ void Player::seek(units::Time position) noexcept
 
     const bool outside_exact_source{target && length_accuracy_ == media::LengthAccuracy::exact &&
         length_ && *target > *length_};
+
     if (target && !outside_exact_source)
         worker_.seek(*target);
 }

@@ -123,6 +123,7 @@ TEST(Device, AsksItsSourceForFramesWhileRunning)
         GTEST_SKIP() << "no playback device on this machine";
 
     EXPECT_TRUE(device.running());
+
     std::this_thread::sleep_for(std::chrono::milliseconds{120});
     control.stop();
 

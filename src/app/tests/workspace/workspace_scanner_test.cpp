@@ -20,16 +20,16 @@
 
 #include <app/workspace/workspace_reconciliation.hpp>
 #include <app/workspace/workspace_scanner.hpp>
-#include <wiola/library/in_memory_repository.hpp>
-
 #include <fixtures/temporary_directory.hpp>
+#include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/local/fingerprint.hpp>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <condition_variable>
 #include <fstream>
 #include <mutex>
-#include <wiola/media/local/fingerprint.hpp>
 
 namespace {
 
@@ -37,7 +37,9 @@ struct ScanCapture {
     void accept(wiola::app::WorkspaceScanBatch batch)
     {
         std::lock_guard lock{mutex};
+
         batches.push_back(batch);
+
         for (const auto& entry : batch.entries)
             tracks.push_back(entry.location);
 
@@ -74,6 +76,7 @@ TEST(WorkspaceScanner, PartialQualificationKeepsPresentKnownFilesButDoesNotImpor
     file(root / "known.flac");
     file(root / "unknown.flac");
     file(root / "new.wav");
+
     wiola::library::InMemoryRepository repository;
     const auto workspace = repository.create_workspace(root, false);
     wiola::library::TrackRecord present, removed;
@@ -83,6 +86,7 @@ TEST(WorkspaceScanner, PartialQualificationKeepsPresentKnownFilesButDoesNotImpor
     removed.locations = {root / "removed.flac"};
     ASSERT_TRUE(repository.put_track(present));
     ASSERT_TRUE(repository.put_track(removed));
+
     ScanCapture capture;
     wiola::app::WorkspaceScanner scanner;
     scanner.start(
@@ -90,19 +94,25 @@ TEST(WorkspaceScanner, PartialQualificationKeepsPresentKnownFilesButDoesNotImpor
         [&](auto batch) { capture.accept(std::move(batch)); }, repository.tracks()
     );
     ASSERT_TRUE(capture.wait());
+
     scanner.stop();
     ASSERT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::complete);
     ASSERT_EQ(capture.tracks.size(), 2);
     EXPECT_NE(std::ranges::find(capture.tracks, root / "known.flac"), capture.tracks.end());
     EXPECT_EQ(std::ranges::find(capture.tracks, root / "unknown.flac"), capture.tracks.end());
+
     std::vector<wiola::app::WorkspaceScanEntry> entries;
+
     for (const auto& batch : capture.batches)
         entries.insert(entries.end(), batch.entries.begin(), batch.entries.end());
+
     wiola::app::WorkspaceReconciliation reconcile{[](const auto&) { return true; }};
+
     ASSERT_TRUE(reconcile.reconcile(repository, workspace, entries).succeeded);
     EXPECT_FALSE(repository.track(present.id)->missing);
     EXPECT_TRUE(repository.track(removed.id)->missing);
     EXPECT_EQ(repository.tracks().size(), 3);
+
     std::filesystem::remove_all(root);
 }
 
@@ -129,6 +139,7 @@ TEST(WorkspaceScanner, StreamsSupportedFilesInBoundedWorkerBatches)
 
     ASSERT_TRUE(capture.wait());
     ASSERT_EQ(capture.tracks.size(), 3);
+
     std::ranges::sort(capture.tracks);
     EXPECT_EQ(capture.tracks,
         (std::vector<std::filesystem::path>{root / "a.MP3", root / "nested" / "b.ogg",
@@ -170,6 +181,7 @@ TEST(WorkspaceScanner, CancelsCooperativelyAfterTheFirstBatch)
     wiola::testing::TemporaryDirectory temporary;
     const std::filesystem::path root = temporary.path() / "wiola-scan-cancel";
     std::filesystem::remove_all(root);
+
     for (int index = 0; index < 70; ++index)
         file(root / (std::to_string(index) + ".wav"));
 
@@ -211,14 +223,18 @@ TEST(WorkspaceScanner, ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows)
     wiola::testing::TemporaryDirectory temporary;
     const auto root = temporary.path() / "wiola-scan-relocation";
     std::filesystem::remove_all(root);
+
     const auto old_path = root / "old.wav";
     const auto new_path = root / "new.wav";
+
     file(old_path);
+
     wiola::library::TrackRecord record;
     record.id = {"canonical-media"};
     record.locations = {old_path};
     record.fingerprint = *wiola::media::fingerprint_media(old_path);
     std::filesystem::rename(old_path, new_path);
+
     wiola::app::WorkspaceScanner scanner;
     ScanCapture capture;
     scanner.start({.id = wiola::library::WorkspaceId{"workspace"}, .root = root}, {".wav"},
@@ -226,11 +242,14 @@ TEST(WorkspaceScanner, ResolvesAKnownRelocationOnTheWorkerBeforePublishingRows)
     ASSERT_TRUE(capture.wait());
     ASSERT_FALSE(capture.batches.empty());
     ASSERT_EQ(capture.batches.front().entries.size(), 1);
+
     const auto& discovered = capture.batches.front().entries.front();
+
     EXPECT_EQ(discovered.media, record.id);
     EXPECT_EQ(discovered.location, new_path);
     EXPECT_TRUE(discovered.relocated());
     EXPECT_EQ(discovered.fingerprint, record.fingerprint);
+
     std::filesystem::remove_all(root);
 }
 
@@ -239,8 +258,10 @@ TEST(WorkspaceScanner, PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGated
     wiola::testing::TemporaryDirectory temporary;
     const auto root = temporary.path() / "wiola-stream-gated";
     std::filesystem::remove_all(root);
+
     for (int i = 0; i < 8; ++i)
         file(root / (std::to_string(i) + ".wav"));
+
     std::mutex mutex;
     std::condition_variable changed;
     bool gated = false;
@@ -249,12 +270,17 @@ TEST(WorkspaceScanner, PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGated
     policy.after_entry = [&](const auto&, std::size_t visited, std::stop_token stop) {
         if (visited != 3)
             return;
+
         std::unique_lock lock{mutex};
+
         gated = true;
         changed.notify_all();
+
         std::stop_callback wake{stop, [&] { changed.notify_all(); }};
+
         changed.wait(lock, [&] { return stop.stop_requested(); });
     };
+
     ScanCapture capture;
     wiola::app::WorkspaceScanner scanner{policy};
     scanner.start({.id = {"stream"}, .root = root}, {".wav"},
@@ -265,14 +291,17 @@ TEST(WorkspaceScanner, PublishesRowsBeforeEnumerationCompletesAndCancelsAtAGated
     }
     {
         std::lock_guard lock{capture.mutex};
+
         ASSERT_EQ(capture.tracks.size(), 2);
         EXPECT_FALSE(capture.finished);
         EXPECT_EQ(capture.batches.front().status, wiola::app::WorkspaceScanStatus::running);
     }
     scanner.cancel();
     ASSERT_TRUE(capture.wait());
+
     scanner.stop();
     EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::cancelled);
+
     std::filesystem::remove_all(root);
 }
 
@@ -281,20 +310,25 @@ TEST(WorkspaceScanner, StopsAtTrackLimitWithoutClaimingAnAuthoritativeCompletion
     wiola::testing::TemporaryDirectory temporary;
     const auto root = temporary.path() / "wiola-stream-limit";
     std::filesystem::remove_all(root);
+
     for (int i = 0; i < 4; ++i)
         file(root / (std::to_string(i) + ".wav"));
+
     wiola::app::WorkspaceScanPolicy policy;
     policy.max_tracks = 2;
     policy.batch_size = 1;
+
     ScanCapture capture;
     wiola::app::WorkspaceScanner scanner{policy};
     scanner.start({.id = {"limited"}, .root = root}, {".wav"},
         [&](auto batch) { capture.accept(std::move(batch)); });
     ASSERT_TRUE(capture.wait());
+
     scanner.stop();
     EXPECT_EQ(capture.tracks.size(), 2);
     EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::failed);
     EXPECT_EQ(capture.batches.back().error, wiola::app::WorkspaceScanError::limit_exceeded);
+
     std::filesystem::remove_all(root);
 }
 
@@ -305,17 +339,22 @@ TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
     std::filesystem::remove_all(root);
     file(root / "existing.wav");
     file(root / "copy.wav");
+
     wiola::library::TrackRecord known;
     known.id = {"canonical"};
     known.locations = {root / "existing.wav"};
     known.fingerprint = *wiola::media::fingerprint_media(known.locations.front());
+
     ScanCapture capture;
     wiola::app::WorkspaceScanner scanner;
     scanner.start({.id = {"copies"}, .root = root}, {".wav"},
         [&](auto batch) { capture.accept(std::move(batch)); }, {known});
     ASSERT_TRUE(capture.wait());
+
     scanner.stop();
+
     bool found = false;
+
     for (const auto& batch : capture.batches)
         for (const auto& entry : batch.entries)
             if (entry.location == root / "copy.wav") {
@@ -323,7 +362,9 @@ TEST(WorkspaceScanner, IdenticalNewCopyDoesNotRelocateAnExistingKnownLocation)
                 EXPECT_NE(entry.media, known.id);
                 EXPECT_FALSE(entry.relocated());
             }
+
     EXPECT_TRUE(found);
+
     std::filesystem::remove_all(root);
 }
 
@@ -333,14 +374,17 @@ TEST(WorkspaceScanner, EmptyQualificationNeverClaimsAllKnownMediaAreMissing)
     const auto root = temporary.path() / "wiola-empty-qualification";
     std::filesystem::remove_all(root);
     file(root / "present.wav");
+
     ScanCapture capture;
     wiola::app::WorkspaceScanner scanner;
     scanner.start({.id = {"workspace"}, .root = root}, {},
         [&](auto batch) { capture.accept(std::move(batch)); });
     ASSERT_TRUE(capture.wait());
+
     scanner.stop();
     EXPECT_EQ(capture.batches.back().status, wiola::app::WorkspaceScanStatus::failed);
     EXPECT_EQ(capture.batches.back().error, wiola::app::WorkspaceScanError::unsupported_formats);
+
     std::filesystem::remove_all(root);
 }
 

@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -34,6 +35,7 @@ enum class FileReplacementError {
     recovery_required,
     cancelled,
 };
+
 enum class FileReplacementStep {
     journal_created,
     before_backup,

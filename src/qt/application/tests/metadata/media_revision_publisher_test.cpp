@@ -18,21 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/gated_media_provider.hpp>
 #include <qt/application/metadata/media_revision_publisher.hpp>
-
 #include <wiola/media/local/resource.hpp>
 
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QThread>
+#include <gtest/gtest.h>
 
 #include <condition_variable>
-#include <gtest/gtest.h>
+#include <functional>
 #include <mutex>
 #include <stdexcept>
-
-#include <fixtures/gated_media_provider.hpp>
-#include <functional>
 
 namespace {
 
@@ -84,10 +82,13 @@ public:
         const wiola::media::OperationContext& context) override
     {
         const auto path{wiola::media::local_path(resource).value()};
+
         if (gate_ && path == "barrier.wav")
             gate_->arrive(context.stop);
+
         if (path == "throws.wav")
             throw std::runtime_error{"injected read failure"};
+
         if (path == "error.wav") {
             return wiola::media::unexpected{
                 wiola::media::Error{wiola::media::ErrorCategory::unreadable, "test"}
@@ -126,10 +127,12 @@ TEST(MediaRevisionPublisher, PublishesOnlyTheNewestRequestForEachIdentity)
         }};
 
     const wiola::library::MediaId media{"media"};
+
     ASSERT_TRUE(publisher.enqueue(media, "old.wav"));
     ASSERT_TRUE(publisher.enqueue(media, "new.wav"));
 
     ASSERT_TRUE(pump_until([&] { return !results.empty(); }));
+
     QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
 
     ASSERT_EQ(results.size(), 1);
@@ -148,6 +151,7 @@ TEST(MediaRevisionPublisher, AQueuedOldResultCannotPublishAfterANewerRequest)
             if (result.media == target)
                 results.push_back(std::move(result));
         }};
+
     ASSERT_TRUE(publisher.enqueue(target, "old.wav"));
     ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"barrier"}, "barrier.wav"));
     // The same worker has delivered old.wav before entering the following I/O request.
@@ -155,8 +159,10 @@ TEST(MediaRevisionPublisher, AQueuedOldResultCannotPublishAfterANewerRequest)
     ASSERT_TRUE(gate.wait_entered());
     EXPECT_TRUE(results.empty());
     ASSERT_TRUE(publisher.enqueue(target, "new.wav"));
+
     gate.release();
     ASSERT_TRUE(pump_until([&] { return !results.empty(); }));
+
     publisher.stop();
     QCoreApplication::processEvents();
     ASSERT_EQ(results.size(), 1);
@@ -189,6 +195,7 @@ TEST(MediaRevisionPublisher, DestructionDropsAlreadyQueuedResults)
             [&](wiola::app::BackgroundMetadataResult) { ++publications; });
 
     ASSERT_TRUE(publisher->enqueue(wiola::library::MediaId{"media"}, "track.wav"));
+
     publisher.reset();
 
     QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
@@ -218,6 +225,7 @@ TEST(MediaRevisionPublisher, WorkerIoExceptionsBecomeTypedFailures)
     std::optional<wiola::app::BackgroundMetadataResult> result;
     wiola::app::MediaRevisionPublisher publisher{*QCoreApplication::instance(),
         std::make_shared<FakeProvider>(), [&](auto value) { result = std::move(value); }};
+
     ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"exception"}, "throws.wav"));
     ASSERT_TRUE(pump_until([&] { return result.has_value(); }));
     ASSERT_TRUE(result->error);
@@ -232,10 +240,14 @@ public:
     ) override
     {
         std::unique_lock lock{mutex};
+
         entered = true;
         changed.notify_all();
+
         std::stop_callback wake{context.stop, [this] { changed.notify_all(); }};
+
         changed.wait(lock, [&] { return context.stop.stop_requested(); });
+
         return wiola::media::unexpected{context.error()};
     }
 
@@ -252,21 +264,26 @@ TEST(MediaRevisionPublisher, BoundedQueueReportsRejectionAndGatedShutdownCancels
     std::vector<wiola::app::BackgroundMetadataResult> results;
     wiola::app::MediaRevisionPublisher publisher{*QCoreApplication::instance(), provider,
         [&](auto result) { results.push_back(std::move(result)); }};
+
     ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"active"}, "gated.wav"));
+
     {
         std::unique_lock lock{provider->mutex};
         ASSERT_TRUE(provider->changed.wait_for(lock, std::chrono::seconds{5},
             [&] { return provider->entered; }));
     }
+
     for (int i = 0; i < 256; ++i)
         ASSERT_TRUE(publisher.enqueue(wiola::library::MediaId{"queued-" + std::to_string(i)},
             "queued.wav"));
+
     EXPECT_FALSE(publisher.enqueue(wiola::library::MediaId{"overflow"}, "overflow.wav"));
     EXPECT_TRUE(results.empty());
     ASSERT_TRUE(pump_until([&] { return !results.empty(); }));
     ASSERT_EQ(results.size(), 1);
     ASSERT_TRUE(results.front().error);
     EXPECT_EQ(results.front().error->category, wiola::media::ErrorCategory::limit_exceeded);
+
     publisher.stop();
     QCoreApplication::processEvents();
     EXPECT_EQ(results.size(), 1);
@@ -277,6 +294,7 @@ TEST(MediaRevisionPublisher, BoundedQueueReportsRejectionAndGatedShutdownCancels
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

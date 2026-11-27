@@ -57,10 +57,12 @@ ThemeColors theme_colors(Theme theme)
         return {QColor{"#10121c"}, QColor{"#191d2b"}, QColor{"#edf0ff"}, QColor{"#afb7d2"},
             QColor{"#7f8aaa"}, QColor{"#b8a3ff"}, QColor{"#1b1430"}, QColor{"#d1c2ff"},
             QColor{"#ff9f9f"}};
+
     if (theme == Theme::studio)
         return {QColor{"#161b1b"}, QColor{"#202727"}, QColor{"#eff6f3"}, QColor{"#b2c4bc"},
             QColor{"#7e958a"}, QColor{"#6fe0ad"}, QColor{"#10271d"}, QColor{"#94efc3"},
             QColor{"#ffa5a5"}};
+
     if (theme == Theme::dark) {
         return {
             .window = QColor{"#202124"},
@@ -167,6 +169,7 @@ double contrast_ratio(const QColor& first, const QColor& second)
 
     const double a = luminance(first);
     const double b = luminance(second);
+
     return (std::max(a, b) + 0.05) / (std::min(a, b) + 0.05);
 }
 
@@ -254,21 +257,26 @@ QIcon themed_standard_icon(const QWidget& styled, QStyle::StandardPixmap icon,
 QIcon tinted_icon(const QIcon& icon, const QPalette& palette, QPalette::ColorRole color)
 {
     const QPixmap source = icon.pixmap(24, 24);
+
     if (source.isNull())
         return {};
+
     const auto tinted = [&source](const QColor& color) {
         QPixmap result{source.size()};
         result.fill(Qt::transparent);
+
         QPainter painter{&result};
         painter.drawPixmap(0, 0, source);
         painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
         painter.fillRect(result.rect(), color);
+
         return result;
     };
 
     QIcon result;
     result.addPixmap(tinted(palette.color(QPalette::Active, color)), QIcon::Normal);
     result.addPixmap(tinted(palette.color(QPalette::Disabled, color)), QIcon::Disabled);
+
     return result;
 }
 
@@ -286,11 +294,13 @@ QPixmap themed_artwork_placeholder(const QWidget& styled, int size)
     const QColor accent = styled.palette().color(QPalette::Highlight);
     painter.setPen(QPen{accent, static_cast<qreal>(std::max(2, size / 24)), Qt::SolidLine,
         Qt::RoundCap});
+
     const QPointF stem{size * 0.60, size * 0.24};
     painter.drawLine(stem, QPointF{size * 0.60, size * 0.64});
     painter.drawLine(stem, QPointF{size * 0.76, size * 0.30});
     painter.setBrush(accent);
     painter.drawEllipse(QPointF{size * 0.46, size * 0.68}, size * 0.14, size * 0.10);
+
     return result;
 }
 
@@ -303,6 +313,7 @@ void apply_theme(const ThemeColors& colors, const ThemeStyle& style)
 {
     if (!valid_theme_style(style) || !theme_contrast_error(colors).isEmpty())
         return;
+
     QApplication::setStyle(make_theme_widget_style());
     QApplication::setPalette(theme_palette(colors));
 

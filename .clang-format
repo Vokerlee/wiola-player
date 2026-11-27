@@ -29,3 +29,28 @@ EnumTrailingComma: Insert
 InsertNewlineAtEOF: true
 RemoveSemicolon: true
 LineEnding: LF
+
+# Keep one ownership group per include block, even for a paired public header.
+IncludeBlocks: Regroup
+IncludeIsMainRegex: 'a^'
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 0
+    SortPriority: 0
+    CaseSensitive: true
+  - Regex: '^<((wiola|app|audio|buffering|foundation|library|loading|media|metadata|pipeline|playback|presentation|processing|qt|queue|support|transport|fakes|fixtures)/|allocation_failure[.]hpp>)'
+    Priority: 1
+    SortPriority: 1
+    CaseSensitive: true
+  - Regex: '^<miniaudio[.]h>'
+    Priority: 2
+    SortPriority: 2
+    CaseSensitive: true
+  - Regex: '^<([a-z_0-9]+([.]h)?|sys/[^>]+)>'
+    Priority: 3
+    SortPriority: 3
+    CaseSensitive: true
+  - Regex: '.*'
+    Priority: 2
+    SortPriority: 2
+    CaseSensitive: true

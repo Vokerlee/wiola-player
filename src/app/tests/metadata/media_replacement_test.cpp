@@ -19,14 +19,12 @@
  */
 
 #include <app/metadata/media_replacement.hpp>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_writer.hpp>
 #include <wiola/media/audio_decoder.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <gtest/gtest.h>
 
@@ -65,6 +63,7 @@ wiola::media::MetadataWriteRequest title_request()
 {
     wiola::media::MetadataWriteRequest request;
     request.overrides.title = "Replaced title";
+
     return request;
 }
 
@@ -74,13 +73,16 @@ TEST(MediaReplacement, ValidatesAndCommitsWhileRetainingTheOriginal)
     const auto output = temporary("wiola-replacement-output.mp3");
     auto backup = source;
     backup += ".wiola-backup";
+
     Cleanup cleanup{
         {source, output, backup}
     };
 
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
+
     const auto original = bytes(source);
     const auto expected = wiola::media::fingerprint_media(source);
+
     ASSERT_TRUE(expected);
 
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
@@ -97,6 +99,7 @@ TEST(MediaReplacement, ValidatesAndCommitsWhileRetainingTheOriginal)
     EXPECT_EQ(bytes(backup), original);
 
     const auto metadata = wiola::codec::ffmpeg::read_metadata(source);
+
     ASSERT_TRUE(metadata);
     EXPECT_EQ(metadata->track.title, "Replaced title");
 }
@@ -107,11 +110,13 @@ TEST(MediaReplacement, RejectsInvalidOutputWithoutChangingTheSource)
     const auto output = temporary("wiola-invalid-replacement-output.mp3");
     auto backup = source;
     backup += ".wiola-backup";
+
     Cleanup cleanup{
         {source, output, backup}
     };
 
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
+
     const auto original = bytes(source);
     {
         std::ofstream invalid{output, std::ios::binary};
@@ -137,12 +142,15 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
     const auto output = temporary("wiola-conflicted-replacement-output.mp3");
     auto backup = source;
     backup += ".wiola-backup";
+
     Cleanup cleanup{
         {source, output, backup}
     };
 
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
+
     const auto expected = wiola::media::fingerprint_media(source);
+
     ASSERT_TRUE(expected);
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);
@@ -151,6 +159,7 @@ TEST(MediaReplacement, RejectsAnExternalEditBeforeCommit)
         std::ofstream changed{source, std::ios::app};
         changed << "external edit";
     }
+
     const auto changed = bytes(source);
 
     auto provider{wiola::codec::ffmpeg::make_provider()};
@@ -173,12 +182,15 @@ TEST(MediaReplacement, LockedSourceDoesNotReachTheCommit)
     const auto output = temporary("wiola-locked-replacement-output.mp3");
     auto backup = source;
     backup += ".wiola-backup";
+
     Cleanup cleanup{
         {source, output, backup}
     };
 
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
+
     const auto original = bytes(source);
+
     ASSERT_EQ(wiola::codec::ffmpeg::remux_metadata(source, output, title_request()).state,
         wiola::media::MetadataWriteState::written);
 
@@ -216,10 +228,13 @@ protected:
     {
         const auto count = wiola::pcm::Frames{std::min(requested.count(), chunk_)};
         const auto start = spec().samples_per(position_frames());
+
         for (std::size_t i = 0; i < spec().samples_per(count); ++i)
             output[i] = static_cast<float>((start + i) % 17) / 17.0F;
+
         if (changed_ && start == 0)
             output[0] = 100.0F;
+
         return wiola::media::DecodeOutcome{.frames = count};
     }
 
@@ -289,13 +304,18 @@ TEST(MediaReplacement, ComparesOrderedSamplesAcrossDifferentDecoderBlockBoundari
     Cleanup cleanup{
         {source, output}
     };
+
     std::ofstream{source} << "source";
     std::ofstream{output} << "output";
+
     ChunkProvider provider;
     provider.source = source;
     EXPECT_TRUE(wiola::app::prepare_media_replacement(source, output, provider).prepared);
+
     provider.changed = true;
+
     const auto invalid = wiola::app::prepare_media_replacement(source, output, provider);
+
     EXPECT_FALSE(invalid.prepared);
     EXPECT_EQ(invalid.failure.error, wiola::media::MetadataWriteError::invalid_output);
 }
@@ -307,17 +327,24 @@ TEST(MediaReplacement, RechecksCapturedSourceImmediatelyBeforePreparedCommit)
     Cleanup cleanup{
         {source, output}
     };
+
     std::ofstream{source} << "source";
     std::ofstream{output} << "output";
+
     ChunkProvider provider;
     provider.source = source;
+
     const auto validation = wiola::app::prepare_media_replacement(source, output, provider);
+
     ASSERT_TRUE(validation.prepared);
+
     std::ofstream{source, std::ios::app} << "external metadata";
+
     const auto external = bytes(source);
     auto replacement = wiola::media::native_file_replacement(wiola::media::fingerprint_media);
     const auto result =
         wiola::app::commit_prepared_media_replacement(*validation.prepared, *replacement);
+
     EXPECT_EQ(result.error, wiola::media::MetadataWriteError::conflicted);
     EXPECT_EQ(bytes(source), external);
 }
@@ -329,6 +356,7 @@ public:
     {
         captured = std::move(request);
         EXPECT_TRUE(guard());
+
         return {.error = wiola::media::FileReplacementError::io, .detail = "driver refused"};
     }
 
@@ -348,12 +376,17 @@ TEST(MediaReplacement, SuppliesValidatedOwnedInputsToTheSelectedDriverWithoutNat
     Cleanup cleanup{
         {source, output}
     };
+
     std::ofstream{source} << "source";
     std::ofstream{output} << "output";
+
     ChunkProvider provider;
     provider.source = source;
+
     const auto validation = wiola::app::prepare_media_replacement(source, output, provider);
+
     ASSERT_TRUE(validation.prepared);
+
     const auto original = bytes(source);
     RefusingReplacement driver;
 

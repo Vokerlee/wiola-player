@@ -20,10 +20,9 @@
 
 #include "now_playing_document.hpp"
 
+#include <qt/widgets/tracks/track_browser.hpp>
 #include <wiola/media/local/resource.hpp>
 #include <wiola/presentation/documents/queue_rows.hpp>
-
-#include <qt/widgets/tracks/track_browser.hpp>
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -52,6 +51,7 @@ NowPlayingDocument::NowPlayingDocument(QWidget* parent)
         if (const auto* id = std::get_if<engine::QueueEntryId>(&row))
             emit track_chosen(*id);
     });
+
     connect(browser_, &TrackBrowser::command_requested, this, [this](TrackCommand command) {
         switch (command) {
         case TrackCommand::remove:
@@ -89,6 +89,7 @@ bool NowPlayingDocument::show_playlist(const engine::QueueView& playlist)
 {
     const auto changes = source_.reconcile(playlist, library_);
     present_changes(changes);
+
     return changes.changed();
 }
 
@@ -103,8 +104,10 @@ bool NowPlayingDocument::show_library_changes(const engine::QueueView& playlist,
     const library::LibraryRepository& repository, const library::LibraryChangeBatch& batch)
 {
     library_ = &repository;
+
     const auto changes = source_.apply_library(playlist, repository, batch);
     present_changes(changes);
+
     return changes.playback_changed;
 }
 

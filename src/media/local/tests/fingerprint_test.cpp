@@ -18,9 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/temporary_directory.hpp>
 #include <wiola/media/local/fingerprint.hpp>
 
-#include <fixtures/temporary_directory.hpp>
 #include <gtest/gtest.h>
 
 #include <filesystem>
@@ -71,9 +71,11 @@ TEST(MediaFingerprint, StoredIdentityDoesNotDependOnTheProcessNumericLocale)
     const TemporaryDirectory directory;
     const auto file = directory.path() / "track.wav";
     write(file, "foobar");
+
     const ScopedLocale grouped{
         std::locale{std::locale::classic(), new GroupedNumbers}
     };
+
     EXPECT_EQ(fingerprint_media(file), "fnv1a64:85944171f73967e8:0000000000000006");
 }
 
@@ -82,6 +84,7 @@ TEST(MediaFingerprint, DependsOnContentRatherThanLocation)
     const TemporaryDirectory directory;
     const auto first = directory.path() / "first.wav";
     const auto second = directory.path() / std::filesystem::path{u8"музыка.wav"};
+
     write(first, "same content");
     write(second, "same content");
 
@@ -98,8 +101,10 @@ TEST(MediaFingerprint, PreservesTheStoredDigestSpellingForKnownContent)
     const auto file = directory.path() / "track.wav";
     write(file, "");
     EXPECT_EQ(fingerprint_media(file), "fnv1a64:cbf29ce484222325:0000000000000000");
+
     write(file, "a");
     EXPECT_EQ(fingerprint_media(file), "fnv1a64:af63dc4c8601ec8c:0000000000000001");
+
     write(file, "foobar");
     EXPECT_EQ(fingerprint_media(file), "fnv1a64:85944171f73967e8:0000000000000006");
 }
@@ -110,12 +115,16 @@ TEST(MediaFingerprint, ReadsBeyondTheFirstBlockIncludingEmbeddedNulls)
     const auto file = directory.path() / "track.wav";
     std::string content(128 * 1024, '\0');
     write(file, content);
+
     const auto original = fingerprint_media(file);
+
     ASSERT_TRUE(original);
 
     content.back() = 'x';
     write(file, content);
+
     const auto edited = fingerprint_media(file);
+
     ASSERT_TRUE(edited);
     EXPECT_NE(edited, original);
     EXPECT_TRUE(edited->ends_with(":0000000000020000"));
@@ -124,6 +133,7 @@ TEST(MediaFingerprint, ReadsBeyondTheFirstBlockIncludingEmbeddedNulls)
 TEST(MediaFingerprint, MissingAndUnreadableInputsProduceNoIdentity)
 {
     const TemporaryDirectory directory;
+
     EXPECT_FALSE(fingerprint_media(directory.path() / "missing.wav"));
     EXPECT_FALSE(fingerprint_media(directory.path()));
 }
@@ -133,7 +143,9 @@ TEST(MediaFingerprint, PreCancelledReadNeverPublishesAContentIdentity)
     const TemporaryDirectory directory;
     const auto file = directory.path() / "cancelled.wav";
     write(file, "readable content");
+
     std::stop_source cancellation;
+
     ASSERT_TRUE(cancellation.request_stop());
 
     EXPECT_FALSE(fingerprint_media_cancellable(file, cancellation.get_token()));

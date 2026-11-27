@@ -18,29 +18,24 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fixtures/track_view.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
-#include <wiola/presentation/documents/queue_rows.hpp>
-
-#include <qt/widgets/tracks/track_table_model.hpp>
-
 #include <app/library/local_identity.hpp>
+#include <fixtures/track_view.hpp>
+#include <qt/widgets/tracks/track_table_model.hpp>
 #include <queue/playlist.hpp>
 #include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 
+#include <QAbstractItemModelTester>
 #include <QApplication>
 #include <QBuffer>
 #include <QEventLoop>
 #include <QFont>
 #include <QImage>
+#include <QPersistentModelIndex>
 #include <QPixmap>
 #include <QSignalSpy>
 #include <QTimer>
-
-#include <QAbstractItemModelTester>
-#include <QPersistentModelIndex>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -97,6 +92,7 @@ TEST_F(TrackTableModelTest, TooltipsUseNativePathDisplayAndRetainAvailability)
     const QString expected = "c:/Users/Music/Track.flac";
 #endif
     EXPECT_EQ(model.data(model.index(0, 1), Qt::ToolTipRole).toString(), expected);
+
     track.missing = true;
     model.show_rows({track});
     EXPECT_EQ(model.data(model.index(0, 1), Qt::ToolTipRole).toString(),
@@ -115,24 +111,31 @@ TEST_F(TrackTableModelTest, KeepsPersistentIndexesThroughInsertRemoveSortAndFilt
     third.id = wiola::library::PlaylistEntryId{"three"};
     third.metadata.title = "Gamma";
     model.show_rows({first, second});
+
     QPersistentModelIndex retained = model.index(1, 1);
     int resets = 0;
     QObject::connect(&model, &QAbstractItemModel::modelReset, [&] { ++resets; });
+
     model.show_rows({third, second, first});
     EXPECT_TRUE(retained.isValid());
     EXPECT_EQ(model.row_id(retained), second.id);
+
     wiola::testing::set_track_sort(model, {{.field = wiola::gui::TrackSortField::title}});
     EXPECT_EQ(retained.row(), 0);
+
     model.show_rows({second, third});
     EXPECT_EQ(model.row_id(retained), second.id);
+
     second.metadata.title = "Edited";
     model.show_rows({second, third});
     EXPECT_EQ(retained.data().toString(), "Edited");
+
     wiola::library::SearchQuery query;
     query.title = "gamma";
     wiola::testing::set_track_query(model, query);
     EXPECT_FALSE(retained.isValid());
     EXPECT_EQ(resets, 0);
+
     model.show_tag_keys({"Genre", "Mood"});
     model.show_tag_keys({"Mood"});
 }
@@ -192,6 +195,7 @@ TEST_F(TrackTableModelTest, AddressesRowsByStableTrackIdentity)
     EXPECT_FALSE(wiola::gui::queue_entry_id(model.row_id({})).has_value());
 
     const auto removed = id_at(playlist, 0);
+
     playlist.remove(0);
     model.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
@@ -246,6 +250,7 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
     wiola::engine::Playlist playlist;
     playlist.set({wiola::media::local_resource("same.wav"),
         wiola::media::local_resource("same.wav")});
+
     const std::vector entries{id_at(playlist, 0), id_at(playlist, 1)};
 
     playlist.apply_metadata(entries, {}, sample_artwork(Qt::GlobalColor::blue));
@@ -253,6 +258,7 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
 
     const QPixmap first_blue = cover_at(model, 0);
     const QPixmap second_blue = cover_at(model, 1);
+
     EXPECT_EQ(first_blue.cacheKey(), second_blue.cacheKey());
     EXPECT_EQ(first_blue.toImage().pixelColor(0, 0), QColor{Qt::GlobalColor::blue});
 
@@ -261,6 +267,7 @@ TEST_F(TrackTableModelTest, SharesArtworkAcrossDuplicatesAndInvalidatesANewRevis
 
     const QPixmap first_red = cover_at(model, 0);
     const QPixmap second_red = cover_at(model, 1);
+
     EXPECT_NE(first_red.cacheKey(), first_blue.cacheKey());
     EXPECT_EQ(first_red.cacheKey(), second_red.cacheKey());
     EXPECT_EQ(first_red.toImage().pixelColor(0, 0), QColor{Qt::GlobalColor::red});
@@ -296,6 +303,7 @@ TEST_F(TrackTableModelTest, PresentsDynamicTagColumnsAndLiveValues)
     record.tags[1].value = "Live";
     ++record.metadata_revision;
     ASSERT_TRUE(repository.put_track(record));
+
     model.show_library(repository);
 
     EXPECT_EQ(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Jazz, Live");
@@ -359,7 +367,9 @@ TEST_F(TrackTableModelTest, FiltersSimultaneousTitleArtistAndAlbumTerms)
 TEST_F(TrackTableModelTest, LargeQueriesRejectOldResultsReuseSnapshotsAndKeepPersistentIdentity)
 {
     using namespace wiola;
+
     std::vector<gui::TrackRow> rows;
+
     for (int i = 0; i < 5000; ++i) {
         gui::TrackRow row;
         row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
@@ -368,24 +378,30 @@ TEST_F(TrackTableModelTest, LargeQueriesRejectOldResultsReuseSnapshotsAndKeepPer
         row.location_key = std::to_string(i);
         rows.push_back(std::move(row));
     }
+
     gui::TrackTableModel model{styled};
     model.show_rows(rows);
+
     QPersistentModelIndex retained = model.index(4999, 1);
     QEventLoop loop;
     QTimer deadline;
     deadline.setSingleShot(true);
     QObject::connect(&deadline, &QTimer::timeout, &loop, &QEventLoop::quit);
+
     model.on_async_projection([&](auto apply) {
         apply();
         loop.quit();
     });
+
     gui::TrackViewState first;
     first.query.title = "Track 4";
     ASSERT_TRUE(model.set_view_state(first));
     EXPECT_TRUE(model.projection_pending());
+
     auto last = first;
     last.query.title = "Track 4999";
     ASSERT_TRUE(model.set_view_state(last));
+
     deadline.start(10000);
     loop.exec();
     EXPECT_FALSE(model.projection_pending());
@@ -396,8 +412,10 @@ TEST_F(TrackTableModelTest, LargeQueriesRejectOldResultsReuseSnapshotsAndKeepPer
     EXPECT_EQ(model.projection_statistics().snapshots, 1);
     EXPECT_EQ(model.projection_statistics().source_rebuilds, 1);
     EXPECT_EQ(model.projection_statistics().commits, 2);
+
     last.query.title = "not present";
     ASSERT_TRUE(model.set_view_state(last));
+
     deadline.start(10000);
     loop.exec();
     EXPECT_EQ(model.rowCount(), 0);
@@ -408,7 +426,9 @@ TEST_F(TrackTableModelTest, LargeQueriesRejectOldResultsReuseSnapshotsAndKeepPer
 TEST_F(TrackTableModelTest, ARowPatchUpdatesOnlyItsOccurrenceWithoutRebuildingTheSourceOrQuery)
 {
     using namespace wiola;
+
     std::vector<gui::TrackRow> rows;
+
     for (int i = 0; i < 1000; ++i) {
         gui::TrackRow row;
         row.id = engine::QueueEntryId{static_cast<std::uint64_t>(i + 1)};
@@ -416,8 +436,10 @@ TEST_F(TrackTableModelTest, ARowPatchUpdatesOnlyItsOccurrenceWithoutRebuildingTh
         row.metadata.title = "Track " + std::to_string(i);
         rows.push_back(std::move(row));
     }
+
     gui::TrackTableModel model{styled};
     model.show_rows(rows);
+
     const auto before = model.projection_statistics();
     QSignalSpy changed{&model, &QAbstractItemModel::dataChanged};
     auto row = rows[517];
@@ -443,14 +465,18 @@ std::string folded(std::string value)
 TEST_F(TrackTableModelTest, BoundedGeneratedMutationsMatchAnIndependentIdentityOracle)
 {
     using namespace wiola;
+
     gui::TrackTableModel model{styled};
     QAbstractItemModelTester tester{&model, QAbstractItemModelTester::FailureReportingMode::Fatal};
     int resets = 0;
     QObject::connect(&model, &QAbstractItemModel::modelReset, [&] { ++resets; });
+
     std::vector<gui::TrackRow> source;
     int next = 0;
+
     for (int step = 0; step < 160; ++step) {
         SCOPED_TRACE("generated source/query step=" + std::to_string(step));
+
         if (source.empty() || step % 4 == 0) {
             gui::TrackRow row;
             row.id = library::PlaylistEntryId{"occurrence-" + std::to_string(next)};
@@ -475,46 +501,61 @@ TEST_F(TrackTableModelTest, BoundedGeneratedMutationsMatchAnIndependentIdentityO
         } else {
             std::rotate(source.begin(), source.begin() + 1, source.end());
         }
+
         gui::TrackViewState state;
+
         if (step % 3 == 0)
             state.query.title = "al";
+
         if (step % 5 == 0)
             state.query.artist = "ensemble";
+
         if (step % 7 == 0)
             state.query.tags = "calm";
+
         if (step % 2)
             state.query.filters = {
                 {"mood", "calm",
                  step % 11 == 0 ? library::TagFilterMode::exclude
                                    : library::TagFilterMode::include}
             };
+
         const bool descending = step % 3 == 1;
         state.sort_keys = {
             {.field = gui::TrackSortField::title,
              .direction = descending ? gui::TrackSortDirection::descending
                                         : gui::TrackSortDirection::ascending}
         };
+
         // This evaluator intentionally does not call the production search/sort pipeline.
         std::vector<gui::TrackRow> expected;
+
         for (const auto& row : source) {
             if (folded(row.metadata.title).find(state.query.title) == std::string::npos ||
                 folded(row.metadata.artist).find(state.query.artist) == std::string::npos)
                 continue;
+
             const bool calm = std::any_of(row.tags.begin(), row.tags.end(), [](const auto& tag) {
                 return folded(tag.key) == "mood" && folded(tag.value) == "calm";
             });
+
             if (!state.query.tags.empty() && !calm)
                 continue;
+
             if (!state.query.filters.empty() &&
                 (state.query.filters.front().mode == library::TagFilterMode::include ? !calm
                                                                                      : calm))
                 continue;
+
             expected.push_back(row);
         }
+
         std::stable_sort(expected.begin(), expected.end(), [&](const auto& a, const auto& b) {
             const auto left = folded(a.metadata.title), right = folded(b.metadata.title);
+
             if (left != right)
                 return descending ? left > right : left < right;
+
             return a.location.generic_string() < b.location.generic_string();
         });
         model.show_rows(source);
@@ -523,18 +564,22 @@ TEST_F(TrackTableModelTest, BoundedGeneratedMutationsMatchAnIndependentIdentityO
         EXPECT_FALSE(model.data(QModelIndex{}, Qt::DisplayRole).isValid());
         EXPECT_FALSE(model.row_id(QModelIndex{}));
         EXPECT_EQ(model.rowCount(model.index(0, 0)), 0);
+
         for (std::size_t row = 0; row < expected.size(); ++row) {
             EXPECT_EQ(model.row_id(model.index(static_cast<int>(row), 1)), expected[row].id);
             EXPECT_EQ(model.index_of(expected[row].id, 1).row(), row);
         }
+
         if (!expected.empty()) {
             const auto identity = expected.front().id;
             QPersistentModelIndex retained = model.index(0, 1);
+
             model.set_current(identity);
             EXPECT_TRUE(retained.isValid());
             EXPECT_EQ(model.row_id(retained), identity);
         }
     }
+
     EXPECT_EQ(resets, 0);
 }
 
@@ -549,7 +594,9 @@ int main(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
     }
+
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

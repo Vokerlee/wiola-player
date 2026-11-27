@@ -27,8 +27,10 @@ def main():
     inventory = CMakeInventory.read(args.build_dir)
     build = CMakeBuild(inventory)
     source = (inventory.source_root / args.source).resolve()
+
     if not source.is_dir():
         parser.error("--source must be an existing source directory")
+
     output = (args.output or args.build_dir / "coverage").resolve()
     output.mkdir(parents=True, exist_ok=True)
     raw = Path(tempfile.mkdtemp(prefix="raw-", dir=output))
@@ -42,6 +44,7 @@ def main():
         "--timeout",
         "120",
     ]
+
     if args.target:
         objects = sorted({build.executable(name) for name in args.target})
         discovered = json.loads(
@@ -56,6 +59,7 @@ def main():
             )
         )
         cases, matched = [], set()
+
         for test in discovered["tests"]:
             found = {Path(argument) for argument in test.get("command", [])} & set(
                 objects
@@ -63,8 +67,10 @@ def main():
             if found:
                 cases.append(test["name"])
                 matched.update(found)
+
         if matched != set(objects):
             parser.error("Every selected target must have a configured CTest case")
+
         command += ["-R", "^(" + "|".join(re.escape(name) for name in cases) + ")$"]
     else:
         # The link-only inventory includes unexecuted production objects in CI reports.
@@ -78,12 +84,14 @@ def main():
                 if artifact.is_file()
             }
         )
+
     subprocess.run(
         command,
         check=True,
         env=dict(os.environ, LLVM_PROFILE_FILE=str(raw / "%m-%p.profraw")),
     )
     profiles = sorted(raw.glob("*.profraw"))
+
     if not profiles or any(path.stat().st_size == 0 for path in profiles):
         raise RuntimeError(
             "Tests produced no complete LLVM profiles; enable coverage instrumentation"
@@ -91,20 +99,26 @@ def main():
 
     cache = (args.build_dir / "CMakeCache.txt").read_text()
     compiler = re.search(r"^CMAKE_CXX_COMPILER:[^=]+=(.+)$", cache, re.M)
+
     if compiler is None:
         raise RuntimeError("Configured C++ compiler is missing from the CMake cache")
+
     version = subprocess.check_output([compiler.group(1), "--version"], text=True)
     major = re.search(r"clang version (\d+)", version)
+
     if major is None:
         raise RuntimeError("LLVM source coverage requires a Clang build")
+
     tools = [
         shutil.which(name + "-" + major.group(1))
         for name in ("llvm-profdata", "llvm-cov")
     ]
+
     if not all(tools):
         raise RuntimeError(
             "Install llvm-profdata and llvm-cov matching the configured Clang version"
         )
+
     profdata, cov = tools
     merged = output / "coverage.profdata"
     subprocess.run(
@@ -117,8 +131,10 @@ def main():
         "-instr-profile=" + str(merged),
         str(source),
     ]
+
     if args.exclude:
         arguments.append("-ignore-filename-regex=" + args.exclude)
+
     for operation, filename, options in (
         ("report", "summary.txt", []),
         ("export", "summary.json", ["-summary-only"]),
@@ -128,6 +144,7 @@ def main():
             subprocess.run(
                 [cov, operation, *arguments, *options], stdout=destination, check=True
             )
+
     subprocess.run(
         [
             cov,

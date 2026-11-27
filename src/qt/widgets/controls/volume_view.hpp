@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <QPointer>
 #include <QWidget>
 class QSlider;

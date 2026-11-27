@@ -34,6 +34,7 @@ TEST(AudioDecoder, EveryBackendReportsWholeFrameProgressAndExplicitEnd)
         auto decoder{wiola::codec::ffmpeg::make_registry().open(
             std::filesystem::path{WIOLA_TEST_DATA_DIR} / name
         )};
+
         ASSERT_TRUE(decoder) << name;
 
         std::array<float, 1000> output{};
@@ -42,13 +43,16 @@ TEST(AudioDecoder, EveryBackendReportsWholeFrameProgressAndExplicitEnd)
 
         while (!ended) {
             auto read{(*decoder)->read(output)};
+
             ASSERT_TRUE(read) << name;
             EXPECT_LE(read->frames, wiola::pcm::Frames{500}) << name;
+
             total += read->frames;
             ended = read->end_of_stream;
         }
 
         EXPECT_GT(total, wiola::pcm::Frames{}) << name;
+
         if ((*decoder)->length_accuracy() == wiola::media::LengthAccuracy::exact)
             EXPECT_EQ(total, (*decoder)->num_frames()) << name;
     }

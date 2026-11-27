@@ -20,11 +20,12 @@
 
 #pragma once
 
+#include <wiola/playback/repeat_mode.hpp>
+
 #include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <vector>
-#include <wiola/playback/repeat_mode.hpp>
 
 namespace wiola::app {
 

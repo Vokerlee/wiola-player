@@ -21,7 +21,6 @@
 #include <qt/widgets/metadata/custom_tag_editor.hpp>
 
 #include <QApplication>
-
 #include <gtest/gtest.h>
 
 namespace {
@@ -142,6 +141,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

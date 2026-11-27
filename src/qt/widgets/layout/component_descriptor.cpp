@@ -19,6 +19,7 @@
  */
 
 #include "component_descriptor.hpp"
+
 #include <array>
 
 namespace wiola::gui {

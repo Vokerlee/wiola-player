@@ -18,15 +18,18 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "library_session.hpp"
 #include "library_persistence_delivery.hpp"
-#include <QFileInfo>
-#include <QThread>
-#include <algorithm>
+#include "library_session.hpp"
+
 #include <app/library/local_identity.hpp>
 #include <wiola/library/records.hpp>
 #include <wiola/media/local/fingerprint.hpp>
 #include <wiola/qt/paths.hpp>
+
+#include <QFileInfo>
+#include <QThread>
+
+#include <algorithm>
 
 namespace wiola::app {
 
@@ -51,9 +54,11 @@ LibrarySession::LibrarySession(std::filesystem::path file,
     , store_{std::move(file), std::move(output)}
     , persist_{[this](const library::LibraryRepository& records) {
         check_owner();
+
         if (!accepting_ || &records != &repository_ || !persistence_worker_ ||
             restore_result_.schema == persistence::qt::LibraryJsonError::unsupported_version)
             return library::CommitResult{false};
+
         return persistence_worker_->accept(repository_.staged_delta());
     }}
     , playlists_{repository_, persist_}
@@ -69,8 +74,10 @@ LibrarySession::LibrarySession(std::filesystem::path file,
           [this](BackgroundMetadataResult result) { publish_metadata(std::move(result)); }}
 {
     restore_result_ = persistence::qt::restore_repository(store_, repository_);
+
     if (!restore_result_.succeeded())
         restore_error_ = "Could not restore the saved library";
+
     persistence_worker_ = std::make_unique<LibraryPersistence>(snapshot_writer_,
         library_persistence_delivery(persistence_delivery_), library::snapshot_of(repository_),
         [this](std::uint64_t revision, auto result) {
@@ -92,16 +99,21 @@ LibrarySession::LibrarySession(std::filesystem::path file,
                            ) { persistence_worker_->when_durable(revision, std::move(completed)); },
         [this] { static_cast<void>(persistence_worker_->flush()); });
     destination_.on_changed([this](auto id) { emit active_destination_changed(id); });
+
     const library::PlaylistId active{settings_.value("playlists/active").toString().toStdString()};
+
     if (repository_.playlist(active))
         static_cast<void>(destination_.set(active));
+
     for (const auto& track : repository_.tracks()) {
         search_.upsert(track);
         tag_keys_.upsert(track);
         locations_.upsert(track);
+
         if (!track.locations.empty())
             request_metadata(track.id, library::preferred_location(track));
     }
+
     changes_ = repository_.observe([this](const library::LibraryChangeBatch& batch) {
         index_changes(batch);
     });
@@ -118,6 +130,7 @@ LibrarySession::LibrarySession(std::filesystem::path file,
             static_cast<void>(scan_workspace(id, workspace_extensions_));
         emit workspace_changed(id);
     });
+
     for (const auto& workspace : repository_.workspaces()) {
         static_cast<void>(watcher_.watch(workspace));
         static_cast<void>(scan_workspace(workspace.id, workspace_extensions_));
@@ -132,23 +145,31 @@ LibrarySession::~LibrarySession()
 SnapshotWriteResult LibrarySession::shutdown()
 {
     check_owner();
+
     if (!accepting_ && shutdown_result_ && shutdown_result_->succeeded())
         return *shutdown_result_;
+
     writes_.stop();
     accepting_ = false;
     watcher_.stop();
     scans_.stop();
     pending_scans_.clear();
     metadata_.stop();
+
     auto result = !restore_result_.succeeded() && repository_.change_revision() == 0
         ? persistence::qt::snapshot_write_result(restore_result_)
         : persistence_worker_->flush();
+
     if (result.succeeded())
         persistence_worker_->stop();
+
     settings_.sync();
+
     if (result.succeeded() && settings_.status() != QSettings::NoError)
         result.error = SnapshotWriteError::io;
+
     shutdown_result_ = result;
+
     return result;
 }
 
@@ -208,7 +229,9 @@ PlaylistDestination& LibrarySession::playlist_destination()
 std::optional<library::TrackRecord> LibrarySession::snapshot(const library::MediaId& id) const
 {
     check_owner();
+
     const auto* record = repository_.track(id);
+
     return record ? std::optional{*record} : std::nullopt;
 }
 
@@ -228,15 +251,22 @@ std::uint64_t LibrarySession::scan_workspace(const library::WorkspaceId& id,
     std::vector<std::string> extensions)
 {
     check_owner();
+
     const auto* workspace = repository_.workspace(id);
+
     if (!accepting_ || !workspace)
         return 0;
+
     if (!watcher_.coverage(id))
         static_cast<void>(watcher_.watch(*workspace));
+
     watcher_.scan_started(id);
+
     const auto generation = scans_.start(*workspace, std::move(extensions), repository_.tracks());
     pending_scans_.insert_or_assign(id, PendingScan{generation, {}});
+
     emit workspace_scan_started(id, generation);
+
     return generation;
 }
 
@@ -256,30 +286,40 @@ library::MediaId LibrarySession::media_at(const std::filesystem::path& location)
 void LibrarySession::publish_scan(WorkspaceScanBatch batch)
 {
     check_owner();
+
     const auto pending = pending_scans_.find(batch.workspace);
+
     if (!accepting_ || pending == pending_scans_.end() ||
         pending->second.generation != batch.generation)
         return;
+
     pending->second.entries.insert(pending->second.entries.end(), batch.entries.begin(),
         batch.entries.end());
+
     for (const auto& entry : batch.entries)
         request_metadata(entry.media, entry.location);
+
     watcher_.directories_discovered(batch.workspace, batch.directories,
         batch.status != WorkspaceScanStatus::running,
         batch.status == WorkspaceScanStatus::complete);
+
     if (batch.status == WorkspaceScanStatus::complete) {
         const auto entries = std::move(pending->second.entries);
         const auto result = reconciliation_.reconcile(repository_, batch.workspace, entries);
+
         if (!result.succeeded) {
             emit status_changed("Could not save the workspace scan");
             batch.status = WorkspaceScanStatus::failed;
         }
     }
+
     const bool finished = batch.status != WorkspaceScanStatus::running;
+
     if (finished)
         if (const auto current = pending_scans_.find(batch.workspace);
             current != pending_scans_.end() && current->second.generation == batch.generation)
             pending_scans_.erase(current);
+
     emit scan_batch(batch);
 }
 
@@ -298,8 +338,10 @@ void LibrarySession::request_metadata(const library::MediaId& media,
     const std::filesystem::path& path)
 {
     check_owner();
+
     if (!accepting_ || !media.valid() || path.empty())
         return;
+
     const auto* current = repository_.track(media);
     metadata_pending_.insert_or_assign(media, current ? current->content_revision : 0);
     static_cast<void>(metadata_.enqueue(media, path));
@@ -308,8 +350,10 @@ void LibrarySession::request_metadata(const library::MediaId& media,
 void LibrarySession::request_artwork(const library::MediaId& id)
 {
     check_owner();
+
     if (!accepting_ || metadata_pending_.contains(id) || artwork_.get(id).known())
         return;
+
     if (const auto* record = repository_.track(id))
         request_metadata(id, library::preferred_location(*record));
 }
@@ -317,53 +361,76 @@ void LibrarySession::request_artwork(const library::MediaId& id)
 void LibrarySession::publish_metadata(BackgroundMetadataResult result)
 {
     check_owner();
+
     if (!accepting_)
         return;
+
     const auto pending = metadata_pending_.find(result.media);
+
     if (pending == metadata_pending_.end())
         return;
+
     const auto* current = repository_.track(result.media);
     const auto revision = current ? current->content_revision : 0;
+
     if (revision != pending->second) {
         metadata_pending_.erase(pending);
+
         if (current)
             request_metadata(result.media, library::preferred_location(*current));
+
         return;
     }
+
     if (!result.metadata) {
         metadata_pending_.erase(result.media);
+
         if (artwork_.fail(result.media))
             emit artwork_changed(result.media);
+
         return;
     }
+
     library::RepositoryTransaction transaction{repository_, persist_};
     bool created = false;
+
     if (!repository_.track(result.media)) {
         library::TrackRecord record;
         record.id = result.media;
         record.locations = {result.location};
         created = repository_.put_track(std::move(record));
+
         if (!created) {
             metadata_pending_.erase(result.media);
+
             emit status_changed("Could not add the discovered track to the library");
+
             return;
         }
     }
+
     if (const auto* current = repository_.track(result.media); current &&
         (current->missing ||
             std::ranges::find(current->locations, result.location) == current->locations.end())) {
         auto updated = *current;
+
         if (std::ranges::find(updated.locations, result.location) == updated.locations.end())
             updated.locations.push_back(result.location);
+
         updated.missing = false;
         created = repository_.put_track(std::move(updated)) || created;
     }
+
     const bool merged = merge_.merge(repository_, result.media, *result.metadata);
+
     if ((created || merged) && !transaction.commit())
         emit status_changed("Could not save the learned metadata");
+
     auto image = std::make_shared<const media::Artwork>(std::move(result.metadata->artwork));
     const bool changed = artwork_.put(result.media, std::move(image));
+
     metadata_pending_.erase(result.media);
+
     if (changed)
         emit artwork_changed(result.media);
 }
@@ -375,11 +442,13 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
             search_.upsert(*track);
             tag_keys_.upsert(*track);
             locations_.upsert(*track);
+
             if (change.includes(library::MediaChangeFields::content)) {
                 artwork_.remove(change.media);
                 emit artwork_changed(change.media);
             }
         }
+
     for (const auto& media : batch.removed_media) {
         search_.remove(media);
         tag_keys_.remove(media);
@@ -387,15 +456,18 @@ void LibrarySession::index_changes(const library::LibraryChangeBatch& batch)
         artwork_.remove(media);
         metadata_pending_.erase(media);
     }
+
     for (const auto& id : batch.removed_workspaces) {
         cancel_workspace_scan(id);
         watcher_.unwatch(id);
     }
+
     for (const auto& id : batch.workspaces)
         if (const auto* workspace = repository_.workspace(id)) {
             static_cast<void>(watcher_.watch(*workspace));
             static_cast<void>(scan_workspace(id, workspace_extensions_));
         }
+
     for (const auto& playlist : batch.removed_playlists)
         static_cast<void>(destination_.clear_if(playlist));
 }

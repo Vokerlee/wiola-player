@@ -24,13 +24,15 @@
 #include "playback.hpp"
 #include "playhead.hpp"
 #include "transport_wait.hpp"
+
 #include <buffering/pcm_queue.hpp>
-#include <functional>
-#include <memory>
-#include <thread>
 #include <wiola/audio/output.hpp>
 #include <wiola/media/audio_decoder.hpp>
 #include <wiola/playback/transport_config.hpp>
+
+#include <functional>
+#include <memory>
+#include <thread>
 
 namespace wiola::engine {
 

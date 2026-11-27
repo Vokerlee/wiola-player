@@ -19,6 +19,7 @@
  */
 
 #include "track_row.hpp"
+
 #include <app/library/local_identity.hpp>
 #include <wiola/library/metadata.hpp>
 #include <wiola/library/records.hpp>
@@ -43,14 +44,17 @@ TrackRow present_record(TrackRowId occurrence, const library::TrackRecord& recor
         .composer = std::move(values.composer),
         .track_number = values.track_number,
         .disc_number = values.disc_number};
+
     if (row.metadata.title.empty() && !record.overrides.title) {
         const auto filename = row.location.stem().u8string();
         row.metadata.title.assign(filename.begin(), filename.end());
     }
+
     row.tags = std::move(values.tags);
     row.missing = record.missing || row.location.empty();
     row.metadata_revision = record.metadata_revision;
     row.content_revision = record.content_revision;
+
     return row;
 }
 

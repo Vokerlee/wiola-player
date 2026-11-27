@@ -18,11 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
 #include <fixtures/temporary_directory.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/media/local/resource.hpp>
 
 #include <gtest/gtest.h>
 
@@ -45,9 +43,11 @@ TEST(MediaProvider, OpensEverySupportedFormatThroughOneFacade)
 
     for (const char* name : {"tone.wav", "tone.flac", "tone.mp3"}) {
         auto asset{provider->open(wiola::media::local_resource(fixture(name)))};
+
         ASSERT_TRUE(asset) << name;
 
         auto info{(*asset)->inspect()};
+
         ASSERT_TRUE(info) << name;
         EXPECT_EQ(info->spec.sample_rate, wiola::units::Frequency{44100}) << name;
         EXPECT_EQ(info->spec.num_channels, 2U) << name;
@@ -55,12 +55,16 @@ TEST(MediaProvider, OpensEverySupportedFormatThroughOneFacade)
         EXPECT_GT(*info->duration, wiola::units::Time{}) << name;
 
         auto metadata{(*asset)->read_metadata()};
+
         ASSERT_TRUE(metadata) << name;
 
         auto decoder{(*asset)->create_decoder()};
+
         ASSERT_TRUE(decoder) << name;
+
         std::array<float, 8> samples{};
         auto read{(*decoder)->render(samples)};
+
         ASSERT_TRUE(read) << name;
         EXPECT_GT(*read, 0U) << name;
     }
@@ -76,12 +80,14 @@ TEST(MediaProvider, DistinguishesCancellationFromDeadlineExpiry)
         .deadline = {}};
     auto cancelled{
         provider->open(wiola::media::local_resource("not-a-real-file.wav"), cancelled_context)};
+
     ASSERT_FALSE(cancelled);
     EXPECT_EQ(cancelled.error().category, wiola::media::ErrorCategory::cancelled);
 
     const wiola::media::OperationContext expired{.stop = {},
         .deadline = wiola::media::OperationContext::Clock::now() - std::chrono::seconds{1}};
     auto timed_out{provider->open(wiola::media::local_resource("not-a-real-file.wav"), expired)};
+
     ASSERT_FALSE(timed_out);
     EXPECT_EQ(timed_out.error().category, wiola::media::ErrorCategory::timed_out);
 }
@@ -92,11 +98,15 @@ TEST(MediaProvider, StopsAnOpenedDecoderAtItsNextWorkBoundary)
     std::stop_source stop;
     const wiola::media::OperationContext context{.stop = stop.get_token(), .deadline = {}};
     auto asset{provider->open(wiola::media::local_resource(fixture("tone.wav")), context)};
+
     ASSERT_TRUE(asset);
+
     auto decoder{(*asset)->create_decoder(context)};
+
     ASSERT_TRUE(decoder);
 
     stop.request_stop();
+
     std::array<float, 8> samples{};
     auto read{(*decoder)->render(samples)};
 
@@ -108,14 +118,17 @@ TEST(MediaProvider, CreatesIndependentDecodersForOneAsset)
 {
     auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{provider->open(wiola::media::local_resource(fixture("tone.wav")))};
+
     ASSERT_TRUE(asset);
 
     auto first{(*asset)->create_decoder()};
     auto second{(*asset)->create_decoder()};
+
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
 
     std::array<float, 8> samples{};
+
     ASSERT_GT((*first)->render(samples).value(), 0U);
     EXPECT_EQ((*first)->num_frames_left(), (*second)->num_frames_left() - wiola::pcm::Frames{4});
 }
@@ -138,6 +151,7 @@ TEST(MediaProvider, PropagatesInspectionFailureFromTheDecoderRegistry)
 
     auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{provider->open(wiola::media::local_resource(path))};
+
     ASSERT_TRUE(asset);
 
     auto info{(*asset)->inspect()};
@@ -160,17 +174,22 @@ TEST(MediaProvider, NeverTreatsAnotherSourcesKeyAsALocalFile)
     const auto local{wiola::media::local_resource(fixture("tone.wav"))};
     const wiola::media::ResourceReference other{"different driver", local.key(), local.label()};
     const auto result{provider->open(other)};
+
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().category, wiola::media::ErrorCategory::unsupported);
 
     std::stop_source stop;
     stop.request_stop();
+
     const auto cancelled{provider->open(other, {.stop = stop.get_token(), .deadline = {}})};
+
     ASSERT_FALSE(cancelled);
     EXPECT_EQ(cancelled.error().category, wiola::media::ErrorCategory::cancelled);
+
     const auto expired{provider->open(other,
         {.stop = {},
             .deadline = wiola::media::OperationContext::Clock::now() - std::chrono::seconds{1}})};
+
     ASSERT_FALSE(expired);
     EXPECT_EQ(expired.error().category, wiola::media::ErrorCategory::timed_out);
 }

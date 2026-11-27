@@ -34,8 +34,10 @@ WorkspaceFiles::Presence NativeWorkspaceFiles::presence(const std::filesystem::p
 {
     std::error_code error;
     const bool exists = std::filesystem::exists(path, error);
+
     if (error)
         return Presence::unknown;
+
     return exists ? Presence::present : Presence::absent;
 }
 

@@ -1,12 +1,13 @@
 #include "restart_child.hpp"
+#include "session_journey.hpp"
+
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/fingerprint.hpp>
+#include <wiola/media/local/resource.hpp>
 
-#include "session_journey.hpp"
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QTest>
-#include <wiola/media/local/resource.hpp>
 #ifndef _WIN32
 #include <fcntl.h>
 #include <signal.h>
@@ -19,6 +20,12 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
+#include <qt/tests/support/atomic_output.hpp>
+#include <qt/widgets/appearance/theme_manager.hpp>
+#include <qt/widgets/layout/classic_layout.hpp>
+#include <qt/widgets/tests/support/gui_interaction.hpp>
+#include <qt/widgets/tests/support/widget_diagnostics.hpp>
+
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -27,12 +34,8 @@
 #include <QJsonObject>
 #include <QLineEdit>
 #include <QMenu>
+
 #include <iostream>
-#include <qt/tests/support/atomic_output.hpp>
-#include <qt/widgets/appearance/theme_manager.hpp>
-#include <qt/widgets/layout/classic_layout.hpp>
-#include <qt/widgets/tests/support/gui_interaction.hpp>
-#include <qt/widgets/tests/support/widget_diagnostics.hpp>
 
 namespace {
 
@@ -40,6 +43,7 @@ int run_child(const QStringList& arguments, QString program = {}, QByteArray* ca
 {
     if (program.isEmpty())
         program = QCoreApplication::applicationFilePath();
+
     QByteArray output;
     int exit_code = -1;
 #ifdef _WIN32
@@ -50,6 +54,7 @@ int run_child(const QStringList& arguments, QString program = {}, QByteArray* ca
         child.kill();
         child.waitForFinished();
         ADD_FAILURE() << "Child process timeout";
+
         return -1;
     }
     output = child.readAll();
@@ -101,42 +106,56 @@ int run_child(const QStringList& arguments, QString program = {}, QByteArray* ca
 #endif
     if (captured)
         *captured = output;
+
     const auto artifacts = qEnvironmentVariable("WIOLA_GUI_FAILURE_ARTIFACTS");
+
     if (!artifacts.isEmpty()) {
         QDir{}.mkpath(artifacts);
+
         QFile log{QDir{artifacts}.filePath("child-" + arguments.value(1) + "-" +
             arguments.value(3) + ".log")};
+
         if (log.open(QIODevice::WriteOnly))
             log.write(output);
+
         std::error_code error;
         const auto from = wiola::platform::qt::QtPathAdapter::from_qt(arguments.value(2));
         const auto to =
             wiola::platform::qt::QtPathAdapter::from_qt(QDir{artifacts}.filePath("child-" +
                 arguments.value(1) + "-" + arguments.value(3) + "-state"));
+
         if (arguments.value(0) == "--wiola-child")
             std::filesystem::copy(from, to,
                 std::filesystem::copy_options::recursive |
                     std::filesystem::copy_options::overwrite_existing,
                 error);
+
         if (error)
             qWarning("Could not retain child state: %s", error.message().c_str());
     }
+
     std::cout << output.constData();
+
     if (exit_code < 0)
         ADD_FAILURE() << output.constData();
+
     return exit_code;
 }
 
 TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLayoutChanges)
 {
     using namespace wiola;
+
     wiola::testing::IsolatedSettings settings_scope;
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     const auto source = platform::qt::QtPathAdapter::from_qt(directory.filePath("paint.wav"));
     const auto generated = wiola::testing::write_wav("visible-journey.wav");
     std::filesystem::copy_file(generated, source);
     std::filesystem::remove(generated);
+
     app::PlayerApplication player{wiola::testing::child_config(directory.path())};
     {
         gui::MainWindow window{player.playback(), player.library(), player.preferences()};
@@ -149,38 +168,55 @@ TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLa
         window.show();
         window.activateWindow();
         ASSERT_TRUE(wiola::testing::await_gui([&] { return player.playback().loaded(); }));
+
         auto* title = window.findChild<QLineEdit*>("searchTitle");
+
         ASSERT_NE(title, nullptr);
+
         title->setFocus();
         ASSERT_TRUE(wiola::testing::await_gui([&] { return title->hasFocus(); }));
+
         QTest::keyClicks(title, "no matching title");
+
         auto* host = static_cast<gui::DocumentHost*>(window.findChild<QTabWidget*>("documentTabs"));
+
         ASSERT_NE(host, nullptr);
         EXPECT_EQ(host->queue().browser().table().visible_count(), 0);
+
         auto* reset = window.findChild<QPushButton*>("resetTrackSearch");
+
         ASSERT_NE(reset, nullptr);
         ASSERT_TRUE(reset->isVisible());
+
         reset->setFocus();
         ASSERT_TRUE(wiola::testing::await_gui([&] { return reset->hasFocus(); }));
+
         QTest::keyClick(reset, Qt::Key_Space);
         ASSERT_TRUE(wiola::testing::await_gui([&] {
             return title->text().isEmpty() && host->queue().browser().table().visible_count() == 1;
         }));
+
         QAction* dark = nullptr;
+
         for (auto* action : window.findChildren<QAction*>())
             if (action->text() == "Dark theme")
                 dark = action;
+
         ASSERT_NE(dark, nullptr);
+
         QMenu choices;
         choices.addAction(dark);
         choices.popup(window.mapToGlobal(QPoint{10, 30}));
         ASSERT_TRUE(wiola::testing::await_gui([&] { return choices.isVisible(); }));
+
         QTest::mouseClick(&choices, Qt::LeftButton, Qt::NoModifier,
             choices.actionGeometry(dark).center());
         EXPECT_EQ(window.palette().color(QPalette::Window),
             gui::theme_colors(gui::Theme::dark).window);
+
         title->setFocus();
         ASSERT_TRUE(wiola::testing::await_gui([&] { return title->hasFocus(); }));
+
         auto layout = gui::classic_layout_document();
         layout.root.id = "visible-custom-root";
         ASSERT_TRUE(window.switch_layout(layout));
@@ -188,8 +224,10 @@ TEST(DesktopJourney, VisibleWindowKeepsKeyboardFocusAndCommandsThroughThemeAndLa
         ASSERT_TRUE(wiola::testing::await_gui([&] { return title->hasFocus(); }));
         EXPECT_EQ(host->queue().browser().table().visible_count(), 1);
         EXPECT_TRUE(window.centralWidget()->isVisible());
+
         window.close();
     }
+
     if (!player.shutdown()) {
         const auto saved = player.library().flush();
         FAIL() << "library save error=" << static_cast<int>(saved.error)
@@ -202,8 +240,11 @@ TEST(DesktopJourney, PackagedPlayerCliExercisesTheActualEntryPoint)
     const auto configured_player = qEnvironmentVariable("WIOLA_TEST_PLAYER");
     const auto player =
         configured_player.isEmpty() ? QString::fromUtf8(WIOLA_TEST_PLAYER_PATH) : configured_player;
+
     ASSERT_TRUE(QFileInfo::exists(player));
+
     QByteArray output;
+
     EXPECT_EQ(run_child({"--help"}, player, &output), 0);
     EXPECT_TRUE(output.contains("Usage: wiola-player"));
     EXPECT_EQ(run_child({"--version"}, player, &output), 0);
@@ -213,6 +254,7 @@ TEST(DesktopJourney, PackagedPlayerCliExercisesTheActualEntryPoint)
 TEST(DesktopJourney, SeparateProcessesRestoreIndependentSessionLayoutThemeAndSelection)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
     ASSERT_EQ(run_child({"--wiola-child", "create", directory.path()}), 0);
     ASSERT_EQ(run_child({"--wiola-child", "verify", directory.path()}), 0);
@@ -223,10 +265,13 @@ TEST(DesktopJourney, EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFi
     using namespace wiola;
     for (int step = 0; step < 5; ++step) {
         SCOPED_TRACE("replacement process stop=" + std::to_string(step));
+
         QTemporaryDir directory;
+
         ASSERT_TRUE(directory.isValid());
         ASSERT_EQ(run_child({"--wiola-child", "crash", directory.path(), QString::number(step)}),
             91);
+
         const auto evidence = QJsonDocument::fromJson(
             wiola::testing::child_bytes(QDir{directory.path()}.filePath("replacement.json"))
         )
@@ -236,17 +281,25 @@ TEST(DesktopJourney, EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFi
                    updated = evidence["updated"].toString().toStdString();
         auto port = media::native_file_replacement(media::fingerprint_media);
         const auto recovered = port->recover(source);
+
         ASSERT_EQ(recovered.error, media::FileReplacementError::none) << recovered.detail;
         EXPECT_TRUE(recovered.recovered);
+
         const auto digest = media::fingerprint_media(source);
+
         EXPECT_TRUE(digest == original || digest == updated);
         EXPECT_FALSE(std::filesystem::exists(recovered.journal));
+
         if (std::filesystem::exists(recovered.backup))
             EXPECT_EQ(media::fingerprint_media(recovered.backup), original);
+
         auto provider{wiola::codec::ffmpeg::make_provider()};
         auto asset = provider->open(wiola::media::local_resource(source));
+
         ASSERT_TRUE(asset);
+
         auto metadata = (*asset)->read_metadata();
+
         ASSERT_TRUE(metadata);
         EXPECT_EQ(metadata->track.title == "Process committed metadata", digest == updated);
     }
@@ -255,10 +308,14 @@ TEST(DesktopJourney, EveryAbruptReplacementBoundaryRecoversAValidOldOrNewMediaFi
 TEST(DesktopJourney, FutureLibrarySchemaSurvivesARealChildShutdown)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     QFile future{QDir{directory.path()}.filePath("library.json")};
+
     ASSERT_TRUE(future.open(QIODevice::WriteOnly));
     ASSERT_GT(future.write("{\"version\":9999}"), 0);
+
     future.close();
     EXPECT_EQ(run_child({"--wiola-child", "future", directory.path()}), 0);
     EXPECT_EQ(wiola::testing::child_bytes(future.fileName()), "{\"version\":9999}");
@@ -267,16 +324,22 @@ TEST(DesktopJourney, FutureLibrarySchemaSurvivesARealChildShutdown)
 TEST(DesktopJourney, NativeWindowsSharingViolationPreservesTheUnicodeSource)
 {
     using namespace wiola;
+
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
+
     const auto prepared = wiola::testing::stage_process_replacement(directory.path());
     HANDLE file = CreateFileW(prepared.source.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
     ASSERT_NE(file, INVALID_HANDLE_VALUE);
+
     auto port = media::native_file_replacement(media::fingerprint_media);
     const auto outcome = port->replace({prepared.source, prepared.temporary,
         prepared.source.parent_path() / "backup.mp3", prepared.source_fingerprint,
         prepared.output_fingerprint});
+
     CloseHandle(file);
     EXPECT_NE(outcome.error, media::FileReplacementError::none);
     EXPECT_FALSE(outcome.source_modified);
@@ -299,19 +362,28 @@ TEST(DesktopJourney, FailedPreferencesRetainAcceptedDataAndCanBeRetried)
         [&](const auto& path) {
             return std::make_unique<wiola::testing::FaultAtomicOutput>(path, fail);
         }};
+
     ASSERT_EQ(themes.select(wiola::gui::ThemeChoice::dark), wiola::gui::ThemeError::none);
+
     const auto accepted = themes.export_json();
+
     fail = true;
     EXPECT_EQ(themes.select(wiola::gui::ThemeChoice::light), wiola::gui::ThemeError::io);
     EXPECT_EQ(themes.export_json(), accepted);
+
     fail = false;
     EXPECT_EQ(themes.select(wiola::gui::ThemeChoice::light), wiola::gui::ThemeError::none);
+
     wiola::gui::ThemeManager restored{settings};
+
     EXPECT_EQ(restored.state().selected, wiola::gui::ThemeChoice::light);
+
     auto custom = wiola::gui::classic_layout_document();
     custom.root.id = "journey-custom-root";
+
     wiola::gui::LayoutDocument decoded;
     const auto wire = wiola::gui::write_layout_json(custom);
+
     ASSERT_EQ(wiola::gui::read_layout_json(wire, decoded), wiola::gui::LayoutJsonError::none);
     EXPECT_EQ(decoded.root.id, "journey-custom-root");
 }
@@ -328,8 +400,10 @@ int main(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
     }
+
     QApplication application{argc, argv};
     const auto arguments = QCoreApplication::arguments();
+
     if (arguments.value(1) == "--wiola-child") {
         try {
             if (arguments.value(2) == "crash")
@@ -340,12 +414,17 @@ int main(int argc, char** argv)
             return 2;
         }
     }
+
     ::testing::InitGoogleTest(&argc, argv);
+
     QTemporaryDir isolated;
+
     if (!isolated.isValid())
         return 2;
+
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, isolated.path());
     wiola::testing::retain_widget_screenshots();
     std::cout << "Qt platform: " << qPrintable(QGuiApplication::platformName()) << '\n';
+
     return RUN_ALL_TESTS();
 }

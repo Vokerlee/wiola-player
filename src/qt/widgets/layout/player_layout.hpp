@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include "layout_document.hpp"
 
 namespace wiola::gui {

@@ -18,17 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <qt/application/library/library_session.hpp>
+#include <qt/application/session/session_preferences.hpp>
+#include <qt/tests/support/atomic_output.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
+#include <wiola/qt/paths.hpp>
+
 #include <QCoreApplication>
 #include <QFile>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
+
 #include <memory>
-#include <qt/application/library/library_session.hpp>
-#include <qt/application/session/session_preferences.hpp>
-#include <qt/tests/support/atomic_output.hpp>
 #include <stdexcept>
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-#include <wiola/qt/paths.hpp>
 
 namespace {
 
@@ -37,14 +39,17 @@ using namespace wiola;
 QByteArray contents(const QString& path)
 {
     QFile file{path};
+
     if (!file.open(QIODevice::ReadOnly))
         return {};
+
     return file.readAll();
 }
 
 void write(const QString& path, QByteArrayView bytes)
 {
     QFile file{path};
+
     ASSERT_TRUE(file.open(QIODevice::WriteOnly));
     ASSERT_EQ(file.write(bytes.data(), bytes.size()), bytes.size());
 }
@@ -55,16 +60,23 @@ TEST(SessionState, LastOpenedPlaylistIsOptionalAndRoundTripsWithoutChangingLegac
 {
     wiola::app::SessionState state;
     const auto legacy = wiola::app::write_session_state(state);
+
     EXPECT_FALSE(legacy.contains("lastPlaylist"));
+
     wiola::app::SessionState restored;
+
     ASSERT_EQ(wiola::app::read_session_state(legacy, restored),
         wiola::app::SessionStateError::none);
     EXPECT_FALSE(restored.documents.last_playlist);
+
     state.documents.last_playlist = wiola::library::PlaylistId{"last-opened"};
+
     const auto encoded = wiola::app::write_session_state(state);
+
     ASSERT_EQ(wiola::app::read_session_state(encoded, restored),
         wiola::app::SessionStateError::none);
     EXPECT_EQ(restored, state);
+
     for (const QByteArray invalid : {QByteArray{"true"}, QByteArray{"42"}, QByteArray{"\"\""}}) {
         auto malformed = encoded;
         malformed.replace("\"last-opened\"", invalid);
@@ -87,6 +99,7 @@ TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWi
         {"documentArea", {180, 620, 220}}
     };
     original.layout_identity = "custom";
+
     gui::BrowserViewState browser;
     browser.view.query = {
         .title = "Song",
@@ -121,18 +134,25 @@ TEST(SessionState, RoundTripsDistinctDocumentsOccurrencesAndBrowserPreferencesWi
     browser.current = browser.selected.front();
     browser.anchor = browser.current;
     original.documents.browsers.emplace(workspace, browser);
+
     const auto bytes = app::write_session_state(original);
+
     ASSERT_FALSE(bytes.isEmpty());
+
     app::SessionState restored;
+
     ASSERT_EQ(app::read_session_state(bytes, restored), app::SessionStateError::none);
     EXPECT_EQ(restored, original);
+
     const auto before = restored;
+
     EXPECT_EQ(app::read_session_state(R"({"version":99})", restored),
         app::SessionStateError::unsupported_version);
     EXPECT_EQ(restored, before);
     EXPECT_EQ(app::read_session_state(QByteArray(2 * 1024 * 1024 + 1, ' '), restored),
         app::SessionStateError::too_large);
     EXPECT_EQ(restored, before);
+
     original.documents.browsers.begin()->second.selected.push_back(
         original.documents.browsers.begin()->second.selected.front()
     );
@@ -148,22 +168,29 @@ TEST(SessionPreferences, DurableMigrationRetainsLegacyKeysUntilTheWriteSucceeds)
     settings.setValue("documents/current_id", "saved");
     settings.setValue("playlists/active", "destination");
     settings.sync();
+
     bool fail = true;
     app::SessionPreferences preferences{settings,
         [&](const auto& path) { return std::make_unique<FaultOutput>(path, fail); }};
+
     EXPECT_EQ(preferences.state().documents.visible,
         gui::DocumentId::playlist(library::PlaylistId{"saved"}));
     EXPECT_EQ(preferences.state().documents.destination, library::PlaylistId{"destination"});
     EXPECT_EQ(preferences.flush(), app::SessionStateError::io);
+
     settings.sync();
     EXPECT_TRUE(settings.contains("documents/current_id"));
     EXPECT_TRUE(settings.contains("playlists/active"));
+
     fail = false;
     ASSERT_EQ(preferences.flush(), app::SessionStateError::none);
+
     settings.sync();
     EXPECT_FALSE(settings.contains("documents/current_id"));
     EXPECT_FALSE(settings.contains("playlists/active"));
+
     app::SessionPreferences restored{settings};
+
     EXPECT_EQ(restored.state(), preferences.state());
 }
 
@@ -188,10 +215,14 @@ TEST(SessionPreferences, FutureSchemaIsPreservedAndReentrantEditsStayPendingForA
     armed = true;
     ASSERT_EQ(preferences.flush(), app::SessionStateError::none);
     ASSERT_EQ(preferences.flush(), app::SessionStateError::none);
+
     app::SessionPreferences restored{settings};
+
     EXPECT_EQ(restored.state().window, QRect(4, 5, 900, 600));
+
     const QByteArray future = R"({"version":99,"data":"unchanged"})";
     write(directory.filePath("session.json"), future);
+
     app::SessionPreferences newer{settings};
     newer.edit([](auto& state) { state.layout_identity = "custom"; });
     EXPECT_EQ(newer.flush(), app::SessionStateError::unsupported_version);
@@ -207,12 +238,15 @@ TEST(SessionPreferences, DestinationRestoresAndTracksLibraryChangesWithoutAnyWin
         wiola::codec::ffmpeg::make_provider()};
     const auto first = library.playlists().create("First").id,
                second = library.playlists().create("Second").id;
+
     ASSERT_TRUE(first.valid());
     ASSERT_TRUE(second.valid());
+
     app::SessionPreferences preferences{settings};
     preferences.edit([&](auto& state) { state.documents.destination = first; });
     preferences.bind_library(library);
     EXPECT_EQ(library.playlist_destination().id(), first);
+
     preferences.bind_library(library);
     ASSERT_TRUE(library.playlist_destination().set(second));
     EXPECT_EQ(preferences.state().documents.destination, second);
@@ -238,7 +272,9 @@ TEST(SessionPreferences, QueueRestorationUsesTheExplicitOccurrenceMapAndDropsUnk
         {engine::QueueEntryId{11}, engine::QueueEntryId{91}},
         {engine::QueueEntryId{13}, engine::QueueEntryId{92}}
     });
+
     const auto& browser = preferences.state().documents.browsers.at(gui::DocumentId::queue());
+
     EXPECT_EQ(browser.selected,
         (std::vector<gui::TrackRowId>{engine::QueueEntryId{91}, engine::QueueEntryId{92}}));
     EXPECT_EQ(browser.current, gui::TrackRowId{engine::QueueEntryId{92}});
@@ -269,6 +305,7 @@ TEST(SessionPreferences, SaveFailureObserverMayReleaseThePreferenceOwner)
     QObject receiver;
     QObject::connect(preferences.get(), &app::SessionPreferences::save_failed, &receiver,
         [&](auto) { preferences.reset(); });
+
     preferences->edit([](auto& state) { state.layout_identity = "classic"; });
     EXPECT_EQ(preferences->flush(), app::SessionStateError::io);
     EXPECT_FALSE(preferences);
@@ -279,6 +316,7 @@ TEST(SessionPreferences, AStaleEditCannotOverwriteAnAcceptedReentrantEdit)
     QTemporaryDir directory;
     QSettings settings{directory.filePath("settings.ini"), QSettings::IniFormat};
     app::SessionPreferences preferences{settings};
+
     EXPECT_THROW(preferences.edit([&](auto& state) {
         state.layout_identity = "classic";
         preferences.edit([](auto& newer) { newer.layout_identity = "custom"; });
@@ -286,7 +324,9 @@ TEST(SessionPreferences, AStaleEditCannotOverwriteAnAcceptedReentrantEdit)
         std::logic_error);
     EXPECT_EQ(preferences.state().layout_identity, "custom");
     ASSERT_EQ(preferences.flush(), app::SessionStateError::none);
+
     app::SessionPreferences restored{settings};
+
     EXPECT_EQ(restored.state().layout_identity, "custom");
 }
 
@@ -296,5 +336,6 @@ int main(int argc, char** argv)
     QTemporaryDir isolated;
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, isolated.path());
     ::testing::InitGoogleTest(&argc, argv);
+
     return RUN_ALL_TESTS();
 }

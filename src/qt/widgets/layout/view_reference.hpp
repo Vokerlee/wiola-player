@@ -19,12 +19,16 @@
  */
 
 #pragma once
+
 #include "component_descriptor.hpp"
-#include <QJsonObject>
+
 #include <qt/widgets/shell/action_descriptor.hpp>
+#include <wiola/presentation/documents/document_id.hpp>
+
+#include <QJsonObject>
+
 #include <string>
 #include <variant>
-#include <wiola/presentation/documents/document_id.hpp>
 
 namespace wiola::gui {
 
@@ -32,6 +36,7 @@ struct ComponentViewId {
     std::string value;
     auto operator<=>(const ComponentViewId&) const = default;
 };
+
 enum class DocumentViewPart {
     whole,
     search,

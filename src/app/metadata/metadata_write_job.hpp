@@ -19,12 +19,14 @@
  */
 
 #pragma once
-#include <memory>
-#include <stop_token>
+
 #include <wiola/library/identity.hpp>
 #include <wiola/library/metadata_patch.hpp>
 #include <wiola/media/metadata.hpp>
 #include <wiola/media/operation_context.hpp>
+
+#include <memory>
+#include <stop_token>
 
 namespace wiola::app {
 
@@ -35,6 +37,7 @@ struct MetadataWriteOperationId {
 
     auto operator<=>(const MetadataWriteOperationId&) const = default;
 };
+
 enum class MetadataWriteStage {
     queued,
     remuxing,

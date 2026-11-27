@@ -26,7 +26,6 @@
 
 #include <QSettings>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -50,6 +49,7 @@ protected:
         const wiola::app::PlayerSettings restored{
             wiola::platform::qt::QtSettingsAdapter{settings}.read(control.scale(), {})};
         control.apply_restored(restored.volume_position, restored.boosted);
+
         return control.position();
     }
 
@@ -178,6 +178,7 @@ TEST_F(VolumeControl, LiftsPastWhatArrivedWhenBoosted)
 
     const int boosted{
         static_cast<int>(std::lround(volume.volume_policy().max_boost * scale.full_position))};
+
     EXPECT_EQ(control.max_position(), boosted);
 
     control.set_position(boosted);

@@ -34,6 +34,7 @@ TEST(BackendQualification, AdvertisesOnlyTheCurrentlyVerifiedPlaybackSet)
     std::ranges::sort(extensions);
 
     ASSERT_EQ(registry.backends().size(), 1U);
+
     for (const auto& backend : registry.backends()) {
         EXPECT_TRUE(backend.capabilities.playback);
         EXPECT_TRUE(backend.capabilities.metadata);

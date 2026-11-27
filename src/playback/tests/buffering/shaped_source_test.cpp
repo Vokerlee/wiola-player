@@ -18,10 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/audio/processing_chain.hpp>
-
 #include <buffering/shaped_source.hpp>
 #include <fixtures/shaping.hpp>
+#include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/source.hpp>
 #include <wiola/media/stream_spec.hpp>
 #include <wiola/units.hpp>

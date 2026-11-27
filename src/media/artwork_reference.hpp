@@ -19,8 +19,10 @@
  */
 
 #pragma once
-#include <memory>
+
 #include <wiola/media/metadata.hpp>
+
+#include <memory>
 
 namespace wiola::media {
 
@@ -29,15 +31,19 @@ namespace wiola::media {
 {
     if (artwork.empty())
         return 0;
+
     std::uint64_t value = 14695981039346656037ULL;
+
     for (const auto byte : artwork.data) {
         value ^= std::to_integer<unsigned char>(byte);
         value *= 1099511628211ULL;
     }
+
     for (const auto byte : artwork.mime_type) {
         value ^= static_cast<unsigned char>(byte);
         value *= 1099511628211ULL;
     }
+
     return value == 0 ? 1 : value;
 }
 enum class ArtworkAvailability {
@@ -70,6 +76,7 @@ public:
     {
         ArtworkReference result;
         result.availability_ = ArtworkAvailability::failed;
+
         return result;
     }
 

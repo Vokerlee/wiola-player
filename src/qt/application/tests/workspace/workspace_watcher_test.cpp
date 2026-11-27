@@ -19,17 +19,16 @@
  */
 
 #include <qt/application/workspace/workspace_watcher.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QCoreApplication>
 #include <QEventLoop>
+#include <QTemporaryDir>
 #include <QThread>
-
 #include <gtest/gtest.h>
 
-#include <QTemporaryDir>
 #include <fstream>
 #include <set>
-#include <wiola/qt/paths.hpp>
 
 namespace {
 
@@ -55,6 +54,7 @@ TEST(WorkspaceWatcher, CoalescesFilesystemBurstsAndStopsAfterUnwatch)
     const wiola::library::WorkspaceRecord workspace{.id = wiola::library::WorkspaceId{"workspace"},
         .root = root,
         .recursive = true};
+
     ASSERT_TRUE(watcher.watch(workspace));
 
     int notifications{0};
@@ -70,6 +70,7 @@ TEST(WorkspaceWatcher, CoalescesFilesystemBurstsAndStopsAfterUnwatch)
         std::ofstream{root / ("burst-" + std::to_string(index) + ".wav")} << "audio";
 
     ASSERT_TRUE(pump_until([&] { return notifications == 2; }));
+
     QThread::msleep(250);
     QCoreApplication::processEvents();
     EXPECT_EQ(notifications, 2);
@@ -92,9 +93,12 @@ public:
     bool add(const std::filesystem::path& path) override
     {
         ++adds[path];
+
         if (refused.contains(path))
             return false;
+
         installed.insert(path);
+
         return true;
     }
 
@@ -129,16 +133,20 @@ TEST(WorkspaceWatcher,
     const auto root = wiola::platform::qt::QtPathAdapter::from_qt(directory.path());
     const auto sub = root / "sub";
     std::filesystem::create_directories(sub);
+
     auto backend = std::make_unique<FakeWatchBackend>();
     auto* native = backend.get();
     wiola::app::WorkspaceWatcher watcher{std::move(backend),
         {.debounce = std::chrono::milliseconds{0}}};
     const wiola::library::WorkspaceId outer{"outer"}, inner{"inner"};
+
     ASSERT_TRUE(watcher.watch({.id = outer, .root = root, .recursive = true}));
+
     watcher.scan_started(outer);
     watcher.directories_discovered(outer, {root, sub}, true, true);
     ASSERT_TRUE(watcher.watch({.id = inner, .root = sub / ".", .recursive = false}));
     EXPECT_EQ(native->adds[sub], 1);
+
     std::vector<wiola::library::WorkspaceId> events;
     watcher.on_changed([&](auto id) { events.push_back(id); });
     native->change(sub);
@@ -146,13 +154,16 @@ TEST(WorkspaceWatcher,
     ASSERT_TRUE(pump_until([&] { return events.size() == 2; }));
     EXPECT_EQ(std::set<wiola::library::WorkspaceId>(events.begin(), events.end()),
         (std::set<wiola::library::WorkspaceId>{outer, inner}));
+
     watcher.unwatch(outer);
     EXPECT_TRUE(native->contains(sub));
     EXPECT_FALSE(native->removed.contains(sub));
+
     events.clear();
     native->change(sub);
     ASSERT_TRUE(pump_until([&] { return events.size() == 1; }));
     EXPECT_EQ(events.front(), inner);
+
     watcher.stop();
     native->change(sub);
     QCoreApplication::processEvents();
@@ -166,28 +177,36 @@ TEST(WorkspaceWatcher, WatchRefusalAndNativeLimitAreVisibleAndRetryAfterCapacity
     const auto first = root / "first", second = root / "second";
     std::filesystem::create_directories(first);
     std::filesystem::create_directories(second);
+
     auto backend = std::make_unique<FakeWatchBackend>();
     auto* native = backend.get();
     native->refused.insert(first);
+
     wiola::app::WorkspaceWatcher watcher{
         std::move(backend), {.debounce = std::chrono::milliseconds{0}, .max_paths = 2}
     };
     std::vector<wiola::app::WorkspaceWatchCoverage> statuses;
     watcher.on_status([&](auto status) { statuses.push_back(status); });
+
     const wiola::library::WorkspaceId id{"workspace"};
+
     ASSERT_TRUE(watcher.watch({.id = id, .root = root, .recursive = true}));
+
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root, first}, true, true);
     ASSERT_TRUE(watcher.coverage(id));
     EXPECT_TRUE(watcher.coverage(id)->partial);
     EXPECT_EQ(watcher.coverage(id)->refused_paths, 1);
+
     native->refused.clear();
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root, first}, true, true);
     EXPECT_FALSE(watcher.coverage(id)->partial);
+
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root, first, second}, true, true);
     EXPECT_TRUE(watcher.coverage(id)->partial);
+
     // The authoritative next scan retires first before retrying second at the native limit.
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root, second}, true, true);
@@ -206,16 +225,20 @@ TEST(WorkspaceWatcher, MissingRootUsesAnAncestorAndRecoversWhenTheRootReappears)
     auto backend = std::make_unique<FakeWatchBackend>();
     auto* native = backend.get();
     native->refused.insert(root);
+
     wiola::app::WorkspaceWatcher watcher{
         std::move(backend), {.debounce = std::chrono::milliseconds{0}, .max_paths = 1}
     };
     const wiola::library::WorkspaceId id{"missing"};
+
     EXPECT_FALSE(watcher.watch({.id = id, .root = root, .recursive = true}));
     ASSERT_TRUE(watcher.coverage(id));
     EXPECT_TRUE(watcher.coverage(id)->root_missing);
     EXPECT_TRUE(native->contains(parent));
+
     std::filesystem::create_directories(root);
     native->refused.clear();
+
     int events = 0;
     watcher.on_changed([&](auto current) {
         EXPECT_EQ(current, id);
@@ -223,6 +246,7 @@ TEST(WorkspaceWatcher, MissingRootUsesAnAncestorAndRecoversWhenTheRootReappears)
     });
     native->change(parent);
     ASSERT_TRUE(pump_until([&] { return events == 1; }));
+
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root}, true, true);
     EXPECT_FALSE(watcher.coverage(id)->partial);
@@ -239,11 +263,15 @@ TEST(WorkspaceWatcher, NewSubdirectoriesAreSubscribedOnlyFromWorkerDiscoveryFact
     wiola::app::WorkspaceWatcher watcher{std::move(backend),
         {.debounce = std::chrono::milliseconds{0}}};
     const wiola::library::WorkspaceId id{"recursive"};
+
     ASSERT_TRUE(watcher.watch({.id = id, .root = root, .recursive = true}));
+
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root}, true, true);
+
     const auto child = root / "new", nested = child / "nested";
     std::filesystem::create_directories(nested);
+
     int events = 0;
     watcher.on_changed([&](auto current) {
         EXPECT_EQ(current, id);
@@ -253,6 +281,7 @@ TEST(WorkspaceWatcher, NewSubdirectoriesAreSubscribedOnlyFromWorkerDiscoveryFact
     ASSERT_TRUE(pump_until([&] { return events == 1; }));
     EXPECT_FALSE(native->contains(child));
     EXPECT_FALSE(native->contains(nested));
+
     watcher.scan_started(id);
     watcher.directories_discovered(id, {root, child, nested}, true, true);
     EXPECT_TRUE(native->contains(child));
@@ -265,6 +294,7 @@ TEST(WorkspaceWatcher, NewSubdirectoriesAreSubscribedOnlyFromWorkerDiscoveryFact
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

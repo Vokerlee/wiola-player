@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <wiola/media/artwork_reference.hpp>
+#include <wiola/media/byte_stream.hpp>
+#include <wiola/media/provider.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <stop_token>
-#include <wiola/media/artwork_reference.hpp>
-#include <wiola/media/byte_stream.hpp>
-#include <wiola/media/provider.hpp>
 using namespace wiola;
 
 class ForwardBytes final : public media::ByteStream {
@@ -17,8 +18,10 @@ private:
     {
         if (consumed_)
             return std::size_t{};
+
         out.front() = std::byte{0x2A};
         consumed_ = true;
+
         return std::size_t{1};
     }
 
@@ -94,13 +97,17 @@ int main()
     const auto bytes_read{stream.read(bytes)};
     const auto cursor{stream.tell()};
     const auto unsupported{stream.seek(0, media::SeekOrigin::start)};
+
     if (!bytes_read || *bytes_read != 1 || bytes.front() != std::byte{0x2A} || !cursor ||
         *cursor != 1 || unsupported ||
         unsupported.error().category != media::ErrorCategory::unsupported)
         return 6;
+
     std::stop_source stopped;
     stopped.request_stop();
+
     const auto rejected_read{stream.read(bytes, {.stop = stopped.get_token(), .deadline = {}})};
+
     if (rejected_read || rejected_read.error().category != media::ErrorCategory::cancelled)
         return 7;
 
@@ -108,25 +115,36 @@ int main()
         .length = std::nullopt,
         .length_accuracy = media::LengthAccuracy::exact};
     const auto rejected{missing_exact_length.validate()};
+
     if (rejected || rejected.error().category != media::ErrorCategory::damaged)
         return 4;
 
     Provider provider;
     auto asset =
         provider.open(media::ResourceReference{"consumer", "controlled", "Controlled"}, {});
+
     if (!asset)
         return 1;
+
     auto opened = (*asset)->create_decoder();
+
     if (!opened)
         return 2;
+
     auto decoder = std::move(*opened);
+
     if (!decoder->stream_info().validate())
         return 5;
+
     (*asset).reset();
+
     std::array<float, 2> out{};
     auto read = decoder->read(out);
+
     if (!read || read->frames != pcm::Frames{1} || !read->end_of_stream || out[0] != 0.5F)
         return 3;
+
     auto seek = decoder->seek(pcm::Frames{});
+
     return !seek || decoder->exhausted();
 }

@@ -18,9 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "search.hpp"
-
 #include "metadata.hpp"
+#include "search.hpp"
 #include "tags.hpp"
 
 #include <algorithm>
@@ -63,8 +62,10 @@ SearchFields search_fields_of(const TrackRecord& track)
         .album = normalized_tag_text(track.display_album()),
         .tags = {}};
     result.tags.reserve(track.tags.size());
+
     for (const auto& tag : track.tags)
         result.tags.push_back({normalized_tag_text(tag.key), normalized_tag_text(tag.value)});
+
     return result;
 }
 
@@ -73,10 +74,12 @@ bool matches_search_fields(const SearchQuery& query, const SearchFields& fields)
     if (!contains(fields.title, query.title) || !contains(fields.artist, query.artist) ||
         !contains(fields.album, query.album))
         return false;
+
     if (!query.tags.empty() && std::ranges::none_of(fields.tags, [&](const auto& tag) {
             return contains(tag.key, query.tags) || contains(tag.value, query.tags);
         }))
         return false;
+
     return std::ranges::all_of(query.filters, [&](const auto& filter) {
         const bool present = std::ranges::any_of(fields.tags, [&](const auto& tag) {
             return tag.key == filter.key && (filter.value.empty() || tag.value == filter.value);

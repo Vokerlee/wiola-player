@@ -39,6 +39,7 @@ public:
     void wait()
     {
         std::unique_lock lock{mutex_};
+
         entered_ = true;
         changed_.notify_all();
         changed_.wait(lock, [this] { return released_; });
@@ -53,6 +54,7 @@ public:
     void release()
     {
         const std::lock_guard lock{mutex_};
+
         released_ = true;
         changed_.notify_all();
     }
@@ -126,6 +128,7 @@ protected:
             seek_gate_->wait();
 
         const bool refused{refusing_seeks_.load() || refuse_next_seek_.exchange(false)};
+
         if (refused)
             return media::unexpected{
                 media::Error{.category = media::ErrorCategory::seek_failed,
@@ -135,6 +138,7 @@ protected:
         constexpr std::size_t use_target{std::numeric_limits<std::size_t>::max()};
         const std::size_t requested{next_achieved_.exchange(use_target)};
         const pcm::Frames achieved{requested == use_target ? frame_index.count() : requested};
+
         return media::SeekOutcome{.target = frame_index,
             .achieved = achieved,
             .exact = achieved == frame_index};

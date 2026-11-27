@@ -37,10 +37,12 @@ TEST(FakeDecoder, HoldsAReadUntilTheTestReleasesIt)
     FakeDecoder decoder{Frames{8}};
     Gate reading;
     decoder.block_reads_on(reading);
+
     std::array<float, 16> output{};
     std::size_t num_read{0};
 
     std::jthread reader{[&] { num_read = decoder.render(output).value(); }};
+
     reading.wait_until_entered();
 
     EXPECT_EQ(decoder.num_frames_left(), Frames{8});
@@ -58,9 +60,11 @@ TEST(FakeDecoder, HoldsASeekUntilTheTestReleasesIt)
     FakeDecoder decoder{Frames{100}};
     Gate seeking;
     decoder.block_seeks_on(seeking);
+
     bool sought{false};
 
     std::jthread seeker{[&] { sought = decoder.seek(Frames{40}).has_value(); }};
+
     seeking.wait_until_entered();
 
     EXPECT_EQ(decoder.last_seek(), Frames{40});

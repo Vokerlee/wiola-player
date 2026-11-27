@@ -19,13 +19,16 @@
  */
 
 #pragma once
+
 #include "document_command_context.hpp"
-#include <QTabWidget>
-#include <QWidget>
+
 #include <qt/application/library/library_session.hpp>
 #include <qt/application/session/session_preferences.hpp>
 #include <qt/widgets/documents/document_registry.hpp>
 #include <wiola/app/playback/playback_service.hpp>
+
+#include <QTabWidget>
+#include <QWidget>
 
 namespace wiola::gui {
 

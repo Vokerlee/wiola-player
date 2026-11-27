@@ -18,23 +18,19 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QKeyEvent>
-#include <wiola/presentation/documents/queue_rows.hpp>
-
-#include <wiola/media/local/resource.hpp>
-
+#include <app/library/local_identity.hpp>
 #include <fixtures/track_view.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
-
-#include <app/library/local_identity.hpp>
 #include <queue/playlist.hpp>
 #include <wiola/library/in_memory_repository.hpp>
+#include <wiola/media/local/resource.hpp>
+#include <wiola/presentation/documents/queue_rows.hpp>
 
 #include <QAction>
 #include <QApplication>
 #include <QHeaderView>
+#include <QKeyEvent>
 #include <QTest>
-
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -59,9 +55,13 @@ TEST(TrackTableView, HiddenStandardColumnKeepsWidthWhenTagSchemaChanges)
 {
     wiola::gui::TrackTableView view;
     view.setColumnWidth(2, 231);
+
     auto* artist = action(*view.horizontalHeader(), "Artist");
+
     ASSERT_NE(artist, nullptr);
+
     artist->setChecked(false);
+
     wiola::app::TagKeyCatalog catalog;
     wiola::library::TrackRecord record;
     record.id = {"one"};
@@ -70,10 +70,14 @@ TEST(TrackTableView, HiddenStandardColumnKeepsWidthWhenTagSchemaChanges)
     };
     catalog.upsert(record);
     view.set_tag_catalog(&catalog);
+
     wiola::library::InMemoryRepository repository;
     view.show_library(repository);
+
     auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
+
     ASSERT_NE(genre, nullptr);
+
     genre->setChecked(true);
     artist->setChecked(true);
     EXPECT_EQ(view.columnWidth(2), 231);
@@ -111,10 +115,12 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
     view.setCurrentIndex(view.model()->index(1, 0));
 
     EXPECT_EQ(action(view, "Play selected track"), nullptr);
+
     QAction* remove = action(view, "Remove selected tracks");
     QAction* add_active = action(view, "Add to active playlist");
     QAction* add_to = action(view, "Add to playlist");
     QAction* move_to = action(view, "Move to playlist");
+
     ASSERT_NE(remove, nullptr);
     ASSERT_NE(add_active, nullptr);
     ASSERT_NE(add_to, nullptr);
@@ -125,16 +131,21 @@ TEST(TrackTableView, ProvidesKeyboardFocusAndContextCommands)
     int active_transfers{0};
     int destination_transfers{0};
     int moves{0};
+
     QObject::connect(&view, &wiola::gui::TrackTableView::row_chosen,
         [&chosen](wiola::gui::TrackRowId id) {
             chosen = std::get<wiola::engine::QueueEntryId>(id);
         });
+
     QObject::connect(&view, &wiola::gui::TrackTableView::removal_asked,
         [&removals] { ++removals; });
+
     QObject::connect(&view, &wiola::gui::TrackTableView::transfer_active_asked,
         [&active_transfers] { ++active_transfers; });
+
     QObject::connect(&view, &wiola::gui::TrackTableView::transfer_destination_asked,
         [&destination_transfers] { ++destination_transfers; });
+
     QObject::connect(&view, &wiola::gui::TrackTableView::transfer_move_asked,
         [&moves] { ++moves; });
 
@@ -203,7 +214,9 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
     ASSERT_TRUE(repository.put_track(record));
 
     view.show_library(repository);
+
     QAction* genre = action(*view.horizontalHeader(), "Tag: Genre");
+
     ASSERT_NE(genre, nullptr);
 
     genre->setChecked(true);
@@ -216,6 +229,7 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
     ++record.metadata_revision;
     ASSERT_TRUE(repository.put_track(record));
     ASSERT_TRUE(repository.add_tag(record.id, "Mood", "Calm").valid());
+
     view.show_library(repository);
 
     EXPECT_NE(action(*view.horizontalHeader(), "Tag: Mood"), nullptr);
@@ -223,6 +237,7 @@ TEST(TrackTableView, AddsTagColumnsWithoutLosingSelectionAndUpdatesTheirValues)
 
     genre = action(*view.horizontalHeader(), "Tag: Genre");
     ASSERT_NE(genre, nullptr);
+
     genre->setChecked(false);
     EXPECT_EQ(view.model()->columnCount(), 5);
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.chosen_rows()),
@@ -234,6 +249,7 @@ TEST(TrackTableView, RetainsTagWidthAndOrderWhenHiddenAndReappearing)
     wiola::gui::TrackTableView view;
     wiola::app::TagKeyCatalog catalog;
     view.set_tag_catalog(&catalog);
+
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
     record.id = {"one"};
@@ -243,8 +259,11 @@ TEST(TrackTableView, RetainsTagWidthAndOrderWhenHiddenAndReappearing)
     repository.put_track(record);
     catalog.upsert(record);
     view.show_library(repository);
+
     auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
+
     ASSERT_NE(genre, nullptr);
+
     genre->setChecked(true);
     view.setColumnWidth(5, 237);
     view.horizontalHeader()->moveSection(5, 1);
@@ -255,6 +274,7 @@ TEST(TrackTableView, RetainsTagWidthAndOrderWhenHiddenAndReappearing)
     view.show_library(repository);
     genre = action(*view.horizontalHeader(), "Tag: Genre");
     ASSERT_NE(genre, nullptr);
+
     genre->setChecked(true);
     EXPECT_EQ(view.columnWidth(5), 237);
     EXPECT_EQ(view.horizontalHeader()->visualIndex(5), 1);
@@ -271,18 +291,22 @@ TEST(TrackTableView, MetadataRefreshKeepsSelectionAndFilteringClearsHiddenSelect
     second.metadata.title = "Beta";
     view.show_rows({first, second});
     view.selectRow(0);
+
     int changes = 0;
     QObject::connect(view.selectionModel(), &QItemSelectionModel::selectionChanged,
         [&] { ++changes; });
+
     first.metadata.artist = "Changed";
     view.show_rows({first, second});
     EXPECT_EQ(changes, 0);
     EXPECT_EQ(view.chosen_rows(), std::vector<wiola::gui::TrackRowId>{first.id});
+
     wiola::library::SearchQuery query;
     query.title = "beta";
     wiola::testing::set_track_query(view, query);
     EXPECT_TRUE(view.chosen_rows().empty());
     EXPECT_FALSE(view.currentIndex().isValid());
+
     wiola::testing::set_track_query(view, {});
     EXPECT_TRUE(view.chosen_rows().empty());
 }
@@ -296,24 +320,30 @@ TEST(TrackTableView, HeaderClicksSortOnlyTheViewAndApplyIsExplicit)
         {.title = "Zulu", .artist = {}, .album = {}, .duration = {}});
     playlist.describe(id_at(playlist, 1),
         {.title = "Alpha", .artist = {}, .album = {}, .duration = {}});
+
     wiola::library::InMemoryRepository repository;
     view.show_library(repository);
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
 
     emit view.horizontalHeader()->sectionClicked(1);
+
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 1), id_at(playlist, 0)}));
     EXPECT_EQ(playlist.tracks()[0].resource(), wiola::media::local_resource("b.wav"));
 
     emit view.horizontalHeader()->sectionClicked(1);
+
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector<wiola::engine::QueueEntryId>{id_at(playlist, 0), id_at(playlist, 1)}));
 
     QAction* apply = action(view, "Apply displayed order to playback");
+
     ASSERT_NE(apply, nullptr);
+
     int requests = 0;
     QObject::connect(&view, &wiola::gui::TrackTableView::order_application_asked,
         [&requests] { ++requests; });
+
     apply->trigger();
     EXPECT_EQ(requests, 1);
     EXPECT_EQ(playlist.tracks()[0].resource(), wiola::media::local_resource("b.wav"));
@@ -331,6 +361,7 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
         {.title = "Same", .artist = "Alpha", .album = {}, .duration = {}});
     playlist.describe(id_at(playlist, 2),
         {.title = "Last", .artist = "Beta", .album = {}, .duration = {}});
+
     wiola::library::InMemoryRepository repository;
     wiola::library::TrackRecord record;
     record.id = wiola::app::media_id_for("same.wav");
@@ -338,18 +369,23 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
         {.id = wiola::library::TagId{"tag-1"}, .key = "Genre", .value = "Jazz"}
     };
     ASSERT_TRUE(repository.put_track(record));
+
     wiola::app::TagKeyCatalog catalog;
     catalog.upsert(record);
     view.set_tag_catalog(&catalog);
     view.show_library(repository);
+
     auto* genre = action(*view.horizontalHeader(), "Tag: Genre");
+
     ASSERT_NE(genre, nullptr);
+
     genre->setChecked(true);
     view.show_rows(wiola::gui::queue_rows(playlist.tracks()));
     view.selectRow(1);
     view.resize(1000, 400);
     view.show();
     QApplication::processEvents();
+
     const auto click = [&view](int column, Qt::KeyboardModifiers modifiers = Qt::NoModifier) {
         auto* header = view.horizontalHeader();
         const QPoint point{header->sectionViewportPosition(column) +
@@ -361,9 +397,11 @@ TEST(TrackTableView, HeaderModifiersExtendAndToggleSortKeysWithoutChangingTheQue
     click(2, Qt::ShiftModifier);
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector{id_at(playlist, 2), id_at(playlist, 1), id_at(playlist, 0)}));
+
     click(2, Qt::ControlModifier);
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
+
     click(5, Qt::ShiftModifier);
     EXPECT_EQ(wiola::gui::queue_entry_ids(view.displayed_rows()),
         (std::vector{id_at(playlist, 2), id_at(playlist, 0), id_at(playlist, 1)}));
@@ -383,6 +421,7 @@ int main(int argc, char** argv)
     qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

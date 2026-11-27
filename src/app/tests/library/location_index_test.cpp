@@ -22,6 +22,7 @@
 
 #include <allocation_failure.hpp>
 #include <app/library/location_index.hpp>
+
 #include <gtest/gtest.h>
 
 #include <new>
@@ -39,10 +40,12 @@ TEST(LocationIndex, ResolvesAliasesWithoutFileReadsAndRemovesOldLocations)
     track.locations = {"missing/../alias.wav", "second.wav"};
     index.upsert(track);
     EXPECT_EQ(index.find("alias.wav"), track.id);
+
     track.locations = {"moved.wav"};
     index.upsert(track);
     EXPECT_FALSE(index.find("alias.wav"));
     EXPECT_EQ(index.find("moved.wav"), track.id);
+
     index.remove(track.id);
     EXPECT_FALSE(index.find("moved.wav"));
 }
@@ -52,6 +55,7 @@ TEST(LocationIndex, OverlappingAndNoopUpdatesRetainOtherOwnersAndIgnoreEmptyLoca
     wiola::app::LocationIndex index;
     auto original = index_record("media-original", "Song", "Artist", "Jazz");
     original.locations = {"", "one.wav", "shared.wav"};
+
     auto other = index_record("zz-other", "Song", "Artist", "Rock");
     other.locations = {"shared.wav"};
     index.upsert(original);
@@ -61,12 +65,14 @@ TEST(LocationIndex, OverlappingAndNoopUpdatesRetainOtherOwnersAndIgnoreEmptyLoca
     index.remove({"missing"});
     EXPECT_EQ(index.find("one.wav"), original.id);
     EXPECT_EQ(index.find("shared.wav"), original.id);
+
     original.locations = {"one.wav", "two.wav"};
     index.upsert(original);
     index.upsert(original);
     EXPECT_EQ(index.find("shared.wav"), other.id);
     EXPECT_EQ(index.find("one.wav"), original.id);
     EXPECT_EQ(index.find("two.wav"), original.id);
+
     index.remove(original.id);
     index.remove(original.id);
     EXPECT_FALSE(index.find("one.wav"));
@@ -82,12 +88,15 @@ TEST(LocationIndex, EveryUpdateAllocationFailureRetainsBindingsAndSharedOwnershi
         wiola::app::LocationIndex index;
         auto original = index_record("media-original", "Song", "Artist", "Jazz");
         original.locations = {"shared-old.wav", "old-only.wav"};
+
         auto other = index_record("zz-other", "Song", "Artist", "Rock");
         other.locations = {"shared-old.wav"};
         index.upsert(original);
         index.upsert(other);
+
         auto updated = original;
         updated.locations = {"shared-old.wav", "new-location.wav"};
+
         bool failed = false;
         {
             const wiola::testing::AllocationFailure failure{after};
@@ -98,6 +107,7 @@ TEST(LocationIndex, EveryUpdateAllocationFailureRetainsBindingsAndSharedOwnershi
             }
         }
         EXPECT_EQ(index.find("shared-old.wav"), original.id);
+
         if (failed) {
             EXPECT_EQ(index.find("old-only.wav"), original.id);
             EXPECT_FALSE(index.find("new-location.wav"));
@@ -105,16 +115,20 @@ TEST(LocationIndex, EveryUpdateAllocationFailureRetainsBindingsAndSharedOwnershi
             EXPECT_FALSE(index.find("old-only.wav"));
             EXPECT_EQ(index.find("new-location.wav"), original.id);
         }
+
         index.remove(original.id);
         EXPECT_EQ(index.find("shared-old.wav"), other.id);
         EXPECT_FALSE(index.find("old-only.wav"));
         EXPECT_FALSE(index.find("new-location.wav"));
+
         index.remove(other.id);
         EXPECT_FALSE(index.find("shared-old.wav"));
+
         if (!failed) {
             EXPECT_TRUE(observed_failure);
             break;
         }
+
         observed_failure = true;
     }
 }

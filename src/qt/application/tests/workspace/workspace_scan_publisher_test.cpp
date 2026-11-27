@@ -24,7 +24,6 @@
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QThread>
-
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -60,7 +59,9 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
     const auto& root = directory.path();
     wiola::app::WorkspaceScanScheduling policy;
     policy.scan.batch_size = 3;
+
     const auto track_count = 2 * policy.scan.batch_size + 1;
+
     for (std::size_t index = 0; index < track_count; ++index)
         file(root / (std::to_string(index) + ".wav"));
 
@@ -69,8 +70,10 @@ TEST(WorkspaceScanPublisher, PublishesIncrementalBatchesOnTheGuiThread)
     wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
         [&](wiola::app::WorkspaceScanBatch batch) {
             EXPECT_EQ(QThread::currentThread(), QCoreApplication::instance()->thread());
+
             for (const auto& entry : batch.entries)
                 tracks.push_back(entry.location);
+
             batches.push_back(std::move(batch));
         },
         policy};
@@ -97,6 +100,7 @@ TEST(WorkspaceScanPublisher, SupersedingOneWorkspaceDropsOnlyItsOlderQueuedGener
     const auto& base = directory.path();
     const std::filesystem::path old_root = base / "old";
     const std::filesystem::path new_root = base / "new";
+
     file(old_root / "old.wav");
     file(new_root / "new.wav");
 
@@ -152,9 +156,12 @@ struct ScanGate {
     void wait(std::stop_token stop)
     {
         std::unique_lock lock{mutex};
+
         entered = true;
         changed.notify_all();
+
         std::stop_callback wake{stop, [this] { changed.notify_all(); }};
+
         changed.wait(lock, [&] { return stop.stop_requested(); });
     }
 
@@ -171,6 +178,7 @@ TEST(WorkspaceScanPublisher, CancellingOneWorkspaceLeavesAnotherConcurrentScanIn
     const auto& root = directory.path();
     file(root / "first" / "one.wav");
     file(root / "second" / "two.wav");
+
     ScanGate gate;
     std::vector<wiola::app::WorkspaceScanBatch> batches;
     wiola::app::WorkspaceScanScheduling policy;
@@ -178,16 +186,19 @@ TEST(WorkspaceScanPublisher, CancellingOneWorkspaceLeavesAnotherConcurrentScanIn
         if (path.parent_path() == root / "first")
             gate.wait(stop);
     };
+
     wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
         [&](auto batch) { batches.push_back(std::move(batch)); }, policy};
     const auto first = publisher.start({.id = {"first"}, .root = root / "first"}, {".wav"});
     const auto second = publisher.start({.id = {"second"}, .root = root / "second"}, {".wav"});
+
     ASSERT_TRUE(pump_until([&] {
         return gate.started() && std::ranges::any_of(batches, [&](const auto& batch) {
             return batch.workspace == wiola::library::WorkspaceId{"second"} &&
                 batch.status == wiola::app::WorkspaceScanStatus::complete;
         });
     }));
+
     publisher.cancel(wiola::library::WorkspaceId{"first"});
     publisher.stop();
     EXPECT_TRUE(std::ranges::none_of(batches, [&](const auto& batch) {
@@ -204,8 +215,10 @@ TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverf
 {
     const wiola::testing::TemporaryDirectory directory;
     const auto& root = directory.path();
+
     for (const auto* name : {"first", "second", "third"})
         file(root / name / "track.wav");
+
     ScanGate gate;
     std::vector<wiola::app::WorkspaceScanBatch> batches;
     wiola::app::WorkspaceScanScheduling policy;
@@ -215,18 +228,22 @@ TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverf
         if (path.parent_path() == root / "first")
             gate.wait(stop);
     };
+
     wiola::app::WorkspaceScanPublisher publisher{*QCoreApplication::instance(),
         [&](auto batch) { batches.push_back(std::move(batch)); }, policy};
     publisher.start({.id = {"first"}, .root = root / "first"}, {".wav"});
     ASSERT_TRUE(pump_until([&] { return gate.started(); }));
+
     const auto waiting = publisher.start({.id = {"second"}, .root = root / "second"}, {".wav"});
     const auto rejected = publisher.start({.id = {"third"}, .root = root / "third"}, {".wav"});
+
     ASSERT_TRUE(pump_until([&] {
         return std::ranges::any_of(batches, [&](const auto& batch) {
             return batch.generation == rejected &&
                 batch.error == wiola::app::WorkspaceScanError::rejected;
         });
     }));
+
     publisher.cancel(wiola::library::WorkspaceId{"first"});
     ASSERT_TRUE(pump_until([&] {
         return std::ranges::any_of(batches, [&](const auto& batch) {
@@ -234,6 +251,7 @@ TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverf
                 batch.status == wiola::app::WorkspaceScanStatus::complete;
         });
     }));
+
     publisher.stop();
 }
 
@@ -242,6 +260,7 @@ TEST(WorkspaceScanPublisher, FairBoundedQueueRunsWaitingWorkspaceAndReportsOverf
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

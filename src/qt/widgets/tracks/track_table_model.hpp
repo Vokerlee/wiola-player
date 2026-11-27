@@ -21,11 +21,11 @@
 #pragma once
 
 #include "track_column.hpp"
-#include <qt/widgets/appearance/artwork_presentation.hpp>
-#include <wiola/presentation/tracks/track_view_state.hpp>
 
+#include <qt/widgets/appearance/artwork_presentation.hpp>
 #include <wiola/library/search.hpp>
 #include <wiola/presentation/tracks/track_row.hpp>
+#include <wiola/presentation/tracks/track_view_state.hpp>
 
 #include <QAbstractTableModel>
 #include <QTimer>

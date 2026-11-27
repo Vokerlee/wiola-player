@@ -22,7 +22,6 @@
 #include <wiola/library/metadata_patch.hpp>
 
 #include <QByteArray>
-
 #include <gtest/gtest.h>
 
 #include <string>
@@ -39,17 +38,24 @@ TEST(LibraryJson, MetadataPatchSemanticsKeepTheExistingStoredSchema)
     track.id = MediaId{"media"};
     track.embedded.title = "Embedded";
     track.embedded.year = 2020;
+
     StandardMetadataPatch clear;
     clear.title = FieldEdit<std::string>::clear();
     clear.year = FieldEdit<std::uint32_t>::clear();
     ASSERT_EQ(apply_metadata_patch(track.overrides, clear), MetadataPatchResult::changed);
+
     original.tracks.push_back(track);
+
     QByteArray encoded;
+
     ASSERT_EQ(write_library_json(original, encoded), LibraryJsonError::none);
+
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(read_library_json(encoded, restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     EXPECT_EQ(restored.tracks.front(), track);
+
     StandardMetadataPatch inherit;
     inherit.title = FieldEdit<std::string>::inherit();
     inherit.year = FieldEdit<std::uint32_t>::inherit();
@@ -112,14 +118,17 @@ TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
     original.playlists.push_back(playlist);
 
     QByteArray json;
+
     ASSERT_EQ(write_library_json(original, json), LibraryJsonError::none);
 
     wiola::library::LibrarySnapshot restored;
+
     ASSERT_EQ(read_library_json(json, restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1U);
     ASSERT_EQ(restored.playlists.size(), 1U);
 
     const TrackRecord& track = restored.tracks.front();
+
     EXPECT_EQ(track.id, original.tracks.front().id);
     EXPECT_EQ(track.embedded.title, "Embedded");
     EXPECT_EQ(track.display_title(), "My title");
@@ -147,6 +156,7 @@ TEST(LibraryJson, RoundTripsLayeredRecordsAndDuplicatePlaylistOccurrences)
     EXPECT_EQ(track.metadata_revision, 7U);
 
     const PlaylistRecord& entries = restored.playlists.front();
+
     ASSERT_EQ(entries.entries.size(), 2U);
     EXPECT_EQ(entries.entries[0].media, entries.entries[1].media);
     EXPECT_NE(entries.entries[0].id, entries.entries[1].id);
@@ -166,6 +176,7 @@ TEST(LibraryJson, SuppliesDefaultsForOptionalFieldsFromAnOlderRecordShape)
     ASSERT_EQ(restored.tracks.size(), 1U);
 
     const TrackRecord& track = restored.tracks.front();
+
     EXPECT_EQ(track.id.value, "media-1");
     EXPECT_TRUE(track.embedded.title.empty());
     EXPECT_TRUE(track.tags.empty());
@@ -185,6 +196,7 @@ TEST(LibraryJson, RejectsMalformedInputAndUnknownVersions)
         LibraryJsonError::malformed);
 
     const QByteArray future{R"({"version":2,"tracks":[],"playlists":[]})"};
+
     EXPECT_EQ(read_library_json(future, restored), LibraryJsonError::unsupported_version);
 }
 
@@ -222,6 +234,7 @@ TEST(LibraryJson, RejectsMoreThan256TagsOnOneTrack)
     }
 
     QByteArray json;
+
     EXPECT_EQ(write_library_json(library, json), LibraryJsonError::limit_exceeded);
 }
 
@@ -235,6 +248,7 @@ TEST(LibraryJson, RejectsNormalizedDuplicateTagsAndTrimsRestoredText)
 
     const QByteArray spaced{
         R"({"version":1,"tracks":[{"id":"media-1","tags":[{"id":"tag-1","key":" Genre ","value":" Nu Jazz "}]}],"playlists":[]})"};
+
     ASSERT_EQ(read_library_json(spaced, restored), LibraryJsonError::none);
     ASSERT_EQ(restored.tracks.size(), 1);
     ASSERT_EQ(restored.tracks.front().tags.size(), 1);
@@ -254,6 +268,7 @@ TEST(LibraryJson, RejectsAPlaylistEntryForUnknownMedia)
     library.playlists.push_back(playlist);
 
     QByteArray json;
+
     EXPECT_EQ(write_library_json(library, json), LibraryJsonError::invalid_record);
 }
 

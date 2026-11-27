@@ -19,12 +19,7 @@
  */
 
 #include <app/metadata/background_metadata_writes.hpp>
-#include <exception>
 #include <fixtures/temporary_directory.hpp>
-#include <fstream>
-#include <future>
-#include <iterator>
-#include <stdexcept>
 #include <support/allocation_failure.hpp>
 #include <wiola/library/in_memory_repository.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
@@ -33,7 +28,12 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <exception>
+#include <fstream>
+#include <future>
+#include <iterator>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -80,12 +80,14 @@ public:
     ) override
     {
         std::unique_lock lock{state_->mutex};
+
         state_->writes.push_back(request);
 
         if (state_->writes.size() == 1)
             state_->changed.wait(lock, [this] { return state_->release_first; });
 
         state_->changed.notify_all();
+
         return {.state = wiola::media::MetadataWriteState::written,
             .error = wiola::media::MetadataWriteError::none,
             .source_modified = false,
@@ -132,14 +134,17 @@ wiola::app::MetadataWriteJob edit(std::string title)
 {
     wiola::app::MetadataWriteJob job;
     job.media = {"media"};
+
     static const auto source = [] {
         static const wiola::testing::TemporaryDirectory files;
         const auto path = files.path() / "source.mp3";
         std::ofstream{path} << "fake source";
+
         return path;
     }();
     job.source = source;
     job.patch.title = std::move(title);
+
     return job;
 }
 
@@ -206,6 +211,7 @@ TEST(BackgroundMetadataWrites, RejectsStaleExpectedStateBeforeOpeningAnAsset)
 
     const auto state = std::make_shared<WriteState>();
     state->release_first = true;
+
     wiola::app::BackgroundMetadataWrites writes{std::make_shared<FakeProvider>(state)};
 
     std::mutex mutex;
@@ -216,11 +222,14 @@ TEST(BackgroundMetadataWrites, RejectsStaleExpectedStateBeforeOpeningAnAsset)
     job.expected_source.fingerprint = "different";
     ASSERT_TRUE(writes.enqueue(job, [&](auto value) {
         std::lock_guard lock{mutex};
+
         result = std::move(value);
         completed = true;
         done.notify_one();
     }));
+
     std::unique_lock lock{mutex};
+
     ASSERT_TRUE(done.wait_for(lock, 5s, [&] { return completed; }));
     EXPECT_EQ(result.stage, wiola::app::MetadataWriteStage::conflicted);
     EXPECT_FALSE(result.outcome.source_modified);
@@ -234,6 +243,7 @@ TEST(BackgroundMetadataWrites, StagesQualifiedMediaWithoutTouchingSourceAndOwnsC
     std::error_code ignored;
     std::filesystem::remove(source, ignored);
     std::filesystem::copy_file(std::filesystem::path{WIOLA_TEST_DATA_DIR} / "tone.mp3", source);
+
     const auto bytes = [](const auto& path) {
         std::ifstream file{path, std::ios::binary};
         return std::vector<char>{std::istreambuf_iterator<char>{file}, {}};
@@ -245,12 +255,16 @@ TEST(BackgroundMetadataWrites, StagesQualifiedMediaWithoutTouchingSourceAndOwnsC
     wiola::app::BackgroundMetadataWrites writes{wiola::codec::ffmpeg::make_provider()};
     auto job = edit("Staged title");
     job.source = source;
+
     const auto operation = writes.enqueue(job, [&](auto output) {
         std::lock_guard lock{mutex};
+
         result = std::move(output);
         done.notify_all();
     });
+
     ASSERT_TRUE(operation);
+
     {
         std::unique_lock lock{mutex};
         ASSERT_TRUE(done.wait_for(lock, 5s, [&] { return result.has_value(); }));
@@ -261,10 +275,14 @@ TEST(BackgroundMetadataWrites, StagesQualifiedMediaWithoutTouchingSourceAndOwnsC
     EXPECT_FALSE(result->outcome.source_modified);
     EXPECT_EQ(bytes(source), original);
     ASSERT_TRUE(result->output);
+
     const auto output = result->output->path();
+
     EXPECT_TRUE(std::filesystem::exists(output));
+
     result.reset();
     EXPECT_FALSE(std::filesystem::exists(output));
+
     std::filesystem::remove(source);
 }
 
@@ -272,19 +290,25 @@ TEST(BackgroundMetadataWrites, CancellationHasAnIdentifiedTerminalResult)
 {
     auto state = std::make_shared<WriteState>();
     state->release_first = true;
+
     wiola::app::BackgroundMetadataWrites writes{std::make_shared<FakeProvider>(state)};
     auto job = edit("Cancelled");
     job.cancellation->request_stop();
+
     std::mutex mutex;
     std::condition_variable done;
     std::optional<wiola::app::MetadataWriteResult> result;
     auto operation = writes.enqueue(job, [&](auto value) {
         std::lock_guard lock{mutex};
+
         result = std::move(value);
         done.notify_one();
     });
+
     ASSERT_TRUE(operation);
+
     std::unique_lock lock{mutex};
+
     ASSERT_TRUE(done.wait_for(lock, 5s, [&] { return result.has_value(); }));
     EXPECT_EQ(result->job.operation, *operation);
     EXPECT_EQ(result->stage, wiola::app::MetadataWriteStage::cancelled);
@@ -304,8 +328,10 @@ public:
     {
         if (auto failure = std::exchange(failure_, {}))
             std::rethrow_exception(failure);
+
         auto state = std::make_shared<WriteState>();
         state->release_first = true;
+
         return std::unique_ptr<wiola::media::MediaAsset>{std::make_unique<FakeAsset>(state)};
     }
 
@@ -324,10 +350,13 @@ TEST(BackgroundMetadataWrites, DriverExceptionsProduceTerminalOutcomesAndTheWork
         wiola::app::BackgroundMetadataWrites writes{std::make_shared<ThrowOnceProvider>(failure)};
         std::promise<wiola::app::MetadataWriteResult> failed;
         auto first = failed.get_future();
+
         ASSERT_TRUE(writes.enqueue(edit("first"),
             [&](auto result) { failed.set_value(std::move(result)); }));
         ASSERT_EQ(first.wait_for(5s), std::future_status::ready);
+
         const auto outcome = first.get();
+
         EXPECT_EQ(outcome.stage, wiola::app::MetadataWriteStage::failed);
         EXPECT_EQ(outcome.outcome.error, wiola::media::MetadataWriteError::io);
         EXPECT_FALSE(outcome.outcome.source_modified);
@@ -335,10 +364,12 @@ TEST(BackgroundMetadataWrites, DriverExceptionsProduceTerminalOutcomesAndTheWork
 
         std::promise<wiola::app::MetadataWriteResult> recovered;
         auto second = recovered.get_future();
+
         ASSERT_TRUE(writes.enqueue(edit("second"),
             [&](auto result) { recovered.set_value(std::move(result)); }));
         ASSERT_EQ(second.wait_for(5s), std::future_status::ready);
         EXPECT_EQ(second.get().stage, wiola::app::MetadataWriteStage::ready);
+
         writes.stop();
     }
 }
@@ -367,16 +398,20 @@ TEST(BackgroundMetadataWrites, ObserverFailureIsReportedAfterTheWorkerClosesAndD
 {
     auto state = std::make_shared<WriteState>();
     state->release_first = true;
+
     wiola::app::BackgroundMetadataWrites writes{std::make_shared<FakeProvider>(state)};
     std::promise<void> first;
     auto notified = first.get_future();
+
     ASSERT_TRUE(writes.enqueue(edit("first"), [&](auto) {
         first.set_value();
         throw std::runtime_error{"observer failure"};
     }));
     ASSERT_EQ(notified.wait_for(5s), std::future_status::ready);
+
     std::promise<void> second;
     auto recovered = second.get_future();
+
     ASSERT_TRUE(writes.enqueue(edit("second"), [&](auto) { second.set_value(); }));
     ASSERT_EQ(recovered.wait_for(5s), std::future_status::ready);
     EXPECT_THROW(writes.stop(), std::runtime_error);

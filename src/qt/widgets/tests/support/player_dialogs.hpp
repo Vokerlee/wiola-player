@@ -19,8 +19,10 @@
  */
 
 #pragma once
-#include <functional>
+
 #include <qt/widgets/shell/player_dialogs.hpp>
+
+#include <functional>
 
 namespace wiola::testing {
 
@@ -36,7 +38,9 @@ public:
     void prompt()
     {
         ++prompts;
+
         const auto hook = prompted;
+
         if (hook)
             hook();
     }

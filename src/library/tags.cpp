@@ -18,8 +18,8 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "tags.hpp"
 #include "records.hpp"
+#include "tags.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -58,8 +58,10 @@ bool valid_text(std::string_view text, std::size_t max_bytes) noexcept
 std::optional<std::string> make_tag_key(std::string_view key)
 {
     const auto clean = trimmed(key);
+
     if (!valid_text(clean, max_tag_key_bytes))
         return std::nullopt;
+
     return std::string{clean};
 }
 
@@ -67,8 +69,10 @@ std::optional<TagValue> make_tag_value(std::string key, std::string value)
 {
     auto clean_key = make_tag_key(key);
     const std::string_view clean_value = trimmed(value);
+
     if (!clean_key || !valid_text(clean_value, max_tag_value_bytes))
         return std::nullopt;
+
     return TagValue{.key = std::move(*clean_key), .value = std::string{clean_value}};
 }
 
@@ -90,6 +94,7 @@ bool contains_tag_value(std::span<const TagRecord> tags, const TagValue& candida
 {
     const auto key = normalized_tag_text(candidate.key);
     const auto value = normalized_tag_text(candidate.value);
+
     return std::ranges::any_of(tags, [&](const TagRecord& tag) {
         return (!except.valid() || tag.id != except) && normalized_tag_text(tag.key) == key &&
             normalized_tag_text(tag.value) == value;

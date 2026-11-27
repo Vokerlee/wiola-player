@@ -28,9 +28,9 @@
 #include <QLabel>
 #include <QTemporaryDir>
 #include <QTimer>
-#include <memory>
-
 #include <gtest/gtest.h>
+
+#include <memory>
 
 namespace {
 
@@ -64,7 +64,9 @@ TEST_F(SavedPlaylistManager, CreatesRenamesDuplicatesAndDeletesWithVisibleSavedS
     ASSERT_NE(manager.findChild<QPushButton*>("deletePlaylist"), nullptr);
 
     ASSERT_TRUE(manager.create("Road"));
+
     const auto original = navigation.selected_playlist();
+
     ASSERT_TRUE(original.has_value());
     EXPECT_EQ(repository.playlist(*original)->name, "Road");
     EXPECT_EQ(state->text(), "All changes saved");
@@ -73,7 +75,9 @@ TEST_F(SavedPlaylistManager, CreatesRenamesDuplicatesAndDeletesWithVisibleSavedS
     EXPECT_EQ(repository.playlist(*original)->name, "Evening");
 
     ASSERT_TRUE(manager.duplicate_selected());
+
     const auto copy = navigation.selected_playlist();
+
     ASSERT_TRUE(copy.has_value());
     EXPECT_NE(*copy, *original);
     EXPECT_EQ(repository.playlist(*copy)->name, "Evening copy");
@@ -88,13 +92,18 @@ TEST_F(SavedPlaylistManager, RenamingFromTheContextMenuUsesTheCurrentPlaylistNam
 {
     wiola::app::SavedPlaylistCommands commands{repository, [](const auto&) { return true; }};
     wiola::gui::SavedPlaylistManager manager{repository, commands, navigation};
+
     ASSERT_TRUE(manager.create("Before"));
+
     const auto id = navigation.selected_playlist();
+
     ASSERT_TRUE(id);
+
     QTimer::singleShot(0, &manager, [] {
         for (auto* widget : QApplication::topLevelWidgets())
             if (auto* dialog = qobject_cast<QInputDialog*>(widget)) {
                 EXPECT_EQ(dialog->textValue(), "Before");
+
                 dialog->setTextValue("After");
                 dialog->accept();
             }
@@ -130,6 +139,7 @@ TEST_F(SavedPlaylistManager, ReportsSaveFailureAndValidatesSelectionAndNames)
 TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlderSave)
 {
     using namespace wiola;
+
     library::InMemoryRepository repository;
     std::vector<std::shared_ptr<library::CommitReceipt>> receipts;
     app::SavedPlaylistCommands commands{repository,
@@ -137,12 +147,16 @@ TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlde
             const auto revision = repository.staged_delta()->changes.revision;
             auto receipt = std::make_shared<library::CommitReceipt>(revision);
             receipts.push_back(receipt);
+
             return library::CommitResult::accepted(revision, receipt);
         }};
     gui::LibraryNavigation navigation;
     auto manager = std::make_unique<gui::SavedPlaylistManager>(repository, commands, navigation);
+
     ASSERT_TRUE(manager->create("First"));
+
     auto* status = manager->findChild<QLabel*>("playlistSaveState");
+
     ASSERT_NE(status, nullptr);
     ASSERT_TRUE(manager->rename_selected("First"));
     EXPECT_EQ(receipts.size(), 1U);
@@ -150,13 +164,17 @@ TEST_F(SavedPlaylistManager, PendingRevisionsCannotBeFalselyAcknowledgedByAnOlde
     ASSERT_TRUE(manager->rename_selected("Second"));
     EXPECT_EQ(status->text(), "Changes accepted; saving library");
     ASSERT_EQ(receipts.size(), 2);
+
     receipts[0]->notify(true);
     EXPECT_EQ(status->text(), "Changes accepted; saving library");
+
     receipts[1]->notify(false);
     EXPECT_EQ(status->text(), "Changes remain in memory; retry saving library");
+
     receipts[1]->notify(true);
     EXPECT_EQ(status->text(), "All changes saved");
     ASSERT_TRUE(manager->rename_selected("Third"));
+
     manager.reset();
     receipts.back()->notify(true);
 }
@@ -183,6 +201,7 @@ TEST_F(SavedPlaylistManager, NavigationSelectionMayCloseTheManagerBeforeStatusDe
         std::make_unique<wiola::gui::SavedPlaylistManager>(repository, commands, navigation);
     QObject::connect(&navigation, &QTreeWidget::currentItemChanged, &navigation,
         [&](auto*, auto*) { manager.reset(); });
+
     EXPECT_TRUE(manager->create("Selected before close"));
     EXPECT_FALSE(manager);
     EXPECT_TRUE(navigation.selected_playlist());
@@ -207,6 +226,7 @@ int main(int argc, char** argv)
 {
     qputenv("QT_QPA_PLATFORM", "offscreen");
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

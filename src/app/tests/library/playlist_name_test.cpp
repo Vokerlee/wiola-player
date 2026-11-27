@@ -18,10 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <wiola/app/library/playlist_name.hpp>
+
 #include <gtest/gtest.h>
+
 #include <string>
 #include <string_view>
-#include <wiola/app/library/playlist_name.hpp>
 
 namespace {
 
@@ -36,6 +38,7 @@ TEST(PlaylistName, TrimsUnicodeWhitespaceAndPreservesInteriorText)
             "\xe2\x80\xa8", "\xe2\x80\xa9", "\xe2\x80\xaf", "\xe2\x81\x9f", "\xe3\x80\x80"}) {
         const std::string text = std::string{space} + "Music\t\u97f3\u697d" + std::string{space};
         const auto name = PlaylistName::parse(text);
+
         ASSERT_TRUE(name);
         EXPECT_EQ(name->value(), "Music\t\u97f3\u697d");
         EXPECT_FALSE(PlaylistName::parse(space));
@@ -47,12 +50,15 @@ TEST(PlaylistName, AppliesTheBudgetAfterTrimming)
 {
     const std::string exact(PlaylistName::max_utf16_units, 'x');
     const auto name = PlaylistName::parse("  " + exact + "  ");
+
     ASSERT_TRUE(name);
     EXPECT_EQ(name->value(), exact);
     EXPECT_FALSE(PlaylistName::parse(exact + 'x'));
     EXPECT_FALSE(PlaylistName::parse("x" + std::string(PlaylistName::max_utf16_units, ' ') + 'y'));
+
     const auto trailing =
         PlaylistName::parse(exact + std::string(PlaylistName::max_utf16_units, ' '));
+
     ASSERT_TRUE(trailing);
     EXPECT_EQ(trailing->value(), exact);
 }
@@ -60,9 +66,12 @@ TEST(PlaylistName, AppliesTheBudgetAfterTrimming)
 TEST(PlaylistName, CountsSupplementaryScalarsAsTwoUtf16Units)
 {
     std::string exact;
+
     for (std::size_t i = 0; i != PlaylistName::max_utf16_units / 2; ++i)
         exact += "\U0001f3b5";
+
     const auto name = PlaylistName::parse(exact);
+
     ASSERT_TRUE(name);
     EXPECT_EQ(name->value(), exact);
     EXPECT_FALSE(PlaylistName::parse(exact + 'x'));
@@ -73,11 +82,14 @@ TEST(PlaylistName, ConsumesOnlyOneInitialUtf8Bom)
 {
     const std::string bom = "\xef\xbb\xbf";
     const auto initial = PlaylistName::parse(bom + "  Music  ");
+
     ASSERT_TRUE(initial);
     EXPECT_EQ(initial->value(), "Music");
     EXPECT_FALSE(PlaylistName::parse(bom));
+
     for (const auto& text : {bom + bom, " " + bom, "A" + bom}) {
         const auto name = PlaylistName::parse(text);
+
         ASSERT_TRUE(name);
         EXPECT_EQ(name->value(), text == "A" + bom ? text : bom);
     }
@@ -108,6 +120,7 @@ TEST(PlaylistName, RepairsEachMalformedByteWithoutAcceptingNonScalarUtf8)
                      "A", replacement + replacement + replacement + 'A'        }
     }) {
         const auto name = PlaylistName::parse(example.input);
+
         ASSERT_TRUE(name);
         EXPECT_EQ(name->value(), example.expected);
     }
@@ -118,11 +131,14 @@ TEST(PlaylistName, PreservesScalarBoundariesAndInteriorNul)
     for (const std::string_view text : {"\xc2\x80", "\xdf\xbf", "\xe0\xa0\x80", "\xed\x9f\xbf",
              "\xee\x80\x80", "\xf0\x90\x80\x80", "\xf4\x8f\xbf\xbf"}) {
         const auto name = PlaylistName::parse(text);
+
         ASSERT_TRUE(name);
         EXPECT_EQ(name->value(), text);
     }
+
     const auto text = std::string{"A"} + '\0' + 'B';
     const auto name = PlaylistName::parse(" " + text + " ");
+
     ASSERT_TRUE(name);
     EXPECT_EQ(name->value(), text);
 }
@@ -131,6 +147,7 @@ TEST(PlaylistName, AppliesTheSameBudgetToRepairedInput)
 {
     const std::string exact(PlaylistName::max_utf16_units, static_cast<char>(0xff));
     const auto name = PlaylistName::parse(exact);
+
     ASSERT_TRUE(name);
     EXPECT_EQ(name->value().size(), PlaylistName::max_utf16_units * 3);
     EXPECT_FALSE(PlaylistName::parse(exact + static_cast<char>(0xff)));

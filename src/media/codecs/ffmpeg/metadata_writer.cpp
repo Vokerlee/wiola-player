@@ -139,6 +139,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
             "metadata output must be different from the source");
 
     std::error_code filesystem_error;
+
     if (std::filesystem::exists(temporary, filesystem_error))
         return failed(media::MetadataWriteError::invalid_output, "metadata output already exists");
 
@@ -146,10 +147,12 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         return failed(media::MetadataWriteError::io, filesystem_error.message());
 
     AVFormatContext* raw_input{nullptr};
+
     if (context.stop_reason() != media::StopReason::none)
         return failed(media::MetadataWriteError::cancelled, context.error().detail);
 
     const int opened = avformat_open_input(&raw_input, utf8(source).c_str(), nullptr, nullptr);
+
     if (opened < 0)
         return failed(media::MetadataWriteError::io, ffmpeg_error(opened));
 
@@ -158,11 +161,13 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         .opaque = const_cast<media::OperationContext*>(&context)};
 
     const int inspected = avformat_find_stream_info(input.get(), nullptr);
+
     if (inspected < 0)
         return failed(media::MetadataWriteError::invalid_output, ffmpeg_error(inspected));
 
     const std::string_view input_formats{input->iformat->name};
     std::string primary_format{input_formats.substr(0, input_formats.find(','))};
+
     if (primary_format == "mov" && av_match_ext(utf8(temporary).c_str(), "m4a"))
         primary_format = "ipod";
     else if (primary_format == "mov" && av_match_ext(utf8(temporary).c_str(), "mp4"))
@@ -173,6 +178,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     AVFormatContext* raw_output{nullptr};
     const int allocated =
         avformat_alloc_output_context2(&raw_output, muxer, nullptr, utf8(temporary).c_str());
+
     if (allocated < 0 || raw_output == nullptr)
         return failed(media::MetadataWriteError::invalid_output,
             allocated < 0 ? ffmpeg_error(allocated) : "FFmpeg could not allocate output");
@@ -191,6 +197,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
                 "FFmpeg could not allocate an output stream");
 
         const int copied = avcodec_parameters_copy(outgoing->codecpar, incoming->codecpar);
+
         if (copied < 0)
             return failed(media::MetadataWriteError::invalid_output, ffmpeg_error(copied));
 
@@ -214,6 +221,7 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
 
     AVIOContext* raw_io{nullptr};
     const int io_opened = avio_open(&raw_io, utf8(temporary).c_str(), AVIO_FLAG_WRITE);
+
     if (io_opened < 0)
         return failed(media::MetadataWriteError::io, ffmpeg_error(io_opened));
 
@@ -221,30 +229,38 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
     output->pb = io.get();
 
     const int header = avformat_write_header(output.get(), nullptr);
+
     if (header < 0) {
         io.reset();
         std::filesystem::remove(temporary, filesystem_error);
+
         return failed(media::MetadataWriteError::invalid_output, ffmpeg_error(header));
     }
 
     for (unsigned int index = 0; index < output->nb_streams; ++index) {
         AVPacket& picture = output->streams[index]->attached_pic;
+
         if (picture.size <= 0)
             continue;
 
         picture.stream_index = static_cast<int>(index);
+
         const int written = av_interleaved_write_frame(output.get(), &picture);
+
         if (written < 0) {
             io.reset();
             std::filesystem::remove(temporary, filesystem_error);
+
             return failed(media::MetadataWriteError::io, ffmpeg_error(written));
         }
     }
 
     Packet packet{av_packet_alloc(), [](AVPacket* value) { av_packet_free(&value); }};
+
     if (!packet) {
         io.reset();
         std::filesystem::remove(temporary, filesystem_error);
+
         return failed(media::MetadataWriteError::invalid_output,
             "FFmpeg could not allocate a packet");
     }
@@ -256,16 +272,19 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
         if (context.stop_reason() != media::StopReason::none) {
             io.reset();
             std::filesystem::remove(temporary, filesystem_error);
+
             return failed(media::MetadataWriteError::cancelled, context.error().detail);
         }
 
         const int read = av_read_frame(input.get(), packet.get());
+
         if (read == AVERROR_EOF)
             break;
 
         if (read < 0) {
             io.reset();
             std::filesystem::remove(temporary, filesystem_error);
+
             return failed(media::MetadataWriteError::io, ffmpeg_error(read));
         }
 
@@ -287,24 +306,29 @@ media::MetadataWriteOutcome remux_metadata(const std::filesystem::path& source,
 
         const int written = av_interleaved_write_frame(output.get(), packet.get());
         const int injected = hooks.after_packet ? hooks.after_packet() : 0;
+
         av_packet_unref(packet.get());
 
         if (written < 0 || injected < 0) {
             io.reset();
             std::filesystem::remove(temporary, filesystem_error);
+
             return failed(media::MetadataWriteError::io,
                 ffmpeg_error(written < 0 ? written : injected));
         }
     }
 
     const int trailer = av_write_trailer(output.get());
+
     if (trailer < 0) {
         io.reset();
         std::filesystem::remove(temporary, filesystem_error);
+
         return failed(media::MetadataWriteError::io, ffmpeg_error(trailer));
     }
 
     io.reset();
+
     return {.state = media::MetadataWriteState::written,
         .error = media::MetadataWriteError::none,
         .source_modified = false,

@@ -20,11 +20,11 @@
 
 #pragma once
 
+#include <wiola/library/search.hpp>
 #include <wiola/presentation/tracks/track_sorter.hpp>
 
 #include <map>
 #include <stop_token>
-#include <wiola/library/search.hpp>
 
 namespace wiola::app {
 

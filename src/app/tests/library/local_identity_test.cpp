@@ -19,8 +19,8 @@
  */
 
 #include <app/library/local_identity.hpp>
-
 #include <fixtures/temporary_directory.hpp>
+
 #include <gtest/gtest.h>
 
 #include <filesystem>
@@ -94,9 +94,12 @@ TEST(MediaLocation, DoesNotResolveASymlinkAlias)
     const TemporaryDirectory directory;
     const auto target = directory.path() / "track.wav";
     const auto alias = directory.path() / "alias.wav";
+
     std::ofstream{target} << "fixture";
+
     std::error_code error;
     std::filesystem::create_symlink(target.filename(), alias, error);
+
     if (error)
         GTEST_SKIP() << "The test filesystem cannot create a symlink: " << error.message();
 

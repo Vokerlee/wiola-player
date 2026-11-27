@@ -18,10 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/temporary_directory.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/codecs/registry.hpp>
-
-#include <fixtures/temporary_directory.hpp>
 
 #include <gtest/gtest.h>
 
@@ -125,6 +124,7 @@ TEST(OpenFile, SaysWhenNothingReadsTheFormat)
 TEST(OpenFile, SaysWhenThereIsNothingToRead)
 {
     wiola::testing::TemporaryDirectory directory;
+
     EXPECT_EQ(
         wiola::codec::ffmpeg::make_registry().open(directory.path() / "wiola.ogg").error().category,
         wiola::media::ErrorCategory::unreadable
@@ -155,6 +155,7 @@ TEST(OpenFile, SaysWhenAFileOfAKnownFormatIsDamaged)
 TEST(OpenFile, IsTrueOnlyWhenItGaveADecoder)
 {
     wiola::testing::TemporaryDirectory directory;
+
     EXPECT_TRUE(wiola::codec::ffmpeg::make_registry().open(fixture("tone.wav")));
     EXPECT_FALSE(wiola::codec::ffmpeg::make_registry().open(directory.path() / "wiola.ogg"));
 }

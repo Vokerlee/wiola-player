@@ -18,10 +18,9 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <transport/seek_operation.hpp>
-
 #include <fakes/decoder.hpp>
 #include <fakes/output.hpp>
+#include <transport/seek_operation.hpp>
 
 #include <gtest/gtest.h>
 
@@ -98,6 +97,7 @@ TEST(SeekTransaction, InitialPrimingRetainsTheCursorWithoutSeeking)
 {
     FakeDecoder source{Frames{32}};
     SeekRig rig{source};
+
     EXPECT_EQ(rig.seek.begin(false), Outcome::preserved);
     EXPECT_EQ(source.num_seeks(), 0);
     EXPECT_EQ(rig.applier.num_pushed(), rig.block.size() * 2);
@@ -108,9 +108,11 @@ TEST(SeekTransaction, ReplayRewindsAndDiscardsPreviouslyBufferedAudio)
 {
     FakeDecoder source{Frames{32}};
     SeekRig rig{source};
+
     ASSERT_EQ(rig.seek.begin(false), Outcome::preserved);
     ASSERT_GT(source.position_frames(), Frames{});
     ASSERT_TRUE(rig.start_output());
+
     rig.output.play(Frames{3});
     EXPECT_EQ(rig.seek.begin(true), Outcome::applied);
     EXPECT_EQ(source.last_seek(), Frames{});
@@ -119,7 +121,9 @@ TEST(SeekTransaction, ReplayRewindsAndDiscardsPreviouslyBufferedAudio)
     EXPECT_EQ(rig.head.position(Frames{3}), Frames{});
     // The consumer owns the read cursor and applies the discard on its next callback.
     EXPECT_EQ(rig.applier.num_pushed(), 0U);
+
     std::array<float, 16> stale{};
+
     EXPECT_EQ(rig.consumer.pop(stale), 0U);
     EXPECT_EQ(source.position_frames(), Frames{});
 }
@@ -128,14 +132,19 @@ TEST(SeekTransaction, NoPendingRequestLeavesOutputAndBufferedAudioAlone)
 {
     FakeDecoder source{Frames{32}};
     SeekRig rig{source};
+
     ASSERT_TRUE(rig.start_output());
+
     const std::array samples{0.25F, -0.25F};
+
     ASSERT_EQ(rig.producer.push(samples), samples.size());
     EXPECT_EQ(rig.seek.apply(), Outcome::preserved);
     EXPECT_TRUE(rig.output.running());
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_EQ(source.num_seeks(), 0);
+
     std::array<float, 2> retained{};
+
     EXPECT_EQ(rig.consumer.pop(retained), retained.size());
     EXPECT_EQ(retained, samples);
 }
@@ -143,8 +152,11 @@ TEST(SeekTransaction, NoPendingRequestLeavesOutputAndBufferedAudioAlone)
 TEST(SeekTransaction, FailedSeekCommitsThePreservedCursor)
 {
     FakeDecoder source{Frames{32}};
+
     ASSERT_TRUE(source.seek(Frames{6}));
+
     source.refuse_seeks();
+
     SeekRig rig{source};
     rig.head.request_seek(Frames{12});
     EXPECT_EQ(rig.seek.apply(), Outcome::preserved);
@@ -166,6 +178,7 @@ TEST(SeekTransaction, ApproximateSeekCommitsItsAchievedPosition)
 {
     FakeDecoder source{Frames{32}};
     source.achieve_next_seek_at(Frames{10});
+
     SeekRig rig{source};
     rig.head.request_seek(Frames{12});
     EXPECT_EQ(rig.seek.apply(), Outcome::applied);
@@ -187,6 +200,7 @@ TEST(SeekTransaction, EmptySourcePrimesSuccessfully)
 {
     FakeDecoder source{Frames{0}};
     SeekRig rig{source};
+
     EXPECT_EQ(rig.seek.begin(false), Outcome::preserved);
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_EQ(rig.applier.num_pushed(), 0U);
@@ -209,11 +223,16 @@ TEST(SeekTransaction, StopDuringSeekAcknowledgesTheActualCursorWithoutPriming)
     FakeDecoder source{Frames{32}};
     Gate seeking;
     source.block_seeks_on(seeking);
+
     SeekRig rig{source};
+
     ASSERT_TRUE(rig.start_output());
+
     rig.head.request_seek(Frames{12});
+
     Outcome result{};
     std::jthread worker{[&] { result = rig.seek.apply(); }};
+
     seeking.wait_until_entered();
     rig.playback.finish(Playback::TerminalReason::stopped);
     seeking.release();
@@ -229,10 +248,13 @@ TEST(SeekTransaction, NewerRequestDuringSeekSurvivesAcknowledgmentAndSkipsStaleP
     FakeDecoder source{Frames{32}};
     Gate seeking;
     source.block_seeks_on(seeking);
+
     SeekRig rig{source};
     rig.head.request_seek(Frames{8});
+
     Outcome result{};
     std::jthread worker{[&] { result = rig.seek.apply(); }};
+
     seeking.wait_until_entered();
     rig.head.request_seek(Frames{12});
     seeking.release();
@@ -251,10 +273,13 @@ TEST(SeekTransaction, StopDuringReadDoesNotSubmitTheCompletedStaleBlock)
     FakeDecoder source{Frames{32}};
     Gate reading;
     source.block_reads_on(reading);
+
     SeekRig rig{source};
     rig.head.request_seek(Frames{8});
+
     Outcome result{};
     std::jthread worker{[&] { result = rig.seek.apply(); }};
+
     reading.wait_until_entered();
     rig.playback.finish(Playback::TerminalReason::stopped);
     reading.release();
@@ -269,10 +294,13 @@ TEST(SeekTransaction, NewerRequestDuringReadPreventsStaleSubmission)
     FakeDecoder source{Frames{32}};
     Gate reading;
     source.block_reads_on(reading);
+
     SeekRig rig{source};
     rig.head.request_seek(Frames{8});
+
     Outcome result{};
     std::jthread worker{[&] { result = rig.seek.apply(); }};
+
     reading.wait_until_entered();
     rig.head.request_seek(Frames{12});
     reading.release();

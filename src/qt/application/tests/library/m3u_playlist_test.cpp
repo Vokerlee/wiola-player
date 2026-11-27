@@ -18,14 +18,12 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <qt/application/library/m3u_playlist.hpp>
-
 #include <app/library/local_identity.hpp>
+#include <qt/application/library/m3u_playlist.hpp>
 #include <wiola/qt/paths.hpp>
 
 #include <QCoreApplication>
 #include <QTemporaryDir>
-
 #include <gtest/gtest.h>
 
 namespace {
@@ -57,11 +55,13 @@ TEST_F(M3uPlaylist, RoundTripsUtf8RelativePathsAndDuplicateOccurrences)
     ASSERT_TRUE(original.put_track(second));
 
     const auto playlist = original.create_playlist("Favorites");
+
     ASSERT_TRUE(original.append_track(playlist, first.id));
     ASSERT_TRUE(original.append_track(playlist, second.id));
     ASSERT_TRUE(original.append_track(playlist, first.id));
 
     QByteArray encoded;
+
     ASSERT_EQ(wiola::app::M3uPlaylist::export_playlist(original, playlist, path(""), encoded),
         wiola::app::M3uError::none);
     EXPECT_TRUE(encoded.startsWith("#EXTM3U\n"));
@@ -71,11 +71,13 @@ TEST_F(M3uPlaylist, RoundTripsUtf8RelativePathsAndDuplicateOccurrences)
 
     wiola::library::InMemoryRepository imported;
     wiola::library::PlaylistId restored;
+
     ASSERT_EQ(wiola::app::M3uPlaylist::import_playlist(imported, path(""), "Imported", encoded,
                   restored),
         wiola::app::M3uError::none);
 
     const auto* saved = imported.playlist(restored);
+
     ASSERT_NE(saved, nullptr);
     ASSERT_EQ(saved->entries.size(), 3);
     EXPECT_EQ(saved->entries[0].media, first.id);
@@ -95,9 +97,12 @@ TEST_F(M3uPlaylist, AcceptsCrlfCommentsAndRetainsMissingEntries)
         wiola::app::M3uError::none);
 
     const auto* saved = repository.playlist(imported);
+
     ASSERT_NE(saved, nullptr);
     ASSERT_EQ(saved->entries.size(), 1);
+
     const auto* track = repository.track(saved->entries.front().media);
+
     ASSERT_NE(track, nullptr);
     EXPECT_TRUE(track->missing);
     EXPECT_EQ(track->locations.front(), path("missing.wav"));
@@ -135,6 +140,7 @@ TEST_F(M3uPlaylist, BoundsInputBeforeParsing)
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+
     QCoreApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

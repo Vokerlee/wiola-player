@@ -19,11 +19,14 @@
  */
 
 #include "player_dialogs.hpp"
+
+#include <wiola/qt/paths.hpp>
+
 #include <QCursor>
 #include <QFileDialog>
 #include <QMenu>
+
 #include <map>
-#include <wiola/qt/paths.hpp>
 
 namespace wiola::gui {
 namespace {
@@ -41,14 +44,19 @@ NativePlayerDialogs::tracks(std::span<const std::string> extensions)
 {
     if (!parent_)
         return {};
+
     QStringList patterns;
+
     for (const auto& extension : extensions)
         patterns.append(QString::fromStdString("*" + extension));
+
     const auto chosen = QFileDialog::getOpenFileNames(parent_, "Choose tracks", {},
         QString{"Audio (%1);;All files (*)"}.arg(patterns.join(' ')));
     std::vector<std::filesystem::path> paths;
+
     for (const auto& value : chosen)
         paths.push_back(platform::qt::QtPathAdapter::from_qt(value));
+
     return paths;
 }
 
@@ -82,9 +90,12 @@ std::optional<std::filesystem::path> NativePlayerDialogs::file(PlayerFileChoice 
 {
     if (!parent_)
         return {};
+
     const auto [title, filter, save] = file_dialog_specification(purpose);
+
     if (title.isEmpty())
         return {};
+
     return path_choice(save ? QFileDialog::getSaveFileName(parent_, title, {}, filter)
                             : QFileDialog::getOpenFileName(parent_, title, {}, filter));
 }
@@ -94,17 +105,23 @@ NativePlayerDialogs::destination(std::span<const PlaylistChoice> choices)
 {
     if (!parent_)
         return {};
+
     // A local menu is independent of the owner if a nested event loop closes the window.
     QMenu menu;
     std::map<QAction*, library::PlaylistId> targets;
+
     for (const auto& choice : choices)
         targets.emplace(menu.addAction(QString::fromStdString(choice.name)), choice.id);
+
     if (choices.empty())
         menu.addAction("No saved playlists")->setEnabled(false);
+
     const auto* selected = menu.exec(QCursor::pos());
+
     for (const auto& [action, id] : targets)
         if (action == selected)
             return id;
+
     return {};
 }
 

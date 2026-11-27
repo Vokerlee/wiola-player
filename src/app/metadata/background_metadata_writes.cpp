@@ -20,11 +20,12 @@
 
 #include "background_metadata_writes.hpp"
 
+#include <wiola/media/local/fingerprint.hpp>
+#include <wiola/media/local/resource.hpp>
+
 #include <algorithm>
 #include <exception>
 #include <stdexcept>
-#include <wiola/media/local/fingerprint.hpp>
-#include <wiola/media/local/resource.hpp>
 
 namespace wiola::app {
 
@@ -70,19 +71,24 @@ void BackgroundMetadataWrites::close()
     std::shared_ptr<std::stop_source> active;
     {
         std::lock_guard lock{mutex_};
+
         if (stopping_)
             return;
+
         stopping_ = true;
         cancelled = std::move(jobs_);
         active = active_;
     }
     available_.notify_all();
+
     if (active)
         active->request_stop();
+
     if (worker_.joinable())
         worker_.join();
 
     auto failure = delivery_failure_;
+
     for (auto& pending : *cancelled) {
         try {
             cancel(std::move(pending));
@@ -91,6 +97,7 @@ void BackgroundMetadataWrites::close()
                 failure = std::current_exception();
         }
     }
+
     if (failure)
         std::rethrow_exception(failure);
 }
@@ -100,27 +107,36 @@ std::optional<MetadataWriteOperationId> BackgroundMetadataWrites::enqueue(Metada
 {
     if (!job.media.valid() || job.source.empty() || !observer || !job.cancellation)
         return {};
+
     std::optional<Pending> superseded;
     MetadataWriteOperationId id;
     {
         std::lock_guard lock{mutex_};
+
         if (stopping_)
             return {};
+
         const auto previous = std::ranges::find_if(*jobs_,
             [&](const auto& item) { return item.job.media == job.media; });
+
         if (previous == jobs_->end() && jobs_->size() >= 256)
             return {};
+
         id = job.operation.valid() ? job.operation : MetadataWriteOperationId{++next_operation_};
         job.operation = id;
+
         if (previous != jobs_->end()) {
             superseded = std::move(*previous);
             *previous = {std::move(job), std::move(observer), std::move(progress)};
         } else
             jobs_->push_back({std::move(job), std::move(observer), std::move(progress)});
     }
+
     if (superseded)
         cancel(std::move(*superseded));
+
     available_.notify_one();
+
     return id;
 }
 
@@ -130,11 +146,14 @@ MetadataWriteResult BackgroundMetadataWrites::stage(const Pending& pending)
         .stage = MetadataWriteStage::failed,
         .outcome = {},
         .output = {}};
+
     try {
         const auto& job = pending.job;
         const auto fingerprint = media::fingerprint_media(job.source);
+
         if (fingerprint)
             result.source_fingerprint = *fingerprint;
+
         if (job.context().stop_reason() != media::StopReason::none)
             result.stage = MetadataWriteStage::cancelled;
         else if (!job.expected_source.fingerprint.empty() &&
@@ -153,8 +172,10 @@ MetadataWriteResult BackgroundMetadataWrites::stage(const Pending& pending)
                     .outcome = {},
                     .output = {},
                     .source_fingerprint = *fingerprint});
+
             auto patch = library::file_metadata_patch(job.patch);
             auto asset = provider_->open(wiola::media::local_resource(job.source), job.context());
+
             if (!patch) {
                 result.outcome.error = media::MetadataWriteError::invalid_edit;
                 result.outcome.detail = patch.error().detail;
@@ -169,6 +190,7 @@ MetadataWriteResult BackgroundMetadataWrites::stage(const Pending& pending)
                 result.outcome =
                     (*asset)->write_metadata({.overrides = *patch, .expected = expected},
                         job.context());
+
                 if (result.outcome.state == media::MetadataWriteState::written &&
                     !result.outcome.source_modified) {
                     const auto& path = result.outcome.staged_output;
@@ -194,12 +216,16 @@ MetadataWriteResult BackgroundMetadataWrites::stage(const Pending& pending)
             .source_modified = false,
             .detail = "driver failure"};
     }
+
     if (result.stage != MetadataWriteStage::ready) {
         result.outcome.state = media::MetadataWriteState::failed;
+
         if (result.stage == MetadataWriteStage::cancelled)
             result.outcome.error = media::MetadataWriteError::cancelled;
+
         result.output.reset();
     }
+
     return result;
 }
 
@@ -210,12 +236,15 @@ void BackgroundMetadataWrites::run()
         {
             std::unique_lock lock{mutex_};
             available_.wait(lock, [this] { return stopping_ || !jobs_->empty(); });
+
             if (stopping_)
                 return;
+
             pending = std::move(jobs_->front());
             jobs_->pop_front();
             active_ = pending.job.cancellation;
         }
+
         try {
             auto result = stage(pending);
             {
@@ -225,7 +254,9 @@ void BackgroundMetadataWrites::run()
             pending.observer(std::move(result));
         } catch (...) {
             std::lock_guard lock{mutex_};
+
             active_.reset();
+
             if (!delivery_failure_)
                 delivery_failure_ = std::current_exception();
         }

@@ -19,6 +19,7 @@
  */
 
 #include "search_index.hpp"
+
 #include <utility>
 
 namespace wiola::app {
@@ -27,13 +28,17 @@ bool SearchIndex::upsert(const library::TrackRecord& track)
 {
     if (!track.id.valid())
         return false;
+
     auto fields = library::search_fields_of(track);
     const auto found = entries_.find(track.id);
+
     if (found != entries_.end() && found->second == fields)
         return false;
+
     entries_.insert_or_assign(track.id, std::move(fields));
     ++revision_;
     cached_query_.reset();
+
     return true;
 }
 
@@ -41,8 +46,10 @@ bool SearchIndex::remove(const library::MediaId& id)
 {
     if (entries_.erase(id) == 0)
         return false;
+
     ++revision_;
     cached_query_.reset();
+
     return true;
 }
 
@@ -50,6 +57,7 @@ void SearchIndex::clear()
 {
     if (!entries_.empty())
         ++revision_;
+
     entries_.clear();
     cached_query_.reset();
     cached_matches_.clear();
@@ -65,12 +73,16 @@ SearchIndex::query_normalized(const library::SearchQuery& query) const
 {
     if (cached_query_ && *cached_query_ == query)
         return cached_matches_;
+
     cached_query_.reset();
     cached_matches_.clear();
+
     for (const auto& [id, fields] : entries_)
         if (library::matches_search_fields(query, fields))
             cached_matches_.push_back(id);
+
     cached_query_ = query;
+
     return cached_matches_;
 }
 

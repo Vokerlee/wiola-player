@@ -18,15 +18,14 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wiola/media/codecs/ffmpeg/composition.hpp>
-
 #include <qt/application/library/library_session.hpp>
+#include <qt/widgets/appearance/theme.hpp>
 #include <qt/widgets/metadata/track_inspector.hpp>
+#include <queue/playlist.hpp>
+#include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
 #include <wiola/presentation/documents/queue_rows.hpp>
 #include <wiola/qt/paths.hpp>
-
-#include <queue/playlist.hpp>
 
 #include <QApplication>
 #include <QBuffer>
@@ -38,8 +37,6 @@
 #include <QScrollBar>
 #include <QTemporaryDir>
 #include <QToolButton>
-#include <qt/widgets/appearance/theme.hpp>
-
 #include <gtest/gtest.h>
 
 #include <cstring>
@@ -79,6 +76,7 @@ std::shared_ptr<wiola::media::Artwork> sample_artwork()
 TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
 
     const std::filesystem::path path = temporary_path(directory, "track.wav");
@@ -86,6 +84,7 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
 
     wiola::engine::Playlist playlist;
     playlist.set({wiola::media::local_resource(path)});
+
     const auto id = playlist.tracks()[0].id();
     wiola::media::TrackMetadata metadata;
     metadata.title = "Title";
@@ -98,6 +97,7 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
     wiola::gui::TrackInspector inspector;
     wiola::gui::InspectorContext context;
     context.origin = wiola::gui::InspectorContext::Origin::selection;
+
     auto row = wiola::gui::queue_row(playlist.tracks()[0]);
     wiola::library::TrackRecord record;
     record.id = row.media;
@@ -123,58 +123,85 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
 TEST(TrackInspector, NarrowAndWidePanelsKeepExpandedSectionsInsideTheViewport)
 {
     using namespace wiola;
+
     library::TrackRecord record;
     record.id = {"selected"};
     record.locations = {std::filesystem::path{"music"} / std::string(80, 'a') / "track.wav"};
     record.embedded.title = "A track with a long title that must wrap within the details panel";
+
     engine::Playlist queue;
     queue.set({media::local_resource(record.locations.front())});
+
     auto row = gui::queue_row(queue.tracks().front());
     row.metadata = record.embedded;
+
     gui::InspectorContext context;
     context.origin = gui::InspectorContext::Origin::selection;
     context.tracks.push_back(row);
     context.editable.push_back(record);
+
     for (const auto& preset : gui::theme_presets()) {
         gui::apply_theme(gui::theme_colors(preset.palette), preset.style);
+
         gui::TrackInspector inspector;
         inspector.show_context(context);
         inspector.edit_details();
         inspector.findChild<QToolButton*>("customTagsDisclosure")->setChecked(true);
         inspector.conflicts()->show_conflict("The file changed while editing this track");
+
         auto* title = inspector.findChild<QLineEdit*>("standardTitle");
+
         ASSERT_NE(title, nullptr);
+
         title->setText("Retained draft");
+
         auto* scroll = inspector.findChild<QScrollArea*>("inspectorScroll");
+
         ASSERT_NE(scroll, nullptr);
+
         inspector.show();
+
         const int character = inspector.fontMetrics().averageCharWidth();
+
         for (const int columns : {40, 64, 48}) {
             inspector.resize(character * columns, inspector.fontMetrics().height() * 30);
             QApplication::processEvents();
             EXPECT_EQ(scroll->horizontalScrollBar()->maximum(), 0) << preset.key << ':' << columns;
+
             for (auto* input : inspector.findChildren<QLineEdit*>()) {
                 if (!input->isVisible())
                     continue;
+
                 const auto left = input->mapTo(scroll->viewport(), QPoint{}).x();
+
                 EXPECT_GE(left, 0);
                 EXPECT_LE(left + input->width(), scroll->viewport()->width());
             }
+
             for (auto* button : inspector.findChildren<QPushButton*>()) {
                 if (!button->isVisible())
                     continue;
+
                 const auto left = button->mapTo(scroll->viewport(), QPoint{}).x();
+
                 EXPECT_GE(left, 0);
                 EXPECT_LE(left + button->width(), scroll->viewport()->width());
             }
+
             const auto corner = scroll->mapTo(&inspector, scroll->rect().bottomRight());
+
             EXPECT_LT(corner.x(), inspector.rect().right());
             EXPECT_LT(corner.y(), inspector.rect().bottom());
             EXPECT_EQ(title->text(), "Retained draft");
+
             auto* save = inspector.findChild<QPushButton*>("saveMetadataToFile");
+
             ASSERT_NE(save, nullptr);
+
             scroll->ensureWidgetVisible(save);
+
             const auto previews = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+
             if (!previews.isEmpty() && columns == 40) {
                 QDir{}.mkpath(previews);
                 EXPECT_TRUE(inspector.grab().save(QDir{previews}.filePath(
@@ -188,6 +215,7 @@ TEST(TrackInspector, NarrowAndWidePanelsKeepExpandedSectionsInsideTheViewport)
 TEST(TrackInspector, MarksMissingFilesAndClearsWhenThereIsNoSelection)
 {
     QTemporaryDir directory;
+
     ASSERT_TRUE(directory.isValid());
 
     wiola::engine::Playlist playlist;
@@ -196,8 +224,10 @@ TEST(TrackInspector, MarksMissingFilesAndClearsWhenThereIsNoSelection)
     wiola::gui::TrackInspector inspector;
     wiola::gui::InspectorContext context;
     context.origin = wiola::gui::InspectorContext::Origin::selection;
+
     auto row = wiola::gui::queue_row(playlist.tracks()[0]);
     row.missing = true;
+
     wiola::library::TrackRecord record;
     record.id = row.media;
     record.locations = {row.location};
@@ -242,26 +272,32 @@ TEST(TrackInspector, ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAno
     playing.locations = {"playing.wav"};
     {
         wiola::library::RepositoryTransaction seed{library.repository(), library.persistence()};
+
         library.repository().put_track(selected);
         library.repository().put_track(playing);
         ASSERT_TRUE(seed.commit());
     }
+
     auto row = wiola::gui::present_record(wiola::engine::QueueEntryId{2}, playing);
     row.artwork = sample_artwork();
+
     auto context = wiola::gui::inspector_context(library,
         {
             {selected.id, wiola::library::PlaylistEntryId{"entry"}, selected.locations.front()}
     },
         row);
+
     // Mutating the source record after capture cannot change the presentation snapshot.
     selected.embedded.title = "Later";
     {
         wiola::library::RepositoryTransaction change{library.repository(), library.persistence()};
+
         library.repository().put_track(selected);
         ASSERT_TRUE(change.commit());
     }
     // The assertion concerns the captured selection, after its seed writes are settled.
     ASSERT_TRUE(library.flush().succeeded());
+
     wiola::gui::TrackInspector inspector;
     inspector.show_context(context);
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "Selected title");
@@ -271,16 +307,19 @@ TEST(TrackInspector, ExplicitSelectionOwnsEverySectionAndCustomTagTargetWhileAno
     EXPECT_FALSE(inspector.context().tracks.front().artwork);
     EXPECT_EQ(inspector.standard_metadata()->edit_session().media(),
         std::vector<wiola::library::MediaId>{selected.id});
+
     wiola::library::MediaId target;
     inspector.custom_tags()->on_add([&](auto media, auto, auto) { target = media; });
     inspector.findChild<QLineEdit*>("customTagKey")->setText("Genre");
     inspector.findChild<QLineEdit*>("customTagValue")->setText("Jazz");
     inspector.findChild<QPushButton*>("addCustomTag")->click();
     EXPECT_EQ(target, selected.id);
+
     auto fallback = wiola::gui::inspector_context(library, {}, row);
     inspector.show_context(fallback);
     EXPECT_TRUE(field(inspector, "inspectorContext")->text().contains("Now Playing"));
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "Playing title");
+
     inspector.show_context(wiola::gui::inspector_context(library, {}));
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "No track selected");
 }
@@ -289,6 +328,7 @@ TEST(TrackInspector, RetainedDraftPinsAllSectionsUntilExplicitCancel)
 {
     wiola::gui::InspectorContext first, second;
     first.origin = second.origin = wiola::gui::InspectorContext::Origin::selection;
+
     wiola::library::TrackRecord record;
     record.id = {"first"};
     record.locations = {"first.wav"};
@@ -299,6 +339,7 @@ TEST(TrackInspector, RetainedDraftPinsAllSectionsUntilExplicitCancel)
     record.embedded.title = "Second";
     second.editable = {record};
     second.tracks = {wiola::gui::present_record(wiola::library::PlaylistEntryId{"two"}, record)};
+
     wiola::gui::TrackInspector inspector;
     inspector.show_context(first);
     inspector.findChild<QLineEdit*>("standardTitle")->setText("Draft");
@@ -306,6 +347,7 @@ TEST(TrackInspector, RetainedDraftPinsAllSectionsUntilExplicitCancel)
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "First");
     EXPECT_EQ(inspector.findChild<QLineEdit*>("standardTitle")->text(), "Draft");
     EXPECT_TRUE(field(inspector, "inspectorContext")->text().contains("original selection"));
+
     inspector.findChild<QPushButton*>("cancelStandardMetadata")->click();
     EXPECT_EQ(field(inspector, "inspectorTitle")->text(), "Second");
     EXPECT_EQ(inspector.findChild<QLineEdit*>("standardTitle")->text(), "Second");
@@ -317,6 +359,7 @@ TEST(TrackInspector, MultiSelectionUsesMixedEditorAndDisablesSingleTrackCustomTa
 {
     wiola::gui::InspectorContext context;
     context.origin = wiola::gui::InspectorContext::Origin::selection;
+
     for (const auto& id : {"one", "two"}) {
         wiola::library::TrackRecord record;
         record.id = {id};
@@ -326,6 +369,7 @@ TEST(TrackInspector, MultiSelectionUsesMixedEditorAndDisablesSingleTrackCustomTa
         context.tracks.push_back(wiola::gui::present_record(wiola::library::PlaylistEntryId{id},
             record));
     }
+
     wiola::gui::TrackInspector inspector;
     inspector.show_context(context);
     EXPECT_TRUE(field(inspector, "inspectorTitle")->text().contains("2 selected tracks"));
@@ -345,7 +389,9 @@ int main(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "offscreen");
 #endif
     }
+
     testing::InitGoogleTest(&argc, argv);
+
     QApplication application{argc, argv};
 
     return RUN_ALL_TESTS();

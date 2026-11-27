@@ -18,13 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fixtures/temporary_directory.hpp>
 #include <media/codecs/ffmpeg/metadata.hpp>
 #include <media/codecs/ffmpeg/metadata_text.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
-
 #include <wiola/media/local/resource.hpp>
-
-#include <fixtures/temporary_directory.hpp>
 
 #include <gtest/gtest.h>
 
@@ -95,6 +93,7 @@ Bytes text_frame(std::string_view id, std::string_view text)
     append(frame, {0, 0});
     append(frame, {0});
     append(frame, text);
+
     return frame;
 }
 
@@ -102,8 +101,10 @@ Bytes utf16_frame(std::string_view id, std::u16string_view text, bool matching_b
 {
     Bytes frame;
     append(frame, id);
+
     const auto size = static_cast<unsigned>(3 + text.size() * 2);
     append(frame, {0, 0, 0, size, 0, 0, 1, 0xff, 0xfe});
+
     for (const char16_t unit : text) {
         const auto high = static_cast<unsigned>(unit >> 8);
         const auto low = static_cast<unsigned>(unit & 0xff);
@@ -111,6 +112,7 @@ Bytes utf16_frame(std::string_view id, std::u16string_view text, bool matching_b
             matching_bom ? std::initializer_list<unsigned>{low, high}
                          : std::initializer_list<unsigned>{high, low});
     }
+
     return frame;
 }
 
@@ -129,6 +131,7 @@ Bytes comment_frame(std::string_view comment)
     append(frame, "eng");
     append(frame, {0});
     append(frame, comment);
+
     return frame;
 }
 
@@ -154,6 +157,7 @@ Bytes artwork_frame(const Bytes& drawn)
     append(frame, mime);
     append(frame, {0, 3, 0});
     frame.insert(frame.end(), drawn.begin(), drawn.end());
+
     return frame;
 }
 
@@ -171,11 +175,14 @@ std::filesystem::path flac_with_artwork(const std::filesystem::path& directory, 
         std::istreambuf_iterator<char>{}};
     Bytes file;
     file.reserve(encoded.size());
+
     for (const char value : encoded)
         file.push_back(static_cast<std::byte>(static_cast<unsigned char>(value)));
+
     EXPECT_GE(file.size(), 4U);
 
     std::size_t offset = 4;
+
     while (offset + 4 <= file.size()) {
         const bool last = (file[offset] & std::byte{0x80}) != std::byte{};
         const std::size_t size = (std::to_integer<std::size_t>(file[offset + 1]) << 16U) |
@@ -221,6 +228,7 @@ std::filesystem::path flac_with_artwork(const std::filesystem::path& directory, 
 std::vector<std::vector<unsigned char>> packet_payloads(const std::filesystem::path& path)
 {
     AVFormatContext* input = nullptr;
+
     if (avformat_open_input(&input, path.string().c_str(), nullptr, nullptr) < 0)
         return {};
 
@@ -242,12 +250,16 @@ std::vector<float> decoded_samples(const std::filesystem::path& path)
 {
     auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset = provider->open(wiola::media::local_resource(path));
+
     EXPECT_TRUE(asset);
+
     if (!asset)
         return {};
 
     auto decoder = (*asset)->create_decoder();
+
     EXPECT_TRUE(decoder);
+
     if (!decoder)
         return {};
 
@@ -256,7 +268,9 @@ std::vector<float> decoded_samples(const std::filesystem::path& path)
 
     for (int calls = 0; calls < 10000; ++calls) {
         auto read = (*decoder)->read(block);
+
         EXPECT_TRUE(read);
+
         if (!read)
             return samples;
 
@@ -294,21 +308,27 @@ TEST(FfmpegMetadata, MixedAndAmbiguousDictionaryValuesStayOwnedAndUnchanged)
     MetadataDictionary primary, secondary;
     primary.swapped_numbers();
     secondary.set("artist", "Correct secondary artist");
+
     for (const auto& title : {std::string{"ASCII title"}, std::string{"Город"},
              std::string{"中文音樂"}, std::string{"🎵"}, std::string{"\xff\xfe"}}) {
         primary.set("title", title);
+
         const wiola::codec::ffmpeg::MetadataText text{primary.value, secondary.value, true};
+
         EXPECT_EQ(text.field("title"), title);
         EXPECT_EQ(text.first({"missing", "artist"}), "Correct secondary artist");
         EXPECT_TRUE(text.field("missing").empty());
     }
+
     primary.set("title", std::string(64 * 1024 + 1, 'x'));
     EXPECT_TRUE(
         (wiola::codec::ffmpeg::MetadataText{primary.value, nullptr, true}).field("title").empty()
     );
+
     primary.set("title", "ጄ㸄䀄㸄㐄");
     EXPECT_EQ((wiola::codec::ffmpeg::MetadataText{primary.value, nullptr, false}).field("title"),
         "ጄ㸄䀄㸄㐄");
+
     secondary.swapped_numbers();
     secondary.set("title", "ጄ㸄䀄㸄㐄");
     EXPECT_EQ((wiola::codec::ffmpeg::MetadataText{nullptr, secondary.value, true}).field("title"),
@@ -326,9 +346,11 @@ TEST(FfmpegMetadata, RepairsContradictoryUtf16WithIndependentTrackAndDiscWitness
     append_frame(frames, utf16_frame("TRCK", u"1/13", false));
     append_frame(frames, utf16_frame("TPOS", u"1/1", false));
     append_frame(frames, text_frame("TYER", "2017"));
+
     const auto path = tagged_copy(files.path(), "wrong-bom.mp3", frames);
     const auto before = std::filesystem::file_size(path);
     auto metadata = wiola::codec::ffmpeg::read_metadata(path);
+
     ASSERT_TRUE(metadata);
     EXPECT_EQ(metadata->track.title, "Город в море трав");
     EXPECT_EQ(metadata->track.artist, "ГРОТ");
@@ -346,8 +368,10 @@ TEST(FfmpegMetadata, DoesNotGuessByteOrderFromAnIsolatedUnusualTitleOrTrackNumbe
     Bytes frames;
     append_frame(frames, utf16_frame("TIT2", u"中文音樂", true));
     append_frame(frames, utf16_frame("TRCK", u"1/13", false));
+
     const auto path = tagged_copy(files.path(), "ambiguous.mp3", frames);
     auto metadata = wiola::codec::ffmpeg::read_metadata(path);
+
     ASSERT_TRUE(metadata);
     EXPECT_EQ(metadata->track.title, "中文音樂");
     EXPECT_FALSE(metadata->track.track_number);
@@ -361,12 +385,15 @@ TEST(FfmpegMetadata, ValidMultilingualUtf16AndNumericTagsAreNeverByteSwapped)
         append_frame(frames, utf16_frame("TIT2", title, true));
         append_frame(frames, utf16_frame("TRCK", u"1/13", true));
         append_frame(frames, utf16_frame("TPOS", u"1/1", true));
+
         const auto path = tagged_copy(files.path(), "unicode.mp3", frames);
         auto metadata = wiola::codec::ffmpeg::read_metadata(path);
+
         ASSERT_TRUE(metadata);
         EXPECT_EQ(metadata->track.track_number, 1U);
         EXPECT_EQ(metadata->track.disc_number, 1U);
         EXPECT_FALSE(metadata->track.title.empty());
+
         if (std::u16string_view{title} == u"Город в море трав")
             EXPECT_EQ(metadata->track.title, "Город в море трав");
         else if (std::u16string_view{title} == u"中文音樂")
@@ -421,9 +448,11 @@ TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
     append_frame(frames, text_frame("TCOM", "Composer"));
     append_frame(frames, text_frame("TRCK", "3/12"));
     append_frame(frames, text_frame("TPOS", "2/3"));
+
     const auto track{tagged_copy(directory.path(), "wiola_ffmpeg_extended.mp3", frames)};
 
     const auto metadata{wiola::codec::ffmpeg::read_metadata(track)};
+
     ASSERT_TRUE(metadata);
     EXPECT_EQ(metadata->track.genre, "Jazz");
     EXPECT_EQ(metadata->track.year, 2024);
@@ -434,6 +463,7 @@ TEST(FfmpegMetadata, ReadsExtendedFieldsAndReportsQualifiedMp3WriteSupport)
 
     auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{provider->open(wiola::media::local_resource(track))};
+
     ASSERT_TRUE(asset);
     EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 }
@@ -462,6 +492,7 @@ TEST(FfmpegMetadata, ReadsAnId3AttachedPicture)
     constexpr char drawn_bytes[]{"\x89PNG\r\n\x1a\n and then some"};
     Bytes drawn;
     append(drawn, std::string_view{drawn_bytes, sizeof(drawn_bytes) - 1});
+
     const auto track{
         tagged_copy(directory.path(), "wiola_ffmpeg_with_cover.mp3", artwork_frame(drawn))};
 
@@ -486,6 +517,7 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
 
     auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset = provider->open(wiola::media::local_resource(track));
+
     ASSERT_TRUE(asset);
     EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
@@ -494,11 +526,13 @@ TEST(FfmpegMetadata, QualifiedMp3WritingPreservesArtworkAndDecodedAudio)
     request.overrides.comment = "Updated comment";
 
     const auto outcome = (*asset)->write_metadata(request);
+
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
     const std::filesystem::path output = outcome.staged_output;
 
     const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+
     ASSERT_TRUE(metadata) << metadata.error().detail;
     EXPECT_EQ(metadata->track.title, "Updated title");
     EXPECT_EQ(metadata->track.comment, "Updated comment");
@@ -519,19 +553,23 @@ TEST(FfmpegMetadata, QualifiedFlacWritingPreservesCommentsPicturesAndPcm)
     auto provider{wiola::codec::ffmpeg::make_provider()};
 
     auto asset = provider->open(wiola::media::local_resource(track));
+
     ASSERT_TRUE(asset);
     EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
     wiola::media::MetadataWriteRequest first;
     first.overrides.comment = "Keep this comment";
     first.overrides.genre = "Jazz";
+
     auto outcome = (*asset)->write_metadata(first);
+
     ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
     const std::filesystem::path commented = outcome.staged_output;
 
     asset = provider->open(wiola::media::local_resource(commented));
     ASSERT_TRUE(asset);
+
     wiola::media::MetadataWriteRequest second;
     second.overrides.title = "Updated FLAC";
     outcome = (*asset)->write_metadata(second);
@@ -557,24 +595,31 @@ TEST(FfmpegMetadata, QualifiedMp4AndM4aWritingPreserveArtworkDurationAndPcm)
     for (const char* name : {"attached-art.m4a", "tone-alac.mp4"}) {
         const auto track = directory.path() / name;
         std::filesystem::copy_file(fixtures() / name, track);
+
         const auto original_metadata = wiola::codec::ffmpeg::read_metadata(track);
+
         ASSERT_TRUE(original_metadata) << name;
+
         const auto original_samples = decoded_samples(track);
 
         auto provider{wiola::codec::ffmpeg::make_provider()};
         auto asset = provider->open(wiola::media::local_resource(track));
+
         ASSERT_TRUE(asset) << name;
         EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
         wiola::media::MetadataWriteRequest request;
         request.overrides.title = "Updated MP4";
         request.overrides.composer = "Composer";
+
         const auto outcome = (*asset)->write_metadata(request);
+
         ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
         const std::filesystem::path output = outcome.staged_output;
 
         const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+
         ASSERT_TRUE(metadata) << metadata.error().detail;
         EXPECT_EQ(metadata->track.title, "Updated MP4");
         EXPECT_EQ(metadata->track.composer, "Composer");
@@ -591,25 +636,32 @@ TEST(FfmpegMetadata, QualifiedOggAndOpusWritingPreservesPacketsAndChainedPcm)
     for (const char* name : {"tone-vorbis.ogg", "tone.opus", "chained-same-shape.ogg"}) {
         const auto track = directory.path() / name;
         std::filesystem::copy_file(fixtures() / name, track);
+
         const auto original_metadata = wiola::codec::ffmpeg::read_metadata(track);
+
         ASSERT_TRUE(original_metadata) << name;
+
         const auto original_samples = decoded_samples(track);
         const auto original_packets = packet_payloads(track);
 
         auto provider{wiola::codec::ffmpeg::make_provider()};
         auto asset = provider->open(wiola::media::local_resource(track));
+
         ASSERT_TRUE(asset) << name;
         EXPECT_TRUE((*asset)->metadata_write_capabilities().any());
 
         wiola::media::MetadataWriteRequest request;
         request.overrides.title = "Updated Ogg";
         request.overrides.comment = "Preserved packet stream";
+
         const auto outcome = (*asset)->write_metadata(request);
+
         ASSERT_EQ(outcome.state, wiola::media::MetadataWriteState::written) << outcome.detail;
 
         const std::filesystem::path output = outcome.staged_output;
 
         const auto metadata = wiola::codec::ffmpeg::read_metadata(output);
+
         ASSERT_TRUE(metadata) << metadata.error().detail;
         EXPECT_EQ(metadata->track.title, "Updated Ogg");
         EXPECT_EQ(metadata->track.comment, "Preserved packet stream");
@@ -644,15 +696,20 @@ TEST(FfmpegMetadata, ReadingMetadataDoesNotPreventPlayback)
 {
     auto provider{wiola::codec::ffmpeg::make_provider()};
     auto asset{provider->open(wiola::media::local_resource(fixtures() / "tone.wav"))};
+
     ASSERT_TRUE(asset);
 
     auto metadata{(*asset)->read_metadata()};
+
     ASSERT_TRUE(metadata);
     EXPECT_TRUE(metadata->track.title.empty());
 
     auto decoder{(*asset)->create_decoder()};
+
     ASSERT_TRUE(decoder);
+
     std::array<float, 8> samples{};
+
     EXPECT_GT((*decoder)->render(samples).value(), 0U);
 }
 
@@ -668,10 +725,15 @@ TEST(FfmpegMetadata, DropsOverLimitTextWithoutDiscardingOtherFields)
 TEST(FfmpegMetadata, RejectsOversizedArtworkBeforeCopyingItsPayload)
 {
     AVFormatContext* format{avformat_alloc_context()};
+
     ASSERT_NE(format, nullptr);
+
     AVStream* stream{avformat_new_stream(format, nullptr)};
+
     ASSERT_NE(stream, nullptr);
+
     stream->disposition = AV_DISPOSITION_ATTACHED_PIC;
+
     std::uint8_t marker{0};
     stream->attached_pic.data = &marker;
     stream->attached_pic.size = static_cast<int>(wiola::media::max_encoded_artwork_bytes + 1);
@@ -679,6 +741,7 @@ TEST(FfmpegMetadata, RejectsOversizedArtworkBeforeCopyingItsPayload)
     auto artwork{wiola::codec::ffmpeg::read_artwork(*stream)};
 
     EXPECT_TRUE(artwork.empty());
+
     stream->attached_pic.data = nullptr;
     stream->attached_pic.size = 0;
     avformat_free_context(format);
@@ -687,10 +750,15 @@ TEST(FfmpegMetadata, RejectsOversizedArtworkBeforeCopyingItsPayload)
 TEST(FfmpegMetadata, KeepsArtworkBytesWhenTheImageCodecHasNoMimeMapping)
 {
     AVFormatContext* format{avformat_alloc_context()};
+
     ASSERT_NE(format, nullptr);
+
     AVStream* stream{avformat_new_stream(format, nullptr)};
+
     ASSERT_NE(stream, nullptr);
+
     stream->disposition = AV_DISPOSITION_ATTACHED_PIC;
+
     std::uint8_t marker{42};
     stream->attached_pic.data = &marker;
     stream->attached_pic.size = 1;
@@ -699,6 +767,7 @@ TEST(FfmpegMetadata, KeepsArtworkBytesWhenTheImageCodecHasNoMimeMapping)
 
     ASSERT_FALSE(artwork.empty());
     EXPECT_TRUE(artwork.mime_type.empty());
+
     stream->attached_pic.data = nullptr;
     stream->attached_pic.size = 0;
     avformat_free_context(format);

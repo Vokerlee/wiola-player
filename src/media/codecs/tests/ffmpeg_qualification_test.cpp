@@ -75,14 +75,19 @@ wiola::media::Result<wiola::pcm::Frames> read_all(wiola::media::AudioDecoder& de
 {
     wiola::pcm::Frames total;
     std::array<float, 126> block{};
+
     for (int calls{0}; calls < 10000; ++calls) {
         auto read{decoder.read(block)};
+
         if (!read)
             return wiola::media::unexpected{read.error()};
+
         total += read->frames;
+
         if (read->end_of_stream)
             return total;
     }
+
     return wiola::media::unexpected{
         wiola::media::Error{.category = wiola::media::ErrorCategory::limit_exceeded,
                             .detail = "qualification decode did not finish"}
@@ -92,21 +97,30 @@ wiola::media::Result<wiola::pcm::Frames> read_all(wiola::media::AudioDecoder& de
 TEST(FfmpegQualification, EveryMatrixEntryHasOnePassingRealFixture)
 {
     const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
+
     for (const auto& qualification : wiola::codec::ffmpeg::qualifications()) {
         std::size_t matches_found{0};
+
         for (const auto& fixture : fixtures) {
             if (!matches(qualification, fixture))
                 continue;
+
             ++matches_found;
+
             auto decoder{registry.open(std::filesystem::path{WIOLA_TEST_DATA_DIR} / fixture.name)};
+
             ASSERT_TRUE(decoder) << fixture.name;
             EXPECT_EQ((*decoder)->spec().num_channels, fixture.channels) << fixture.name;
+
             auto frames{read_all(**decoder)};
+
             ASSERT_TRUE(frames) << fixture.name;
             EXPECT_EQ(*frames, wiola::pcm::Frames{fixture.frames}) << fixture.name;
         }
+
         EXPECT_EQ(matches_found, 1U) << qualification.format << '/' << qualification.codec;
     }
+
     for (const auto& fixture : fixtures) {
         EXPECT_TRUE(
             std::ranges::any_of(wiola::codec::ffmpeg::qualifications(),
@@ -120,13 +134,16 @@ TEST(FfmpegQualification, MatrixAndBackendDescriptorsCoverEachOtherExactly)
     const wiola::codec::MediaBackendRegistry registry{wiola::codec::ffmpeg::make_registry()};
     const auto backend{std::ranges::find_if(registry.backends(),
         [](const auto& candidate) { return candidate.name == "FFmpeg"; })};
+
     ASSERT_NE(backend, registry.backends().end());
+
     for (const auto& format : backend->formats) {
         EXPECT_TRUE(
             std::ranges::any_of(wiola::codec::ffmpeg::qualifications(),
                 [&](const auto& qualification) { return qualification.format == format.name; })
         ) << format.name;
     }
+
     for (const auto& qualification : wiola::codec::ffmpeg::qualifications()) {
         EXPECT_TRUE(std::ranges::any_of(backend->formats, [&](const auto& format) {
             return qualification.format == format.name;

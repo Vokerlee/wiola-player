@@ -51,6 +51,7 @@ std::optional<Relocation> reconcile_location(TrackRecord& track,
 {
     if (!track.id.valid() || fingerprint.empty())
         return std::nullopt;
+
     RelocationKind kind{RelocationKind::unchanged};
 
     if (track.fingerprint.empty()) {

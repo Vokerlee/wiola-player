@@ -18,12 +18,11 @@
  * along with Wiola. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <qt/widgets/tests/support/gui_interaction.hpp>
 #include <qt/widgets/tracks/track_search_panel.hpp>
 
 #include <QApplication>
-
 #include <gtest/gtest.h>
-#include <qt/widgets/tests/support/gui_interaction.hpp>
 
 namespace {
 
@@ -33,6 +32,7 @@ TEST(TrackSearchPanel, EmitsSimultaneousFieldsAndClearsEachIndependently)
     QLineEdit* title = panel.findChild<QLineEdit*>("searchTitle");
     QLineEdit* artist = panel.findChild<QLineEdit*>("searchArtist");
     QLineEdit* album = panel.findChild<QLineEdit*>("searchAlbum");
+
     ASSERT_NE(title, nullptr);
     ASSERT_NE(artist, nullptr);
     ASSERT_NE(album, nullptr);

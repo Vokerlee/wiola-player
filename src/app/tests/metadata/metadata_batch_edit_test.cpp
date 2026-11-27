@@ -54,6 +54,7 @@ TEST_F(MetadataBatchEdit, AppliesOnlyChangedRecordsAndReportsMissingTracks)
 
     const auto result =
         commands.apply({first, second, first, wiola::library::MediaId{"missing"}}, edit);
+
     ASSERT_TRUE(result.succeeded());
     EXPECT_EQ(result.changed, 2);
     EXPECT_EQ(result.unchanged, 0);
@@ -61,6 +62,7 @@ TEST_F(MetadataBatchEdit, AppliesOnlyChangedRecordsAndReportsMissingTracks)
     EXPECT_EQ(saves, 1);
 
     const auto noop = commands.apply({first, second}, edit);
+
     ASSERT_TRUE(noop.succeeded());
     EXPECT_EQ(noop.changed, 0);
     EXPECT_EQ(noop.unchanged, 2);
@@ -75,6 +77,7 @@ TEST_F(MetadataBatchEdit, RollsBackEveryChangedRecordWhenSavingFails)
     edit.title = "Cannot save";
 
     const auto result = commands.apply({first, second}, edit);
+
     EXPECT_EQ(result.error, wiola::app::StandardMetadataError::persistence_failed);
     EXPECT_EQ(result.changed, 0);
     EXPECT_FALSE(repository.track(first)->overrides.title.has_value());
@@ -99,8 +102,10 @@ TEST_F(MetadataBatchEdit, PublishesOneCommittedBatchForAllChangedMedia)
     EXPECT_TRUE(batches.front().media[0].includes(wiola::library::MediaChangeFields::overrides));
     EXPECT_EQ(commands.apply({first, second}, patch).changed, 0U);
     EXPECT_EQ(batches.size(), 1U);
+
     wiola::app::MetadataEditService failing{repository,
         [](const wiola::library::LibraryRepository&) { return false; }};
+
     patch.genre = "Rejected";
     EXPECT_FALSE(failing.apply({first, second}, patch).succeeded());
     EXPECT_EQ(batches.size(), 1U);

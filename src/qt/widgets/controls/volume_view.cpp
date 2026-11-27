@@ -19,13 +19,16 @@
  */
 
 #include "volume_view.hpp"
+
+#include <qt/widgets/appearance/presentation_tokens.hpp>
+#include <qt/widgets/layout/view_registry.hpp>
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSlider>
-#include <qt/widgets/appearance/presentation_tokens.hpp>
-#include <qt/widgets/layout/view_registry.hpp>
+
 #include <stdexcept>
 
 namespace wiola::gui {
@@ -36,13 +39,16 @@ VolumeView::VolumeView(QWidget* parent)
     const auto tokens = PresentationTokens{}.player;
     auto* body = new QHBoxLayout{this};
     body->setContentsMargins(0, 0, 0, 0);
+
     slider_ = new QSlider{Qt::Horizontal, this};
     slider_->setToolTip("Volume");
     slider_->setAccessibleName("Volume");
     slider_->setFixedWidth(tokens.volume_slider_width);
     slider_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
     value_ = new QLabel{this};
     value_->setMinimumWidth(fontMetrics().horizontalAdvance("300%"));
+
     boost_ = new QPushButton{"+", this};
     boost_->setCheckable(true);
     boost_->setFixedWidth(tokens.boost_button_width);
@@ -59,6 +65,7 @@ VolumeView::VolumeView(QWidget* parent)
 void VolumeView::present(VolumePresentation state)
 {
     const QSignalBlocker slider{slider_}, boost{boost_};
+
     slider_->setRange(0, state.maximum);
     slider_->setValue(state.position);
     boost_->setChecked(state.boosted);

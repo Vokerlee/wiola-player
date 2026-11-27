@@ -19,13 +19,16 @@
  */
 
 #pragma once
+
+#include <qt/widgets/layout/layout_document.hpp>
+
 #include <QComboBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QWidget>
+
 #include <functional>
-#include <qt/widgets/layout/layout_document.hpp>
 
 namespace wiola::gui {
 
