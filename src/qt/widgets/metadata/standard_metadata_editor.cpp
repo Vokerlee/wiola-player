@@ -21,7 +21,6 @@
 #include "standard_metadata_editor.hpp"
 
 #include <QFormLayout>
-#include <QHBoxLayout>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -101,6 +100,8 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     cancel_->setAccessibleName("Cancel standard metadata changes");
 
     QFormLayout* fields = new QFormLayout;
+    fields->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    fields->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     fields->addRow("Title", title_);
     fields->addRow("Artist", artist_);
     fields->addRow("Album", album_);
@@ -111,15 +112,16 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
     fields->addRow("Track", track_number_);
     fields->addRow("Disc", disc_number_);
 
-    QHBoxLayout* commands = new QHBoxLayout;
-    commands->addWidget(apply_);
-    commands->addWidget(cancel_);
+    auto* commands = new QFormLayout;
+    commands->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    commands->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    commands->addRow(apply_, cancel_);
     save_file_ = new QPushButton{"Apply and save to file", this};
     save_file_->setObjectName("saveMetadataToFile");
     save_file_->setAccessibleName("Apply changes and save embedded metadata to file");
     save_file_->setToolTip("Writes changed fields when the format supports them. Application "
                            "overrides remain if file writing fails.");
-    commands->addWidget(save_file_);
+    commands->addRow(save_file_);
     file_status_ = new QLabel{this};
     file_status_->setObjectName("metadataFileStatus");
     file_status_->setWordWrap(true);
@@ -131,7 +133,6 @@ StandardMetadataEditor::StandardMetadataEditor(QWidget* parent)
             file_observer_(session_);
         }
     });
-    commands->addStretch();
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);

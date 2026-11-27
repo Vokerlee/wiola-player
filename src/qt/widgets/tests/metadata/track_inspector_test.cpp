@@ -33,7 +33,12 @@
 #include <QDir>
 #include <QImage>
 #include <QLabel>
+#include <QLineEdit>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QTemporaryDir>
+#include <QToolButton>
+#include <qt/widgets/appearance/theme.hpp>
 
 #include <gtest/gtest.h>
 
@@ -113,6 +118,71 @@ TEST(TrackInspector, ShowsMetadataLocationDurationArtworkAndAvailability)
     EXPECT_EQ(field(inspector, "inspectorDuration")->text(), "1:05");
     EXPECT_EQ(field(inspector, "inspectorAvailability")->text(), "Available");
     EXPECT_FALSE(field(inspector, "inspectorAvailability")->property("missing").toBool());
+}
+
+TEST(TrackInspector, NarrowAndWidePanelsKeepExpandedSectionsInsideTheViewport)
+{
+    using namespace wiola;
+    library::TrackRecord record;
+    record.id = {"selected"};
+    record.locations = {std::filesystem::path{"music"} / std::string(80, 'a') / "track.wav"};
+    record.embedded.title = "A track with a long title that must wrap within the details panel";
+    engine::Playlist queue;
+    queue.set({media::local_resource(record.locations.front())});
+    auto row = gui::queue_row(queue.tracks().front());
+    row.metadata = record.embedded;
+    gui::InspectorContext context;
+    context.origin = gui::InspectorContext::Origin::selection;
+    context.tracks.push_back(row);
+    context.editable.push_back(record);
+    for (const auto& preset : gui::theme_presets()) {
+        gui::apply_theme(gui::theme_colors(preset.palette), preset.style);
+        gui::TrackInspector inspector;
+        inspector.show_context(context);
+        inspector.edit_details();
+        inspector.findChild<QToolButton*>("customTagsDisclosure")->setChecked(true);
+        inspector.conflicts()->show_conflict("The file changed while editing this track");
+        auto* title = inspector.findChild<QLineEdit*>("standardTitle");
+        ASSERT_NE(title, nullptr);
+        title->setText("Retained draft");
+        auto* scroll = inspector.findChild<QScrollArea*>("inspectorScroll");
+        ASSERT_NE(scroll, nullptr);
+        inspector.show();
+        const int character = inspector.fontMetrics().averageCharWidth();
+        for (const int columns : {40, 64, 48}) {
+            inspector.resize(character * columns, inspector.fontMetrics().height() * 30);
+            QApplication::processEvents();
+            EXPECT_EQ(scroll->horizontalScrollBar()->maximum(), 0) << preset.key << ':' << columns;
+            for (auto* input : inspector.findChildren<QLineEdit*>()) {
+                if (!input->isVisible())
+                    continue;
+                const auto left = input->mapTo(scroll->viewport(), QPoint{}).x();
+                EXPECT_GE(left, 0);
+                EXPECT_LE(left + input->width(), scroll->viewport()->width());
+            }
+            for (auto* button : inspector.findChildren<QPushButton*>()) {
+                if (!button->isVisible())
+                    continue;
+                const auto left = button->mapTo(scroll->viewport(), QPoint{}).x();
+                EXPECT_GE(left, 0);
+                EXPECT_LE(left + button->width(), scroll->viewport()->width());
+            }
+            const auto corner = scroll->mapTo(&inspector, scroll->rect().bottomRight());
+            EXPECT_LT(corner.x(), inspector.rect().right());
+            EXPECT_LT(corner.y(), inspector.rect().bottom());
+            EXPECT_EQ(title->text(), "Retained draft");
+            auto* save = inspector.findChild<QPushButton*>("saveMetadataToFile");
+            ASSERT_NE(save, nullptr);
+            scroll->ensureWidgetVisible(save);
+            const auto previews = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+            if (!previews.isEmpty() && columns == 40) {
+                QDir{}.mkpath(previews);
+                EXPECT_TRUE(inspector.grab().save(QDir{previews}.filePath(
+                    QString{"track-details-%1.png"}.arg(QString::fromLatin1(preset.key))
+                )));
+            }
+        }
+    }
 }
 
 TEST(TrackInspector, MarksMissingFilesAndClearsWhenThereIsNoSelection)
