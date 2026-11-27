@@ -9,3 +9,5 @@ Transaction recovery cases reuse the shared C++ allocation-failure fixture to fa
 `repository_restore_test.cpp` qualifies atomic rejection of invalid/duplicate snapshot records, tag shape limits, missing identities, rollback of replaced/deleted records and collision-free identity allocation after restore. These cases use owned in-memory snapshots without storage or frontend dependencies. Metadata patch cases reject invalid earlier fields before any later field is applied.
 
 `repository_contract.hpp` provides `verify_repository_contract` for a fresh `LibraryRepository` implementation. It checks opaque identity uniqueness, duplicate track occurrences, removal, tags and playlist lifecycle; backend-specific allocation and identity-format cases remain separate.
+
+A fixed-seed playlist model compares long append/removal sequences with an independent ordered entry list, including repeated media and rejected operations. Generated IDs remain opaque.

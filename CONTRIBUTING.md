@@ -197,7 +197,7 @@ CXX=clang++-18 cmake --preset linux-coverage
 QT_QPA_PLATFORM=offscreen cmake --build --preset linux-coverage --target coverage --parallel 4
 ```
 
-The target builds the instrumented code and tests, then runs CTest with a fresh profile directory and invokes `llvm-profdata` and `llvm-cov`. Reports are generated build artifacts: `summary.txt`, LLVM's `summary.json`, `coverage.lcov`, and `html/index.html`. CMake passes all instrumented object files directly to LLVM, including unexecuted production code; no synthetic executable or target-name list is needed. No owner registry, file-movement table, stored coverage floor or Python test-coverage framework is required.
+The target builds the instrumented code and tests, then runs CTest with a fresh profile directory and invokes `llvm-profdata` and `llvm-cov`. Reports are generated build artifacts: `summary.txt`, LLVM's `summary.json`, `coverage.lcov`, `metrics.md`, and `html/index.html`. The compact summary distinguishes full and focused scopes and reports lines, functions and branches separately; HTML shows branch counts beside source lines. CMake passes all instrumented object files directly to LLVM, including unexecuted production code; no synthetic executable or target-name list is needed. No owner registry, file-movement table, stored coverage floor or Python test-coverage framework is required.
 
 For a focused report, build the affected instrumented test targets and pass `--target TARGET...`. Only their tests and executable mappings are used; this report describes that selected scope. `--source` chooses the source directory and `--exclude` passes a filename expression to LLVM. The example excludes colocated tests from the production report.
 

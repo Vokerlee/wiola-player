@@ -22,12 +22,15 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <deque>
 #include <limits>
 #include <optional>
+#include <random>
 #include <span>
 #include <stdexcept>
 #include <stop_token>
@@ -143,6 +146,96 @@ TYPED_TEST(RingEndpointContract, InertConsumerCannotReadOrCommitLiveData)
 
     ASSERT_EQ(consumer.pop(output), output.size());
     EXPECT_EQ(output, input);
+}
+
+TYPED_TEST(RingEndpointContract, MixedCopyingAndBorrowedOperationsMatchAnIndependentFifoModel)
+{
+    for (const std::size_t requested_capacity : {2, 3, 5, 31}) {
+        SCOPED_TRACE(requested_capacity);
+        wiola::lockfree::SPSCRingBuffer<TypeParam> buffer{requested_capacity};
+        auto producer = buffer.producer();
+        auto consumer = buffer.consumer();
+        std::deque<TypeParam> expected;
+        std::mt19937 random{0x57494F4C};
+        int next = 0;
+
+        for (int step = 0; step < 5000; ++step) {
+            SCOPED_TRACE(step);
+            std::array<TypeParam, 37> input;
+            for (auto& value : input)
+                value = static_cast<TypeParam>(++next);
+            const std::size_t count = random() % (input.size() + 1);
+            switch (random() % 6) {
+            case 0: {
+                const auto written = std::min(count, buffer.capacity() - expected.size());
+                ASSERT_EQ(producer.push(std::span{input}.first(count)), written);
+                expected.insert(expected.end(), input.begin(), input.begin() + written);
+                break;
+            }
+            case 1: {
+                std::array<TypeParam, 37> output;
+                output.fill(TypeParam{-1});
+                const auto read = std::min(count, expected.size());
+                ASSERT_EQ(consumer.pop(std::span{output}.first(count)), read);
+                for (std::size_t index = 0; index < read; ++index) {
+                    EXPECT_EQ(output[index], expected.front());
+                    expected.pop_front();
+                }
+                for (std::size_t index = read; index < output.size(); ++index)
+                    EXPECT_EQ(output[index], TypeParam{-1});
+                break;
+            }
+            case 2: {
+                const bool available = expected.size() < buffer.capacity();
+                ASSERT_EQ(producer.try_push(input.front()), available);
+                if (available)
+                    expected.push_back(input.front());
+                break;
+            }
+            case 3: {
+                const auto value = consumer.try_pop();
+                ASSERT_EQ(value.has_value(), !expected.empty());
+                if (value) {
+                    EXPECT_EQ(*value, expected.front());
+                    expected.pop_front();
+                }
+                break;
+            }
+            case 4: {
+                auto region = producer.acquire_write();
+                ASSERT_EQ(region.size(), buffer.capacity() - expected.size());
+                const auto written = std::min(count, region.size());
+                std::size_t index = 0;
+                for (auto span : {region.first, region.second})
+                    for (auto& value : span) {
+                        if (index == written)
+                            break;
+                        value = input[index++];
+                        expected.push_back(value);
+                    }
+                producer.commit_write(written);
+                break;
+            }
+            default: {
+                const auto region = consumer.acquire_read();
+                ASSERT_EQ(region.size(), expected.size());
+                std::size_t index = 0;
+                for (auto span : {region.first, region.second})
+                    for (const auto value : span)
+                        EXPECT_EQ(value, expected[index++]);
+                const auto read = std::min(count, region.size());
+                consumer.commit_read(read);
+                for (std::size_t consumed = 0; consumed < read; ++consumed)
+                    expected.pop_front();
+                break;
+            }
+            }
+
+            EXPECT_EQ(buffer.size_approx(), expected.size());
+            EXPECT_EQ(producer.space_approx(), buffer.capacity() - expected.size());
+            EXPECT_EQ(buffer.empty_approx(), expected.empty());
+        }
+    }
 }
 
 TEST(SPSCRingBuffer, PopsWhatWasPushed)

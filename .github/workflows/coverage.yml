@@ -37,14 +37,8 @@ jobs:
           path: build-coverage/Testing/Temporary
           if-no-files-found: ignore
           retention-days: 7
-      # The numbers, on the run's own page.
-      - run: |
-          {
-            echo '### Coverage'
-            echo '```'
-            cat build-coverage/coverage/summary.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Summarize line, function and branch coverage
+        run: cat build-coverage/coverage/metrics.md >> "$GITHUB_STEP_SUMMARY"
       # What this pull request itself left untested, which a total is too blunt to show.
       - if: github.event_name == 'pull_request'
         run: |
@@ -63,6 +57,7 @@ jobs:
           path: |
             build-coverage/coverage/summary.json
             build-coverage/coverage/summary.txt
+            build-coverage/coverage/metrics.md
             build-coverage/coverage/coverage.lcov
             build-coverage/coverage/coverage.profdata
       # Only from main: what a pull request measured is its own, and does not replace the report.
