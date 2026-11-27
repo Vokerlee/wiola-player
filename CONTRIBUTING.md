@@ -182,13 +182,11 @@ the formatter preserves their blank lines.
 Use the instrumented CMake preset and LLVM tools matching its Clang version:
 
 ```bash
-cmake --preset linux-coverage
-cmake --build --preset linux-coverage --parallel 4
-cmake --build --preset linux-coverage --target wiola_coverage_inventory --parallel 4
-python3 -m scripts.coverage --build-dir build-coverage --source src --exclude '/tests/'
+CXX=clang++-18 cmake --preset linux-coverage
+QT_QPA_PLATFORM=offscreen cmake --build --preset linux-coverage --target coverage --parallel 4
 ```
 
-The helper runs CTest with a fresh profile directory and invokes `llvm-profdata` and `llvm-cov`. Reports are generated build artifacts: `summary.txt`, LLVM's `summary.json`, `coverage.lcov`, and `html/index.html`. The link-only inventory includes unexecuted production libraries in a full report. No owner registry, file-movement table, stored coverage floor or Python test-coverage framework is required.
+The target builds the instrumented code and tests, then runs CTest with a fresh profile directory and invokes `llvm-profdata` and `llvm-cov`. Reports are generated build artifacts: `summary.txt`, LLVM's `summary.json`, `coverage.lcov`, and `html/index.html`. CMake passes all instrumented object files directly to LLVM, including unexecuted production code; no synthetic executable or target-name list is needed. No owner registry, file-movement table, stored coverage floor or Python test-coverage framework is required.
 
 For a focused report, build the affected instrumented test targets and pass `--target TARGET...`. Only their tests and executable mappings are used; this report describes that selected scope. `--source` chooses the source directory and `--exclude` passes a filename expression to LLVM. The example excludes colocated tests from the production report.
 

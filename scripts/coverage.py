@@ -15,18 +15,20 @@ from scripts.build.cmake import CMakeBuild, CMakeInventory
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", required=True, type=Path)
-    parser.add_argument("--source", required=True, type=Path)
+    parser.add_argument("--source", default=Path("src"), type=Path)
+    parser.add_argument("--objects", type=Path, help="CMake-generated LLVM response file")
     parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--target",
         nargs="+",
         help="Limit tests and objects to these executable targets",
     )
-    parser.add_argument("--exclude", help="LLVM filename exclusion expression")
+    parser.add_argument(
+        "--exclude", default="/tests/", help="LLVM filename exclusion expression"
+    )
     args = parser.parse_args()
-    inventory = CMakeInventory.read(args.build_dir)
-    build = CMakeBuild(inventory)
-    source = (inventory.source_root / args.source).resolve()
+    source = (Path(__file__).resolve().parents[1] / args.source).resolve()
+    cache = (args.build_dir / "CMakeCache.txt").read_text()
 
     if not source.is_dir():
         parser.error("--source must be an existing source directory")
@@ -46,7 +48,9 @@ def main():
     ]
 
     if args.target:
+        build = CMakeBuild(CMakeInventory.read(args.build_dir))
         objects = sorted({build.executable(name) for name in args.target})
+        mappings = [str(objects[0]), *["-object=" + str(path) for path in objects[1:]]]
         discovered = json.loads(
             subprocess.check_output(
                 [
@@ -73,17 +77,21 @@ def main():
 
         command += ["-R", "^(" + "|".join(re.escape(name) for name in cases) + ")$"]
     else:
-        # The link-only inventory includes unexecuted production objects in CI reports.
-        build.executable("wiola_coverage_inventory")
-        objects = sorted(
-            {
-                artifact
-                for target in inventory.targets
-                if target.kind == "EXECUTABLE" and target.sources
-                for artifact in target.artifacts
-                if artifact.is_file()
-            }
-        )
+        response = args.objects
+
+        if response is None:
+            configuration = re.search(r"^CMAKE_BUILD_TYPE:[^=]+=(.*)$", cache, re.M)
+            if configuration is None:
+                parser.error("Select a CMake build configuration or pass --objects")
+
+            response = args.build_dir / (
+                "coverage-objects-" + configuration.group(1) + ".rsp"
+            )
+
+        if not response.is_file():
+            parser.error("Configure with ENABLE_COVERAGE=ON before collecting coverage")
+
+        mappings = ["@" + str(response.resolve())]
 
     subprocess.run(
         command,
@@ -97,7 +105,6 @@ def main():
             "Tests produced no complete LLVM profiles; enable coverage instrumentation"
         )
 
-    cache = (args.build_dir / "CMakeCache.txt").read_text()
     compiler = re.search(r"^CMAKE_CXX_COMPILER:[^=]+=(.+)$", cache, re.M)
 
     if compiler is None:
@@ -126,8 +133,7 @@ def main():
         check=True,
     )
     arguments = [
-        str(objects[0]),
-        *["-object=" + str(path) for path in objects[1:]],
+        *mappings,
         "-instr-profile=" + str(merged),
         str(source),
     ]

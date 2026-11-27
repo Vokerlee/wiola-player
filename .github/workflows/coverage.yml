@@ -25,10 +25,8 @@ jobs:
       - run: cmake --preset linux-coverage
         env:
           CXX: clang++-18
-      - run: cmake --build --preset linux-coverage --parallel 4
-      - run: cmake --build --preset linux-coverage --target wiola_coverage_inventory --parallel 4
       - name: Collect compiler coverage reports
-        run: python3 -m scripts.coverage --build-dir build-coverage --source src --exclude '/tests/'
+        run: cmake --build --preset linux-coverage --target coverage --parallel 4
         env:
           QT_QPA_PLATFORM: offscreen
       - name: Upload coverage test diagnostics
@@ -67,7 +65,6 @@ jobs:
             build-coverage/coverage/summary.txt
             build-coverage/coverage/coverage.lcov
             build-coverage/coverage/coverage.profdata
-            build-coverage/coverage/raw-*/
       # Only from main: what a pull request measured is its own, and does not replace the report.
       # The report takes a path of its own, leaving the root for whatever is put there later.
       - if: github.ref == 'refs/heads/main'
