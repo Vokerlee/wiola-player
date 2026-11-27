@@ -21,7 +21,7 @@
 #include "custom_tag_editor.hpp"
 #include <wiola/library/tags.hpp>
 
-#include <QHBoxLayout>
+#include <QFormLayout>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
@@ -79,15 +79,17 @@ CustomTagEditor::CustomTagEditor(QWidget* parent)
     remove_->setObjectName("removeCustomTag");
     remove_->setAccessibleName("Remove custom tag");
 
-    QHBoxLayout* fields = new QHBoxLayout;
-    fields->addWidget(key_);
-    fields->addWidget(value_);
+    auto* fields = new QFormLayout;
+    fields->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    fields->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    fields->addRow("Tag", key_);
+    fields->addRow("Value", value_);
 
-    QHBoxLayout* commands = new QHBoxLayout;
-    commands->addWidget(add_);
-    commands->addWidget(edit_);
-    commands->addWidget(remove_);
-    commands->addStretch();
+    auto* commands = new QFormLayout;
+    commands->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    commands->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    commands->addRow(add_, edit_);
+    commands->addRow(remove_);
 
     QVBoxLayout* layout = new QVBoxLayout{this};
     layout->setContentsMargins(0, 0, 0, 0);

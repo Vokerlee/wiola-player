@@ -20,6 +20,7 @@
 
 #include "track_inspector.hpp"
 
+#include <qt/widgets/appearance/presentation_tokens.hpp>
 #include <qt/widgets/controls/clock.hpp>
 #include <wiola/qt/paths.hpp>
 
@@ -44,6 +45,7 @@ QLabel* value(QWidget* parent, const QString& name)
     label->setTextFormat(Qt::PlainText);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     label->setWordWrap(true);
+    label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     return label;
 }
@@ -79,6 +81,8 @@ TrackInspector::TrackInspector(QWidget* parent)
     title_->setFont(heading);
 
     QFormLayout* fields = new QFormLayout;
+    fields->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    fields->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     fields->addRow("Title", title_);
     fields->addRow("Artist", artist_);
     fields->addRow("Album", album_);
@@ -91,7 +95,8 @@ TrackInspector::TrackInspector(QWidget* parent)
     conflicts_ = new MetadataConflictPanel{this};
 
     auto* root = new QVBoxLayout{this};
-    root->setContentsMargins(0, 0, 0, 0);
+    const auto spacing = PresentationTokens{}.player.section_spacing;
+    root->setContentsMargins(0, 0, spacing, spacing);
     auto* scroll = new QScrollArea{this};
     scroll->setObjectName("inspectorScroll");
     scroll->setAccessibleName("Scrollable track inspector");
@@ -99,6 +104,7 @@ TrackInspector::TrackInspector(QWidget* parent)
     scroll->setFrameShape(QFrame::NoFrame);
     auto* content = new QWidget;
     auto* layout = new QVBoxLayout{content};
+    layout->setContentsMargins(spacing, spacing, spacing, spacing);
     scroll->setWidget(content);
     root->addWidget(scroll);
     layout->addWidget(context_label_);
