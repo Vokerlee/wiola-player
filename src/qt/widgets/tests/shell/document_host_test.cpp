@@ -22,11 +22,13 @@
 #include <qt/widgets/documents/now_playing_document.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
+#include <qt/widgets/layout/view_registry.hpp>
 #include <qt/widgets/shell/document_host.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <qt/widgets/tracks/track_table_view.hpp>
 #include <wiola/media/codecs/ffmpeg/composition.hpp>
 #include <wiola/media/local/resource.hpp>
+#include <wiola/qt/paths.hpp>
 
 #include <QApplication>
 #include <QEvent>
@@ -327,6 +329,37 @@ TEST_F(DocumentHostTest, AnExplicitlyEmptyVisiblePreferenceRestoresTheTemporaryQ
     gui::DocumentHost host{*library, playback, *preferences, {}};
     EXPECT_EQ(host.registry().active(), gui::DocumentId::queue());
     EXPECT_NE(host.indexOf(&host.queue()), -1);
+}
+
+TEST_F(DocumentHostTest, LayoutRegistrationFollowsOpenDocumentsAndOwnedBrowserParts)
+{
+    const auto playlist = library->playlists().create("Registered").id;
+    const auto folder = library->repository().create_workspace(
+        wiola::platform::qt::QtPathAdapter::from_qt(directory.path())
+    );
+    gui::DocumentHost host{*library, playback, *preferences, {}};
+    ASSERT_TRUE(host.open_playlist(playlist));
+    ASSERT_TRUE(host.open_workspace(folder));
+
+    gui::ViewRegistry views;
+    host.register_views(views);
+    for (const auto& id : {gui::DocumentId::queue(), gui::DocumentId::playlist(playlist),
+             gui::DocumentId::workspace(folder)}) {
+        for (const auto part : {gui::DocumentViewPart::whole, gui::DocumentViewPart::search,
+                 gui::DocumentViewPart::tags}) {
+            const auto* registration = views.find(gui::DocumentViewReference{id, part});
+            ASSERT_NE(registration, nullptr);
+            EXPECT_FALSE(registration->widget.isNull());
+        }
+    }
+
+    ASSERT_TRUE(host.close(gui::DocumentId::playlist(playlist)));
+    gui::ViewRegistry remaining;
+    host.register_views(remaining);
+    EXPECT_EQ(remaining.find(gui::DocumentViewReference{gui::DocumentId::playlist(playlist)}),
+        nullptr);
+    EXPECT_NE(remaining.find(gui::DocumentViewReference{gui::DocumentId::workspace(folder)}),
+        nullptr);
 }
 
 } // namespace

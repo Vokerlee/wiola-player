@@ -25,6 +25,7 @@
 #include <qt/widgets/documents/playlist_name.hpp>
 #include <qt/widgets/documents/saved_playlist_document.hpp>
 #include <qt/widgets/documents/workspace_document.hpp>
+#include <qt/widgets/layout/view_registry.hpp>
 #include <qt/widgets/tracks/track_browser.hpp>
 #include <wiola/app/playback/playback_presentation.hpp>
 #include <wiola/library/records.hpp>
@@ -617,6 +618,28 @@ void DocumentHost::save()
             state.documents.browsers.erase(oldest);
         }
     });
+}
+
+void DocumentHost::register_views(ViewRegistry& views) const
+{
+    const auto register_document = [&](DocumentId id, QWidget* widget) {
+        static_cast<void>(views.add(DocumentViewReference{id}, widget,
+            LayoutComponentKind::track_table));
+        static_cast<void>(views.add(DocumentViewReference{id, DocumentViewPart::search},
+            widget->findChild<QWidget*>("trackSearchPanel"), LayoutComponentKind::search));
+        static_cast<void>(views.add(DocumentViewReference{id, DocumentViewPart::tags},
+            widget->findChild<QWidget*>("tagFilterPanel"), LayoutComponentKind::tags));
+    };
+
+    register_document(DocumentId::queue(), queue_);
+
+    for (const auto& [id, view] : registry_.playlists())
+        if (view)
+            register_document(DocumentId::playlist(id), view);
+
+    for (const auto& [id, view] : registry_.workspaces())
+        if (view)
+            register_document(DocumentId::workspace(id), view);
 }
 
 } // namespace wiola::gui
