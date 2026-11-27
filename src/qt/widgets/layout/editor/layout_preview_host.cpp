@@ -25,10 +25,11 @@
 namespace wiola::gui {
 
 LayoutPreviewHost::LayoutPreviewHost(QWidget* parent)
-    : QGroupBox{"Isolated preview", parent}
+    : QGroupBox{"Preview", parent}
     , layout_{new QVBoxLayout{this}}
 {
     setObjectName("isolatedLayoutPreview");
+    setToolTip("Preview only; the player layout changes when you click Apply");
     layout_->setSizeConstraint(QLayout::SetMinAndMaxSize);
 }
 

@@ -24,7 +24,9 @@
 #include <QDropEvent>
 #include <QHeaderView>
 #include <QMimeData>
+#include <QRegularExpression>
 #include <QSignalBlocker>
+#include <QTreeWidgetItemIterator>
 
 namespace wiola::gui {
 namespace {
@@ -63,6 +65,26 @@ std::optional<LayoutDrop> drop_request(const QMimeData& data, QPoint position)
     return {};
 }
 
+QString node_label(const LayoutNode& node)
+{
+    if (!node.title.isEmpty())
+        return node.title;
+
+    if (node.action)
+        if (const auto* action = action_descriptor(*node.action))
+            return QString::fromLatin1(action->label);
+
+    QString label = node.id;
+    label.replace(QRegularExpression{"([a-z0-9])([A-Z])"}, "\\1 \\2");
+    label.replace(QRegularExpression{"[-_]"}, " ");
+    label = label.toLower();
+
+    if (!label.isEmpty())
+        label[0] = label.front().toUpper();
+
+    return label;
+}
+
 } // namespace
 
 ComponentPalette::ComponentPalette(QWidget* parent)
@@ -76,7 +98,7 @@ ComponentPalette::ComponentPalette(QWidget* parent)
     for (const auto& entry : action_descriptors()) {
         auto* item = new QListWidgetItem{entry.label, this};
         item->setData(action_role, entry.key);
-        item->setToolTip("Drag onto a container, or select it and press Add");
+        item->setToolTip("Drag onto a container, or select it and press Add button");
     }
 }
 
@@ -90,7 +112,7 @@ LayoutHierarchy::LayoutHierarchy(QWidget* parent)
     : QTreeWidget{parent}
 {
     setObjectName("layoutHierarchy");
-    setHeaderLabels({"Component", "Type"});
+    setHeaderLabels({"Item", "Arrangement / type"});
     header()->setStretchLastSection(false);
     header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
@@ -153,8 +175,9 @@ void LayoutHierarchy::show_document(const LayoutDocument& document, const QStrin
 
     const auto add_node = [&](auto&& self, const LayoutNode& node,
                               QTreeWidgetItem* parent) -> void {
+        const auto* descriptor = component_descriptor(node.kind);
         auto* item = new QTreeWidgetItem{
-            {node.id, layout_component_name(node.kind)}
+            {node_label(node), descriptor ? QString::fromLatin1(descriptor->label) : QString{}}
         };
         item->setData(0, identity_role, node.id);
         item->setToolTip(0, node.id);
@@ -170,8 +193,13 @@ void LayoutHierarchy::show_document(const LayoutDocument& document, const QStrin
     add_node(add_node, document.root, nullptr);
     expandAll();
 
-    const auto items = findItems(selected, Qt::MatchExactly | Qt::MatchRecursive);
-    setCurrentItem(items.empty() ? topLevelItem(0) : items.front());
+    setCurrentItem(topLevelItem(0));
+
+    for (QTreeWidgetItemIterator item{this}; *item; ++item)
+        if ((*item)->data(0, identity_role).toString() == selected) {
+            setCurrentItem(*item);
+            break;
+        }
 }
 
 } // namespace wiola::gui

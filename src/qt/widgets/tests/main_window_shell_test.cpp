@@ -78,6 +78,7 @@
 #include <QTest>
 #include <QTimer>
 #include <QToolButton>
+#include <QTreeWidgetItemIterator>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -803,12 +804,17 @@ TEST_F(MainWindowShell, LayoutPreviewCommandsAndCancelDoNotTouchPlayerState)
     ASSERT_NE(tree, nullptr);
     ASSERT_NE(palette, nullptr);
 
-    const auto transport =
-        tree->findItems("transportControls", Qt::MatchExactly | Qt::MatchRecursive);
+    QTreeWidgetItem* transport = nullptr;
 
-    ASSERT_FALSE(transport.empty());
+    for (QTreeWidgetItemIterator item{tree}; *item; ++item)
+        if ((*item)->data(0, Qt::UserRole).toString() == "transportControls") {
+            transport = *item;
+            break;
+        }
 
-    tree->setCurrentItem(transport.front());
+    ASSERT_NE(transport, nullptr);
+
+    tree->setCurrentItem(transport);
     palette->setCurrentRow(0);
     editor->findChild<QPushButton*>("addLayoutAction")->click();
 

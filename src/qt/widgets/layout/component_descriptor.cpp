@@ -26,23 +26,25 @@ namespace wiola::gui {
 
 std::span<const ComponentDescriptor> component_descriptors()
 {
+    using enum LayoutComponentKind;
+
     static constexpr std::array descriptors{
-        ComponentDescriptor{LayoutComponentKind::row,           "row",           true,  3 | 64    },
-        ComponentDescriptor{LayoutComponentKind::column,        "column",        true,  3         },
-        ComponentDescriptor{LayoutComponentKind::stack,         "stack",         true,  3         },
-        ComponentDescriptor{LayoutComponentKind::splitter,      "splitter",      true,  3 | 8 | 16},
-        ComponentDescriptor{LayoutComponentKind::grid,          "grid",          true,  3 | 32    },
-        ComponentDescriptor{LayoutComponentKind::tabs,          "tabs",          true,  3         },
-        ComponentDescriptor{LayoutComponentKind::group,         "group",         true,  3         },
-        ComponentDescriptor{LayoutComponentKind::button,        "button",        false, 3 | 4     },
-        ComponentDescriptor{LayoutComponentKind::track_table,   "track_table",   false, 3         },
-        ComponentDescriptor{LayoutComponentKind::inspector,     "inspector",     false, 3         },
-        ComponentDescriptor{LayoutComponentKind::search,        "search",        false, 3         },
-        ComponentDescriptor{LayoutComponentKind::tags,          "tags",          false, 3         },
-        ComponentDescriptor{LayoutComponentKind::transport,     "transport",     false, 3         },
-        ComponentDescriptor{LayoutComponentKind::volume,        "volume",        false, 3         },
-        ComponentDescriptor{LayoutComponentKind::status,        "status",        false, 3         },
-        ComponentDescriptor{LayoutComponentKind::document_host, "document_host", false, 3         }
+        ComponentDescriptor{row,           "row",           "Horizontal row",    true,  3 | 64    },
+        ComponentDescriptor{column,        "column",        "Vertical column",   true,  3         },
+        ComponentDescriptor{stack,         "stack",         "Stacked pages",     true,  3         },
+        ComponentDescriptor{splitter,      "splitter",      "Resizable panes",   true,  3 | 8 | 16},
+        ComponentDescriptor{grid,          "grid",          "Grid",              true,  3 | 32    },
+        ComponentDescriptor{tabs,          "tabs",          "Tabs",              true,  3         },
+        ComponentDescriptor{group,         "group",         "Labeled group",     true,  3         },
+        ComponentDescriptor{button,        "button",        "Button",            false, 3 | 4     },
+        ComponentDescriptor{track_table,   "track_table",   "Track list",        false, 3         },
+        ComponentDescriptor{inspector,     "inspector",     "Track details",     false, 3         },
+        ComponentDescriptor{search,        "search",        "Search",            false, 3         },
+        ComponentDescriptor{tags,          "tags",          "Tag filters",       false, 3         },
+        ComponentDescriptor{transport,     "transport",     "Playback timeline", false, 3         },
+        ComponentDescriptor{volume,        "volume",        "Volume",            false, 3         },
+        ComponentDescriptor{status,        "status",        "Text",              false, 3         },
+        ComponentDescriptor{document_host, "document_host", "Playlist tabs",     false, 3         }
     };
     return descriptors;
 }

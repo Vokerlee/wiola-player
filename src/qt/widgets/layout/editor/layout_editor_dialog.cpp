@@ -74,26 +74,41 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
 
     hierarchy_ = new LayoutHierarchy{this};
 
-    auto* add = new QPushButton{"Add action", this};
-    add->setObjectName("addLayoutAction");
+    add_action_ = new QPushButton{"Add button", this};
+    add_action_->setObjectName("addLayoutAction");
+    add_action_->setToolTip("Add the chosen button at the selected position in Your layout");
 
-    auto* remove = new QPushButton{"Remove", this};
-    remove->setObjectName("removeLayoutComponent");
+    remove_ = new QPushButton{"Remove from layout", this};
+    remove_->setObjectName("removeLayoutComponent");
+    remove_->setToolTip("Remove the selected item and its children from Your layout");
 
-    auto* palette_commands = new QHBoxLayout;
-    palette_commands->addWidget(add);
-    palette_commands->addWidget(remove);
+    move_up_ = new QPushButton{"Move up", this};
+    move_up_->setObjectName("moveLayoutItemUp");
+    move_up_->setToolTip("Move the selected item before its previous neighbor (Alt+Up)");
+
+    move_down_ = new QPushButton{"Move down", this};
+    move_down_->setObjectName("moveLayoutItemDown");
+    move_down_->setToolTip("Move the selected item after its next neighbor (Alt+Down)");
+
+    insertion_hint_ = new QLabel{this};
+    insertion_hint_->setObjectName("layoutInsertionHint");
+    insertion_hint_->setWordWrap(true);
 
     container_kind_ = new QComboBox{this};
     container_kind_->setObjectName("layoutContainerType");
 
     for (const auto& descriptor : component_descriptors())
         if (descriptor.container)
-            container_kind_->addItem(QString::fromLatin1(descriptor.key),
+            container_kind_->addItem(QString::fromLatin1(descriptor.label),
                 static_cast<int>(descriptor.kind));
 
-    auto* add_container_button = new QPushButton{"Add container", this};
-    add_container_button->setObjectName("addLayoutContainer");
+    add_container_ = new QPushButton{"Add section", this};
+    add_container_->setObjectName("addLayoutContainer");
+    add_container_->setToolTip("Add an empty section at the selected position in Your layout");
+
+    auto* section_form = new QFormLayout;
+    section_form->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    section_form->addRow("Arrange as", container_kind_);
 
     inspector_ = new LayoutPropertyInspector{this};
     inspector_->on_changed([this] { configure_selected(); });
@@ -118,21 +133,30 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     buttons->button(QDialogButtonBox::Cancel)->setObjectName("cancelLayoutEdit");
 
     auto* left = new QVBoxLayout;
-    left->addWidget(new QLabel{"Actions", this});
-    left->addWidget(palette_);
-    left->addLayout(palette_commands);
-    left->addWidget(container_kind_);
-    left->addWidget(add_container_button);
+    left->addWidget(new QLabel{"Available buttons", this});
+    left->addWidget(palette_, 1);
+    left->addWidget(insertion_hint_);
+    left->addWidget(add_action_);
+    left->addSpacing(left->spacing());
+    left->addWidget(new QLabel{"Add a section", this});
+    left->addLayout(section_form);
+    left->addWidget(add_container_);
 
     auto* center = new QVBoxLayout;
-    center->addWidget(new QLabel{"Layout", this});
-    center->addWidget(hierarchy_);
+    center->addWidget(new QLabel{"Your layout", this});
+    center->addWidget(hierarchy_, 1);
+
+    auto* position_commands = new QHBoxLayout;
+    position_commands->addWidget(move_up_);
+    position_commands->addWidget(move_down_);
+    center->addLayout(position_commands);
+    center->addWidget(remove_);
     center->addLayout(history);
 
     preview_ = new LayoutPreviewHost{this};
 
     auto* right = new QVBoxLayout;
-    right->addWidget(new QLabel{"Properties", this});
+    right->addWidget(new QLabel{"Selected item", this});
     right->addWidget(inspector_);
     right->addStretch();
 
@@ -143,14 +167,14 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
 
     const int character = fontMetrics().averageCharWidth();
 
-    for (const auto& [layout, characters] : {
-             std::pair{left,   22},
-             std::pair{center, 44},
-             std::pair{right,  30}
-    }) {
+    palette_->setMinimumWidth(character * 22);
+    hierarchy_->setMinimumWidth(character * 40);
+    inspector_->setMinimumWidth(character * 30);
+
+    for (auto* layout : {left, center, right}) {
         auto* panel = new QWidget;
+        layout->setSizeConstraint(QLayout::SetMinimumSize);
         panel->setLayout(layout);
-        panel->setMinimumWidth(character * characters);
         columns->addWidget(panel);
     }
 
@@ -183,6 +207,12 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     auto* panels = new QWidget;
     panels->setLayout(contents);
     scroll->setWidget(panels);
+    auto* guidance =
+        new QLabel{"Choose a button, select its position in Your layout, then click Add button. "
+                   "Drag items or use Move up / Move down to rearrange. Apply saves your changes.",
+            this};
+    guidance->setWordWrap(true);
+    root->addWidget(guidance);
     root->addWidget(scroll, 1);
     root->addWidget(status_);
     root->addWidget(buttons);
@@ -191,9 +221,12 @@ LayoutEditorDialog::LayoutEditorDialog(LayoutDocument document, QWidget* parent)
     for (auto* button : findChildren<QPushButton*>())
         button->setAutoDefault(false);
 
-    connect(add, &QPushButton::clicked, this, &LayoutEditorDialog::add_from_palette);
-    connect(add_container_button, &QPushButton::clicked, this, &LayoutEditorDialog::add_container);
-    connect(remove, &QPushButton::clicked, this, &LayoutEditorDialog::remove_selected);
+    connect(add_action_, &QPushButton::clicked, this, &LayoutEditorDialog::add_from_palette);
+    connect(add_container_, &QPushButton::clicked, this, &LayoutEditorDialog::add_container);
+    connect(remove_, &QPushButton::clicked, this, &LayoutEditorDialog::remove_selected);
+    connect(move_up_, &QPushButton::clicked, this, [this] { move_selected(-1); });
+    connect(move_down_, &QPushButton::clicked, this, [this] { move_selected(1); });
+    connect(palette_, &QListWidget::currentItemChanged, this, [this] { update_commands(); });
     connect(undo_, &QPushButton::clicked, this,
         [this] { finish_edit(editor_.undo(), selected_id()); });
 
@@ -408,6 +441,31 @@ void LayoutEditorDialog::rebuild(const QString& selected)
 void LayoutEditorDialog::update_inspector()
 {
     inspector_->show_node(locate_layout_node(editor_.document().root, selected_id()).node);
+    update_commands();
+}
+
+void LayoutEditorDialog::update_commands()
+{
+    const auto location = locate_layout_node(editor_.document().root, selected_id());
+    const bool can_insert = location.node && (container(location.node->kind) || location.parent);
+
+    add_action_->setEnabled(can_insert && palette_->currentItem());
+    add_container_->setEnabled(can_insert);
+    remove_->setEnabled(location.parent);
+    move_up_->setEnabled(location.parent && location.index > 0);
+    move_down_->setEnabled(location.parent &&
+        location.index + 1 < location.parent->children.size());
+
+    const auto* selected = hierarchy_->currentItem();
+    const QString label = selected ? selected->text(0) : QString{};
+    if (!can_insert)
+        insertion_hint_->setText("Select a position in Your layout");
+    else if (container(location.node->kind))
+        insertion_hint_->setText("Add to: " + label);
+    else
+        insertion_hint_->setText("Insert after: " + label);
+
+    insertion_hint_->setAccessibleDescription(insertion_hint_->text());
 }
 
 void LayoutEditorDialog::update_preview()

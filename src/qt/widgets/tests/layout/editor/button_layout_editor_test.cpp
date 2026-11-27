@@ -35,6 +35,7 @@
 #include <QScrollBar>
 #include <QSplitter>
 #include <QTest>
+#include <QTreeWidgetItemIterator>
 #include <gtest/gtest.h>
 
 namespace {
@@ -54,8 +55,11 @@ const wiola::gui::LayoutNode* find(const wiola::gui::LayoutNode& root, const QSt
 
 QTreeWidgetItem* item(QTreeWidget& tree, const QString& id)
 {
-    const auto items = tree.findItems(id, Qt::MatchExactly | Qt::MatchRecursive);
-    return items.empty() ? nullptr : items.front();
+    for (QTreeWidgetItemIterator item{&tree}; *item; ++item)
+        if ((*item)->data(0, Qt::UserRole).toString() == id)
+            return *item;
+
+    return nullptr;
 }
 
 TEST(ButtonLayoutEditor, TextEditingShortcutsDoNotDeleteComponentsAndSmallWindowsCanScroll)
@@ -193,6 +197,148 @@ TEST(ButtonLayoutEditor, ReadableResizablePanelsAndPreviewHaveIndependentScrollA
         ASSERT_NE(command, nullptr);
         EXPECT_TRUE(visible_in(editor, *command));
     }
+}
+
+TEST(ButtonLayoutEditor, CommandsDescribeInsertionAndRemoveOnlyFromTheLayout)
+{
+    wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
+    auto* palette = editor.findChild<QListWidget*>("layoutComponentPalette");
+    auto* tree = editor.findChild<QTreeWidget*>("layoutHierarchy");
+    auto* add = editor.findChild<QPushButton*>("addLayoutAction");
+    auto* remove = editor.findChild<QPushButton*>("removeLayoutComponent");
+    auto* up = editor.findChild<QPushButton*>("moveLayoutItemUp");
+    auto* down = editor.findChild<QPushButton*>("moveLayoutItemDown");
+    auto* hint = editor.findChild<QLabel*>("layoutInsertionHint");
+    auto* kind = editor.findChild<QComboBox*>("layoutContainerType");
+
+    ASSERT_NE(palette, nullptr);
+    ASSERT_NE(tree, nullptr);
+    ASSERT_NE(add, nullptr);
+    ASSERT_NE(remove, nullptr);
+    ASSERT_NE(up, nullptr);
+    ASSERT_NE(down, nullptr);
+    ASSERT_NE(hint, nullptr);
+    ASSERT_NE(kind, nullptr);
+    EXPECT_EQ(add->parentWidget(), palette->parentWidget());
+    EXPECT_EQ(remove->parentWidget(), tree->parentWidget());
+    EXPECT_NE(remove->parentWidget(), palette->parentWidget());
+    EXPECT_FALSE(add->isEnabled());
+    EXPECT_FALSE(remove->isEnabled());
+    EXPECT_FALSE(up->isEnabled());
+    EXPECT_FALSE(down->isEnabled());
+    EXPECT_TRUE(hint->text().startsWith("Add to: "));
+    EXPECT_EQ(kind->currentText(), "Horizontal row");
+
+    palette->setCurrentRow(0);
+
+    EXPECT_TRUE(add->isEnabled());
+
+    tree->clearSelection();
+
+    EXPECT_FALSE(add->isEnabled());
+    EXPECT_FALSE(remove->isEnabled());
+    EXPECT_EQ(hint->text(), "Select a position in Your layout");
+
+    tree->setCurrentItem(item(*tree, "libraryCommands"));
+
+    EXPECT_EQ(hint->text(), "Add to: Library commands");
+    EXPECT_TRUE(remove->isEnabled());
+    EXPECT_FALSE(up->isEnabled());
+    EXPECT_TRUE(down->isEnabled());
+
+    down->click();
+
+    ASSERT_GT(editor.document().root.children.size(), 1U);
+    EXPECT_EQ(editor.document().root.children[1].id, "libraryCommands");
+    EXPECT_TRUE(up->isEnabled());
+
+    up->click();
+
+    EXPECT_EQ(editor.document().root.children.front().id, "libraryCommands");
+    EXPECT_FALSE(up->isEnabled());
+
+    tree->setCurrentItem(item(*tree, "openTracks"));
+
+    EXPECT_EQ(hint->text(), "Insert after: Open tracks");
+    EXPECT_EQ(tree->currentItem()->text(0), "Open tracks");
+
+    const int available = palette->count();
+
+    remove->click();
+
+    EXPECT_EQ(find(editor.document().root, "openTracks"), nullptr);
+    EXPECT_EQ(palette->count(), available);
+    EXPECT_FALSE(remove->isEnabled());
+
+    editor.findChild<QPushButton*>("undoLayoutEdit")->click();
+
+    EXPECT_NE(find(editor.document().root, "openTracks"), nullptr);
+}
+
+TEST(ButtonLayoutEditor, PanelMinimumsProtectButtonTextAcrossThemesAndFontSizes)
+{
+    for (const auto& preset : wiola::gui::theme_presets()) {
+        wiola::gui::apply_theme(wiola::gui::theme_colors(preset.palette), preset.style);
+
+        for (const int font_size : {11, 20}) {
+            SCOPED_TRACE(preset.key);
+            SCOPED_TRACE(font_size);
+            wiola::gui::LayoutEditorDialog editor{wiola::gui::classic_layout_document()};
+            QFont font = editor.font();
+            font.setPointSize(font_size);
+            editor.setFont(font);
+            editor.resize(760, 580);
+            editor.show();
+
+            auto* columns = editor.findChild<QSplitter*>("layoutEditorColumns");
+            auto* scroll = editor.findChild<QScrollArea*>("layoutEditorScroll");
+
+            ASSERT_NE(columns, nullptr);
+            ASSERT_NE(scroll, nullptr);
+
+            columns->setSizes({1, 1, 1});
+            QApplication::processEvents();
+
+            for (const auto* name :
+                {"addLayoutAction", "addLayoutContainer", "removeLayoutComponent",
+                    "moveLayoutItemUp", "moveLayoutItemDown", "undoLayoutEdit", "redoLayoutEdit"}) {
+                auto* command = editor.findChild<QPushButton*>(name);
+
+                ASSERT_NE(command, nullptr);
+                EXPECT_GE(command->width(), command->minimumSizeHint().width()) << name;
+                EXPECT_GE(command->height(), command->minimumSizeHint().height()) << name;
+
+                scroll->ensureWidgetVisible(command);
+                QApplication::processEvents();
+
+                const QRect bounds{command->mapTo(scroll->viewport(), QPoint{}), command->size()};
+
+                EXPECT_TRUE(scroll->viewport()->rect().contains(bounds)) << name;
+            }
+
+            for (const auto* name : {"applyLayoutEdit", "cancelLayoutEdit"}) {
+                auto* command = editor.findChild<QPushButton*>(name);
+
+                ASSERT_NE(command, nullptr);
+                EXPECT_TRUE(editor.rect().contains(
+                    QRect{command->mapTo(&editor, QPoint{}), command->size()}
+                )) << name;
+            }
+
+            const auto directory = qEnvironmentVariable("WIOLA_GUI_PREVIEW_DIR");
+
+            if (!directory.isEmpty() && font_size == 11) {
+                QDir{}.mkpath(directory);
+                scroll->horizontalScrollBar()->setValue(0);
+                scroll->verticalScrollBar()->setValue(0);
+                EXPECT_TRUE(editor.grab().save(
+                    QDir{directory}.filePath(QString{"layout-editor-narrow-%1.png"}.arg(preset.key))
+                ));
+            }
+        }
+    }
+
+    wiola::gui::apply_theme(wiola::gui::Theme::light);
 }
 
 TEST(ButtonLayoutEditor, InvalidDraftBlocksApplyAndReturnCommitsPropertiesWithoutClosing)
@@ -392,7 +538,8 @@ TEST(ButtonLayoutEditor, RepeatedConfigurationRetainsTheSelectedComponentIdentit
         ASSERT_NE(node, nullptr);
         EXPECT_EQ(node->title, text);
         ASSERT_NE(tree->currentItem(), nullptr);
-        EXPECT_EQ(tree->currentItem()->text(0), "transportControls");
+        EXPECT_EQ(tree->currentItem()->data(0, Qt::UserRole).toString(), "transportControls");
+        EXPECT_EQ(tree->currentItem()->text(0), text);
     }
 }
 

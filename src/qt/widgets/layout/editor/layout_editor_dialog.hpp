@@ -61,6 +61,7 @@ private:
     bool configure_selected();
     void rebuild(const QString& selected = {});
     void update_inspector();
+    void update_commands();
     void update_preview();
     void update_history();
     void finish_edit(bool succeeded, const QString& selected = {});
@@ -71,6 +72,12 @@ private:
     LayoutHierarchy* hierarchy_{nullptr};
     LayoutPropertyInspector* inspector_{nullptr};
     QComboBox* container_kind_{nullptr};
+    QPushButton* add_action_{nullptr};
+    QPushButton* add_container_{nullptr};
+    QPushButton* remove_{nullptr};
+    QPushButton* move_up_{nullptr};
+    QPushButton* move_down_{nullptr};
+    QLabel* insertion_hint_{nullptr};
     QPushButton* undo_{nullptr};
     QPushButton* redo_{nullptr};
     QLabel* status_{nullptr};
