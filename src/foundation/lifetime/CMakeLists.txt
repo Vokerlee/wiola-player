@@ -13,14 +13,21 @@ target_link_libraries(wiola_lifetime INTERFACE Threads::Threads)
 wiola_target_headers(
     wiola_lifetime
     wiola/foundation
-    HEADERS lease.hpp lease_handle.hpp owner_thread_lifetime.hpp
+    HEADERS
+        lease.hpp
+        lease_handle.hpp
+        owner_thread_lifetime.hpp
+        prepared_change.hpp
 )
 
 if(WIOLA_BUILD_TESTS)
     wiola_add_test(
         lifetime_test
-        SOURCES tests/lease_test.cpp tests/owner_thread_lifetime_test.cpp
-        LIBS wiola::lifetime
+        SOURCES
+            tests/lease_test.cpp
+            tests/owner_thread_lifetime_test.cpp
+            tests/prepared_change_test.cpp
+        LIBS wiola::lifetime wiola_test_allocation_failure
     )
 endif()
 
