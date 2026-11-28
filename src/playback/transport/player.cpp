@@ -104,4 +104,14 @@ void Player::wait()
     worker_.wait();
 }
 
+std::optional<audio::Output::Quiescence> Player::quiesce_output() noexcept
+{
+    return worker_.quiesce_output();
+}
+
+bool Player::adopt_output(audio::Output::Quiescence&& permission) noexcept
+{
+    return worker_.adopt_output(std::move(permission));
+}
+
 } // namespace wiola::engine

@@ -158,18 +158,27 @@ private:
     Lifetime& lifetime_;
 };
 
+bool attach(OutputSession& session, OutputSession::Attachment& attachment,
+    wiola::core::Lease<wiola::audio::Source> source)
+{
+    auto permission = attachment.take_quiescence();
+    if (!permission)
+        permission = wiola::audio::Output::quiesce(attachment.output());
+    return permission && session.activate(attachment, source, *permission);
+}
+
 TEST(OutputSession, RenderBridgeAcceptsAStageWithoutRequiringAChain)
 {
     auto processing = wiola::core::Lease<wiola::audio::Volume>::make();
     processing->set_gain(0.5F);
 
-    ConstantSource source;
+    const auto source = wiola::core::Lease<ConstantSource>::make();
     Lifetime lifetime;
     OutputSession output{processing, [&](wiola::audio::Source& rendered) {
                              return std::make_unique<ObservedOutput>(rendered, lifetime);
                          }};
     auto lease{output.prepare(stereo)};
-    output.activate(*lease, source);
+    ASSERT_TRUE(attach(output, *lease, source));
 
     std::array<float, 2> samples{};
 
@@ -179,11 +188,11 @@ TEST(OutputSession, RenderBridgeAcceptsAStageWithoutRequiringAChain)
 
 TEST(OutputSession, OutputRetainsTheWholeProcessingGraphAfterItsHostAndCacheAreGone)
 {
-    ConstantSource source;
+    const auto source = wiola::core::Lease<ConstantSource>::make();
     Lifetime lifetime;
     wiola::core::WeakLease<float> gain_observer;
     wiola::core::WeakLease<wiola::audio::Stage> stage_observer;
-    std::unique_ptr<OutputSession::Lease> retained;
+    std::unique_ptr<OutputSession::Attachment> retained;
 
     class Gain final : public wiola::audio::Stage {
     public:
@@ -216,7 +225,7 @@ TEST(OutputSession, OutputRetainsTheWholeProcessingGraphAfterItsHostAndCacheAreG
                                 return std::make_unique<ObservedOutput>(rendered, lifetime);
                             }};
         retained = cache.prepare(stereo);
-        cache.activate(*retained, source);
+        ASSERT_TRUE(attach(cache, *retained, source));
     }
 
     EXPECT_TRUE(gain_observer.lock());
@@ -248,8 +257,8 @@ TEST(OutputSession, OutputRetainsTheWholeProcessingGraphAfterItsHostAndCacheAreG
 TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
 {
     auto chain = wiola::core::Lease<ProcessingChain>::make();
-    ConstantSource source;
-    ConstantSource mono_source{mono};
+    const auto source = wiola::core::Lease<ConstantSource>::make();
+    const auto mono_source = wiola::core::Lease<ConstantSource>::make(mono);
     std::size_t num_outputs{0};
     OutputSession session{chain, [&num_outputs](wiola::audio::Source&) {
                               ++num_outputs;
@@ -259,7 +268,7 @@ TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
 
     EXPECT_FALSE(session.open_for(stereo));
 
-    session.activate(*first, source);
+    ASSERT_TRUE(attach(session, *first, source));
 
     auto same{session.prepare(stereo)};
 
@@ -273,7 +282,7 @@ TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
     EXPECT_TRUE(session.open_for(stereo));
     EXPECT_FALSE(session.open_for(mono));
 
-    session.activate(*different, mono_source);
+    ASSERT_TRUE(attach(session, *different, mono_source));
     EXPECT_TRUE(session.open_for(mono));
     EXPECT_EQ(num_outputs, 2U);
 }
@@ -281,7 +290,7 @@ TEST(OutputSession, ReusesOnlyTheCommittedStreamSpec)
 TEST(OutputSession, NullOrThrowingFactoryPreservesTheCommittedOutputAndSource)
 {
     auto chain = wiola::core::Lease<ProcessingChain>::make();
-    ConstantSource source;
+    const auto source = wiola::core::Lease<ConstantSource>::make();
     wiola::audio::Source* bridge{nullptr};
     enum class Failure {
         none,
@@ -303,7 +312,7 @@ TEST(OutputSession, NullOrThrowingFactoryPreservesTheCommittedOutputAndSource)
             return std::make_unique<wiola::testing::FakeOutput>();
         }};
     auto active{session.prepare(stereo)};
-    session.activate(*active, source);
+    ASSERT_TRUE(attach(session, *active, source));
 
     const auto original = active->output();
 
@@ -326,13 +335,13 @@ TEST(OutputSession, NullOrThrowingFactoryPreservesTheCommittedOutputAndSource)
 TEST(OutputSession, DiscardedSameFormatCandidateCannotDetachTheActiveSource)
 {
     auto chain = wiola::core::Lease<ProcessingChain>::make();
-    ConstantSource source;
+    const auto source = wiola::core::Lease<ConstantSource>::make();
     Lifetime lifetime;
     OutputSession session{chain, [&](wiola::audio::Source& rendered) {
                               return std::make_unique<ObservedOutput>(rendered, lifetime);
                           }};
     auto active{session.prepare(stereo)};
-    session.activate(*active, source);
+    ASSERT_TRUE(attach(session, *active, source));
     {
         const auto discarded{session.prepare(stereo)};
     }
@@ -349,16 +358,16 @@ TEST(OutputSession, DiscardedSameFormatCandidateCannotDetachTheActiveSource)
 TEST(OutputSession, SupersededLeaseCannotDetachTheSuccessorEvenForTheSameSource)
 {
     auto chain = wiola::core::Lease<ProcessingChain>::make();
-    ConstantSource source;
+    const auto source = wiola::core::Lease<ConstantSource>::make();
     Lifetime lifetime;
     OutputSession session{chain, [&](wiola::audio::Source& rendered) {
                               return std::make_unique<ObservedOutput>(rendered, lifetime);
                           }};
     auto first{session.prepare(stereo)};
-    session.activate(*first, source);
+    ASSERT_TRUE(attach(session, *first, source));
 
     auto successor{session.prepare(stereo)};
-    session.activate(*successor, source);
+    ASSERT_TRUE(attach(session, *successor, source));
     first.reset();
 
     auto owner{std::move(successor)};
@@ -373,21 +382,21 @@ TEST(OutputSession, SupersededLeaseCannotDetachTheSuccessorEvenForTheSameSource)
 TEST(OutputSession, LeasePinsItsOutputAcrossCacheReplacementAndCacheDestruction)
 {
     auto chain = wiola::core::Lease<ProcessingChain>::make();
-    ConstantSource source;
-    ConstantSource mono_source{mono};
+    const auto source = wiola::core::Lease<ConstantSource>::make();
+    const auto mono_source = wiola::core::Lease<ConstantSource>::make(mono);
     Lifetime old_stream;
     Lifetime new_stream;
-    std::unique_ptr<OutputSession::Lease> old;
+    std::unique_ptr<OutputSession::Attachment> old;
     {
         OutputSession session{chain, [&](wiola::audio::Source& rendered) {
                                   return std::make_unique<ObservedOutput>(rendered,
                                       rendered.spec() == stereo ? old_stream : new_stream);
                               }};
         old = session.prepare(stereo);
-        session.activate(*old, source);
+        ASSERT_TRUE(attach(session, *old, source));
 
         auto next{session.prepare(mono)};
-        session.activate(*next, mono_source);
+        ASSERT_TRUE(attach(session, *next, mono_source));
         EXPECT_FALSE(old_stream.output_destroyed);
         EXPECT_FALSE(new_stream.output_destroyed);
     }
@@ -411,7 +420,7 @@ TEST(OutputSession, EveryPreparationAllocationFailurePreservesTheCommittedConnec
     bool observed_failure{false};
     for (std::size_t after{0};; ++after) {
         auto chain = wiola::core::Lease<ProcessingChain>::make();
-        ConstantSource source;
+        const auto source = wiola::core::Lease<ConstantSource>::make();
         wiola::audio::Source* bridge{nullptr};
         OutputSession session{chain, [&](wiola::audio::Source& rendered) {
                                   if (rendered.spec() == stereo)
@@ -419,9 +428,9 @@ TEST(OutputSession, EveryPreparationAllocationFailurePreservesTheCommittedConnec
                                   return std::make_unique<wiola::testing::FakeOutput>();
                               }};
         auto active{session.prepare(stereo)};
-        session.activate(*active, source);
+        ASSERT_TRUE(attach(session, *active, source));
 
-        std::unique_ptr<OutputSession::Lease> candidate;
+        std::unique_ptr<OutputSession::Attachment> candidate;
         {
             const wiola::testing::AllocationFailure failure{after};
             try {
@@ -453,7 +462,7 @@ TEST(PlaybackPipeline, OwnsAPlayableTrackWithoutASession)
         [](wiola::audio::Source&) { return std::make_unique<wiola::testing::FakeOutput>(); }};
     auto source{std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, stereo)};
     PlaybackPipeline pipeline{std::move(source), output.prepare(stereo), Frames{64}};
-    pipeline.activate(output);
+    ASSERT_TRUE(pipeline.activate(output));
     ASSERT_TRUE(pipeline.player().start());
 
     pipeline.player().stop();
@@ -464,13 +473,13 @@ TEST(PlaybackPipeline, OwnsAPlayableTrackWithoutASession)
 TEST(PlaybackPipeline, FailedCandidateConstructionDoesNotDetachTheActiveConnection)
 {
     auto chain = wiola::core::Lease<ProcessingChain>::make();
-    ConstantSource source;
+    const auto source = wiola::core::Lease<ConstantSource>::make();
     Lifetime lifetime;
     OutputSession output{chain, [&](wiola::audio::Source& rendered) {
                              return std::make_unique<ObservedOutput>(rendered, lifetime);
                          }};
     auto active{output.prepare(stereo)};
-    output.activate(*active, source);
+    ASSERT_TRUE(attach(output, *active, source));
 
     wiola::engine::TransportConfig invalid;
     invalid.decode_chunk = Frames{};
@@ -499,13 +508,13 @@ TEST(PlaybackPipeline, PreparedSameFormatReplacementAcquiresTheReturnedOutput)
         std::make_unique<PlaybackPipeline>(std::make_unique<wiola::testing::FakeDecoder>(Frames{64},
                                                stereo),
             output.prepare(stereo), Frames{64})};
-    active->activate(output);
+    ASSERT_TRUE(active->activate(output));
 
     PlaybackPipeline candidate{std::make_unique<wiola::testing::FakeDecoder>(Frames{64}, stereo),
         output.prepare(stereo), Frames{64}};
 
     active.reset();
-    candidate.activate(output);
+    ASSERT_TRUE(candidate.activate(output));
     ASSERT_TRUE(candidate.player().start());
 
     candidate.player().wait();
@@ -524,7 +533,7 @@ TEST(PlaybackPipeline, QuiescesAndReleasesDecoderBeforeItsPinnedOutput)
                              }};
         pipeline = std::make_unique<PlaybackPipeline>(std::make_unique<ObservedDecoder>(lifetime),
             output.prepare(stereo), Frames{64});
-        pipeline->activate(output);
+        ASSERT_TRUE(pipeline->activate(output));
     }
     EXPECT_FALSE(lifetime.output_destroyed);
     ASSERT_TRUE(pipeline->player().start());

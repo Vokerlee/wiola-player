@@ -28,6 +28,7 @@
 #include <wiola/media/stream_spec.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <memory>
 #include <optional>
@@ -365,12 +366,16 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
         // This is the last fallible operation. One lifecycle caller observes the completion
         // after this function returns; the following commit cannot fail or allocate.
         record_outcome(OperationKind::open, request);
+        auto previous =
+            pipeline_ ? pipeline_->quiesce_output() : std::optional<audio::Output::Quiescence>{};
         pipeline_.reset();
 
         if (processing)
             processing->commit();
 
-        pipeline->activate(out_);
+        const bool activated = pipeline->activate(out_, std::move(previous));
+        assert(activated && "validated playback candidate must accept its stopped output");
+        static_cast<void>(activated);
         pipeline_.swap(pipeline);
         static_assert(std::is_nothrow_move_assignable_v<media::ResourceReference>);
         track_ = std::move(resource);

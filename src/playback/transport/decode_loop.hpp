@@ -66,6 +66,16 @@ public:
     /// may have been constructed while the previous track still held the output claim.
     void acquire_output() noexcept { static_cast<void>(connection_.try_acquire()); }
 
+    [[nodiscard]] std::optional<audio::Output::Quiescence> quiesce_output() noexcept
+    {
+        return connection_.quiesce();
+    }
+
+    [[nodiscard]] bool adopt_output(audio::Output::Quiescence&& permission) noexcept
+    {
+        return connection_.adopt(std::move(permission));
+    }
+
     /// Runs initial seek, priming, output start and decoding on the worker thread.
     /// Every exit quiesces output and settles one terminal reason. Unexpected decoder failures
     /// become faulted without escaping the worker; an already accepted terminal reason wins.

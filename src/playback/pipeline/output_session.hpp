@@ -43,6 +43,8 @@ namespace wiola::engine {
 class OutputSession {
     struct Stream;
 
+    struct Identity { };
+
 public:
     /// Output construction failed. Allocation failure keeps its original exceptional policy.
     class Unavailable final : public std::runtime_error {
@@ -51,25 +53,31 @@ public:
     };
 
     /// Pins the output and its render bridge. Its stable identity owns one source attachment.
-    /// Quiesce callbacks before destruction; PlaybackPipeline enforces this through member order.
-    class Lease {
+    /// Destruction detaches first. Source retirement waits for stopped exclusive permission;
+    /// an independently held controller keeps the retired source pinned through its bridge.
+    class Attachment {
     public:
-        Lease(const Lease&) = delete;
-        Lease& operator=(const Lease&) = delete;
-        Lease(Lease&&) = delete;
-        Lease& operator=(Lease&&) = delete;
-        ~Lease();
+        Attachment(const Attachment&) = delete;
+        Attachment& operator=(const Attachment&) = delete;
+        Attachment(Attachment&&) = delete;
+        Attachment& operator=(Attachment&&) = delete;
+        ~Attachment();
 
         [[nodiscard]] core::Lease<audio::Output> output() const noexcept;
 
+        /// Transfers setup permission when this attachment prepared an unused output.
+        [[nodiscard]] std::optional<audio::Output::Quiescence> take_quiescence() noexcept;
+
     private:
         friend class OutputSession;
-        explicit Lease(core::Lease<Stream> stream) noexcept;
+        explicit Attachment(core::Lease<Stream> stream,
+            std::optional<audio::Output::Quiescence> permission) noexcept;
 
         core::Lease<Stream> stream_;
+        std::optional<audio::Output::Quiescence> permission_;
     };
 
-    OutputSession(core::Lease<audio::Stage> processing, OutputFactory make_output) noexcept;
+    OutputSession(core::Lease<audio::Stage> processing, OutputFactory make_output);
     ~OutputSession();
 
     OutputSession(const OutputSession&) = delete;
@@ -79,15 +87,17 @@ public:
 
     /// Construct a stopped output or reuse the committed stream. Failure/discard changes
     /// neither the cached stream nor its active source. The returned lease is never null.
-    [[nodiscard]] std::unique_ptr<Lease> prepare(pcm::StreamSpec spec);
+    [[nodiscard]] std::unique_ptr<Attachment> prepare(pcm::StreamSpec spec);
 
-    /// Control thread, after prior callbacks stop: retain this stream and attach its source.
-    /// The lease and source outlive callbacks; a superseded lease cannot detach its successor.
-    void activate(Lease& lease, audio::Source& source) noexcept;
+    /// Control thread with actual stopped permission for this output: retain and attach source.
+    /// Wrong cache, permission or stream shape changes nothing and does not consume permission.
+    [[nodiscard]] bool activate(Attachment& attachment, core::Lease<audio::Source> source,
+        const audio::Output::Quiescence& permission) noexcept;
 
     [[nodiscard]] bool open_for(pcm::StreamSpec spec) const noexcept;
 
 private:
+    core::Lease<const Identity> identity_ = core::Lease<const Identity>::make();
     core::Lease<audio::Stage> processing_;
     OutputFactory make_output_;
     std::optional<core::Lease<Stream>> stream_;

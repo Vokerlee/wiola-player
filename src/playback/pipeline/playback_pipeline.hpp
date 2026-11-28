@@ -36,7 +36,7 @@ namespace wiola::engine {
 class PlaybackPipeline {
 public:
     PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
-        std::unique_ptr<OutputSession::Lease> output, pcm::Frames buffer_frames,
+        std::unique_ptr<OutputSession::Attachment> output, pcm::Frames buffer_frames,
         TransportConfig transport = {});
 
     PlaybackPipeline(const PlaybackPipeline&) = delete;
@@ -44,17 +44,22 @@ public:
     PlaybackPipeline(PlaybackPipeline&&) = delete;
     PlaybackPipeline& operator=(PlaybackPipeline&&) = delete;
 
-    /// After prior playback quiesces, connect this candidate and retain its output for reuse.
-    void activate(OutputSession& output) noexcept;
+    /// Before this candidate is started, connect its owned source with stopped permission.
+    /// A previously started candidate or unavailable/wrong binding changes no cache state.
+    [[nodiscard]] bool activate(OutputSession& output,
+        std::optional<audio::Output::Quiescence> previous = {}) noexcept;
+
+    /// Lifecycle thread: join transport, stop callbacks and transfer the exclusive output claim.
+    [[nodiscard]] std::optional<audio::Output::Quiescence> quiesce_output() noexcept;
 
     [[nodiscard]] Player& player() noexcept { return player_; }
 
 private:
-    pcm::PcmQueue buffer_;
-    audio::BufferSource decoded_;
+    core::Lease<pcm::PcmQueue> buffer_;
+    core::Lease<audio::BufferSource> decoded_;
     // Reverse destruction joins transport, detaches this source and releases its output pin,
     // then destroys the source and queue. The cache may have gone away or changed format.
-    std::unique_ptr<OutputSession::Lease> output_;
+    std::unique_ptr<OutputSession::Attachment> output_;
     Player player_;
 };
 
