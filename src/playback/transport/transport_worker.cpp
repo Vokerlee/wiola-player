@@ -143,4 +143,18 @@ pcm::Frames TransportWorker::position(pcm::Frames frames_played) const noexcept
     return head_.position(frames_played);
 }
 
+std::optional<audio::Output::Quiescence> TransportWorker::quiesce_output() noexcept
+{
+    if (thread_.joinable()) {
+        stop();
+        wait();
+    }
+    return loop_.quiesce_output();
+}
+
+bool TransportWorker::adopt_output(audio::Output::Quiescence&& permission) noexcept
+{
+    return loop_.adopt_output(std::move(permission));
+}
+
 } // namespace wiola::engine

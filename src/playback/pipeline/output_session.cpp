@@ -62,13 +62,17 @@ struct OutputSession::Stream {
         {
         }
 
+        // Retire source storage only after the device has quiesced. The callback reads the
+        // relay's prebound pointer and never copies ownership.
+        std::optional<core::Lease<audio::Source>> source;
         Relay relay;
         ShapedSource shaped;
     };
 
     Stream(pcm::StreamSpec spec, core::Lease<audio::Stage> processing,
-        const OutputFactory& make_output)
-        : bridge{core::Lease<Bridge>::dependent(
+        const OutputFactory& make_output, core::Lease<const Identity> origin)
+        : identity{origin}
+        , bridge{core::Lease<Bridge>::dependent(
               [spec](audio::Stage& stage) { return std::make_unique<Bridge>(spec, stage); },
               processing
           )}
@@ -81,13 +85,13 @@ struct OutputSession::Stream {
     {
     }
 
+    core::Lease<const Identity> identity;
     core::Lease<Bridge> bridge;
     core::Lease<audio::Output> output;
-    const Lease* attached{nullptr};
+    const Attachment* attached{nullptr};
 };
 
-OutputSession::OutputSession(core::Lease<audio::Stage> processing,
-    OutputFactory make_output) noexcept
+OutputSession::OutputSession(core::Lease<audio::Stage> processing, OutputFactory make_output)
     : processing_{processing}
     , make_output_{std::move(make_output)}
 {
@@ -95,36 +99,63 @@ OutputSession::OutputSession(core::Lease<audio::Stage> processing,
 
 OutputSession::~OutputSession() = default;
 
-OutputSession::Lease::Lease(core::Lease<Stream> stream) noexcept
-    : stream_{std::move(stream)}
+OutputSession::Attachment::Attachment(core::Lease<Stream> stream,
+    std::optional<audio::Output::Quiescence> permission) noexcept
+    : stream_{stream}
+    , permission_{std::move(permission)}
 {
 }
 
-OutputSession::Lease::~Lease()
+OutputSession::Attachment::~Attachment()
 {
     if (stream_->attached == this) {
         stream_->bridge->relay.point_at_nothing();
         stream_->attached = nullptr;
+        if (auto permission = audio::Output::quiesce(stream_->output))
+            stream_->bridge->source.reset();
     }
 }
 
-core::Lease<audio::Output> OutputSession::Lease::output() const noexcept
+std::optional<audio::Output::Quiescence> OutputSession::Attachment::take_quiescence() noexcept
+{
+    return std::exchange(permission_, std::nullopt);
+}
+
+core::Lease<audio::Output> OutputSession::Attachment::output() const noexcept
 {
     return stream_->output;
 }
 
-std::unique_ptr<OutputSession::Lease> OutputSession::prepare(pcm::StreamSpec spec)
+std::unique_ptr<OutputSession::Attachment> OutputSession::prepare(pcm::StreamSpec spec)
 {
-    auto stream{
-        open_for(spec) ? *stream_ : core::Lease<Stream>::make(spec, processing_, make_output_)};
-    return std::unique_ptr<Lease>{new Lease{std::move(stream)}};
+    auto stream = open_for(spec)
+        ? *stream_
+        : core::Lease<Stream>::make(spec, processing_, make_output_, identity_);
+    std::optional<audio::Output::Quiescence> permission;
+    if (!stream->attached) {
+        permission = audio::Output::quiesce(stream->output);
+        if (!permission)
+            throw Unavailable{"output factory/cache supplied a device controlled by another owner"};
+        stream->bridge->source.reset();
+    }
+    return std::unique_ptr<Attachment>{
+        new Attachment{stream, std::move(permission)}
+    };
 }
 
-void OutputSession::activate(Lease& lease, audio::Source& source) noexcept
+bool OutputSession::activate(Attachment& attachment, core::Lease<audio::Source> source,
+    const audio::Output::Quiescence& permission) noexcept
 {
-    stream_ = lease.stream_;
-    (*stream_)->attached = &lease;
-    (*stream_)->bridge->relay.point_at(source);
+    const auto& stream = attachment.stream_;
+    if (&stream->identity.get() != &identity_.get() || !permission.matches(stream->output) ||
+        source->spec() != stream->bridge->relay.spec())
+        return false;
+
+    stream_ = stream;
+    stream->bridge->source = source;
+    stream->attached = &attachment;
+    stream->bridge->relay.point_at(source.get());
+    return true;
 }
 
 bool OutputSession::open_for(pcm::StreamSpec spec) const noexcept

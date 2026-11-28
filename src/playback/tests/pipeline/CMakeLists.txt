@@ -1,4 +1,8 @@
-add_executable(engine_pipeline_ownership_test pipeline_ownership_test.cpp)
+add_executable(
+    engine_pipeline_ownership_test
+    pipeline_ownership_test.cpp
+    source_attachment_test.cpp
+)
 
 target_link_libraries(
     engine_pipeline_ownership_test

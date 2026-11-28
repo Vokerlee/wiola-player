@@ -25,18 +25,41 @@
 namespace wiola::engine {
 
 PlaybackPipeline::PlaybackPipeline(std::unique_ptr<media::AudioDecoder> source,
-    std::unique_ptr<OutputSession::Lease> output, pcm::Frames buffer_frames,
+    std::unique_ptr<OutputSession::Attachment> output, pcm::Frames buffer_frames,
     TransportConfig transport)
-    : buffer_{source->spec(), buffer_frames}
-    , decoded_{source->spec(), buffer_.consumer()}
+    : buffer_{core::Lease<pcm::PcmQueue>::make(source->spec(), buffer_frames)}
+    , decoded_{core::Lease<audio::BufferSource>::dependent(
+          [spec = source->spec()](pcm::PcmQueue& queue) {
+              return std::make_unique<audio::BufferSource>(spec, queue.consumer());
+          },
+          buffer_
+      )}
     , output_{std::move(output)}
-    , player_{std::move(source), buffer_.producer(), output_->output(), transport}
+    , player_{std::move(source), buffer_->producer(), output_->output(), transport}
 {
 }
 
-void PlaybackPipeline::activate(OutputSession& output) noexcept
+bool PlaybackPipeline::activate(OutputSession& output,
+    std::optional<audio::Output::Quiescence> previous) noexcept
 {
-    output.activate(*output_, decoded_);
+    if (player_.state() != PlaybackState::idle)
+        return false;
+
+    auto permission = output_->take_quiescence();
+    if (!permission && previous && previous->matches(output_->output()))
+        permission = std::move(previous);
+    if (!permission)
+        permission = player_.quiesce_output();
+    if (!permission)
+        return false;
+
+    return output.activate(*output_, decoded_, *permission) &&
+        player_.adopt_output(std::move(*permission));
+}
+
+std::optional<audio::Output::Quiescence> PlaybackPipeline::quiesce_output() noexcept
+{
+    return player_.quiesce_output();
 }
 
 } // namespace wiola::engine

@@ -54,6 +54,9 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
+    [[nodiscard]] std::optional<audio::Output::Quiescence> quiesce_output() noexcept;
+    [[nodiscard]] bool adopt_output(audio::Output::Quiescence&& permission) noexcept;
+
     /// Stops playback and waits for the thread, so a player is never destroyed while it runs.
     ~Player();
 

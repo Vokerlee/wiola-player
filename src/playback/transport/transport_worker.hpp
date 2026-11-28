@@ -56,6 +56,9 @@ public:
     TransportWorker(TransportWorker&&) = delete;
     TransportWorker& operator=(TransportWorker&&) = delete;
 
+    [[nodiscard]] std::optional<audio::Output::Quiescence> quiesce_output() noexcept;
+    [[nodiscard]] bool adopt_output(audio::Output::Quiescence&& permission) noexcept;
+
     ~TransportWorker();
 
     /// Accepts a start from idle or a terminal state. False when already active or no thread
