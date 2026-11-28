@@ -30,3 +30,7 @@ Include `<wiola/foundation/lease.hpp>` / `<wiola/foundation/lease_handle.hpp>` a
 | Internal reference within a nonmoving, structurally owned aggregate | A direct reference or borrowed handle, with enforced teardown order |
 
 Owner-thread observation does not synchronize target state or protect a pointer across concurrent destruction. Use a real lease when the target must survive an operation on another thread. Include `<wiola/foundation/owner_thread_lifetime.hpp>` from the same `wiola::lifetime` component.
+
+`PreparedChange<Owner, Candidate>` retains an owner lease, a candidate and a nonthrowing apply operation. Bind it to a `ChangeVersion` data member of that owner. Preparing or discarding does not advance the version; a successful commit makes older candidates stale. Version identity uses preallocated stamps rather than a wrapping counter. Commit performs no allocation and rejects repeated or reentrant commits. Active state survives disposal of the outer transaction during apply; candidate/callable destruction precedes owner release. Operations are serialized on the owner control thread, outside render callbacks.
+
+Include `<wiola/foundation/prepared_change.hpp>`. Readiness can be composed with candidate-specific validation before committing a larger transaction. `candidate()` is a borrowed const view for that preflight; it does not transfer ownership. Empty apply operations and null version members are rejected during setup, and failed setup does not invalidate existing candidates.
