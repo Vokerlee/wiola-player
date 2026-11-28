@@ -454,3 +454,134 @@ TEST(OutputConnection, RetainsItsDeviceWhileWaitingToAcquireAnExclusiveClaim)
     candidate.reset();
     EXPECT_FALSE(observer.lock());
 }
+
+TEST(OutputQuiescence, PermissionPinsTheStoppedDeviceAndPreventsACompetingController)
+{
+    std::optional<Output::Quiescence> permission;
+    wiola::core::WeakLease<FakeOutput> observed;
+    {
+        const auto output = wiola::core::Lease<FakeOutput>::make();
+        observed = output.weak();
+        permission = Output::quiesce(output);
+        ASSERT_TRUE(permission);
+        EXPECT_TRUE(*permission);
+        EXPECT_TRUE(permission->matches(output));
+        EXPECT_FALSE(Output::acquire(output));
+        EXPECT_FALSE(output->running());
+        EXPECT_EQ(output->num_stops(), 1);
+    }
+    EXPECT_TRUE(observed.lock());
+    permission.reset();
+    EXPECT_FALSE(observed.lock());
+}
+
+TEST(OutputQuiescence, FailedAcquisitionDoesNotStopTheCurrentController)
+{
+    const auto output = wiola::core::Lease<FakeOutput>::make();
+    auto active = Output::acquire(output);
+    ASSERT_TRUE(active.start());
+    EXPECT_FALSE(Output::quiesce(output));
+    EXPECT_TRUE(output->running());
+    EXPECT_EQ(output->num_stops(), 0);
+
+    auto empty = Output::acquire(output);
+    EXPECT_FALSE(Output::quiesce(std::move(empty)));
+    active.stop();
+}
+
+TEST(OutputQuiescence, PermissionIsIssuedOnlyAfterTheLastSourceCallbackReturns)
+{
+    BlockingSource source;
+    const auto output = wiola::core::Lease<FakeOutput>::make(source);
+    wiola::audio::OutputConnection connection{output};
+    ASSERT_TRUE(connection.control().start());
+    source.entered.acquire();
+
+    std::optional<Output::Quiescence> permission;
+    std::binary_semaphore issued{0};
+    std::jthread stopping{[&] {
+        permission = connection.quiesce();
+        issued.release();
+    }};
+    EXPECT_FALSE(issued.try_acquire());
+    source.release.release();
+    issued.acquire();
+    stopping.join();
+
+    ASSERT_TRUE(permission);
+    EXPECT_TRUE(permission->matches(output));
+    EXPECT_FALSE(connection.control());
+    EXPECT_FALSE(output->running());
+}
+
+TEST(OutputQuiescence, AdoptionChecksIdentityAndConsumesOnlyAValidPermission)
+{
+    const auto first = wiola::core::Lease<FakeOutput>::make();
+    const auto second = wiola::core::Lease<FakeOutput>::make();
+    wiola::audio::OutputConnection original{first};
+    wiola::audio::OutputConnection candidate{first};
+    wiola::audio::OutputConnection other{second};
+
+    EXPECT_FALSE(candidate.quiesce());
+    auto permission = original.quiesce();
+    ASSERT_TRUE(permission);
+    EXPECT_FALSE(other.adopt(std::move(*permission)));
+    EXPECT_TRUE(*permission);
+    EXPECT_FALSE(original.try_acquire());
+    auto unrelated = other.quiesce();
+    ASSERT_TRUE(unrelated);
+    EXPECT_FALSE(candidate.adopt(std::move(*unrelated)));
+    EXPECT_TRUE(*unrelated);
+
+    auto moved = std::move(*permission);
+    EXPECT_FALSE(*permission);
+    EXPECT_FALSE(permission->matches(first));
+    EXPECT_FALSE(candidate.adopt(std::move(*permission)));
+    *permission = std::move(moved);
+    EXPECT_FALSE(moved);
+    EXPECT_TRUE(candidate.adopt(std::move(*permission)));
+    EXPECT_FALSE(*permission);
+    EXPECT_TRUE(candidate.control().start());
+}
+
+TEST(OutputQuiescence, ReentrantConnectionDisposalCannotInvalidateTheActiveStop)
+{
+    class ClosingOutput final : public Output {
+    public:
+        explicit ClosingOutput(std::function<void()> closing)
+            : closing_{std::move(closing)}
+        {
+        }
+
+        bool running() const noexcept override { return false; }
+
+        wiola::pcm::Frames frames_played() const noexcept override { return {}; }
+
+    private:
+        bool start() noexcept override { return true; }
+
+        void stop() noexcept override { closing_(); }
+
+        std::function<void()> closing_;
+    };
+
+    std::unique_ptr<wiola::audio::OutputConnection> connection;
+    wiola::core::WeakLease<ClosingOutput> observed;
+    {
+        const auto output = wiola::core::Lease<ClosingOutput>::make([&] { connection.reset(); });
+        observed = output.weak();
+        connection = std::make_unique<wiola::audio::OutputConnection>(output);
+    }
+
+    auto permission = connection->quiesce();
+    EXPECT_FALSE(connection);
+    ASSERT_TRUE(permission);
+    EXPECT_TRUE(observed.lock());
+    permission.reset();
+    EXPECT_FALSE(observed.lock());
+}
+
+static_assert(!std::is_default_constructible_v<Output::Quiescence>);
+static_assert(!std::is_copy_constructible_v<Output::Quiescence>);
+static_assert(!std::is_constructible_v<Output::Quiescence, bool>);
+static_assert(!std::is_constructible_v<Output::Quiescence, Output::Control&&>);

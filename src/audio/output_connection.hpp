@@ -57,6 +57,24 @@ public:
         return static_cast<bool>(control_);
     }
 
+    /// Setup thread after the worker has joined. Transfer this claim into stopped permission.
+    [[nodiscard]] std::optional<Output::Quiescence> quiesce() noexcept
+    {
+        if (!try_acquire())
+            return std::nullopt;
+        return Output::quiesce(std::move(control_));
+    }
+
+    /// Accept stopped permission for exactly this output. A mismatched token or a connection
+    /// that already owns a claim is unchanged; failed adoption does not consume the token.
+    [[nodiscard]] bool adopt(Output::Quiescence&& permission) noexcept
+    {
+        if (control_ || !permission.matches(output_))
+            return false;
+        control_ = std::move(permission.control_);
+        return true;
+    }
+
     /// Stops playback and returns only after an active source callback has completed.
     void stop() noexcept { control_.stop(); }
 
