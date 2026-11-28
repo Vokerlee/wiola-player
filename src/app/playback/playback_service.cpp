@@ -24,7 +24,6 @@
 #include <wiola/audio/processing_chain.hpp>
 #include <wiola/audio/volume.hpp>
 
-#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <stdexcept>
@@ -41,13 +40,8 @@ struct PlaybackService::Impl {
     core::Lease<audio::Equalizer> equalizer =
         core::Lease<audio::Equalizer>::make(pcm::StreamSpec{});
     core::Lease<audio::Volume> volume = core::Lease<audio::Volume>::make();
-    core::Lease<audio::ProcessingChain> processing = core::Lease<audio::ProcessingChain>::dependent(
-        [](audio::Equalizer& equalizer, audio::Volume& volume) {
-            return std::make_unique<audio::ProcessingChain>(
-                std::initializer_list<std::reference_wrapper<audio::Stage>>{equalizer, volume}
-            );
-        },
-        equalizer, volume
+    core::Lease<audio::ProcessingChain> processing = core::Lease<audio::ProcessingChain>::make(
+        std::initializer_list<core::Lease<audio::Stage>>{equalizer, volume}
     );
     engine::Session session;
     bool accepting{true};

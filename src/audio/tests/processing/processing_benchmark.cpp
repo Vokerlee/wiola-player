@@ -34,11 +34,11 @@ int main()
     constexpr std::size_t iterations = 5000;
 
     for (const std::size_t frames : {256, 1024, 2048}) {
-        wiola::audio::Equalizer equalizer{spec};
-        equalizer.set_enabled(true);
-        equalizer.set_band_gain(0, 6.0F);
-        wiola::audio::Volume volume;
-        volume.set_gain(0.5F);
+        auto equalizer = wiola::core::Lease<wiola::audio::Equalizer>::make(spec);
+        equalizer->set_enabled(true);
+        equalizer->set_band_gain(0, 6.0F);
+        auto volume = wiola::core::Lease<wiola::audio::Volume>::make();
+        volume->set_gain(0.5F);
         wiola::audio::ProcessingChain chain{equalizer, volume};
         chain.configure(spec);
         std::vector<float> samples(spec.samples_per(wiola::pcm::Frames{frames}));

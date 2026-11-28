@@ -22,9 +22,9 @@
 
 #include <wiola/audio/output_sanitizer.hpp>
 #include <wiola/audio/stage.hpp>
+#include <wiola/foundation/lease.hpp>
 #include <wiola/media/stream_spec.hpp>
 
-#include <functional>
 #include <initializer_list>
 #include <span>
 #include <vector>
@@ -32,12 +32,13 @@
 namespace wiola::audio {
 
 /**
- * A fixed sequence of borrowed stages followed by an explicit output sanitizer.
- * The caller owns every stage and stops output before destruction or stream reconfiguration.
+ * A fixed sequence of retained stages followed by an explicit output sanitizer.
+ * The chain retains every stage. Stop output before destruction or stream reconfiguration.
  */
 class ProcessingChain final : public Stage {
 public:
-    ProcessingChain(std::initializer_list<std::reference_wrapper<Stage>> stages = {});
+    ProcessingChain(std::initializer_list<core::Lease<Stage>> stages = {});
+    explicit ProcessingChain(std::span<const core::Lease<Stage>> stages);
 
     ProcessingChain(const ProcessingChain&) = delete;
     ProcessingChain& operator=(const ProcessingChain&) = delete;
@@ -51,7 +52,7 @@ public:
     void process(std::span<float> samples) noexcept override;
 
 private:
-    std::vector<Stage*> stages_;
+    std::vector<core::Lease<Stage>> stages_;
     OutputSanitizer sanitizer_;
 };
 
