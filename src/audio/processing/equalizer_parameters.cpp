@@ -36,7 +36,7 @@ float amplitude(float db) noexcept
 
 } // namespace
 
-EqualizerParameters::EqualizerParameters(pcm::StreamSpec spec, const EqualizerConfig& config)
+EqualizerParameters::EqualizerParameters(pcm::StreamSpec spec, EqualizerConfig config)
     : config_{config}
 {
     if (!config_.valid())

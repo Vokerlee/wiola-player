@@ -6,6 +6,7 @@ foreach(
         output_sanitizer
         volume
         equalizer
+        equalizer_parameters
         equalizer_publication
         processing_chain
 )
@@ -13,7 +14,14 @@ foreach(
 endforeach()
 
 # These implementation tests need their owning private protocols.
-foreach(target IN ITEMS audio_biquad_test audio_equalizer_publication_test)
+foreach(
+    target
+    IN
+    ITEMS
+        audio_biquad_test
+        audio_equalizer_publication_test
+        audio_equalizer_parameters_test
+)
     target_include_directories(
         ${target}
         PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../.."
