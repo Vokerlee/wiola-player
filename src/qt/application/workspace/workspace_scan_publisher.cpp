@@ -30,7 +30,7 @@ namespace wiola::app {
 WorkspaceScanPublisher::WorkspaceScanPublisher(QObject& context, Observer observer,
     WorkspaceScanScheduling policy)
     : delivery_{context}
-    , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
+    , lifetime_{*this}
     , observer_{std::move(observer)}
     , policy_{std::move(policy)}
 {
@@ -42,7 +42,7 @@ WorkspaceScanPublisher::WorkspaceScanPublisher(QObject& context, Observer observ
 
 WorkspaceScanPublisher::~WorkspaceScanPublisher()
 {
-    lifetime_->owner = nullptr;
+    lifetime_.invalidate();
     stop();
 }
 
@@ -80,10 +80,10 @@ std::uint64_t WorkspaceScanPublisher::start(const library::WorkspaceRecord& work
 
     if (!pending_.contains(workspace.id) && running_.size() >= policy_.max_active &&
         pending_.size() >= policy_.max_pending) {
-        const auto weak = std::weak_ptr<Lifetime>{lifetime_};
-        static_cast<void>(delivery_.endpoint().post([weak, id = workspace.id, generation] {
-            if (const auto state = weak.lock(); state && state->owner)
-                state->owner->receive({.workspace = id,
+        const auto observed = lifetime_.observe();
+        static_cast<void>(delivery_.endpoint().post([observed, id = workspace.id, generation] {
+            if (observed.get())
+                observed.get()->receive({.workspace = id,
                     .generation = generation,
                     .entries = {},
                     .status = WorkspaceScanStatus::failed,
@@ -128,12 +128,12 @@ void WorkspaceScanPublisher::cancel()
 
 void WorkspaceScanPublisher::pump()
 {
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
 
     if (stopped_)
         return;
     for (std::size_t attempts = order_.size();
-        lifetime->owner && attempts > 0 && !order_.empty() && running_.size() < policy_.max_active;
+        lifetime.get() && attempts > 0 && !order_.empty() && running_.size() < policy_.max_active;
         --attempts) {
         auto id = std::move(order_.front());
 
@@ -158,17 +158,17 @@ void WorkspaceScanPublisher::pump()
 
         running_.emplace(id, Running{request.generation, std::move(scanner)});
 
-        const auto weak = std::weak_ptr<Lifetime>{lifetime_};
+        const auto observed = lifetime_.observe();
         const auto endpoint = delivery_.endpoint();
 
         try {
             worker->start(
                 request.workspace, std::move(request.extensions),
-                [weak, endpoint, generation = request.generation](WorkspaceScanBatch batch) {
+                [observed, endpoint, generation = request.generation](WorkspaceScanBatch batch) {
                     batch.generation = generation;
-                    static_cast<void>(endpoint.post([weak, batch = std::move(batch)]() mutable {
-                        if (const auto state = weak.lock(); state && state->owner)
-                            state->owner->receive(std::move(batch));
+                    static_cast<void>(endpoint.post([observed, batch = std::move(batch)]() mutable {
+                        if (auto* owner = observed.get())
+                            owner->receive(std::move(batch));
                     }));
                 },
                 std::move(request.known)
@@ -197,14 +197,14 @@ void WorkspaceScanPublisher::receive(WorkspaceScanBatch batch)
             running_.erase(current);
     }
 
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
 
     if (const auto latest = generations_.find(batch.workspace);
         latest != generations_.end() && latest->second == batch.generation)
         observer_(std::move(batch));
 
-    if (finished && lifetime->owner)
-        lifetime->owner->pump();
+    if (auto* owner = lifetime.get(); finished && owner)
+        owner->pump();
 }
 
 } // namespace wiola::app

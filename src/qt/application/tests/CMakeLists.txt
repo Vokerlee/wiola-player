@@ -67,7 +67,9 @@ target_link_libraries(gui_playlist_control_test PRIVATE wiola::local_media)
 
 wiola_add_test(
     desktop_metadata_write_service_test
-    SOURCES metadata/metadata_write_service_test.cpp
+    SOURCES
+        metadata/metadata_write_service_test.cpp
+        metadata/metadata_write_lifetime_test.cpp
     LIBS wiola_metadata_writes wiola::ffmpeg wiola::qt_paths
     DATA "${PROJECT_SOURCE_DIR}/src/media/codecs/tests/data"
 )

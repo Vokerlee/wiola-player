@@ -18,3 +18,15 @@ Factories return unique ownership. Concrete deleters are preserved through inter
 `LeaseHandle<T>` transfers a move-only capability while retaining its owner. Derived ports supply exclusive claim/release policy. Moving empties the source; `retain_owner()` keeps an active call valid through reentrant handle disposal. Clearing publishes the inert state before retiring ownership.
 
 Include `<wiola/foundation/lease.hpp>` / `<wiola/foundation/lease_handle.hpp>` and link `wiola::lifetime`. Configure `-DWIOLA_COMPONENTS=lifetime -DENABLE_UNIT_TESTS=OFF` to build and run the standard-only consumer without SDK or GoogleTest downloads. Implementation, contracts and ordinary consumer tests stay in this owner.
+
+`OwnerThreadLifetime<T>` covers externally owned objects, such as a window service that may disappear during a notification. Its copyable `Observation` retains only an invalidation sentinel, never the owner. Observations can travel through workers, but `get()` and `invalidate()` run on the original owner thread; Debug assertions catch violations. A returned pointer is a short borrow: recheck the observation after a reentrant call. The owner explicitly invalidates at its teardown boundary; the lifetime member's destructor is a fallback. The scope cannot move or copy. Scan publication and metadata writing use this same protocol instead of private pointer-state structs.
+
+| Relationship | Representation |
+| --- | --- |
+| Small independent immutable policy | Store a value |
+| Independently retained object/dependency | `Lease<T>`; construct dependency edges with `dependent` |
+| Cross-thread observation requiring an ownership pin | `WeakLease<T>::lock()` |
+| Externally owned object observed on its owner thread | `OwnerThreadLifetime<T>::Observation` |
+| Internal reference within a nonmoving, structurally owned aggregate | A direct reference or borrowed handle, with enforced teardown order |
+
+Owner-thread observation does not synchronize target state or protect a pointer across concurrent destruction. Use a real lease when the target must survive an operation on another thread. Include `<wiola/foundation/owner_thread_lifetime.hpp>` from the same `wiola::lifetime` component.

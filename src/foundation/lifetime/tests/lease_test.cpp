@@ -156,10 +156,10 @@ TEST(LifetimeGraph, FactoryFailureAndNullResultsPreserveTheExistingGraph)
     EXPECT_EQ(*result, 11);
 
     input.get() = -1;
-    EXPECT_THROW(Lease<int>::dependent(factory, input), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(Lease<int>::dependent(factory, input)), std::runtime_error);
 
     input.get() = 0;
-    EXPECT_THROW(Lease<int>::dependent(factory, input), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Lease<int>::dependent(factory, input)), std::invalid_argument);
     EXPECT_EQ(input.get(), 0);
     EXPECT_EQ(result.get(), 11);
 }
