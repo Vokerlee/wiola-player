@@ -25,13 +25,18 @@
 #include <wiola/media/stream_spec.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <utility>
 
 namespace wiola::audio {
 
+class OutputConnection;
+
 /// Somewhere frames are played, which is started and stopped and says how much has been heard.
 class Output {
 public:
+    class Quiescence;
+
     /**
      * The end that starts and stops it, for the one thread that drives the device.
      *
@@ -75,8 +80,14 @@ public:
 
     private:
         friend class Output;
+        friend class Quiescence;
 
         using LeaseHandle::LeaseHandle;
+
+        bool controls(const core::Lease<Output>& output) const noexcept
+        {
+            return owner() == std::addressof(output.get());
+        }
 
         /// Gives back whatever it holds, and holds nothing afterwards.
         void release() noexcept
@@ -87,6 +98,37 @@ public:
             if (retained)
                 (*retained)->control_taken_.release();
         }
+    };
+
+    /// A stopped output's exclusive claim. Holding it prevents restart during rebinding.
+    /// Only an actual stop operation can issue it; moving transfers that permission.
+    class Quiescence final {
+    public:
+        Quiescence(const Quiescence&) = delete;
+        Quiescence& operator=(const Quiescence&) = delete;
+        Quiescence(Quiescence&&) noexcept = default;
+        Quiescence& operator=(Quiescence&&) noexcept = default;
+
+        [[nodiscard]] explicit operator bool() const noexcept
+        {
+            return static_cast<bool>(control_);
+        }
+
+        [[nodiscard]] bool matches(const core::Lease<Output>& output) const noexcept
+        {
+            return control_.controls(output);
+        }
+
+    private:
+        friend class Output;
+        friend class OutputConnection;
+
+        explicit Quiescence(Control control) noexcept
+            : control_{std::move(control)}
+        {
+        }
+
+        Control control_;
     };
 
     Output(const Output&) = delete;
@@ -100,6 +142,11 @@ public:
     /// inert, so a second driver is a device that will not start rather than two threads starting
     /// one. Letting the held one go frees the device for the next.
     [[nodiscard]] static Control acquire(core::Lease<Output> output) noexcept;
+
+    /// Acquire a free device or transfer an existing claim, stop and await callbacks, then
+    /// retain exclusive wiring permission. An unavailable/inert claim returns no permission.
+    [[nodiscard]] static std::optional<Quiescence> quiesce(core::Lease<Output> output) noexcept;
+    [[nodiscard]] static std::optional<Quiescence> quiesce(Control&& active) noexcept;
 
     [[nodiscard]] virtual bool running() const noexcept = 0;
 
@@ -135,6 +182,22 @@ inline void Output::Control::stop() noexcept
 inline Output::Control Output::acquire(core::Lease<Output> output) noexcept
 {
     return output->control_taken_.claim() ? Control{output} : Control{};
+}
+
+inline std::optional<Output::Quiescence> Output::quiesce(core::Lease<Output> output) noexcept
+{
+    return quiesce(acquire(output));
+}
+
+inline std::optional<Output::Quiescence> Output::quiesce(Control&& active) noexcept
+{
+    if (!active)
+        return std::nullopt;
+
+    // Publish the source as inert before a backend stop can reenter its previous owner.
+    Control retained{std::move(active)};
+    retained.stop();
+    return Quiescence{std::move(retained)};
 }
 
 } // namespace wiola::audio
