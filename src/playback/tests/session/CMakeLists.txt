@@ -3,6 +3,7 @@ add_executable(
     commands_test.cpp
     handoff_test.cpp
     admission_test.cpp
+    lifecycle_model_test.cpp
 )
 
 target_link_libraries(
