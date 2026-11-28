@@ -8,7 +8,8 @@ flowchart LR
     Worker --> State[Playback: first terminal reason wins]
     Worker --> Head[Playhead / SeekMailbox / epoch]
     Worker --> Loop[DecodeLoop: complete execution]
-    Loop --> Seek[SeekOperation]
+    Loop --> Plan[SeekPlan: owned decision values]
+    Loop --> Seek[Immediate seek execution]
     Loop --> Media[AudioDecoder contract]
     Loop --> Queue[PCM producer]
     Loop --> Output[Output connection]
@@ -20,7 +21,7 @@ The worker validates scheduling and chunk policy once at construction; decode st
 
 Only the worker seeks, reads, primes or starts/stops output. `DecodeLoop::run` catches unexpected collaborator exceptions, settles `faulted`, and quiesces output on every exit. Already accepted terminal reasons remain authoritative. The worker joins before decoder/connection destruction; the connection and Player retain the output node, while the containing pipeline keeps queue storage alive until the worker has joined.
 
-`Playhead` has one movable applier. Its mailbox serializes requests, claims and position/epoch observations; submitted frames are worker-owned. `SeekOperation` quiesces output, changes the decoder, acknowledges an achieved position and primes the new epoch. Failures retain the actual decoder position rather than publishing an unachieved request.
+`Playhead` has one movable applier. Its mailbox serializes requests, claims and position/epoch observations; submitted frames are worker-owned. `SeekPlan` owns a claimed generation and target; its decisions need no device or decoder. DecodeLoop quiesces its output before passing that value to immediate `execute_seek`, which changes the decoder, acknowledges an achieved position and primes the new epoch. No seek object retains references to the loop’s internal fields. Failures retain the actual decoder position rather than publishing an unachieved request.
 
 The target's build-only include root exposes `<transport/...>` to internal playback clients. These implementation headers are not installed. Application clients consume public playback values and the exported Session facade. Complete Session/loading/pipeline ownership stays in this component; private transport headers are not part of that export.
 

@@ -52,15 +52,16 @@ DecodeLoop::DecodeLoop(std::unique_ptr<media::AudioDecoder> source, pcm::PcmQueu
     , applier_{std::move(applier)}
     , wait_{wait}
     , block_{decode_block(source_->spec(), config)}
-    , seek_{*source_, buffer_, connection_.control(), output_, applier_, output_started_, block_,
-          playback_}
 {
 }
 
 void DecodeLoop::run(bool rewind) noexcept
 {
     try {
-        if (seek_.begin(rewind) != SeekOperation::Outcome::read_failed)
+        const auto claim = applier_.claim();
+        const auto plan = SeekPlan::begin(claim, rewind, playback_.finished());
+
+        if (run_seek(plan) != SeekOutcome::read_failed)
             decode();
         else
             playback_.finish(Playback::TerminalReason::faulted);
@@ -74,8 +75,19 @@ void DecodeLoop::run(bool rewind) noexcept
 
 void DecodeLoop::apply_seek()
 {
-    if (seek_.apply() == SeekOperation::Outcome::read_failed)
+    const auto claim = applier_.claim();
+    const auto plan = SeekPlan::pending(claim, playback_.finished());
+
+    if (run_seek(plan) == SeekOutcome::read_failed)
         playback_.finish(Playback::TerminalReason::faulted);
+}
+
+SeekOutcome DecodeLoop::run_seek(const SeekPlan& plan)
+{
+    if (plan.needs_quiescence())
+        stop_output();
+
+    return execute_seek(plan, *source_, buffer_, output_, applier_, block_, playback_);
 }
 
 void DecodeLoop::stop_output() noexcept

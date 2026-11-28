@@ -33,12 +33,12 @@ namespace {
 
 using wiola::engine::Playback;
 using wiola::engine::Playhead;
-using wiola::engine::SeekOperation;
+using wiola::engine::SeekPlan;
 using wiola::pcm::Frames;
 using wiola::testing::FakeDecoder;
 using wiola::testing::FakeOutput;
 using wiola::testing::Gate;
-using Outcome = SeekOperation::Outcome;
+using Outcome = wiola::engine::SeekOutcome;
 
 struct SeekRig {
     explicit SeekRig(wiola::media::AudioDecoder& source)
@@ -49,7 +49,7 @@ struct SeekRig {
         , head{source.spec().num_channels}
         , applier{head.applier()}
         , block(source.spec().samples_per(Frames{4}))
-        , seek{source, producer, control, output.get(), applier, started, block, playback}
+        , source_{source}
     {
         static_cast<void>(playback.begin());
     }
@@ -68,7 +68,32 @@ struct SeekRig {
     Playhead::Applier applier;
     bool started{false};
     std::vector<float> block;
-    SeekOperation seek;
+
+    Outcome begin(bool rewind)
+    {
+        const auto claim = applier.claim();
+        return execute(SeekPlan::begin(claim, rewind, playback.finished()));
+    }
+
+    Outcome apply()
+    {
+        const auto claim = applier.claim();
+        return execute(SeekPlan::pending(claim, playback.finished()));
+    }
+
+private:
+    Outcome execute(const SeekPlan& plan)
+    {
+        if (plan.needs_quiescence() && started) {
+            control.stop();
+            started = false;
+        }
+
+        return wiola::engine::execute_seek(plan, source_, producer, output.get(), applier, block,
+            playback);
+    }
+
+    wiola::media::AudioDecoder& source_;
 };
 
 class UnreadableDecoder final : public wiola::media::AudioDecoder {
@@ -98,7 +123,7 @@ TEST(SeekTransaction, InitialPrimingRetainsTheCursorWithoutSeeking)
     FakeDecoder source{Frames{32}};
     SeekRig rig{source};
 
-    EXPECT_EQ(rig.seek.begin(false), Outcome::preserved);
+    EXPECT_EQ(rig.begin(false), Outcome::preserved);
     EXPECT_EQ(source.num_seeks(), 0);
     EXPECT_EQ(rig.applier.num_pushed(), rig.block.size() * 2);
     EXPECT_EQ(rig.head.position(Frames{}), Frames{});
@@ -109,12 +134,12 @@ TEST(SeekTransaction, ReplayRewindsAndDiscardsPreviouslyBufferedAudio)
     FakeDecoder source{Frames{32}};
     SeekRig rig{source};
 
-    ASSERT_EQ(rig.seek.begin(false), Outcome::preserved);
+    ASSERT_EQ(rig.begin(false), Outcome::preserved);
     ASSERT_GT(source.position_frames(), Frames{});
     ASSERT_TRUE(rig.start_output());
 
     rig.output->play(Frames{3});
-    EXPECT_EQ(rig.seek.begin(true), Outcome::applied);
+    EXPECT_EQ(rig.begin(true), Outcome::applied);
     EXPECT_EQ(source.last_seek(), Frames{});
     EXPECT_FALSE(rig.output->running());
     EXPECT_FALSE(rig.started);
@@ -138,7 +163,7 @@ TEST(SeekTransaction, NoPendingRequestLeavesOutputAndBufferedAudioAlone)
     const std::array samples{0.25F, -0.25F};
 
     ASSERT_EQ(rig.producer.push(samples), samples.size());
-    EXPECT_EQ(rig.seek.apply(), Outcome::preserved);
+    EXPECT_EQ(rig.apply(), Outcome::preserved);
     EXPECT_TRUE(rig.output->running());
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_EQ(source.num_seeks(), 0);
@@ -159,7 +184,7 @@ TEST(SeekTransaction, FailedSeekCommitsThePreservedCursor)
 
     SeekRig rig{source};
     rig.head.request_seek(Frames{12});
-    EXPECT_EQ(rig.seek.apply(), Outcome::preserved);
+    EXPECT_EQ(rig.apply(), Outcome::preserved);
     EXPECT_EQ(rig.head.position(Frames{}), Frames{6});
     EXPECT_FALSE(rig.head.seek_outstanding());
 }
@@ -169,7 +194,7 @@ TEST(SeekTransaction, ExactLengthValidationBelongsToTheDecoder)
     FakeDecoder source{Frames{32}};
     SeekRig rig{source};
     rig.head.request_seek(Frames{33});
-    EXPECT_EQ(rig.seek.apply(), Outcome::preserved);
+    EXPECT_EQ(rig.apply(), Outcome::preserved);
     EXPECT_EQ(source.num_seeks(), 0);
     EXPECT_EQ(rig.head.position(Frames{}), Frames{});
 }
@@ -181,7 +206,7 @@ TEST(SeekTransaction, ApproximateSeekCommitsItsAchievedPosition)
 
     SeekRig rig{source};
     rig.head.request_seek(Frames{12});
-    EXPECT_EQ(rig.seek.apply(), Outcome::applied);
+    EXPECT_EQ(rig.apply(), Outcome::applied);
     EXPECT_EQ(rig.head.position(Frames{}), Frames{10});
     EXPECT_FALSE(rig.head.seek_outstanding());
 }
@@ -191,7 +216,7 @@ TEST(SeekTransaction, ReadFailureIsReturnedWithTheCommittedPosition)
     UnreadableDecoder source;
     SeekRig rig{source};
     rig.head.request_seek(Frames{12});
-    EXPECT_EQ(rig.seek.apply(), Outcome::read_failed);
+    EXPECT_EQ(rig.apply(), Outcome::read_failed);
     EXPECT_EQ(rig.head.position(Frames{}), Frames{12});
     EXPECT_EQ(rig.applier.num_pushed(), 0U);
 }
@@ -201,7 +226,7 @@ TEST(SeekTransaction, EmptySourcePrimesSuccessfully)
     FakeDecoder source{Frames{0}};
     SeekRig rig{source};
 
-    EXPECT_EQ(rig.seek.begin(false), Outcome::preserved);
+    EXPECT_EQ(rig.begin(false), Outcome::preserved);
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_EQ(rig.applier.num_pushed(), 0U);
 }
@@ -212,7 +237,7 @@ TEST(SeekTransaction, StopBeforeExecutionPreservesThePendingRequestWithoutIO)
     SeekRig rig{source};
     rig.head.request_seek(Frames{12});
     rig.playback.finish(Playback::TerminalReason::stopped);
-    EXPECT_EQ(rig.seek.apply(), Outcome::cancelled);
+    EXPECT_EQ(rig.apply(), Outcome::cancelled);
     EXPECT_EQ(source.num_seeks(), 0);
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_TRUE(rig.head.seek_outstanding());
@@ -231,7 +256,7 @@ TEST(SeekTransaction, StopDuringSeekAcknowledgesTheActualCursorWithoutPriming)
     rig.head.request_seek(Frames{12});
 
     Outcome result{};
-    std::jthread worker{[&] { result = rig.seek.apply(); }};
+    std::jthread worker{[&] { result = rig.apply(); }};
 
     seeking.wait_until_entered();
     rig.playback.finish(Playback::TerminalReason::stopped);
@@ -253,7 +278,7 @@ TEST(SeekTransaction, NewerRequestDuringSeekSurvivesAcknowledgmentAndSkipsStaleP
     rig.head.request_seek(Frames{8});
 
     Outcome result{};
-    std::jthread worker{[&] { result = rig.seek.apply(); }};
+    std::jthread worker{[&] { result = rig.apply(); }};
 
     seeking.wait_until_entered();
     rig.head.request_seek(Frames{12});
@@ -263,7 +288,7 @@ TEST(SeekTransaction, NewerRequestDuringSeekSurvivesAcknowledgmentAndSkipsStaleP
     EXPECT_EQ(source.num_reads(), 0);
     EXPECT_TRUE(rig.head.seek_outstanding());
     EXPECT_EQ(rig.head.position(Frames{}), Frames{12});
-    EXPECT_EQ(rig.seek.apply(), Outcome::applied);
+    EXPECT_EQ(rig.apply(), Outcome::applied);
     EXPECT_EQ(source.last_seek(), Frames{12});
     EXPECT_FALSE(rig.head.seek_outstanding());
 }
@@ -278,7 +303,7 @@ TEST(SeekTransaction, StopDuringReadDoesNotSubmitTheCompletedStaleBlock)
     rig.head.request_seek(Frames{8});
 
     Outcome result{};
-    std::jthread worker{[&] { result = rig.seek.apply(); }};
+    std::jthread worker{[&] { result = rig.apply(); }};
 
     reading.wait_until_entered();
     rig.playback.finish(Playback::TerminalReason::stopped);
@@ -299,7 +324,7 @@ TEST(SeekTransaction, NewerRequestDuringReadPreventsStaleSubmission)
     rig.head.request_seek(Frames{8});
 
     Outcome result{};
-    std::jthread worker{[&] { result = rig.seek.apply(); }};
+    std::jthread worker{[&] { result = rig.apply(); }};
 
     reading.wait_until_entered();
     rig.head.request_seek(Frames{12});

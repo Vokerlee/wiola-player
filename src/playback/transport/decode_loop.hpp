@@ -86,6 +86,7 @@ private:
 
     /// Carries out a requested seek, marking what was decoded for the old place as stale.
     void apply_seek();
+    [[nodiscard]] SeekOutcome run_seek(const SeekPlan& plan);
 
     /// Starts or stops the output so that it does what playback says.
     void follow_playback();
@@ -109,7 +110,6 @@ private:
 
     /// What the output was last asked for, owned exclusively by the worker execution.
     bool output_started_{false};
-    SeekOperation seek_;
 };
 
 } // namespace wiola::engine
