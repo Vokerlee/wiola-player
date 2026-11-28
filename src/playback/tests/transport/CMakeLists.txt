@@ -23,3 +23,5 @@ foreach(
 
     gtest_discover_tests(engine_${suite}_test)
 endforeach()
+
+target_sources(engine_seek_operation_test PRIVATE seek_plan_test.cpp)

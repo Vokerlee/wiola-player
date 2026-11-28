@@ -160,18 +160,18 @@ TEST(SeekOperation, AcceptsUnknownLengthWithoutTreatingItAsAnExactZero)
     auto producer{queue.producer()};
     wiola::core::Lease<wiola::testing::FakeOutput> output =
         wiola::core::Lease<wiola::testing::FakeOutput>::make();
-    auto control{wiola::audio::Output::acquire(output)};
     wiola::engine::Playhead playhead{source.spec().num_channels};
     auto applier{playhead.applier()};
-    bool output_started{false};
     wiola::engine::Playback playback;
     std::vector<float> block(source.spec().samples_per(wiola::pcm::Frames{4}));
-    wiola::engine::SeekOperation seek{source, producer, control, output.get(), applier,
-        output_started, block, playback};
 
     playhead.request_seek(wiola::pcm::Frames{4});
 
-    EXPECT_EQ(seek.apply(), wiola::engine::SeekOperation::Outcome::applied);
+    const auto plan = wiola::engine::SeekPlan::pending(applier.claim(), playback.finished());
+
+    EXPECT_EQ(wiola::engine::execute_seek(plan, source, producer, output.get(), applier, block,
+                  playback),
+        wiola::engine::SeekOutcome::applied);
     EXPECT_FALSE(playhead.seek_outstanding());
     EXPECT_EQ(playhead.position(wiola::pcm::Frames{}), wiola::pcm::Frames{4});
 }

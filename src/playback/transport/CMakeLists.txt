@@ -10,6 +10,7 @@ add_library(
     playhead.cpp
     seek_mailbox.cpp
     seek_operation.cpp
+    seek_plan.cpp
     transport_worker.cpp
     transport_wait.cpp
 )

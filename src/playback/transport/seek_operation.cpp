@@ -20,105 +20,66 @@
 
 #include "seek_operation.hpp"
 
-#include <span>
-
 namespace wiola::engine {
 
-SeekOperation::SeekOperation(media::AudioDecoder& source, pcm::PcmQueue::Producer& buffer,
-    audio::Output::Control& control, const audio::Output& output, Playhead::Applier& applier,
-    bool& output_started, std::vector<float>& block, const Playback& playback) noexcept
-    : source_{source}
-    , buffer_{buffer}
-    , control_{control}
-    , output_{output}
-    , applier_{applier}
-    , output_started_{output_started}
-    , block_{block}
-    , playback_{playback}
-{
-}
+namespace {
 
-SeekOperation::Outcome SeekOperation::begin(bool rewind)
-{
-    const auto claim{applier_.claim()};
-    return reposition(claim, rewind || claim.outstanding);
-}
-
-SeekOperation::Outcome SeekOperation::apply()
-{
-    const auto claim{applier_.claim()};
-    return claim.outstanding ? reposition(claim, true) : Outcome::preserved;
-}
-
-SeekOperation::Outcome SeekOperation::reposition(const Playhead::Claim& claim, bool move)
-{
-    if (playback_.finished())
-        return Outcome::cancelled;
-
-    quiesce();
-
-    if (move)
-        buffer_.mark_discard();
-
-    Outcome settled{Outcome::preserved};
-
-    if (move) {
-        const auto target{claim.outstanding ? claim.target : pcm::Frames{}};
-        // The decoder owns seek validation and preserves its cursor on failure.
-        if (source_.seek(target))
-            settled = Outcome::applied;
-    }
-
-    // A blocking seek may have completed after a stop or replacement request. Its actual
-    // decoder position is still acknowledged; only this claim is retired, never a newer one.
-    applier_.begin_at(source_.position_frames(), output_.frames_played(), claim);
-
-    return prime(settled);
-}
-
-std::optional<SeekOperation::Outcome> SeekOperation::interruption() const noexcept
-{
-    if (playback_.finished())
-        return Outcome::cancelled;
-
-    if (applier_.seek_outstanding())
-        return Outcome::superseded;
-
-    return std::nullopt;
-}
-
-void SeekOperation::quiesce() noexcept
-{
-    if (!output_started_)
-        return;
-
-    control_.stop();
-    output_started_ = false;
-}
-
-SeekOperation::Outcome SeekOperation::prime(Outcome settled)
+SeekOutcome prime(media::AudioDecoder& source, pcm::PcmQueue::Producer& buffer,
+    Playhead::Applier& applier, std::span<float> block, const Playback& playback,
+    SeekOutcome settled)
 {
     while (true) {
-        if (const auto pending{interruption()})
+        if (const auto pending =
+                SeekPlan::interruption(playback.finished(), applier.seek_outstanding()))
             return *pending;
 
-        if (buffer_.space_approx() < block_.size())
+        if (buffer.space_approx() < block.size())
             return settled;
 
-        const auto decoded{source_.read(block_)};
+        const auto decoded = source.read(block);
 
-        if (const auto after_read{interruption()})
+        if (const auto after_read =
+                SeekPlan::interruption(playback.finished(), applier.seek_outstanding()))
             return *after_read;
 
         if (!decoded)
-            return Outcome::read_failed;
+            return SeekOutcome::read_failed;
 
         if (decoded->frames == pcm::Frames{})
             return settled;
 
-        const auto samples{source_.spec().samples_per(decoded->frames)};
-        applier_.push(buffer_.push(std::span{block_}.first(samples)));
+        const auto samples = source.spec().samples_per(decoded->frames);
+        applier.push(buffer.push(block.first(samples)));
     }
+}
+
+} // namespace
+
+SeekOutcome execute_seek(const SeekPlan& plan, media::AudioDecoder& source,
+    pcm::PcmQueue::Producer& buffer, const audio::Output& output, Playhead::Applier& applier,
+    std::span<float> block, const Playback& playback)
+{
+    if (plan.action() == SeekPlan::Action::none)
+        return SeekOutcome::preserved;
+
+    if (plan.action() == SeekPlan::Action::cancelled)
+        return SeekOutcome::cancelled;
+
+    auto settled = SeekOutcome::preserved;
+
+    if (const auto target = plan.target()) {
+        buffer.mark_discard();
+
+        // The decoder owns validation and preserves its cursor on failure.
+        if (source.seek(*target))
+            settled = SeekOutcome::applied;
+    }
+
+    // A blocking seek may have completed after a stop or replacement. Acknowledge only
+    // the claimed generation before checking whether its data should still be primed.
+    applier.begin_at(source.position_frames(), output.frames_played(), plan.claim());
+
+    return prime(source, buffer, applier, block, playback, settled);
 }
 
 } // namespace wiola::engine
