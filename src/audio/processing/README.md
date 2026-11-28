@@ -1,6 +1,6 @@
 # Audio processing implementation
 
-The equalizer facade owns one stable authored configuration and a replaceable processing state containing `EqualizerParameters` and `EqualizerProcessor`. Parameters borrow that immutable configuration from their enclosing owner. Control-thread parameters own validated gains; `EqualizerPublication` owns the three fixed publication banks and their handoff. The processing-thread processor owns filter history and applies one complete bank at a block boundary. Biquads, coefficient calculation and prepared-bank layout remain private here.
+The equalizer facade owns one stable authored configuration and a replaceable processing state containing `EqualizerParameters` and `EqualizerProcessor`. Parameters copy that small immutable configuration by value, so temporary inputs or later caller mutations cannot invalidate the validated policy. Control-thread parameters own validated gains; `EqualizerPublication` owns the three fixed publication banks and their handoff. The processing-thread processor is a nonmoving sibling that borrows its enclosing Processing object's parameters; that aggregate destroys the processor first. The processor owns filter history and applies one complete bank at a block boundary. Biquads, coefficient calculation and prepared-bank layout remain private here.
 
 ```mermaid
 flowchart LR

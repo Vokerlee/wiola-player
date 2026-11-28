@@ -37,8 +37,8 @@ namespace wiola::audio {
  */
 class EqualizerParameters {
 public:
-    /// Borrows immutable configuration, which must outlive these parameters.
-    EqualizerParameters(pcm::StreamSpec spec, const EqualizerConfig& config);
+    /// Owns a small immutable policy value, independent of the caller's configuration lifetime.
+    EqualizerParameters(pcm::StreamSpec spec, EqualizerConfig config);
 
     EqualizerParameters(const EqualizerParameters&) = delete;
     EqualizerParameters& operator=(const EqualizerParameters&) = delete;
@@ -46,7 +46,8 @@ public:
     EqualizerParameters& operator=(EqualizerParameters&&) = delete;
 
     /// Copies accepted control settings into a newly prepared stream, without copying
-    /// publication ownership or processing history. Both objects share the authored config.
+    /// publication ownership or processing history. Each object retains its own immutable policy
+    /// snapshot.
     void adopt_settings(const EqualizerParameters& active) noexcept;
 
     [[nodiscard]] std::size_t num_bands() const noexcept { return num_bands_; }
@@ -67,7 +68,7 @@ private:
     void publish() noexcept;
     [[nodiscard]] const EqualizerPublication::Bank& acquire_for_processing() noexcept;
 
-    const EqualizerConfig& config_;
+    const EqualizerConfig config_;
     pcm::StreamSpec spec_{};
     std::size_t num_bands_{0};
     std::array<float, BandLayout::max_count> gains_{};
