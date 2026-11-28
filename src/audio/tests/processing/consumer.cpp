@@ -32,7 +32,7 @@ namespace {
 // A downstream stage implements only the public preparation/processing contract.
 class StreamObserver final : public wiola::audio::Stage {
 public:
-    std::unique_ptr<Preparation> prepare(wiola::pcm::StreamSpec spec) override
+    std::unique_ptr<Preparation> prepare_change(wiola::pcm::StreamSpec spec) override
     {
         return std::make_unique<Prepared>(*this, spec);
     }
@@ -73,10 +73,10 @@ int main()
 
     volume->set_gain(0.5F);
 
-    wiola::audio::ProcessingChain chain{
-        {equalizer, volume, observer}
-    };
-    const auto prepared{chain.prepare({})};
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{equalizer, volume, observer}
+    );
+    const auto prepared{wiola::audio::Stage::prepare(chain, {})};
 
     if (!prepared || observer->commits != 0)
         return 2;
@@ -88,13 +88,13 @@ int main()
         return 3;
 
     std::array samples{0.5F, -0.5F};
-    chain.process(samples);
+    chain->process(samples);
 
     if (samples[0] != 0.25F || samples[1] != -0.25F)
         return 1;
 
     equalizer->set_band_gain(0, 3.0F);
-    chain.process(samples);
+    chain->process(samples);
 
     return !std::isfinite(samples[0]) || !equalizer->enabled();
 }

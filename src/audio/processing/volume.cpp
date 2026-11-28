@@ -45,7 +45,7 @@ float Volume::gain() const noexcept
     return gain_.load(std::memory_order_relaxed);
 }
 
-std::unique_ptr<Stage::Preparation> Volume::prepare(pcm::StreamSpec /*spec*/) noexcept
+std::unique_ptr<Stage::Preparation> Volume::prepare_change(pcm::StreamSpec /*spec*/) noexcept
 {
     return nullptr;
 }

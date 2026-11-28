@@ -21,6 +21,10 @@ function(wiola_audio_add_test target source dependency)
     gtest_discover_tests(${target})
 endfunction()
 
+wiola_audio_add_test(audio_stage_test stage_test.cpp wiola::audio_output)
+
+target_link_libraries(audio_stage_test PRIVATE wiola_test_allocation_failure)
+
 wiola_audio_add_test(audio_output_test output_test.cpp wiola::audio_output)
 
 target_link_libraries(audio_output_test PRIVATE Threads::Threads)

@@ -45,10 +45,6 @@ public:
 
     ~Equalizer() override;
 
-    /// Prepares independent processing storage; commit adopts the latest accepted gains
-    /// and enabled state. Configuration references remain stable across commit/failure.
-    [[nodiscard]] std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) override;
-
     [[nodiscard]] const EqualizerConfig& config() const noexcept;
 
     [[nodiscard]] const BandLayout& layout() const noexcept;
@@ -69,6 +65,9 @@ public:
     void process(std::span<float> samples) noexcept override;
 
 private:
+    /// Prepares independent processing storage; commit adopts the latest accepted gains
+    /// and enabled state. Configuration references remain stable across commit/failure.
+    [[nodiscard]] std::unique_ptr<Preparation> prepare_change(pcm::StreamSpec spec) override;
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };

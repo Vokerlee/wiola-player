@@ -54,7 +54,7 @@ auto samples()
 }
 
 /// Level `equalizer` leaves a sine at `tone` with, in decibels against the sine's own level.
-double response_db(Equalizer& equalizer, StreamSpec spec, Frequency tone)
+double response_db(const wiola::core::Lease<Equalizer>& equalizer, StreamSpec spec, Frequency tone)
 {
     constexpr std::size_t num_blocks{40};
     constexpr std::size_t num_frames{512};
@@ -73,7 +73,7 @@ double response_db(Equalizer& equalizer, StreamSpec spec, Frequency tone)
         for (const float sample : block)
             plain += static_cast<double>(sample) * sample;
 
-        equalizer.process(block);
+        equalizer->process(block);
 
         double shaped{0.0};
 
@@ -91,11 +91,11 @@ double response_db(Equalizer& equalizer, StreamSpec spec, Frequency tone)
 }
 
 /// Works the settings out where the samples are shaped, which is where the preamp is decided.
-void run_once(Equalizer& equalizer)
+void run_once(const wiola::core::Lease<Equalizer>& equalizer)
 {
     std::array<float, 2> block{};
 
-    equalizer.process(block);
+    equalizer->process(block);
 }
 
 TEST(EqualizerConfig, RejectsInvalidLayouts)
@@ -136,93 +136,91 @@ TEST(EqualizerConfig, OwnsTheGainLimitItExposes)
     EqualizerConfig config;
     config.max_band_gain_db = 6.0F;
 
-    Equalizer equalizer{stereo, config};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo, config);
 
-    equalizer.set_band_gain(2, 12.0F);
+    equalizer->set_band_gain(2, 12.0F);
 
-    EXPECT_FLOAT_EQ(equalizer.band_gain(2), 6.0F);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(2), 6.0F);
 }
 
 } // namespace
 
 TEST(Equalizer, LaysOutOneBandPerOctave)
 {
-    const Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    ASSERT_EQ(equalizer.num_bands(), 10u);
-    EXPECT_EQ(equalizer.band_center(0), 31.25_Hz);
-    EXPECT_EQ(equalizer.band_center(9), 16_kHz);
+    ASSERT_EQ(equalizer->num_bands(), 10u);
+    EXPECT_EQ(equalizer->band_center(0), 31.25_Hz);
+    EXPECT_EQ(equalizer->band_center(9), 16_kHz);
 
-    for (std::size_t i = 1; i < equalizer.num_bands(); ++i)
-        EXPECT_DOUBLE_EQ(equalizer.band_center(i) / equalizer.band_center(i - 1), 2.0);
+    for (std::size_t i = 1; i < equalizer->num_bands(); ++i)
+        EXPECT_DOUBLE_EQ(equalizer->band_center(i) / equalizer->band_center(i - 1), 2.0);
 }
 
 /// A band that close to half the sample rate cannot be given its width, so it is not offered.
 TEST(Equalizer, DropsBandsTheFormatCannotCarry)
 {
-    const Equalizer equalizer{
-        StreamSpec{.sample_rate = 22050_Hz, .num_channels = 2}
-    };
+    const auto equalizer =
+        wiola::core::Lease<Equalizer>::make(StreamSpec{.sample_rate = 22050_Hz, .num_channels = 2});
 
-    EXPECT_EQ(equalizer.num_bands(), 9u);
-    EXPECT_EQ(equalizer.band_center(8), 8_kHz);
+    EXPECT_EQ(equalizer->num_bands(), 9u);
+    EXPECT_EQ(equalizer->band_center(8), 8_kHz);
 }
 
 TEST(Equalizer, LeavesEveryBandWellBelowNyquist)
 {
     for (const Frequency rate : {8_kHz, 22050_Hz, 44100_Hz, 48_kHz, 96_kHz}) {
-        const Equalizer equalizer{
-            StreamSpec{.sample_rate = rate, .num_channels = 2}
-        };
+        const auto equalizer =
+            wiola::core::Lease<Equalizer>::make(StreamSpec{.sample_rate = rate, .num_channels = 2});
 
-        for (std::size_t i = 0; i < equalizer.num_bands(); ++i)
-            EXPECT_LT(equalizer.band_center(i), rate / 2.0) << "at " << rate.to<Hz>() << " Hz";
+        for (std::size_t i = 0; i < equalizer->num_bands(); ++i)
+            EXPECT_LT(equalizer->band_center(i), rate / 2.0) << "at " << rate.to<Hz>() << " Hz";
     }
 }
 
 TEST(Equalizer, OffersNoBandsForAFormatItCannotUse)
 {
-    const Equalizer equalizer{
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(
         StreamSpec{.sample_rate = Frequency{}, .num_channels = 2}
-    };
+    );
 
-    EXPECT_EQ(equalizer.num_bands(), 0u);
+    EXPECT_EQ(equalizer->num_bands(), 0u);
 }
 
 /// The row of octave bands is a default, not the only layout it can be built with.
 TEST(Equalizer, TakesTheLayoutItIsGiven)
 {
     const BandLayout thirds{.first = 20_Hz, .count = 31, .ratio = 1.2599210498948732};
-    const Equalizer equalizer{stereo, thirds};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo, thirds);
 
-    EXPECT_EQ(equalizer.band_center(0), 20_Hz);
-    EXPECT_NEAR(equalizer.band_center(3).to<Hz>(), 40.0, 1e-9);
+    EXPECT_EQ(equalizer->band_center(0), 20_Hz);
+    EXPECT_NEAR(equalizer->band_center(3).to<Hz>(), 40.0, 1e-9);
 
     // Three of these to an octave, so the last of the 31 is ten octaves up, which is more than
     // 48 kHz can carry: the cap answers the same way whatever the layout asks for.
-    EXPECT_NEAR(equalizer.band_center(30).to<Hz>(), 20480.0, 1e-6);
-    EXPECT_EQ(equalizer.num_bands(), 30u);
+    EXPECT_NEAR(equalizer->band_center(30).to<Hz>(), 20480.0, 1e-6);
+    EXPECT_EQ(equalizer->num_bands(), 30u);
 }
 
 TEST(Equalizer, StartsFlatAndOn)
 {
-    const Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    EXPECT_TRUE(equalizer.enabled());
-    EXPECT_FLOAT_EQ(equalizer.preamp(), 0.0F);
+    EXPECT_TRUE(equalizer->enabled());
+    EXPECT_FLOAT_EQ(equalizer->preamp(), 0.0F);
 
-    for (std::size_t i = 0; i < equalizer.num_bands(); ++i)
-        EXPECT_FLOAT_EQ(equalizer.band_gain(i), 0.0F) << "band " << i;
+    for (std::size_t i = 0; i < equalizer->num_bands(); ++i)
+        EXPECT_FLOAT_EQ(equalizer->band_gain(i), 0.0F) << "band " << i;
 }
 
 TEST(Equalizer, LeavesSamplesUntouchedWhileFlat)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
     auto buffer{samples()};
 
-    equalizer.set_band_gain(3, 6.0F);
-    equalizer.set_band_gain(3, 0.0F);
-    equalizer.process(buffer);
+    equalizer->set_band_gain(3, 6.0F);
+    equalizer->set_band_gain(3, 0.0F);
+    equalizer->process(buffer);
 
     EXPECT_EQ(buffer, samples());
 }
@@ -230,12 +228,12 @@ TEST(Equalizer, LeavesSamplesUntouchedWhileFlat)
 /// A lifted band comes out where it was: the room it needed was taken from everything else.
 TEST(Equalizer, LiftsABandAboveTheRest)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, 6.0F);
+    equalizer->set_band_gain(5, 6.0F);
 
-    const double lifted{response_db(equalizer, stereo, equalizer.band_center(5))};
-    const double rest{response_db(equalizer, stereo, equalizer.band_center(0))};
+    const double lifted{response_db(equalizer, stereo, equalizer->band_center(5))};
+    const double rest{response_db(equalizer, stereo, equalizer->band_center(0))};
 
     EXPECT_NEAR(lifted, 0.0, 0.2);
     EXPECT_NEAR(lifted - rest, 6.0, 0.3);
@@ -243,23 +241,23 @@ TEST(Equalizer, LiftsABandAboveTheRest)
 
 TEST(Equalizer, CutsWhatABandIsSetTo)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, -6.0F);
+    equalizer->set_band_gain(5, -6.0F);
 
-    EXPECT_NEAR(response_db(equalizer, stereo, equalizer.band_center(5)), -6.0, 0.2);
+    EXPECT_NEAR(response_db(equalizer, stereo, equalizer->band_center(5)), -6.0, 0.2);
 }
 
 /// A band reaches its neighbors, but by much less than it lifts its own center.
 TEST(Equalizer, LeavesTheNextBandMostlyAlone)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, 6.0F);
+    equalizer->set_band_gain(5, 6.0F);
 
-    const double lifted{response_db(equalizer, stereo, equalizer.band_center(5))};
-    const double neighbor{response_db(equalizer, stereo, equalizer.band_center(6))};
-    const double rest{response_db(equalizer, stereo, equalizer.band_center(0))};
+    const double lifted{response_db(equalizer, stereo, equalizer->band_center(5))};
+    const double neighbor{response_db(equalizer, stereo, equalizer->band_center(6))};
+    const double rest{response_db(equalizer, stereo, equalizer->band_center(0))};
 
     EXPECT_GT(neighbor, rest);
     EXPECT_LT(neighbor, lifted - 3.0);
@@ -267,32 +265,33 @@ TEST(Equalizer, LeavesTheNextBandMostlyAlone)
 
 TEST(Equalizer, RefusesMoreThanABandMayDo)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(2, 40.0F);
+    equalizer->set_band_gain(2, 40.0F);
 
-    EXPECT_FLOAT_EQ(equalizer.band_gain(2), 12.0F);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(2), 12.0F);
 
-    equalizer.set_band_gain(2, -40.0F);
+    equalizer->set_band_gain(2, -40.0F);
 
-    EXPECT_FLOAT_EQ(equalizer.band_gain(2), -12.0F);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(2), -12.0F);
 }
 
 /// A gain outlives the format that could not carry its band.
 TEST(Equalizer, RemembersGainsOfBandsAFormatDrops)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(9, 6.0F);
-    equalizer.configure(StreamSpec{.sample_rate = 22050_Hz, .num_channels = 2});
+    equalizer->set_band_gain(9, 6.0F);
+    wiola::audio::Stage::configure(equalizer,
+        StreamSpec{.sample_rate = 22050_Hz, .num_channels = 2});
 
-    ASSERT_EQ(equalizer.num_bands(), 9u);
-    EXPECT_FLOAT_EQ(equalizer.band_gain(9), 6.0F);
+    ASSERT_EQ(equalizer->num_bands(), 9u);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(9), 6.0F);
 
-    equalizer.configure(stereo);
+    wiola::audio::Stage::configure(equalizer, stereo);
 
-    const double restored{response_db(equalizer, stereo, equalizer.band_center(9))};
-    const double rest{response_db(equalizer, stereo, equalizer.band_center(0))};
+    const double restored{response_db(equalizer, stereo, equalizer->band_center(9))};
+    const double rest{response_db(equalizer, stereo, equalizer->band_center(0))};
 
     EXPECT_NEAR(restored - rest, 6.0, 0.5);
 }
@@ -301,82 +300,82 @@ TEST(Equalizer, RemembersGainsOfBandsAFormatDrops)
 /// comes down around it.
 TEST(Equalizer, TakesTheRoomABoostNeeds)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, 6.0F);
+    equalizer->set_band_gain(5, 6.0F);
     run_once(equalizer);
 
-    EXPECT_FLOAT_EQ(equalizer.preamp(), -6.0F);
-    EXPECT_NEAR(response_db(equalizer, stereo, equalizer.band_center(5)), 0.0, 0.5);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), -6.0F);
+    EXPECT_NEAR(response_db(equalizer, stereo, equalizer->band_center(5)), 0.0, 0.5);
 }
 
 /// Only a lift needs room: cutting a band asks for none.
 TEST(Equalizer, TakesNoRoomForACut)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, -6.0F);
+    equalizer->set_band_gain(5, -6.0F);
     run_once(equalizer);
 
-    EXPECT_FLOAT_EQ(equalizer.preamp(), 0.0F);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), 0.0F);
 }
 
 /// The room is for the largest lift, not for their sum.
 TEST(Equalizer, TakesTheRoomTheLargestBoostNeeds)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(2, 3.0F);
-    equalizer.set_band_gain(5, 9.0F);
+    equalizer->set_band_gain(2, 3.0F);
+    equalizer->set_band_gain(5, 9.0F);
     run_once(equalizer);
 
-    EXPECT_FLOAT_EQ(equalizer.preamp(), -9.0F);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), -9.0F);
 }
 
 TEST(Equalizer, RunsNeitherBandsNorPreampWhileTurnedOff)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
     auto buffer{samples()};
 
-    equalizer.set_band_gain(5, 6.0F);
-    equalizer.set_enabled(false);
-    equalizer.process(buffer);
+    equalizer->set_band_gain(5, 6.0F);
+    equalizer->set_enabled(false);
+    equalizer->process(buffer);
 
     EXPECT_EQ(buffer, samples());
 }
 
 TEST(Equalizer, AcceptsNothingToDo)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, 6.0F);
-    equalizer.process(std::span<float>{});
+    equalizer->set_band_gain(5, 6.0F);
+    equalizer->process(std::span<float>{});
 
-    EXPECT_FLOAT_EQ(equalizer.preamp(), -6.0F);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), -6.0F);
 }
 
 TEST(Equalizer, PreparesUpdatedPreampBeforeProcessing)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, 6.0F);
+    equalizer->set_band_gain(5, 6.0F);
 
-    EXPECT_FLOAT_EQ(equalizer.preamp(), -6.0F);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), -6.0F);
 }
 
 TEST(Equalizer, IgnoresANonFiniteGain)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
 
-    equalizer.set_band_gain(5, std::numeric_limits<float>::quiet_NaN());
+    equalizer->set_band_gain(5, std::numeric_limits<float>::quiet_NaN());
 
-    EXPECT_FLOAT_EQ(equalizer.band_gain(5), 0.0F);
-    EXPECT_FLOAT_EQ(equalizer.preamp(), 0.0F);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(5), 0.0F);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), 0.0F);
 }
 
 TEST(Equalizer, PublishesCoherentBanksDuringRapidUpdates)
 {
-    Equalizer equalizer{stereo};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
     std::atomic<bool> start{false};
     std::atomic<bool> done{false};
     bool finite{true};
@@ -385,8 +384,8 @@ TEST(Equalizer, PublishesCoherentBanksDuringRapidUpdates)
         start.wait(false, std::memory_order_acquire);
 
         for (std::size_t iteration = 0; iteration < 2000; ++iteration) {
-            for (std::size_t band = 0; band < equalizer.layout().count; ++band)
-                equalizer.set_band_gain(band, iteration % 2 == 0 ? 6.0F : -6.0F);
+            for (std::size_t band = 0; band < equalizer->layout().count; ++band)
+                equalizer->set_band_gain(band, iteration % 2 == 0 ? 6.0F : -6.0F);
         }
 
         done.store(true, std::memory_order_release);
@@ -399,7 +398,7 @@ TEST(Equalizer, PublishesCoherentBanksDuringRapidUpdates)
     while (!done.load(std::memory_order_acquire)) {
         std::array<float, 256> block{};
         block.fill(0.125F);
-        equalizer.process(block);
+        equalizer->process(block);
         finite = finite && std::all_of(block.begin(), block.end(), [](float sample) {
             return std::isfinite(sample);
         });
@@ -415,30 +414,31 @@ TEST(Equalizer, RetainsItsAuthoredPolicyAcrossStreamReconfiguration)
     EqualizerConfig config;
     config.max_band_gain_db = 6.0F;
 
-    Equalizer equalizer{stereo, config};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo, config);
 
     config.max_band_gain_db = 3.0F;
-    equalizer.configure({.sample_rate = Frequency{24000.0}, .num_channels = 1});
+    wiola::audio::Stage::configure(equalizer,
+        {.sample_rate = Frequency{24000.0}, .num_channels = 1});
 
-    EXPECT_FLOAT_EQ(equalizer.config().max_band_gain_db, 6.0F);
+    EXPECT_FLOAT_EQ(equalizer->config().max_band_gain_db, 6.0F);
 
-    equalizer.set_band_gain(0, 12.0F);
-    EXPECT_FLOAT_EQ(equalizer.band_gain(0), 6.0F);
+    equalizer->set_band_gain(0, 12.0F);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(0), 6.0F);
 }
 
 TEST(Equalizer, IgnoresAnOutOfRangeBandWithoutChangingAcceptedGains)
 {
-    Equalizer equalizer{stereo};
-    equalizer.set_band_gain(0, 3.0F);
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
+    equalizer->set_band_gain(0, 3.0F);
 
-    const float preamp = equalizer.preamp();
-    const auto outside = equalizer.layout().count;
+    const float preamp = equalizer->preamp();
+    const auto outside = equalizer->layout().count;
 
-    equalizer.set_band_gain(outside, 12.0F);
+    equalizer->set_band_gain(outside, 12.0F);
 
-    EXPECT_FLOAT_EQ(equalizer.band_gain(outside), 0.0F);
-    EXPECT_FLOAT_EQ(equalizer.band_gain(0), 3.0F);
-    EXPECT_FLOAT_EQ(equalizer.preamp(), preamp);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(outside), 0.0F);
+    EXPECT_FLOAT_EQ(equalizer->band_gain(0), 3.0F);
+    EXPECT_FLOAT_EQ(equalizer->preamp(), preamp);
 }
 
 #if WIOLA_TEST_ALLOCATOR_REPLACEMENT
@@ -448,10 +448,10 @@ TEST(Equalizer, FailedStreamPreparationPreservesTheActiveState)
     bool observed_failure{false};
 
     for (std::size_t after{0};; ++after) {
-        Equalizer equalizer{stereo};
-        Equalizer reference{stereo};
+        const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
+        const auto reference = wiola::core::Lease<Equalizer>::make(stereo);
 
-        for (auto* instance : {&equalizer, &reference}) {
+        for (const auto& instance : {equalizer, reference}) {
             instance->set_band_gain(5, -6.0F);
             instance->set_band_gain(9, 3.0F);
         }
@@ -459,16 +459,16 @@ TEST(Equalizer, FailedStreamPreparationPreservesTheActiveState)
         auto history{samples()};
         auto reference_history{history};
 
-        equalizer.process(history);
-        reference.process(reference_history);
+        equalizer->process(history);
+        reference->process(reference_history);
 
-        const auto* config{&equalizer.config()};
-        const auto* layout{&equalizer.layout()};
+        const auto* config{&equalizer->config()};
+        const auto* layout{&equalizer->layout()};
         bool failed{false};
         {
             const wiola::testing::AllocationFailure failure{after};
             try {
-                equalizer.configure(replacement);
+                wiola::audio::Stage::configure(equalizer, replacement);
             } catch (const std::bad_alloc&) {
                 failed = true;
             }
@@ -476,58 +476,58 @@ TEST(Equalizer, FailedStreamPreparationPreservesTheActiveState)
 
         if (!failed) {
             EXPECT_TRUE(observed_failure);
-            EXPECT_EQ(equalizer.num_bands(), 9u);
-            EXPECT_FLOAT_EQ(equalizer.band_gain(9), 3.0F);
+            EXPECT_EQ(equalizer->num_bands(), 9u);
+            EXPECT_FLOAT_EQ(equalizer->band_gain(9), 3.0F);
 
             break;
         }
 
         observed_failure = true;
-        EXPECT_EQ(&equalizer.config(), config);
-        EXPECT_EQ(&equalizer.layout(), layout);
-        EXPECT_EQ(equalizer.num_bands(), 10u);
-        EXPECT_FLOAT_EQ(equalizer.preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(equalizer.band_gain(5), -6.0F);
-        EXPECT_FLOAT_EQ(equalizer.band_gain(9), 3.0F);
-        EXPECT_TRUE(equalizer.enabled());
+        EXPECT_EQ(&equalizer->config(), config);
+        EXPECT_EQ(&equalizer->layout(), layout);
+        EXPECT_EQ(equalizer->num_bands(), 10u);
+        EXPECT_FLOAT_EQ(equalizer->preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(equalizer->band_gain(5), -6.0F);
+        EXPECT_FLOAT_EQ(equalizer->band_gain(9), 3.0F);
+        EXPECT_TRUE(equalizer->enabled());
 
         auto next{samples()};
         auto expected{next};
 
-        equalizer.process(next);
-        reference.process(expected);
+        equalizer->process(next);
+        reference->process(expected);
         EXPECT_EQ(next, expected);
 
-        equalizer.configure(replacement);
-        EXPECT_EQ(equalizer.num_bands(), 9u);
-        EXPECT_FLOAT_EQ(equalizer.preamp(), 0.0F);
-        EXPECT_FLOAT_EQ(equalizer.band_gain(9), 3.0F);
+        wiola::audio::Stage::configure(equalizer, replacement);
+        EXPECT_EQ(equalizer->num_bands(), 9u);
+        EXPECT_FLOAT_EQ(equalizer->preamp(), 0.0F);
+        EXPECT_FLOAT_EQ(equalizer->band_gain(9), 3.0F);
     }
 }
 #endif
 
 TEST(Equalizer, ReconfigurationKeepsConfigurationReferencesAndDisabledSettings)
 {
-    Equalizer equalizer{stereo};
-    const auto* config{&equalizer.config()};
-    const auto* layout{&equalizer.layout()};
+    const auto equalizer = wiola::core::Lease<Equalizer>::make(stereo);
+    const auto* config{&equalizer->config()};
+    const auto* layout{&equalizer->layout()};
 
-    equalizer.set_band_gain(5, 6.0F);
-    equalizer.set_enabled(false);
+    equalizer->set_band_gain(5, 6.0F);
+    equalizer->set_enabled(false);
 
-    equalizer.configure({.sample_rate = 22050_Hz, .num_channels = 1});
+    wiola::audio::Stage::configure(equalizer, {.sample_rate = 22050_Hz, .num_channels = 1});
 
-    EXPECT_EQ(&equalizer.config(), config);
-    EXPECT_EQ(&equalizer.layout(), layout);
-    EXPECT_FALSE(equalizer.enabled());
-    EXPECT_FLOAT_EQ(equalizer.band_gain(5), 6.0F);
+    EXPECT_EQ(&equalizer->config(), config);
+    EXPECT_EQ(&equalizer->layout(), layout);
+    EXPECT_FALSE(equalizer->enabled());
+    EXPECT_FLOAT_EQ(equalizer->band_gain(5), 6.0F);
 
     auto untouched{samples()};
-    equalizer.process(untouched);
+    equalizer->process(untouched);
     EXPECT_EQ(untouched, samples());
 
-    equalizer.set_enabled(true);
+    equalizer->set_enabled(true);
     EXPECT_NEAR(response_db(equalizer, {.sample_rate = 22050_Hz, .num_channels = 1},
-                    equalizer.band_center(0)),
+                    equalizer->band_center(0)),
         -6.0, 0.3);
 }

@@ -73,7 +73,7 @@ private:
 /// A downstream implementation, with no ProcessingChain or built-in equalizer dependency.
 class SuppliedStage final : public wiola::audio::Stage {
 public:
-    std::unique_ptr<Preparation> prepare(StreamSpec) noexcept override { return nullptr; }
+    std::unique_ptr<Preparation> prepare_change(StreamSpec) noexcept override { return nullptr; }
 
     void process(std::span<float> samples) noexcept override
     {
@@ -102,7 +102,7 @@ TEST(ShapedSource, ReportsTheSpecOfWhatItWraps)
 {
     FixedSource inner{mono, 1.0F, 8};
     wiola::testing::Shaping shaping{mono};
-    ShapedSource source{inner, shaping.chain};
+    ShapedSource source{inner, shaping.chain.get()};
 
     EXPECT_EQ(source.spec(), mono);
 }
@@ -111,7 +111,7 @@ TEST(ShapedSource, LeavesSamplesAloneWhileNothingIsAsked)
 {
     FixedSource inner{stereo, 0.5F, 8};
     wiola::testing::Shaping shaping{stereo};
-    ShapedSource source{inner, shaping.chain};
+    ShapedSource source{inner, shaping.chain.get()};
 
     std::array<float, 8> block{};
 
@@ -125,7 +125,7 @@ TEST(ShapedSource, AppliesTheProcessingChain)
 {
     FixedSource inner{stereo, 0.8F, 8};
     wiola::testing::Shaping shaping{stereo};
-    ShapedSource source{inner, shaping.chain};
+    ShapedSource source{inner, shaping.chain.get()};
 
     shaping.volume->set_gain(0.5F);
 
@@ -140,7 +140,7 @@ TEST(ShapedSource, GivesWhatItWasGiven)
 {
     FixedSource inner{stereo, 0.5F, 4};
     wiola::testing::Shaping shaping{stereo};
-    ShapedSource source{inner, shaping.chain};
+    ShapedSource source{inner, shaping.chain.get()};
 
     std::array<float, 8> block{};
 
@@ -153,7 +153,7 @@ TEST(ShapedSource, ShapesOnlyWhatTheInnerSourceGave)
 {
     FixedSource inner{stereo, 0.8F, 4};
     wiola::testing::Shaping shaping{stereo};
-    ShapedSource source{inner, shaping.chain};
+    ShapedSource source{inner, shaping.chain.get()};
 
     shaping.volume->set_gain(0.5F);
 
@@ -170,7 +170,7 @@ TEST(ShapedSource, TakesTheSettingAsItIsWhenAsked)
 {
     FixedSource inner{stereo, 0.8F, 8};
     wiola::testing::Shaping shaping{stereo};
-    ShapedSource source{inner, shaping.chain};
+    ShapedSource source{inner, shaping.chain.get()};
 
     std::array<float, 8> first{};
     std::array<float, 8> second{};
@@ -187,7 +187,7 @@ TEST(ShapedSource, AnswersAsASource)
 {
     FixedSource inner{stereo, 0.5F, 8};
     wiola::testing::Shaping shaping{stereo};
-    ShapedSource shaped{inner, shaping.chain};
+    ShapedSource shaped{inner, shaping.chain.get()};
     Source& source{shaped};
 
     std::array<float, 8> block{};

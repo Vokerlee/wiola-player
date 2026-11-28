@@ -116,7 +116,7 @@ bool Equalizer::enabled() const noexcept
     return impl_->processing->parameters.enabled();
 }
 
-std::unique_ptr<Stage::Preparation> Equalizer::prepare(pcm::StreamSpec spec)
+std::unique_ptr<Stage::Preparation> Equalizer::prepare_change(pcm::StreamSpec spec)
 {
     return std::make_unique<Impl::Prepared>(*impl_, spec);
 }

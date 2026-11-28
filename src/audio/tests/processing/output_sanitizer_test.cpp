@@ -88,11 +88,11 @@ TEST(OutputSanitizer, AcceptsNothingToDo)
 /// Nothing here follows the stream, so being told about one changes nothing.
 TEST(OutputSanitizer, IsUnchangedByTheFormat)
 {
-    OutputSanitizer sanitizer;
-    sanitizer.configure(stereo);
+    const auto sanitizer = wiola::core::Lease<OutputSanitizer>::make();
+    wiola::audio::Stage::configure(sanitizer, stereo);
 
     std::array block{2.0F, -2.0F};
-    sanitizer.process(block);
+    sanitizer->process(block);
 
     EXPECT_FLOAT_EQ(block[0], 1.0F);
     EXPECT_FLOAT_EQ(block[1], -1.0F);

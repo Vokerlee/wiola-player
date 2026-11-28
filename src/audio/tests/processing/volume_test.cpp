@@ -172,12 +172,12 @@ TEST(Volume, LiftsPastFullScaleWithoutHoldingIt)
 /// Nothing here follows the stream, so being told about one changes nothing.
 TEST(Volume, IsUnchangedByTheFormat)
 {
-    Volume volume;
+    const auto volume = wiola::core::Lease<Volume>::make();
     auto buffer{samples()};
 
-    volume.set_gain(0.5F);
-    volume.configure(stereo);
-    volume.process(buffer);
+    volume->set_gain(0.5F);
+    wiola::audio::Stage::configure(volume, stereo);
+    volume->process(buffer);
 
     EXPECT_FLOAT_EQ(buffer[0], 0.5F);
 }

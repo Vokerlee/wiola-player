@@ -38,7 +38,10 @@ namespace {
 
 class PassThrough final : public wiola::audio::Stage {
 public:
-    std::unique_ptr<Preparation> prepare(wiola::pcm::StreamSpec) noexcept override { return {}; }
+    std::unique_ptr<Preparation> prepare_change(wiola::pcm::StreamSpec) noexcept override
+    {
+        return {};
+    }
 
     void process(std::span<float>) noexcept override { }
 };

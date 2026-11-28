@@ -60,9 +60,11 @@ namespace units = wiola::units;
 /// A supplied processing implementation independent of the built-in equalizer and topology.
 class SuppliedProcessing final : public wiola::audio::Stage {
 public:
-    std::unique_ptr<Preparation> prepare(wiola::pcm::StreamSpec spec) noexcept override
+    std::unique_ptr<Preparation> prepare_change(wiola::pcm::StreamSpec spec) noexcept override
     {
         prepared_for = spec;
+        if (refuse)
+            return std::make_unique<Refused>();
         return nullptr;
     }
 
@@ -73,6 +75,14 @@ public:
     }
 
     std::optional<wiola::pcm::StreamSpec> prepared_for;
+    bool refuse{false};
+
+private:
+    class Refused final : public Preparation {
+        bool can_activate() const noexcept override { return false; }
+
+        void activate() noexcept override { }
+    };
 };
 
 TEST(Session, PreparesAndRendersThroughTheHostSuppliedProcessingPort)
@@ -143,6 +153,45 @@ TEST(Session, RetainsTheSuppliedProcessingNodeUntilSessionTeardown)
 
     session.reset();
     EXPECT_FALSE(observer.lock());
+}
+
+TEST(Session, UnreadyProcessingPreservesTheInstalledTrackAndDoesNotConstructAnotherOutput)
+{
+    const auto processing = wiola::core::Lease<SuppliedProcessing>::make();
+    unsigned outputs{};
+    wiola::testing::FakeOutput* device{};
+    Session session{processing,
+        [&](wiola::audio::Source&) {
+            ++outputs;
+            auto result = std::make_unique<wiola::testing::FakeOutput>();
+            device = result.get();
+            return result;
+        },
+        std::make_shared<wiola::testing::FakeMediaProvider>(
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
+                return wiola::media::DecoderOpenResult{
+                    std::make_unique<wiola::testing::FakeDecoder>()};
+            },
+            [](const wiola::media::ResourceReference&, const wiola::media::OperationContext&) {
+                return wiola::media::Metadata{};
+            }
+        )};
+    const auto original = wiola::testing::resource("original", "original");
+    const auto replacement = wiola::testing::resource("replacement", "replacement");
+    ASSERT_EQ(load_and_wait(session, original), OpenResult::opened);
+    ASSERT_TRUE(session.play());
+    ASSERT_TRUE(poll_until(session, [&] { return device->running(); }));
+
+    processing->refuse = true;
+    ASSERT_EQ(load_and_wait(session, replacement), OpenResult::output_unavailable);
+    EXPECT_EQ(outputs, 1U);
+    EXPECT_EQ(session.track(), original);
+    EXPECT_TRUE(session.playing());
+    EXPECT_TRUE(device->running());
+
+    processing->refuse = false;
+    EXPECT_EQ(load_and_wait(session, replacement), OpenResult::opened);
+    EXPECT_EQ(session.track(), replacement);
 }
 
 TEST(Session, RejectsAnInvalidStreamBeforeBuildingAPipeline)
@@ -316,7 +365,7 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         bool fail{false};
         wiola::core::Lease<wiola::testing::Shaping> processing =
             wiola::core::Lease<wiola::testing::Shaping>::make(wiola::pcm::StreamSpec{});
-        Session session{processing.member<&wiola::testing::Shaping::chain>(),
+        Session session{processing->chain,
             [&](wiola::audio::Source&) -> std::unique_ptr<wiola::audio::Output> {
                 if (fail) {
                     if (fault == Fault::no_output)
@@ -646,7 +695,7 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         wiola::testing::FakeOutput* active_device{};
         wiola::core::Lease<wiola::testing::Shaping> processing =
             wiola::core::Lease<wiola::testing::Shaping>::make(wiola::pcm::StreamSpec{});
-        Session session{processing.member<&wiola::testing::Shaping::chain>(),
+        Session session{processing->chain,
             [&](wiola::audio::Source& rendered) {
                 auto output{std::make_unique<wiola::testing::FakeOutput>()};
 

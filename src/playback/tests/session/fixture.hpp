@@ -104,7 +104,7 @@ public:
     static constexpr units::Time duration{std::chrono::milliseconds{1500}};
 
     SessionFixture()
-        : session{processing.member<&wiola::testing::Shaping::chain>(),
+        : session{processing->chain,
               [this](wiola::audio::Source& source) {
                   ++num_outputs;
                   return consuming ? std::make_unique<wiola::testing::FakeOutput>(source)

@@ -354,7 +354,10 @@ bool Session::Impl::install_track(std::unique_ptr<media::AudioDecoder> source,
             "decoder stream cannot support the configured playback buffer"});
 
     try {
-        auto processing{processing_->prepare(spec)};
+        auto processing{audio::Stage::prepare(processing_, spec)};
+        if (processing && !processing->ready())
+            return reject(OutputSetupError{"processing preparation is no longer current"});
+
         auto output{out_.prepare(spec)};
         auto pipeline{std::make_unique<PlaybackPipeline>(std::move(source), std::move(output),
             *buffer_frames, transport_)};
