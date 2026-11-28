@@ -45,11 +45,14 @@ private:
 
 } // namespace
 
-ProcessingChain::ProcessingChain(std::initializer_list<std::reference_wrapper<Stage>> stages)
+ProcessingChain::ProcessingChain(std::initializer_list<core::Lease<Stage>> stages)
+    : ProcessingChain(std::span{stages.begin(), stages.size()})
 {
-    stages_.reserve(stages.size());
-    for (const auto stage : stages)
-        stages_.push_back(&stage.get());
+}
+
+ProcessingChain::ProcessingChain(std::span<const core::Lease<Stage>> stages)
+    : stages_{stages.begin(), stages.end()}
+{
 }
 
 std::unique_ptr<Stage::Preparation> ProcessingChain::prepare(pcm::StreamSpec spec)
@@ -57,7 +60,7 @@ std::unique_ptr<Stage::Preparation> ProcessingChain::prepare(pcm::StreamSpec spe
     std::vector<std::unique_ptr<Stage::Preparation>> prepared;
     prepared.reserve(stages_.size());
 
-    for (Stage* stage : stages_) {
+    for (const auto& stage : stages_) {
         if (auto candidate{stage->prepare(spec)})
             prepared.push_back(std::move(candidate));
     }
@@ -70,7 +73,7 @@ std::unique_ptr<Stage::Preparation> ProcessingChain::prepare(pcm::StreamSpec spe
 
 void ProcessingChain::process(std::span<float> samples) noexcept
 {
-    for (Stage* stage : stages_)
+    for (const auto& stage : stages_)
         stage->process(samples);
 
     sanitizer_.process(samples);

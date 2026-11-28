@@ -290,13 +290,13 @@ TEST(Session, PreservesSuppliedProcessingSettingsAcrossTracks)
     SessionFixture fixture;
     const wiola::media::ResourceReference resource{fixture.track()};
 
-    fixture.processing->volume.set_gain(0.25F);
-    fixture.processing->equalizer.set_band_gain(3, 6.0F);
+    fixture.processing->volume->set_gain(0.25F);
+    fixture.processing->equalizer->set_band_gain(3, 6.0F);
 
     ASSERT_EQ(load_and_wait(fixture.session, resource), OpenResult::opened);
 
-    EXPECT_FLOAT_EQ(fixture.processing->volume.gain(), 0.25F);
-    EXPECT_FLOAT_EQ(fixture.processing->equalizer.band_gain(3), 6.0F);
+    EXPECT_FLOAT_EQ(fixture.processing->volume->gain(), 0.25F);
+    EXPECT_FLOAT_EQ(fixture.processing->equalizer->band_gain(3), 6.0F);
 }
 
 TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
@@ -354,8 +354,8 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         ASSERT_EQ(load_and_wait(session, wiola::testing::resource("current", "current")),
             OpenResult::opened);
 
-        processing->equalizer.set_band_gain(9, 3.0F);
-        processing->volume.set_gain(0.25F);
+        processing->equalizer->set_band_gain(9, 3.0F);
+        processing->volume->set_gain(0.25F);
         ASSERT_TRUE(session.play());
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
 
@@ -382,9 +382,9 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         EXPECT_FALSE(session.seekable());
         EXPECT_TRUE(active_device->running());
         EXPECT_EQ(session.time_played(), position);
-        EXPECT_EQ(processing->equalizer.num_bands(), 10U);
-        EXPECT_FLOAT_EQ(processing->equalizer.preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(processing->volume.gain(), 0.25F);
+        EXPECT_EQ(processing->equalizer->num_bands(), 10U);
+        EXPECT_FLOAT_EQ(processing->equalizer->preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(processing->volume->gain(), 0.25F);
 
         const auto outcomes{session.take_outcomes()};
         const auto completion{std::ranges::find_if(outcomes.values, [&](const auto& value) {
@@ -407,7 +407,7 @@ TEST(Session, OutputSetupFailurePreservesActiveUnseekablePlayback)
         EXPECT_EQ(load_and_wait(session, wiola::testing::resource("candidate", "candidate")),
             OpenResult::opened);
         EXPECT_EQ(session.track(), wiola::testing::resource("candidate", "candidate"));
-        EXPECT_EQ(processing->equalizer.num_bands(), 9U);
+        EXPECT_EQ(processing->equalizer->num_bands(), 9U);
     }
 }
 
@@ -684,8 +684,8 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         ASSERT_TRUE(poll_until(session,
             [&] { return session.playlist().tracks().front().metadata().title == "settled"; }));
 
-        processing->equalizer.set_band_gain(9, 3.0F);
-        processing->volume.set_gain(0.25F);
+        processing->equalizer->set_band_gain(9, 3.0F);
+        processing->volume->set_gain(0.25F);
         ASSERT_TRUE(session.play());
         ASSERT_TRUE(poll_until(session, [&] { return active_device->running(); }));
 
@@ -744,10 +744,10 @@ TEST(Session, EveryInstallationAllocationFailurePreservesActiveUnseekablePlaybac
         EXPECT_TRUE(active_device->running());
         EXPECT_FALSE(session.seekable());
         EXPECT_EQ(session.time_played(), position);
-        EXPECT_EQ(processing->equalizer.num_bands(), 10U);
-        EXPECT_FLOAT_EQ(processing->equalizer.preamp(), -3.0F);
-        EXPECT_FLOAT_EQ(processing->equalizer.band_gain(9), 3.0F);
-        EXPECT_FLOAT_EQ(processing->volume.gain(), 0.25F);
+        EXPECT_EQ(processing->equalizer->num_bands(), 10U);
+        EXPECT_FLOAT_EQ(processing->equalizer->preamp(), -3.0F);
+        EXPECT_FLOAT_EQ(processing->equalizer->band_gain(9), 3.0F);
+        EXPECT_FLOAT_EQ(processing->volume->gain(), 0.25F);
     }
 }
 #endif

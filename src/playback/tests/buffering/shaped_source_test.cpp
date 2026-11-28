@@ -127,7 +127,7 @@ TEST(ShapedSource, AppliesTheProcessingChain)
     wiola::testing::Shaping shaping{stereo};
     ShapedSource source{inner, shaping.chain};
 
-    shaping.volume.set_gain(0.5F);
+    shaping.volume->set_gain(0.5F);
 
     std::array<float, 8> block{};
     source.render(block);
@@ -155,7 +155,7 @@ TEST(ShapedSource, ShapesOnlyWhatTheInnerSourceGave)
     wiola::testing::Shaping shaping{stereo};
     ShapedSource source{inner, shaping.chain};
 
-    shaping.volume.set_gain(0.5F);
+    shaping.volume->set_gain(0.5F);
 
     std::array<float, 8> block{};
     block.fill(42.0F);
@@ -176,7 +176,7 @@ TEST(ShapedSource, TakesTheSettingAsItIsWhenAsked)
     std::array<float, 8> second{};
 
     source.render(first);
-    shaping.volume.set_gain(0.0F);
+    shaping.volume->set_gain(0.0F);
     source.render(second);
 
     EXPECT_FLOAT_EQ(first[0], 0.8F);

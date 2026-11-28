@@ -67,24 +67,24 @@ private:
 
 int main()
 {
-    wiola::audio::Equalizer equalizer{{}};
-    wiola::audio::Volume volume;
-    StreamObserver observer;
+    auto equalizer = wiola::core::Lease<wiola::audio::Equalizer>::make(wiola::pcm::StreamSpec{});
+    auto volume = wiola::core::Lease<wiola::audio::Volume>::make();
+    auto observer = wiola::core::Lease<StreamObserver>::make();
 
-    volume.set_gain(0.5F);
+    volume->set_gain(0.5F);
 
     wiola::audio::ProcessingChain chain{
         {equalizer, volume, observer}
     };
     const auto prepared{chain.prepare({})};
 
-    if (!prepared || observer.commits != 0)
+    if (!prepared || observer->commits != 0)
         return 2;
 
     prepared->commit();
     prepared->commit();
 
-    if (observer.commits != 1 || observer.configured != wiola::pcm::StreamSpec{})
+    if (observer->commits != 1 || observer->configured != wiola::pcm::StreamSpec{})
         return 3;
 
     std::array samples{0.5F, -0.5F};
@@ -93,8 +93,8 @@ int main()
     if (samples[0] != 0.25F || samples[1] != -0.25F)
         return 1;
 
-    equalizer.set_band_gain(0, 3.0F);
+    equalizer->set_band_gain(0, 3.0F);
     chain.process(samples);
 
-    return !std::isfinite(samples[0]) || !equalizer.enabled();
+    return !std::isfinite(samples[0]) || !equalizer->enabled();
 }

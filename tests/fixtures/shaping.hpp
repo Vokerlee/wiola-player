@@ -32,17 +32,15 @@ namespace wiola::testing {
 struct Shaping {
     explicit Shaping(pcm::StreamSpec spec,
         audio::BandLayout layout =
-            {
+            audio::BandLayout{
     })
-        : equalizer{spec, layout}
+        : equalizer{core::Lease<audio::Equalizer>::make(spec, layout)}
         , chain{{equalizer, volume}}
     {
     }
 
-    /// Declared before the chain that runs them, so the chain is let go while the steps it
-    /// points at are still there.
-    audio::Equalizer equalizer;
-    audio::Volume volume;
+    core::Lease<audio::Equalizer> equalizer;
+    core::Lease<audio::Volume> volume = core::Lease<audio::Volume>::make();
     audio::ProcessingChain chain;
 };
 
