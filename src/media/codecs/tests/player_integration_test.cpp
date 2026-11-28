@@ -46,7 +46,7 @@ TEST(Player, PlaysToTheEndOnItsOwn)
     const auto* decoder{source.get()};
     wiola::pcm::PcmQueue queue{source->spec(), wiola::pcm::Frames{512}};
     wiola::audio::BufferSource decoded{source->spec(), queue.consumer()};
-    wiola::testing::FakeOutput output{decoded};
+    auto output = wiola::core::Lease<wiola::testing::FakeOutput>::make(decoded);
     wiola::engine::Player player{std::move(source), queue.producer(), output};
 
     ASSERT_TRUE(player.start());
@@ -55,5 +55,5 @@ TEST(Player, PlaysToTheEndOnItsOwn)
 
     EXPECT_EQ(player.state(), wiola::engine::PlaybackState::ended);
     EXPECT_TRUE(decoder->exhausted());
-    EXPECT_FALSE(output.running());
+    EXPECT_FALSE(output->running());
 }
