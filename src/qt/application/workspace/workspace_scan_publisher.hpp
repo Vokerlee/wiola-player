@@ -22,6 +22,7 @@
 
 #include <app/workspace/workspace_scanner.hpp>
 #include <qt/queued_delivery.hpp>
+#include <wiola/foundation/owner_thread_lifetime.hpp>
 #include <wiola/foundation/shared_callback.hpp>
 
 #include <deque>
@@ -49,10 +50,6 @@ public:
     void stop();
 
 private:
-    struct Lifetime {
-        WorkspaceScanPublisher* owner;
-    };
-
     struct Request {
         library::WorkspaceRecord workspace;
         std::vector<std::string> extensions;
@@ -68,7 +65,7 @@ private:
     void pump();
     void receive(WorkspaceScanBatch batch);
     QueuedDelivery delivery_;
-    std::shared_ptr<Lifetime> lifetime_;
+    core::OwnerThreadLifetime<WorkspaceScanPublisher> lifetime_;
     core::SharedCallback<void(WorkspaceScanBatch)> observer_;
     WorkspaceScanScheduling policy_;
     std::map<library::WorkspaceId, std::uint64_t> generations_;

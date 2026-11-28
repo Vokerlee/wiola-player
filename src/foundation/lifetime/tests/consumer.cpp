@@ -19,6 +19,7 @@
  */
 
 #include <wiola/foundation/lease.hpp>
+#include <wiola/foundation/owner_thread_lifetime.hpp>
 
 #include <memory>
 #include <optional>
@@ -41,5 +42,16 @@ int main()
         [](int& value) { return std::make_unique<Reader>(value); }, *input
     );
     input.reset();
-    return reader->read() == 42 ? 0 : 1;
+    if (reader->read() != 42)
+        return 1;
+
+    wiola::core::OwnerThreadLifetime<Reader>::Observation observation;
+    {
+        wiola::core::OwnerThreadLifetime scope{reader.get()};
+        observation = scope.observe();
+        if (observation.get() != &reader.get())
+            return 2;
+    }
+
+    return observation.get() == nullptr ? 0 : 3;
 }

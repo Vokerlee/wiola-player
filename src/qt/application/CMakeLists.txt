@@ -6,7 +6,7 @@ wiola_add_library(
 
 target_link_libraries(
     wiola_workspace_scans
-    PUBLIC Qt6::Core wiola_app wiola::shared_callback
+    PUBLIC Qt6::Core wiola_app wiola::shared_callback wiola::lifetime
 )
 
 wiola_add_library(
@@ -68,7 +68,7 @@ target_link_libraries(wiola_metadata_writes PRIVATE wiola::local_media)
 
 target_link_libraries(
     wiola_metadata_writes
-    PUBLIC Qt6::Core wiola_app wiola::shared_callback
+    PUBLIC Qt6::Core wiola_app wiola::shared_callback wiola::lifetime
 )
 
 wiola_add_library(

@@ -49,7 +49,7 @@ MetadataWriteService::MetadataWriteService(QObject& owner,
     media::FileReplacement& replacement, library::RepositoryTransaction::Persist persist,
     Observer observer)
     : delivery_{owner}
-    , lifetime_{std::make_shared<Lifetime>(Lifetime{this})}
+    , lifetime_{*this}
     , provider_{checked_provider(std::move(provider), persist)}
     , repository_{repository}
     , replacement_{replacement}
@@ -66,7 +66,7 @@ MetadataWriteService::~MetadataWriteService()
         stop();
     } catch (...) {
     }
-    lifetime_->owner = nullptr;
+    lifetime_.invalidate();
 }
 
 void MetadataWriteService::set_handoff(Handoff handoff)
@@ -100,7 +100,7 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
 {
     Q_ASSERT(QThread::currentThread() == delivery_.thread());
 
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
     std::vector<MetadataWriteOperationId> accepted;
 
     if (phase_ != Phase::running)
@@ -112,7 +112,7 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
     for (const auto& target : targets) {
         cancel(target.media);
 
-        if (!lifetime->owner)
+        if (!lifetime.get())
             return accepted;
 
         MetadataWriteJob job;
@@ -134,7 +134,7 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
         accepted.push_back(job.operation);
         publish({.job = job, .stage = MetadataWriteStage::queued, .outcome = {}, .output = {}});
 
-        if (!lifetime->owner)
+        if (!lifetime.get())
             return accepted;
 
         if (job.context().stop_reason() != media::StopReason::none ||
@@ -149,7 +149,7 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
                 .output = {}
             });
 
-            if (!lifetime->owner)
+            if (!lifetime.get())
                 return accepted;
 
             continue;
@@ -170,10 +170,10 @@ std::vector<MetadataWriteOperationId> MetadataWriteService::submit(const Metadat
                 .output = {}
             };
 
-            const std::weak_ptr<Lifetime> weak = lifetime_;
-            static_cast<void>(delivery_.endpoint().post([weak, rejected] {
-                if (auto state = weak.lock(); state && state->owner)
-                    state->owner->ready(rejected);
+            const auto observed = lifetime_.observe();
+            static_cast<void>(delivery_.endpoint().post([observed, rejected] {
+                if (auto* owner = observed.get())
+                    owner->ready(rejected);
             }));
         }
     }
@@ -245,21 +245,21 @@ void MetadataWriteService::staged(MetadataWriteResult result)
         value.outcome.detail = "driver failure";
     }
 
-    const std::weak_ptr<Lifetime> weak = lifetime_;
-    static_cast<void>(delivery_.post([weak, prepared] {
-        if (auto state = weak.lock(); state && state->owner)
-            state->owner->ready(prepared);
+    const auto observed = lifetime_.observe();
+    static_cast<void>(delivery_.post([observed, prepared] {
+        if (auto* owner = observed.get())
+            owner->ready(prepared);
     }));
 }
 
 void MetadataWriteService::progress(MetadataWriteResult result)
 {
     auto payload = std::make_shared<MetadataWriteResult>(std::move(result));
-    const std::weak_ptr<Lifetime> weak = lifetime_;
-    static_cast<void>(delivery_.post([weak, payload] {
-        if (auto state = weak.lock();
-            state && state->owner && state->owner->operations_.contains(payload->job.operation))
-            state->owner->publish(*payload);
+    const auto observed = lifetime_.observe();
+    static_cast<void>(delivery_.post([observed, payload] {
+        if (auto* owner = observed.get();
+            owner && owner->operations_.contains(payload->job.operation))
+            owner->publish(*payload);
     }));
 }
 
@@ -284,7 +284,7 @@ void MetadataWriteService::ready(std::shared_ptr<Prepared> prepared)
 
 void MetadataWriteService::begin_commit()
 {
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
 
     if (committing_ || ready_.empty())
         return;
@@ -308,7 +308,7 @@ void MetadataWriteService::begin_commit()
     if (result.stage != MetadataWriteStage::ready) {
         finish(std::move(result));
 
-        if (lifetime->owner)
+        if (lifetime.get())
             begin_commit();
 
         return;
@@ -317,11 +317,11 @@ void MetadataWriteService::begin_commit()
     if (durability_ && !prepared->intent_durable) {
         committing_ = true;
 
-        const std::weak_ptr<Lifetime> weak = lifetime_;
+        const auto observed = lifetime_.observe();
         const auto durability = durability_;
-        (*durability)(result.job.library_revision, [weak, prepared](bool durable) {
-            if (const auto state = weak.lock(); state && state->owner) {
-                auto& owner = *state->owner;
+        (*durability)(result.job.library_revision, [observed, prepared](bool durable) {
+            if (auto* active = observed.get()) {
+                auto& owner = *active;
                 owner.committing_ = false;
 
                 if (!owner.operations_.contains(prepared->result.job.operation))
@@ -340,8 +340,8 @@ void MetadataWriteService::begin_commit()
                                   "retained"};
                     owner.finish(std::move(prepared->result));
 
-                    if (state->owner)
-                        state->owner->begin_commit();
+                    if (auto* current = observed.get())
+                        current->begin_commit();
                 }
             }
         });
@@ -354,14 +354,14 @@ void MetadataWriteService::begin_commit()
     if (handoff)
         prepared->restore = (*handoff)(result.job.source);
 
-    if (!lifetime->owner)
+    if (!lifetime.get())
         return;
 
     committing_ = true;
     result.stage = MetadataWriteStage::reloading;
     publish(result);
 
-    if (!lifetime->owner)
+    if (!lifetime.get())
         return;
 
     {
@@ -405,23 +405,23 @@ void MetadataWriteService::run()
                 .detail = "driver failure"};
         }
 
-        const std::weak_ptr<Lifetime> weak = lifetime_;
-        static_cast<void>(delivery_.post([weak, prepared] {
-            if (auto state = weak.lock(); state && state->owner)
-                state->owner->completed(prepared);
+        const auto observed = lifetime_.observe();
+        static_cast<void>(delivery_.post([observed, prepared] {
+            if (auto* owner = observed.get())
+                owner->completed(prepared);
         }));
     }
 }
 
 void MetadataWriteService::completed(std::shared_ptr<Prepared> prepared)
 {
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
     auto& result = prepared->result;
 
     if (prepared->restore)
         prepared->restore();
 
-    if (!lifetime->owner)
+    if (!lifetime.get())
         return;
 
     if (result.outcome.source_modified && prepared->learned) {
@@ -441,18 +441,18 @@ void MetadataWriteService::completed(std::shared_ptr<Prepared> prepared)
             if (repository_.put_track(std::move(updated)))
                 committed = transaction.commit();
 
-            if (!lifetime->owner)
+            if (!lifetime.get())
                 return;
 
             if (!committed) {
                 result.outcome.error = media::MetadataWriteError::io;
                 result.outcome.detail = "File updated, but accepting its library update failed";
             } else if (!committed.durable() && durability_) {
-                const std::weak_ptr<Lifetime> weak = lifetime_;
+                const auto observed = lifetime_.observe();
                 const auto durability = durability_;
-                (*durability)(committed.revision, [weak, prepared](bool durable) {
-                    if (const auto state = weak.lock(); state && state->owner)
-                        state->owner->finish_commit(prepared, durable);
+                (*durability)(committed.revision, [observed, prepared](bool durable) {
+                    if (auto* current = observed.get())
+                        current->finish_commit(prepared, durable);
                 });
 
                 return;
@@ -489,11 +489,11 @@ void MetadataWriteService::finish_commit(std::shared_ptr<Prepared> prepared, boo
         : MetadataWriteStage::failed;
     committing_ = false;
 
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
 
     finish(std::move(result));
 
-    if (lifetime->owner)
+    if (lifetime.get())
         begin_commit();
 }
 
@@ -513,10 +513,10 @@ void MetadataWriteService::stop()
 
     phase_ = Phase::closing;
 
-    const auto lifetime = lifetime_;
+    const auto lifetime = lifetime_.observe();
     const auto interrupted = qScopeGuard([lifetime] {
-        if (lifetime->owner && lifetime->owner->phase_ == Phase::closing)
-            lifetime->owner->phase_ = Phase::retry;
+        if (auto* owner = lifetime.get(); owner && owner->phase_ == Phase::closing)
+            owner->phase_ = Phase::retry;
     });
     std::exception_ptr failure;
     const auto remember_failure = [&] {
@@ -544,7 +544,7 @@ void MetadataWriteService::stop()
 
     // Workers are quiescent before owner-thread observers can fail or close the service.
     const auto drain = [&] {
-        while (lifetime->owner) {
+        while (lifetime.get()) {
             try {
                 delivery_.drain();
                 break;
@@ -555,7 +555,7 @@ void MetadataWriteService::stop()
     };
     drain();
 
-    if (!lifetime->owner)
+    if (!lifetime.get())
         return;
 
     while (!ready_.empty()) {
@@ -570,13 +570,13 @@ void MetadataWriteService::stop()
             remember_failure();
         }
 
-        if (!lifetime->owner)
+        if (!lifetime.get())
             return;
     }
 
     drain();
 
-    if (!lifetime->owner)
+    if (!lifetime.get())
         return;
 
     try {
@@ -587,7 +587,7 @@ void MetadataWriteService::stop()
         remember_failure();
     }
 
-    if (!lifetime->owner)
+    if (!lifetime.get())
         return;
 
     if (failure)

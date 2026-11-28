@@ -24,6 +24,7 @@
 #include <app/metadata/media_replacement.hpp>
 #include <qt/queued_delivery.hpp>
 #include <wiola/app/metadata/metadata_edit_session.hpp>
+#include <wiola/foundation/owner_thread_lifetime.hpp>
 #include <wiola/foundation/shared_callback.hpp>
 #include <wiola/library/repository_transaction.hpp>
 
@@ -63,10 +64,6 @@ private:
         bool intent_durable{};
     };
 
-    struct Lifetime {
-        MetadataWriteService* owner;
-    };
-
     void staged(MetadataWriteResult result);
     void progress(MetadataWriteResult result);
     void ready(std::shared_ptr<Prepared> prepared);
@@ -77,7 +74,7 @@ private:
     void finish(MetadataWriteResult result);
     void publish(const MetadataWriteResult& result);
     QueuedDelivery delivery_;
-    std::shared_ptr<Lifetime> lifetime_;
+    core::OwnerThreadLifetime<MetadataWriteService> lifetime_;
     std::shared_ptr<media::MediaProvider> provider_;
     library::InMemoryRepository& repository_;
     media::FileReplacement& replacement_;
