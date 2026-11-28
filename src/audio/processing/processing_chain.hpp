@@ -45,13 +45,12 @@ public:
     ProcessingChain(ProcessingChain&&) = delete;
     ProcessingChain& operator=(ProcessingChain&&) = delete;
 
-    /// Prepares every stage before any is changed. A later failure discards all candidates.
-    [[nodiscard]] std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) override;
-
     /// Runs the fixed topology and sanitizer without allocating, locking, or blocking.
     void process(std::span<float> samples) noexcept override;
 
 private:
+    /// Prepares every stage before any is changed. A later failure discards all candidates.
+    [[nodiscard]] std::unique_ptr<Preparation> prepare_change(pcm::StreamSpec spec) override;
     std::vector<core::Lease<Stage>> stages_;
     OutputSanitizer sanitizer_;
 };

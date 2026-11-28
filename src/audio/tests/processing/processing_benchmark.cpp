@@ -39,15 +39,17 @@ int main()
         equalizer->set_band_gain(0, 6.0F);
         auto volume = wiola::core::Lease<wiola::audio::Volume>::make();
         volume->set_gain(0.5F);
-        wiola::audio::ProcessingChain chain{equalizer, volume};
-        chain.configure(spec);
+        const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+            std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{equalizer, volume}
+        );
+        wiola::audio::Stage::configure(chain, spec);
         std::vector<float> samples(spec.samples_per(wiola::pcm::Frames{frames}));
         double checksum = 0;
         const auto before = std::chrono::steady_clock::now();
 
         for (std::size_t iteration = 0; iteration < iterations; ++iteration) {
             std::ranges::fill(samples, 0.25F);
-            chain.process(samples);
+            chain->process(samples);
             checksum += samples.front();
         }
 

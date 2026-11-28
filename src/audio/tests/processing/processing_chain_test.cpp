@@ -38,6 +38,7 @@
 #include <limits>
 #include <memory>
 #include <new>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -74,7 +75,7 @@ public:
     {
     }
 
-    std::unique_ptr<Preparation> prepare(StreamSpec spec) override
+    std::unique_ptr<Preparation> prepare_change(StreamSpec spec) override
     {
         if (fail_preparation)
             throw std::runtime_error{"controlled stage preparation failure"};
@@ -126,8 +127,10 @@ TEST(ProcessingChain, BuiltInProcessingDoesNotAllocateAfterConfiguration)
 {
     auto equalizer = wiola::core::Lease<wiola::audio::Equalizer>::make(stereo);
     auto volume = wiola::core::Lease<wiola::audio::Volume>::make();
-    ProcessingChain chain{equalizer, volume};
-    chain.configure(stereo);
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{equalizer, volume}
+    );
+    wiola::audio::Stage::configure(chain, stereo);
     std::array<float, 1024> block;
     bool valid = true;
     const auto process = [&] {
@@ -138,7 +141,7 @@ TEST(ProcessingChain, BuiltInProcessingDoesNotAllocateAfterConfiguration)
                 volume->set_gain(iteration % 64 == 0 ? 0.5F : 1.0F);
             }
             block.fill(0.25F);
-            chain.process(block);
+            chain->process(block);
             for (const auto sample : block)
                 valid = valid && std::isfinite(sample) && std::abs(sample) <= 1.0F;
         }
@@ -159,10 +162,10 @@ TEST(ProcessingChain, BuiltInProcessingDoesNotAllocateAfterConfiguration)
 
 TEST(ProcessingChain, LeavesSamplesAloneWithNoSteps)
 {
-    ProcessingChain chain;
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     auto buffer{samples()};
 
-    chain.process(buffer);
+    chain->process(buffer);
 
     EXPECT_EQ(buffer, samples());
 }
@@ -174,12 +177,12 @@ TEST(ProcessingChain, RunsStepsInTheOrderTheyWereAdded)
     auto second = wiola::core::Lease<Marking>::make(ran, "second", 1.0F);
     auto third = wiola::core::Lease<Marking>::make(ran, "third", 1.0F);
 
-    ProcessingChain chain{
-        {first, second, third}
-    };
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second, third}
+    );
 
     auto buffer{samples()};
-    chain.process(buffer);
+    chain->process(buffer);
 
     EXPECT_EQ(ran, (std::vector<std::string>{"first", "second", "third"}));
 }
@@ -190,12 +193,12 @@ TEST(ProcessingChain, RunsEveryStepOverTheSamples)
     auto first = wiola::core::Lease<Marking>::make(ran, "half", 0.5F);
     auto second = wiola::core::Lease<Marking>::make(ran, "half again", 0.5F);
 
-    ProcessingChain chain{
-        {first, second}
-    };
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second}
+    );
 
     std::array block{0.8F, 0.4F};
-    chain.process(block);
+    chain->process(block);
 
     EXPECT_FLOAT_EQ(block[0], 0.2F);
     EXPECT_FLOAT_EQ(block[1], 0.1F);
@@ -207,11 +210,11 @@ TEST(ProcessingChain, TellsEveryStepAboutTheFormat)
     auto first = wiola::core::Lease<Marking>::make(ran, "first", 1.0F);
     auto second = wiola::core::Lease<Marking>::make(ran, "second", 1.0F);
 
-    ProcessingChain chain{
-        {first, second}
-    };
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second}
+    );
 
-    chain.configure(stereo);
+    wiola::audio::Stage::configure(chain, stereo);
 
     EXPECT_EQ(first->num_configures, 1);
     EXPECT_EQ(second->num_configures, 1);
@@ -227,10 +230,12 @@ TEST(ProcessingChain, HoldsTheCeilingWhateverTheStepsDid)
     std::vector<std::string> ran;
     auto loud = wiola::core::Lease<Marking>::make(ran, "loud", 4.0F);
 
-    ProcessingChain chain{{loud}};
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{loud}
+    );
 
     std::array block{0.8F, -0.8F, 0.1F};
-    chain.process(block);
+    chain->process(block);
 
     EXPECT_FLOAT_EQ(block[0], 1.0F);
     EXPECT_FLOAT_EQ(block[1], -1.0F);
@@ -240,10 +245,10 @@ TEST(ProcessingChain, HoldsTheCeilingWhateverTheStepsDid)
 /// What arrives past full scale is held to it too, whether or not anything in the chain lifted.
 TEST(ProcessingChain, HoldsTheCeilingOnWhatArrivedPastIt)
 {
-    ProcessingChain chain;
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     std::array block{2.0F, -3.0F, 0.5F};
 
-    chain.process(block);
+    chain->process(block);
 
     EXPECT_FLOAT_EQ(block[0], 1.0F);
     EXPECT_FLOAT_EQ(block[1], -1.0F);
@@ -255,13 +260,15 @@ TEST(ProcessingChain, AcceptsNothingToDo)
     std::vector<std::string> ran;
     auto half = wiola::core::Lease<Marking>::make(ran, "half", 0.5F);
 
-    ProcessingChain chain{{half}};
-    chain.process(std::span<float>{});
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{half}
+    );
+    chain->process(std::span<float>{});
 
     // Nothing to do is not something to recover from: what comes after is shaped as it would
     // have been.
     std::array block{1.0F, 1.0F};
-    chain.process(block);
+    chain->process(block);
 
     EXPECT_FLOAT_EQ(block[0], 0.5F);
     EXPECT_FLOAT_EQ(block[1], 0.5F);
@@ -276,7 +283,7 @@ TEST(ProcessingChain, ShapesThenSetsHowLoud)
     shaping.equalizer->set_band_gain(5, 12.0F);
     shaping.equalizer->set_enabled(false);
     shaping.volume->set_gain(0.5F);
-    shaping.chain.process(buffer);
+    shaping.chain->process(buffer);
 
     EXPECT_FLOAT_EQ(buffer[0], 0.5F);
     EXPECT_FLOAT_EQ(buffer[1], -0.25F);
@@ -287,12 +294,13 @@ TEST(ProcessingChain, TakesANewFormatWithoutForgettingTheSetting)
     wiola::testing::Shaping shaping{stereo};
 
     shaping.volume->set_gain(0.5F);
-    shaping.chain.configure(StreamSpec{.sample_rate = 22050_Hz, .num_channels = 1});
+    wiola::audio::Stage::configure(shaping.chain,
+        StreamSpec{.sample_rate = 22050_Hz, .num_channels = 1});
 
     EXPECT_FLOAT_EQ(shaping.volume->gain(), 0.5F);
     EXPECT_EQ(shaping.equalizer->num_bands(), 9u);
 
-    shaping.chain.configure(stereo);
+    wiola::audio::Stage::configure(shaping.chain, stereo);
 
     EXPECT_EQ(shaping.equalizer->num_bands(), 10u);
 }
@@ -309,7 +317,7 @@ TEST(ProcessingChain, KeepsBoostedSamplesInRange)
 
     for (int i = 0; i < 20; ++i) {
         source.render(block);
-        shaping.chain.process(block);
+        shaping.chain->process(block);
 
         for (const float sample : block)
             ASSERT_LE(std::abs(sample), 1.0F);
@@ -318,11 +326,11 @@ TEST(ProcessingChain, KeepsBoostedSamplesInRange)
 
 TEST(ProcessingChain, SanitizesNonFiniteOutput)
 {
-    ProcessingChain chain;
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
     std::array block{std::numeric_limits<float>::quiet_NaN(),
         std::numeric_limits<float>::infinity(), 0.25F};
 
-    chain.process(block);
+    chain->process(block);
 
     EXPECT_EQ(block, (std::array{0.0F, 0.0F, 0.25F}));
 }
@@ -332,14 +340,14 @@ TEST(ProcessingChain, DiscardedPreparationPreservesActiveStagesAndReleasesCandid
     std::vector<std::string> ran;
     auto first = wiola::core::Lease<Marking>::make(ran, "first", 1.0F);
     auto second = wiola::core::Lease<Marking>::make(ran, "second", 1.0F);
-    ProcessingChain chain{
-        {first, second}
-    };
-    chain.configure(stereo);
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second}
+    );
+    wiola::audio::Stage::configure(chain, stereo);
 
     const StreamSpec replacement{.sample_rate = 22050_Hz, .num_channels = 1};
     {
-        const auto prepared{chain.prepare(replacement)};
+        const auto prepared{wiola::audio::Stage::prepare(chain, replacement)};
 
         ASSERT_NE(prepared, nullptr);
         EXPECT_EQ(first->configured, stereo);
@@ -358,13 +366,15 @@ TEST(ProcessingChain, LaterStageFailurePreservesEarlierStagesAndReleasesCandidat
     std::vector<std::string> ran;
     auto first = wiola::core::Lease<Marking>::make(ran, "first", 1.0F);
     auto second = wiola::core::Lease<Marking>::make(ran, "second", 1.0F);
-    ProcessingChain chain{
-        {first, second}
-    };
-    chain.configure(stereo);
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second}
+    );
+    wiola::audio::Stage::configure(chain, stereo);
     second->fail_preparation = true;
 
-    EXPECT_THROW(chain.configure({.sample_rate = 22050_Hz, .num_channels = 1}), std::runtime_error);
+    EXPECT_THROW(wiola::audio::Stage::configure(chain,
+                     {.sample_rate = 22050_Hz, .num_channels = 1}),
+        std::runtime_error);
 
     EXPECT_EQ(first->configured, stereo);
     EXPECT_EQ(second->configured, stereo);
@@ -379,10 +389,10 @@ TEST(ProcessingChain, CommitActivatesTheWholeChainOnlyOnce)
     std::vector<std::string> ran;
     auto first = wiola::core::Lease<Marking>::make(ran, "first", 1.0F);
     auto second = wiola::core::Lease<Marking>::make(ran, "second", 1.0F);
-    ProcessingChain chain{
-        {first, second}
-    };
-    auto prepared{chain.prepare(stereo)};
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second}
+    );
+    auto prepared{wiola::audio::Stage::prepare(chain, stereo)};
 
     ASSERT_NE(prepared, nullptr);
     EXPECT_EQ(first->num_configures, 0);
@@ -400,23 +410,26 @@ TEST(ProcessingChain, CommitActivatesTheWholeChainOnlyOnce)
 TEST(ProcessingChain, AChainOfStatelessStagesNeedsNoCommit)
 {
     auto volume = wiola::core::Lease<wiola::audio::Volume>::make();
-    ProcessingChain chain{{volume}};
+    const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{volume}
+    );
 
-    EXPECT_EQ(chain.prepare(stereo), nullptr);
+    EXPECT_EQ(wiola::audio::Stage::prepare(chain, stereo), nullptr);
 
-    chain.configure(stereo);
+    wiola::audio::Stage::configure(chain, stereo);
 
-    ProcessingChain empty;
+    const auto empty = wiola::core::Lease<wiola::audio::ProcessingChain>::make();
 
-    EXPECT_EQ(empty.prepare(stereo), nullptr);
+    EXPECT_EQ(wiola::audio::Stage::prepare(empty, stereo), nullptr);
 
-    empty.configure(stereo);
+    wiola::audio::Stage::configure(empty, stereo);
 }
 
 TEST(ProcessingChain, EqualizerCommitUsesSettingsAcceptedAfterPreparation)
 {
     wiola::testing::Shaping shaping{stereo};
-    auto prepared{shaping.chain.prepare({.sample_rate = 22050_Hz, .num_channels = 1})};
+    auto prepared{
+        wiola::audio::Stage::prepare(shaping.chain, {.sample_rate = 22050_Hz, .num_channels = 1})};
 
     ASSERT_NE(prepared, nullptr);
     EXPECT_EQ(shaping.equalizer->num_bands(), 10u);
@@ -435,7 +448,7 @@ TEST(ProcessingChain, EqualizerCommitUsesSettingsAcceptedAfterPreparation)
     EXPECT_FALSE(shaping.equalizer->enabled());
 
     std::array block{0.8F, -0.4F};
-    shaping.chain.process(block);
+    shaping.chain->process(block);
     EXPECT_EQ(block, (std::array{0.4F, -0.2F}));
 }
 
@@ -460,21 +473,22 @@ TEST(ProcessingChain, PreparationCanOverlapActiveEqualizerProcessing)
 
         do {
             actual = seed;
-            shaping.chain.process(actual);
+            shaping.chain->process(actual);
             ++blocks;
         } while (!stop.stop_requested());
     }};
 
     entered.wait(false, std::memory_order_acquire);
 
-    auto prepared{shaping.chain.prepare({.sample_rate = 22050_Hz, .num_channels = 1})};
+    auto prepared{
+        wiola::audio::Stage::prepare(shaping.chain, {.sample_rate = 22050_Hz, .num_channels = 1})};
 
     callback.request_stop();
     callback.join();
 
     for (std::size_t index{0}; index < blocks; ++index) {
         expected = seed;
-        reference.chain.process(expected);
+        reference.chain->process(expected);
     }
 
     EXPECT_EQ(actual, expected);
@@ -493,9 +507,9 @@ TEST(ProcessingChain, AnyPreparationAllocationFailurePreservesTheWholeActiveChai
     for (std::size_t after{0};; ++after) {
         auto first = wiola::core::Lease<wiola::audio::Equalizer>::make(stereo);
         auto second = wiola::core::Lease<wiola::audio::Equalizer>::make(stereo);
-        ProcessingChain chain{
-            {first, second}
-        };
+        const auto chain = wiola::core::Lease<wiola::audio::ProcessingChain>::make(
+            std::initializer_list<wiola::core::Lease<wiola::audio::Stage>>{first, second}
+        );
 
         first->set_band_gain(9, 3.0F);
         second->set_band_gain(9, 6.0F);
@@ -504,7 +518,7 @@ TEST(ProcessingChain, AnyPreparationAllocationFailurePreservesTheWholeActiveChai
         {
             const wiola::testing::AllocationFailure failure{after};
             try {
-                chain.configure(replacement);
+                wiola::audio::Stage::configure(chain, replacement);
             } catch (const std::bad_alloc&) {
                 failed = true;
             }
@@ -532,21 +546,43 @@ TEST(ProcessingChain, AnyPreparationAllocationFailurePreservesTheWholeActiveChai
 TEST(ProcessingChain, RetainsItsStagesAfterTheirOriginalOwnersAreReleased)
 {
     wiola::core::WeakLease<wiola::audio::Volume> observed;
-    std::unique_ptr<ProcessingChain> chain;
+    std::optional<wiola::core::Lease<ProcessingChain>> chain;
     {
         const auto volume = wiola::core::Lease<wiola::audio::Volume>::make();
         volume->set_gain(0.5F);
         observed = volume.weak();
-        chain = std::make_unique<ProcessingChain>(std::initializer_list<wiola::core::Lease<Stage>>{
-            volume});
+        chain = wiola::core::Lease<ProcessingChain>::make(
+            std::initializer_list<wiola::core::Lease<Stage>>{volume}
+        );
     }
 
     ASSERT_TRUE(observed.lock());
-    chain->configure(stereo);
+    Stage::configure(*chain, stereo);
     std::array block{0.8F, -0.4F};
-    chain->process(block);
+    (*chain)->process(block);
     EXPECT_EQ(block, (std::array{0.4F, -0.2F}));
 
     chain.reset();
     EXPECT_FALSE(observed.lock());
+}
+
+TEST(ProcessingChain, StaleChildRejectsTheWholeCandidateBeforeAnyOtherChildCommits)
+{
+    std::vector<std::string> ran;
+    const auto first = wiola::core::Lease<Marking>::make(ran, "first", 1.0F);
+    const auto second = wiola::core::Lease<Marking>::make(ran, "second", 1.0F);
+    const auto chain = wiola::core::Lease<ProcessingChain>::make(
+        std::initializer_list<wiola::core::Lease<Stage>>{first, second}
+    );
+    Stage::configure(chain, stereo);
+    auto pending = Stage::prepare(chain, {.sample_rate = 22050_Hz, .num_channels = 1});
+    const StreamSpec newer{.sample_rate = 44100_Hz, .num_channels = 2};
+    Stage::configure(second, newer);
+
+    EXPECT_FALSE(pending->ready());
+    EXPECT_FALSE(pending->commit());
+    EXPECT_EQ(first->configured, stereo);
+    EXPECT_EQ(first->num_configures, 1);
+    EXPECT_EQ(second->configured, newer);
+    EXPECT_EQ(second->num_configures, 2);
 }

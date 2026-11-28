@@ -192,7 +192,7 @@ TEST(OutputSession, OutputRetainsTheWholeProcessingGraphAfterItsHostAndCacheAreG
         {
         }
 
-        std::unique_ptr<Preparation> prepare(StreamSpec) override { return {}; }
+        std::unique_ptr<Preparation> prepare_change(StreamSpec) override { return {}; }
 
         void process(std::span<float> samples) noexcept override
         {

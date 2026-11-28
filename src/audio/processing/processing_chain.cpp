@@ -20,6 +20,7 @@
 
 #include "processing_chain.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace wiola::audio {
@@ -34,6 +35,11 @@ public:
     }
 
 private:
+    bool can_activate() const noexcept override
+    {
+        return std::ranges::all_of(stages_, [](const auto& stage) { return stage->ready(); });
+    }
+
     void activate() noexcept override
     {
         for (const auto& stage : stages_)
@@ -55,13 +61,13 @@ ProcessingChain::ProcessingChain(std::span<const core::Lease<Stage>> stages)
 {
 }
 
-std::unique_ptr<Stage::Preparation> ProcessingChain::prepare(pcm::StreamSpec spec)
+std::unique_ptr<Stage::Preparation> ProcessingChain::prepare_change(pcm::StreamSpec spec)
 {
     std::vector<std::unique_ptr<Stage::Preparation>> prepared;
     prepared.reserve(stages_.size());
 
     for (const auto& stage : stages_) {
-        if (auto candidate{stage->prepare(spec)})
+        if (auto candidate{Stage::prepare(stage, spec)})
             prepared.push_back(std::move(candidate));
     }
 

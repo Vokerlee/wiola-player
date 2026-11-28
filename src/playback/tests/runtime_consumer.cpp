@@ -110,7 +110,7 @@ public:
 
 class Processing final : public audio::Stage {
 public:
-    std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) noexcept override
+    std::unique_ptr<Preparation> prepare_change(pcm::StreamSpec spec) noexcept override
     {
         configured = spec;
         return {};

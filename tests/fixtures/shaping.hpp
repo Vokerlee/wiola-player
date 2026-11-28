@@ -30,18 +30,17 @@ namespace wiola::testing {
 /// The steps a session puts a track through, in the same order, with each of them to hand: the
 /// bands first, then how loud, so that what a listener asks for last is done last.
 struct Shaping {
-    explicit Shaping(pcm::StreamSpec spec,
-        audio::BandLayout layout =
-            audio::BandLayout{
-    })
+    explicit Shaping(pcm::StreamSpec spec, audio::BandLayout layout = audio::BandLayout{})
         : equalizer{core::Lease<audio::Equalizer>::make(spec, layout)}
-        , chain{{equalizer, volume}}
+        , chain{core::Lease<audio::ProcessingChain>::make(
+              std::initializer_list<core::Lease<audio::Stage>>{equalizer, volume}
+          )}
     {
     }
 
     core::Lease<audio::Equalizer> equalizer;
     core::Lease<audio::Volume> volume = core::Lease<audio::Volume>::make();
-    audio::ProcessingChain chain;
+    core::Lease<audio::ProcessingChain> chain;
 };
 
 } // namespace wiola::testing

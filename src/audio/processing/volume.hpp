@@ -44,12 +44,12 @@ public:
 
     [[nodiscard]] float gain() const noexcept;
 
-    /// Nothing here follows the stream, so this is what it costs to say so.
-    [[nodiscard]] std::unique_ptr<Preparation> prepare(pcm::StreamSpec spec) noexcept override;
-
     void process(std::span<float> samples) noexcept override;
 
 private:
+    /// Nothing here follows the stream, so this is what it costs to say so.
+    [[nodiscard]] std::unique_ptr<Preparation>
+    prepare_change(pcm::StreamSpec spec) noexcept override;
     VolumePolicy policy_;
     std::atomic<float> gain_{1.0F};
 };
